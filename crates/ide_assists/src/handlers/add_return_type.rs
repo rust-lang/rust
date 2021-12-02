@@ -1,5 +1,5 @@
 use hir::HirDisplay;
-use syntax::{ast, AstNode, TextRange, TextSize};
+use syntax::{ast, AstNode, SyntaxKind, SyntaxToken, TextRange, TextSize};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -16,7 +16,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // fn foo() -> i32 { 42i32 }
 // ```
 pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let (fn_type, tail_expr, builder_edit_pos) = extract_tail(ctx)?;
+    let (fn_type, tail_expr, builder_edit_pos, needs_whitespace) = extract_tail(ctx)?;
     let module = ctx.sema.scope(tail_expr.syntax()).module()?;
     let ty = ctx.sema.type_of_expr(&tail_expr)?.adjusted();
     if ty.is_unit() {
@@ -32,12 +32,14 @@ pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext) -> Option<
         },
         tail_expr.syntax().text_range(),
         |builder| {
+            let preceeding_whitespace = if needs_whitespace { " " } else { "" };
+
             match builder_edit_pos {
                 InsertOrReplace::Insert(insert_pos) => {
-                    builder.insert(insert_pos, &format!("-> {} ", ty))
+                    builder.insert(insert_pos, &format!("{}-> {} ", preceeding_whitespace, ty))
                 }
                 InsertOrReplace::Replace(text_range) => {
-                    builder.replace(text_range, &format!("-> {}", ty))
+                    builder.replace(text_range, &format!("{}-> {}", preceeding_whitespace, ty))
                 }
             }
             if let FnType::Closure { wrap_expr: true } = fn_type {
@@ -56,13 +58,16 @@ enum InsertOrReplace {
 
 /// Check the potentially already specified return type and reject it or turn it into a builder command
 /// if allowed.
-fn ret_ty_to_action(ret_ty: Option<ast::RetType>, insert_pos: TextSize) -> Option<InsertOrReplace> {
+fn ret_ty_to_action(
+    ret_ty: Option<ast::RetType>,
+    insert_after: SyntaxToken,
+) -> Option<(InsertOrReplace, bool)> {
     match ret_ty {
         Some(ret_ty) => match ret_ty.ty() {
             Some(ast::Type::InferType(_)) | None => {
                 cov_mark::hit!(existing_infer_ret_type);
                 cov_mark::hit!(existing_infer_ret_type_closure);
-                Some(InsertOrReplace::Replace(ret_ty.syntax().text_range()))
+                Some((InsertOrReplace::Replace(ret_ty.syntax().text_range()), false))
             }
             _ => {
                 cov_mark::hit!(existing_ret_type);
@@ -70,7 +75,17 @@ fn ret_ty_to_action(ret_ty: Option<ast::RetType>, insert_pos: TextSize) -> Optio
                 None
             }
         },
-        None => Some(InsertOrReplace::Insert(insert_pos + TextSize::from(1))),
+        None => {
+            let insert_after_pos = insert_after.text_range().end();
+            let (insert_pos, needs_whitespace) = match insert_after.next_token() {
+                Some(it) if it.kind() == SyntaxKind::WHITESPACE => {
+                    (insert_after_pos + TextSize::from(1), false)
+                }
+                _ => (insert_after_pos, true),
+            };
+
+            Some((InsertOrReplace::Insert(insert_pos), needs_whitespace))
+        }
     }
 }
 
@@ -79,11 +94,13 @@ enum FnType {
     Closure { wrap_expr: bool },
 }
 
-fn extract_tail(ctx: &AssistContext) -> Option<(FnType, ast::Expr, InsertOrReplace)> {
-    let (fn_type, tail_expr, return_type_range, action) =
+fn extract_tail(ctx: &AssistContext) -> Option<(FnType, ast::Expr, InsertOrReplace, bool)> {
+    let (fn_type, tail_expr, return_type_range, action, needs_whitespace) =
         if let Some(closure) = ctx.find_node_at_offset::<ast::ClosureExpr>() {
-            let rpipe_pos = closure.param_list()?.syntax().last_token()?.text_range().end();
-            let action = ret_ty_to_action(closure.ret_type(), rpipe_pos)?;
+            let rpipe = closure.param_list()?.syntax().last_token()?;
+            let rpipe_pos = rpipe.text_range().end();
+
+            let (action, needs_whitespace) = ret_ty_to_action(closure.ret_type(), rpipe)?;
 
             let body = closure.body()?;
             let body_start = body.syntax().first_token()?.text_range().start();
@@ -93,11 +110,13 @@ fn extract_tail(ctx: &AssistContext) -> Option<(FnType, ast::Expr, InsertOrRepla
             };
 
             let ret_range = TextRange::new(rpipe_pos, body_start);
-            (FnType::Closure { wrap_expr }, tail_expr, ret_range, action)
+            (FnType::Closure { wrap_expr }, tail_expr, ret_range, action, needs_whitespace)
         } else {
             let func = ctx.find_node_at_offset::<ast::Fn>()?;
-            let rparen_pos = func.param_list()?.r_paren_token()?.text_range().end();
-            let action = ret_ty_to_action(func.ret_type(), rparen_pos)?;
+
+            let rparen = func.param_list()?.r_paren_token()?;
+            let rparen_pos = rparen.text_range().end();
+            let (action, needs_whitespace) = ret_ty_to_action(func.ret_type(), rparen)?;
 
             let body = func.body()?;
             let stmt_list = body.stmt_list()?;
@@ -105,7 +124,7 @@ fn extract_tail(ctx: &AssistContext) -> Option<(FnType, ast::Expr, InsertOrRepla
 
             let ret_range_end = stmt_list.l_curly_token()?.text_range().start();
             let ret_range = TextRange::new(rparen_pos, ret_range_end);
-            (FnType::Function, tail_expr, ret_range, action)
+            (FnType::Function, tail_expr, ret_range, action, needs_whitespace)
         };
     let range = ctx.selection_trimmed();
     if return_type_range.contains_range(range) {
@@ -117,7 +136,7 @@ fn extract_tail(ctx: &AssistContext) -> Option<(FnType, ast::Expr, InsertOrRepla
     } else {
         return None;
     }
-    Some((fn_type, tail_expr, action))
+    Some((fn_type, tail_expr, action, needs_whitespace))
 }
 
 #[cfg(test)]
@@ -188,6 +207,19 @@ mod tests {
         check_assist(
             add_return_type,
             r#"fn foo() {
+    45$0
+}"#,
+            r#"fn foo() -> i32 {
+    45
+}"#,
+        );
+    }
+
+    #[test]
+    fn infer_return_type_no_whitespace() {
+        check_assist(
+            add_return_type,
+            r#"fn foo(){
     45$0
 }"#,
             r#"fn foo() -> i32 {
@@ -273,6 +305,19 @@ mod tests {
             add_return_type,
             r#"fn foo() {
     |x: i32| { x$0 };
+}"#,
+            r#"fn foo() {
+    |x: i32| -> i32 { x };
+}"#,
+        );
+    }
+
+    #[test]
+    fn infer_return_type_closure_no_whitespace() {
+        check_assist(
+            add_return_type,
+            r#"fn foo() {
+    |x: i32|{ x$0 };
 }"#,
             r#"fn foo() {
     |x: i32| -> i32 { x };
