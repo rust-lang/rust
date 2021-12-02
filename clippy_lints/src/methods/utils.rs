@@ -66,7 +66,13 @@ pub(super) fn get_hint_if_single_char_arg(
                 // for regular string: "a"
                 &snip[1..(snip.len() - 1)]
             };
-            let hint = format!("'{}'", if ch == "'" { "\\'" } else { ch });
+
+            let hint = format!("'{}'", match ch {
+                "'" => "\\'" ,
+                r"\" => "\\\\",
+                _ => ch,
+            });
+
             Some(hint)
         } else {
             None
