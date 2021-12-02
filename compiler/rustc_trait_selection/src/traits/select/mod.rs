@@ -521,7 +521,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 },
 
                 ty::PredicateKind::TypeOutlives(pred) => {
-                    if pred.0.is_known_global() {
+                    // A global type with no late-bound regions can only
+                    // contain the "'static" lifetime (any other lifetime
+                    // would either be late-bound or local), so it is guaranteed
+                    // to outlive any other lifetime
+                    if pred.0.is_global(self.infcx.tcx) && !pred.0.has_late_bound_regions() {
                         Ok(EvaluatedToOk)
                     } else {
                         Ok(EvaluatedToOkModuloRegions)
