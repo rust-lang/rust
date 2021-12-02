@@ -17,8 +17,8 @@ use std::iter;
 
 use crate::util::expand_aggregate;
 use crate::{
-    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, remove_noop_landing_pads,
-    run_passes, simplify,
+    abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, marker, pass_manager as pm,
+    remove_noop_landing_pads, simplify,
 };
 use rustc_middle::mir::patch::MirPatch;
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
@@ -75,17 +75,17 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
-    run_passes(
+    pm::run_passes(
         tcx,
         &mut result,
-        MirPhase::Const,
-        &[&[
+        &[
             &add_moves_for_packed_drops::AddMovesForPackedDrops,
             &remove_noop_landing_pads::RemoveNoopLandingPads,
             &simplify::SimplifyCfg::new("make_shim"),
             &add_call_guards::CriticalCallEdges,
             &abort_unwinding_calls::AbortUnwindingCalls,
-        ]],
+            &marker::PhaseChange(MirPhase::Const),
+        ],
     );
 
     debug!("make_shim({:?}) = {:?}", instance, result);
