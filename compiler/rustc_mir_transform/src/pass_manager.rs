@@ -49,6 +49,29 @@ where
     }
 }
 
+pub struct WithMinOptLevel<T>(pub u32, pub T);
+
+impl<T> MirPass<'tcx> for WithMinOptLevel<T>
+where
+    T: MirPass<'tcx>,
+{
+    fn name(&self) -> Cow<'_, str> {
+        self.1.name()
+    }
+
+    fn is_enabled(&self, sess: &Session) -> bool {
+        sess.mir_opt_level() >= self.0 as usize
+    }
+
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        self.1.run_pass(tcx, body)
+    }
+
+    fn phase_change(&self) -> Option<MirPhase> {
+        self.1.phase_change()
+    }
+}
+
 pub fn run_passes(tcx: TyCtxt<'tcx>, body: &'mir mut Body<'tcx>, passes: &[&dyn MirPass<'tcx>]) {
     let start_phase = body.phase;
     let mut cnt = 0;

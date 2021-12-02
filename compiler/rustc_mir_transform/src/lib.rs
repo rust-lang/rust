@@ -35,7 +35,7 @@ use rustc_span::{Span, Symbol};
 #[macro_use]
 mod pass_manager;
 
-use pass_manager::{self as pm, Lint, MirLint};
+use pass_manager::{self as pm, Lint, MirLint, WithMinOptLevel};
 
 mod abort_unwinding_calls;
 mod add_call_guards;
@@ -438,6 +438,10 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn o1<T>(x: T) -> WithMinOptLevel<T> {
+        WithMinOptLevel(1, x)
+    }
+
     // Lowering generator control-flow and variables has to happen before we do anything else
     // to them. We run some optimizations before that, because they may be harder to do on the state
     // machine than on MIR with async primitives.
@@ -450,7 +454,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
             &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
-            &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
+            &o1(simplify::SimplifyCfg::new("after-uninhabited-enum-branching")),
             &inline::Inline,
             &generator::StateTransform,
         ],
@@ -472,17 +476,21 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &multiple_return_terminators::MultipleReturnTerminators,
             &instcombine::InstCombine,
             &separate_const_switch::SeparateConstSwitch,
+            //
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,
-            &simplify_branches::SimplifyBranches::new("after-const-prop"),
+            //
+            // FIXME: The old pass manager ran this only at mir-opt-level >= 1, but
+            // const-prop runs unconditionally. Should this run unconditionally as well?
+            &o1(simplify_branches::SimplifyConstCondition::new("after-const-prop")),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
             &simplify_try::SimplifyArmIdentity,
             &simplify_try::SimplifyBranchSame,
             &dest_prop::DestinationPropagation,
-            &simplify_branches::SimplifyBranches::new("final"),
-            &remove_noop_landing_pads::RemoveNoopLandingPads,
-            &simplify::SimplifyCfg::new("final"),
+            &o1(simplify_branches::SimplifyConstCondition::new("final")),
+            &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
+            &o1(simplify::SimplifyCfg::new("final")),
             &nrvo::RenameReturnPlace,
             &const_debuginfo::ConstDebugInfo,
             &simplify::SimplifyLocals,
