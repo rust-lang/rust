@@ -9,7 +9,7 @@
 
 use crate::mir;
 use crate::traits::query::NoSolution;
-use crate::ty::fold::{TypeFoldable, TypeFolder};
+use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
 
@@ -55,9 +55,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if !value.has_projections() {
             value
         } else {
-            value
-                .fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, param_env })
-                .into_ok()
+            value.fold_with(&mut NormalizeAfterErasingRegionsFolder { tcx: self, param_env })
         }
     }
 
@@ -90,7 +88,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Ok(value)
         } else {
             let mut folder = TryNormalizeAfterErasingRegionsFolder::new(self, param_env);
-            value.fold_with(&mut folder)
+            value.try_fold_with(&mut folder)
         }
     }
 
@@ -161,25 +159,19 @@ impl TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
-        Ok(self.normalize_generic_arg_after_erasing_regions(ty.into()).expect_ty())
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.normalize_generic_arg_after_erasing_regions(ty.into()).expect_ty()
     }
 
-    fn fold_const(
-        &mut self,
-        c: &'tcx ty::Const<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
-        Ok(self.normalize_generic_arg_after_erasing_regions(c.into()).expect_const())
+    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        self.normalize_generic_arg_after_erasing_regions(c.into()).expect_const()
     }
 
     #[inline]
-    fn fold_mir_const(
-        &mut self,
-        c: mir::ConstantKind<'tcx>,
-    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
+    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
         // FIXME: This *probably* needs canonicalization too!
         let arg = self.param_env.and(c);
-        Ok(self.tcx.normalize_mir_const_after_erasing_regions(arg))
+        self.tcx.normalize_mir_const_after_erasing_regions(arg)
     }
 }
 
@@ -211,15 +203,17 @@ impl TypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
+}
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+impl FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
+    fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match self.try_normalize_generic_arg_after_erasing_regions(ty.into()) {
             Ok(t) => Ok(t.expect_ty()),
             Err(_) => Err(NormalizationError::Type(ty)),
         }
     }
 
-    fn fold_const(
+    fn try_fold_const(
         &mut self,
         c: &'tcx ty::Const<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
@@ -229,7 +223,7 @@ impl TypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
         }
     }
 
-    fn fold_mir_const(
+    fn try_fold_mir_const(
         &mut self,
         c: mir::ConstantKind<'tcx>,
     ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {

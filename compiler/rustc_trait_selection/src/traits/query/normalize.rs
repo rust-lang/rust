@@ -12,7 +12,7 @@ use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::Normalized;
 use rustc_middle::mir;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
 
@@ -87,7 +87,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
                 normalizer.universes.extend((0..max_visitor.escaping).map(|_| None));
             }
         }
-        let result = value.fold_with(&mut normalizer);
+        let result = value.try_fold_with(&mut normalizer);
         info!(
             "normalize::<{}>: result={:?} with {} obligations",
             std::any::type_name::<T>(),
@@ -176,19 +176,21 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
+}
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(
+impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
+    fn try_fold_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
     ) -> Result<ty::Binder<'tcx, T>, Self::Error> {
         self.universes.push(None);
-        let t = t.super_fold_with(self);
+        let t = t.try_super_fold_with(self);
         self.universes.pop();
         t
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+    fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if !needs_normalization(&ty, self.param_env.reveal()) {
             return Ok(ty);
         }
@@ -208,10 +210,10 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal() {
-                    Reveal::UserFacing => ty.super_fold_with(self),
+                    Reveal::UserFacing => ty.try_super_fold_with(self),
 
                     Reveal::All => {
-                        let substs = substs.super_fold_with(self)?;
+                        let substs = substs.try_super_fold_with(self)?;
                         let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
                             let obligation = Obligation::with_depth(
@@ -236,7 +238,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                                 ty
                             );
                         }
-                        let folded_ty = ensure_sufficient_stack(|| self.fold_ty(concrete_ty));
+                        let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
                         self.anon_depth -= 1;
                         folded_ty
                     }
@@ -248,7 +250,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // we don't need to replace them with placeholders (see branch below).
 
                 let tcx = self.infcx.tcx;
-                let data = data.super_fold_with(self)?;
+                let data = data.try_super_fold_with(self)?;
 
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
@@ -287,7 +289,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         &mut self.universes,
                         data,
                     );
-                let data = data.super_fold_with(self)?;
+                let data = data.try_super_fold_with(self)?;
 
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
@@ -322,24 +324,24 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 ))
             }
 
-            _ => ty.super_fold_with(self),
+            _ => ty.try_super_fold_with(self),
         })()?;
         self.cache.insert(ty, res);
         Ok(res)
     }
 
-    fn fold_const(
+    fn try_fold_const(
         &mut self,
         constant: &'tcx ty::Const<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
-        let constant = constant.super_fold_with(self)?;
+        let constant = constant.try_super_fold_with(self)?;
         Ok(constant.eval(self.infcx.tcx, self.param_env))
     }
 
-    fn fold_mir_const(
+    fn try_fold_mir_const(
         &mut self,
         constant: mir::ConstantKind<'tcx>,
     ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
-        constant.super_fold_with(self)
+        constant.try_super_fold_with(self)
     }
 }

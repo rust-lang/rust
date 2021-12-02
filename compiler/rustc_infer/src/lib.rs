@@ -24,7 +24,6 @@
 #![feature(control_flow_enum)]
 #![feature(min_specialization)]
 #![feature(label_break_value)]
-#![feature(unwrap_infallible)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

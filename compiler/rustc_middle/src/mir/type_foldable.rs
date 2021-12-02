@@ -16,39 +16,42 @@ TrivialTypeFoldableAndLiftImpls! {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         use crate::mir::TerminatorKind::*;
 
         let kind = match self.kind {
             Goto { target } => Goto { target },
             SwitchInt { discr, switch_ty, targets } => SwitchInt {
-                discr: discr.fold_with(folder)?,
-                switch_ty: switch_ty.fold_with(folder)?,
+                discr: discr.try_fold_with(folder)?,
+                switch_ty: switch_ty.try_fold_with(folder)?,
                 targets,
             },
             Drop { place, target, unwind } => {
-                Drop { place: place.fold_with(folder)?, target, unwind }
+                Drop { place: place.try_fold_with(folder)?, target, unwind }
             }
             DropAndReplace { place, value, target, unwind } => DropAndReplace {
-                place: place.fold_with(folder)?,
-                value: value.fold_with(folder)?,
+                place: place.try_fold_with(folder)?,
+                value: value.try_fold_with(folder)?,
                 target,
                 unwind,
             },
             Yield { value, resume, resume_arg, drop } => Yield {
-                value: value.fold_with(folder)?,
+                value: value.try_fold_with(folder)?,
                 resume,
-                resume_arg: resume_arg.fold_with(folder)?,
+                resume_arg: resume_arg.try_fold_with(folder)?,
                 drop,
             },
             Call { func, args, destination, cleanup, from_hir_call, fn_span } => {
                 let dest = destination
-                    .map(|(loc, dest)| (loc.fold_with(folder).map(|loc| (loc, dest))))
+                    .map(|(loc, dest)| (loc.try_fold_with(folder).map(|loc| (loc, dest))))
                     .transpose()?;
 
                 Call {
-                    func: func.fold_with(folder)?,
-                    args: args.fold_with(folder)?,
+                    func: func.try_fold_with(folder)?,
+                    args: args.try_fold_with(folder)?,
                     destination: dest,
                     cleanup,
                     from_hir_call,
@@ -58,16 +61,19 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Assert { cond, expected, msg, target, cleanup } => {
                 use AssertKind::*;
                 let msg = match msg {
-                    BoundsCheck { len, index } => {
-                        BoundsCheck { len: len.fold_with(folder)?, index: index.fold_with(folder)? }
+                    BoundsCheck { len, index } => BoundsCheck {
+                        len: len.try_fold_with(folder)?,
+                        index: index.try_fold_with(folder)?,
+                    },
+                    Overflow(op, l, r) => {
+                        Overflow(op, l.try_fold_with(folder)?, r.try_fold_with(folder)?)
                     }
-                    Overflow(op, l, r) => Overflow(op, l.fold_with(folder)?, r.fold_with(folder)?),
-                    OverflowNeg(op) => OverflowNeg(op.fold_with(folder)?),
-                    DivisionByZero(op) => DivisionByZero(op.fold_with(folder)?),
-                    RemainderByZero(op) => RemainderByZero(op.fold_with(folder)?),
+                    OverflowNeg(op) => OverflowNeg(op.try_fold_with(folder)?),
+                    DivisionByZero(op) => DivisionByZero(op.try_fold_with(folder)?),
+                    RemainderByZero(op) => RemainderByZero(op.try_fold_with(folder)?),
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) => msg,
                 };
-                Assert { cond: cond.fold_with(folder)?, expected, msg, target, cleanup }
+                Assert { cond: cond.try_fold_with(folder)?, expected, msg, target, cleanup }
             }
             GeneratorDrop => GeneratorDrop,
             Resume => Resume,
@@ -80,7 +86,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             FalseUnwind { real_target, unwind } => FalseUnwind { real_target, unwind },
             InlineAsm { template, operands, options, line_spans, destination } => InlineAsm {
                 template,
-                operands: operands.fold_with(folder)?,
+                operands: operands.try_fold_with(folder)?,
                 options,
                 line_spans,
                 destination,
@@ -142,7 +148,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for GeneratorKind {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
         Ok(self)
     }
 
@@ -152,10 +158,13 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorKind {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(Place {
-            local: self.local.fold_with(folder)?,
-            projection: self.projection.fold_with(folder)?,
+            local: self.local.try_fold_with(folder)?,
+            projection: self.projection.try_fold_with(folder)?,
         })
     }
 
@@ -166,7 +175,10 @@ impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         ty::util::fold_list(self, folder, |tcx, v| tcx.intern_place_elems(v))
     }
 
@@ -176,48 +188,56 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         use crate::mir::Rvalue::*;
         Ok(match self {
-            Use(op) => Use(op.fold_with(folder)?),
-            Repeat(op, len) => Repeat(op.fold_with(folder)?, len.fold_with(folder)?),
-            ThreadLocalRef(did) => ThreadLocalRef(did.fold_with(folder)?),
-            Ref(region, bk, place) => Ref(region.fold_with(folder)?, bk, place.fold_with(folder)?),
-            AddressOf(mutability, place) => AddressOf(mutability, place.fold_with(folder)?),
-            Len(place) => Len(place.fold_with(folder)?),
-            Cast(kind, op, ty) => Cast(kind, op.fold_with(folder)?, ty.fold_with(folder)?),
+            Use(op) => Use(op.try_fold_with(folder)?),
+            Repeat(op, len) => Repeat(op.try_fold_with(folder)?, len.try_fold_with(folder)?),
+            ThreadLocalRef(did) => ThreadLocalRef(did.try_fold_with(folder)?),
+            Ref(region, bk, place) => {
+                Ref(region.try_fold_with(folder)?, bk, place.try_fold_with(folder)?)
+            }
+            AddressOf(mutability, place) => AddressOf(mutability, place.try_fold_with(folder)?),
+            Len(place) => Len(place.try_fold_with(folder)?),
+            Cast(kind, op, ty) => Cast(kind, op.try_fold_with(folder)?, ty.try_fold_with(folder)?),
             BinaryOp(op, box (rhs, lhs)) => {
-                BinaryOp(op, Box::new((rhs.fold_with(folder)?, lhs.fold_with(folder)?)))
+                BinaryOp(op, Box::new((rhs.try_fold_with(folder)?, lhs.try_fold_with(folder)?)))
             }
-            CheckedBinaryOp(op, box (rhs, lhs)) => {
-                CheckedBinaryOp(op, Box::new((rhs.fold_with(folder)?, lhs.fold_with(folder)?)))
-            }
-            UnaryOp(op, val) => UnaryOp(op, val.fold_with(folder)?),
-            Discriminant(place) => Discriminant(place.fold_with(folder)?),
-            NullaryOp(op, ty) => NullaryOp(op, ty.fold_with(folder)?),
+            CheckedBinaryOp(op, box (rhs, lhs)) => CheckedBinaryOp(
+                op,
+                Box::new((rhs.try_fold_with(folder)?, lhs.try_fold_with(folder)?)),
+            ),
+            UnaryOp(op, val) => UnaryOp(op, val.try_fold_with(folder)?),
+            Discriminant(place) => Discriminant(place.try_fold_with(folder)?),
+            NullaryOp(op, ty) => NullaryOp(op, ty.try_fold_with(folder)?),
             Aggregate(kind, fields) => {
                 let kind = kind.try_map_id(|kind| {
                     Ok(match kind {
-                        AggregateKind::Array(ty) => AggregateKind::Array(ty.fold_with(folder)?),
+                        AggregateKind::Array(ty) => AggregateKind::Array(ty.try_fold_with(folder)?),
                         AggregateKind::Tuple => AggregateKind::Tuple,
                         AggregateKind::Adt(def, v, substs, user_ty, n) => AggregateKind::Adt(
                             def,
                             v,
-                            substs.fold_with(folder)?,
-                            user_ty.fold_with(folder)?,
+                            substs.try_fold_with(folder)?,
+                            user_ty.try_fold_with(folder)?,
                             n,
                         ),
                         AggregateKind::Closure(id, substs) => {
-                            AggregateKind::Closure(id, substs.fold_with(folder)?)
+                            AggregateKind::Closure(id, substs.try_fold_with(folder)?)
                         }
                         AggregateKind::Generator(id, substs, movablity) => {
-                            AggregateKind::Generator(id, substs.fold_with(folder)?, movablity)
+                            AggregateKind::Generator(id, substs.try_fold_with(folder)?, movablity)
                         }
                     })
                 })?;
-                Aggregate(kind, fields.fold_with(folder)?)
+                Aggregate(kind, fields.try_fold_with(folder)?)
             }
-            ShallowInitBox(op, ty) => ShallowInitBox(op.fold_with(folder)?, ty.fold_with(folder)?),
+            ShallowInitBox(op, ty) => {
+                ShallowInitBox(op.try_fold_with(folder)?, ty.try_fold_with(folder)?)
+            }
         })
     }
 
@@ -272,11 +292,14 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(match self {
-            Operand::Copy(place) => Operand::Copy(place.fold_with(folder)?),
-            Operand::Move(place) => Operand::Move(place.fold_with(folder)?),
-            Operand::Constant(c) => Operand::Constant(c.fold_with(folder)?),
+            Operand::Copy(place) => Operand::Copy(place.try_fold_with(folder)?),
+            Operand::Move(place) => Operand::Move(place.try_fold_with(folder)?),
+            Operand::Constant(c) => Operand::Constant(c.try_fold_with(folder)?),
         })
     }
 
@@ -289,13 +312,16 @@ impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for PlaceElem<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         use crate::mir::ProjectionElem::*;
 
         Ok(match self {
             Deref => Deref,
-            Field(f, ty) => Field(f, ty.fold_with(folder)?),
-            Index(v) => Index(v.fold_with(folder)?),
+            Field(f, ty) => Field(f, ty.try_fold_with(folder)?),
+            Index(v) => Index(v.try_fold_with(folder)?),
             Downcast(symbol, variantidx) => Downcast(symbol, variantidx),
             ConstantIndex { offset, min_length, from_end } => {
                 ConstantIndex { offset, min_length, from_end }
@@ -319,7 +345,7 @@ impl<'tcx> TypeFoldable<'tcx> for PlaceElem<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Field {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
         Ok(self)
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
@@ -328,7 +354,7 @@ impl<'tcx> TypeFoldable<'tcx> for Field {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
         Ok(self)
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
@@ -337,7 +363,7 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
 }
 
 impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
         Ok(self)
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
@@ -346,11 +372,14 @@ impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(Constant {
             span: self.span,
-            user_ty: self.user_ty.fold_with(folder)?,
-            literal: self.literal.fold_with(folder)?,
+            user_ty: self.user_ty.try_fold_with(folder)?,
+            literal: self.literal.try_fold_with(folder)?,
         })
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
@@ -361,14 +390,17 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for ConstantKind<'tcx> {
     #[inline(always)]
-    fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        folder.fold_mir_const(self)
+    fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        folder.try_fold_mir_const(self)
     }
 
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         match self {
-            ConstantKind::Ty(c) => Ok(ConstantKind::Ty(c.fold_with(folder)?)),
-            ConstantKind::Val(v, t) => Ok(ConstantKind::Val(v, t.fold_with(folder)?)),
+            ConstantKind::Ty(c) => Ok(ConstantKind::Ty(c.try_fold_with(folder)?)),
+            ConstantKind::Val(v, t) => Ok(ConstantKind::Val(v, t.try_fold_with(folder)?)),
         }
     }
 

@@ -1,7 +1,7 @@
 use crate::traits;
 use crate::traits::project::Normalized;
 use rustc_middle::ty;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeVisitor};
 
 use std::fmt;
 use std::ops::ControlFlow;
@@ -60,12 +60,15 @@ impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
 // TypeFoldable implementations.
 
 impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
         Ok(traits::Obligation {
             cause: self.cause,
             recursion_depth: self.recursion_depth,
-            predicate: self.predicate.fold_with(folder)?,
-            param_env: self.param_env.fold_with(folder)?,
+            predicate: self.predicate.try_fold_with(folder)?,
+            param_env: self.param_env.try_fold_with(folder)?,
         })
     }
 

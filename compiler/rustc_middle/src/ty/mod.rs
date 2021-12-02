@@ -9,7 +9,7 @@
 //!
 //! ["The `ty` module: representing types"]: https://rustc-dev-guide.rust-lang.org/ty.html
 
-pub use self::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitor};
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
@@ -1269,14 +1269,14 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
-    fn super_fold_with<F: ty::fold::TypeFolder<'tcx>>(
+    fn try_super_fold_with<F: ty::fold::FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         Ok(ParamEnv::new(
-            self.caller_bounds().fold_with(folder)?,
-            self.reveal().fold_with(folder)?,
-            self.constness().fold_with(folder)?,
+            self.caller_bounds().try_fold_with(folder)?,
+            self.reveal().try_fold_with(folder)?,
+            self.constness().try_fold_with(folder)?,
         ))
     }
 

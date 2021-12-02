@@ -72,7 +72,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         F: FnOnce(u32) -> ty::InferTy,
     {
         if let Some(ty) = opt_ty {
-            return ty.fold_with(self).into_ok();
+            return ty.fold_with(self);
         }
 
         match self.ty_freshen_map.entry(key) {
@@ -98,7 +98,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         F: FnOnce(u32) -> ty::InferConst<'tcx>,
     {
         if let Some(ct) = opt_ct {
-            return ct.fold_with(self).into_ok();
+            return ct.fold_with(self);
         }
 
         match self.const_freshen_map.entry(key) {
@@ -119,11 +119,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             ty::ReLateBound(..) => {
                 // leave bound regions alone
-                Ok(r)
+                r
             }
 
             ty::ReEarlyBound(..)
@@ -133,21 +133,21 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::ReEmpty(_)
             | ty::ReErased => {
                 // replace all free regions with 'erased
-                Ok(self.tcx().lifetimes.re_erased)
+                self.tcx().lifetimes.re_erased
             }
             ty::ReStatic => {
                 if self.keep_static {
-                    Ok(r)
+                    r
                 } else {
-                    Ok(self.tcx().lifetimes.re_erased)
+                    self.tcx().lifetimes.re_erased
                 }
             }
         }
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         if !t.needs_infer() && !t.has_erasable_regions(self.tcx()) {
-            return Ok(t);
+            return t;
         }
 
         let tcx = self.infcx.tcx;
@@ -155,10 +155,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
         match *t.kind() {
             ty::Infer(ty::TyVar(v)) => {
                 let opt_ty = self.infcx.inner.borrow_mut().type_variables().probe(v).known();
-                Ok(self.freshen_ty(opt_ty, ty::TyVar(v), ty::FreshTy))
+                self.freshen_ty(opt_ty, ty::TyVar(v), ty::FreshTy)
             }
 
-            ty::Infer(ty::IntVar(v)) => Ok(self.freshen_ty(
+            ty::Infer(ty::IntVar(v)) => self.freshen_ty(
                 self.infcx
                     .inner
                     .borrow_mut()
@@ -167,9 +167,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     .map(|v| v.to_type(tcx)),
                 ty::IntVar(v),
                 ty::FreshIntTy,
-            )),
+            ),
 
-            ty::Infer(ty::FloatVar(v)) => Ok(self.freshen_ty(
+            ty::Infer(ty::FloatVar(v)) => self.freshen_ty(
                 self.infcx
                     .inner
                     .borrow_mut()
@@ -178,7 +178,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     .map(|v| v.to_type(tcx)),
                 ty::FloatVar(v),
                 ty::FreshFloatTy,
-            )),
+            ),
 
             ty::Infer(ty::FreshTy(ct) | ty::FreshIntTy(ct) | ty::FreshFloatTy(ct)) => {
                 if ct >= self.ty_freshen_count {
@@ -189,7 +189,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                         self.ty_freshen_count
                     );
                 }
-                Ok(t)
+                t
             }
 
             ty::Generator(..)
@@ -221,10 +221,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
         }
     }
 
-    fn fold_const(
-        &mut self,
-        ct: &'tcx ty::Const<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         match ct.val {
             ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
                 let opt_ct = self
@@ -235,12 +232,12 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     .probe_value(v)
                     .val
                     .known();
-                return Ok(self.freshen_const(
+                return self.freshen_const(
                     opt_ct,
                     ty::InferConst::Var(v),
                     ty::InferConst::Fresh,
                     ct.ty,
-                ));
+                );
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
@@ -251,7 +248,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                         self.const_freshen_count,
                     );
                 }
-                return Ok(ct);
+                return ct;
             }
 
             ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
