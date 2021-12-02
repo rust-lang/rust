@@ -1,4 +1,4 @@
-error: method's name is same to an existing method in a trait
+error: method's name is the same as an existing method in a trait
   --> $DIR/same_name_method.rs:20:13
    |
 LL |             fn foo() {}
@@ -11,7 +11,7 @@ note: existing `foo` defined here
 LL |             fn foo() {}
    |             ^^^^^^^^^^^
 
-error: method's name is same to an existing method in a trait
+error: method's name is the same as an existing method in a trait
   --> $DIR/same_name_method.rs:44:13
    |
 LL |             fn foo() {}
@@ -23,7 +23,7 @@ note: existing `foo` defined here
 LL |             fn foo() {}
    |             ^^^^^^^^^^^
 
-error: method's name is same to an existing method in a trait
+error: method's name is the same as an existing method in a trait
   --> $DIR/same_name_method.rs:58:13
    |
 LL |             fn foo() {}
@@ -35,7 +35,7 @@ note: existing `foo` defined here
 LL |         impl T1 for S {}
    |         ^^^^^^^^^^^^^^^^
 
-error: method's name is same to an existing method in a trait
+error: method's name is the same as an existing method in a trait
   --> $DIR/same_name_method.rs:70:13
    |
 LL |             fn foo() {}
@@ -47,7 +47,7 @@ note: existing `foo` defined here
 LL |         impl T1 for S {}
    |         ^^^^^^^^^^^^^^^^
 
-error: method's name is same to an existing method in a trait
+error: method's name is the same as an existing method in a trait
   --> $DIR/same_name_method.rs:34:13
    |
 LL |             fn clone() {}
