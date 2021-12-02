@@ -2026,9 +2026,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         debug!("maybe_suggest_unsized_generics: param={:?}", param);
         match node {
             hir::Node::Item(
-                item
-                @
-                hir::Item {
+                item @ hir::Item {
                     // Only suggest indirection for uses of type parameters in ADTs.
                     kind:
                         hir::ItemKind::Enum(..) | hir::ItemKind::Struct(..) | hir::ItemKind::Union(..),

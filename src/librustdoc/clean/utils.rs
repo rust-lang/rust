@@ -395,9 +395,7 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     let (did, kind) = match res {
         // These should be added to the cache using `record_extern_fqn`.
         Res::Def(
-            kind
-            @
-            (AssocTy | AssocFn | AssocConst | Variant | Fn | TyAlias | Enum | Trait | Struct
+            kind @ (AssocTy | AssocFn | AssocConst | Variant | Fn | TyAlias | Enum | Trait | Struct
             | Union | Mod | ForeignTy | Const | Static | Macro(..) | TraitAlias),
             i,
         ) => (i, kind.into()),
