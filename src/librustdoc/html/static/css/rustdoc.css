@@ -264,12 +264,12 @@ main {
 	padding: 15px;
 }
 
-.main-inner {
+.width-limiter {
 	max-width: 960px;
 	margin-right: auto;
 }
 
-.source .main-inner {
+.source .width-limiter {
 	max-width: unset;
 }
 
@@ -1698,7 +1698,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	/* When we expand the sidebar on the source code page, we hide the logo on the left of the
 	search bar to have more space. */
-	.sidebar.expanded + main .main-inner .sub-logo-container.rust-logo {
+	.sidebar.expanded + main .width-limiter .sub-logo-container.rust-logo {
 		display: none;
 	}
 
