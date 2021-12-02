@@ -109,7 +109,7 @@ export class Config {
             .workspace
             .getConfiguration('http')
             .get<null | string>("proxy")! || process.env["https_proxy"] || process.env["HTTPS_PROXY"];
-        const strictSSL = vscode.workspace.getConfiguration("http").get<boolean>("proxyStrictSSL") || true;
+        const strictSSL = vscode.workspace.getConfiguration("http").get<boolean>("proxyStrictSSL") ?? true;
 
         return {
             proxy: proxy,
