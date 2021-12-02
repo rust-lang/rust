@@ -1,9 +1,9 @@
-// check-pass
-
+// run-pass
+// aux-build: issue-72470-lib.rs
 // edition:2021
-
 #![feature(into_future)]
 
+extern crate issue_72470_lib;
 use std::{future::{Future, IntoFuture}, pin::Pin};
 
 struct AwaitMe;
@@ -25,4 +25,6 @@ async fn run() {
     assert_eq!(AwaitMe.await, 41);
 }
 
-fn main() {}
+fn main() {
+    issue_72470_lib::run(run());
+}

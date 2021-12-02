@@ -5,6 +5,7 @@ LL | fn get_future() -> impl Future<Output = ()> {
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not a future
    |
    = help: the trait `Future` is not implemented for `()`
+   = note: () must be a future or must implement `IntoFuture` to be awaited
 
 error[E0698]: type inside `async fn` body must be known in this context
   --> $DIR/async-error-span.rs:13:9
