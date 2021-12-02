@@ -81,6 +81,32 @@
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
+    on(
+        _Self = "[{A}]",
+        message = "a value of type `{Self}` cannot be built since `{Self}` has no definite size",
+        label = "try explicitly collecting into a `Vec<{A}>`",
+    ),
+    on(
+        all(
+            A = "{integer}",
+            any(
+                _Self = "[i8]",
+                _Self = "[i16]",
+                _Self = "[i32]",
+                _Self = "[i64]",
+                _Self = "[i128]",
+                _Self = "[isize]",
+                _Self = "[u8]",
+                _Self = "[u16]",
+                _Self = "[u32]",
+                _Self = "[u64]",
+                _Self = "[u128]",
+                _Self = "[usize]"
+            )
+        ),
+        message = "a value of type `{Self}` cannot be built since `{Self}` has no definite size",
+        label = "try explicitly collecting into a `Vec<{A}>`",
+    ),
     message = "a value of type `{Self}` cannot be built from an iterator \
                over elements of type `{A}`",
     label = "value of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`"
