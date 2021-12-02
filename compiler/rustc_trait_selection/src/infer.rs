@@ -9,7 +9,6 @@ use rustc_middle::infer::canonical::{Canonical, CanonicalizedQueryResponse, Quer
 use rustc_middle::traits::query::Fallible;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::ToPredicate;
-use rustc_middle::ty::WithConstness;
 use rustc_middle::ty::{self, Ty, TypeFoldable};
 use rustc_span::{Span, DUMMY_SP};
 

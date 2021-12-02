@@ -230,6 +230,19 @@ pub enum BoundConstness {
     ConstIfConst,
 }
 
+impl BoundConstness {
+    /// Reduce `self` and `constness` to two possible combined states instead of four.
+    pub fn and(&mut self, constness: hir::Constness) -> hir::Constness {
+        match (constness, self) {
+            (hir::Constness::Const, BoundConstness::ConstIfConst) => hir::Constness::Const,
+            (_, this) => {
+                *this = BoundConstness::NotConst;
+                hir::Constness::NotConst
+            }
+        }
+    }
+}
+
 impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -846,20 +859,6 @@ impl ToPredicate<'tcx> for Binder<'tcx, PredicateKind<'tcx>> {
     }
 }
 
-impl<'tcx> ToPredicate<'tcx> for ConstnessAnd<PolyTraitRef<'tcx>> {
-    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
-        self.value
-            .map_bound(|trait_ref| {
-                PredicateKind::Trait(ty::TraitPredicate {
-                    trait_ref,
-                    constness: self.constness,
-                    polarity: ty::ImplPolarity::Positive,
-                })
-            })
-            .to_predicate(tcx)
-    }
-}
-
 impl<'tcx> ToPredicate<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         self.map_bound(PredicateKind::Trait).to_predicate(tcx)
@@ -885,12 +884,10 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
-    pub fn to_opt_poly_trait_ref(self) -> Option<ConstnessAnd<PolyTraitRef<'tcx>>> {
+    pub fn to_opt_poly_trait_pred(self) -> Option<PolyTraitPredicate<'tcx>> {
         let predicate = self.kind();
         match predicate.skip_binder() {
-            PredicateKind::Trait(t) => {
-                Some(ConstnessAnd { constness: t.constness, value: predicate.rebind(t.trait_ref) })
-            }
+            PredicateKind::Trait(t) => Some(predicate.rebind(t)),
             PredicateKind::Projection(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
@@ -1221,23 +1218,33 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All`.
     ///
     /// Note: This is packed, use the reveal() method to access it.
-    packed: CopyTaggedPtr<&'tcx List<Predicate<'tcx>>, traits::Reveal, true>,
+    packed: CopyTaggedPtr<&'tcx List<Predicate<'tcx>>, ParamTag, true>,
 }
 
-unsafe impl rustc_data_structures::tagged_ptr::Tag for traits::Reveal {
-    const BITS: usize = 1;
+#[derive(Copy, Clone)]
+struct ParamTag {
+    reveal: traits::Reveal,
+    constness: hir::Constness,
+}
+
+unsafe impl rustc_data_structures::tagged_ptr::Tag for ParamTag {
+    const BITS: usize = 2;
     #[inline]
     fn into_usize(self) -> usize {
         match self {
-            traits::Reveal::UserFacing => 0,
-            traits::Reveal::All => 1,
+            Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst } => 0,
+            Self { reveal: traits::Reveal::All, constness: hir::Constness::NotConst } => 1,
+            Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const } => 2,
+            Self { reveal: traits::Reveal::All, constness: hir::Constness::Const } => 3,
         }
     }
     #[inline]
     unsafe fn from_usize(ptr: usize) -> Self {
         match ptr {
-            0 => traits::Reveal::UserFacing,
-            1 => traits::Reveal::All,
+            0 => Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst },
+            1 => Self { reveal: traits::Reveal::All, constness: hir::Constness::NotConst },
+            2 => Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const },
+            3 => Self { reveal: traits::Reveal::All, constness: hir::Constness::Const },
             _ => std::hint::unreachable_unchecked(),
         }
     }
@@ -1248,6 +1255,7 @@ impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
         f.debug_struct("ParamEnv")
             .field("caller_bounds", &self.caller_bounds())
             .field("reveal", &self.reveal())
+            .field("constness", &self.constness())
             .finish()
     }
 }
@@ -1256,6 +1264,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.caller_bounds().hash_stable(hcx, hasher);
         self.reveal().hash_stable(hcx, hasher);
+        self.constness().hash_stable(hcx, hasher);
     }
 }
 
@@ -1264,12 +1273,17 @@ impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        Ok(ParamEnv::new(self.caller_bounds().fold_with(folder)?, self.reveal().fold_with(folder)?))
+        Ok(ParamEnv::new(
+            self.caller_bounds().fold_with(folder)?,
+            self.reveal().fold_with(folder)?,
+            self.constness().fold_with(folder)?,
+        ))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.caller_bounds().visit_with(visitor)?;
-        self.reveal().visit_with(visitor)
+        self.reveal().visit_with(visitor)?;
+        self.constness().visit_with(visitor)
     }
 }
 
@@ -1280,7 +1294,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// type-checking.
     #[inline]
     pub fn empty() -> Self {
-        Self::new(List::empty(), Reveal::UserFacing)
+        Self::new(List::empty(), Reveal::UserFacing, hir::Constness::NotConst)
     }
 
     #[inline]
@@ -1290,7 +1304,12 @@ impl<'tcx> ParamEnv<'tcx> {
 
     #[inline]
     pub fn reveal(self) -> traits::Reveal {
-        self.packed.tag()
+        self.packed.tag().reveal
+    }
+
+    #[inline]
+    pub fn constness(self) -> hir::Constness {
+        self.packed.tag().constness
     }
 
     /// Construct a trait environment with no where-clauses in scope
@@ -1302,17 +1321,31 @@ impl<'tcx> ParamEnv<'tcx> {
     /// or invoke `param_env.with_reveal_all()`.
     #[inline]
     pub fn reveal_all() -> Self {
-        Self::new(List::empty(), Reveal::All)
+        Self::new(List::empty(), Reveal::All, hir::Constness::NotConst)
     }
 
     /// Construct a trait environment with the given set of predicates.
     #[inline]
-    pub fn new(caller_bounds: &'tcx List<Predicate<'tcx>>, reveal: Reveal) -> Self {
-        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, reveal) }
+    pub fn new(
+        caller_bounds: &'tcx List<Predicate<'tcx>>,
+        reveal: Reveal,
+        constness: hir::Constness,
+    ) -> Self {
+        ty::ParamEnv { packed: CopyTaggedPtr::new(caller_bounds, ParamTag { reveal, constness }) }
     }
 
     pub fn with_user_facing(mut self) -> Self {
-        self.packed.set_tag(Reveal::UserFacing);
+        self.packed.set_tag(ParamTag { reveal: Reveal::UserFacing, ..self.packed.tag() });
+        self
+    }
+
+    pub fn with_constness(mut self, constness: hir::Constness) -> Self {
+        self.packed.set_tag(ParamTag { constness, ..self.packed.tag() });
+        self
+    }
+
+    pub fn with_const(mut self) -> Self {
+        self.packed.set_tag(ParamTag { constness: hir::Constness::Const, ..self.packed.tag() });
         self
     }
 
@@ -1326,17 +1359,21 @@ impl<'tcx> ParamEnv<'tcx> {
     /// will be normalized to their underlying types.
     /// See PR #65989 and issue #65918 for more details
     pub fn with_reveal_all_normalized(self, tcx: TyCtxt<'tcx>) -> Self {
-        if self.packed.tag() == traits::Reveal::All {
+        if self.packed.tag().reveal == traits::Reveal::All {
             return self;
         }
 
-        ParamEnv::new(tcx.normalize_opaque_types(self.caller_bounds()), Reveal::All)
+        ParamEnv::new(
+            tcx.normalize_opaque_types(self.caller_bounds()),
+            Reveal::All,
+            self.constness(),
+        )
     }
 
     /// Returns this same environment but with no caller bounds.
     #[inline]
     pub fn without_caller_bounds(self) -> Self {
-        Self::new(List::empty(), self.reveal())
+        Self::new(List::empty(), self.reveal(), self.constness())
     }
 
     /// Creates a suitable environment in which to perform trait
@@ -1366,32 +1403,22 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
-pub struct ConstnessAnd<T> {
-    pub constness: BoundConstness,
-    pub value: T,
-}
-
 // FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
 // the constness of trait bounds is being propagated correctly.
-pub trait WithConstness: Sized {
+impl PolyTraitRef<'tcx> {
     #[inline]
-    fn with_constness(self, constness: BoundConstness) -> ConstnessAnd<Self> {
-        ConstnessAnd { constness, value: self }
+    pub fn with_constness(self, constness: BoundConstness) -> PolyTraitPredicate<'tcx> {
+        self.map_bound(|trait_ref| ty::TraitPredicate {
+            trait_ref,
+            constness,
+            polarity: ty::ImplPolarity::Positive,
+        })
     }
-
     #[inline]
-    fn with_const_if_const(self) -> ConstnessAnd<Self> {
-        self.with_constness(BoundConstness::ConstIfConst)
-    }
-
-    #[inline]
-    fn without_const(self) -> ConstnessAnd<Self> {
+    pub fn without_const(self) -> PolyTraitPredicate<'tcx> {
         self.with_constness(BoundConstness::NotConst)
     }
 }
-
-impl<T> WithConstness for T {}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
 pub struct ParamEnvAnd<'tcx, T> {

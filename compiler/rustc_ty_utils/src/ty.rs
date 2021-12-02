@@ -2,9 +2,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{
-    self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt, WithConstness,
-};
+use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
@@ -282,16 +280,79 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // issue #89334
     predicates = tcx.expose_default_const_substs(predicates);
 
-    let unnormalized_env =
-        ty::ParamEnv::new(tcx.intern_predicates(&predicates), traits::Reveal::UserFacing);
+    let local_did = def_id.as_local();
+    let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
 
-    debug!("unnormalized_env caller bounds: {:?}", unnormalized_env.caller_bounds());
-    let body_id = def_id
-        .as_local()
-        .map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
-        .map_or(hir::CRATE_HIR_ID, |id| {
-            tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
-        });
+    let constness = match hir_id {
+        Some(hir_id) => match tcx.hir().get(hir_id) {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(..), .. })
+            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Static(..), .. })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Const(..), ..
+            })
+            | hir::Node::AnonConst(_)
+            | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
+            | hir::Node::ImplItem(hir::ImplItem {
+                kind:
+                    hir::ImplItemKind::Fn(
+                        hir::FnSig {
+                            header: hir::FnHeader { constness: hir::Constness::Const, .. },
+                            ..
+                        },
+                        ..,
+                    ),
+                ..
+            }) => hir::Constness::Const,
+
+            hir::Node::ImplItem(hir::ImplItem {
+                kind: hir::ImplItemKind::TyAlias(..) | hir::ImplItemKind::Fn(..),
+                ..
+            }) => {
+                let parent_hir_id = tcx.hir().get_parent_node(hir_id);
+                match tcx.hir().get(parent_hir_id) {
+                    hir::Node::Item(hir::Item {
+                        kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
+                        ..
+                    }) => *constness,
+                    _ => span_bug!(
+                        tcx.def_span(parent_hir_id.owner),
+                        "impl item's parent node is not an impl",
+                    ),
+                }
+            }
+
+            hir::Node::Item(hir::Item {
+                kind:
+                    hir::ItemKind::Fn(hir::FnSig { header: hir::FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind:
+                    hir::TraitItemKind::Fn(
+                        hir::FnSig { header: hir::FnHeader { constness, .. }, .. },
+                        ..,
+                    ),
+                ..
+            })
+            | hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),
+                ..
+            }) => *constness,
+
+            _ => hir::Constness::NotConst,
+        },
+        None => hir::Constness::NotConst,
+    };
+
+    let unnormalized_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&predicates),
+        traits::Reveal::UserFacing,
+        constness,
+    );
+
+    let body_id = hir_id.map_or(hir::CRATE_HIR_ID, |id| {
+        tcx.hir().maybe_body_owned_by(id).map_or(id, |body| body.hir_id)
+    });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
 }
