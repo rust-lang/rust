@@ -354,14 +354,17 @@ impl<'tcx> ClosureSubsts<'tcx> {
     /// The ordering assumed here must match that used by `ClosureSubsts::new` above.
     fn split(self) -> ClosureSubstsParts<'tcx, GenericArg<'tcx>> {
         match self.substs[..] {
-            [ref parent_substs @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
-                ClosureSubstsParts {
-                    parent_substs,
-                    closure_kind_ty,
-                    closure_sig_as_fn_ptr_ty,
-                    tupled_upvars_ty,
-                }
-            }
+            [
+                ref parent_substs @ ..,
+                closure_kind_ty,
+                closure_sig_as_fn_ptr_ty,
+                tupled_upvars_ty,
+            ] => ClosureSubstsParts {
+                parent_substs,
+                closure_kind_ty,
+                closure_sig_as_fn_ptr_ty,
+                tupled_upvars_ty,
+            },
             _ => bug!("closure substs missing synthetics"),
         }
     }

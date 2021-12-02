@@ -131,7 +131,7 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
 }
 
 // In debug builds checks that `data` pointer is aligned and non-null and that slice with given `len` would cover less than half the address space
-#[cfg(all(not(bootstrap), debug_assertions))]
+#[cfg(debug_assertions)]
 #[unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
 const fn debug_check_data_len<T>(data: *const T, len: usize) {
@@ -161,7 +161,7 @@ const fn debug_check_data_len<T>(data: *const T, len: usize) {
     );
 }
 
-#[cfg(not(all(not(bootstrap), debug_assertions)))]
+#[cfg(not(debug_assertions))]
 const fn debug_check_data_len<T>(_data: *const T, _len: usize) {}
 
 /// Converts a reference to T into a slice of length 1 (without copying).

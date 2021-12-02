@@ -687,15 +687,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             r
                         ),
                         (
-                            l
-                            @
-                            (ProjectionKind::Index
+                            l @ (ProjectionKind::Index
                             | ProjectionKind::Subslice
                             | ProjectionKind::Deref
                             | ProjectionKind::Field(..)),
-                            r
-                            @
-                            (ProjectionKind::Index
+                            r @ (ProjectionKind::Index
                             | ProjectionKind::Subslice
                             | ProjectionKind::Deref
                             | ProjectionKind::Field(..)),

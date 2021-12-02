@@ -330,11 +330,9 @@ impl<T: Ord, const N: usize> Ord for [T; N] {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "copy_clone_array_lib", since = "1.58.0")]
 impl<T: Copy, const N: usize> Copy for [T; N] {}
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "copy_clone_array_lib", since = "1.58.0")]
 impl<T: Clone, const N: usize> Clone for [T; N] {
     #[inline]
@@ -348,12 +346,10 @@ impl<T: Clone, const N: usize> Clone for [T; N] {
     }
 }
 
-#[cfg(not(bootstrap))]
 trait SpecArrayClone: Clone {
     fn clone<const N: usize>(array: &[Self; N]) -> [Self; N];
 }
 
-#[cfg(not(bootstrap))]
 impl<T: Clone> SpecArrayClone for T {
     #[inline]
     default fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
@@ -363,7 +359,6 @@ impl<T: Clone> SpecArrayClone for T {
     }
 }
 
-#[cfg(not(bootstrap))]
 impl<T: Copy> SpecArrayClone for T {
     #[inline]
     fn clone<const N: usize>(array: &[T; N]) -> [T; N] {

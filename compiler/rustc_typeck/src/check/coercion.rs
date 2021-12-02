@@ -1126,8 +1126,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for expr in exprs {
             let expr = expr.as_coercion_site();
             let noop = match self.typeck_results.borrow().expr_adjustments(expr) {
-                &[Adjustment { kind: Adjust::Deref(_), .. }, Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl_adj)), .. }] =>
-                {
+                &[
+                    Adjustment { kind: Adjust::Deref(_), .. },
+                    Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl_adj)), .. },
+                ] => {
                     match *self.node_ty(expr.hir_id).kind() {
                         ty::Ref(_, _, mt_orig) => {
                             let mutbl_adj: hir::Mutability = mutbl_adj.into();

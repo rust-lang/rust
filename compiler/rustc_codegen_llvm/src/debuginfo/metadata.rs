@@ -1525,14 +1525,12 @@ fn generator_layout_and_saved_local_names(
                 // Deref of the `Pin<&mut Self>` state argument.
                 mir::ProjectionElem::Field(..),
                 mir::ProjectionElem::Deref,
-
                 // Field of a variant of the state.
                 mir::ProjectionElem::Downcast(_, variant),
                 mir::ProjectionElem::Field(field, _),
             ] => {
-                let name = &mut generator_saved_local_names[
-                    generator_layout.variant_fields[variant][field]
-                ];
+                let name = &mut generator_saved_local_names
+                    [generator_layout.variant_fields[variant][field]];
                 if name.is_none() {
                     name.replace(var.name);
                 }

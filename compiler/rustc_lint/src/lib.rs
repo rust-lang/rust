@@ -30,7 +30,6 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(bootstrap, feature(format_args_capture))]
 #![feature(iter_order_by)]
 #![feature(iter_zip)]
 #![feature(let_else)]
