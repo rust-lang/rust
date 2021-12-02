@@ -1,0 +1,9 @@
+error[E0605]: non-primitive cast: `Kind2` as `u8`
+  --> $DIR/issue-88621.rs:11:13
+   |
+LL |     let _ = Kind2::Foo() as u8;
+   |             ^^^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0605`.
