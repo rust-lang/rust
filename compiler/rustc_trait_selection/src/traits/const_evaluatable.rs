@@ -399,13 +399,25 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 let arg = self.recurse_build(source)?;
                 self.nodes.push(Node::Cast(abstract_const::CastKind::As, arg, node.ty))
             }
+            ExprKind::Borrow{ arg, ..} => {
+                let arg_node = &self.body.exprs[*arg];
 
+                // Skip reborrows for now until we allow Deref/Borrow/AddressOf
+                // expressions.
+                // FIXME(generic_const_exprs): Verify/explain why this is sound
+                if let ExprKind::Deref {arg} = arg_node.kind {
+                    self.recurse_build(arg)?
+                } else {
+                    self.maybe_supported_error(
+                        node.span,
+                        "borrowing is not supported in generic constants",
+                    )?
+                }
+            }
             // FIXME(generic_const_exprs): We may want to support these.
-            ExprKind::AddressOf { .. }
-            | ExprKind::Borrow { .. }
-            | ExprKind::Deref { .. } => self.maybe_supported_error(
+            ExprKind::AddressOf { .. } | ExprKind::Deref {..}=> self.maybe_supported_error(
                 node.span,
-                "dereferencing is not supported in generic constants",
+                "dereferencing or taking the address is not supported in generic constants",
             )?,
             ExprKind::Repeat { .. } | ExprKind::Array { .. } =>  self.maybe_supported_error(
                 node.span,
