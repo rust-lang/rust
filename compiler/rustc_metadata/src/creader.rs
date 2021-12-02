@@ -512,13 +512,17 @@ impl<'a> CrateLoader<'a> {
         name: Symbol,
         span: Span,
         dep_kind: CrateDepKind,
-    ) -> CrateNum {
+    ) -> Option<CrateNum> {
         self.used_extern_options.insert(name);
-        self.maybe_resolve_crate(name, dep_kind, None).unwrap_or_else(|err| {
-            let missing_core =
-                self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
-            err.report(&self.sess, span, missing_core)
-        })
+        match self.maybe_resolve_crate(name, dep_kind, None) {
+            Ok(cnum) => Some(cnum),
+            Err(err) => {
+                let missing_core =
+                    self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
+                err.report(&self.sess, span, missing_core);
+                None
+            }
+        }
     }
 
     fn maybe_resolve_crate<'b>(
@@ -751,7 +755,7 @@ impl<'a> CrateLoader<'a> {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit);
+        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else { return; };
         let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
@@ -791,7 +795,7 @@ impl<'a> CrateLoader<'a> {
             );
         }
 
-        let cnum = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit);
+        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else { return; };
         let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a profiler runtime
@@ -991,7 +995,7 @@ impl<'a> CrateLoader<'a> {
         item: &ast::Item,
         definitions: &Definitions,
         def_id: LocalDefId,
-    ) -> CrateNum {
+    ) -> Option<CrateNum> {
         match item.kind {
             ast::ItemKind::ExternCrate(orig_name) => {
                 debug!(
@@ -1011,7 +1015,7 @@ impl<'a> CrateLoader<'a> {
                     CrateDepKind::Explicit
                 };
 
-                let cnum = self.resolve_crate(name, item.span, dep_kind);
+                let cnum = self.resolve_crate(name, item.span, dep_kind)?;
 
                 let path_len = definitions.def_path(def_id).data.len();
                 self.update_extern_crate(
@@ -1023,14 +1027,14 @@ impl<'a> CrateLoader<'a> {
                         dependency_of: LOCAL_CRATE,
                     },
                 );
-                cnum
+                Some(cnum)
             }
             _ => bug!(),
         }
     }
 
-    pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> CrateNum {
-        let cnum = self.resolve_crate(name, span, CrateDepKind::Explicit);
+    pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
+        let cnum = self.resolve_crate(name, span, CrateDepKind::Explicit)?;
 
         self.update_extern_crate(
             cnum,
@@ -1043,7 +1047,7 @@ impl<'a> CrateLoader<'a> {
             },
         );
 
-        cnum
+        Some(cnum)
     }
 
     pub fn maybe_process_path_extern(&mut self, name: Symbol) -> Option<CrateNum> {

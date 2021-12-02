@@ -220,7 +220,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, FatalError};
 use rustc_session::config::{self, CrateType};
 use rustc_session::cstore::{CrateSource, MetadataLoader};
 use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
@@ -814,11 +814,11 @@ pub fn find_plugin_registrar(
     span: Span,
     name: Symbol,
 ) -> PathBuf {
-    match find_plugin_registrar_impl(sess, metadata_loader, name) {
-        Ok(res) => res,
+    find_plugin_registrar_impl(sess, metadata_loader, name).unwrap_or_else(|err| {
         // `core` is always available if we got as far as loading plugins.
-        Err(err) => err.report(sess, span, false),
-    }
+        err.report(sess, span, false);
+        FatalError.raise()
+    })
 }
 
 fn find_plugin_registrar_impl<'a>(
@@ -931,8 +931,8 @@ impl fmt::Display for MetadataError<'_> {
 }
 
 impl CrateError {
-    crate fn report(self, sess: &Session, span: Span, missing_core: bool) -> ! {
-        let mut err = match self {
+    crate fn report(self, sess: &Session, span: Span, missing_core: bool) {
+        let mut diag = match self {
             CrateError::NonAsciiName(crate_name) => sess.struct_span_err(
                 span,
                 &format!("cannot load a crate with a non-ascii name `{}`", crate_name),
@@ -1210,8 +1210,6 @@ impl CrateError {
             ),
         };
 
-        err.emit();
-        sess.abort_if_errors();
-        unreachable!();
+        diag.emit();
     }
 }
