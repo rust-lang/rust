@@ -61,6 +61,7 @@ mod inline;
 mod instcombine;
 mod lower_intrinsics;
 mod lower_slice_len;
+mod marker;
 mod match_branches;
 mod multiple_return_terminators;
 mod normalize_array_len;
