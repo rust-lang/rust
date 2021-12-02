@@ -657,13 +657,8 @@ fn short_item_info(
         if let Some(note) = note {
             let note = note.as_str();
             let ids = &mut cx.id_map;
-            let html = MarkdownHtml(
-                &note,
-                ids,
-                error_codes,
-                cx.shared.edition(),
-                &cx.shared.playground,
-            );
+            let html =
+                MarkdownHtml(&note, ids, error_codes, cx.shared.edition(), &cx.shared.playground);
             message.push_str(&format!(": {}", html.into_string()));
         }
         extra_info.push(format!(
@@ -705,7 +700,12 @@ fn short_item_info(
 
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
-fn render_impls(cx: &mut Context<'_>, w: &mut Buffer, impls: &[&&Impl], containing_item: &clean::Item) {
+fn render_impls(
+    cx: &mut Context<'_>,
+    w: &mut Buffer,
+    impls: &[&&Impl],
+    containing_item: &clean::Item,
+) {
     let tcx = cx.tcx();
     let mut rendered_impls = impls
         .iter()
@@ -1067,8 +1067,10 @@ fn render_assoc_items_inner(
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
-                let id =
-                    cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(&cx.clone()))));
+                let id = cx.derive_id(small_url_encode(format!(
+                    "deref-methods-{:#}",
+                    type_.print(&cx.clone())
+                )));
                 if let Some(def_id) = type_.def_id(cx.cache()) {
                     cx.deref_id_map.insert(def_id, id.clone());
                 }
@@ -1279,7 +1281,15 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &mut Context<'_>) -> String {
                                 let empty_set = FxHashSet::default();
                                 let src_link =
                                     AssocItemLink::GotoSource(trait_did.into(), &empty_set);
-                                assoc_type(&mut out, it, &[], Some(&tydef.type_), src_link, "", &mut cx.clone());
+                                assoc_type(
+                                    &mut out,
+                                    it,
+                                    &[],
+                                    Some(&tydef.type_),
+                                    src_link,
+                                    "",
+                                    &mut cx.clone(),
+                                );
                                 out.push_str(";</span>");
                             }
                         }

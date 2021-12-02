@@ -230,7 +230,8 @@ crate fn run(
 ) -> interface::Result<()> {
     let inner = move || -> Result<(), String> {
         // Generates source files for examples
-        let (mut cx, _) = Context::init(krate, renderopts, cache, tcx).map_err(|e| e.to_string())?;
+        let (mut cx, _) =
+            Context::init(krate, renderopts, cache, tcx).map_err(|e| e.to_string())?;
 
         // Collect CrateIds corresponding to provided target crates
         // If two different versions of the crate in the dependency tree, then examples will be collcted from both.
@@ -253,7 +254,8 @@ crate fn run(
 
         // Run call-finder on all items
         let mut calls = FxHashMap::default();
-        let mut finder = FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx: &mut cx, target_crates };
+        let mut finder =
+            FindCalls { calls: &mut calls, tcx, map: tcx.hir(), cx: &mut cx, target_crates };
         tcx.hir().visit_all_item_likes(&mut finder.as_deep_visitor());
 
         // Sort call locations within a given file in document order
