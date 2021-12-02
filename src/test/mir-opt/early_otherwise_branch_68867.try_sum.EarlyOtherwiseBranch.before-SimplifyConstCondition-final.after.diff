@@ -1,5 +1,5 @@
 - // MIR for `try_sum` before EarlyOtherwiseBranch
-+ // MIR for `try_sum` after SimplifyBranches-final
++ // MIR for `try_sum` after SimplifyConstCondition-final
   
   fn try_sum(_1: &ViewportPercentageLength, _2: &ViewportPercentageLength) -> Result<ViewportPercentageLength, ()> {
       debug x => _1;                       // in scope 0 at $DIR/early_otherwise_branch_68867.rs:17:5: 17:6

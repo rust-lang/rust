@@ -1,4 +1,8 @@
-//! This pass replaces a drop of a type that does not need dropping, with a goto
+//! This pass replaces a drop of a type that does not need dropping, with a goto.
+//!
+//! When the MIR is built, we check `needs_drop` before emitting a `Drop` for a place. This pass is
+//! useful because (unlike MIR building) it runs after type checking, so it can make use of
+//! `Reveal::All` to provide more precies type information.
 
 use crate::MirPass;
 use rustc_middle::mir::*;

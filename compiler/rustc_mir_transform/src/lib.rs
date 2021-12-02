@@ -60,8 +60,10 @@ mod match_branches;
 mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
+mod remove_false_edges;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
+mod remove_uninit_drops;
 mod remove_unneeded_drops;
 mod remove_zsts;
 mod required_consts;
@@ -75,7 +77,7 @@ mod simplify_try;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
 
-use rustc_const_eval::transform::check_consts;
+use rustc_const_eval::transform::check_consts::{self, ConstCx};
 use rustc_const_eval::transform::promote_consts;
 use rustc_const_eval::transform::validate;
 use rustc_mir_dataflow::rustc_peek;
@@ -444,8 +446,20 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
 
+    // IMPORTANT
+    remove_false_edges::RemoveFalseEdges.run_pass(tcx, &mut body);
+
+    // Do a little drop elaboration before const-checking if `const_precise_live_drops` is enabled.
+    //
+    // FIXME: Can't use `run_passes` for these, since `run_passes` SILENTLY DOES NOTHING IF THE MIR
+    // PHASE DOESN'T CHANGE.
+    if check_consts::post_drop_elaboration::checking_enabled(&ConstCx::new(tcx, &body)) {
+        simplify::SimplifyCfg::new("remove-false-edges").run_pass(tcx, &mut body);
+        remove_uninit_drops::RemoveUninitDrops.run_pass(tcx, &mut body);
+        check_consts::post_drop_elaboration::check_live_drops(tcx, &body);
+    }
+
     run_post_borrowck_cleanup_passes(tcx, &mut body);
-    check_consts::post_drop_elaboration::check_live_drops(tcx, &body);
     tcx.alloc_steal_mir(body)
 }
 
@@ -455,7 +469,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
 
     let post_borrowck_cleanup: &[&dyn MirPass<'tcx>] = &[
         // Remove all things only needed by analysis
-        &simplify_branches::SimplifyBranches::new("initial"),
+        &simplify_branches::SimplifyConstCondition::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &cleanup_post_borrowck::CleanupNonCodegenStatements,
         &simplify::SimplifyCfg::new("early-opt"),
@@ -514,13 +528,13 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &instcombine::InstCombine,
         &separate_const_switch::SeparateConstSwitch,
         &const_prop::ConstProp,
-        &simplify_branches::SimplifyBranches::new("after-const-prop"),
+        &simplify_branches::SimplifyConstCondition::new("after-const-prop"),
         &early_otherwise_branch::EarlyOtherwiseBranch,
         &simplify_comparison_integral::SimplifyComparisonIntegral,
         &simplify_try::SimplifyArmIdentity,
         &simplify_try::SimplifyBranchSame,
         &dest_prop::DestinationPropagation,
-        &simplify_branches::SimplifyBranches::new("final"),
+        &simplify_branches::SimplifyConstCondition::new("final"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::new("final"),
         &nrvo::RenameReturnPlace,
