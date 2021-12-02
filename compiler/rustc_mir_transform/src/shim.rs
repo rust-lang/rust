@@ -75,6 +75,14 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
+    // In some of the above cases, we seem to be invoking the passes for non-shim MIR bodies.
+    // If that happens, there's no need to run them again.
+    //
+    // FIXME: Is this intentional?
+    if result.phase >= MirPhase::Const {
+        return result;
+    }
+
     pm::run_passes(
         tcx,
         &mut result,
