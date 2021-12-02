@@ -46,6 +46,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::{BytePos, Pos};
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -2063,7 +2064,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(span),
             );
         } else {
-            err.help("methods are immutable and cannot be assigned to");
+            let mut found = false;
+
+            if let ty::RawPtr(ty_and_mut) = expr_t.kind() {
+                if let ty::Adt(adt_def, _) = ty_and_mut.ty.kind() {
+                    if adt_def.variants.len() == 1
+                        && adt_def
+                            .variants
+                            .iter()
+                            .next()
+                            .unwrap()
+                            .fields
+                            .iter()
+                            .any(|f| f.ident == field)
+                    {
+                        if let Some(dot_loc) = expr_snippet.rfind('.') {
+                            found = true;
+                            err.span_suggestion(
+                                expr.span.with_hi(expr.span.lo() + BytePos::from_usize(dot_loc)),
+                                "to access the field, dereference first",
+                                format!("(*{})", &expr_snippet[0..dot_loc]),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                }
+            }
+
+            if !found {
+                err.help("methods are immutable and cannot be assigned to");
+            }
         }
 
         err.emit();
