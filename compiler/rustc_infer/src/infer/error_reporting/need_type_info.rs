@@ -599,8 +599,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 format!("the explicit type `{}`, with the {} parameters specified", ty, param_type)
             }
             Some(ty) if is_named_and_not_impl_trait(ty) && ty.to_string() != arg_data.name => {
-                let ty = ResolvedTypeParamEraser::new(self.tcx).fold_ty(ty);
-                let ty = ErrTypeParamEraser(self.tcx).fold_ty(ty);
+                let ty = ResolvedTypeParamEraser::new(self.tcx).fold_ty(ty).unwrap();
+                let ty = ErrTypeParamEraser(self.tcx).fold_ty(ty).unwrap();
                 let ty = ty_to_string(ty);
                 format!(
                     "the explicit type `{}`, where the {} parameter `{}` is specified",
@@ -910,7 +910,7 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
         self.level += 1;
         let t = match t.kind() {
             // We'll hide this type only if all its type params are hidden as well.
@@ -919,17 +919,17 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
                 // Account for params with default values, like `Vec`, where we
                 // want to show `Vec<T>`, not `Vec<T, _>`. If we replaced that
                 // subst, then we'd get the incorrect output, so we passthrough.
-                let substs: Vec<_> = substs
+                let substs = substs
                     .iter()
                     .zip(generics.params.iter())
                     .map(|(subst, param)| match &(subst.unpack(), &param.kind) {
-                        (_, ty::GenericParamDefKind::Type { has_default: true, .. }) => subst,
+                        (_, ty::GenericParamDefKind::Type { has_default: true, .. }) => Ok(subst),
                         (crate::infer::GenericArgKind::Const(c), _) => {
-                            self.replace_infers(c, param.index, param.name).into()
+                            Ok(self.replace_infers(c, param.index, param.name).into())
                         }
                         _ => subst.super_fold_with(self),
                     })
-                    .collect();
+                    .collect::<Result<Vec<_>, !>>()?;
                 let should_keep = |subst: &GenericArg<'_>| match subst.unpack() {
                     ty::subst::GenericArgKind::Type(t) => match t.kind() {
                         ty::Error(_) => false,
@@ -948,11 +948,11 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
                 }
             }
             ty::Ref(_, ty, _) => {
-                let ty = self.fold_ty(ty);
+                let ty = self.fold_ty(ty)?;
                 match ty.kind() {
                     // Avoid `&_`, these can be safely presented as `_`.
                     ty::Error(_) => self.tcx().ty_error(),
-                    _ => t.super_fold_with(self),
+                    _ => t.super_fold_with(self)?,
                 }
             }
             // We could account for `()` if we wanted to replace it, but it's assured to be short.
@@ -963,21 +963,22 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
             | ty::FnPtr(_)
             | ty::Opaque(..)
             | ty::Projection(_)
-            | ty::Never => t.super_fold_with(self),
-            ty::Array(ty, c) => self
-                .tcx()
-                .mk_ty(ty::Array(self.fold_ty(ty), self.replace_infers(c, 0, Symbol::intern("N")))),
+            | ty::Never => t.super_fold_with(self)?,
+            ty::Array(ty, c) => self.tcx().mk_ty(ty::Array(
+                self.fold_ty(ty)?,
+                self.replace_infers(c, 0, Symbol::intern("N")),
+            )),
             // We don't want to hide type params that haven't been resolved yet.
             // This would be the type that will be written out with the type param
             // name in the output.
             ty::Infer(_) => t,
             // We don't want to hide the outermost type, only its type params.
-            _ if self.level == 1 => t.super_fold_with(self),
+            _ if self.level == 1 => t.super_fold_with(self)?,
             // Hide this type
             _ => self.tcx().ty_error(),
         };
         self.level -= 1;
-        t
+        Ok(t)
     }
 }
 
@@ -987,9 +988,9 @@ impl<'tcx> TypeFolder<'tcx> for ErrTypeParamEraser<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.0
     }
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, !> {
         match t.kind() {
-            ty::Error(_) => self.tcx().mk_ty_var(ty::TyVid::from_u32(0)),
+            ty::Error(_) => Ok(self.tcx().mk_ty_var(ty::TyVid::from_u32(0))),
             _ => t.super_fold_with(self),
         }
     }
