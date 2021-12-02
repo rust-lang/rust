@@ -501,7 +501,7 @@ fn render_markdown(
         Markdown {
             content: md_text,
             links: &links,
-            ids: ids,
+            ids,
             error_codes: cx.shared.codes,
             edition: cx.shared.edition(),
             playground: &cx.shared.playground,
