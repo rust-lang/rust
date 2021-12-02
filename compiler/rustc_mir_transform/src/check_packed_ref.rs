@@ -7,7 +7,7 @@ use rustc_session::lint::builtin::UNALIGNED_REFERENCES;
 use rustc_span::symbol::sym;
 
 use crate::util;
-use crate::MirPass;
+use crate::MirLint;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { unsafe_derive_on_repr_packed, ..*providers };
@@ -15,8 +15,8 @@ pub(crate) fn provide(providers: &mut Providers) {
 
 pub struct CheckPackedRef;
 
-impl<'tcx> MirPass<'tcx> for CheckPackedRef {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirLint<'tcx> for CheckPackedRef {
+    fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
         let source_info = SourceInfo::outermost(body.span);
         let mut checker = PackedRefChecker { body, tcx, param_env, source_info };

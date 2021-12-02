@@ -27,10 +27,11 @@ use super::simplify::{simplify_cfg, simplify_locals};
 pub struct ConstGoto;
 
 impl<'tcx> MirPass<'tcx> for ConstGoto {
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() >= 4
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.mir_opt_level() < 4 {
-            return;
-        }
         trace!("Running ConstGoto on {:?}", body.source);
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         let mut opt_finder =

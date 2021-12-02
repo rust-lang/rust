@@ -15,10 +15,11 @@ use super::simplify::simplify_cfg;
 pub struct DeduplicateBlocks;
 
 impl<'tcx> MirPass<'tcx> for DeduplicateBlocks {
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() >= 4
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.mir_opt_level() < 4 {
-            return;
-        }
         debug!("Running DeduplicateBlocks on `{:?}`", body.source);
         let duplicates = find_duplicates(body);
         let has_opts_to_apply = !duplicates.is_empty();

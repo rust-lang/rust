@@ -1232,6 +1232,10 @@ fn create_cases<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
+    fn phase_change(&self) -> Option<MirPhase> {
+        Some(MirPhase::GeneratorLowering)
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let yield_ty = if let Some(yield_ty) = body.yield_ty() {
             yield_ty

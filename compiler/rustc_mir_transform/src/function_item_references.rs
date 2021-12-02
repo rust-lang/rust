@@ -11,12 +11,12 @@ use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{symbol::sym, Span};
 use rustc_target::spec::abi::Abi;
 
-use crate::MirPass;
+use crate::MirLint;
 
 pub struct FunctionItemReferences;
 
-impl<'tcx> MirPass<'tcx> for FunctionItemReferences {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirLint<'tcx> for FunctionItemReferences {
+    fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let mut checker = FunctionItemRefChecker { tcx, body };
         checker.visit_body(&body);
     }

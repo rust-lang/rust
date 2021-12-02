@@ -290,12 +290,12 @@ fn mir_const<'tcx>(
         MirPhase::Const,
         &[&[
             // MIR-level lints.
-            &check_packed_ref::CheckPackedRef,
-            &check_const_item_mutation::CheckConstItemMutation,
-            &function_item_references::FunctionItemReferences,
+            &Lint(check_packed_ref::CheckPackedRef),
+            &Lint(check_const_item_mutation::CheckConstItemMutation),
+            &Lint(function_item_references::FunctionItemReferences),
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
-            &rustc_peek::SanityCheck,
+            &rustc_peek::SanityCheck, // Just a lint
         ]],
     );
     tcx.alloc_steal_mir(body)
@@ -443,7 +443,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         let def = ty::WithOptConstParam::unknown(did);
 
         // Do not compute the mir call graph without said call graph actually being used.
-        if inline::is_enabled(tcx) {
+        if inline::Inline.is_enabled(&tcx.sess) {
             let _ = tcx.mir_inliner_callees(ty::InstanceDef::Item(def));
         }
     }

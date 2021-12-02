@@ -20,6 +20,7 @@ use crate::{Analysis, JoinSemiLattice, Results, ResultsCursor};
 
 pub struct SanityCheck;
 
+// FIXME: This should be a `MirLint`, but it needs to be moved back to `rustc_mir_transform` first.
 impl<'tcx> MirPass<'tcx> for SanityCheck {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         use crate::has_rustc_mir_with;

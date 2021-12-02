@@ -8,15 +8,18 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 pub struct RevealAll;
 
 impl<'tcx> MirPass<'tcx> for RevealAll {
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.opts.mir_opt_level() >= 3 || super::inline::Inline.is_enabled(sess)
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // This pass must run before inlining, since we insert callee bodies in RevealAll mode.
         // Do not apply this transformation to generators.
-        if (tcx.sess.mir_opt_level() >= 3 || super::inline::is_enabled(tcx))
-            && body.generator.is_none()
-        {
-            let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-            RevealAllVisitor { tcx, param_env }.visit_body(body);
+        if body.generator.is_some() {
+            return;
         }
+
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        RevealAllVisitor { tcx, param_env }.visit_body(body);
     }
 }
 

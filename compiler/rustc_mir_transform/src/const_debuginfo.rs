@@ -15,11 +15,11 @@ use rustc_index::{bit_set::BitSet, vec::IndexVec};
 pub struct ConstDebugInfo;
 
 impl<'tcx> MirPass<'tcx> for ConstDebugInfo {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
-            return;
-        }
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.opts.debugging_opts.unsound_mir_opts && sess.mir_opt_level() > 0
+    }
 
+    fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("running ConstDebugInfo on {:?}", body.source);
 
         for (local, constant) in find_optimization_oportunities(body) {

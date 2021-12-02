@@ -14,11 +14,11 @@ const MAX_NUM_LOCALS: usize = 3000;
 pub struct NormalizeArrayLen;
 
 impl<'tcx> MirPass<'tcx> for NormalizeArrayLen {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.mir_opt_level() < 4 {
-            return;
-        }
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() >= 4
+    }
 
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // early returns for edge cases of highly unrolled functions
         if body.basic_blocks().len() > MAX_NUM_BLOCKS {
             return;

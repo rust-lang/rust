@@ -124,18 +124,15 @@ const MAX_BLOCKS: usize = 250;
 pub struct DestinationPropagation;
 
 impl<'tcx> MirPass<'tcx> for DestinationPropagation {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        //  FIXME(#79191, #82678)
-        if !tcx.sess.opts.debugging_opts.unsound_mir_opts {
-            return;
-        }
-
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        //  FIXME(#79191, #82678): This is unsound.
+        //
         // Only run at mir-opt-level=3 or higher for now (we don't fix up debuginfo and remove
         // storage statements at the moment).
-        if tcx.sess.mir_opt_level() < 3 {
-            return;
-        }
+        sess.opts.debugging_opts.unsound_mir_opts && sess.mir_opt_level() >= 3
+    }
 
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
 
         let candidates = find_candidates(tcx, body);
