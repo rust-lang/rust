@@ -1353,6 +1353,9 @@ crate struct Arguments {
 crate struct Argument {
     crate type_: Type,
     crate name: Symbol,
+    /// This field is used to represent "const" arguments from the `rustc_legacy_const_generics`
+    /// feature. More information in <https://github.com/rust-lang/rust/issues/83167>.
+    crate is_const: bool,
 }
 
 #[derive(Clone, PartialEq, Debug)]
