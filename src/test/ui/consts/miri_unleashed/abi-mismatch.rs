@@ -9,7 +9,7 @@ const extern "C" fn c_fn() {}
 const fn call_rust_fn(my_fn: extern "Rust" fn()) {
     my_fn();
     //~^ ERROR could not evaluate static initializer
-    //~| NOTE calling a function with ABI C using caller ABI Rust
+    //~| NOTE calling a function with calling convention C using calling convention Rust
     //~| NOTE inside `call_rust_fn`
 }
 

@@ -274,9 +274,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Call this function -- pushing the stack frame and initializing the arguments.
     ///
-    /// For now, we require *both* the `Abi` and `FnAbi` of the caller. In principle, however,
-    /// `FnAbi` should be enough -- if they are sufficiently compatible, it's probably okay for
-    /// `Abi` to differ.
+    /// `caller_fn_abi` is used to determine if all the arguments are passed the proper way.
+    /// However, we also need `caller_abi` to determine if we need to do untupling of arguments.
     ///
     /// `with_caller_location` indicates whether the caller passed a caller location. Miri
     /// implements caller locations without argument passing, but to match `FnAbi` we need to know
@@ -299,40 +298,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
 
-        let get_abi = |this: &Self, instance_ty: Ty<'tcx>| match instance_ty.kind() {
-            ty::FnDef(..) => instance_ty.fn_sig(*this.tcx).abi(),
-            // Even after lowering closures and generators away, the *callee* can still have this
-            // kind of type.
-            ty::Closure(..) => Abi::RustCall,
-            ty::Generator(..) => Abi::Rust,
-            _ => span_bug!(this.cur_span(), "unexpected callee ty: {:?}", instance_ty),
-        };
-
-        // ABI check
-        let check_abi = |callee_abi: Abi| -> InterpResult<'tcx> {
-            let normalize_abi = |abi| match abi {
-                Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
-                // These are all the same ABI, really.
-                {
-                    Abi::Rust
-                }
-                abi => abi,
-            };
-            if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                throw_ub_format!(
-                    "calling a function with ABI {} using caller ABI {}",
-                    callee_abi.name(),
-                    caller_abi.name()
-                )
-            }
-            Ok(())
-        };
-
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
-                if M::enforce_abi(self) {
-                    check_abi(get_abi(self, instance.ty(*self.tcx, self.param_env)))?;
-                }
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
                 // caller_fn_abi is not relevant here, we interpret the arguments directly for each intrinsic.
                 M::call_intrinsic(self, instance, args, ret, unwind)
@@ -353,14 +320,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Compute callee information using the `instance` returned by
                 // `find_mir_or_eval_fn`.
-                let callee_abi = get_abi(self, instance.ty(*self.tcx, self.param_env));
                 // FIXME: for variadic support, do we have to somehow determine calle's extra_args?
                 let callee_fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
                 assert!(!callee_fn_abi.c_variadic);
                 assert!(!caller_fn_abi.c_variadic);
 
                 if M::enforce_abi(self) {
-                    check_abi(callee_abi)?;
+                    if caller_fn_abi.conv != callee_fn_abi.conv {
+                        throw_ub_format!(
+                            "calling a function with calling convention {:?} using calling convention {:?}",
+                            callee_fn_abi.conv,
+                            caller_fn_abi.conv
+                        )
+                    }
                 }
 
                 if !matches!(unwind, StackPopUnwind::NotAllowed) && !callee_fn_abi.can_unwind {
