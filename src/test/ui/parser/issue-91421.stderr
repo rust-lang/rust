@@ -1,0 +1,21 @@
+error: this `if` expression has a condition, but no block
+  --> $DIR/issue-91421.rs:4:17
+   |
+LL |     let value = if true && {
+   |                 ^^
+   |
+help: maybe you forgot the right operand of the condition?
+  --> $DIR/issue-91421.rs:4:25
+   |
+LL |     let value = if true && {
+   |                         ^^
+
+error[E0308]: mismatched types
+  --> $DIR/issue-91421.rs:7:9
+   |
+LL |         3
+   |         ^ expected `bool`, found integer
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
