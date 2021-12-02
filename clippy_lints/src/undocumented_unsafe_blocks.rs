@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::is_lint_allowed;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
-use clippy_utils::{in_macro, is_lint_allowed};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, HirId, Local, UnsafeSource};
@@ -39,6 +39,7 @@ declare_clippy_lint! {
     /// // Safety: references are guaranteed to be non-null.
     /// let ptr = unsafe { NonNull::new_unchecked(a) };
     /// ```
+    #[clippy::version = "1.58.0"]
     pub UNDOCUMENTED_UNSAFE_BLOCKS,
     restriction,
     "creating an unsafe block without explaining why it is safe"
@@ -134,12 +135,12 @@ impl UndocumentedUnsafeBlocks {
 
         let enclosing_scope_span = map.opt_span(enclosing_hir_id)?;
 
-        let between_span = if in_macro(block_span) {
+        let between_span = if block_span.from_expansion() {
             self.macro_expansion = true;
-            enclosing_scope_span.with_hi(block_span.hi())
+            enclosing_scope_span.with_hi(block_span.hi()).source_callsite()
         } else {
             self.macro_expansion = false;
-            enclosing_scope_span.to(block_span)
+            enclosing_scope_span.to(block_span).source_callsite()
         };
 
         let file_name = source_map.span_to_filename(between_span);
@@ -148,6 +149,8 @@ impl UndocumentedUnsafeBlocks {
         let lex_start = (between_span.lo().0 - source_file.start_pos.0 + 1) as usize;
         let lex_end = (between_span.hi().0 - source_file.start_pos.0) as usize;
         let src_str = source_file.src.as_ref()?[lex_start..lex_end].to_string();
+
+        let source_start_pos = source_file.start_pos.0 as usize + lex_start;
 
         let mut pos = 0;
         let mut comment = false;
@@ -171,7 +174,7 @@ impl UndocumentedUnsafeBlocks {
                     if comment {
                         // Get the line number of the "comment" (really wherever the trailing whitespace ended)
                         let comment_line_num = source_file
-                            .lookup_file_pos_with_col_display(BytePos((lex_start + pos).try_into().unwrap()))
+                            .lookup_file_pos(BytePos((source_start_pos + pos).try_into().unwrap()))
                             .0;
                         // Find the block/local's line number
                         let block_line_num = tcx.sess.source_map().lookup_char_pos(block_span.lo()).line;

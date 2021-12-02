@@ -29,6 +29,7 @@ declare_clippy_lint! {
     /// // Good
     /// let y = &x; // use different variable name
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SHADOW_SAME,
     restriction,
     "rebinding a name to itself, e.g., `let mut x = &mut x`"
@@ -55,6 +56,7 @@ declare_clippy_lint! {
     /// let x = 2;
     /// let y = x + 1;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SHADOW_REUSE,
     restriction,
     "rebinding a name to an expression that re-uses the original value, e.g., `let x = x + 1`"
@@ -84,6 +86,7 @@ declare_clippy_lint! {
     /// // Good
     /// let w = z; // use different variable name
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SHADOW_UNRELATED,
     restriction,
     "rebinding a name without even using the original value"
@@ -102,11 +105,16 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
             PatKind::Binding(_, hir_id, ident, _) => (hir_id, ident),
             _ => return,
         };
+
+        if pat.span.desugaring_kind().is_some() {
+            return;
+        }
+
         if ident.span.from_expansion() || ident.span.is_dummy() {
             return;
         }
-        let HirId { owner, local_id } = id;
 
+        let HirId { owner, local_id } = id;
         // get (or insert) the list of items for this owner and symbol
         let data = self.bindings.last_mut().unwrap();
         let items_with_name = data.entry(ident.name).or_default();

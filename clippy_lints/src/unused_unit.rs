@@ -28,6 +28,7 @@ declare_clippy_lint! {
     /// ```rust
     /// fn return_unit() {}
     /// ```
+    #[clippy::version = "1.31.0"]
     pub UNUSED_UNIT,
     style,
     "needless unit expression"

@@ -34,5 +34,17 @@ LL |     print!("Üben!");
    |
    = note: `-D clippy::non-ascii-literal` implied by `-D warnings`
 
-error: aborting due to 5 previous errors
+error: literal non-ASCII character detected
+  --> $DIR/unicode.rs:26:32
+   |
+LL |     const _EMPTY_BLOCK: char = '▱';
+   |                                ^^^ help: consider replacing the string with: `'/u{25b1}'`
+
+error: literal non-ASCII character detected
+  --> $DIR/unicode.rs:27:31
+   |
+LL |     const _FULL_BLOCK: char = '▰';
+   |                               ^^^ help: consider replacing the string with: `'/u{25b0}'`
+
+error: aborting due to 7 previous errors
 

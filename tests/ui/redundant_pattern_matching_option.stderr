@@ -130,5 +130,17 @@ LL | |         None => true,
 LL | |     };
    | |_____^ help: try this: `None::<()>.is_none()`
 
-error: aborting due to 19 previous errors
+error: redundant pattern matching, consider using `is_none()`
+  --> $DIR/redundant_pattern_matching_option.rs:101:12
+   |
+LL |     if let None = *(&None::<()>) {}
+   |     -------^^^^----------------- help: try this: `if (&None::<()>).is_none()`
+
+error: redundant pattern matching, consider using `is_none()`
+  --> $DIR/redundant_pattern_matching_option.rs:102:12
+   |
+LL |     if let None = *&None::<()> {}
+   |     -------^^^^--------------- help: try this: `if (&None::<()>).is_none()`
+
+error: aborting due to 21 previous errors
 

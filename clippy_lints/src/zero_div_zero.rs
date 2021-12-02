@@ -20,6 +20,7 @@ declare_clippy_lint! {
     /// // Good
     /// let nan = f32::NAN;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ZERO_DIVIDED_BY_ZERO,
     complexity,
     "usage of `0.0 / 0.0` to obtain NaN instead of `f32::NAN` or `f64::NAN`"

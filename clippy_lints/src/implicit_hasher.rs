@@ -54,6 +54,7 @@ declare_clippy_lint! {
     ///
     /// pub fn foo<S: BuildHasher>(map: &mut HashMap<i32, i32, S>) { }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub IMPLICIT_HASHER,
     pedantic,
     "missing generalization over different hashers"

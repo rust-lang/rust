@@ -1,5 +1,5 @@
 error: `if _ { .. } else { .. }` is an expression
-  --> $DIR/let_if_seq.rs:65:5
+  --> $DIR/let_if_seq.rs:66:5
    |
 LL | /     let mut foo = 0;
 LL | |     if f() {
@@ -11,7 +11,7 @@ LL | |     }
    = note: you might not need `mut` at all
 
 error: `if _ { .. } else { .. }` is an expression
-  --> $DIR/let_if_seq.rs:70:5
+  --> $DIR/let_if_seq.rs:71:5
    |
 LL | /     let mut bar = 0;
 LL | |     if f() {
@@ -25,7 +25,7 @@ LL | |     }
    = note: you might not need `mut` at all
 
 error: `if _ { .. } else { .. }` is an expression
-  --> $DIR/let_if_seq.rs:78:5
+  --> $DIR/let_if_seq.rs:79:5
    |
 LL | /     let quz;
 LL | |     if f() {
@@ -36,7 +36,7 @@ LL | |     }
    | |_____^ help: it is more idiomatic to write: `let quz = if f() { 42 } else { 0 };`
 
 error: `if _ { .. } else { .. }` is an expression
-  --> $DIR/let_if_seq.rs:107:5
+  --> $DIR/let_if_seq.rs:108:5
    |
 LL | /     let mut baz = 0;
 LL | |     if f() {

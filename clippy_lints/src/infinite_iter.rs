@@ -20,6 +20,7 @@ declare_clippy_lint! {
     ///
     /// iter::repeat(1_u8).collect::<Vec<_>>();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INFINITE_ITER,
     correctness,
     "infinite iteration"
@@ -42,6 +43,7 @@ declare_clippy_lint! {
     /// let infinite_iter = 0..;
     /// [0..].iter().zip(infinite_iter.take_while(|x| *x > 5));
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MAYBE_INFINITE_ITER,
     pedantic,
     "possible infinite iteration"

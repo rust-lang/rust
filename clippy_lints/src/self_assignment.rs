@@ -30,6 +30,7 @@ declare_clippy_lint! {
     ///     a.y = a.y;
     /// }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub SELF_ASSIGNMENT,
     correctness,
     "explicit self-assignment"

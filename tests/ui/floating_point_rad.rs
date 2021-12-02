@@ -1,5 +1,12 @@
 // run-rustfix
+#![feature(const_fn_floating_point_arithmetic)]
 #![warn(clippy::suboptimal_flops)]
+
+/// Allow suboptimal_flops in constant context
+pub const fn const_context() {
+    let x = 3f32;
+    let _ = x * 180f32 / std::f32::consts::PI;
+}
 
 fn main() {
     let x = 3f32;

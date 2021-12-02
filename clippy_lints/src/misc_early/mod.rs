@@ -46,6 +46,7 @@ declare_clippy_lint! {
     ///     Foo { .. } => {},
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNNEEDED_FIELD_PATTERN,
     restriction,
     "struct fields bound to a wildcard instead of using `..`"
@@ -67,6 +68,7 @@ declare_clippy_lint! {
     /// // Good
     /// fn bar(a: i32, _b: i32) {}
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DUPLICATE_UNDERSCORE_ARGUMENT,
     style,
     "function arguments having names which only differ by an underscore"
@@ -85,6 +87,7 @@ declare_clippy_lint! {
     /// let mut x = 3;
     /// --x;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DOUBLE_NEG,
     style,
     "`--x`, which is a double negation of `x` and not a pre-decrement as in C/C++"
@@ -106,6 +109,7 @@ declare_clippy_lint! {
     /// // Good
     /// let y = 0x1A9BACD;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MIXED_CASE_HEX_LITERALS,
     style,
     "hex literals whose letter digits are not consistently upper- or lowercased"
@@ -129,6 +133,7 @@ declare_clippy_lint! {
     /// // Good
     /// let y = 123832_i32;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNSEPARATED_LITERAL_SUFFIX,
     restriction,
     "literals whose suffix is not separated by an underscore"
@@ -151,6 +156,7 @@ declare_clippy_lint! {
     /// // Good
     /// let y = 123832i32;
     /// ```
+    #[clippy::version = "1.58.0"]
     pub SEPARATED_LITERAL_SUFFIX,
     restriction,
     "literals whose suffix is separated by an underscore"
@@ -189,6 +195,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// prints `83` (as `83 == 0o123` while `123 == 0o173`).
+    #[clippy::version = "pre 1.29.0"]
     pub ZERO_PREFIXED_LITERAL,
     complexity,
     "integer literals starting with `0`"
@@ -210,6 +217,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub BUILTIN_TYPE_SHADOW,
     style,
     "shadowing a builtin type"
@@ -239,6 +247,7 @@ declare_clippy_lint! {
     ///     y => (),
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub REDUNDANT_PATTERN,
     style,
     "using `name @ _` in a pattern"
@@ -273,6 +282,7 @@ declare_clippy_lint! {
     ///     _ => (),
     /// }
     /// ```
+    #[clippy::version = "1.40.0"]
     pub UNNEEDED_WILDCARD_PATTERN,
     complexity,
     "tuple patterns with a wildcard pattern (`_`) is next to a rest pattern (`..`)"

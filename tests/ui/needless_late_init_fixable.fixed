@@ -1,0 +1,38 @@
+// run-rustfix
+
+#![allow(unused, clippy::assign_op_pattern)]
+
+fn main() {
+    
+    let a = "zero";
+
+    
+    
+    let b = 1;
+    let c = 2;
+
+    
+    let d: usize = 1;
+
+    
+    let mut e = 1;
+    e = 2;
+
+    
+    let f = match 1 {
+        1 => "three",
+        _ => return,
+    }; // has semi
+
+    
+    let g: usize = if true {
+        5
+    } else {
+        panic!();
+    };
+
+    
+    let h = format!("{}", e);
+
+    println!("{}", a);
+}

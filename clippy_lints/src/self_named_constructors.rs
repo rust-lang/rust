@@ -32,6 +32,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.55.0"]
     pub SELF_NAMED_CONSTRUCTORS,
     style,
     "method should not have the same name as the type it is implemented for"

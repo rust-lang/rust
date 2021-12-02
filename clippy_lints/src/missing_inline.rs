@@ -52,6 +52,7 @@ declare_clippy_lint! {
     ///    fn def_bar() {} // missing #[inline]
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MISSING_INLINE_IN_PUBLIC_ITEMS,
     restriction,
     "detects missing `#[inline]` attribute for public callables (functions, trait methods, methods...)"

@@ -38,6 +38,7 @@ declare_clippy_lint! {
     ///        vec.push(value)
     /// }
     /// ```
+    #[clippy::version = "1.57.0"]
     pub MATCH_RESULT_OK,
     style,
     "usage of `ok()` in `let Some(pat)` statements is unnecessary, match on `Ok(pat)` instead"

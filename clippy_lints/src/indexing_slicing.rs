@@ -33,6 +33,7 @@ declare_clippy_lint! {
     /// x[0];
     /// x[3];
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub OUT_OF_BOUNDS_INDEXING,
     correctness,
     "out of bounds constant indexing"
@@ -85,6 +86,7 @@ declare_clippy_lint! {
     /// y.get(10..);
     /// y.get(..100);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INDEXING_SLICING,
     restriction,
     "indexing/slicing usage"

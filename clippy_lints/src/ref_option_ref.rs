@@ -28,6 +28,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let x: Option<&u32> = Some(&0u32);
     /// ```
+    #[clippy::version = "1.49.0"]
     pub REF_OPTION_REF,
     pedantic,
     "use `Option<&T>` instead of `&Option<&T>`"

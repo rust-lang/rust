@@ -1,0 +1,48 @@
+name: Internal Compiler Error
+description: Create a report for an internal compiler error (ICE) in Clippy.
+labels: ["C-bug", "I-ICE"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for finding an Internal Compiler Error! 🧊
+  - type: textarea
+    id: problem
+    attributes:
+      label: Summary
+      description: |
+        If possible, try to provide a minimal verifiable example. You can read ["Rust Bug Minimization Patterns"][mve] for how to create smaller examples. Otherwise, provide the crate where the ICE occured.
+
+        [mve]: http://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/
+    validations:
+      required: true
+  - type: textarea
+    id: version
+    attributes:
+      label: Version
+      description: "Rust version (`rustc -Vv`)"
+      placeholder: |
+        rustc 1.46.0-nightly (f455e46ea 2020-06-20)
+        binary: rustc
+        commit-hash: f455e46eae1a227d735091091144601b467e1565
+        commit-date: 2020-06-20
+        host: x86_64-unknown-linux-gnu
+        release: 1.46.0-nightly
+        LLVM version: 10.0
+      render: text
+  - type: textarea
+    id: error
+    attributes:
+      label: Error output
+      description: >
+        Include a backtrace in the code block by setting `RUST_BACKTRACE=1` in
+        your environment. E.g. `RUST_BACKTRACE=1 cargo clippy`.
+      value: |
+        <details><summary>Backtrace</summary>
+          <p>
+
+          ```
+          <backtrace>
+          ```
+
+          </p>
+        </details>

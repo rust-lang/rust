@@ -1,0 +1,131 @@
+error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:4:17
+   |
+LL |     let _bad1 = "/033[0m";
+   |                 ^^^^^^^^^
+   |
+   = note: `-D clippy::octal-escapes` implied by `-D warnings`
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape was intended, use the hexadecimal representation instead
+   |
+LL |     let _bad1 = "/x1b[0m";
+   |                 ~~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad1 = "/x0033[0m";
+   |                 ~~~~~~~~~~~
+
+error: octal-looking escape in byte string literal
+  --> $DIR/octal_escapes.rs:5:17
+   |
+LL |     let _bad2 = b"/033[0m";
+   |                 ^^^^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null byte
+help: if an octal escape was intended, use the hexadecimal representation instead
+   |
+LL |     let _bad2 = b"/x1b[0m";
+   |                 ~~~~~~~~~~
+help: if the null byte is intended, disambiguate using
+   |
+LL |     let _bad2 = b"/x0033[0m";
+   |                 ~~~~~~~~~~~~
+
+error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:6:17
+   |
+LL |     let _bad3 = "//033[0m";
+   |                 ^^^^^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape was intended, use the hexadecimal representation instead
+   |
+LL |     let _bad3 = "//x1b[0m";
+   |                 ~~~~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad3 = "//x0033[0m";
+   |                 ~~~~~~~~~~~~~
+
+error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:8:17
+   |
+LL |     let _bad4 = "/01234567";
+   |                 ^^^^^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape was intended, use the hexadecimal representation instead
+   |
+LL |     let _bad4 = "/x0a34567";
+   |                 ~~~~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad4 = "/x001234567";
+   |                 ~~~~~~~~~~~~~
+
+error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:10:17
+   |
+LL |     let _bad6 = "Text-/055/077-MoreText";
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape was intended, use the hexadecimal representation instead
+   |
+LL |     let _bad6 = "Text-/x2d/x3f-MoreText";
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad6 = "Text-/x0055/x0077-MoreText";
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:11:17
+   |
+LL |     let _bad7 = "EvenMoreText-/01/02-ShortEscapes";
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape was intended, use the hexadecimal representation instead
+   |
+LL |     let _bad7 = "EvenMoreText-/x01/x02-ShortEscapes";
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad7 = "EvenMoreText-/x001/x002-ShortEscapes";
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:12:17
+   |
+LL |     let _bad8 = "锈/01锈";
+   |                 ^^^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape was intended, use the hexadecimal representation instead
+   |
+LL |     let _bad8 = "锈/x01锈";
+   |                 ~~~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad8 = "锈/x001锈";
+   |                 ~~~~~~~~~~~
+
+error: octal-looking escape in string literal
+  --> $DIR/octal_escapes.rs:13:17
+   |
+LL |     let _bad9 = "锈/011锈";
+   |                 ^^^^^^^^^^
+   |
+   = help: octal escapes are not supported, `/0` is always a null character
+help: if an octal escape was intended, use the hexadecimal representation instead
+   |
+LL |     let _bad9 = "锈/x09锈";
+   |                 ~~~~~~~~~~
+help: if the null character is intended, disambiguate using
+   |
+LL |     let _bad9 = "锈/x0011锈";
+   |                 ~~~~~~~~~~~~
+
+error: aborting due to 8 previous errors
+

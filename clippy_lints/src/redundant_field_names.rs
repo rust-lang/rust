@@ -30,6 +30,7 @@ declare_clippy_lint! {
     /// ```ignore
     /// let foo = Foo { bar };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub REDUNDANT_FIELD_NAMES,
     style,
     "checks for fields in struct literals where shorthands could be used"

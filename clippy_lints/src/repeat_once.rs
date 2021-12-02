@@ -1,6 +1,5 @@
 use clippy_utils::consts::{constant_context, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
@@ -36,6 +35,7 @@ declare_clippy_lint! {
     ///     let x = String::from("hello world").clone();
     /// }
     /// ```
+    #[clippy::version = "1.47.0"]
     pub REPEAT_ONCE,
     complexity,
     "using `.repeat(1)` instead of `String.clone()`, `str.to_string()` or `slice.to_vec()` "
@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
             if let ExprKind::MethodCall(path, _, [receiver, count], _) = &expr.kind;
             if path.ident.name == sym!(repeat);
             if constant_context(cx, cx.typeck_results()).expr(count) == Some(Constant::Int(1));
-            if !in_macro(receiver.span);
+            if !receiver.span.from_expansion();
             then {
                 let ty = cx.typeck_results().expr_ty(receiver).peel_refs();
                 if ty.is_str() {

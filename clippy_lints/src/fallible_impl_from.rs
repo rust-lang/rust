@@ -44,6 +44,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub FALLIBLE_IMPL_FROM,
     nursery,
     "Warn on impls of `From<..>` that contain `panic!()` or `unwrap()`"

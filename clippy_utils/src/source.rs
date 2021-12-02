@@ -128,7 +128,7 @@ pub fn reindent_multiline(s: Cow<'_, str>, ignore_first: bool, indent: Option<us
 fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, ch: char) -> String {
     let x = s
         .lines()
-        .skip(ignore_first as usize)
+        .skip(usize::from(ignore_first))
         .filter_map(|l| {
             if l.is_empty() {
                 None
@@ -155,14 +155,22 @@ fn reindent_multiline_inner(s: &str, ignore_first: bool, indent: Option<usize>, 
         .join("\n")
 }
 
-/// Converts a span to a code snippet if available, otherwise use default.
+/// Converts a span to a code snippet if available, otherwise returns the default.
 ///
 /// This is useful if you want to provide suggestions for your lint or more generally, if you want
-/// to convert a given `Span` to a `str`.
+/// to convert a given `Span` to a `str`. To create suggestions consider using
+/// [`snippet_with_applicability`] to ensure that the applicability stays correct.
 ///
 /// # Example
 /// ```rust,ignore
-/// snippet(cx, expr.span, "..")
+/// // Given two spans one for `value` and one for the `init` expression.
+/// let value = Vec::new();
+/// //  ^^^^^   ^^^^^^^^^^
+/// //  span1   span2
+///
+/// // The snipped call would return the corresponding code snippet
+/// snippet(cx, span1, "..") // -> "value"
+/// snippet(cx, span2, "..") // -> "Vec::new()"
 /// ```
 pub fn snippet<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     snippet_opt(cx, span).map_or_else(|| Cow::Borrowed(default), From::from)
