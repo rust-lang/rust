@@ -214,9 +214,9 @@ impl Uniform {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct CastTarget {
-    pub prefix: [Option<RegKind>; 8],
-    pub prefix_chunk_size: Size,
+    pub prefix: [Option<Reg>; 8],
     pub rest: Uniform,
+    pub attrs: ArgAttributes,
 }
 
 impl From<Reg> for CastTarget {
@@ -227,29 +227,48 @@ impl From<Reg> for CastTarget {
 
 impl From<Uniform> for CastTarget {
     fn from(uniform: Uniform) -> CastTarget {
-        CastTarget { prefix: [None; 8], prefix_chunk_size: Size::ZERO, rest: uniform }
+        CastTarget {
+            prefix: [None; 8],
+            rest: uniform,
+            attrs: ArgAttributes {
+                regular: ArgAttribute::default(),
+                arg_ext: ArgExtension::None,
+                pointee_size: Size::ZERO,
+                pointee_align: None,
+            },
+        }
     }
 }
 
 impl CastTarget {
     pub fn pair(a: Reg, b: Reg) -> CastTarget {
         CastTarget {
-            prefix: [Some(a.kind), None, None, None, None, None, None, None],
-            prefix_chunk_size: a.size,
+            prefix: [Some(a), None, None, None, None, None, None, None],
             rest: Uniform::from(b),
+            attrs: ArgAttributes {
+                regular: ArgAttribute::default(),
+                arg_ext: ArgExtension::None,
+                pointee_size: Size::ZERO,
+                pointee_align: None,
+            },
         }
     }
 
-    pub fn size<C: HasDataLayout>(&self, cx: &C) -> Size {
-        (self.prefix_chunk_size * self.prefix.iter().filter(|x| x.is_some()).count() as u64)
-            .align_to(self.rest.align(cx))
-            + self.rest.total
+    pub fn size<C: HasDataLayout>(&self, _cx: &C) -> Size {
+        let mut size = self.rest.total;
+        for i in 0..self.prefix.iter().count() {
+            match self.prefix[i] {
+                Some(v) => size += Size { raw: v.size.bytes() },
+                None => {}
+            }
+        }
+        return size;
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.prefix
             .iter()
-            .filter_map(|x| x.map(|kind| Reg { kind, size: self.prefix_chunk_size }.align(cx)))
+            .filter_map(|x| x.map(|reg| reg.align(cx)))
             .fold(cx.data_layout().aggregate_align.abi.max(self.rest.align(cx)), |acc, align| {
                 acc.max(align)
             })

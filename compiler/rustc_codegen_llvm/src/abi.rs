@@ -181,9 +181,7 @@ impl LlvmType for CastTarget {
         let mut args: Vec<_> = self
             .prefix
             .iter()
-            .flat_map(|option_kind| {
-                option_kind.map(|kind| Reg { kind, size: self.prefix_chunk_size }.llvm_type(cx))
-            })
+            .flat_map(|option_reg| option_reg.map(|reg| reg.llvm_type(cx)))
             .chain((0..rest_count).map(|_| rest_ll_unit))
             .collect();
 
@@ -466,6 +464,9 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     );
                 }
             }
+            PassMode::Cast(cast) => {
+                cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
+            }
             _ => {}
         }
         for arg in &self.args {
@@ -497,8 +498,8 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(a);
                     apply(b);
                 }
-                PassMode::Cast(_) => {
-                    apply(&ArgAttributes::new());
+                PassMode::Cast(cast) => {
+                    apply(&cast.attrs);
                 }
             }
         }
@@ -532,6 +533,13 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         self.ret.layout.llvm_type(bx),
                     );
                 }
+            }
+            PassMode::Cast(cast) => {
+                cast.attrs.apply_attrs_to_callsite(
+                    llvm::AttributePlace::ReturnValue,
+                    &bx.cx,
+                    callsite,
+                );
             }
             _ => {}
         }
@@ -577,8 +585,8 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(bx.cx, a);
                     apply(bx.cx, b);
                 }
-                PassMode::Cast(_) => {
-                    apply(bx.cx, &ArgAttributes::new());
+                PassMode::Cast(cast) => {
+                    apply(bx.cx, &cast.attrs);
                 }
             }
         }
