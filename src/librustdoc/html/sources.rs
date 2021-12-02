@@ -273,11 +273,7 @@ crate fn print_src(
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
     let mut cols = 0;
-    let mut tmp = lines;
-    while tmp > 0 {
-        cols += 1;
-        tmp /= 10;
-    }
+    cols += lines.checked_log10().map(|cols| cols + 1).unwrap_or(0) as usize;
     line_numbers.write_str("<pre class=\"line-numbers\">");
     match source_context {
         SourceContext::Standalone => {

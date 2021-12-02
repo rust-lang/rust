@@ -19,6 +19,7 @@
 #![feature(iter_intersperse)]
 #![feature(type_alias_impl_trait)]
 #![feature(generic_associated_types)]
+#![feature(int_log)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]

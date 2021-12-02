@@ -113,6 +113,7 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(inplace_iteration)]
+#![feature(int_log)]
 #![feature(iter_advance_by)]
 #![feature(layout_for_ptr)]
 #![feature(maybe_uninit_slice)]

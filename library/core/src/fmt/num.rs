@@ -309,18 +309,13 @@ macro_rules! impl_Exp {
                 let (added_precision, subtracted_precision) = match f.precision() {
                     Some(fmt_prec) => {
                         // number of decimal digits minus 1
-                        let mut tmp = n;
-                        let mut prec = 0;
-                        while tmp >= 10 {
-                            tmp /= 10;
-                            prec += 1;
-                        }
+                        let prec = n.checked_log10().unwrap_or(0) as usize;
                         (fmt_prec.saturating_sub(prec), prec.saturating_sub(fmt_prec))
                     }
-                    None => (0,0)
+                    None => (0, 0)
                 };
                 for _ in 1..subtracted_precision {
-                    n/=10;
+                    n /= 10;
                     exponent += 1;
                 }
                 if subtracted_precision != 0 {
@@ -392,7 +387,7 @@ macro_rules! impl_Exp {
             // SAFETY: In either case, `exp_buf` is written within bounds and `exp_ptr[..len]`
             // is contained within `exp_buf` since `len <= 3`.
             let exp_slice = unsafe {
-                *exp_ptr.offset(0) = if upper {b'E'} else {b'e'};
+                *exp_ptr.offset(0) = if upper { b'E' } else { b'e' };
                 let len = if exponent < 10 {
                     *exp_ptr.offset(1) = (exponent as u8) + b'0';
                     2
@@ -482,7 +477,8 @@ impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
 fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], curr: &mut isize) {
     let buf_ptr = MaybeUninit::slice_as_mut_ptr(buf);
     let lut_ptr = DEC_DIGITS_LUT.as_ptr();
-    assert!(*curr > 19);
+    const MIN_SIZE: isize = u64::MAX.log10() as isize;
+    assert!(*curr > MIN_SIZE);
 
     // SAFETY:
     // Writes at most 19 characters into the buffer. Guaranteed that any ptr into LUT is at most
