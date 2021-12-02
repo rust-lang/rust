@@ -7,6 +7,7 @@ pub mod query;
 pub mod select;
 pub mod specialization_graph;
 mod structural_impls;
+pub mod util;
 
 use crate::infer::canonical::Canonical;
 use crate::thir::abstract_const::NotConstEvaluatable;
@@ -23,6 +24,7 @@ use smallvec::SmallVec;
 
 use std::borrow::Cow;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
@@ -108,7 +110,7 @@ impl Deref for ObligationCause<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+#[derive(Clone, Debug, PartialEq, Eq, Lift)]
 pub struct ObligationCauseData<'tcx> {
     pub span: Span,
 
@@ -121,6 +123,14 @@ pub struct ObligationCauseData<'tcx> {
     pub body_id: hir::HirId,
 
     pub code: ObligationCauseCode<'tcx>,
+}
+
+impl Hash for ObligationCauseData<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.body_id.hash(state);
+        self.span.hash(state);
+        std::mem::discriminant(&self.code).hash(state);
+    }
 }
 
 impl<'tcx> ObligationCause<'tcx> {
@@ -267,14 +277,12 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplMethodObligation {
-        item_name: Symbol,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
     },
 
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplTypeObligation {
-        item_name: Symbol,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
     },

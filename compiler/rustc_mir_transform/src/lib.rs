@@ -27,7 +27,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
-use rustc_middle::mir::{dump_mir, traversal, Body, ConstQualifs, MirPhase, Promoted};
+use rustc_middle::mir::{dump_mir, traversal, Body, ConstQualifs, MirPass, MirPhase, Promoted};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
@@ -78,7 +78,6 @@ mod unreachable_prop;
 use rustc_const_eval::transform::check_consts;
 use rustc_const_eval::transform::promote_consts;
 use rustc_const_eval::transform::validate;
-pub use rustc_const_eval::transform::MirPass;
 use rustc_mir_dataflow::rustc_peek;
 
 pub fn provide(providers: &mut Providers) {

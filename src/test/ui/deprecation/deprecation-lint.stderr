@@ -257,97 +257,97 @@ LL |         let _ = nested::DeprecatedStruct {
    |                         ^^^^^^^^^^^^^^^^
 
 error: use of deprecated unit struct `this_crate::nested::DeprecatedUnitStruct`: text
-  --> $DIR/deprecation-lint.rs:283:25
+  --> $DIR/deprecation-lint.rs:284:25
    |
 LL |         let _ = nested::DeprecatedUnitStruct;
    |                         ^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated unit variant `this_crate::nested::Enum::DeprecatedVariant`: text
-  --> $DIR/deprecation-lint.rs:285:31
+  --> $DIR/deprecation-lint.rs:286:31
    |
 LL | ...   let _ = nested::Enum::DeprecatedVariant;
    |                             ^^^^^^^^^^^^^^^^^
 
 error: use of deprecated tuple struct `this_crate::nested::DeprecatedTupleStruct`: text
-  --> $DIR/deprecation-lint.rs:287:25
+  --> $DIR/deprecation-lint.rs:288:25
    |
 LL | ...   let _ = nested::DeprecatedTupleStruct (1);
    |                       ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:292:16
+  --> $DIR/deprecation-lint.rs:293:16
    |
 LL |         Trait::trait_deprecated(&foo);
    |                ^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:294:25
+  --> $DIR/deprecation-lint.rs:295:25
    |
 LL |         <Foo as Trait>::trait_deprecated(&foo);
    |                         ^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:296:16
+  --> $DIR/deprecation-lint.rs:297:16
    |
 LL |         Trait::trait_deprecated_text(&foo);
    |                ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:298:25
+  --> $DIR/deprecation-lint.rs:299:25
    |
 LL | ...   <Foo as Trait>::trait_deprecated_text(&foo);
    |                       ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated function `this_crate::test_fn_closure_body::{closure#0}::bar`
-  --> $DIR/deprecation-lint.rs:316:13
+  --> $DIR/deprecation-lint.rs:317:13
    |
 LL |             bar();
    |             ^^^
 
 error: use of deprecated trait `this_crate::DeprecatedTrait`: text
-  --> $DIR/deprecation-lint.rs:335:10
+  --> $DIR/deprecation-lint.rs:336:10
    |
 LL |     impl DeprecatedTrait for S { }
    |          ^^^^^^^^^^^^^^^
 
 error: use of deprecated trait `this_crate::DeprecatedTrait`: text
-  --> $DIR/deprecation-lint.rs:337:24
+  --> $DIR/deprecation-lint.rs:338:24
    |
 LL |     trait LocalTrait : DeprecatedTrait { }
    |                        ^^^^^^^^^^^^^^^
 
 error: use of deprecated struct `this_crate2::Deprecated`: text
-  --> $DIR/deprecation-lint.rs:389:17
+  --> $DIR/deprecation-lint.rs:390:17
    |
 LL |         let x = Deprecated {
    |                 ^^^^^^^^^^
 
 error: use of deprecated struct `this_crate2::Deprecated`: text
-  --> $DIR/deprecation-lint.rs:398:13
+  --> $DIR/deprecation-lint.rs:399:13
    |
 LL |         let Deprecated {
    |             ^^^^^^^^^^
 
 error: use of deprecated struct `this_crate2::Deprecated`: text
-  --> $DIR/deprecation-lint.rs:404:13
+  --> $DIR/deprecation-lint.rs:405:13
    |
 LL |         let Deprecated
    |             ^^^^^^^^^^
 
 error: use of deprecated tuple struct `this_crate2::Deprecated2`: text
-  --> $DIR/deprecation-lint.rs:409:17
+  --> $DIR/deprecation-lint.rs:410:17
    |
 LL |         let x = Deprecated2(1, 2, 3);
    |                 ^^^^^^^^^^^
 
 error: use of deprecated tuple struct `this_crate2::Deprecated2`: text
-  --> $DIR/deprecation-lint.rs:419:13
+  --> $DIR/deprecation-lint.rs:420:13
    |
 LL |         let Deprecated2
    |             ^^^^^^^^^^^
 
 error: use of deprecated tuple struct `this_crate2::Deprecated2`: text
-  --> $DIR/deprecation-lint.rs:428:13
+  --> $DIR/deprecation-lint.rs:429:13
    |
 LL |         let Deprecated2
    |             ^^^^^^^^^^^
@@ -617,124 +617,131 @@ LL |             i: 0
    |             ^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:291:13
+  --> $DIR/deprecation-lint.rs:292:13
    |
 LL |         foo.trait_deprecated();
    |             ^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:293:16
+  --> $DIR/deprecation-lint.rs:294:16
    |
 LL |         <Foo>::trait_deprecated(&foo);
    |                ^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:295:13
+  --> $DIR/deprecation-lint.rs:296:13
    |
 LL |         foo.trait_deprecated_text();
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:297:16
+  --> $DIR/deprecation-lint.rs:298:16
    |
 LL |         <Foo>::trait_deprecated_text(&foo);
    |                ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated`: text
-  --> $DIR/deprecation-lint.rs:302:13
+  --> $DIR/deprecation-lint.rs:303:13
    |
 LL |         foo.trait_deprecated();
    |             ^^^^^^^^^^^^^^^^
 
 error: use of deprecated associated function `this_crate::Trait::trait_deprecated_text`: text
-  --> $DIR/deprecation-lint.rs:303:13
+  --> $DIR/deprecation-lint.rs:304:13
    |
 LL |         foo.trait_deprecated_text();
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated field `this_crate2::Stable::override2`: text
-  --> $DIR/deprecation-lint.rs:362:13
+  --> $DIR/deprecation-lint.rs:363:13
    |
 LL |             override2: 3,
    |             ^^^^^^^^^^^^
 
 error: use of deprecated field `this_crate2::Stable::override2`: text
-  --> $DIR/deprecation-lint.rs:366:17
+  --> $DIR/deprecation-lint.rs:367:17
    |
 LL |         let _ = x.override2;
    |                 ^^^^^^^^^^^
 
 error: use of deprecated field `this_crate2::Stable::override2`: text
-  --> $DIR/deprecation-lint.rs:370:13
+  --> $DIR/deprecation-lint.rs:371:13
    |
 LL |             override2: _
    |             ^^^^^^^^^^^^
 
 error: use of deprecated field `this_crate2::Stable2::2`: text
-  --> $DIR/deprecation-lint.rs:378:17
+  --> $DIR/deprecation-lint.rs:379:17
    |
 LL |         let _ = x.2;
    |                 ^^^
 
 error: use of deprecated field `this_crate2::Stable2::2`: text
-  --> $DIR/deprecation-lint.rs:383:20
+  --> $DIR/deprecation-lint.rs:384:20
    |
 LL |                    _)
    |                    ^
 
 error: use of deprecated field `this_crate2::Deprecated::inherit`: text
-  --> $DIR/deprecation-lint.rs:391:13
+  --> $DIR/deprecation-lint.rs:392:13
    |
 LL |             inherit: 1,
    |             ^^^^^^^^^^
 
 error: use of deprecated field `this_crate2::Deprecated::inherit`: text
-  --> $DIR/deprecation-lint.rs:395:17
+  --> $DIR/deprecation-lint.rs:396:17
    |
 LL |         let _ = x.inherit;
    |                 ^^^^^^^^^
 
 error: use of deprecated field `this_crate2::Deprecated::inherit`: text
-  --> $DIR/deprecation-lint.rs:400:13
+  --> $DIR/deprecation-lint.rs:401:13
    |
 LL |             inherit: _,
    |             ^^^^^^^^^^
 
 error: use of deprecated field `this_crate2::Deprecated2::0`: text
-  --> $DIR/deprecation-lint.rs:412:17
+  --> $DIR/deprecation-lint.rs:413:17
    |
 LL |         let _ = x.0;
    |                 ^^^
 
 error: use of deprecated field `this_crate2::Deprecated2::1`: text
-  --> $DIR/deprecation-lint.rs:414:17
+  --> $DIR/deprecation-lint.rs:415:17
    |
 LL |         let _ = x.1;
    |                 ^^^
 
 error: use of deprecated field `this_crate2::Deprecated2::2`: text
-  --> $DIR/deprecation-lint.rs:416:17
+  --> $DIR/deprecation-lint.rs:417:17
    |
 LL |         let _ = x.2;
    |                 ^^^
 
 error: use of deprecated field `this_crate2::Deprecated2::0`: text
-  --> $DIR/deprecation-lint.rs:421:14
+  --> $DIR/deprecation-lint.rs:422:14
    |
 LL |             (_,
    |              ^
 
 error: use of deprecated field `this_crate2::Deprecated2::1`: text
-  --> $DIR/deprecation-lint.rs:423:14
+  --> $DIR/deprecation-lint.rs:424:14
    |
 LL |              _,
    |              ^
 
 error: use of deprecated field `this_crate2::Deprecated2::2`: text
-  --> $DIR/deprecation-lint.rs:425:14
+  --> $DIR/deprecation-lint.rs:426:14
    |
 LL |              _)
    |              ^
 
-error: aborting due to 122 previous errors
+error[E0451]: field `i` of struct `this_crate::nested::DeprecatedStruct` is private
+  --> $DIR/deprecation-lint.rs:280:13
+   |
+LL |             i: 0
+   |             ^^^^ private field
 
+error: aborting due to 123 previous errors
+
+For more information about this error, try `rustc --explain E0451`.

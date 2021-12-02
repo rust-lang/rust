@@ -266,7 +266,15 @@ impl<'hir> Map<'hir> {
                 };
                 DefKind::Ctor(ctor_of, def::CtorKind::from_hir(variant_data))
             }
-            Node::AnonConst(_) => DefKind::AnonConst,
+            Node::AnonConst(_) => {
+                let inline = match self.find(self.get_parent_node(hir_id)) {
+                    Some(Node::Expr(&Expr {
+                        kind: ExprKind::ConstBlock(ref anon_const), ..
+                    })) if anon_const.hir_id == hir_id => true,
+                    _ => false,
+                };
+                if inline { DefKind::InlineConst } else { DefKind::AnonConst }
+            }
             Node::Field(_) => DefKind::Field,
             Node::Expr(expr) => match expr.kind {
                 ExprKind::Closure(.., None) => DefKind::Closure,
@@ -466,7 +474,8 @@ impl<'hir> Map<'hir> {
     /// Panics if `LocalDefId` does not have an associated body.
     ///
     /// This should only be used for determining the context of a body, a return
-    /// value of `Some` does not always suggest that the owner of the body is `const`.
+    /// value of `Some` does not always suggest that the owner of the body is `const`,
+    /// just that it has to be checked as if it were.
     pub fn body_const_context(&self, did: LocalDefId) -> Option<ConstContext> {
         let hir_id = self.local_def_id_to_hir_id(did);
         let ccx = match self.body_owner_kind(hir_id) {
@@ -861,24 +870,24 @@ impl<'hir> Map<'hir> {
         bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
     }
 
-    pub fn expect_item(&self, id: HirId) -> &'hir Item<'hir> {
-        match self.tcx.hir_owner(id.expect_owner()) {
+    pub fn expect_item(&self, id: LocalDefId) -> &'hir Item<'hir> {
+        match self.tcx.hir_owner(id) {
             Some(Owner { node: OwnerNode::Item(item), .. }) => item,
-            _ => bug!("expected item, found {}", self.node_to_string(id)),
+            _ => bug!("expected item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
-    pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem<'hir> {
-        match self.tcx.hir_owner(id.expect_owner()) {
+    pub fn expect_impl_item(&self, id: LocalDefId) -> &'hir ImplItem<'hir> {
+        match self.tcx.hir_owner(id) {
             Some(Owner { node: OwnerNode::ImplItem(item), .. }) => item,
-            _ => bug!("expected impl item, found {}", self.node_to_string(id)),
+            _ => bug!("expected impl item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
-    pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem<'hir> {
-        match self.tcx.hir_owner(id.expect_owner()) {
+    pub fn expect_trait_item(&self, id: LocalDefId) -> &'hir TraitItem<'hir> {
+        match self.tcx.hir_owner(id) {
             Some(Owner { node: OwnerNode::TraitItem(item), .. }) => item,
-            _ => bug!("expected trait item, found {}", self.node_to_string(id)),
+            _ => bug!("expected trait item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
@@ -889,10 +898,12 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem<'hir> {
-        match self.tcx.hir_owner(id.expect_owner()) {
+    pub fn expect_foreign_item(&self, id: LocalDefId) -> &'hir ForeignItem<'hir> {
+        match self.tcx.hir_owner(id) {
             Some(Owner { node: OwnerNode::ForeignItem(item), .. }) => item,
-            _ => bug!("expected foreign item, found {}", self.node_to_string(id)),
+            _ => {
+                bug!("expected foreign item, found {}", self.node_to_string(HirId::make_owner(id)))
+            }
         }
     }
 

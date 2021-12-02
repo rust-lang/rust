@@ -8,6 +8,8 @@ LL |     let y = x;
 LL | 
 LL |     println!("{}", *x);
    |                    ^^ value borrowed here after move
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

@@ -106,6 +106,7 @@ mod tests;
 
 use crate::io::prelude::*;
 
+use crate::convert::Infallible;
 use crate::ffi::OsStr;
 use crate::fmt;
 use crate::fs;
@@ -1417,6 +1418,11 @@ impl From<fs::File> for Stdio {
 ///
 /// [`status`]: Command::status
 /// [`wait`]: Child::wait
+//
+// We speak slightly loosely (here and in various other places in the stdlib docs) about `exit`
+// vs `_exit`.  Naming of Unix system calls is not standardised across Unices, so terminology is a
+// matter of convention and tradition.  For clarity we usually speak of `exit`, even when we might
+// mean an underlying system call such as `_exit`.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
@@ -2057,6 +2063,14 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
         let Err(err) = self;
         eprintln!("Error: {:?}", err);
         ExitCode::FAILURE.report()
+    }
+}
+
+#[unstable(feature = "termination_trait_lib", issue = "43301")]
+impl<E: fmt::Debug> Termination for Result<Infallible, E> {
+    fn report(self) -> i32 {
+        let Err(err) = self;
+        Err::<!, _>(err).report()
     }
 }
 

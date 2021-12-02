@@ -136,9 +136,10 @@ impl char {
     /// assert_eq!(None, c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
+    #[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
     #[must_use]
     #[inline]
-    pub fn from_u32(i: u32) -> Option<char> {
+    pub const fn from_u32(i: u32) -> Option<char> {
         super::convert::from_u32(i)
     }
 
@@ -178,9 +179,10 @@ impl char {
     /// assert_eq!('❤', c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
+    #[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
     #[must_use]
     #[inline]
-    pub unsafe fn from_u32_unchecked(i: u32) -> char {
+    pub const unsafe fn from_u32_unchecked(i: u32) -> char {
         // SAFETY: the safety contract must be upheld by the caller.
         unsafe { super::convert::from_u32_unchecked(i) }
     }
@@ -235,9 +237,10 @@ impl char {
     /// let _c = char::from_digit(1, 37);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
+    #[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
     #[must_use]
     #[inline]
-    pub fn from_digit(num: u32, radix: u32) -> Option<char> {
+    pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
         super::convert::from_digit(num, radix)
     }
 
@@ -331,10 +334,11 @@ impl char {
     /// let _ = '1'.to_digit(37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
-    pub fn to_digit(self, radix: u32) -> Option<u32> {
+    pub const fn to_digit(self, radix: u32) -> Option<u32> {
         assert!(radix <= 36, "to_digit: radix is too high (maximum 36)");
         // If not a digit, a number greater than radix will be created.
         let mut digit = (self as u32).wrapping_sub('0' as u32);
@@ -345,7 +349,8 @@ impl char {
             // Force the 6th bit to be set to ensure ascii is lower case.
             digit = (self as u32 | 0b10_0000).wrapping_sub('a' as u32).saturating_add(10);
         }
-        (digit < radix).then_some(digit)
+        // FIXME: once then_some is const fn, use it here
+        if digit < radix { Some(digit) } else { None }
     }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
@@ -1245,7 +1250,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = 0x1b_u8.into();
+    /// let esc = '\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_alphabetic());
     /// assert!(uppercase_g.is_ascii_alphabetic());
@@ -1279,7 +1284,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = 0x1b_u8.into();
+    /// let esc = '\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_uppercase());
     /// assert!(uppercase_g.is_ascii_uppercase());
@@ -1313,7 +1318,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = 0x1b_u8.into();
+    /// let esc = '\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_lowercase());
     /// assert!(!uppercase_g.is_ascii_lowercase());
@@ -1350,7 +1355,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = 0x1b_u8.into();
+    /// let esc = '\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_alphanumeric());
     /// assert!(uppercase_g.is_ascii_alphanumeric());
@@ -1384,7 +1389,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = 0x1b_u8.into();
+    /// let esc = '\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_digit());
     /// assert!(!uppercase_g.is_ascii_digit());
@@ -1421,7 +1426,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = 0x1b_u8.into();
+    /// let esc = '\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_hexdigit());
     /// assert!(!uppercase_g.is_ascii_hexdigit());
@@ -1459,7 +1464,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = 0x1b_u8.into();
+    /// let esc = '\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_punctuation());
     /// assert!(!uppercase_g.is_ascii_punctuation());
@@ -1493,7 +1498,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = 0x1b_u8.into();
+    /// let esc = '\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_graphic());
     /// assert!(uppercase_g.is_ascii_graphic());
@@ -1544,7 +1549,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = 0x1b_u8.into();
+    /// let esc = '\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_whitespace());
     /// assert!(!uppercase_g.is_ascii_whitespace());
@@ -1580,7 +1585,7 @@ impl char {
     /// let percent = '%';
     /// let space = ' ';
     /// let lf = '\n';
-    /// let esc: char = 0x1b_u8.into();
+    /// let esc = '\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_control());
     /// assert!(!uppercase_g.is_ascii_control());

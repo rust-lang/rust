@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | pub static C: S = S(f);
    |                     ^ expected struct `Box`, found fn item
    |
-   = note: expected struct `Box<(dyn FnMut() + 'static)>`
+   = note: expected struct `Box<(dyn FnMut() + Sync + 'static)>`
              found fn item `fn() {f}`
 
 error[E0308]: mismatched types
@@ -13,7 +13,7 @@ error[E0308]: mismatched types
 LL | pub static D: T = g;
    |                   ^ expected struct `Box`, found fn item
    |
-   = note: expected struct `Box<(dyn FnMut() + 'static)>`
+   = note: expected struct `Box<(dyn FnMut() + Sync + 'static)>`
              found fn item `fn() {g}`
 
 error: aborting due to 2 previous errors

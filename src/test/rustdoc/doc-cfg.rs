@@ -96,6 +96,6 @@ pub fn uses_cfg_target_feature() {
 // @has doc_cfg/fn.multiple_attrs.html \
 //  '//*[@id="main"]/*[@class="item-info"]/*[@class="stab portability"]' \
 //  'This is supported on x and y and z only.'
-#[doc(inline, cfg(x))]
+#[doc(cfg(x))]
 #[doc(cfg(y), cfg(z))]
 pub fn multiple_attrs() {}

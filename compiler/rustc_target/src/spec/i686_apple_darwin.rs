@@ -5,6 +5,7 @@ pub fn target() -> Target {
     base.cpu = "yonah".to_string();
     base.max_atomic_width = Some(64);
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m32".to_string()]);
+    base.link_env.extend(super::apple_base::macos_link_env("i686"));
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;

@@ -212,7 +212,8 @@ impl AssocOp {
     /// parentheses while having a high degree of confidence on the correctness of the suggestion.
     pub fn can_continue_expr_unambiguously(&self) -> bool {
         use AssocOp::*;
-        match self {
+        matches!(
+            self,
             BitXor | // `{ 42 } ^ 3`
             Assign | // `{ 42 } = { 42 }`
             Divide | // `{ 42 } / 42`
@@ -225,9 +226,8 @@ impl AssocOp {
             As | // `{ 42 } as usize`
             // Equal | // `{ 42 } == { 42 }`    Accepting these here would regress incorrect
             // NotEqual | // `{ 42 } != { 42 }  struct literals parser recovery.
-            Colon => true, // `{ 42 }: usize`
-            _ => false,
-        }
+            Colon, // `{ 42 }: usize`
+        )
     }
 }
 

@@ -10,7 +10,7 @@ note: while checking the return type of the `async fn`
 LL | async fn make_u32() -> u32 {
    |                        ^^^ checked the `Output` of this `async fn`, found opaque type
    = note:     expected type `u32`
-           found opaque type `impl Future`
+           found opaque type `impl Future<Output = u32>`
 help: consider `await`ing on the `Future`
    |
 LL |     take_u32(x.await)
@@ -28,7 +28,7 @@ note: while checking the return type of the `async fn`
 LL | async fn dummy() {}
    |                  ^ checked the `Output` of this `async fn`, found opaque type
    = note: expected unit type `()`
-            found opaque type `impl Future`
+            found opaque type `impl Future<Output = ()>`
 help: consider `await`ing on the `Future`
    |
 LL |     dummy().await
@@ -38,6 +38,110 @@ help: consider using a semicolon here
 LL |     dummy();
    |            +
 
-error: aborting due to 2 previous errors
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/suggest-missing-await.rs:35:9
+   |
+LL |       let _x = if true {
+   |  ______________-
+LL | |         dummy()
+   | |         ------- expected because of this
+LL | |
+LL | |     } else {
+LL | |         dummy().await
+   | |         ^^^^^^^^^^^^^ expected opaque type, found `()`
+LL | |
+LL | |     };
+   | |_____- `if` and `else` have incompatible types
+   |
+   = note:   expected type `impl Future<Output = ()>`
+           found unit type `()`
+help: consider `await`ing on the `Future`
+   |
+LL |         dummy().await
+   |                ++++++
+
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/suggest-missing-await.rs:45:14
+   |
+LL |       let _x = match 0usize {
+   |  ______________-
+LL | |         0 => dummy(),
+   | |              ------- this is found to be of type `impl Future<Output = ()>`
+LL | |         1 => dummy(),
+   | |              ------- this is found to be of type `impl Future<Output = ()>`
+LL | |         2 => dummy().await,
+   | |              ^^^^^^^^^^^^^ expected opaque type, found `()`
+LL | |
+LL | |     };
+   | |_____- `match` arms have incompatible types
+   |
+note: while checking the return type of the `async fn`
+  --> $DIR/suggest-missing-await.rs:18:18
+   |
+LL | async fn dummy() {}
+   |                  ^ checked the `Output` of this `async fn`, expected opaque type
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
+help: consider `await`ing on the `Future`
+   |
+LL ~         0 => dummy().await,
+LL ~         1 => dummy().await,
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:53:9
+   |
+LL |         () => {}
+   |         ^^ expected opaque type, found `()`
+   |
+note: while checking the return type of the `async fn`
+  --> $DIR/suggest-missing-await.rs:18:18
+   |
+LL | async fn dummy() {}
+   |                  ^ checked the `Output` of this `async fn`, expected opaque type
+   = note: expected opaque type `impl Future<Output = ()>`
+                found unit type `()`
+help: consider `await`ing on the `Future`
+   |
+LL |     let _x = match dummy().await {
+   |                           ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:67:9
+   |
+LL |         Ok(_) => {}
+   |         ^^^^^ expected opaque type, found enum `Result`
+   |
+note: while checking the return type of the `async fn`
+  --> $DIR/suggest-missing-await.rs:57:28
+   |
+LL | async fn dummy_result() -> Result<(), ()> {
+   |                            ^^^^^^^^^^^^^^ checked the `Output` of this `async fn`, expected opaque type
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
+                     found enum `Result<_, _>`
+help: consider `await`ing on the `Future`
+   |
+LL |     match dummy_result().await {
+   |                         ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:69:9
+   |
+LL |         Err(_) => {}
+   |         ^^^^^^ expected opaque type, found enum `Result`
+   |
+note: while checking the return type of the `async fn`
+  --> $DIR/suggest-missing-await.rs:57:28
+   |
+LL | async fn dummy_result() -> Result<(), ()> {
+   |                            ^^^^^^^^^^^^^^ checked the `Output` of this `async fn`, expected opaque type
+   = note: expected opaque type `impl Future<Output = Result<(), ()>>`
+                     found enum `Result<_, _>`
+help: consider `await`ing on the `Future`
+   |
+LL |     match dummy_result().await {
+   |                         ++++++
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

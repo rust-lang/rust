@@ -61,7 +61,6 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             cause: self.cause,
             param_env: self.param_env,
             obligations: vec![],
-            error: false,
             cache: SsoHashMap::new(),
             anon_depth: 0,
             universes: vec![],
@@ -100,11 +99,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             std::any::type_name::<T>(),
             normalizer.obligations,
         );
-        if normalizer.error {
-            Err(NoSolution)
-        } else {
-            Ok(Normalized { value: result, obligations: normalizer.obligations })
-        }
+        result.map(|value| Normalized { value, obligations: normalizer.obligations })
     }
 }
 
@@ -171,12 +166,13 @@ struct QueryNormalizer<'cx, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
     cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
-    error: bool,
     anon_depth: usize,
     universes: Vec<Option<ty::UniverseIndex>>,
 }
 
 impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
+    type Error = NoSolution;
+
     fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -184,7 +180,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     fn fold_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
-    ) -> ty::Binder<'tcx, T> {
+    ) -> Result<ty::Binder<'tcx, T>, Self::Error> {
         self.universes.push(None);
         let t = t.super_fold_with(self);
         self.universes.pop();
@@ -192,13 +188,13 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if !needs_normalization(&ty, self.param_env.reveal()) {
-            return ty;
+            return Ok(ty);
         }
 
         if let Some(ty) = self.cache.get(&ty) {
-            return ty;
+            return Ok(ty);
         }
 
         // See note in `rustc_trait_selection::traits::project` about why we
@@ -215,7 +211,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     Reveal::UserFacing => ty.super_fold_with(self),
 
                     Reveal::All => {
-                        let substs = substs.super_fold_with(self);
+                        let substs = substs.super_fold_with(self)?;
                         let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
                             let obligation = Obligation::with_depth(
@@ -252,7 +248,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 // we don't need to replace them with placeholders (see branch below).
 
                 let tcx = self.infcx.tcx;
-                let data = data.super_fold_with(self);
+                let data = data.super_fold_with(self)?;
 
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
@@ -262,39 +258,22 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     .canonicalize_query_keep_static(self.param_env.and(data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
-                match tcx.normalize_projection_ty(c_data) {
-                    Ok(result) => {
-                        // We don't expect ambiguity.
-                        if result.is_ambiguous() {
-                            self.error = true;
-                            return ty.super_fold_with(self);
-                        }
-
-                        match self.infcx.instantiate_query_response_and_region_obligations(
-                            self.cause,
-                            self.param_env,
-                            &orig_values,
-                            result,
-                        ) {
-                            Ok(InferOk { value: result, obligations }) => {
-                                debug!("QueryNormalizer: result = {:#?}", result);
-                                debug!("QueryNormalizer: obligations = {:#?}", obligations);
-                                self.obligations.extend(obligations);
-                                result.normalized_ty
-                            }
-
-                            Err(_) => {
-                                self.error = true;
-                                ty.super_fold_with(self)
-                            }
-                        }
-                    }
-
-                    Err(NoSolution) => {
-                        self.error = true;
-                        ty.super_fold_with(self)
-                    }
+                let result = tcx.normalize_projection_ty(c_data)?;
+                // We don't expect ambiguity.
+                if result.is_ambiguous() {
+                    return Err(NoSolution);
                 }
+                let InferOk { value: result, obligations } =
+                    self.infcx.instantiate_query_response_and_region_obligations(
+                        self.cause,
+                        self.param_env,
+                        &orig_values,
+                        result,
+                    )?;
+                debug!("QueryNormalizer: result = {:#?}", result);
+                debug!("QueryNormalizer: obligations = {:#?}", obligations);
+                self.obligations.extend(obligations);
+                Ok(result.normalized_ty)
             }
 
             ty::Projection(data) => {
@@ -308,7 +287,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         &mut self.universes,
                         data,
                     );
-                let data = data.super_fold_with(self);
+                let data = data.super_fold_with(self)?;
 
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
@@ -318,57 +297,49 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     .canonicalize_query_keep_static(self.param_env.and(data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
-                match tcx.normalize_projection_ty(c_data) {
-                    Ok(result) => {
-                        // We don't expect ambiguity.
-                        if result.is_ambiguous() {
-                            self.error = true;
-                            return ty.super_fold_with(self);
-                        }
-                        match self.infcx.instantiate_query_response_and_region_obligations(
-                            self.cause,
-                            self.param_env,
-                            &orig_values,
-                            result,
-                        ) {
-                            Ok(InferOk { value: result, obligations }) => {
-                                debug!("QueryNormalizer: result = {:#?}", result);
-                                debug!("QueryNormalizer: obligations = {:#?}", obligations);
-                                self.obligations.extend(obligations);
-                                crate::traits::project::PlaceholderReplacer::replace_placeholders(
-                                    infcx,
-                                    mapped_regions,
-                                    mapped_types,
-                                    mapped_consts,
-                                    &self.universes,
-                                    result.normalized_ty,
-                                )
-                            }
-                            Err(_) => {
-                                self.error = true;
-                                ty.super_fold_with(self)
-                            }
-                        }
-                    }
-                    Err(NoSolution) => {
-                        self.error = true;
-                        ty.super_fold_with(self)
-                    }
+                let result = tcx.normalize_projection_ty(c_data)?;
+                // We don't expect ambiguity.
+                if result.is_ambiguous() {
+                    return Err(NoSolution);
                 }
+                let InferOk { value: result, obligations } =
+                    self.infcx.instantiate_query_response_and_region_obligations(
+                        self.cause,
+                        self.param_env,
+                        &orig_values,
+                        result,
+                    )?;
+                debug!("QueryNormalizer: result = {:#?}", result);
+                debug!("QueryNormalizer: obligations = {:#?}", obligations);
+                self.obligations.extend(obligations);
+                Ok(crate::traits::project::PlaceholderReplacer::replace_placeholders(
+                    infcx,
+                    mapped_regions,
+                    mapped_types,
+                    mapped_consts,
+                    &self.universes,
+                    result.normalized_ty,
+                ))
             }
 
             _ => ty.super_fold_with(self),
-        })();
+        })()?;
         self.cache.insert(ty, res);
-        res
+        Ok(res)
     }
 
-    fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        let constant = constant.super_fold_with(self);
-        constant.eval(self.infcx.tcx, self.param_env)
+    fn fold_const(
+        &mut self,
+        constant: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+        let constant = constant.super_fold_with(self)?;
+        Ok(constant.eval(self.infcx.tcx, self.param_env))
     }
 
-    fn fold_mir_const(&mut self, constant: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+    fn fold_mir_const(
+        &mut self,
+        constant: mir::ConstantKind<'tcx>,
+    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
         constant.super_fold_with(self)
     }
 }

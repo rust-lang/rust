@@ -11,7 +11,7 @@ use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, DefIdTree};
+use rustc_middle::ty::DefIdTree;
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -420,6 +420,10 @@ impl<'a> Resolver<'a> {
                 err.span_label(span, label);
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
+                    if suggestions.is_empty() {
+                        err.help(&msg);
+                        return err;
+                    }
                     err.multipart_suggestion(&msg, suggestions, applicability);
                 }
 
@@ -446,12 +450,24 @@ impl<'a> Resolver<'a> {
                 // let foo =...
                 //     ^^^ given this Span
                 // ------- get this Span to have an applicable suggestion
+
+                // edit:
+                // only do this if the const and usage of the non-constant value are on the same line
+                // the further the two are apart, the higher the chance of the suggestion being wrong
+                // also make sure that the pos for the suggestion is not 0 (ICE #90878)
+
                 let sp =
                     self.session.source_map().span_extend_to_prev_str(ident.span, current, true);
-                if sp.lo().0 == 0 {
+
+                let pos_for_suggestion = sp.lo().0.saturating_sub(current.len() as u32);
+
+                if sp.lo().0 == 0
+                    || pos_for_suggestion == 0
+                    || self.session.source_map().is_multiline(sp)
+                {
                     err.span_label(ident.span, &format!("this would need to be a `{}`", sugg));
                 } else {
-                    let sp = sp.with_lo(BytePos(sp.lo().0 - current.len() as u32));
+                    let sp = sp.with_lo(BytePos(pos_for_suggestion));
                     err.span_suggestion(
                         sp,
                         &format!("consider using `{}` instead of `{}`", sugg, current),
@@ -727,7 +743,7 @@ impl<'a> Resolver<'a> {
                         suggestions.extend(
                             BUILTIN_ATTRIBUTES
                                 .iter()
-                                .map(|(name, ..)| TypoSuggestion::typo_from_res(*name, res)),
+                                .map(|attr| TypoSuggestion::typo_from_res(attr.name, res)),
                         );
                     }
                 }
@@ -1162,7 +1178,7 @@ impl<'a> Resolver<'a> {
 
     fn binding_description(&self, b: &NameBinding<'_>, ident: Ident, from_prelude: bool) -> String {
         let res = b.res();
-        if b.span.is_dummy() {
+        if b.span.is_dummy() || self.session.source_map().span_to_snippet(b.span).is_err() {
             // These already contain the "built-in" prefix or look bad with it.
             let add_built_in =
                 !matches!(b.res(), Res::NonMacroAttr(..) | Res::PrimTy(..) | Res::ToolMod);
@@ -1304,7 +1320,7 @@ impl<'a> Resolver<'a> {
             );
             let def_span = self.session.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
-            if !first && binding.vis == ty::Visibility::Public {
+            if !first && binding.vis.is_public() {
                 note_span.push_span_label(def_span, "consider importing it directly".into());
             }
             err.span_note(note_span, &msg);

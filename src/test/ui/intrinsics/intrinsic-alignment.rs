@@ -15,6 +15,7 @@ mod rusti {
           target_os = "emscripten",
           target_os = "freebsd",
           target_os = "fuchsia",
+          target_os = "illumos",
           target_os = "linux",
           target_os = "macos",
           target_os = "netbsd",

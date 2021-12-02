@@ -4,7 +4,7 @@ error: lifetime may not live long enough
 LL |     let _ = foo(|x| bar(x));
    |                  -- ^^^^^^ returning this value requires that `'1` must outlive `'2`
    |                  ||
-   |                  |return type of closure `impl Future` contains a lifetime `'2`
+   |                  |return type of closure `impl Future<Output = ()>` contains a lifetime `'2`
    |                  has type `&'1 u8`
 
 error: aborting due to previous error

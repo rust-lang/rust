@@ -13,7 +13,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{sym, DesugaringKind, Span};
 
 use crate::region_infer::BlameConstraint;
 use crate::{
@@ -53,10 +53,7 @@ pub(crate) enum LaterUseKind {
 
 impl BorrowExplanation {
     pub(crate) fn is_explained(&self) -> bool {
-        match self {
-            BorrowExplanation::Unexplained => false,
-            _ => true,
-        }
+        !matches!(self, BorrowExplanation::Unexplained)
     }
     pub(crate) fn add_explanation_to_diagnostic<'tcx>(
         &self,
@@ -138,7 +135,16 @@ impl BorrowExplanation {
                 should_note_order,
             } => {
                 let local_decl = &body.local_decls[dropped_local];
-                let (dtor_desc, type_desc) = match local_decl.ty.kind() {
+                let mut ty = local_decl.ty;
+                if local_decl.source_info.span.desugaring_kind() == Some(DesugaringKind::ForLoop) {
+                    if let ty::Adt(adt, substs) = local_decl.ty.kind() {
+                        if tcx.is_diagnostic_item(sym::Option, adt.did) {
+                            // in for loop desugaring, only look at the `Some(..)` inner type
+                            ty = substs.type_at(0);
+                        }
+                    }
+                }
+                let (dtor_desc, type_desc) = match ty.kind() {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
                     ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => {

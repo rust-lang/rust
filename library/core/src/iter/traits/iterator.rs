@@ -249,9 +249,6 @@ pub trait Iterator {
     /// Calling `advance_by(0)` can do meaningful work, for example [`Flatten`]
     /// can advance its outer iterator until it finds an inner iterator that is not empty, which
     /// then often allows it to return a more accurate `size_hint()` than in its initial state.
-    /// `advance_by(0)` may either return `Ok()` or `Err(0)`. The former conveys no information
-    /// whether the iterator is or is not exhausted, the latter can be treated as if [`next`]
-    /// had returned `None`. Replacing a `Err(0)` with `Ok` is only correct for `n = 0`.
     ///
     /// [`Flatten`]: crate::iter::Flatten
     /// [`next`]: Iterator::next
@@ -461,8 +458,10 @@ pub trait Iterator {
     /// In other words, it zips two iterators together, into a single one.
     ///
     /// If either iterator returns [`None`], [`next`] from the zipped iterator
-    /// will return [`None`]. If the first iterator returns [`None`], `zip` will
-    /// short-circuit and `next` will not be called on the second iterator.
+    /// will return [`None`].
+    /// If the zipped iterator has no more elements to return then each further attempt to advance
+    /// it will first try to advance the first iterator at most one time and if it still yielded an item
+    /// try to advance the second iterator at most one time.
     ///
     /// # Examples
     ///
@@ -1024,6 +1023,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
+    #[doc(alias = "drop_while")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn skip_while<P>(self, predicate: P) -> SkipWhile<Self, P>
     where

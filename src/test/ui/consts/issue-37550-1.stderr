@@ -1,0 +1,12 @@
+error[E0658]: function pointers cannot appear in constant functions
+  --> $DIR/issue-37550-1.rs:3:9
+   |
+LL |     let x = || t;
+   |         ^
+   |
+   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = help: add `#![feature(const_fn_fn_ptr_basics)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

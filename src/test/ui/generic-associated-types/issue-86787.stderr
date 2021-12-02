@@ -1,32 +1,10 @@
-error: `impl` associated type signature for `TRef` doesn't match `trait` associated type signature
-  --> $DIR/issue-86787.rs:23:5
+error: Missing required bounds on TRef
+  --> $DIR/issue-86787.rs:11:5
    |
-LL |       type TRef<'a>;
-   |       -------------- expected
-...
-LL | /     type TRef<'a>
-LL | |
-LL | |
-LL | |     where
-LL | |     <Left as HasChildrenOf>::T: 'a,
-LL | |     <Right as HasChildrenOf>::T: 'a
-LL | |     = Either<&'a Left::T, &'a Right::T>;
-   | |________________________________________^ found
+LL |     type TRef<'a>;
+   |     ^^^^^^^^^^^^^-
+   |                  |
+   |                  help: add the required where clauses: `where Self: 'a`
 
-error: `impl` associated type signature for `TRef` doesn't match `trait` associated type signature
-  --> $DIR/issue-86787.rs:23:5
-   |
-LL |       type TRef<'a>;
-   |       -------------- expected
-...
-LL | /     type TRef<'a>
-LL | |
-LL | |
-LL | |     where
-LL | |     <Left as HasChildrenOf>::T: 'a,
-LL | |     <Right as HasChildrenOf>::T: 'a
-LL | |     = Either<&'a Left::T, &'a Right::T>;
-   | |________________________________________^ found
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

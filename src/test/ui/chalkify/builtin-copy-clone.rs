@@ -23,11 +23,12 @@ fn test_copy_clone<T: Copy + Clone>(arg: T) {
 fn foo() { }
 
 fn main() {
+    // FIXME: add closures when they're considered WF
     test_copy_clone(foo);
     let f: fn() = foo;
     test_copy_clone(f);
-    // FIXME: add closures when they're considered WF
-    test_copy_clone([1; 56]);
+    // FIXME(#86252): reinstate array test after chalk upgrade
+    //test_copy_clone([1; 56]);
     test_copy_clone((1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1));
     test_copy_clone((1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, true, 'a', 1.1));
     test_copy_clone(());

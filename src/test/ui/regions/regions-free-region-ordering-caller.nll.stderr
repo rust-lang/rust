@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-free-region-ordering-caller.rs:11:12
+  --> $DIR/regions-free-region-ordering-caller.rs:16:12
    |
 LL | fn call2<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          --  -- lifetime `'b` defined here
@@ -11,7 +11,7 @@ LL |     let z: Option<&'b &'a usize> = None;
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/regions-free-region-ordering-caller.rs:17:12
+  --> $DIR/regions-free-region-ordering-caller.rs:22:12
    |
 LL | fn call3<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          --  -- lifetime `'b` defined here
@@ -24,7 +24,7 @@ LL |     let z: Option<&'b Paramd<'a>> = None;
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/regions-free-region-ordering-caller.rs:22:12
+  --> $DIR/regions-free-region-ordering-caller.rs:27:12
    |
 LL | fn call4<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          --  -- lifetime `'b` defined here

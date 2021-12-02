@@ -75,7 +75,9 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.print_llvm_passes() {
             add("-debug-pass=Structure", false);
         }
-        if !sess.opts.debugging_opts.no_generate_arange_section {
+        if sess.target.generate_arange_section
+            && !sess.opts.debugging_opts.no_generate_arange_section
+        {
             add("-generate-arange-section", false);
         }
 
@@ -113,11 +115,6 @@ unsafe fn configure_llvm(sess: &Session) {
     }
 
     if sess.opts.debugging_opts.llvm_time_trace {
-        // time-trace is not thread safe and running it in parallel will cause seg faults.
-        if !sess.opts.debugging_opts.no_parallel_llvm {
-            bug!("`-Z llvm-time-trace` requires `-Z no-parallel-llvm")
-        }
-
         llvm::LLVMTimeTraceProfilerInitialize();
     }
 
@@ -180,6 +177,7 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> Vec<&'a str> {
         ("aarch64", "dpb2") => vec!["ccdp"],
         ("aarch64", "frintts") => vec!["fptoint"],
         ("aarch64", "fcma") => vec!["complxnum"],
+        ("aarch64", "pmuv3") => vec!["perfmon"],
         (_, s) => vec![s],
     }
 }
@@ -404,11 +402,6 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
 
     // -Ctarget-features
     features.extend(sess.opts.cg.target_feature.split(',').flat_map(&filter));
-
-    // FIXME: Move outline-atomics to target definition when earliest supported LLVM is 12.
-    if get_version() >= (12, 0, 0) && sess.target.llvm_target.contains("aarch64-unknown-linux") {
-        features.push("+outline-atomics".to_string());
-    }
 
     features
 }

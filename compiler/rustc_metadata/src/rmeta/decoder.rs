@@ -1179,7 +1179,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                             let ctor_res =
                                 Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id);
                             let mut vis = self.get_visibility(ctor_def_id.index);
-                            if ctor_def_id == def_id && vis == ty::Visibility::Public {
+                            if ctor_def_id == def_id && vis.is_public() {
                                 // For non-exhaustive variants lower the constructor visibility to
                                 // within the crate. We only need this for fictive constructors,
                                 // for other constructors correct visibilities

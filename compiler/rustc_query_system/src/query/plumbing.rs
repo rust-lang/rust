@@ -18,6 +18,7 @@ use rustc_data_structures::sharded::{get_shard_index_by_hash, Sharded};
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagnosticBuilder, FatalError};
+use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -518,9 +519,22 @@ where
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         if let Some(result) = result {
+            let prev_fingerprint = tcx
+                .dep_context()
+                .dep_graph()
+                .prev_fingerprint_of(dep_node)
+                .unwrap_or(Fingerprint::ZERO);
             // If `-Zincremental-verify-ich` is specified, re-hash results from
             // the cache and make sure that they have the expected fingerprint.
-            if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
+            //
+            // If not, we still seek to verify a subset of fingerprints loaded
+            // from disk. Re-hashing results is fairly expensive, so we can't
+            // currently afford to verify every hash. This subset should still
+            // give us some coverage of potential bugs though.
+            let try_verify = prev_fingerprint.as_value().1 % 32 == 0;
+            if unlikely!(
+                try_verify || tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich
+            ) {
                 incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
             }
 
@@ -582,38 +596,86 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
     debug!("END verify_ich({:?})", dep_node);
 
     if Some(new_hash) != old_hash {
-        let run_cmd = if let Some(crate_name) = &tcx.sess().opts.crate_name {
-            format!("`cargo clean -p {}` or `cargo clean`", crate_name)
-        } else {
-            "`cargo clean`".to_string()
-        };
+        incremental_verify_ich_cold(tcx.sess(), DebugArg::from(&dep_node), DebugArg::from(&result));
+    }
+}
 
-        // When we emit an error message and panic, we try to debug-print the `DepNode`
-        // and query result. Unforunately, this can cause us to run additional queries,
-        // which may result in another fingerprint mismatch while we're in the middle
-        // of processing this one. To avoid a double-panic (which kills the process
-        // before we can print out the query static), we print out a terse
-        // but 'safe' message if we detect a re-entrant call to this method.
-        thread_local! {
-            static INSIDE_VERIFY_PANIC: Cell<bool> = const { Cell::new(false) };
-        };
+// This DebugArg business is largely a mirror of std::fmt::ArgumentV1, which is
+// currently not exposed publicly.
+//
+// The PR which added this attempted to use `&dyn Debug` instead, but that
+// showed statistically significant worse compiler performance. It's not
+// actually clear what the cause there was -- the code should be cold. If this
+// can be replaced with `&dyn Debug` with on perf impact, then it probably
+// should be.
+extern "C" {
+    type Opaque;
+}
 
-        let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
+struct DebugArg<'a> {
+    value: &'a Opaque,
+    fmt: fn(&Opaque, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
+}
 
-        if old_in_panic {
-            tcx.sess().struct_err("internal compiler error: re-entrant incremental verify failure, suppressing message")
-                .emit();
-        } else {
-            tcx.sess().struct_err(&format!("internal compiler error: encountered incremental compilation error with {:?}", dep_node))
+impl<'a, T> From<&'a T> for DebugArg<'a>
+where
+    T: std::fmt::Debug,
+{
+    fn from(value: &'a T) -> DebugArg<'a> {
+        DebugArg {
+            value: unsafe { std::mem::transmute(value) },
+            fmt: unsafe {
+                std::mem::transmute(<T as std::fmt::Debug>::fmt as fn(_, _) -> std::fmt::Result)
+            },
+        }
+    }
+}
+
+impl std::fmt::Debug for DebugArg<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        (self.fmt)(self.value, f)
+    }
+}
+
+// Note that this is marked #[cold] and intentionally takes the equivalent of
+// `dyn Debug` for its arguments, as we want to avoid generating a bunch of
+// different implementations for LLVM to chew on (and filling up the final
+// binary, too).
+#[cold]
+fn incremental_verify_ich_cold(sess: &Session, dep_node: DebugArg<'_>, result: DebugArg<'_>) {
+    let run_cmd = if let Some(crate_name) = &sess.opts.crate_name {
+        format!("`cargo clean -p {}` or `cargo clean`", crate_name)
+    } else {
+        "`cargo clean`".to_string()
+    };
+
+    // When we emit an error message and panic, we try to debug-print the `DepNode`
+    // and query result. Unfortunately, this can cause us to run additional queries,
+    // which may result in another fingerprint mismatch while we're in the middle
+    // of processing this one. To avoid a double-panic (which kills the process
+    // before we can print out the query static), we print out a terse
+    // but 'safe' message if we detect a re-entrant call to this method.
+    thread_local! {
+        static INSIDE_VERIFY_PANIC: Cell<bool> = const { Cell::new(false) };
+    };
+
+    let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
+
+    if old_in_panic {
+        sess.struct_err(
+            "internal compiler error: re-entrant incremental verify failure, suppressing message",
+        )
+        .emit();
+    } else {
+        sess.struct_err(&format!("internal compiler error: encountered incremental compilation error with {:?}", dep_node))
                 .help(&format!("This is a known issue with the compiler. Run {} to allow your project to compile", run_cmd))
                 .note(&"Please follow the instructions below to create a bug report with the provided information")
                 .note(&"See <https://github.com/rust-lang/rust/issues/84970> for more information")
                 .emit();
-            panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
-        }
-
-        INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));
+        panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
     }
+
+    INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));
 }
 
 /// Ensure that either this query has all green inputs or been executed.

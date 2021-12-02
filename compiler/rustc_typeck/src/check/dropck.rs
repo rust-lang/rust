@@ -113,9 +113,10 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             }
         }
 
-        if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
+        let errors = fulfillment_cx.select_all_or_error(&infcx);
+        if !errors.is_empty() {
             // this could be reached when we get lazy normalization
-            infcx.report_fulfillment_errors(errors, None, false);
+            infcx.report_fulfillment_errors(&errors, None, false);
             return Err(ErrorReported);
         }
 
@@ -239,8 +240,12 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                     ty::PredicateKind::ConstEvaluatable(a),
                     ty::PredicateKind::ConstEvaluatable(b),
                 ) => tcx.try_unify_abstract_consts((a, b)),
-                (ty::PredicateKind::TypeOutlives(a), ty::PredicateKind::TypeOutlives(b)) => {
-                    relator.relate(predicate.rebind(a.0), p.rebind(b.0)).is_ok()
+                (
+                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_a, lt_a)),
+                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_b, lt_b)),
+                ) => {
+                    relator.relate(predicate.rebind(ty_a), p.rebind(ty_b)).is_ok()
+                        && relator.relate(predicate.rebind(lt_a), p.rebind(lt_b)).is_ok()
                 }
                 _ => predicate == p,
             }

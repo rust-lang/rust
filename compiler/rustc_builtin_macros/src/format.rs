@@ -88,8 +88,8 @@ struct Context<'a, 'b> {
     /// * Implicit argument resolution: `"{1:.0$} {2:.foo$} {1:.3$} {4:.0$}"`
     /// * Name resolution: `"{1:.0$} {2:.5$} {1:.3$} {4:.0$}"`
     /// * `count_positions` (in JSON): `{0: 0, 5: 1, 3: 2}`
-    /// * `count_args`: `vec![Exact(0), Exact(5), Exact(3)]`
-    count_args: Vec<Position>,
+    /// * `count_args`: `vec![0, 5, 3]`
+    count_args: Vec<usize>,
     /// Relative slot numbers for count arguments.
     count_positions: FxHashMap<usize, usize>,
     /// Number of count slots assigned.
@@ -513,7 +513,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         if let Entry::Vacant(e) = self.count_positions.entry(arg) {
                             let i = self.count_positions_count;
                             e.insert(i);
-                            self.count_args.push(Exact(arg));
+                            self.count_args.push(arg);
                             self.count_positions_count += 1;
                         }
                     }
@@ -527,17 +527,9 @@ impl<'a, 'b> Context<'a, 'b> {
                         self.verify_arg_type(Exact(idx), ty)
                     }
                     None => {
-                        let capture_feature_enabled = self
-                            .ecx
-                            .ecfg
-                            .features
-                            .map_or(false, |features| features.format_args_capture);
-
                         // For the moment capturing variables from format strings expanded from macros is
                         // disabled (see RFC #2795)
-                        let can_capture = capture_feature_enabled && self.is_literal;
-
-                        if can_capture {
+                        if self.is_literal {
                             // Treat this name as a variable to capture from the surrounding scope
                             let idx = self.args.len();
                             self.arg_types.push(Vec::new());
@@ -559,23 +551,15 @@ impl<'a, 'b> Context<'a, 'b> {
                             };
                             let mut err = self.ecx.struct_span_err(sp, &msg[..]);
 
-                            if capture_feature_enabled && !self.is_literal {
-                                err.note(&format!(
-                                    "did you intend to capture a variable `{}` from \
-                                     the surrounding scope?",
-                                    name
-                                ));
-                                err.note(
-                                    "to avoid ambiguity, `format_args!` cannot capture variables \
-                                     when the format string is expanded from a macro",
-                                );
-                            } else if self.ecx.parse_sess().unstable_features.is_nightly_build() {
-                                err.help(&format!(
-                                    "if you intended to capture `{}` from the surrounding scope, add \
-                                     `#![feature(format_args_capture)]` to the crate attributes",
-                                    name
-                                ));
-                            }
+                            err.note(&format!(
+                                "did you intend to capture a variable `{}` from \
+                                 the surrounding scope?",
+                                name
+                            ));
+                            err.note(
+                                "to avoid ambiguity, `format_args!` cannot capture variables \
+                                 when the format string is expanded from a macro",
+                            );
 
                             err.emit();
                         }
@@ -760,15 +744,10 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Actually builds the expression which the format_args! block will be
     /// expanded to.
     fn into_expr(self) -> P<ast::Expr> {
-        let mut locals =
-            Vec::with_capacity((0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum());
-        let mut counts = Vec::with_capacity(self.count_args.len());
-        let mut pats = Vec::with_capacity(self.args.len());
+        let mut args = Vec::with_capacity(
+            self.arg_unique_types.iter().map(|v| v.len()).sum::<usize>() + self.count_args.len(),
+        );
         let mut heads = Vec::with_capacity(self.args.len());
-
-        let names_pos: Vec<_> = (0..self.args.len())
-            .map(|i| Ident::from_str_and_span(&format!("arg{}", i), self.macsp))
-            .collect();
 
         // First, build up the static array which will become our precompiled
         // format "string"
@@ -787,28 +766,20 @@ impl<'a, 'b> Context<'a, 'b> {
         // of each variable because we don't want to move out of the arguments
         // passed to this function.
         for (i, e) in self.args.into_iter().enumerate() {
-            let name = names_pos[i];
-            let span = self.ecx.with_def_site_ctxt(e.span);
-            pats.push(self.ecx.pat_ident(span, name));
             for arg_ty in self.arg_unique_types[i].iter() {
-                locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));
+                args.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, i));
             }
-            heads.push(self.ecx.expr_addr_of(e.span, e));
+            // use the arg span for `&arg` so that borrowck errors
+            // point to the specific expression passed to the macro
+            // (the span is otherwise unavailable in MIR)
+            heads.push(self.ecx.expr_addr_of(e.span.with_ctxt(self.macsp.ctxt()), e));
         }
-        for pos in self.count_args {
-            let index = match pos {
-                Exact(i) => i,
-                _ => panic!("should never happen"),
-            };
-            let name = names_pos[index];
+        for index in self.count_args {
             let span = spans_pos[index];
-            counts.push(Context::format_arg(self.ecx, self.macsp, span, &Count, name));
+            args.push(Context::format_arg(self.ecx, self.macsp, span, &Count, index));
         }
 
-        // Now create a vector containing all the arguments
-        let args = locals.into_iter().chain(counts.into_iter());
-
-        let args_array = self.ecx.expr_vec(self.macsp, args.collect());
+        let args_array = self.ecx.expr_vec(self.macsp, args);
 
         // Constructs an AST equivalent to:
         //
@@ -838,7 +809,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // But the nested match expression is proved to perform not as well
         // as series of let's; the first approach does.
         let args_match = {
-            let pat = self.ecx.pat_tuple(self.macsp, pats);
+            let pat = self.ecx.pat_ident(self.macsp, Ident::new(sym::_args, self.macsp));
             let arm = self.ecx.arm(self.macsp, pat, args_array);
             let head = self.ecx.expr(self.macsp, ast::ExprKind::Tup(heads));
             self.ecx.expr_match(self.macsp, head, vec![arm])
@@ -877,10 +848,11 @@ impl<'a, 'b> Context<'a, 'b> {
         macsp: Span,
         mut sp: Span,
         ty: &ArgumentType,
-        arg: Ident,
+        arg_index: usize,
     ) -> P<ast::Expr> {
         sp = ecx.with_def_site_ctxt(sp);
-        let arg = ecx.expr_ident(sp, arg);
+        let arg = ecx.expr_ident(sp, Ident::new(sym::_args, sp));
+        let arg = ecx.expr(sp, ast::ExprKind::Field(arg, Ident::new(sym::integer(arg_index), sp)));
         let trait_ = match *ty {
             Placeholder(trait_) if trait_ == "<invalid>" => return DummyResult::raw_expr(sp, true),
             Placeholder(trait_) => trait_,

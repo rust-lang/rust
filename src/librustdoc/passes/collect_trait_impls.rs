@@ -57,6 +57,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
 
     // Follow all `Deref` targets of included items and recursively add them as valid
     fn add_deref_target(
+        cx: &DocContext<'_>,
         map: &FxHashMap<DefId, &Type>,
         cleaner: &mut BadImplStripper,
         type_did: DefId,
@@ -65,14 +66,14 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
             debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
             if let Some(target_prim) = target.primitive_type() {
                 cleaner.prims.insert(target_prim);
-            } else if let Some(target_did) = target.def_id_no_primitives() {
+            } else if let Some(target_did) = target.def_id(&cx.cache) {
                 // `impl Deref<Target = S> for S`
                 if target_did == type_did {
                     // Avoid infinite cycles
                     return;
                 }
                 cleaner.items.insert(target_did.into());
-                add_deref_target(map, cleaner, target_did);
+                add_deref_target(cx, map, cleaner, target_did);
             }
         }
     }
@@ -102,7 +103,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                         // `Deref` target type and the impl for type positions, this map of types is keyed by
                         // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
                         if cleaner.keep_impl_with_def_id(for_did.into()) {
-                            add_deref_target(&type_did_to_deref_target, &mut cleaner, for_did);
+                            add_deref_target(cx, &type_did_to_deref_target, &mut cleaner, for_did);
                         }
                     }
                 }
@@ -111,12 +112,12 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
     }
 
     new_items.retain(|it| {
-        if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
+        if let ImplItem(Impl { ref for_, ref trait_, ref kind, .. }) = *it.kind {
             cleaner.keep_impl(
                 for_,
                 trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
             ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
-                || blanket_impl.is_some()
+                || kind.is_blanket()
         } else {
             true
         }

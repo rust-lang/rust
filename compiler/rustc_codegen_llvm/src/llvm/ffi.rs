@@ -166,6 +166,9 @@ pub enum Attribute {
     InaccessibleMemOnly = 27,
     SanitizeHWAddress = 28,
     WillReturn = 29,
+    StackProtectReq = 30,
+    StackProtectStrong = 31,
+    StackProtect = 32,
 }
 
 /// LLVMIntPredicate
@@ -672,13 +675,17 @@ pub struct OperandBundleDef<'a>(InvariantOpaque<'a>);
 #[repr(C)]
 pub struct Linker<'a>(InvariantOpaque<'a>);
 
-pub type DiagnosticHandler = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
-pub type InlineAsmDiagHandler = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
+extern "C" {
+    pub type DiagnosticHandler;
+}
+
+pub type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
+pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_void, c_uint);
 
 pub mod coverageinfo {
     use super::coverage_map;
 
-    /// Aligns with [llvm::coverage::CounterMappingRegion::RegionKind](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L206-L222)
+    /// Aligns with [llvm::coverage::CounterMappingRegion::RegionKind](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/include/llvm/ProfileData/Coverage/CoverageMapping.h#L209-L230)
     #[derive(Copy, Clone, Debug)]
     #[repr(C)]
     pub enum RegionKind {
@@ -697,11 +704,16 @@ pub mod coverageinfo {
         /// A GapRegion is like a CodeRegion, but its count is only set as the
         /// line execution count when its the only region in the line.
         GapRegion = 3,
+
+        /// A BranchRegion represents leaf-level boolean expressions and is
+        /// associated with two counters, each representing the number of times the
+        /// expression evaluates to true or false.
+        BranchRegion = 4,
     }
 
     /// This struct provides LLVM's representation of a "CoverageMappingRegion", encoded into the
     /// coverage map, in accordance with the
-    /// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
+    /// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
     /// The struct composes fields representing the `Counter` type and value(s) (injected counter
     /// ID, or expression type and operands), the source file (an indirect index into a "filenames
     /// array", encoded separately), and source location (start and end positions of the represented
@@ -713,6 +725,10 @@ pub mod coverageinfo {
     pub struct CounterMappingRegion {
         /// The counter type and type-dependent counter data, if any.
         counter: coverage_map::Counter,
+
+        /// If the `RegionKind` is a `BranchRegion`, this represents the counter
+        /// for the false branch of the region.
+        false_counter: coverage_map::Counter,
 
         /// An indirect reference to the source filename. In the LLVM Coverage Mapping Format, the
         /// file_id is an index into a function-specific `virtual_file_mapping` array of indexes
@@ -751,6 +767,7 @@ pub mod coverageinfo {
         ) -> Self {
             Self {
                 counter,
+                false_counter: coverage_map::Counter::zero(),
                 file_id,
                 expanded_file_id: 0,
                 start_line,
@@ -758,6 +775,31 @@ pub mod coverageinfo {
                 end_line,
                 end_col,
                 kind: RegionKind::CodeRegion,
+            }
+        }
+
+        // This function might be used in the future; the LLVM API is still evolving, as is coverage
+        // support.
+        #[allow(dead_code)]
+        crate fn branch_region(
+            counter: coverage_map::Counter,
+            false_counter: coverage_map::Counter,
+            file_id: u32,
+            start_line: u32,
+            start_col: u32,
+            end_line: u32,
+            end_col: u32,
+        ) -> Self {
+            Self {
+                counter,
+                false_counter,
+                file_id,
+                expanded_file_id: 0,
+                start_line,
+                start_col,
+                end_line,
+                end_col,
+                kind: RegionKind::BranchRegion,
             }
         }
 
@@ -774,6 +816,7 @@ pub mod coverageinfo {
         ) -> Self {
             Self {
                 counter: coverage_map::Counter::zero(),
+                false_counter: coverage_map::Counter::zero(),
                 file_id,
                 expanded_file_id,
                 start_line,
@@ -796,6 +839,7 @@ pub mod coverageinfo {
         ) -> Self {
             Self {
                 counter: coverage_map::Counter::zero(),
+                false_counter: coverage_map::Counter::zero(),
                 file_id,
                 expanded_file_id: 0,
                 start_line,
@@ -819,6 +863,7 @@ pub mod coverageinfo {
         ) -> Self {
             Self {
                 counter,
+                false_counter: coverage_map::Counter::zero(),
                 file_id,
                 expanded_file_id: 0,
                 start_line,
@@ -1737,6 +1782,8 @@ extern "C" {
 
     pub fn LLVMTimeTraceProfilerInitialize();
 
+    pub fn LLVMTimeTraceProfilerFinishThread();
+
     pub fn LLVMTimeTraceProfilerFinish(FileName: *const c_char);
 
     pub fn LLVMAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>);
@@ -2284,12 +2331,6 @@ extern "C" {
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
-    pub fn LLVMContextSetDiagnosticHandler(
-        C: &Context,
-        Handler: DiagnosticHandler,
-        DiagnosticContext: *mut c_void,
-    );
-
     #[allow(improper_ctypes)]
     pub fn LLVMRustUnpackOptimizationDiagnostic(
         DI: &'a DiagnosticInfo,
@@ -2319,7 +2360,7 @@ extern "C" {
 
     pub fn LLVMRustSetInlineAsmDiagnosticHandler(
         C: &Context,
-        H: InlineAsmDiagHandler,
+        H: InlineAsmDiagHandlerTy,
         CX: *mut c_void,
     );
 
@@ -2434,4 +2475,19 @@ extern "C" {
         mod_id: *const c_char,
         data: &ThinLTOData,
     );
+
+    pub fn LLVMRustContextGetDiagnosticHandler(Context: &Context) -> Option<&DiagnosticHandler>;
+    pub fn LLVMRustContextSetDiagnosticHandler(
+        context: &Context,
+        diagnostic_handler: Option<&DiagnosticHandler>,
+    );
+    pub fn LLVMRustContextConfigureDiagnosticHandler(
+        context: &Context,
+        diagnostic_handler_callback: DiagnosticHandlerTy,
+        diagnostic_handler_context: *mut c_void,
+        remark_all_passes: bool,
+        remark_passes: *const *const c_char,
+        remark_passes_len: usize,
+    );
+
 }

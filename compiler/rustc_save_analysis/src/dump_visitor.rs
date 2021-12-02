@@ -236,7 +236,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                             id,
                             span,
                             name: ident.to_string(),
-                            qualname: format!("{}::{}", qualname, ident.to_string()),
+                            qualname: format!("{}::{}", qualname, ident),
                             value: typ,
                             parent: None,
                             children: vec![],
@@ -889,7 +889,7 @@ impl<'tcx> DumpVisitor<'tcx> {
 
                     // Rust uses the id of the pattern for var lookups, so we'll use it too.
                     if !self.span.filter_generated(ident.span) {
-                        let qualname = format!("{}${}", ident.to_string(), hir_id);
+                        let qualname = format!("{}${}", ident, hir_id);
                         let id = id_from_hir_id(hir_id, &self.save_ctxt);
                         let span = self.span_from_span(ident.span);
 

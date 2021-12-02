@@ -58,6 +58,20 @@ pub trait Encoder {
         f(self)
     }
 
+    // We put the field index in a const generic to allow the emit_usize to be
+    // compiled into a more efficient form. In practice, the variant index is
+    // known at compile-time, and that knowledge allows much more efficient
+    // codegen than we'd otherwise get. LLVM isn't always able to make the
+    // optimization that would otherwise be necessary here, likely due to the
+    // multiple levels of inlining and const-prop that are needed.
+    #[inline]
+    fn emit_fieldless_enum_variant<const ID: usize>(
+        &mut self,
+        _v_name: &str,
+    ) -> Result<(), Self::Error> {
+        self.emit_usize(ID)
+    }
+
     #[inline]
     fn emit_enum_variant_arg<F>(&mut self, _first: bool, f: F) -> Result<(), Self::Error>
     where

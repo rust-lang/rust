@@ -17,7 +17,8 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
     // needs drop.
     let adt_has_dtor =
         |adt_def: &ty::AdtDef| adt_def.destructor(tcx).map(|_| DtorType::Significant);
-    let res = drop_tys_helper(tcx, query.value, query.param_env, adt_has_dtor).next().is_some();
+    let res =
+        drop_tys_helper(tcx, query.value, query.param_env, adt_has_dtor, false).next().is_some();
 
     debug!("needs_drop_raw({:?}) = {:?}", query, res);
     res
@@ -27,10 +28,15 @@ fn has_significant_drop_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> bool {
-    let res =
-        drop_tys_helper(tcx, query.value, query.param_env, adt_consider_insignificant_dtor(tcx))
-            .next()
-            .is_some();
+    let res = drop_tys_helper(
+        tcx,
+        query.value,
+        query.param_env,
+        adt_consider_insignificant_dtor(tcx),
+        true,
+    )
+    .next()
+    .is_some();
     debug!("has_significant_drop_raw({:?}) = {:?}", query, res);
     res
 }
@@ -141,9 +147,9 @@ where
                             Ok(tys) => tys,
                         };
                         for required_ty in tys {
-                            let subst_ty =
+                            let required =
                                 tcx.normalize_erasing_regions(self.param_env, required_ty);
-                            queue_type(self, subst_ty);
+                            queue_type(self, required);
                         }
                     }
                     ty::Array(..) | ty::Opaque(..) | ty::Projection(..) | ty::Param(_) => {
@@ -186,16 +192,39 @@ fn drop_tys_helper<'tcx>(
     ty: Ty<'tcx>,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
     adt_has_dtor: impl Fn(&ty::AdtDef) -> Option<DtorType>,
+    only_significant: bool,
 ) -> impl Iterator<Item = NeedsDropResult<Ty<'tcx>>> {
+    fn with_query_cache<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        iter: impl IntoIterator<Item = Ty<'tcx>>,
+        only_significant: bool,
+    ) -> NeedsDropResult<Vec<Ty<'tcx>>> {
+        iter.into_iter().try_fold(Vec::new(), |mut vec, subty| {
+            match subty.kind() {
+                ty::Adt(adt_id, subst) => {
+                    for subty in if only_significant {
+                        tcx.adt_significant_drop_tys(adt_id.did)?
+                    } else {
+                        tcx.adt_drop_tys(adt_id.did)?
+                    } {
+                        vec.push(subty.subst(tcx, subst));
+                    }
+                }
+                _ => vec.push(subty),
+            };
+            Ok(vec)
+        })
+    }
+
     let adt_components = move |adt_def: &ty::AdtDef, substs: SubstsRef<'tcx>| {
         if adt_def.is_manually_drop() {
             debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
-            return Ok(Vec::new().into_iter());
+            Ok(Vec::new())
         } else if let Some(dtor_info) = adt_has_dtor(adt_def) {
             match dtor_info {
                 DtorType::Significant => {
                     debug!("drop_tys_helper: `{:?}` implements `Drop`", adt_def);
-                    return Err(AlwaysRequiresDrop);
+                    Err(AlwaysRequiresDrop)
                 }
                 DtorType::Insignificant => {
                     debug!("drop_tys_helper: `{:?}` drop is insignificant", adt_def);
@@ -203,22 +232,27 @@ fn drop_tys_helper<'tcx>(
                     // Since the destructor is insignificant, we just want to make sure all of
                     // the passed in type parameters are also insignificant.
                     // Eg: Vec<T> dtor is insignificant when T=i32 but significant when T=Mutex.
-                    return Ok(substs.types().collect::<Vec<Ty<'_>>>().into_iter());
+                    with_query_cache(tcx, substs.types(), only_significant)
                 }
             }
         } else if adt_def.is_union() {
             debug!("drop_tys_helper: `{:?}` is a union", adt_def);
-            return Ok(Vec::new().into_iter());
+            Ok(Vec::new())
+        } else {
+            with_query_cache(
+                tcx,
+                adt_def.all_fields().map(|field| {
+                    let r = tcx.type_of(field.did).subst(tcx, substs);
+                    debug!(
+                        "drop_tys_helper: Subst into {:?} with {:?} gettng {:?}",
+                        field, substs, r
+                    );
+                    r
+                }),
+                only_significant,
+            )
         }
-        Ok(adt_def
-            .all_fields()
-            .map(|field| {
-                let r = tcx.type_of(field.did).subst(tcx, substs);
-                debug!("drop_tys_helper: Subst into {:?} with {:?} gettng {:?}", field, substs, r);
-                r
-            })
-            .collect::<Vec<_>>()
-            .into_iter())
+        .map(|v| v.into_iter())
     };
 
     NeedsDropTypes::new(tcx, param_env, ty, adt_components)
@@ -252,20 +286,24 @@ fn adt_drop_tys(tcx: TyCtxt<'_>, def_id: DefId) -> Result<&ty::List<Ty<'_>>, Alw
     // significant.
     let adt_has_dtor =
         |adt_def: &ty::AdtDef| adt_def.destructor(tcx).map(|_| DtorType::Significant);
-    drop_tys_helper(tcx, tcx.type_of(def_id), tcx.param_env(def_id), adt_has_dtor)
+    // `tcx.type_of(def_id)` identical to `tcx.make_adt(def, identity_substs)`
+    drop_tys_helper(tcx, tcx.type_of(def_id), tcx.param_env(def_id), adt_has_dtor, false)
         .collect::<Result<Vec<_>, _>>()
         .map(|components| tcx.intern_type_list(&components))
 }
-
+// If `def_id` refers to a generic ADT, the queries above and below act as if they had been handed
+// a `tcx.make_ty(def, identity_substs)` and as such it is legal to substitue the generic parameters
+// of the ADT into the outputted `ty`s.
 fn adt_significant_drop_tys(
     tcx: TyCtxt<'_>,
     def_id: DefId,
 ) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
     drop_tys_helper(
         tcx,
-        tcx.type_of(def_id),
+        tcx.type_of(def_id), // identical to `tcx.make_adt(def, identity_substs)`
         tcx.param_env(def_id),
         adt_consider_insignificant_dtor(tcx),
+        true,
     )
     .collect::<Result<Vec<_>, _>>()
     .map(|components| tcx.intern_type_list(&components))

@@ -121,6 +121,19 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
             if sess.opts.json_artifact_notifications {
                 sess.parse_sess.span_diagnostic.emit_artifact_notification(&out_filename, "link");
             }
+
+            if sess.prof.enabled() {
+                if let Some(artifact_name) = out_filename.file_name() {
+                    // Record size for self-profiling
+                    let file_size = std::fs::metadata(&out_filename).map(|m| m.len()).unwrap_or(0);
+
+                    sess.prof.artifact_size(
+                        "linked_artifact",
+                        artifact_name.to_string_lossy(),
+                        file_size,
+                    );
+                }
+            }
         }
     }
 
@@ -1021,12 +1034,22 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         SplitDebuginfo::Packed => link_dwarf_object(sess, &out_filename),
     }
 
+    let strip = strip_value(sess);
+
     if sess.target.is_like_osx {
-        match sess.opts.debugging_opts.strip {
+        match strip {
             Strip::Debuginfo => strip_symbols_in_osx(sess, &out_filename, Some("-S")),
             Strip::Symbols => strip_symbols_in_osx(sess, &out_filename, None),
             Strip::None => {}
         }
+    }
+}
+
+// Temporarily support both -Z strip and -C strip
+fn strip_value(sess: &Session) -> Strip {
+    match (sess.opts.debugging_opts.strip, sess.opts.cg.strip) {
+        (s, Strip::None) => s,
+        (_, s) => s,
     }
 }
 
@@ -1095,10 +1118,10 @@ fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut d
 }
 
 fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
-    fn find_sanitizer_runtime(sess: &Session, filename: &String) -> PathBuf {
+    fn find_sanitizer_runtime(sess: &Session, filename: &str) -> PathBuf {
         let session_tlib =
             filesearch::make_target_lib_path(&sess.sysroot, sess.opts.target_triple.triple());
-        let path = session_tlib.join(&filename);
+        let path = session_tlib.join(filename);
         if path.exists() {
             return session_tlib;
         } else {
@@ -2001,7 +2024,7 @@ fn add_order_independent_options(
     cmd.optimize();
 
     // Pass debuginfo and strip flags down to the linker.
-    cmd.debuginfo(sess.opts.debugging_opts.strip);
+    cmd.debuginfo(strip_value(sess));
 
     // We want to prevent the compiler from accidentally leaking in any system libraries,
     // so by default we tell linkers not to link to any default libraries.

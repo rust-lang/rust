@@ -649,7 +649,6 @@ rustc_queries! {
     /// Methods in these implementations don't need to be exported.
     query inherent_impls(key: DefId) -> &'tcx [DefId] {
         desc { |tcx| "collecting inherent impls for `{}`", tcx.def_path_str(key) }
-        eval_always
         separate_provide_extern
     }
 
@@ -797,7 +796,7 @@ rustc_queries! {
     /// additional requirements that the closure's creator must verify.
     query mir_borrowck(key: LocalDefId) -> &'tcx mir::BorrowCheckResult<'tcx> {
         desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key.to_def_id()) }
-        cache_on_disk_if(tcx) { tcx.is_closure(key.to_def_id()) }
+        cache_on_disk_if(tcx) { tcx.is_typeck_child(key.to_def_id()) }
     }
     query mir_borrowck_const_arg(key: (LocalDefId, DefId)) -> &'tcx mir::BorrowCheckResult<'tcx> {
         desc {
@@ -810,16 +809,21 @@ rustc_queries! {
     /// Not meant to be used directly outside of coherence.
     query crate_inherent_impls(k: ()) -> CrateInherentImpls {
         storage(ArenaCacheSelector<'tcx>)
-        eval_always
         desc { "all inherent impls defined in crate" }
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls_overlap_check(_: ())
-        -> () {
-        eval_always
+    query crate_inherent_impls_overlap_check(_: ()) -> () {
         desc { "check for overlap between inherent impls defined in this crate" }
+    }
+
+    /// Checks whether all impls in the crate pass the overlap check, returning
+    /// which impls fail it. If all impls are correct, the returned slice is empty.
+    query orphan_check_crate(_: ()) -> &'tcx [LocalDefId] {
+        desc {
+            "checking whether the immpl in the this crate follow the orphan rules",
+        }
     }
 
     /// Check whether the function has any recursion that could cause the inliner to trigger
@@ -1056,11 +1060,6 @@ rustc_queries! {
     }
 
     /// Return all `impl` blocks in the current crate.
-    ///
-    /// To allow caching this between crates, you must pass in [`LOCAL_CRATE`] as the crate number.
-    /// Passing in any other crate will cause an ICE.
-    ///
-    /// [`LOCAL_CRATE`]: rustc_hir::def_id::LOCAL_CRATE
     query all_local_trait_impls(_: ()) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
         desc { "local trait impls" }
     }
@@ -1486,9 +1485,8 @@ rustc_queries! {
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
-    query get_lib_features(_: ()) -> LibFeatures {
+    query lib_features(_: ()) -> LibFeatures {
         storage(ArenaCacheSelector<'tcx>)
-        eval_always
         desc { "calculating the lib features map" }
     }
     query defined_lib_features(_: CrateNum)
@@ -1563,7 +1561,6 @@ rustc_queries! {
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }
-        eval_always
     }
     query maybe_unused_trait_import(def_id: LocalDefId) -> bool {
         desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
@@ -1647,6 +1644,11 @@ rustc_queries! {
         desc { "normalizing `{:?}`", goal }
     }
 
+    // FIXME: Implement `normalize_generic_arg_after_erasing_regions` and
+    // `normalize_mir_const_after_erasing_regions` in terms of
+    // `try_normalize_generic_arg_after_erasing_regions` and
+    // `try_normalize_mir_const_after_erasing_regions`, respectively.
+
     /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
     query normalize_generic_arg_after_erasing_regions(
         goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
@@ -1658,6 +1660,20 @@ rustc_queries! {
     query normalize_mir_const_after_erasing_regions(
         goal: ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
     ) -> mir::ConstantKind<'tcx> {
+        desc { "normalizing `{}`", goal.value }
+    }
+
+    /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
+    query try_normalize_generic_arg_after_erasing_regions(
+        goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
+    ) -> Result<GenericArg<'tcx>, NoSolution> {
+        desc { "normalizing `{}`", goal.value }
+    }
+
+    /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
+    query try_normalize_mir_const_after_erasing_regions(
+        goal: ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
+    ) -> Result<mir::ConstantKind<'tcx>, NoSolution> {
         desc { "normalizing `{}`", goal.value }
     }
 

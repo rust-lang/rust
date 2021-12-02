@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:18:27
+  --> $DIR/offset_from_ub.rs:17:27
    |
 LL |     let offset = unsafe { ptr_offset_from(field_ptr, base_ptr) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ptr_offset_from cannot compute offset of pointers into different allocations.
@@ -13,25 +13,25 @@ LL |         unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                  0x2a is not a valid pointer
    |                  inside `ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-  ::: $DIR/offset_from_ub.rs:24:14
+  ::: $DIR/offset_from_ub.rs:23:14
    |
 LL |     unsafe { (42 as *const u8).offset_from(&5u8) as usize }
-   |              ----------------------------------- inside `NOT_PTR` at $DIR/offset_from_ub.rs:24:14
+   |              ----------------------------------- inside `NOT_PTR` at $DIR/offset_from_ub.rs:23:14
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:31:14
+  --> $DIR/offset_from_ub.rs:30:14
    |
 LL |     unsafe { ptr_offset_from(field_ptr, base_ptr as *const u16) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exact_div: 1_isize cannot be divided by 2_isize without remainder
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:37:14
+  --> $DIR/offset_from_ub.rs:36:14
    |
 LL |     unsafe { ptr_offset_from(ptr, ptr) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ null pointer is not a valid pointer for this operation
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/offset_from_ub.rs:44:14
+  --> $DIR/offset_from_ub.rs:43:14
    |
 LL |     unsafe { ptr_offset_from(ptr2, ptr1) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 0x10 is not a valid pointer

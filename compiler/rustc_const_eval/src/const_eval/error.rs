@@ -25,10 +25,7 @@ pub enum ConstEvalErrKind {
 
 impl MachineStopType for ConstEvalErrKind {
     fn is_hard_err(&self) -> bool {
-        match self {
-            Self::Panic { .. } => true,
-            _ => false,
-        }
+        matches!(self, Self::Panic { .. })
     }
 }
 

@@ -557,12 +557,12 @@ impl<'a> TraitDef<'a> {
                     tokens: None,
                 },
                 attrs: Vec::new(),
-                kind: ast::AssocItemKind::TyAlias(Box::new(ast::TyAliasKind(
-                    ast::Defaultness::Final,
-                    Generics::default(),
-                    Vec::new(),
-                    Some(type_def.to_ty(cx, self.span, type_ident, generics)),
-                ))),
+                kind: ast::AssocItemKind::TyAlias(Box::new(ast::TyAlias {
+                    defaultness: ast::Defaultness::Final,
+                    generics: Generics::default(),
+                    bounds: Vec::new(),
+                    ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
+                })),
                 tokens: None,
             })
         });
@@ -726,7 +726,7 @@ impl<'a> TraitDef<'a> {
             self.span,
             Ident::empty(),
             a,
-            ast::ItemKind::Impl(Box::new(ast::ImplKind {
+            ast::ItemKind::Impl(Box::new(ast::Impl {
                 unsafety,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
@@ -955,7 +955,7 @@ impl<'a> MethodDef<'a> {
             decl: fn_decl,
             span: trait_.span,
         };
-        let def = ast::Defaultness::Final;
+        let defaultness = ast::Defaultness::Final;
 
         // Create the method.
         P(ast::AssocItem {
@@ -968,12 +968,12 @@ impl<'a> MethodDef<'a> {
                 tokens: None,
             },
             ident: method_ident,
-            kind: ast::AssocItemKind::Fn(Box::new(ast::FnKind(
-                def,
+            kind: ast::AssocItemKind::Fn(Box::new(ast::Fn {
+                defaultness,
                 sig,
-                fn_generics,
-                Some(body_block),
-            ))),
+                generics: fn_generics,
+                body: Some(body_block),
+            })),
             tokens: None,
         })
     }

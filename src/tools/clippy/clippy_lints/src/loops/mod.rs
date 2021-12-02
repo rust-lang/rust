@@ -23,7 +23,7 @@ use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
-use utils::{get_span_of_entire_for_loop, make_iterator_snippet, IncrementVisitor, InitializeVisitor};
+use utils::{make_iterator_snippet, IncrementVisitor, InitializeVisitor};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -566,7 +566,15 @@ declare_lint_pass!(Loops => [
 impl<'tcx> LateLintPass<'tcx> for Loops {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some(higher::ForLoop { pat, arg, body, span }) = higher::ForLoop::hir(expr) {
+        let for_loop = higher::ForLoop::hir(expr);
+        if let Some(higher::ForLoop {
+            pat,
+            arg,
+            body,
+            loop_id,
+            span,
+        }) = for_loop
+        {
             // we don't want to check expanded macros
             // this check is not at the top of the function
             // since higher::for_loop expressions are marked as expansions
@@ -574,6 +582,9 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
                 return;
             }
             check_for_loop(cx, pat, arg, body, expr, span);
+            if let ExprKind::Block(block, _) = body.kind {
+                never_loop::check(cx, block, loop_id, span, for_loop.as_ref());
+            }
         }
 
         // we don't want to check expanded macros
@@ -582,7 +593,9 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         }
 
         // check for never_loop
-        never_loop::check(cx, expr);
+        if let ExprKind::Loop(block, ..) = expr.kind {
+            never_loop::check(cx, block, expr.hir_id, expr.span, None);
+        }
 
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")

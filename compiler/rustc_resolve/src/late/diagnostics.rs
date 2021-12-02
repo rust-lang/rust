@@ -333,7 +333,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let candidates = self
             .r
             .lookup_import_candidates(ident, ns, &self.parent_scope, is_expected)
-            .drain(..)
+            .into_iter()
             .filter(|ImportSuggestion { did, .. }| {
                 match (did, res.and_then(|res| res.opt_def_id())) {
                     (Some(suggestion_did), Some(actual_did)) => *suggestion_did != actual_did,
@@ -1235,9 +1235,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 if assoc_item.ident == ident {
                     return Some(match &assoc_item.kind {
                         ast::AssocItemKind::Const(..) => AssocSuggestion::AssocConst,
-                        ast::AssocItemKind::Fn(box ast::FnKind(_, sig, ..))
-                            if sig.decl.has_self() =>
-                        {
+                        ast::AssocItemKind::Fn(box ast::Fn { sig, .. }) if sig.decl.has_self() => {
                             AssocSuggestion::MethodWithSelf
                         }
                         ast::AssocItemKind::Fn(..) => AssocSuggestion::AssocFn,
@@ -1346,12 +1344,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         } else {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
-            if let PathResult::Module(module) =
+            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(mod_path, Some(TypeNS), false, span, CrateLint::No)
             {
-                if let ModuleOrUniformRoot::Module(module) = module {
-                    self.r.add_module_candidates(module, &mut names, &filter_fn);
-                }
+                self.r.add_module_candidates(module, &mut names, &filter_fn);
             }
         }
 
@@ -1554,7 +1550,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if suggest_only_tuple_variants {
             // Suggest only tuple variants regardless of whether they have fields and do not
             // suggest path with added parentheses.
-            let mut suggestable_variants = variants
+            let suggestable_variants = variants
                 .iter()
                 .filter(|(.., kind)| *kind == CtorKind::Fn)
                 .map(|(variant, ..)| path_names_to_string(variant))
@@ -1580,7 +1576,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     &msg,
-                    suggestable_variants.drain(..),
+                    suggestable_variants.into_iter(),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1638,7 +1634,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 );
             }
 
-            let mut suggestable_variants_with_placeholders = variants
+            let suggestable_variants_with_placeholders = variants
                 .iter()
                 .filter(|(_, def_id, kind)| needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
@@ -1663,7 +1659,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 err.span_suggestions(
                     span,
                     msg,
-                    suggestable_variants_with_placeholders.drain(..),
+                    suggestable_variants_with_placeholders.into_iter(),
                     Applicability::HasPlaceholders,
                 );
             }
@@ -1814,12 +1810,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     let (span, sugg) = if let Some(param) = generics.params.iter().find(|p| {
                         !matches!(
                             p.kind,
-                            hir::GenericParamKind::Type {
-                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                ..
-                            } | hir::GenericParamKind::Lifetime {
-                                kind: hir::LifetimeParamKind::Elided,
-                            }
+                            hir::GenericParamKind::Type { synthetic: true, .. }
+                                | hir::GenericParamKind::Lifetime {
+                                    kind: hir::LifetimeParamKind::Elided,
+                                }
                         )
                     }) {
                         (param.span.shrink_to_lo(), format!("{}, ", lifetime_ref))
@@ -1875,6 +1869,117 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             );
         }
         err.emit();
+    }
+
+    /// Returns whether to add `'static` lifetime to the suggested lifetime list.
+    crate fn report_elision_failure(
+        &mut self,
+        db: &mut DiagnosticBuilder<'_>,
+        params: &[ElisionFailureInfo],
+    ) -> bool {
+        let mut m = String::new();
+        let len = params.len();
+
+        let elided_params: Vec<_> =
+            params.iter().cloned().filter(|info| info.lifetime_count > 0).collect();
+
+        let elided_len = elided_params.len();
+
+        for (i, info) in elided_params.into_iter().enumerate() {
+            let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions, span } =
+                info;
+
+            db.span_label(span, "");
+            let help_name = if let Some(ident) =
+                parent.and_then(|body| self.tcx.hir().body(body).params[index].pat.simple_ident())
+            {
+                format!("`{}`", ident)
+            } else {
+                format!("argument {}", index + 1)
+            };
+
+            m.push_str(
+                &(if n == 1 {
+                    help_name
+                } else {
+                    format!(
+                        "one of {}'s {} {}lifetimes",
+                        help_name,
+                        n,
+                        if have_bound_regions { "free " } else { "" }
+                    )
+                })[..],
+            );
+
+            if elided_len == 2 && i == 0 {
+                m.push_str(" or ");
+            } else if i + 2 == elided_len {
+                m.push_str(", or ");
+            } else if i != elided_len - 1 {
+                m.push_str(", ");
+            }
+        }
+
+        if len == 0 {
+            db.help(
+                "this function's return type contains a borrowed value, \
+                 but there is no value for it to be borrowed from",
+            );
+            true
+        } else if elided_len == 0 {
+            db.help(
+                "this function's return type contains a borrowed value with \
+                 an elided lifetime, but the lifetime cannot be derived from \
+                 the arguments",
+            );
+            true
+        } else if elided_len == 1 {
+            db.help(&format!(
+                "this function's return type contains a borrowed value, \
+                 but the signature does not say which {} it is borrowed from",
+                m
+            ));
+            false
+        } else {
+            db.help(&format!(
+                "this function's return type contains a borrowed value, \
+                 but the signature does not say whether it is borrowed from {}",
+                m
+            ));
+            false
+        }
+    }
+
+    crate fn report_elided_lifetime_in_ty(&self, lifetime_refs: &[&hir::Lifetime]) {
+        let Some(missing_lifetime) = lifetime_refs.iter().find(|lt| {
+            lt.name == hir::LifetimeName::Implicit(true)
+        }) else { return };
+
+        let mut spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
+        spans.sort();
+        let mut spans_dedup = spans.clone();
+        spans_dedup.dedup();
+        let spans_with_counts: Vec<_> = spans_dedup
+            .into_iter()
+            .map(|sp| (sp, spans.iter().filter(|nsp| *nsp == &sp).count()))
+            .collect();
+
+        self.tcx.struct_span_lint_hir(
+            rustc_session::lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
+            missing_lifetime.hir_id,
+            spans,
+            |lint| {
+                let mut db = lint.build("hidden lifetime parameters in types are deprecated");
+                self.add_missing_lifetime_specifiers_label(
+                    &mut db,
+                    spans_with_counts,
+                    &FxHashSet::from_iter([kw::UnderscoreLifetime]),
+                    Vec::new(),
+                    &[],
+                );
+                db.emit()
+            },
+        );
     }
 
     // FIXME(const_generics): This patches over an ICE caused by non-'static lifetimes in const
@@ -2046,12 +2151,10 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         if let Some(param) = generics.params.iter().find(|p| {
                             !matches!(
                                 p.kind,
-                                hir::GenericParamKind::Type {
-                                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                                    ..
-                                } | hir::GenericParamKind::Lifetime {
-                                    kind: hir::LifetimeParamKind::Elided
-                                }
+                                hir::GenericParamKind::Type { synthetic: true, .. }
+                                    | hir::GenericParamKind::Lifetime {
+                                        kind: hir::LifetimeParamKind::Elided
+                                    }
                             )
                         }) {
                             (param.span.shrink_to_lo(), "'a, ".to_string())
@@ -2305,7 +2408,9 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         );
         let is_allowed_lifetime = matches!(
             lifetime_ref.name,
-            hir::LifetimeName::Implicit | hir::LifetimeName::Static | hir::LifetimeName::Underscore
+            hir::LifetimeName::Implicit(_)
+                | hir::LifetimeName::Static
+                | hir::LifetimeName::Underscore
         );
 
         if !self.tcx.lazy_normalization() && is_anon_const && !is_allowed_lifetime {

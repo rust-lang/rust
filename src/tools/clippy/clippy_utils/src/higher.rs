@@ -3,12 +3,12 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::ty::is_type_diagnostic_item;
-use crate::{is_expn_of, last_path_segment, match_def_path, path_to_local_id, paths};
+use crate::{is_expn_of, last_path_segment, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::{self, LitKind};
 use rustc_hir as hir;
 use rustc_hir::{
-    Arm, Block, BorrowKind, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, PatKind, QPath, StmtKind, UnOp,
+    Arm, Block, BorrowKind, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StmtKind, UnOp,
 };
 use rustc_lint::LateContext;
 use rustc_span::{sym, symbol, ExpnKind, Span, Symbol};
@@ -22,31 +22,31 @@ pub struct ForLoop<'tcx> {
     pub arg: &'tcx hir::Expr<'tcx>,
     /// `for` loop body
     pub body: &'tcx hir::Expr<'tcx>,
+    /// Compare this against `hir::Destination.target`
+    pub loop_id: HirId,
     /// entire `for` loop span
     pub span: Span,
 }
 
 impl<'tcx> ForLoop<'tcx> {
-    #[inline]
     /// Parses a desugared `for` loop
     pub fn hir(expr: &Expr<'tcx>) -> Option<Self> {
         if_chain! {
-            if let hir::ExprKind::Match(iterexpr, arms, hir::MatchSource::ForLoopDesugar) = expr.kind;
-            if let Some(first_arm) = arms.get(0);
-            if let hir::ExprKind::Call(_, iterargs) = iterexpr.kind;
-            if let Some(first_arg) = iterargs.get(0);
-            if iterargs.len() == 1 && arms.len() == 1 && first_arm.guard.is_none();
-            if let hir::ExprKind::Loop(block, ..) = first_arm.body.kind;
-            if block.expr.is_none();
-            if let [ _, _, ref let_stmt, ref body ] = *block.stmts;
-            if let hir::StmtKind::Local(local) = let_stmt.kind;
-            if let hir::StmtKind::Expr(body_expr) = body.kind;
+            if let hir::ExprKind::DropTemps(e) = expr.kind;
+            if let hir::ExprKind::Match(iterexpr, [arm], hir::MatchSource::ForLoopDesugar) = e.kind;
+            if let hir::ExprKind::Call(_, [arg]) = iterexpr.kind;
+            if let hir::ExprKind::Loop(block, ..) = arm.body.kind;
+            if let [stmt] = &*block.stmts;
+            if let hir::StmtKind::Expr(e) = stmt.kind;
+            if let hir::ExprKind::Match(_, [_, some_arm], _) = e.kind;
+            if let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind;
             then {
                 return Some(Self {
-                    pat: &*local.pat,
-                    arg: first_arg,
-                    body: body_expr,
-                    span: first_arm.span
+                    pat: field.pat,
+                    arg,
+                    body: some_arm.body,
+                    loop_id: arm.body.hir_id,
+                    span: expr.span.ctxt().outer_expn_data().call_site,
                 });
             }
         }
@@ -513,8 +513,6 @@ pub struct FormatArgsExpn<'tcx> {
     pub format_string_parts: &'tcx [Expr<'tcx>],
     /// Symbols corresponding to [`Self::format_string_parts`]
     pub format_string_symbols: Vec<Symbol>,
-    /// Match arm patterns, the `arg0`, etc. from the next field `args`
-    pub arg_names: &'tcx [Pat<'tcx>],
     /// Expressions like `ArgumentV1::new(arg0, Debug::fmt)`
     pub args: &'tcx [Expr<'tcx>],
     /// The final argument passed to `Arguments::new_v1_formatted`, if applicable
@@ -559,7 +557,6 @@ impl FormatArgsExpn<'tcx> {
                     _ => None,
                 })
                 .collect();
-            if let PatKind::Tuple(arg_names, None) = arm.pat.kind;
             if let ExprKind::Array(args) = arm.body.kind;
             then {
                 Some(FormatArgsExpn {
@@ -567,7 +564,6 @@ impl FormatArgsExpn<'tcx> {
                     value_args,
                     format_string_parts,
                     format_string_symbols,
-                    arg_names,
                     args,
                     fmt_expr,
                 })
@@ -594,10 +590,8 @@ impl FormatArgsExpn<'tcx> {
                             if let Ok(i) = usize::try_from(position);
                             let arg = &self.args[i];
                             if let ExprKind::Call(_, [arg_name, _]) = arg.kind;
-                            if let Some(j) = self
-                                .arg_names
-                                .iter()
-                                .position(|pat| path_to_local_id(arg_name, pat.hir_id));
+                            if let ExprKind::Field(_, j) = arg_name.kind;
+                            if let Ok(j) = j.name.as_str().parse::<usize>();
                             then {
                                 Some(FormatArgsArg { value: self.value_args[j], arg, fmt: Some(fmt) })
                             } else {
@@ -682,38 +676,6 @@ impl<'tcx> FormatArgsArg<'tcx> {
             then { true } else { false }
         }
     }
-}
-
-/// Checks if a `let` statement is from a `for` loop desugaring.
-pub fn is_from_for_desugar(local: &hir::Local<'_>) -> bool {
-    // This will detect plain for-loops without an actual variable binding:
-    //
-    // ```
-    // for x in some_vec {
-    //     // do stuff
-    // }
-    // ```
-    if_chain! {
-        if let Some(expr) = local.init;
-        if let hir::ExprKind::Match(_, _, hir::MatchSource::ForLoopDesugar) = expr.kind;
-        then {
-            return true;
-        }
-    }
-
-    // This detects a variable binding in for loop to avoid `let_unit_value`
-    // lint (see issue #1964).
-    //
-    // ```
-    // for _ in vec![()] {
-    //     // anything
-    // }
-    // ```
-    if let hir::LocalSource::ForLoopDesugar = local.source {
-        return true;
-    }
-
-    false
 }
 
 /// A parsed `panic!` expansion

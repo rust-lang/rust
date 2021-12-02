@@ -17,6 +17,7 @@ use rustc_codegen_ssa::back::write::{
 };
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
@@ -53,6 +54,7 @@ pub fn write_output_file(
     output: &Path,
     dwo_output: Option<&Path>,
     file_type: llvm::FileType,
+    self_profiler_ref: &SelfProfilerRef,
 ) -> Result<(), FatalError> {
     unsafe {
         let output_c = path_to_c_string(output);
@@ -76,6 +78,19 @@ pub fn write_output_file(
                 file_type,
             )
         };
+
+        // Record artifact sizes for self-profiling
+        if result == llvm::LLVMRustResult::Success {
+            let artifact_kind = match file_type {
+                llvm::FileType::ObjectFile => "object_file",
+                llvm::FileType::AssemblyFile => "assembly_file",
+            };
+            record_artifact_size(self_profiler_ref, artifact_kind, output);
+            if let Some(dwo_file) = dwo_output {
+                record_artifact_size(self_profiler_ref, "dwo_file", dwo_file);
+            }
+        }
+
         result.into_result().map_err(|()| {
             let msg = format!("could not write output to {}", output.display());
             llvm_err(handler, &msg)
@@ -244,6 +259,7 @@ pub(crate) fn save_temp_bitcode(
 pub struct DiagnosticHandlers<'a> {
     data: *mut (&'a CodegenContext<LlvmCodegenBackend>, &'a Handler),
     llcx: &'a llvm::Context,
+    old_handler: Option<&'a llvm::DiagnosticHandler>,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
@@ -252,12 +268,35 @@ impl<'a> DiagnosticHandlers<'a> {
         handler: &'a Handler,
         llcx: &'a llvm::Context,
     ) -> Self {
+        let remark_passes_all: bool;
+        let remark_passes: Vec<CString>;
+        match &cgcx.remark {
+            Passes::All => {
+                remark_passes_all = true;
+                remark_passes = Vec::new();
+            }
+            Passes::Some(passes) => {
+                remark_passes_all = false;
+                remark_passes =
+                    passes.iter().map(|name| CString::new(name.as_str()).unwrap()).collect();
+            }
+        };
+        let remark_passes: Vec<*const c_char> =
+            remark_passes.iter().map(|name: &CString| name.as_ptr()).collect();
         let data = Box::into_raw(Box::new((cgcx, handler)));
         unsafe {
+            let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
+            llvm::LLVMRustContextConfigureDiagnosticHandler(
+                llcx,
+                diagnostic_handler,
+                data.cast(),
+                remark_passes_all,
+                remark_passes.as_ptr(),
+                remark_passes.len(),
+            );
             llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, data.cast());
-            llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, data.cast());
+            DiagnosticHandlers { data, llcx, old_handler }
         }
-        DiagnosticHandlers { data, llcx }
     }
 }
 
@@ -266,7 +305,7 @@ impl<'a> Drop for DiagnosticHandlers<'a> {
         use std::ptr::null_mut;
         unsafe {
             llvm::LLVMRustSetInlineAsmDiagnosticHandler(self.llcx, inline_asm_handler, null_mut());
-            llvm::LLVMContextSetDiagnosticHandler(self.llcx, diagnostic_handler, null_mut());
+            llvm::LLVMRustContextSetDiagnosticHandler(self.llcx, self.old_handler);
             drop(Box::from_raw(self.data));
         }
     }
@@ -286,7 +325,7 @@ fn report_inline_asm(
         cookie = 0;
     }
     let level = match level {
-        llvm::DiagnosticLevel::Error => Level::Error,
+        llvm::DiagnosticLevel::Error => Level::Error { lint: false },
         llvm::DiagnosticLevel::Warning => Level::Warning,
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
@@ -322,13 +361,8 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
 
             if enabled {
                 diag_handler.note_without_error(&format!(
-                    "optimization {} for {} at {}:{}:{}: {}",
-                    opt.kind.describe(),
-                    opt.pass_name,
-                    opt.filename,
-                    opt.line,
-                    opt.column,
-                    opt.message
+                    "{}:{}:{}: {}: {}",
+                    opt.filename, opt.line, opt.column, opt.pass_name, opt.message,
                 ));
             }
         }
@@ -752,6 +786,14 @@ pub(crate) unsafe fn codegen(
             let thin = ThinBuffer::new(llmod);
             let data = thin.data();
 
+            if let Some(bitcode_filename) = bc_out.file_name() {
+                cgcx.prof.artifact_size(
+                    "llvm_bitcode",
+                    bitcode_filename.to_string_lossy(),
+                    data.len() as u64,
+                );
+            }
+
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
                 let _timer = cgcx.prof.generic_activity_with_arg(
                     "LLVM_module_codegen_emit_bitcode",
@@ -812,6 +854,11 @@ pub(crate) unsafe fn codegen(
             }
 
             let result = llvm::LLVMRustPrintModule(llmod, out_c.as_ptr(), demangle_callback);
+
+            if result == llvm::LLVMRustResult::Success {
+                record_artifact_size(&cgcx.prof, "llvm_ir", &out);
+            }
+
             result.into_result().map_err(|()| {
                 let msg = format!("failed to write LLVM IR to {}", out.display());
                 llvm_err(diag_handler, &msg)
@@ -842,6 +889,7 @@ pub(crate) unsafe fn codegen(
                     &path,
                     None,
                     llvm::FileType::AssemblyFile,
+                    &cgcx.prof,
                 )
             })?;
         }
@@ -875,6 +923,7 @@ pub(crate) unsafe fn codegen(
                         &obj_out,
                         dwo_out,
                         llvm::FileType::ObjectFile,
+                        &cgcx.prof,
                     )
                 })?;
             }
@@ -1129,5 +1178,21 @@ fn create_msvc_imps(
     fn ignored(symbol_name: &[u8]) -> bool {
         // These are symbols generated by LLVM's profiling instrumentation
         symbol_name.starts_with(b"__llvm_profile_")
+    }
+}
+
+fn record_artifact_size(
+    self_profiler_ref: &SelfProfilerRef,
+    artifact_kind: &'static str,
+    path: &Path,
+) {
+    // Don't stat the file if we are not going to record its size.
+    if !self_profiler_ref.enabled() {
+        return;
+    }
+
+    if let Some(artifact_name) = path.file_name() {
+        let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        self_profiler_ref.artifact_size(artifact_kind, artifact_name.to_string_lossy(), file_size);
     }
 }

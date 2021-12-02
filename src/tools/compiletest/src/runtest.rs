@@ -1452,6 +1452,8 @@ impl<'test> TestCx<'test> {
             .arg(aux_dir)
             .arg("-o")
             .arg(out_dir)
+            .arg("--deny")
+            .arg("warnings")
             .arg(&self.testpaths.file)
             .args(&self.props.compile_flags);
 
@@ -1606,9 +1608,6 @@ impl<'test> TestCx<'test> {
             let lib_name =
                 get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), is_dylib);
             rustc.arg("--extern").arg(format!("{}={}/{}", aux_name, aux_dir.display(), lib_name));
-        }
-        if !self.props.aux_crates.is_empty() {
-            rustc.arg("-Zunstable-options");
         }
 
         aux_dir

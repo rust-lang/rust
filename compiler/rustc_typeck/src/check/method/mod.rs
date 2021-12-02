@@ -12,6 +12,7 @@ pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
 use crate::check::FnCtxt;
+use crate::ObligationCause;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -21,7 +22,7 @@ use rustc_infer::infer::{self, InferOk};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
@@ -71,7 +72,8 @@ pub enum MethodError<'tcx> {
 #[derive(Debug)]
 pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
-    pub unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
+    pub unsatisfied_predicates:
+        Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>,
     pub out_of_scope_traits: Vec<DefId>,
     pub lev_candidate: Option<ty::AssocItem>,
     pub mode: probe::Mode,
@@ -80,7 +82,11 @@ pub struct NoMatchData<'tcx> {
 impl<'tcx> NoMatchData<'tcx> {
     pub fn new(
         static_candidates: Vec<CandidateSource>,
-        unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
+        unsatisfied_predicates: Vec<(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+            Option<ObligationCause<'tcx>>,
+        )>,
         out_of_scope_traits: Vec<DefId>,
         lev_candidate: Option<ty::AssocItem>,
         mode: probe::Mode,

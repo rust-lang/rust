@@ -1,13 +1,3 @@
-error[E0119]: conflicting implementations of trait `complex_impl_support::External` for type `(Q, complex_impl_support::M<'_, '_, '_, std::boxed::Box<_>, _, _>)`
-  --> $DIR/complex-impl.rs:9:1
-   |
-LL | impl<R> External for (Q, R) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: conflicting implementation in crate `complex_impl_support`:
-           - impl<'a, 'b, 'c, T, U, V, W> External for (T, M<'a, 'b, 'c, Box<U>, V, W>)
-             where <U as FnOnce<(T,)>>::Output == V, <V as Iterator>::Item == T, 'b: 'a, T: 'a, U: 'static, U: FnOnce<(T,)>, V: Iterator, V: Clone, W: Add, <W as Add>::Output: Copy;
-
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/complex-impl.rs:9:1
    |
@@ -19,7 +9,6 @@ LL | impl<R> External for (Q, R) {}
    |
    = note: define and implement a trait or new type instead
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0117, E0119.
-For more information about an error, try `rustc --explain E0117`.
+For more information about this error, try `rustc --explain E0117`.

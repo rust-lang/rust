@@ -1,6 +1,6 @@
 // run-pass
 
-#![allow(dead_code)]
+#![allow(dead_code, unused_macros)]
 // aux-build:issue-39889.rs
 
 extern crate issue_39889;

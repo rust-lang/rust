@@ -1,6 +1,6 @@
 // check-pass
 // run-rustfix
-// compile-flags: -Z unstable-options --edition 2018
+// edition:2018
 
 #![warn(rust_2021_prefixes_incompatible_syntax)]
 

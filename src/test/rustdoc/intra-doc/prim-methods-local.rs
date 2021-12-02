@@ -1,5 +1,5 @@
-#![deny(broken_intra_doc_links)]
-#![feature(no_core, lang_items)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![feature(no_core, lang_items, rustdoc_internals)]
 #![no_core]
 #![crate_type = "rlib"]
 

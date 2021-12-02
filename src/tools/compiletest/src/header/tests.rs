@@ -168,7 +168,7 @@ fn only_target() {
     let mut config = config();
     config.target = "x86_64-pc-windows-gnu".to_owned();
 
-    assert!(check_ignore(&config, "// only-i686"));
+    assert!(check_ignore(&config, "// only-x86"));
     assert!(check_ignore(&config, "// only-linux"));
     assert!(check_ignore(&config, "// only-msvc"));
     assert!(check_ignore(&config, "// only-32bit"));

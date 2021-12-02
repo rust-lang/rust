@@ -220,7 +220,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, FatalError};
 use rustc_session::config::{self, CrateType};
 use rustc_session::cstore::{CrateSource, MetadataLoader};
 use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
@@ -236,7 +236,7 @@ use std::fmt::Write as _;
 use std::io::{Read, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt, fs};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 #[derive(Clone)]
 crate struct CrateLocator<'a> {
@@ -350,6 +350,7 @@ impl<'a> CrateLocator<'a> {
         self.crate_rejections.via_kind.clear();
         self.crate_rejections.via_version.clear();
         self.crate_rejections.via_filename.clear();
+        self.crate_rejections.via_invalid.clear();
     }
 
     crate fn maybe_load_library_crate(&mut self) -> Result<Option<Library>, CrateError> {
@@ -548,8 +549,18 @@ impl<'a> CrateLocator<'a> {
                             continue;
                         }
                     }
-                    Err(err) => {
-                        warn!("no metadata found: {}", err);
+                    Err(MetadataError::LoadFailure(err)) => {
+                        info!("no metadata found: {}", err);
+                        // The file was present and created by the same compiler version, but we
+                        // couldn't load it for some reason.  Give a hard error instead of silently
+                        // ignoring it, but only if we would have given an error anyway.
+                        self.crate_rejections
+                            .via_invalid
+                            .push(CrateMismatch { path: lib, got: err });
+                        continue;
+                    }
+                    Err(err @ MetadataError::NotPresent(_)) => {
+                        info!("no metadata found: {}", err);
                         continue;
                     }
                 };
@@ -726,25 +737,28 @@ impl<'a> CrateLocator<'a> {
 fn get_metadata_section(
     target: &Target,
     flavor: CrateFlavor,
-    filename: &Path,
+    filename: &'p Path,
     loader: &dyn MetadataLoader,
-) -> Result<MetadataBlob, String> {
+) -> Result<MetadataBlob, MetadataError<'p>> {
     if !filename.exists() {
-        return Err(format!("no such file: '{}'", filename.display()));
+        return Err(MetadataError::NotPresent(filename));
     }
     let raw_bytes: MetadataRef = match flavor {
-        CrateFlavor::Rlib => loader.get_rlib_metadata(target, filename)?,
+        CrateFlavor::Rlib => {
+            loader.get_rlib_metadata(target, filename).map_err(MetadataError::LoadFailure)?
+        }
         CrateFlavor::Dylib => {
-            let buf = loader.get_dylib_metadata(target, filename)?;
+            let buf =
+                loader.get_dylib_metadata(target, filename).map_err(MetadataError::LoadFailure)?;
             // The header is uncompressed
             let header_len = METADATA_HEADER.len();
             debug!("checking {} bytes of metadata-version stamp", header_len);
             let header = &buf[..cmp::min(header_len, buf.len())];
             if header != METADATA_HEADER {
-                return Err(format!(
-                    "incompatible metadata version found: '{}'",
+                return Err(MetadataError::LoadFailure(format!(
+                    "invalid metadata version found: {}",
                     filename.display()
-                ));
+                )));
             }
 
             // Header is okay -> inflate the actual metadata
@@ -756,17 +770,28 @@ fn get_metadata_section(
             match FrameDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
                 Ok(_) => rustc_erase_owner!(OwningRef::new(inflated).map_owner_box()),
                 Err(_) => {
-                    return Err(format!("failed to decompress metadata: {}", filename.display()));
+                    return Err(MetadataError::LoadFailure(format!(
+                        "failed to decompress metadata: {}",
+                        filename.display()
+                    )));
                 }
             }
         }
         CrateFlavor::Rmeta => {
             // mmap the file, because only a small fraction of it is read.
-            let file = std::fs::File::open(filename)
-                .map_err(|_| format!("failed to open rmeta metadata: '{}'", filename.display()))?;
+            let file = std::fs::File::open(filename).map_err(|_| {
+                MetadataError::LoadFailure(format!(
+                    "failed to open rmeta metadata: '{}'",
+                    filename.display()
+                ))
+            })?;
             let mmap = unsafe { Mmap::map(file) };
-            let mmap = mmap
-                .map_err(|_| format!("failed to mmap rmeta metadata: '{}'", filename.display()))?;
+            let mmap = mmap.map_err(|_| {
+                MetadataError::LoadFailure(format!(
+                    "failed to mmap rmeta metadata: '{}'",
+                    filename.display()
+                ))
+            })?;
 
             rustc_erase_owner!(OwningRef::new(mmap).map_owner_box())
         }
@@ -775,7 +800,10 @@ fn get_metadata_section(
     if blob.is_compatible() {
         Ok(blob)
     } else {
-        Err(format!("incompatible metadata version found: '{}'", filename.display()))
+        Err(MetadataError::LoadFailure(format!(
+            "invalid metadata version found: {}",
+            filename.display()
+        )))
     }
 }
 
@@ -786,11 +814,11 @@ pub fn find_plugin_registrar(
     span: Span,
     name: Symbol,
 ) -> PathBuf {
-    match find_plugin_registrar_impl(sess, metadata_loader, name) {
-        Ok(res) => res,
+    find_plugin_registrar_impl(sess, metadata_loader, name).unwrap_or_else(|err| {
         // `core` is always available if we got as far as loading plugins.
-        Err(err) => err.report(sess, span, false),
-    }
+        err.report(sess, span, false);
+        FatalError.raise()
+    })
 }
 
 fn find_plugin_registrar_impl<'a>(
@@ -854,6 +882,7 @@ struct CrateRejections {
     via_kind: Vec<CrateMismatch>,
     via_version: Vec<CrateMismatch>,
     via_filename: Vec<CrateMismatch>,
+    via_invalid: Vec<CrateMismatch>,
 }
 
 /// Candidate rejection reasons collected during crate search.
@@ -883,9 +912,27 @@ crate enum CrateError {
     NonDylibPlugin(Symbol),
 }
 
+enum MetadataError<'a> {
+    /// The file was missing.
+    NotPresent(&'a Path),
+    /// The file was present and invalid.
+    LoadFailure(String),
+}
+
+impl fmt::Display for MetadataError<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MetadataError::NotPresent(filename) => {
+                f.write_str(&format!("no such file: '{}'", filename.display()))
+            }
+            MetadataError::LoadFailure(msg) => f.write_str(msg),
+        }
+    }
+}
+
 impl CrateError {
-    crate fn report(self, sess: &Session, span: Span, missing_core: bool) -> ! {
-        let mut err = match self {
+    crate fn report(self, sess: &Session, span: Span, missing_core: bool) {
+        let mut diag = match self {
             CrateError::NonAsciiName(crate_name) => sess.struct_span_err(
                 span,
                 &format!("cannot load a crate with a non-ascii name `{}`", crate_name),
@@ -1064,6 +1111,19 @@ impl CrateError {
                     }
                     err.note(&msg);
                     err
+                } else if !locator.crate_rejections.via_invalid.is_empty() {
+                    let mut err = struct_span_err!(
+                        sess,
+                        span,
+                        E0786,
+                        "found invalid metadata files for crate `{}`{}",
+                        crate_name,
+                        add,
+                    );
+                    for CrateMismatch { path: _, got } in locator.crate_rejections.via_invalid {
+                        err.note(&got);
+                    }
+                    err
                 } else {
                     let mut err = struct_span_err!(
                         sess,
@@ -1150,8 +1210,6 @@ impl CrateError {
             ),
         };
 
-        err.emit();
-        sess.abort_if_errors();
-        unreachable!();
+        diag.emit();
     }
 }

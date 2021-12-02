@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/regions-outlives-projection-container-hrtb.rs:30:12
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:35:12
    |
 LL | fn with_assoc<'a,'b>() {
    |               -- -- lifetime `'b` defined here
@@ -12,7 +12,7 @@ LL |     let _: &'a WithHrAssoc<TheType<'b>> = loop { };
    = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough
-  --> $DIR/regions-outlives-projection-container-hrtb.rs:50:12
+  --> $DIR/regions-outlives-projection-container-hrtb.rs:55:12
    |
 LL | fn with_assoc_sub<'a,'b>() {
    |                   -- -- lifetime `'b` defined here

@@ -1,11 +1,11 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/E0276.rs:6:5
+  --> $DIR/E0276.rs:6:30
    |
 LL |     fn foo<T>(x: T);
    |     ---------------- definition of `foo` from trait
 ...
 LL |     fn foo<T>(x: T) where T: Copy {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: Copy`
+   |                              ^^^^ impl has extra requirement `T: Copy`
 
 error: aborting due to previous error
 

@@ -543,6 +543,16 @@ impl FileTypeExt for fs::FileType {
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Limitations
+///
+/// Windows treats symlink creation as a [privileged action][symlink-security],
+/// therefore this function is likely to fail unless the user makes changes to
+/// their system to permit symlink creation. Users can try enabling Developer
+/// Mode, granting the `SeCreateSymbolicLinkPrivilege` privilege, or running
+/// the process as an administrator.
+///
+/// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), false)
@@ -572,6 +582,16 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Limitations
+///
+/// Windows treats symlink creation as a [privileged action][symlink-security],
+/// therefore this function is likely to fail unless the user makes changes to
+/// their system to permit symlink creation. Users can try enabling Developer
+/// Mode, granting the `SeCreateSymbolicLinkPrivilege` privilege, or running
+/// the process as an administrator.
+///
+/// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), true)

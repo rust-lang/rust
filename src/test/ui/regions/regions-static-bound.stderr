@@ -1,0 +1,46 @@
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/regions-static-bound.rs:6:5
+   |
+LL |     t
+   |     ^
+   |
+   = note: ...the reference is valid for the static lifetime...
+note: ...but the borrowed content is only valid for the lifetime `'a` as defined here
+  --> $DIR/regions-static-bound.rs:5:24
+   |
+LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
+   |                        ^^
+
+error[E0759]: `u` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/regions-static-bound.rs:10:5
+   |
+LL | fn error(u: &(), v: &()) {
+   |             --- this data with an anonymous lifetime `'_`...
+LL |     static_id(&u);
+   |     ^^^^^^^^^ -- ...is captured here...
+   |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/regions-static-bound.rs:10:5
+   |
+LL |     static_id(&u);
+   |     ^^^^^^^^^
+
+error[E0759]: `v` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/regions-static-bound.rs:11:5
+   |
+LL | fn error(u: &(), v: &()) {
+   |                     --- this data with an anonymous lifetime `'_`...
+LL |     static_id(&u);
+LL |     static_id_indirect(&v);
+   |     ^^^^^^^^^^^^^^^^^^ -- ...is captured here...
+   |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/regions-static-bound.rs:11:5
+   |
+LL |     static_id_indirect(&v);
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0312, E0759.
+For more information about an error, try `rustc --explain E0312`.

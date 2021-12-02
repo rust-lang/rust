@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{ToPredicate, WithConstness};
+use rustc_middle::ty::ToPredicate;
 use rustc_span::DUMMY_SP;
 
 use super::*;
@@ -66,7 +66,8 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .into_iter()
                             .chain(Some(
                                 ty::Binder::dummy(trait_ref)
-                                    .without_const()
+                                    .to_poly_trait_predicate()
+                                    .map_bound(ty::PredicateKind::Trait)
                                     .to_predicate(infcx.tcx),
                             ));
                         for predicate in predicates {
@@ -106,7 +107,6 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     visibility: Inherited,
                     def_id: ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                     kind: box ImplItem(Impl {
-                        span: Span::new(self.cx.tcx.def_span(impl_def_id)),
                         unsafety: hir::Unsafety::Normal,
                         generics: (
                             self.cx.tcx.generics_of(impl_def_id),
@@ -122,11 +122,10 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .tcx
                             .associated_items(impl_def_id)
                             .in_definition_order()
-                            .collect::<Vec<_>>()
-                            .clean(self.cx),
-                        negative_polarity: false,
-                        synthetic: false,
-                        blanket_impl: Some(box trait_ref.self_ty().clean(self.cx)),
+                            .map(|x| x.clean(self.cx))
+                            .collect::<Vec<_>>(),
+                        polarity: ty::ImplPolarity::Positive,
+                        kind: ImplKind::Blanket(box trait_ref.self_ty().clean(self.cx)),
                     }),
                     cfg: None,
                 });

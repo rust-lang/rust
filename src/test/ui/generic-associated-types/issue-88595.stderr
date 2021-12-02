@@ -1,0 +1,40 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/issue-88595.rs:19:5
+   |
+LL |     type B<'b> = impl Clone;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/issue-88595.rs:18:6
+   |
+LL | impl<'a> A<'a> for C {
+   |      ^^
+note: but lifetime parameter must outlive the lifetime `'b` as defined here
+  --> $DIR/issue-88595.rs:19:12
+   |
+LL |     type B<'b> = impl Clone;
+   |            ^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/issue-88595.rs:23:23
+   |
+LL |     fn a(&'a self) -> Self::B<'a> {}
+   |                       ^^^^^^^^^^^
+   |
+note: lifetime used multiple times
+  --> $DIR/issue-88595.rs:18:6
+   |
+LL | impl<'a> A<'a> for C {
+   |      ^^
+LL |     type B<'b> = impl Clone;
+   |            ^^
+
+error: could not find defining uses
+  --> $DIR/issue-88595.rs:19:18
+   |
+LL |     type B<'b> = impl Clone;
+   |                  ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0478`.

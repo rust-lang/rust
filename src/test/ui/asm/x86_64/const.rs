@@ -3,7 +3,7 @@
 // revisions: mirunsafeck thirunsafeck
 // [thirunsafeck]compile-flags: -Z thir-unsafeck
 
-#![feature(asm, global_asm)]
+#![feature(asm, global_asm, asm_const)]
 
 fn const_generic<const X: usize>() -> usize {
     unsafe {

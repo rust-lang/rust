@@ -77,7 +77,7 @@ where P: Execute + 'static {
 }
 
 fn main() {
-    task(annotate( //~ type mismatch
+    task(annotate(
         //~^ the size
         //~^^ the trait bound
         Annotate::<RefMutFamily<usize>>::new(),

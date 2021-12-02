@@ -19,14 +19,14 @@ LL |
 LL |     lint_files().flat_map(|f| gather_from_file(&f))
    |     -----------------------------------------------
    |     |
-   |     returning here with type `FlatMap<impl Iterator, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
-   |     returning here with type `FlatMap<impl Iterator, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
+   |     returning here with type `FlatMap<impl Iterator<Item = [type error]>, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
+   |     returning here with type `FlatMap<impl Iterator<Item = [type error]>, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
 ...
 LL | fn gather_from_file(dir_entry: &foo::MissingItem) -> impl Iterator<Item = Lint> {
-   |                                                      -------------------------- returning this opaque type `FlatMap<impl Iterator, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
+   |                                                      -------------------------- returning this opaque type `FlatMap<impl Iterator<Item = [type error]>, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
 ...
 LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
-   |                    -------------------------------------- returning this opaque type `FlatMap<impl Iterator, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
+   |                    -------------------------------------- returning this opaque type `FlatMap<impl Iterator<Item = [type error]>, [type error], [closure@$DIR/issue-72911.rs:9:27: 9:51]>`
 
 error: aborting due to 3 previous errors
 

@@ -1,6 +1,6 @@
 // only-aarch64
 
-#![feature(asm, repr_simd, never_type)]
+#![feature(asm, repr_simd, never_type, asm_sym)]
 
 #[repr(simd)]
 #[derive(Clone, Copy)]

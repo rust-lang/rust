@@ -30,6 +30,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
+#![feature(derive_default_enum)]
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
 #![feature(if_let_guard)]
@@ -55,6 +56,7 @@
 #![feature(try_blocks)]
 #![feature(try_reserve_kind)]
 #![feature(nonzero_ops)]
+#![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
 
 #[macro_use]

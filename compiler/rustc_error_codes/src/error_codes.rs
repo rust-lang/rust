@@ -484,12 +484,13 @@ E0782: include_str!("./error_codes/E0782.md"),
 E0783: include_str!("./error_codes/E0783.md"),
 E0784: include_str!("./error_codes/E0784.md"),
 E0785: include_str!("./error_codes/E0785.md"),
+E0786: include_str!("./error_codes/E0786.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
-//  E0019, merged into E0015
-//  E0035, merged into E0087/E0089
-//  E0036, merged into E0087/E0089
+//  E0019, // merged into E0015
+//  E0035, // merged into E0087/E0089
+//  E0036, // merged into E0087/E0089
 //  E0068,
 //  E0085,
 //  E0086,
@@ -504,8 +505,8 @@ E0785: include_str!("./error_codes/E0785.md"),
 //  E0134,
 //  E0135,
 //  E0141,
-//  E0153, unused error code
-//  E0157, unused error code
+//  E0153, // unused error code
+//  E0157, // unused error code
 //  E0159, // use of trait `{}` as struct constructor
 //  E0163, // merged into E0071
 //  E0167,
@@ -573,24 +574,24 @@ E0785: include_str!("./error_codes/E0785.md"),
            // between structures with the same definition
 //  E0385, // {} in an aliasable location
 //  E0402, // cannot use an outer type parameter in this context
-//  E0406, merged into 420
-//  E0410, merged into 408
-//  E0413, merged into 530
-//  E0414, merged into 530
-//  E0417, merged into 532
-//  E0418, merged into 532
-//  E0419, merged into 531
-//  E0420, merged into 532
-//  E0421, merged into 531
-//  E0427, merged into 530
+//  E0406, // merged into 420
+//  E0410, // merged into 408
+//  E0413, // merged into 530
+//  E0414, // merged into 530
+//  E0417, // merged into 532
+//  E0418, // merged into 532
+//  E0419, // merged into 531
+//  E0420, // merged into 532
+//  E0421, // merged into 531
+//  E0427, // merged into 530
 //  E0456, // plugin `..` is not available for triple `..`
     E0457, // plugin `..` only found in rlib format, but must be available...
     E0460, // found possibly newer version of crate `..`
     E0461, // couldn't find crate `..` with expected target triple ..
     E0462, // found staticlib `..` instead of rlib or dylib
     E0465, // multiple .. candidates for `..` found
-//  E0467, removed
-//  E0470, removed
+//  E0467, // removed
+//  E0470, // removed
 //  E0471, // constant evaluation error (in pattern)
     E0472, // llvm_asm! is unsupported on this target
 //  E0473, // dereference of reference outside its lifetime
@@ -610,8 +611,7 @@ E0785: include_str!("./error_codes/E0785.md"),
     E0490, // a value of type `..` is borrowed for too long
     E0514, // metadata version mismatch
     E0519, // local crate and dependency have same (crate-name, disambiguator)
-    // two dependencies have same (crate-name, disambiguator) but different SVH
-    E0523,
+    E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
 //  E0548, // replaced with a generic attribute input check
@@ -638,7 +638,7 @@ E0785: include_str!("./error_codes/E0785.md"),
     E0711, // a feature has been declared with conflicting stability attributes
     E0717, // rustc_promotable without stability attribute
 //  E0721, // `await` keyword
-//  E0723, unstable feature in `const` context
+//  E0723, // unstable feature in `const` context
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
     E0772, // `'static' obligation coming from `impl dyn Trait {}` or `impl Foo for dyn Bar {}`.

@@ -10,7 +10,7 @@ use crate::cmp::Ordering::{self, Greater, Less};
 use crate::marker::Copy;
 use crate::mem;
 use crate::num::NonZeroUsize;
-use crate::ops::{FnMut, Range, RangeBounds};
+use crate::ops::{Bound, FnMut, OneSidedRange, Range, RangeBounds};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
 use crate::ptr;
@@ -81,6 +81,29 @@ pub use index::range;
 
 #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
 pub use ascii::EscapeAscii;
+
+/// Calculates the direction and split point of a one-sided range.
+///
+/// This is a helper function for `take` and `take_mut` that returns
+/// the direction of the split (front or back) as well as the index at
+/// which to split. Returns `None` if the split index would overflow.
+#[inline]
+fn split_point_of(range: impl OneSidedRange<usize>) -> Option<(Direction, usize)> {
+    use Bound::*;
+
+    Some(match (range.start_bound(), range.end_bound()) {
+        (Unbounded, Excluded(i)) => (Direction::Front, *i),
+        (Unbounded, Included(i)) => (Direction::Front, i.checked_add(1)?),
+        (Excluded(i), Unbounded) => (Direction::Back, i.checked_add(1)?),
+        (Included(i), Unbounded) => (Direction::Back, *i),
+        _ => unreachable!(),
+    })
+}
+
+enum Direction {
+    Front,
+    Back,
+}
 
 #[lang = "slice"]
 #[cfg(not(test))]
@@ -558,8 +581,9 @@ impl<T> [T] {
     /// assert!(v == ["a", "b", "e", "d", "c"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     #[inline]
-    pub fn swap(&mut self, a: usize, b: usize) {
+    pub const fn swap(&mut self, a: usize, b: usize) {
         let _ = &self[a];
         let _ = &self[b];
 
@@ -595,7 +619,8 @@ impl<T> [T] {
     /// [`swap`]: slice::swap
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
-    pub unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
+    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+    pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
         #[cfg(debug_assertions)]
         {
             let _ = &self[a];
@@ -621,100 +646,41 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn reverse(&mut self) {
-        let mut i: usize = 0;
-        let ln = self.len();
+        let half_len = self.len() / 2;
+        let Range { start, end } = self.as_mut_ptr_range();
 
-        // For very small types, all the individual reads in the normal
-        // path perform poorly.  We can do better, given efficient unaligned
-        // load/store, by loading a larger chunk and reversing a register.
-
-        // Ideally LLVM would do this for us, as it knows better than we do
-        // whether unaligned reads are efficient (since that changes between
-        // different ARM versions, for example) and what the best chunk size
-        // would be.  Unfortunately, as of LLVM 4.0 (2017-05) it only unrolls
-        // the loop, so we need to do this ourselves.  (Hypothesis: reverse
-        // is troublesome because the sides can be aligned differently --
-        // will be, when the length is odd -- so there's no way of emitting
-        // pre- and postludes to use fully-aligned SIMD in the middle.)
-
-        let fast_unaligned = cfg!(any(target_arch = "x86", target_arch = "x86_64"));
-
-        if fast_unaligned && mem::size_of::<T>() == 1 {
-            // Use the llvm.bswap intrinsic to reverse u8s in a usize
-            let chunk = mem::size_of::<usize>();
-            while i + chunk - 1 < ln / 2 {
-                // SAFETY: There are several things to check here:
-                //
-                // - Note that `chunk` is either 4 or 8 due to the cfg check
-                //   above. So `chunk - 1` is positive.
-                // - Indexing with index `i` is fine as the loop check guarantees
-                //   `i + chunk - 1 < ln / 2`
-                //   <=> `i < ln / 2 - (chunk - 1) < ln / 2 < ln`.
-                // - Indexing with index `ln - i - chunk = ln - (i + chunk)` is fine:
-                //   - `i + chunk > 0` is trivially true.
-                //   - The loop check guarantees:
-                //     `i + chunk - 1 < ln / 2`
-                //     <=> `i + chunk ≤ ln / 2 ≤ ln`, thus subtraction does not underflow.
-                // - The `read_unaligned` and `write_unaligned` calls are fine:
-                //   - `pa` points to index `i` where `i < ln / 2 - (chunk - 1)`
-                //     (see above) and `pb` points to index `ln - i - chunk`, so
-                //     both are at least `chunk`
-                //     many bytes away from the end of `self`.
-                //   - Any initialized memory is valid `usize`.
-                unsafe {
-                    let ptr = self.as_mut_ptr();
-                    let pa = ptr.add(i);
-                    let pb = ptr.add(ln - i - chunk);
-                    let va = ptr::read_unaligned(pa as *mut usize);
-                    let vb = ptr::read_unaligned(pb as *mut usize);
-                    ptr::write_unaligned(pa as *mut usize, vb.swap_bytes());
-                    ptr::write_unaligned(pb as *mut usize, va.swap_bytes());
-                }
-                i += chunk;
-            }
-        }
-
-        if fast_unaligned && mem::size_of::<T>() == 2 {
-            // Use rotate-by-16 to reverse u16s in a u32
-            let chunk = mem::size_of::<u32>() / 2;
-            while i + chunk - 1 < ln / 2 {
-                // SAFETY: An unaligned u32 can be read from `i` if `i + 1 < ln`
-                // (and obviously `i < ln`), because each element is 2 bytes and
-                // we're reading 4.
-                //
-                // `i + chunk - 1 < ln / 2` # while condition
-                // `i + 2 - 1 < ln / 2`
-                // `i + 1 < ln / 2`
-                //
-                // Since it's less than the length divided by 2, then it must be
-                // in bounds.
-                //
-                // This also means that the condition `0 < i + chunk <= ln` is
-                // always respected, ensuring the `pb` pointer can be used
-                // safely.
-                unsafe {
-                    let ptr = self.as_mut_ptr();
-                    let pa = ptr.add(i);
-                    let pb = ptr.add(ln - i - chunk);
-                    let va = ptr::read_unaligned(pa as *mut u32);
-                    let vb = ptr::read_unaligned(pb as *mut u32);
-                    ptr::write_unaligned(pa as *mut u32, vb.rotate_left(16));
-                    ptr::write_unaligned(pb as *mut u32, va.rotate_left(16));
-                }
-                i += chunk;
-            }
-        }
-
-        while i < ln / 2 {
-            // SAFETY: `i` is inferior to half the length of the slice so
-            // accessing `i` and `ln - i - 1` is safe (`i` starts at 0 and
-            // will not go further than `ln / 2 - 1`).
-            // The resulting pointers `pa` and `pb` are therefore valid and
-            // aligned, and can be read from and written to.
+        // These slices will skip the middle item for an odd length,
+        // since that one doesn't need to move.
+        let (front_half, back_half) =
+            // SAFETY: Both are subparts of the original slice, so the memory
+            // range is valid, and they don't overlap because they're each only
+            // half (or less) of the original slice.
             unsafe {
-                self.swap_unchecked(i, ln - i - 1);
+                (
+                    slice::from_raw_parts_mut(start, half_len),
+                    slice::from_raw_parts_mut(end.sub(half_len), half_len),
+                )
+            };
+
+        // Introducing a function boundary here means that the two halves
+        // get `noalias` markers, allowing better optimization as LLVM
+        // knows that they're disjoint, unlike in the original slice.
+        revswap(front_half, back_half, half_len);
+
+        #[inline]
+        fn revswap<T>(a: &mut [T], b: &mut [T], n: usize) {
+            debug_assert_eq!(a.len(), n);
+            debug_assert_eq!(b.len(), n);
+
+            // Because this function is first compiled in isolation,
+            // this check tells LLVM that the indexing below is
+            // in-bounds.  Then after inlining -- once the actual
+            // lengths of the slices are known -- it's removed.
+            let (a, b) = (&mut a[..n], &mut b[..n]);
+
+            for i in 0..n {
+                mem::swap(&mut a[i], &mut b[n - 1 - i]);
             }
-            i += 1;
         }
     }
 
@@ -3573,6 +3539,245 @@ impl<T> [T] {
         P: FnMut(&T) -> bool,
     {
         self.binary_search_by(|x| if pred(x) { Less } else { Greater }).unwrap_or_else(|i| i)
+    }
+
+    /// Removes the subslice corresponding to the given range
+    /// and returns a reference to it.
+    ///
+    /// Returns `None` and does not modify the slice if the given
+    /// range is out of bounds.
+    ///
+    /// Note that this method only accepts one-sided ranges such as
+    /// `2..` or `..6`, but not `2..6`.
+    ///
+    /// # Examples
+    ///
+    /// Taking the first three elements of a slice:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
+    /// let mut first_three = slice.take(..3).unwrap();
+    ///
+    /// assert_eq!(slice, &['d']);
+    /// assert_eq!(first_three, &['a', 'b', 'c']);
+    /// ```
+    ///
+    /// Taking the last two elements of a slice:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
+    /// let mut tail = slice.take(2..).unwrap();
+    ///
+    /// assert_eq!(slice, &['a', 'b']);
+    /// assert_eq!(tail, &['c', 'd']);
+    /// ```
+    ///
+    /// Getting `None` when `range` is out of bounds:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
+    ///
+    /// assert_eq!(None, slice.take(5..));
+    /// assert_eq!(None, slice.take(..5));
+    /// assert_eq!(None, slice.take(..=4));
+    /// let expected: &[char] = &['a', 'b', 'c', 'd'];
+    /// assert_eq!(Some(expected), slice.take(..4));
+    /// ```
+    #[inline]
+    #[must_use = "method does not modify the slice if the range is out of bounds"]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take<'a, R: OneSidedRange<usize>>(self: &mut &'a Self, range: R) -> Option<&'a Self> {
+        let (direction, split_index) = split_point_of(range)?;
+        if split_index > self.len() {
+            return None;
+        }
+        let (front, back) = self.split_at(split_index);
+        match direction {
+            Direction::Front => {
+                *self = back;
+                Some(front)
+            }
+            Direction::Back => {
+                *self = front;
+                Some(back)
+            }
+        }
+    }
+
+    /// Removes the subslice corresponding to the given range
+    /// and returns a mutable reference to it.
+    ///
+    /// Returns `None` and does not modify the slice if the given
+    /// range is out of bounds.
+    ///
+    /// Note that this method only accepts one-sided ranges such as
+    /// `2..` or `..6`, but not `2..6`.
+    ///
+    /// # Examples
+    ///
+    /// Taking the first three elements of a slice:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
+    /// let mut first_three = slice.take_mut(..3).unwrap();
+    ///
+    /// assert_eq!(slice, &mut ['d']);
+    /// assert_eq!(first_three, &mut ['a', 'b', 'c']);
+    /// ```
+    ///
+    /// Taking the last two elements of a slice:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
+    /// let mut tail = slice.take_mut(2..).unwrap();
+    ///
+    /// assert_eq!(slice, &mut ['a', 'b']);
+    /// assert_eq!(tail, &mut ['c', 'd']);
+    /// ```
+    ///
+    /// Getting `None` when `range` is out of bounds:
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
+    ///
+    /// assert_eq!(None, slice.take_mut(5..));
+    /// assert_eq!(None, slice.take_mut(..5));
+    /// assert_eq!(None, slice.take_mut(..=4));
+    /// let expected: &mut [_] = &mut ['a', 'b', 'c', 'd'];
+    /// assert_eq!(Some(expected), slice.take_mut(..4));
+    /// ```
+    #[inline]
+    #[must_use = "method does not modify the slice if the range is out of bounds"]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take_mut<'a, R: OneSidedRange<usize>>(
+        self: &mut &'a mut Self,
+        range: R,
+    ) -> Option<&'a mut Self> {
+        let (direction, split_index) = split_point_of(range)?;
+        if split_index > self.len() {
+            return None;
+        }
+        let (front, back) = mem::take(self).split_at_mut(split_index);
+        match direction {
+            Direction::Front => {
+                *self = back;
+                Some(front)
+            }
+            Direction::Back => {
+                *self = front;
+                Some(back)
+            }
+        }
+    }
+
+    /// Removes the first element of the slice and returns a reference
+    /// to it.
+    ///
+    /// Returns `None` if the slice is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &[_] = &['a', 'b', 'c'];
+    /// let first = slice.take_first().unwrap();
+    ///
+    /// assert_eq!(slice, &['b', 'c']);
+    /// assert_eq!(first, &'a');
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take_first<'a>(self: &mut &'a Self) -> Option<&'a T> {
+        let (first, rem) = self.split_first()?;
+        *self = rem;
+        Some(first)
+    }
+
+    /// Removes the first element of the slice and returns a mutable
+    /// reference to it.
+    ///
+    /// Returns `None` if the slice is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c'];
+    /// let first = slice.take_first_mut().unwrap();
+    /// *first = 'd';
+    ///
+    /// assert_eq!(slice, &['b', 'c']);
+    /// assert_eq!(first, &'d');
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take_first_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
+        let (first, rem) = mem::take(self).split_first_mut()?;
+        *self = rem;
+        Some(first)
+    }
+
+    /// Removes the last element of the slice and returns a reference
+    /// to it.
+    ///
+    /// Returns `None` if the slice is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &[_] = &['a', 'b', 'c'];
+    /// let last = slice.take_last().unwrap();
+    ///
+    /// assert_eq!(slice, &['a', 'b']);
+    /// assert_eq!(last, &'c');
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take_last<'a>(self: &mut &'a Self) -> Option<&'a T> {
+        let (last, rem) = self.split_last()?;
+        *self = rem;
+        Some(last)
+    }
+
+    /// Removes the last element of the slice and returns a mutable
+    /// reference to it.
+    ///
+    /// Returns `None` if the slice is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_take)]
+    ///
+    /// let mut slice: &mut [_] = &mut ['a', 'b', 'c'];
+    /// let last = slice.take_last_mut().unwrap();
+    /// *last = 'd';
+    ///
+    /// assert_eq!(slice, &['a', 'b']);
+    /// assert_eq!(last, &'d');
+    /// ```
+    #[inline]
+    #[unstable(feature = "slice_take", issue = "62280")]
+    pub fn take_last_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
+        let (last, rem) = mem::take(self).split_last_mut()?;
+        *self = rem;
+        Some(last)
     }
 }
 

@@ -7,11 +7,6 @@ LL |     for _ in ..10 {}
    = help: the trait `Iterator` is not implemented for `RangeTo<{integer}>`
    = note: `..end` is a `RangeTo`, which cannot be iterated on; you might have meant to have a bounded `Range`: `0..end`
    = note: required because of the requirements on the impl of `IntoIterator` for `RangeTo<{integer}>`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `RangeToInclusive<{integer}>` is not an iterator
   --> $DIR/ranges.rs:4:14
@@ -22,11 +17,6 @@ LL |     for _ in ..=10 {}
    = help: the trait `Iterator` is not implemented for `RangeToInclusive<{integer}>`
    = note: `..=end` is a `RangeToInclusive`, which cannot be iterated on; you might have meant to have a bounded `RangeInclusive`: `0..=end`
    = note: required because of the requirements on the impl of `IntoIterator` for `RangeToInclusive<{integer}>`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

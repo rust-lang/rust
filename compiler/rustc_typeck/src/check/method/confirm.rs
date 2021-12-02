@@ -120,7 +120,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // We won't add these if we encountered an illegal sized bound, so that we can use
         // a custom error in that case.
         if illegal_sized_bound.is_none() {
-            self.add_obligations(self.tcx.mk_fn_ptr(method_sig), all_substs, method_predicates);
+            self.add_obligations(
+                self.tcx.mk_fn_ptr(method_sig),
+                all_substs,
+                method_predicates,
+                pick.item.def_id,
+            );
         }
 
         // Create the final `MethodCallee`.
@@ -162,7 +167,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         match &pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
-                let region = self.next_region_var(infer::Autoref(self.span, pick.item));
+                let region = self.next_region_var(infer::Autoref(self.span));
                 target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl: *mutbl, ty: target });
                 let mutbl = match mutbl {
                     hir::Mutability::Not => AutoBorrowMutability::Not,
@@ -471,16 +476,23 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         fty: Ty<'tcx>,
         all_substs: SubstsRef<'tcx>,
         method_predicates: ty::InstantiatedPredicates<'tcx>,
+        def_id: DefId,
     ) {
         debug!(
-            "add_obligations: fty={:?} all_substs={:?} method_predicates={:?}",
-            fty, all_substs, method_predicates
+            "add_obligations: fty={:?} all_substs={:?} method_predicates={:?} def_id={:?}",
+            fty, all_substs, method_predicates, def_id
         );
 
-        self.add_obligations_for_parameters(
-            traits::ObligationCause::misc(self.span, self.body_id),
+        // FIXME: could replace with the following, but we already calculated `method_predicates`,
+        // so we just call `predicates_for_generics` directly to avoid redoing work.
+        // `self.add_required_obligations(self.span, def_id, &all_substs);`
+        for obligation in traits::predicates_for_generics(
+            traits::ObligationCause::new(self.span, self.body_id, traits::ItemObligation(def_id)),
+            self.param_env,
             method_predicates,
-        );
+        ) {
+            self.register_predicate(obligation);
+        }
 
         // this is a projection from a trait reference, so we have to
         // make sure that the trait reference inputs are well-formed.

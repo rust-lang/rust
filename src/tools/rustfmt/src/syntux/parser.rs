@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
         span: Span,
     ) -> Result<(Vec<ast::Attribute>, Vec<ptr::P<ast::Item>>, Span), ParserError> {
         let result = catch_unwind(AssertUnwindSafe(|| {
-            let mut parser = new_parser_from_file(sess.inner(), &path, Some(span));
+            let mut parser = new_parser_from_file(sess.inner(), path, Some(span));
             match parser.parse_mod(&TokenKind::Eof) {
                 Ok(result) => Some(result),
                 Err(mut e) => {
@@ -125,18 +125,12 @@ impl<'a> Parser<'a> {
             }
         }));
         match result {
-            Ok(Some(m)) => {
-                if !sess.has_errors() {
-                    return Ok(m);
-                }
-
-                if sess.can_reset_errors() {
-                    sess.reset_errors();
-                    return Ok(m);
-                }
-                Err(ParserError::ParseError)
+            Ok(Some(m)) if !sess.has_errors() => Ok(m),
+            Ok(Some(m)) if sess.can_reset_errors() => {
+                sess.reset_errors();
+                Ok(m)
             }
-            Ok(None) => Err(ParserError::ParseError),
+            Ok(_) => Err(ParserError::ParseError),
             Err(..) if path.exists() => Err(ParserError::ParseError),
             Err(_) => Err(ParserError::ParsePanicError),
         }

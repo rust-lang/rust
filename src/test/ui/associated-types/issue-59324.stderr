@@ -1,0 +1,69 @@
+error[E0277]: the trait bound `Bug: Foo` is not satisfied
+  --> $DIR/issue-59324.rs:11:1
+   |
+LL | / pub trait ThriftService<Bug: NotFoo>:
+LL | |
+LL | |
+LL | |     Service<AssocType = <Bug as Foo>::OnlyFoo>
+...  |
+LL | |     ) -> Self::AssocType;
+LL | | }
+   | |_^ the trait `Foo` is not implemented for `Bug`
+   |
+help: consider further restricting this bound
+   |
+LL | pub trait ThriftService<Bug: NotFoo + Foo>:
+   |                                     +++++
+
+error[E0277]: the trait bound `Bug: Foo` is not satisfied
+  --> $DIR/issue-59324.rs:11:1
+   |
+LL | / pub trait ThriftService<Bug: NotFoo>:
+LL | |
+LL | |
+LL | |     Service<AssocType = <Bug as Foo>::OnlyFoo>
+...  |
+LL | |     ) -> Self::AssocType;
+LL | | }
+   | |_^ the trait `Foo` is not implemented for `Bug`
+   |
+help: consider further restricting this bound
+   |
+LL | pub trait ThriftService<Bug: NotFoo + Foo>:
+   |                                     +++++
+
+error[E0277]: the trait bound `Bug: Foo` is not satisfied
+  --> $DIR/issue-59324.rs:16:5
+   |
+LL | /     fn get_service(
+LL | |
+LL | |
+LL | |         &self,
+LL | |     ) -> Self::AssocType;
+   | |_________________________^ the trait `Foo` is not implemented for `Bug`
+   |
+help: consider further restricting this bound
+   |
+LL | pub trait ThriftService<Bug: NotFoo + Foo>:
+   |                                     +++++
+
+error[E0277]: the trait bound `Bug: Foo` is not satisfied
+  --> $DIR/issue-59324.rs:16:8
+   |
+LL |     fn get_service(
+   |        ^^^^^^^^^^^ the trait `Foo` is not implemented for `Bug`
+   |
+help: consider further restricting this bound
+   |
+LL | pub trait ThriftService<Bug: NotFoo + Foo>:
+   |                                     +++++
+
+error[E0277]: the trait bound `(): Foo` is not satisfied
+  --> $DIR/issue-59324.rs:23:29
+   |
+LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
+   |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

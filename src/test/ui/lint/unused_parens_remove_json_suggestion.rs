@@ -1,4 +1,4 @@
-// compile-flags: --error-format json -Zunstable-options
+// compile-flags: --error-format json
 // run-rustfix
 
 // The output for humans should just highlight the whole span without showing

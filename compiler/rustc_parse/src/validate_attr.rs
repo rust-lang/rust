@@ -5,7 +5,7 @@ use crate::parse_in;
 use rustc_ast::tokenstream::{DelimSpan, TokenTree};
 use rustc_ast::{self as ast, Attribute, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
 use rustc_errors::{Applicability, FatalError, PResult};
-use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Symbol};
@@ -15,14 +15,13 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
         return;
     }
 
-    let attr_info =
-        attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).map(|a| **a);
+    let attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
 
     // Check input tokens for built-in and key-value attributes.
     match attr_info {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-        Some((name, _, template, _)) if name != sym::rustc_dummy => {
-            check_builtin_attribute(sess, attr, name, template)
+        Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
+            check_builtin_attribute(sess, attr, *name, *template)
         }
         _ if let MacArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
@@ -168,7 +167,7 @@ pub fn emit_fatal_malformed_builtin_attribute(
     attr: &Attribute,
     name: Symbol,
 ) -> ! {
-    let template = BUILTIN_ATTRIBUTE_MAP.get(&name).expect("builtin attr defined").2;
+    let template = BUILTIN_ATTRIBUTE_MAP.get(&name).expect("builtin attr defined").template;
     emit_malformed_attribute(sess, attr, name, template);
     // This is fatal, otherwise it will likely cause a cascade of other errors
     // (and an error here is expected to be very rare).

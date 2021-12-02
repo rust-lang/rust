@@ -1,0 +1,14 @@
+error: unexpected token: `|x| [b; x]`
+  --> $DIR/issue-90878-2.rs:1:7
+   |
+LL |  #![l=|x|[b;x ]]
+   |       ^^^^^^^^^
+
+error: cannot find attribute `l` in this scope
+  --> $DIR/issue-90878-2.rs:1:5
+   |
+LL |  #![l=|x|[b;x ]]
+   |     ^
+
+error: aborting due to 2 previous errors
+

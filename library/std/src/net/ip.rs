@@ -878,12 +878,7 @@ impl Ipv4Addr {
     #[must_use]
     #[inline]
     pub const fn is_documentation(&self) -> bool {
-        match self.octets() {
-            [192, 0, 2, _] => true,
-            [198, 51, 100, _] => true,
-            [203, 0, 113, _] => true,
-            _ => false,
-        }
+        matches!(self.octets(), [192, 0, 2, _] | [198, 51, 100, _] | [203, 0, 113, _])
     }
 
     /// Converts this address to an [IPv4-compatible] [`IPv6` address].

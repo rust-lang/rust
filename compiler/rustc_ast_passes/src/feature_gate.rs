@@ -3,7 +3,7 @@ use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{AssocTyConstraint, AssocTyConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd, VariantData};
 use rustc_errors::struct_span_err;
-use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{AttributeGate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, GateIssue};
 use rustc_session::parse::{feature_err, feature_err_issue};
 use rustc_session::Session;
@@ -301,11 +301,14 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        let attr_info =
-            attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).map(|a| **a);
+        let attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
         // Check feature gates for built-in attributes.
-        if let Some((.., AttributeGate::Gated(_, name, descr, has_feature))) = attr_info {
-            gate_feature_fn!(self, has_feature, attr.span, name, descr);
+        if let Some(BuiltinAttribute {
+            gate: AttributeGate::Gated(_, name, descr, has_feature),
+            ..
+        }) = attr_info
+        {
+            gate_feature_fn!(self, has_feature, attr.span, *name, descr);
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {
@@ -322,8 +325,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     cfg_hide => doc_cfg_hide
                     masked => doc_masked
                     notable_trait => doc_notable_trait
-                    keyword => doc_keyword
                 );
+
+                if nested_meta.has_name(sym::keyword) {
+                    let msg = "`#[doc(keyword)]` is meant for internal use only";
+                    gate_feature_post!(self, rustdoc_internals, attr.span, msg);
+                }
             }
         }
 
@@ -423,9 +430,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl(box ast::ImplKind {
-                polarity, defaultness, ref of_trait, ..
-            }) => {
+            ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, ref of_trait, .. }) => {
                 if let ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
@@ -441,7 +446,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Trait(box ast::TraitKind(ast::IsAuto::Yes, ..)) => {
+            ast::ItemKind::Trait(box ast::Trait { is_auto: ast::IsAuto::Yes, .. }) => {
                 gate_feature_post!(
                     &self,
                     auto_traits,
@@ -459,7 +464,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::TyAlias(box ast::TyAliasKind(_, _, _, Some(ref ty))) => {
+            ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ref ty), .. }) => {
                 self.check_impl_trait(&ty)
             }
 
@@ -541,15 +546,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
-            ast::ExprKind::Block(_, opt_label) => {
-                if let Some(label) = opt_label {
-                    gate_feature_post!(
-                        &self,
-                        label_break_value,
-                        label.ident.span,
-                        "labels on blocks are unstable"
-                    );
-                }
+            ast::ExprKind::Block(_, Some(label)) => {
+                gate_feature_post!(
+                    &self,
+                    label_break_value,
+                    label.ident.span,
+                    "labels on blocks are unstable"
+                );
             }
             _ => {}
         }
@@ -634,7 +637,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
         let is_fn = match i.kind {
             ast::AssocItemKind::Fn(_) => true,
-            ast::AssocItemKind::TyAlias(box ast::TyAliasKind(_, ref generics, _, ref ty)) => {
+            ast::AssocItemKind::TyAlias(box ast::TyAlias { ref generics, ref ty, .. }) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,
@@ -720,6 +723,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(const_trait_impl, "const trait impls are experimental");
     gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
     gate_all!(inline_const, "inline-const is experimental");
+    gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(
         const_generics_defaults,
         "default values for const generic parameters are experimental"

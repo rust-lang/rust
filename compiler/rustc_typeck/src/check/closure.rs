@@ -92,7 +92,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let parent_substs = InternalSubsts::identity_for_item(
             self.tcx,
-            self.tcx.closure_base_def_id(expr_def_id.to_def_id()),
+            self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
         );
 
         let tupled_upvars_ty = self.infcx.next_ty_var(TypeVariableOrigin {
@@ -257,8 +257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if is_gen {
             // Check that we deduce the signature from the `<_ as std::ops::Generator>::Return`
             // associated item and not yield.
-            let return_assoc_item =
-                self.tcx.associated_items(gen_trait).in_definition_order().nth(1).unwrap().def_id;
+            let return_assoc_item = self.tcx.associated_item_def_ids(gen_trait)[1];
             if return_assoc_item != projection.projection_def_id() {
                 debug!("deduce_sig_from_projection: not return assoc item of generator");
                 return None;
@@ -694,8 +693,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // The `Future` trait has only one associted item, `Output`,
         // so check that this is what we see.
-        let output_assoc_item =
-            self.tcx.associated_items(future_trait).in_definition_order().next().unwrap().def_id;
+        let output_assoc_item = self.tcx.associated_item_def_ids(future_trait)[0];
         if output_assoc_item != predicate.projection_ty.item_def_id {
             span_bug!(
                 cause_span,

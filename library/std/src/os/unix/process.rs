@@ -39,7 +39,7 @@ pub trait CommandExt: Sealed {
 
     /// Sets the supplementary group IDs for the calling process. Translates to
     /// a `setgroups` call in the child process.
-    #[unstable(feature = "setgroups", issue = "38527", reason = "")]
+    #[unstable(feature = "setgroups", issue = "90747")]
     fn groups(
         &mut self,
         #[cfg(not(target_os = "vxworks"))] groups: &[u32],
@@ -207,7 +207,7 @@ impl CommandExt for process::Command {
 /// [`ExitStatusError`](process::ExitStatusError).
 ///
 /// On Unix, `ExitStatus` **does not necessarily represent an exit status**, as
-/// passed to the `exit` system call or returned by
+/// passed to the `_exit` system call or returned by
 /// [`ExitStatus::code()`](crate::process::ExitStatus::code).  It represents **any wait status**
 /// as returned by one of the `wait` family of system
 /// calls.

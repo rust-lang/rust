@@ -731,7 +731,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn fptoui_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
-        if llvm_util::get_version() >= (12, 0, 0) && !self.fptoint_sat_broken_in_llvm() {
+        if !self.fptoint_sat_broken_in_llvm() {
             let src_ty = self.cx.val_ty(val);
             let float_width = self.cx.float_width(src_ty);
             let int_width = self.cx.int_width(dest_ty);
@@ -743,7 +743,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn fptosi_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
-        if llvm_util::get_version() >= (12, 0, 0) && !self.fptoint_sat_broken_in_llvm() {
+        if !self.fptoint_sat_broken_in_llvm() {
             let src_ty = self.cx.val_ty(val);
             let float_width = self.cx.float_width(src_ty);
             let int_width = self.cx.int_width(dest_ty);
@@ -769,7 +769,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // we like. To ensure that LLVM picks the right instruction we choose
         // the raw wasm intrinsic functions which avoid LLVM inserting all the
         // other control flow automatically.
-        if self.sess().target.arch == "wasm32" {
+        if self.sess().target.is_like_wasm {
             let src_ty = self.cx.val_ty(val);
             if self.cx.type_kind(src_ty) != TypeKind::Vector {
                 let float_width = self.cx.float_width(src_ty);
@@ -791,7 +791,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn fptosi(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         // see `fptoui` above for why wasm is different here
-        if self.sess().target.arch == "wasm32" {
+        if self.sess().target.is_like_wasm {
             let src_ty = self.cx.val_ty(val);
             if self.cx.type_kind(src_ty) != TypeKind::Vector {
                 let float_width = self.cx.float_width(src_ty);

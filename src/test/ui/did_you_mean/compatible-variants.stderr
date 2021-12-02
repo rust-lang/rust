@@ -1,0 +1,137 @@
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:9:5
+   |
+LL |   fn a() -> Option<()> {
+   |             ---------- expected `Option<()>` because of return type
+LL | /     while false {
+LL | |
+LL | |         f();
+LL | |     }
+   | |_____^ expected enum `Option`, found `()`
+   |
+   = note:   expected enum `Option<()>`
+           found unit type `()`
+help: try adding an expression at the end of the block
+   |
+LL ~     }
+LL +     None
+   |
+LL ~     }
+LL +     Some(())
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:17:5
+   |
+LL | fn b() -> Result<(), ()> {
+   |           -------------- expected `Result<(), ()>` because of return type
+LL |     f()
+   |     ^^^ expected enum `Result`, found `()`
+   |
+   = note:   expected enum `Result<(), ()>`
+           found unit type `()`
+help: try adding an expression at the end of the block
+   |
+LL ~     f();
+LL +     Ok(())
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:23:25
+   |
+LL |     let _: Option<()> = while false {};
+   |            ----------   ^^^^^^^^^^^^^^ expected enum `Option`, found `()`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected enum `Option<()>`
+           found unit type `()`
+help: try wrapping the expression in `Some`
+   |
+LL |     let _: Option<()> = Some(while false {});
+   |                         +++++              +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:27:9
+   |
+LL |         while false {}
+   |         ^^^^^^^^^^^^^^ expected enum `Option`, found `()`
+   |
+   = note:   expected enum `Option<()>`
+           found unit type `()`
+help: try adding an expression at the end of the block
+   |
+LL ~         while false {}
+LL +         None
+   |
+LL ~         while false {}
+LL +         Some(())
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:31:31
+   |
+LL |     let _: Result<i32, i32> = 1;
+   |            ----------------   ^ expected enum `Result`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Result<i32, i32>`
+              found type `{integer}`
+help: try wrapping the expression in a variant of `Result`
+   |
+LL |     let _: Result<i32, i32> = Ok(1);
+   |                               +++ +
+LL |     let _: Result<i32, i32> = Err(1);
+   |                               ++++ +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:34:26
+   |
+LL |     let _: Option<i32> = 1;
+   |            -----------   ^ expected enum `Option`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Option<i32>`
+              found type `{integer}`
+help: try wrapping the expression in `Some`
+   |
+LL |     let _: Option<i32> = Some(1);
+   |                          +++++ +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:37:28
+   |
+LL |     let _: Hey<i32, i32> = 1;
+   |            -------------   ^ expected enum `Hey`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Hey<i32, i32>`
+              found type `{integer}`
+help: try wrapping the expression in a variant of `Hey`
+   |
+LL |     let _: Hey<i32, i32> = Hey::A(1);
+   |                            +++++++ +
+LL |     let _: Hey<i32, i32> = Hey::B(1);
+   |                            +++++++ +
+
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:40:29
+   |
+LL |     let _: Hey<i32, bool> = false;
+   |            --------------   ^^^^^ expected enum `Hey`, found `bool`
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `Hey<i32, bool>`
+              found type `bool`
+help: try wrapping the expression in `Hey::B`
+   |
+LL |     let _: Hey<i32, bool> = Hey::B(false);
+   |                             +++++++     +
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

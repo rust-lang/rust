@@ -300,7 +300,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     hir::TyKind::Path(hir::QPath::Resolved(
                         None,
                         hir::Path { res: hir::def::Res::Def(_, id), .. },
-                    )) if *id == def_id => true,
+                    )) => *id == def_id,
                     _ => false,
                 })
             })

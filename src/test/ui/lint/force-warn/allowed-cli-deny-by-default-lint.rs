@@ -1,6 +1,6 @@
 // --force-warn $LINT causes $LINT (which is deny-by-default) to warn
 // despite $LINT being allowed on command line
-// compile-flags: -A const_err --force-warn const_err -Zunstable-options
+// compile-flags: -A const_err --force-warn const_err
 // check-pass
 
 const C: i32 = 1 / 0;

@@ -1,3 +1,5 @@
+// needs-asm-support
+
 #![feature(asm)]
 
 const _: () = unsafe { asm!("nop") };

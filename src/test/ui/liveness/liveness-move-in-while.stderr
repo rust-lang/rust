@@ -28,6 +28,8 @@ LL |         println!("{}", y);
    |                        ^ value borrowed here after move
 LL |         while true { while true { while true { x = y; x.clone(); } } }
    |                                                    - value moved here, in previous iteration of loop
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error; 3 warnings emitted
 

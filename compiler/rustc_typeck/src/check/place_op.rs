@@ -440,8 +440,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // If we have an autoref followed by unsizing at the end, fix the unsize target.
-            if let [.., Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. }, Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target }] =
-                adjustments[..]
+            if let [
+                ..,
+                Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
+                Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target },
+            ] = adjustments[..]
             {
                 *target = method.sig.inputs()[0];
             }

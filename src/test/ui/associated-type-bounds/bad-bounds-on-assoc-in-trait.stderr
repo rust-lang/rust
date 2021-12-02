@@ -5,13 +5,6 @@ LL |     type C: Clone + Iterator<Item: Send + Iterator<Item: for<'a> Lam<&'a u8
    |                                    ^^^^ `<<Self as Case1>::C as Iterator>::Item` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `<<Self as Case1>::C as Iterator>::Item`
-note: required by a bound in `Send`
-  --> $SRC_DIR/core/src/marker.rs:LL:COL
-   |
-LL | / pub unsafe auto trait Send {
-LL | |     // empty.
-LL | | }
-   | |_^ required by this bound in `Send`
 help: consider further restricting the associated type
    |
 LL | trait Case1 where <<Self as Case1>::C as Iterator>::Item: Send {
@@ -24,17 +17,6 @@ LL |     type C: Clone + Iterator<Item: Send + Iterator<Item: for<'a> Lam<&'a u8
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `<<Self as Case1>::C as Iterator>::Item` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `<<Self as Case1>::C as Iterator>::Item`
-note: required by a bound in `Iterator`
-  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL | / pub trait Iterator {
-LL | |     /// The type of the elements being iterated over.
-LL | |     #[stable(feature = "rust1", since = "1.0.0")]
-LL | |     type Item;
-...  |
-LL | |     }
-LL | | }
-   | |_^ required by this bound in `Iterator`
 help: consider further restricting the associated type
    |
 LL | trait Case1 where <<Self as Case1>::C as Iterator>::Item: Iterator {
@@ -47,17 +29,6 @@ LL |     type C: Clone + Iterator<Item: Send + Iterator<Item: for<'a> Lam<&'a u8
    |                                                                                             ^^^^ `<<Self as Case1>::C as Iterator>::Item` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `<<Self as Case1>::C as Iterator>::Item`
-note: required by a bound in `Sync`
-  --> $SRC_DIR/core/src/marker.rs:LL:COL
-   |
-LL | / pub unsafe auto trait Sync {
-LL | |     // FIXME(estebank): once support to add notes in `rustc_on_unimplemented`
-LL | |     // lands in beta, and it has been extended to check whether a closure is
-LL | |     // anywhere in the requirement chain, extend it as such (#48534):
-...  |
-LL | |     // Empty
-LL | | }
-   | |_^ required by this bound in `Sync`
 help: consider further restricting the associated type
    |
 LL | trait Case1 where <<Self as Case1>::C as Iterator>::Item: Sync {

@@ -7,7 +7,7 @@ LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/issue-79422.rs:20:10
    |
-LL |     type VRefCont<'a>: RefCont<'a, V>;
+LL |     type VRefCont<'a>: RefCont<'a, V> where Self: 'a;
    |          ^^^^^^^^ --
 help: add missing lifetime argument
    |
@@ -25,7 +25,7 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
    |
 LL | trait MapLike<K, V> {
    |       ------- this trait cannot be made into an object...
-LL |     type VRefCont<'a>: RefCont<'a, V>;
+LL |     type VRefCont<'a>: RefCont<'a, V> where Self: 'a;
    |          ^^^^^^^^ ...because it contains the generic associated type `VRefCont`
    = help: consider moving `VRefCont` to another trait
 
@@ -40,7 +40,7 @@ note: for a trait to be "object safe" it needs to allow building a vtable to all
    |
 LL | trait MapLike<K, V> {
    |       ------- this trait cannot be made into an object...
-LL |     type VRefCont<'a>: RefCont<'a, V>;
+LL |     type VRefCont<'a>: RefCont<'a, V> where Self: 'a;
    |          ^^^^^^^^ ...because it contains the generic associated type `VRefCont`
    = help: consider moving `VRefCont` to another trait
    = note: required because of the requirements on the impl of `CoerceUnsized<Box<dyn MapLike<u8, u8, VRefCont = (dyn RefCont<'_, u8> + 'static)>>>` for `Box<BTreeMap<u8, u8>>`

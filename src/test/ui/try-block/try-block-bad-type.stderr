@@ -8,11 +8,6 @@ LL |         Err("")?;
    = help: the following implementations were found:
              <TryFromSliceError as From<Infallible>>
    = note: required because of the requirements on the impl of `FromResidual<Result<Infallible, &str>>` for `Result<u32, TryFromSliceError>`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == &str`
   --> $DIR/try-block-bad-type.rs:12:9
@@ -33,11 +28,6 @@ LL |     let res: () = try { };
    |                         ^ could not wrap the final value of the block as `()` doesn't implement `Try`
    |
    = help: the trait `Try` is not implemented for `()`
-note: required by `from_output`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_output(output: Self::Output) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: a `try` block must return `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/try-block-bad-type.rs:20:26
@@ -46,11 +36,6 @@ LL |     let res: i32 = try { 5 };
    |                          ^ could not wrap the final value of the block as `i32` doesn't implement `Try`
    |
    = help: the trait `Try` is not implemented for `i32`
-note: required by `from_output`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_output(output: Self::Output) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

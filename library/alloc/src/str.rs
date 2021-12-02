@@ -46,7 +46,7 @@ pub use core::str::pattern;
 pub use core::str::EncodeUtf16;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use core::str::SplitAsciiWhitespace;
-#[stable(feature = "split_inclusive", since = "1.53.0")]
+#[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use core::str::SplitInclusive;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::SplitWhitespace;

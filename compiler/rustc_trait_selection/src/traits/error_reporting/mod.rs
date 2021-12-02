@@ -24,7 +24,7 @@ use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
     self, fast_reject, AdtKind, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt,
-    TypeFoldable, WithConstness,
+    TypeFoldable,
 };
 use rustc_session::DiagnosticMessageId;
 use rustc_span::symbol::{kw, sym};
@@ -266,19 +266,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
                 if let ObligationCauseCode::CompareImplMethodObligation {
-                    item_name,
                     impl_item_def_id,
                     trait_item_def_id,
                 }
                 | ObligationCauseCode::CompareImplTypeObligation {
-                    item_name,
                     impl_item_def_id,
                     trait_item_def_id,
                 } = obligation.cause.code
                 {
                     self.report_extra_impl_obligation(
                         span,
-                        item_name,
                         impl_item_def_id,
                         trait_item_def_id,
                         &format!("`{}`", obligation.predicate),
@@ -542,11 +539,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // is otherwise overwhelming and unhelpful (see #85844 for an
                         // example).
 
-                        let trait_is_debug =
-                            self.tcx.is_diagnostic_item(sym::Debug, trait_ref.def_id());
-                        let trait_is_display =
-                            self.tcx.is_diagnostic_item(sym::Display, trait_ref.def_id());
-
                         let in_std_macro =
                             match obligation.cause.span.ctxt().outer_expn_data().macro_def_id {
                                 Some(macro_def_id) => {
@@ -556,7 +548,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 None => false,
                             };
 
-                        if in_std_macro && (trait_is_debug || trait_is_display) {
+                        if in_std_macro
+                            && matches!(
+                                self.tcx.get_diagnostic_name(trait_ref.def_id()),
+                                Some(sym::Debug | sym::Display)
+                            )
+                        {
                             err.emit();
                             return;
                         }
@@ -1838,7 +1835,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 post.iter().map(|p| format!("- {}", p)).take(4).collect::<Vec<_>>().join("\n"),
                 post.len() - 4,
             )
-        } else if post.len() > 1 || (post.len() == 1 && post[0].contains("\n")) {
+        } else if post.len() > 1 || (post.len() == 1 && post[0].contains('\n')) {
             format!(":\n{}", post.iter().map(|p| format!("- {}", p)).collect::<Vec<_>>().join("\n"),)
         } else if post.len() == 1 {
             format!(": `{}`", post[0])
@@ -1901,15 +1898,15 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.infcx.tcx
             }
 
-            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
                 if let ty::Param(ty::ParamTy { name, .. }) = *ty.kind() {
                     let infcx = self.infcx;
-                    self.var_map.entry(ty).or_insert_with(|| {
+                    Ok(self.var_map.entry(ty).or_insert_with(|| {
                         infcx.next_ty_var(TypeVariableOrigin {
                             kind: TypeVariableOriginKind::TypeParameterDefinition(name, None),
                             span: DUMMY_SP,
                         })
-                    })
+                    }))
                 } else {
                     ty.super_fold_with(self)
                 }
@@ -1919,8 +1916,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         self.probe(|_| {
             let mut selcx = SelectionContext::new(self);
 
-            let cleaned_pred =
-                pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
+            let cleaned_pred = pred
+                .fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() })
+                .into_ok();
 
             let cleaned_pred = super::project::normalize(
                 &mut selcx,
@@ -2000,29 +1998,35 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         let sized_trait = self.tcx.lang_items().sized_trait();
         debug!("maybe_suggest_unsized_generics: generics.params={:?}", generics.params);
         debug!("maybe_suggest_unsized_generics: generics.where_clause={:?}", generics.where_clause);
-        let param = generics
-            .params
-            .iter()
-            .filter(|param| param.span == span)
-            .filter(|param| {
-                // Check that none of the explicit trait bounds is `Sized`. Assume that an explicit
-                // `Sized` bound is there intentionally and we don't need to suggest relaxing it.
-                param
-                    .bounds
-                    .iter()
-                    .all(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) != sized_trait)
-            })
-            .next();
+        let param = generics.params.iter().filter(|param| param.span == span).find(|param| {
+            // Check that none of the explicit trait bounds is `Sized`. Assume that an explicit
+            // `Sized` bound is there intentionally and we don't need to suggest relaxing it.
+            param
+                .bounds
+                .iter()
+                .all(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) != sized_trait)
+        });
         let param = match param {
             Some(param) => param,
             _ => return,
         };
+        let param_def_id = self.tcx.hir().local_def_id(param.hir_id).to_def_id();
+        let preds = generics.where_clause.predicates.iter();
+        let explicitly_sized = preds
+            .filter_map(|pred| match pred {
+                hir::WherePredicate::BoundPredicate(bp) => Some(bp),
+                _ => None,
+            })
+            .filter(|bp| bp.is_param_bound(param_def_id))
+            .flat_map(|bp| bp.bounds)
+            .any(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) == sized_trait);
+        if explicitly_sized {
+            return;
+        }
         debug!("maybe_suggest_unsized_generics: param={:?}", param);
         match node {
             hir::Node::Item(
-                item
-                @
-                hir::Item {
+                item @ hir::Item {
                     // Only suggest indirection for uses of type parameters in ADTs.
                     kind:
                         hir::ItemKind::Enum(..) | hir::ItemKind::Struct(..) | hir::ItemKind::Union(..),

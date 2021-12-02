@@ -25,10 +25,10 @@ fn main() {
     //~^ ERROR: invalid reference to positional arguments 3, 4 and 5 (there are 3 arguments)
 
     format!("{} {foo} {} {bar} {}", 1, 2, 3);
-    //~^ ERROR: there is no argument named `foo`
-    //~^^ ERROR: there is no argument named `bar`
+    //~^ ERROR: cannot find value `foo` in this scope
+    //~^^ ERROR: cannot find value `bar` in this scope
 
-    format!("{foo}");                //~ ERROR: no argument named `foo`
+    format!("{foo}");                //~ ERROR: cannot find value `foo` in this scope
     format!("", 1, 2);               //~ ERROR: multiple unused formatting arguments
     format!("{}", 1, 2);             //~ ERROR: argument never used
     format!("{1}", 1, 2);            //~ ERROR: argument never used
@@ -43,7 +43,7 @@ fn main() {
     // bad named arguments, #35082
 
     format!("{valuea} {valueb}", valuea=5, valuec=7);
-    //~^ ERROR there is no argument named `valueb`
+    //~^ ERROR cannot find value `valueb` in this scope
     //~^^ ERROR named argument never used
 
     // bad syntax of the format string
@@ -60,7 +60,7 @@ fn main() {
         {foo}
 
     "##);
-    //~^^^ ERROR: there is no argument named `foo`
+    //~^^^ ERROR: cannot find value `foo` in this scope
 
     // bad syntax in format string with multiple newlines, #53836
     format!("first number: {}

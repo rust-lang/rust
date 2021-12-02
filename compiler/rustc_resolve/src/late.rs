@@ -431,6 +431,10 @@ struct LateResolutionVisitor<'a, 'b, 'ast> {
 
 /// Walks the whole crate in DFS order, visiting each item, resolving names as it goes.
 impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
+    fn visit_attribute(&mut self, _: &'ast Attribute) {
+        // We do not want to resolve expressions that appear in attributes,
+        // as they do not correspond to actual code.
+    }
     fn visit_item(&mut self, item: &'ast Item) {
         let prev = replace(&mut self.diagnostic_metadata.current_item, Some(item));
         // Always report errors in items we just entered.
@@ -498,8 +502,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         match foreign_item.kind {
-            ForeignItemKind::Fn(box FnKind(_, _, ref generics, _))
-            | ForeignItemKind::TyAlias(box TyAliasKind(_, ref generics, ..)) => {
+            ForeignItemKind::Fn(box Fn { ref generics, .. })
+            | ForeignItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_foreign_item(this, foreign_item);
                 });
@@ -953,8 +957,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
         match item.kind {
-            ItemKind::TyAlias(box TyAliasKind(_, ref generics, _, _))
-            | ItemKind::Fn(box FnKind(_, _, ref generics, _)) => {
+            ItemKind::TyAlias(box TyAlias { ref generics, .. })
+            | ItemKind::Fn(box Fn { ref generics, .. }) => {
                 self.compute_num_lifetime_params(item.id, generics);
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                     visit::walk_item(this, item)
@@ -968,7 +972,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.resolve_adt(item, generics);
             }
 
-            ItemKind::Impl(box ImplKind {
+            ItemKind::Impl(box Impl {
                 ref generics,
                 ref of_trait,
                 ref self_ty,
@@ -979,7 +983,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.resolve_implementation(generics, of_trait, &self_ty, item.id, impl_items);
             }
 
-            ItemKind::Trait(box TraitKind(.., ref generics, ref bounds, ref trait_items)) => {
+            ItemKind::Trait(box Trait { ref generics, ref bounds, ref items, .. }) => {
                 self.compute_num_lifetime_params(item.id, generics);
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
@@ -994,8 +998,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             });
                         };
 
-                        this.with_trait_items(trait_items, |this| {
-                            for item in trait_items {
+                        this.with_trait_items(items, |this| {
+                            for item in items {
                                 match &item.kind {
                                     AssocItemKind::Const(_, ty, default) => {
                                         this.visit_ty(ty);
@@ -1015,10 +1019,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             );
                                         }
                                     }
-                                    AssocItemKind::Fn(box FnKind(_, _, generics, _)) => {
+                                    AssocItemKind::Fn(box Fn { generics, .. }) => {
                                         walk_assoc_item(this, generics, item);
                                     }
-                                    AssocItemKind::TyAlias(box TyAliasKind(_, generics, _, _)) => {
+                                    AssocItemKind::TyAlias(box TyAlias { generics, .. }) => {
                                         walk_assoc_item(this, generics, item);
                                     }
                                     AssocItemKind::MacCall(_) => {
@@ -1338,7 +1342,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 },
                                             );
                                         }
-                                        AssocItemKind::Fn(box FnKind(.., generics, _)) => {
+                                        AssocItemKind::Fn(box Fn { generics, .. }) => {
                                             debug!("resolve_implementation AssocItemKind::Fn");
                                             // We also need a new scope for the impl item type parameters.
                                             this.with_generic_param_rib(
@@ -1363,12 +1367,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                 },
                                             );
                                         }
-                                        AssocItemKind::TyAlias(box TyAliasKind(
-                                            _,
-                                            generics,
-                                            _,
-                                            _,
-                                        )) => {
+                                        AssocItemKind::TyAlias(box TyAlias {
+                                            generics, ..
+                                        }) => {
                                             debug!("resolve_implementation AssocItemKind::TyAlias");
                                             // We also need a new scope for the impl item type parameters.
                                             this.with_generic_param_rib(

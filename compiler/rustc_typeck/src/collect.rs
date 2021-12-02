@@ -28,7 +28,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::weak_lang_items;
@@ -41,7 +41,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, Ty, TyCtxt};
-use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
+use rustc_middle::ty::{ReprOptions, ToPredicate};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -431,7 +431,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
             match self.node() {
                 hir::Node::Field(_) | hir::Node::Ctor(_) | hir::Node::Variant(_) => {
                     let item =
-                        self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(self.hir_id()));
+                        self.tcx.hir().expect_item(self.tcx.hir().get_parent_did(self.hir_id()));
                     match &item.kind {
                         hir::ItemKind::Enum(_, generics)
                         | hir::ItemKind::Struct(_, generics)
@@ -666,8 +666,9 @@ impl ItemCtxt<'tcx> {
                 Some(assoc_name) => self.bound_defines_assoc_item(b, assoc_name),
                 None => true,
             })
-            .flat_map(|b| predicates_from_bound(self, ty, b));
+            .flat_map(|b| predicates_from_bound(self, ty, b, ty::List::empty()));
 
+        let param_def_id = self.tcx.hir().local_def_id(param_id).to_def_id();
         let from_where_clauses = ast_generics
             .where_clause
             .predicates
@@ -677,22 +678,24 @@ impl ItemCtxt<'tcx> {
                 _ => None,
             })
             .flat_map(|bp| {
-                let bt = if is_param(self.tcx, bp.bounded_ty, param_id) {
+                let bt = if bp.is_param_bound(param_def_id) {
                     Some(ty)
                 } else if !only_self_bounds.0 {
                     Some(self.to_ty(bp.bounded_ty))
                 } else {
                     None
                 };
+                let bvars = self.tcx.late_bound_vars(bp.bounded_ty.hir_id);
+
                 bp.bounds
                     .iter()
                     .filter(|b| match assoc_name {
                         Some(assoc_name) => self.bound_defines_assoc_item(b, assoc_name),
                         None => true,
                     })
-                    .filter_map(move |b| bt.map(|bt| (bt, b)))
+                    .filter_map(move |b| bt.map(|bt| (bt, b, bvars)))
             })
-            .flat_map(|(bt, b)| predicates_from_bound(self, bt, b));
+            .flat_map(|(bt, b, bvars)| predicates_from_bound(self, bt, b, bvars));
 
         from_ty_params.chain(from_where_clauses).collect()
     }
@@ -711,23 +714,6 @@ impl ItemCtxt<'tcx> {
             }
             _ => false,
         }
-    }
-}
-
-/// Tests whether this is the AST for a reference to the type
-/// parameter with ID `param_id`. We use this so as to avoid running
-/// `ast_ty_to_ty`, because we want to avoid triggering an all-out
-/// conversion of the type to avoid inducing unnecessary cycles.
-fn is_param(tcx: TyCtxt<'_>, ast_ty: &hir::Ty<'_>, param_id: hir::HirId) -> bool {
-    if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ast_ty.kind {
-        match path.res {
-            Res::SelfTy(Some(def_id), None) | Res::Def(DefKind::TyParam, def_id) => {
-                def_id == tcx.hir().local_def_id(param_id).to_def_id()
-            }
-            _ => false,
-        }
-    } else {
-        false
     }
 }
 
@@ -1198,8 +1184,7 @@ fn super_predicates_that_define_assoc_type(
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let item = tcx.hir().expect_item(hir_id);
+    let item = tcx.hir().expect_item(def_id.expect_local());
 
     let (is_auto, unsafety) = match item.kind {
         hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
@@ -1494,13 +1479,15 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                     {
                         Some(parent_def_id.to_def_id())
                     }
-
+                    Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) => {
+                        Some(tcx.typeck_root_def_id(def_id))
+                    }
                     _ => None,
                 }
             }
         }
         Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
-            Some(tcx.closure_base_def_id(def_id))
+            Some(tcx.typeck_root_def_id(def_id))
         }
         Node::Item(item) => match item.kind {
             ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => {
@@ -1557,7 +1544,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         kind: ty::GenericParamDefKind::Type {
                             has_default: false,
                             object_lifetime_default: rl::Set1::Empty,
-                            synthetic: None,
+                            synthetic: false,
                         },
                     });
 
@@ -1687,9 +1674,27 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             kind: ty::GenericParamDefKind::Type {
                 has_default: false,
                 object_lifetime_default: rl::Set1::Empty,
-                synthetic: None,
+                synthetic: false,
             },
         }));
+    }
+
+    // provide junk type parameter defs for const blocks.
+    if let Node::AnonConst(_) = node {
+        let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
+        if let Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) = parent_node {
+            params.push(ty::GenericParamDef {
+                index: type_start,
+                name: Symbol::intern("<const_ty>"),
+                def_id,
+                pure_wrt_drop: false,
+                kind: ty::GenericParamDefKind::Type {
+                    has_default: false,
+                    object_lifetime_default: rl::Set1::Empty,
+                    synthetic: false,
+                },
+            });
+        }
     }
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
@@ -1874,9 +1879,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
     let icx = ItemCtxt::new(tcx, def_id);
-
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    match tcx.hir().expect_item(hir_id).kind {
+    match tcx.hir().expect_item(def_id.expect_local()).kind {
         hir::ItemKind::Impl(ref impl_) => impl_.of_trait.as_ref().map(|ast_trait_ref| {
             let selfty = tcx.type_of(def_id);
             <dyn AstConv<'_>>::instantiate_mono_trait_ref(&icx, ast_trait_ref, selfty)
@@ -1886,9 +1889,8 @@ fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {
 }
 
 fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
-    let item = tcx.hir().expect_item(hir_id);
+    let item = tcx.hir().expect_item(def_id.expect_local());
     match &item.kind {
         hir::ItemKind::Impl(hir::Impl {
             polarity: hir::ImplPolarity::Negative(span),
@@ -1986,16 +1988,12 @@ fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
         // prove that the trait applies to the types that were
         // used, and adding the predicate into this list ensures
         // that this is done.
-        let mut span = tcx.def_span(def_id);
-        if tcx.sess.source_map().is_local_span(span) {
-            // `guess_head_span` reads the actual source file from
-            // disk to try to determine the 'head' snippet of the span.
-            // Don't do this for a span that comes from a file outside
-            // of our crate, since this would make our query output
-            // (and overall crate metadata) dependent on the
-            // *current* state of an external file.
-            span = tcx.sess.source_map().guess_head_span(span);
-        }
+        //
+        // We use a DUMMY_SP here as a way to signal trait bounds that come
+        // from the trait itself that *shouldn't* be shown as the source of
+        // an obligation and instead be skipped. Otherwise we'd use
+        // `tcx.def_span(def_id);`
+        let span = rustc_span::DUMMY_SP;
         result.predicates =
             tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
                 ty::TraitRef::identity(tcx, def_id).without_const().to_predicate(tcx),
@@ -2433,14 +2431,10 @@ fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx>,
     param_ty: Ty<'tcx>,
     bound: &'tcx hir::GenericBound<'tcx>,
+    bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     let mut bounds = Bounds::default();
-    astconv.add_bounds(
-        param_ty,
-        std::array::IntoIter::new([bound]),
-        &mut bounds,
-        ty::List::empty(),
-    );
+    astconv.add_bounds(param_ty, [bound].into_iter(), &mut bounds, bound_vars);
     bounds.predicates(astconv.tcx(), param_ty)
 }
 
@@ -2861,14 +2855,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.has_name(sym::link_name) {
             codegen_fn_attrs.link_name = attr.value_str();
         } else if attr.has_name(sym::link_ordinal) {
-            if link_ordinal_span.is_some() {
-                tcx.sess
-                    .struct_span_err(
-                        attr.span,
-                        "multiple `link_ordinal` attributes on a single definition",
-                    )
-                    .emit();
-            }
             link_ordinal_span = Some(attr.span);
             if let ordinal @ Some(_) = check_link_ordinal(tcx, attr) {
                 codegen_fn_attrs.link_ordinal = ordinal;
@@ -3235,7 +3221,7 @@ fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span:
     let hir_id = tcx.hir().local_def_id_to_hir_id(id);
     let node = tcx.hir().get(hir_id);
     if let Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) = node {
-        let parent_id = tcx.hir().get_parent_item(hir_id);
+        let parent_id = tcx.hir().get_parent_did(hir_id);
         let parent_item = tcx.hir().expect_item(parent_id);
         if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = parent_item.kind {
             tcx.sess

@@ -1,7 +1,6 @@
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, AttributePlace};
-use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -53,15 +52,10 @@ pub trait ArgAttributesExt {
 }
 
 fn should_use_mutable_noalias(cx: &CodegenCx<'_, '_>) -> bool {
-    // LLVM prior to version 12 has known miscompiles in the presence of
-    // noalias attributes (see #54878). Only enable mutable noalias by
-    // default for versions we believe to be safe.
-    cx.tcx
-        .sess
-        .opts
-        .debugging_opts
-        .mutable_noalias
-        .unwrap_or_else(|| llvm_util::get_version() >= (12, 0, 0))
+    // LLVM prior to version 12 had known miscompiles in the presence of
+    // noalias attributes (see #54878), but we don't support earlier
+    // versions at all anymore. We now enable mutable noalias by default.
+    cx.tcx.sess.opts.debugging_opts.mutable_noalias.unwrap_or(true)
 }
 
 impl ArgAttributesExt for ArgAttributes {
@@ -187,9 +181,7 @@ impl LlvmType for CastTarget {
         let mut args: Vec<_> = self
             .prefix
             .iter()
-            .flat_map(|option_kind| {
-                option_kind.map(|kind| Reg { kind, size: self.prefix_chunk_size }.llvm_type(cx))
-            })
+            .flat_map(|option_reg| option_reg.map(|reg| reg.llvm_type(cx)))
             .chain((0..rest_count).map(|_| rest_ll_unit))
             .collect();
 
@@ -472,6 +464,9 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     );
                 }
             }
+            PassMode::Cast(cast) => {
+                cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
+            }
             _ => {}
         }
         for arg in &self.args {
@@ -503,8 +498,8 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(a);
                     apply(b);
                 }
-                PassMode::Cast(_) => {
-                    apply(&ArgAttributes::new());
+                PassMode::Cast(cast) => {
+                    apply(&cast.attrs);
                 }
             }
         }
@@ -538,6 +533,13 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         self.ret.layout.llvm_type(bx),
                     );
                 }
+            }
+            PassMode::Cast(cast) => {
+                cast.attrs.apply_attrs_to_callsite(
+                    llvm::AttributePlace::ReturnValue,
+                    &bx.cx,
+                    callsite,
+                );
             }
             _ => {}
         }
@@ -583,8 +585,8 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(bx.cx, a);
                     apply(bx.cx, b);
                 }
-                PassMode::Cast(_) => {
-                    apply(bx.cx, &ArgAttributes::new());
+                PassMode::Cast(cast) => {
+                    apply(bx.cx, &cast.attrs);
                 }
             }
         }
@@ -613,7 +615,7 @@ impl AbiBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         fn_abi.apply_attrs_callsite(self, callsite)
     }
 
-    fn get_param(&self, index: usize) -> Self::Value {
+    fn get_param(&mut self, index: usize) -> Self::Value {
         llvm::get_param(self.llfn(), index as c_uint)
     }
 }

@@ -1,5 +1,5 @@
 // aux-build: intra-link-pub-use.rs
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 #![crate_name = "outer"]
 
 extern crate inner;

@@ -656,7 +656,7 @@ impl<'a, I> Footnotes<'a, I> {
     }
 
     fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
-        let new_id = self.footnotes.keys().count() + 1;
+        let new_id = self.footnotes.len() + 1;
         let key = key.to_owned();
         self.footnotes.entry(key).or_insert((Vec::new(), new_id as u16))
     }

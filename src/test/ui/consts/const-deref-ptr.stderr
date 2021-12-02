@@ -1,12 +1,9 @@
-error[E0658]: dereferencing raw pointers in statics is unstable
+error[E0080]: could not evaluate static initializer
   --> $DIR/const-deref-ptr.rs:4:29
    |
 LL |     static C: u64 = unsafe {*(0xdeadbeef as *const u64)};
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
-   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ 0xdeadbeef is not a valid pointer
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0080`.

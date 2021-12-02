@@ -1,6 +1,8 @@
 use super::*;
 
-use crate::collections::BTreeSet;
+use crate::collections::hash_map::DefaultHasher;
+use crate::collections::{BTreeSet, HashSet};
+use crate::hash::Hasher;
 use crate::rc::Rc;
 use crate::sync::Arc;
 use core::hint::black_box;
@@ -1632,7 +1634,25 @@ fn into_rc() {
 fn test_ord() {
     macro_rules! ord(
         ($ord:ident, $left:expr, $right:expr) => ( {
-            assert_eq!(Path::new($left).cmp(&Path::new($right)), core::cmp::Ordering::$ord);
+            use core::cmp::Ordering;
+
+            let left = Path::new($left);
+            let right = Path::new($right);
+            assert_eq!(left.cmp(&right), Ordering::$ord);
+            if (core::cmp::Ordering::$ord == Ordering::Equal) {
+                assert_eq!(left, right);
+
+                let mut hasher = DefaultHasher::new();
+                left.hash(&mut hasher);
+                let left_hash = hasher.finish();
+                hasher = DefaultHasher::new();
+                right.hash(&mut hasher);
+                let right_hash = hasher.finish();
+
+                assert_eq!(left_hash, right_hash, "hashes for {:?} and {:?} must match", left, right);
+            } else {
+                assert_ne!(left, right);
+            }
         });
     );
 
@@ -1692,4 +1712,60 @@ fn bench_path_cmp_fast_path_short(b: &mut test::Bencher) {
         set.remove(paths[500].as_path());
         set.insert(paths[500].as_path());
     });
+}
+
+#[bench]
+fn bench_path_hashset(b: &mut test::Bencher) {
+    let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
+    let paths: Vec<_> =
+        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {}.rs", num))).collect();
+
+    let mut set = HashSet::new();
+
+    paths.iter().for_each(|p| {
+        set.insert(p.as_path());
+    });
+
+    b.iter(|| {
+        set.remove(paths[500].as_path());
+        set.insert(black_box(paths[500].as_path()))
+    });
+}
+
+#[bench]
+fn bench_path_hashset_miss(b: &mut test::Bencher) {
+    let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
+    let paths: Vec<_> =
+        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {}.rs", num))).collect();
+
+    let mut set = HashSet::new();
+
+    paths.iter().for_each(|p| {
+        set.insert(p.as_path());
+    });
+
+    let probe = PathBuf::from(prefix).join("other");
+
+    b.iter(|| set.remove(black_box(probe.as_path())));
+}
+
+#[bench]
+fn bench_hash_path_short(b: &mut test::Bencher) {
+    let mut hasher = DefaultHasher::new();
+    let path = Path::new("explorer.exe");
+
+    b.iter(|| black_box(path).hash(&mut hasher));
+
+    black_box(hasher.finish());
+}
+
+#[bench]
+fn bench_hash_path_long(b: &mut test::Bencher) {
+    let mut hasher = DefaultHasher::new();
+    let path =
+        Path::new("/aaaaa/aaaaaa/./../aaaaaaaa/bbbbbbbbbbbbb/ccccccccccc/ddddddddd/eeeeeee.fff");
+
+    b.iter(|| black_box(path).hash(&mut hasher));
+
+    black_box(hasher.finish());
 }

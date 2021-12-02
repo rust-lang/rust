@@ -25,6 +25,7 @@
 #![feature(const_btree_new)]
 #![feature(const_default_impls)]
 #![feature(const_trait_impl)]
+#![feature(const_str_from_utf8)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

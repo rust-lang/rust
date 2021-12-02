@@ -26,4 +26,7 @@ fn doc_comment_on_expr(num: u8) -> bool {
     num == 3
 }
 
+fn doc_comment_on_generic<#[doc = "x"] T>(val: T) {}
+//~^ ERROR: unused doc comment
+
 fn main() {}

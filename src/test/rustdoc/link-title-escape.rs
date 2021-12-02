@@ -1,3 +1,5 @@
+#![allow(rustdoc::broken_intra_doc_links)]
+
 #![crate_name = "foo"]
 
 //! hello [foo]

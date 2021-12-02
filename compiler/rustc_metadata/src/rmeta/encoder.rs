@@ -797,6 +797,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::ConstParam
         | DefKind::LifetimeParam
         | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::Generator
@@ -832,6 +833,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::Generator
@@ -856,9 +858,11 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
             (true, mir_opt_base)
         }
         // Constants
-        DefKind::AnonConst | DefKind::AssocConst | DefKind::Static | DefKind::Const => {
-            (true, false)
-        }
+        DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::AssocConst
+        | DefKind::Static
+        | DefKind::Const => (true, false),
         // Full-fledged functions
         DefKind::AssocFn | DefKind::Fn => {
             let generics = tcx.generics_of(def_id);
@@ -914,6 +918,7 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::Use
         | DefKind::LifetimeParam
         | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::GlobalAsm
         | DefKind::Closure
         | DefKind::Generator
@@ -939,6 +944,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::AssocFn
         | DefKind::AssocConst
         | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::OpaqueTy
         | DefKind::Impl
         | DefKind::Field
@@ -1146,8 +1152,7 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_trait_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        let ast_item = tcx.hir().expect_trait_item(hir_id);
+        let ast_item = tcx.hir().expect_trait_item(def_id.expect_local());
         let trait_item = tcx.associated_item(def_id);
 
         let container = match trait_item.defaultness {
@@ -1215,8 +1220,7 @@ impl EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_info_for_impl_item({:?})", def_id);
         let tcx = self.tcx;
 
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        let ast_item = self.tcx.hir().expect_impl_item(hir_id);
+        let ast_item = self.tcx.hir().expect_impl_item(def_id.expect_local());
         let impl_item = self.tcx.associated_item(def_id);
 
         let container = match impl_item.defaultness {
@@ -1745,7 +1749,7 @@ impl EncodeContext<'a, 'tcx> {
     fn encode_lib_features(&mut self) -> Lazy<[(Symbol, Option<Symbol>)]> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let lib_features = tcx.lib_features();
+        let lib_features = tcx.lib_features(());
         self.lazy(lib_features.to_vec())
     }
 
@@ -2186,6 +2190,9 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     result[header + 1] = (pos >> 16) as u8;
     result[header + 2] = (pos >> 8) as u8;
     result[header + 3] = (pos >> 0) as u8;
+
+    // Record metadata size for self-profiling
+    tcx.prof.artifact_size("crate_metadata", "crate_metadata", result.len() as u64);
 
     EncodedMetadata { raw_data: result }
 }

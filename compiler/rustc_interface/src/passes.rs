@@ -35,7 +35,7 @@ use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::FileName;
+use rustc_span::{FileName, MultiSpan};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 use tempfile::Builder as TempFileBuilder;
@@ -47,7 +47,7 @@ use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::lazy::SyncLazy;
 use std::marker::PhantomPinned;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::rc::Rc;
 use std::{env, fs, iter};
@@ -323,7 +323,7 @@ pub fn configure_and_expand(
 
         let crate_attrs = krate.attrs.clone();
         let extern_mod_loaded = |ident: Ident, attrs, items, span| {
-            let krate = ast::Crate { attrs, items, span };
+            let krate = ast::Crate { attrs, items, span, is_placeholder: None };
             pre_expansion_lint(sess, lint_store, &krate, &crate_attrs, &ident.name.as_str());
             (krate.attrs, krate.items)
         };
@@ -450,6 +450,19 @@ pub fn configure_and_expand(
         });
     }
 
+    // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
+    sess.parse_sess.bad_unicode_identifiers.with_lock(|identifiers| {
+        let mut identifiers: Vec<_> = identifiers.drain().collect();
+        identifiers.sort_by_key(|&(key, _)| key);
+        for (ident, mut spans) in identifiers.into_iter() {
+            spans.sort();
+            sess.diagnostic().span_err(
+                MultiSpan::from(spans),
+                &format!("identifiers cannot contain emoji: `{}`", ident),
+            );
+        }
+    });
+
     Ok(krate)
 }
 
@@ -536,7 +549,7 @@ where
     None
 }
 
-fn output_contains_path(output_paths: &[PathBuf], input_path: &PathBuf) -> bool {
+fn output_contains_path(output_paths: &[PathBuf], input_path: &Path) -> bool {
     let input_path = input_path.canonicalize().ok();
     if input_path.is_none() {
         return false;
@@ -552,7 +565,7 @@ fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
     check_output(output_paths, check)
 }
 
-fn escape_dep_filename(filename: &String) -> String {
+fn escape_dep_filename(filename: &str) -> String {
     // Apparently clang and gcc *only* escape spaces:
     // https://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
     filename.replace(" ", "\\ ")
@@ -692,6 +705,7 @@ pub fn prepare_outputs(
         &compiler.input,
         &compiler.output_dir,
         &compiler.output_file,
+        &compiler.temps_dir,
         &krate.attrs,
         sess,
     );
@@ -719,6 +733,13 @@ pub fn prepare_outputs(
                 ));
                 return Err(ErrorReported);
             }
+        }
+    }
+
+    if let Some(ref dir) = compiler.temps_dir {
+        if fs::create_dir_all(dir).is_err() {
+            sess.err("failed to find or create the directory specified by `--temps-dir`");
+            return Err(ErrorReported);
         }
     }
 

@@ -1,0 +1,74 @@
+// This test is to ensure that the anchors (`§`) have the expected color and position.
+goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
+show-text: true
+
+// This is needed to ensure that the text color is computed.
+show-text: true
+
+// Set the theme to light.
+local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+// We reload the page so the local storage settings are being used.
+reload:
+
+assert-css: ("#toggle-all-docs", {"color": "rgb(0, 0, 0)"})
+assert-css: (".fqn .in-band a:nth-of-type(1)", {"color": "rgb(0, 0, 0)"})
+assert-css: (".fqn .in-band a:nth-of-type(2)", {"color": "rgb(173, 68, 142)"})
+assert-css: (".srclink", {"color": "rgb(0, 0, 0)"})
+assert-css: (".srclink", {"color": "rgb(0, 0, 0)"})
+
+assert-css: ("#top-doc-prose-title", {"color": "rgb(0, 0, 0)"})
+
+assert-css: (".sidebar a", {"color": "rgb(0, 0, 0)"})
+assert-css: (".in-band a", {"color": "rgb(0, 0, 0)"})
+
+// We move the cursor over the "Implementations" title so the anchor is displayed.
+move-cursor-to: "h2#implementations"
+assert-css: ("h2#implementations a.anchor", {"color": "rgb(0, 0, 0)"})
+
+// Same thing with the impl block title.
+move-cursor-to: "#impl"
+assert-css: ("#impl a.anchor", {"color": "rgb(0, 0, 0)"})
+
+// Now we check the positions: only the first heading of the top doc comment should
+// have a different position.
+move-cursor-to: ".top-doc .docblock .section-header:first-child"
+assert-css: (
+    ".top-doc .docblock .section-header:first-child > a::before",
+    {"left": "-10px", "padding-right": "10px"}
+)
+// We also check that the heading itself has a different indent.
+assert-css: (".top-doc .docblock .section-header:first-child", {"margin-left": "15px"})
+
+move-cursor-to: ".top-doc .docblock .section-header:not(:first-child)"
+assert-css: (
+    ".top-doc .docblock .section-header:not(:first-child) > a::before",
+    {"left": "-25px", "padding-right": "10px"}
+)
+assert-css: (".top-doc .docblock .section-header:not(:first-child)", {"margin-left": "0px"})
+
+// Now let's check some other docblock headings...
+// First the impl block docs.
+move-cursor-to: "#title-for-struct-impl-doc"
+assert-css: (
+    "#title-for-struct-impl-doc > a::before",
+    {"left": "-25px", "padding-right": "10px"}
+)
+assert-css: ("#title-for-struct-impl-doc", {"margin-left": "0px"})
+// Now a method docs.
+move-cursor-to: "#title-for-struct-impl-item-doc"
+assert-css: (
+    "#title-for-struct-impl-item-doc > a::before",
+    {"left": "-25px", "padding-right": "10px"}
+)
+assert-css: ("#title-for-struct-impl-item-doc", {"margin-left": "0px"})
+
+// Finally, we want to ensure that if the first element of the doc block isn't a heading,
+// if there is a heading afterwards, it won't have the indent.
+goto: file://|DOC_PATH|/test_docs/enum.WhoLetTheDogOut.html
+
+move-cursor-to: ".top-doc .docblock .section-header"
+assert-css: (
+    ".top-doc .docblock .section-header > a::before",
+    {"left": "-25px", "padding-right": "10px"}
+)
+assert-css: (".top-doc .docblock .section-header", {"margin-left": "0px"})

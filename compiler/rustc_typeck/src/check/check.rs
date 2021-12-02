@@ -371,16 +371,26 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
         let param_env = tcx.param_env(item_def_id);
         for field in fields {
             let field_ty = field.ty(tcx, substs);
-            // We are currently checking the type this field came from, so it must be local.
-            let field_span = tcx.hir().span_if_local(field.did).unwrap();
             if field_ty.needs_drop(tcx, param_env) {
+                let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
+                    // We are currently checking the type this field came from, so it must be local.
+                    Some(Node::Field(field)) => (field.span, field.ty.span),
+                    _ => unreachable!("mir field has to correspond to hir field"),
+                };
                 struct_span_err!(
                     tcx.sess,
                     field_span,
                     E0740,
                     "unions may not contain fields that need dropping"
                 )
-                .span_note(field_span, "`std::mem::ManuallyDrop` can be used to wrap the type")
+                .multipart_suggestion_verbose(
+                    "wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped",
+                    vec![
+                        (ty_span.shrink_to_lo(), format!("std::mem::ManuallyDrop<")),
+                        (ty_span.shrink_to_hi(), ">".into()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                )
                 .emit();
                 return false;
             }
@@ -448,7 +458,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     def_id: LocalDefId,
     span: Span,
 ) {
-    let item = tcx.hir().expect_item(tcx.hir().local_def_id_to_hir_id(def_id));
+    let item = tcx.hir().expect_item(def_id);
     debug!(?item, ?span);
 
     struct FoundParentLifetime;
@@ -663,8 +673,9 @@ fn check_opaque_meets_bounds<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
-            infcx.report_fulfillment_errors(errors, None, false);
+        let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
+        if !errors.is_empty() {
+            infcx.report_fulfillment_errors(&errors, None, false);
         }
 
         // Finally, resolve all regions. This catches wily misuses of

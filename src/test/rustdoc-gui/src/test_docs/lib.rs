@@ -2,7 +2,7 @@
 //! documentation generated so we can test each different features.
 
 #![crate_name = "test_docs"]
-#![feature(doc_keyword)]
+#![feature(rustdoc_internals)]
 #![feature(doc_cfg)]
 
 use std::convert::AsRef;
@@ -47,6 +47,8 @@ impl AsRef<str> for Foo {
 }
 
 /// Just a normal enum.
+///
+/// # title!
 #[doc(alias = "ThisIsAnAlias")]
 pub enum WhoLetTheDogOut {
     /// Woof!

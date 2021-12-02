@@ -42,7 +42,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return_ty
             };
 
-        self.check_lhs_assignable(lhs, "E0067", &op.span);
+        self.check_lhs_assignable(lhs, "E0067", op.span);
 
         ty
     }
@@ -399,12 +399,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
                 if let Ref(_, rty, _) = lhs_ty.kind() {
-                    if {
-                        self.infcx.type_is_copy_modulo_regions(self.param_env, rty, lhs_expr.span)
-                            && self
-                                .lookup_op_method(rty, &[rhs_ty], Op::Binary(op, is_assign))
-                                .is_ok()
-                    } {
+                    if self.infcx.type_is_copy_modulo_regions(self.param_env, rty, lhs_expr.span)
+                        && self.lookup_op_method(rty, &[rhs_ty], Op::Binary(op, is_assign)).is_ok()
+                    {
                         if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
                             let msg = &format!(
                                 "`{}{}` can be used on `{}`, you can dereference `{}`",
@@ -445,8 +442,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let mut eraser = TypeParamEraser(self, expr.span);
                             let needs_bound = self
                                 .lookup_op_method(
-                                    eraser.fold_ty(lhs_ty),
-                                    &[eraser.fold_ty(rhs_ty)],
+                                    eraser.fold_ty(lhs_ty).into_ok(),
+                                    &[eraser.fold_ty(rhs_ty).into_ok()],
                                     Op::Binary(op, is_assign),
                                 )
                                 .is_ok();
@@ -829,10 +826,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.obligation_for_method(span, trait_did, lhs_ty, Some(other_tys));
                 let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);
                 fulfill.register_predicate_obligation(self, obligation);
-                Err(match fulfill.select_where_possible(&self.infcx) {
-                    Err(errors) => errors,
-                    _ => vec![],
-                })
+                Err(fulfill.select_where_possible(&self.infcx))
             }
         }
     }
@@ -1021,12 +1015,12 @@ impl TypeFolder<'tcx> for TypeParamEraser<'_, 'tcx> {
         self.0.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match ty.kind() {
-            ty::Param(_) => self.0.next_ty_var(TypeVariableOrigin {
+            ty::Param(_) => Ok(self.0.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::MiscVariable,
                 span: self.1,
-            }),
+            })),
             _ => ty.super_fold_with(self),
         }
     }

@@ -42,6 +42,7 @@ pub enum TypeError<'tcx> {
     TupleSize(ExpectedFound<usize>),
     FixedArraySize(ExpectedFound<u64>),
     ArgCount,
+    FieldMisMatch(Symbol, Symbol),
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
     RegionsInsufficientlyPolymorphic(BoundRegionKind, Region<'tcx>),
@@ -134,6 +135,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 pluralize!(values.found)
             ),
             ArgCount => write!(f, "incorrect number of function parameters"),
+            FieldMisMatch(adt, field) => write!(f, "field type mismatch: {}.{}", adt, field),
             RegionsDoesNotOutlive(..) => write!(f, "lifetime mismatch"),
             RegionsInsufficientlyPolymorphic(br, _) => write!(
                 f,
@@ -224,6 +226,7 @@ impl<'tcx> TypeError<'tcx> {
             | ArgumentMutability(_)
             | TupleSize(_)
             | ArgCount
+            | FieldMisMatch(..)
             | RegionsDoesNotOutlive(..)
             | RegionsInsufficientlyPolymorphic(..)
             | RegionsOverlyPolymorphic(..)
@@ -774,9 +777,7 @@ fn foo(&self) -> Self::T { String::new() }
         if let ty::Opaque(def_id, _) = *proj_ty.self_ty().kind() {
             let opaque_local_def_id = def_id.as_local();
             let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
-                let hir = self.hir();
-                let opaque_hir_id = hir.local_def_id_to_hir_id(opaque_local_def_id);
-                match &hir.expect_item(opaque_hir_id).kind {
+                match &self.hir().expect_item(opaque_local_def_id).kind {
                     hir::ItemKind::OpaqueTy(opaque_hir_ty) => opaque_hir_ty,
                     _ => bug!("The HirId comes from a `ty::Opaque`"),
                 }

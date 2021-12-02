@@ -17,7 +17,8 @@
    16|      0|        } else {
    17|      0|        }
    18|       |
-   19|     10|        for i in 0..10 {
+   19|     11|        for i in 0..10 {
+                          ^10
    20|     10|            if true {
    21|     10|                if false {
    22|      0|                    while true {}
@@ -43,7 +44,8 @@
    41|      1|            write!(f, "cool")?;
                                            ^0
    42|       |        }
-   43|     10|        for i in 0..10 {
+   43|     11|        for i in 0..10 {
+                          ^10
    44|     10|            if false {
    45|      0|            } else {
    46|     10|                if false {

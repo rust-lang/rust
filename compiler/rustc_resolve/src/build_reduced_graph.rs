@@ -15,7 +15,7 @@ use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
-use rustc_ast::{Block, FnKind, ForeignItem, ForeignItemKind, ImplKind, Item, ItemKind, NodeId};
+use rustc_ast::{Block, Fn, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
@@ -651,11 +651,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &'b Item) {
-        if matches!(item.kind, ItemKind::Mod(..)) && item.ident.name == kw::Empty {
-            // Fake crate root item from expand.
-            return;
-        }
-
         let parent_scope = &self.parent_scope;
         let parent = parent_scope.module;
         let expansion = parent_scope.expansion;
@@ -683,75 +678,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             ItemKind::ExternCrate(orig_name) => {
-                let module = if orig_name.is_none() && ident.name == kw::SelfLower {
-                    self.r
-                        .session
-                        .struct_span_err(item.span, "`extern crate self;` requires renaming")
-                        .span_suggestion(
-                            item.span,
-                            "try",
-                            "extern crate self as name;".into(),
-                            Applicability::HasPlaceholders,
-                        )
-                        .emit();
-                    return;
-                } else if orig_name == Some(kw::SelfLower) {
-                    self.r.graph_root
-                } else {
-                    let crate_id = self.r.crate_loader.process_extern_crate(
-                        item,
-                        &self.r.definitions,
-                        local_def_id,
-                    );
-                    self.r.extern_crate_map.insert(local_def_id, crate_id);
-                    self.r.expect_module(crate_id.as_def_id())
-                };
-
-                let used = self.process_macro_use_imports(item, module);
-                let binding =
-                    (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.r.arenas);
-                let import = self.r.arenas.alloc_import(Import {
-                    kind: ImportKind::ExternCrate { source: orig_name, target: ident },
-                    root_id: item.id,
-                    id: item.id,
-                    parent_scope: self.parent_scope,
-                    imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
-                    has_attributes: !item.attrs.is_empty(),
-                    use_span_with_attributes: item.span_with_attributes(),
-                    use_span: item.span,
-                    root_span: item.span,
-                    span: item.span,
-                    module_path: Vec::new(),
-                    vis: Cell::new(vis),
-                    used: Cell::new(used),
-                });
-                self.r.potentially_unused_imports.push(import);
-                let imported_binding = self.r.import(binding, import);
-                if ptr::eq(parent, self.r.graph_root) {
-                    if let Some(entry) = self.r.extern_prelude.get(&ident.normalize_to_macros_2_0())
-                    {
-                        if expansion != LocalExpnId::ROOT
-                            && orig_name.is_some()
-                            && entry.extern_crate_item.is_none()
-                        {
-                            let msg = "macro-expanded `extern crate` items cannot \
-                                       shadow names passed with `--extern`";
-                            self.r.session.span_err(item.span, msg);
-                        }
-                    }
-                    let entry =
-                        self.r.extern_prelude.entry(ident.normalize_to_macros_2_0()).or_insert(
-                            ExternPreludeEntry {
-                                extern_crate_item: None,
-                                introduced_by_item: true,
-                            },
-                        );
-                    entry.extern_crate_item = Some(imported_binding);
-                    if orig_name.is_some() {
-                        entry.introduced_by_item = true;
-                    }
-                }
-                self.r.define(parent, ident, TypeNS, imported_binding);
+                self.build_reduced_graph_for_extern_crate(
+                    orig_name,
+                    item,
+                    local_def_id,
+                    vis,
+                    parent,
+                );
             }
 
             ItemKind::Mod(..) => {
@@ -880,13 +813,94 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl(box ImplKind { of_trait: Some(..), .. }) => {
+            ItemKind::Impl(box Impl { of_trait: Some(..), .. }) => {
                 self.r.trait_impl_items.insert(local_def_id);
             }
             ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) => unreachable!(),
         }
+    }
+
+    fn build_reduced_graph_for_extern_crate(
+        &mut self,
+        orig_name: Option<Symbol>,
+        item: &Item,
+        local_def_id: LocalDefId,
+        vis: ty::Visibility,
+        parent: Module<'a>,
+    ) {
+        let ident = item.ident;
+        let sp = item.span;
+        let parent_scope = self.parent_scope;
+        let expansion = parent_scope.expansion;
+
+        let (used, module, binding) = if orig_name.is_none() && ident.name == kw::SelfLower {
+            self.r
+                .session
+                .struct_span_err(item.span, "`extern crate self;` requires renaming")
+                .span_suggestion(
+                    item.span,
+                    "rename the `self` crate to be able to import it",
+                    "extern crate self as name;".into(),
+                    Applicability::HasPlaceholders,
+                )
+                .emit();
+            return;
+        } else if orig_name == Some(kw::SelfLower) {
+            Some(self.r.graph_root)
+        } else {
+            self.r.crate_loader.process_extern_crate(item, &self.r.definitions, local_def_id).map(
+                |crate_id| {
+                    self.r.extern_crate_map.insert(local_def_id, crate_id);
+                    self.r.expect_module(crate_id.as_def_id())
+                },
+            )
+        }
+        .map(|module| {
+            let used = self.process_macro_use_imports(item, module);
+            let binding =
+                (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.r.arenas);
+            (used, Some(ModuleOrUniformRoot::Module(module)), binding)
+        })
+        .unwrap_or((true, None, self.r.dummy_binding));
+        let import = self.r.arenas.alloc_import(Import {
+            kind: ImportKind::ExternCrate { source: orig_name, target: ident },
+            root_id: item.id,
+            id: item.id,
+            parent_scope: self.parent_scope,
+            imported_module: Cell::new(module),
+            has_attributes: !item.attrs.is_empty(),
+            use_span_with_attributes: item.span_with_attributes(),
+            use_span: item.span,
+            root_span: item.span,
+            span: item.span,
+            module_path: Vec::new(),
+            vis: Cell::new(vis),
+            used: Cell::new(used),
+        });
+        self.r.potentially_unused_imports.push(import);
+        let imported_binding = self.r.import(binding, import);
+        if ptr::eq(parent, self.r.graph_root) {
+            if let Some(entry) = self.r.extern_prelude.get(&ident.normalize_to_macros_2_0()) {
+                if expansion != LocalExpnId::ROOT
+                    && orig_name.is_some()
+                    && entry.extern_crate_item.is_none()
+                {
+                    let msg = "macro-expanded `extern crate` items cannot \
+                                       shadow names passed with `--extern`";
+                    self.r.session.span_err(item.span, msg);
+                }
+            }
+            let entry = self.r.extern_prelude.entry(ident.normalize_to_macros_2_0()).or_insert(
+                ExternPreludeEntry { extern_crate_item: None, introduced_by_item: true },
+            );
+            entry.extern_crate_item = Some(imported_binding);
+            if orig_name.is_some() {
+                entry.introduced_by_item = true;
+            }
+        }
+        self.r.define(parent, ident, TypeNS, imported_binding);
     }
 
     /// Constructs the reduced graph for one foreign item.
@@ -967,6 +981,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 | DefKind::Use
                 | DefKind::ForeignMod
                 | DefKind::AnonConst
+                | DefKind::InlineConst
                 | DefKind::Field
                 | DefKind::LifetimeParam
                 | DefKind::GlobalAsm
@@ -1193,15 +1208,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     // Mark the given macro as unused unless its name starts with `_`.
     // Macro uses will remove items from this set, and the remaining
     // items will be reported as `unused_macros`.
-    fn insert_unused_macro(
-        &mut self,
-        ident: Ident,
-        def_id: LocalDefId,
-        node_id: NodeId,
-        span: Span,
-    ) {
+    fn insert_unused_macro(&mut self, ident: Ident, def_id: LocalDefId, node_id: NodeId) {
         if !ident.as_str().starts_with('_') {
-            self.r.unused_macros.insert(def_id, (node_id, span));
+            self.r.unused_macros.insert(def_id, (node_id, ident));
         }
     }
 
@@ -1245,7 +1254,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.define(module, ident, MacroNS, (res, vis, span, expansion, IsMacroExport));
             } else {
                 self.r.check_reserved_macro_name(ident, res);
-                self.insert_unused_macro(ident, def_id, item.id, span);
+                self.insert_unused_macro(ident, def_id, item.id);
             }
             self.r.visibilities.insert(def_id, vis);
             self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Binding(
@@ -1266,7 +1275,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 _ => self.resolve_visibility(&item.vis),
             };
             if vis != ty::Visibility::Public {
-                self.insert_unused_macro(ident, def_id, item.id, span);
+                self.insert_unused_macro(ident, def_id, item.id);
             }
             self.r.define(module, ident, MacroNS, (res, vis, span, expansion));
             self.r.visibilities.insert(def_id, vis);
@@ -1380,7 +1389,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         if ctxt == AssocCtxt::Trait {
             let (def_kind, ns) = match item.kind {
                 AssocItemKind::Const(..) => (DefKind::AssocConst, ValueNS),
-                AssocItemKind::Fn(box FnKind(_, ref sig, _, _)) => {
+                AssocItemKind::Fn(box Fn { ref sig, .. }) => {
                     if sig.decl.has_self() {
                         self.r.has_self.insert(def_id);
                     }
@@ -1503,5 +1512,14 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         self.insert_field_names_local(ctor_def_id.to_def_id(), &variant.data);
 
         visit::walk_variant(self, variant);
+    }
+
+    fn visit_crate(&mut self, krate: &'b ast::Crate) {
+        if let Some(id) = krate.is_placeholder {
+            self.visit_invoc_in_module(id);
+        } else {
+            visit::walk_crate(self, krate);
+            self.contains_macro_use(&krate.attrs);
+        }
     }
 }

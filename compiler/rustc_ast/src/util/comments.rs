@@ -38,7 +38,7 @@ pub fn beautify_doc_string(data: Symbol) -> Symbol {
             i += 1;
         }
         // like the first, a last line of all stars should be omitted
-        if j > i && lines[j - 1].chars().skip(1).all(|c| c == '*') {
+        if j > i && !lines[j - 1].is_empty() && lines[j - 1].chars().all(|c| c == '*') {
             j -= 1;
         }
 
@@ -169,7 +169,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                 if let Some(mut idx) = token_text.find('\n') {
                     code_to_the_left = false;
                     while let Some(next_newline) = &token_text[idx + 1..].find('\n') {
-                        idx = idx + 1 + next_newline;
+                        idx += 1 + next_newline;
                         comments.push(Comment {
                             style: CommentStyle::BlankLine,
                             lines: vec![],

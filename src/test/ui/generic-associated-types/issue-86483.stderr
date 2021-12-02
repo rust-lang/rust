@@ -11,8 +11,9 @@ LL | | {
 ...  |
 LL | |
 LL | | }
-   | |_^ ...so that the type `T` will meet its required lifetime bounds...
+   | |_^
    |
+   = note: ...so that the type `T` will meet its required lifetime bounds...
 note: ...that is required by this bound
   --> $DIR/issue-86483.rs:7:16
    |

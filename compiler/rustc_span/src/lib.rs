@@ -41,7 +41,7 @@ pub mod edition;
 use edition::Edition;
 pub mod hygiene;
 use hygiene::Transparency;
-pub use hygiene::{DesugaringKind, ExpnKind, ForLoopLoc, MacroKind};
+pub use hygiene::{DesugaringKind, ExpnKind, MacroKind};
 pub use hygiene::{ExpnData, ExpnHash, ExpnId, LocalExpnId, SyntaxContext};
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefPathHash, LocalDefId, LOCAL_CRATE};
@@ -194,10 +194,8 @@ impl<S: Encoder> Encodable<S> for RealFileName {
         encoder.emit_enum(|encoder| match *self {
             RealFileName::LocalPath(ref local_path) => {
                 encoder.emit_enum_variant("LocalPath", 0, 1, |encoder| {
-                    Ok({
-                        encoder
-                            .emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
-                    })
+                    encoder.emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
+                    Ok(())
                 })
             }
 
@@ -206,12 +204,9 @@ impl<S: Encoder> Encodable<S> for RealFileName {
                     // For privacy and build reproducibility, we must not embed host-dependant path in artifacts
                     // if they have been remapped by --remap-path-prefix
                     assert!(local_path.is_none());
-                    Ok({
-                        encoder
-                            .emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
-                        encoder
-                            .emit_enum_variant_arg(false, |encoder| virtual_name.encode(encoder))?;
-                    })
+                    encoder.emit_enum_variant_arg(true, |encoder| local_path.encode(encoder))?;
+                    encoder.emit_enum_variant_arg(false, |encoder| virtual_name.encode(encoder))?;
+                    Ok(())
                 }),
         })
     }
@@ -1940,6 +1935,7 @@ pub struct Loc {
 #[derive(Debug)]
 pub struct SourceFileAndLine {
     pub sf: Lrc<SourceFile>,
+    /// Index of line, starting from 0.
     pub line: usize,
 }
 #[derive(Debug)]

@@ -119,8 +119,13 @@ pub struct ParseSess {
     pub config: CrateConfig,
     pub edition: Edition,
     pub missing_fragment_specifiers: Lock<FxHashMap<Span, NodeId>>,
-    /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
+    /// Places where raw identifiers were used. This is used to avoid complaining about idents
+    /// clashing with keywords in new editions.
     pub raw_identifier_spans: Lock<Vec<Span>>,
+    /// Places where identifiers that contain invalid Unicode codepoints but that look like they
+    /// should be. Useful to avoid bad tokenization when encountering emoji. We group them to
+    /// provide a single error per unique incorrect identifier.
+    pub bad_unicode_identifiers: Lock<FxHashMap<Symbol, Vec<Span>>>,
     source_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
     /// Contains the spans of block expressions that could have been incomplete based on the
@@ -160,6 +165,7 @@ impl ParseSess {
             edition: ExpnId::root().expn_data().edition,
             missing_fragment_specifiers: Default::default(),
             raw_identifier_spans: Lock::new(Vec::new()),
+            bad_unicode_identifiers: Lock::new(Default::default()),
             source_map,
             buffered_lints: Lock::new(vec![]),
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),

@@ -119,8 +119,8 @@ where
     #[rustc_inherit_overflow_checks]
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
         let mut rem = n;
-
         let step_one = self.n.saturating_add(rem);
+
         match self.iter.advance_by(step_one) {
             Ok(_) => {
                 rem -= step_one - self.n;
@@ -129,7 +129,7 @@ where
             Err(advanced) => {
                 let advanced_without_skip = advanced.saturating_sub(self.n);
                 self.n = self.n.saturating_sub(advanced);
-                return Err(advanced_without_skip);
+                return if n == 0 { Ok(()) } else { Err(advanced_without_skip) };
             }
         }
 

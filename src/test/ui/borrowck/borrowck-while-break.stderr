@@ -3,6 +3,8 @@ error[E0381]: borrow of possibly-uninitialized variable: `v`
    |
 LL |     println!("{}", v);
    |                    ^ use of possibly-uninitialized `v`
+   |
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

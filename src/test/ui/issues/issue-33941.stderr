@@ -2,10 +2,15 @@ error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, 
   --> $DIR/issue-33941.rs:4:36
    |
 LL |     for _ in HashMap::new().iter().cloned() {}
-   |                                    ^^^^^^ expected tuple, found reference
+   |                                    ^^^^^^ expected reference, found tuple
    |
-   = note:  expected tuple `(&_, &_)`
-           found reference `&_`
+   = note: expected reference `&_`
+                  found tuple `(&_, &_)`
+note: required by a bound in `cloned`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |         Self: Sized + Iterator<Item = &'a T>,
+   |                                ^^^^^^^^^^^^ required by this bound in `cloned`
 
 error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, _> as Iterator>::Item == &_`
   --> $DIR/issue-33941.rs:4:14
@@ -17,27 +22,7 @@ LL |     for _ in HashMap::new().iter().cloned() {}
                   found tuple `(&_, &_)`
    = note: required because of the requirements on the impl of `Iterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
    = note: required because of the requirements on the impl of `IntoIterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, _> as Iterator>::Item == &_`
-  --> $DIR/issue-33941.rs:4:14
-   |
-LL |     for _ in HashMap::new().iter().cloned() {}
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected reference, found tuple
-   |
-   = note: expected reference `&_`
-                  found tuple `(&_, &_)`
-   = note: required because of the requirements on the impl of `Iterator` for `Cloned<std::collections::hash_map::Iter<'_, _, _>>`
-note: required by `std::iter::Iterator::next`
-  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     fn next(&mut self) -> Option<Self::Item>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0271`.

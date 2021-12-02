@@ -189,6 +189,7 @@ pub enum InlineAsmArch {
     S390x,
     SpirV,
     Wasm32,
+    Wasm64,
     Bpf,
 }
 
@@ -212,6 +213,7 @@ impl FromStr for InlineAsmArch {
             "s390x" => Ok(Self::S390x),
             "spirv" => Ok(Self::SpirV),
             "wasm32" => Ok(Self::Wasm32),
+            "wasm64" => Ok(Self::Wasm64),
             "bpf" => Ok(Self::Bpf),
             _ => Err(()),
         }
@@ -318,7 +320,7 @@ impl InlineAsmReg {
             InlineAsmArch::SpirV => {
                 Self::SpirV(SpirVInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
-            InlineAsmArch::Wasm32 => {
+            InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
                 Self::Wasm(WasmInlineAsmReg::parse(arch, has_feature, target, &name)?)
             }
             InlineAsmArch::Bpf => {
@@ -529,7 +531,9 @@ impl InlineAsmRegClass {
             }
             InlineAsmArch::S390x => Self::S390x(S390xInlineAsmRegClass::parse(arch, name)?),
             InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmRegClass::parse(arch, name)?),
-            InlineAsmArch::Wasm32 => Self::Wasm(WasmInlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
+                Self::Wasm(WasmInlineAsmRegClass::parse(arch, name)?)
+            }
             InlineAsmArch::Bpf => Self::Bpf(BpfInlineAsmRegClass::parse(arch, name)?),
         })
     }
@@ -725,7 +729,7 @@ pub fn allocatable_registers(
             spirv::fill_reg_map(arch, has_feature, target, &mut map);
             map
         }
-        InlineAsmArch::Wasm32 => {
+        InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
             let mut map = wasm::regclass_map();
             wasm::fill_reg_map(arch, has_feature, target, &mut map);
             map

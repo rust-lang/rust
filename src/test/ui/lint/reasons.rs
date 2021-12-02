@@ -1,7 +1,6 @@
 // check-pass
 
 #![feature(lint_reasons)]
-
 #![warn(elided_lifetimes_in_paths,
         //~^ NOTE the lint level is defined here
         reason = "explicit anonymous lifetimes aid reasoning about ownership")]
@@ -20,8 +19,9 @@ pub struct CheaterDetectionMechanism {}
 impl fmt::Debug for CheaterDetectionMechanism {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         //~^ WARN hidden lifetime parameters in types are deprecated
+        //~| NOTE expected named lifetime parameter
         //~| NOTE explicit anonymous lifetimes aid
-        //~| HELP indicate the anonymous lifetime
+        //~| HELP consider using the `'_` lifetime
         fmt.debug_struct("CheaterDetectionMechanism").finish()
     }
 }

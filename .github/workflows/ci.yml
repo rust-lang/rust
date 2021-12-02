@@ -287,7 +287,7 @@ jobs:
             os: ubuntu-latest-xl
           - name: dist-x86_64-apple
             env:
-              SCRIPT: "./x.py dist --exclude src/doc --exclude extended && ./x.py dist --target=x86_64-apple-darwin src/doc && ./x.py dist extended"
+              SCRIPT: "./x.py dist --exclude rust-docs --exclude extended && ./x.py dist --target=x86_64-apple-darwin rust-docs && ./x.py dist extended"
               RUST_CONFIGURE_ARGS: "--host=x86_64-apple-darwin --target=x86_64-apple-darwin,aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7

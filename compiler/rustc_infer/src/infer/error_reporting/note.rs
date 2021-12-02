@@ -330,30 +330,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 );
                 err
             }
-            infer::CompareImplMethodObligation {
-                span,
-                item_name,
-                impl_item_def_id,
-                trait_item_def_id,
-            } => self.report_extra_impl_obligation(
-                span,
-                item_name,
-                impl_item_def_id,
-                trait_item_def_id,
-                &format!("`{}: {}`", sup, sub),
-            ),
-            infer::CompareImplTypeObligation {
-                span,
-                item_name,
-                impl_item_def_id,
-                trait_item_def_id,
-            } => self.report_extra_impl_obligation(
-                span,
-                item_name,
-                impl_item_def_id,
-                trait_item_def_id,
-                &format!("`{}: {}`", sup, sub),
-            ),
+            infer::CompareImplMethodObligation { span, impl_item_def_id, trait_item_def_id } => {
+                self.report_extra_impl_obligation(
+                    span,
+                    impl_item_def_id,
+                    trait_item_def_id,
+                    &format!("`{}: {}`", sup, sub),
+                )
+            }
+            infer::CompareImplTypeObligation { span, impl_item_def_id, trait_item_def_id } => self
+                .report_extra_impl_obligation(
+                    span,
+                    impl_item_def_id,
+                    trait_item_def_id,
+                    &format!("`{}: {}`", sup, sub),
+                ),
         }
     }
 

@@ -83,17 +83,17 @@ fn main() {
     //~^ ERROR type mismatch resolving `<impl DerivedTrait as Trait>::Associated == ()`
 
     accepts_trait(returns_opaque_foo());
-    //~^ ERROR type mismatch resolving `<impl Trait+Foo as Trait>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl Foo + Trait as Trait>::Associated == ()`
 
     accepts_trait(returns_opaque_derived_foo());
-    //~^ ERROR type mismatch resolving `<impl DerivedTrait+Foo as Trait>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl Foo + DerivedTrait as Trait>::Associated == ()`
 
     accepts_generic_trait(returns_opaque_generic());
     //~^ ERROR type mismatch resolving `<impl GenericTrait<()> as GenericTrait<()>>::Associated == ()`
 
     accepts_generic_trait(returns_opaque_generic_foo());
-    //~^ ERROR type mismatch resolving `<impl GenericTrait<()>+Foo as GenericTrait<()>>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl Foo + GenericTrait<()> as GenericTrait<()>>::Associated == ()`
 
     accepts_generic_trait(returns_opaque_generic_duplicate());
-    //~^ ERROR type mismatch resolving `<impl GenericTrait<()>+GenericTrait<u8> as GenericTrait<()>>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl GenericTrait<u8> + GenericTrait<()> as GenericTrait<()>>::Associated == ()`
 }

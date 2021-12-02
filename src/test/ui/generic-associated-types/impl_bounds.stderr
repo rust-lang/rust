@@ -59,10 +59,10 @@ LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
    |       +++++++++++++++++++
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/impl_bounds.rs:22:5
+  --> $DIR/impl_bounds.rs:22:24
    |
 LL |     fn d() where Self: Copy {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |                        ^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required because of the requirements on the impl of `Copy` for `Fooy<T>`
   --> $DIR/impl_bounds.rs:11:10

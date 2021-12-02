@@ -1,29 +1,29 @@
-error[E0658]: dereferencing raw pointers in constant functions is unstable
+error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
   --> $DIR/min_const_fn_unsafe_bad.rs:1:77
    |
 LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe { &*x } }
    |                                                                             ^^^
    |
-   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
-   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0658]: dereferencing raw pointers in constant functions is unstable
+error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
   --> $DIR/min_const_fn_unsafe_bad.rs:4:70
    |
 LL | const unsafe fn bad_const_unsafe_deref_raw(x: *mut usize) -> usize { *x }
    |                                                                      ^^
    |
-   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
-   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0658]: dereferencing raw pointers in constant functions is unstable
+error[E0658]: dereferencing raw mutable pointers in constant functions is unstable
   --> $DIR/min_const_fn_unsafe_bad.rs:7:83
    |
 LL | const unsafe fn bad_const_unsafe_deref_raw_ref(x: *mut usize) -> &'static usize { &*x }
    |                                                                                   ^^^
    |
-   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
-   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

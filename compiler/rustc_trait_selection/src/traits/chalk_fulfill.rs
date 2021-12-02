@@ -49,34 +49,32 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         self.obligations.insert(obligation);
     }
 
-    fn select_all_or_error(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
-        self.select_where_possible(infcx)?;
+    fn select_all_or_error(&mut self, infcx: &InferCtxt<'_, 'tcx>) -> Vec<FulfillmentError<'tcx>> {
+        {
+            let errors = self.select_where_possible(infcx);
 
-        if self.obligations.is_empty() {
-            Ok(())
-        } else {
-            let errors = self
-                .obligations
-                .iter()
-                .map(|obligation| FulfillmentError {
-                    obligation: obligation.clone(),
-                    code: FulfillmentErrorCode::CodeAmbiguity,
-                    // FIXME - does Chalk have a notation of 'root obligation'?
-                    // This is just for diagnostics, so it's okay if this is wrong
-                    root_obligation: obligation.clone(),
-                })
-                .collect();
-            Err(errors)
+            if !errors.is_empty() {
+                return errors;
+            }
         }
+
+        // any remaining obligations are errors
+        self.obligations
+            .iter()
+            .map(|obligation| FulfillmentError {
+                obligation: obligation.clone(),
+                code: FulfillmentErrorCode::CodeAmbiguity,
+                // FIXME - does Chalk have a notation of 'root obligation'?
+                // This is just for diagnostics, so it's okay if this is wrong
+                root_obligation: obligation.clone(),
+            })
+            .collect()
     }
 
     fn select_where_possible(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
-    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
+    ) -> Vec<FulfillmentError<'tcx>> {
         assert!(!infcx.is_in_snapshot());
 
         let mut errors = Vec::new();
@@ -147,7 +145,7 @@ impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
             }
         }
 
-        if errors.is_empty() { Ok(()) } else { Err(errors) }
+        errors
     }
 
     fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {

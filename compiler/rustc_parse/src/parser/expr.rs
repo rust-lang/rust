@@ -1032,6 +1032,8 @@ impl<'a> Parser<'a> {
             [IdentLike(_), Punct('+' | '-')] |
             // 1e+2 | 1e-2
             [IdentLike(_), Punct('+' | '-'), IdentLike(_)] |
+            // 1.2e+ | 1.2e-
+            [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-')] |
             // 1.2e+3 | 1.2e-3
             [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-'), IdentLike(_)] => {
                 // See the FIXME about `TokenCursor` above.
@@ -1148,7 +1150,7 @@ impl<'a> Parser<'a> {
         }
 
         let fn_span_lo = self.token.span;
-        let mut segment = self.parse_path_segment(PathStyle::Expr)?;
+        let mut segment = self.parse_path_segment(PathStyle::Expr, None)?;
         self.check_trailing_angle_brackets(&segment, &[&token::OpenDelim(token::Paren)]);
         self.check_turbofish_missing_angle_brackets(&mut segment);
 
@@ -1241,7 +1243,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Unsafe) {
             self.parse_block_expr(None, lo, BlockCheckMode::Unsafe(ast::UserProvided), attrs)
         } else if self.check_inline_const(0) {
-            self.parse_const_block(lo.to(self.token.span))
+            self.parse_const_block(lo.to(self.token.span), false)
         } else if self.is_do_catch_block() {
             self.recover_do_catch(attrs)
         } else if self.is_try_block() {

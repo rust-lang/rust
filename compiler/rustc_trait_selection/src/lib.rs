@@ -14,6 +14,7 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(drain_filter)]
+#![feature(derive_default_enum)]
 #![feature(hash_drain_filter)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
@@ -21,6 +22,7 @@
 #![feature(never_type)]
 #![feature(crate_visibility_modifier)]
 #![feature(control_flow_enum)]
+#![feature(unwrap_infallible)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

@@ -58,30 +58,6 @@ LL |     format!("{name} {value} {} {} {} {} {} {}", 0, name=1, value=2);
    |
    = note: positional arguments are zero-based
 
-error: there is no argument named `foo`
-  --> $DIR/ifmt-bad-arg.rs:27:17
-   |
-LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
-   |                 ^^^^^
-   |
-   = help: if you intended to capture `foo` from the surrounding scope, add `#![feature(format_args_capture)]` to the crate attributes
-
-error: there is no argument named `bar`
-  --> $DIR/ifmt-bad-arg.rs:27:26
-   |
-LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
-   |                          ^^^^^
-   |
-   = help: if you intended to capture `bar` from the surrounding scope, add `#![feature(format_args_capture)]` to the crate attributes
-
-error: there is no argument named `foo`
-  --> $DIR/ifmt-bad-arg.rs:31:14
-   |
-LL |     format!("{foo}");
-   |              ^^^^^
-   |
-   = help: if you intended to capture `foo` from the surrounding scope, add `#![feature(format_args_capture)]` to the crate attributes
-
 error: multiple unused formatting arguments
   --> $DIR/ifmt-bad-arg.rs:32:17
    |
@@ -156,14 +132,6 @@ LL |     format!("{foo} {} {}", foo=1, 2);
    |                                |
    |                                named argument
 
-error: there is no argument named `valueb`
-  --> $DIR/ifmt-bad-arg.rs:45:23
-   |
-LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
-   |                       ^^^^^^^^
-   |
-   = help: if you intended to capture `valueb` from the surrounding scope, add `#![feature(format_args_capture)]` to the crate attributes
-
 error: named argument never used
   --> $DIR/ifmt-bad-arg.rs:45:51
    |
@@ -207,14 +175,6 @@ LL |     format!("foo %s baz", "bar");
    |                  help: format specifiers use curly braces: `{}`
    |
    = note: printf formatting not supported; see the documentation for `std::fmt`
-
-error: there is no argument named `foo`
-  --> $DIR/ifmt-bad-arg.rs:60:9
-   |
-LL |         {foo}
-   |         ^^^^^
-   |
-   = help: if you intended to capture `foo` from the surrounding scope, add `#![feature(format_args_capture)]` to the crate attributes
 
 error: invalid format string: expected `'}'`, found `'t'`
   --> $DIR/ifmt-bad-arg.rs:75:1
@@ -302,6 +262,36 @@ LL |     println!("{:.*}");
    = note: positional arguments are zero-based
    = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
 
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/ifmt-bad-arg.rs:27:17
+   |
+LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
+   |                 ^^^^^ not found in this scope
+
+error[E0425]: cannot find value `bar` in this scope
+  --> $DIR/ifmt-bad-arg.rs:27:26
+   |
+LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
+   |                          ^^^^^ not found in this scope
+
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/ifmt-bad-arg.rs:31:14
+   |
+LL |     format!("{foo}");
+   |              ^^^^^ not found in this scope
+
+error[E0425]: cannot find value `valueb` in this scope
+  --> $DIR/ifmt-bad-arg.rs:45:23
+   |
+LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
+   |                       ^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/ifmt-bad-arg.rs:60:9
+   |
+LL |         {foo}
+   |         ^^^^^ not found in this scope
+
 error[E0308]: mismatched types
   --> $DIR/ifmt-bad-arg.rs:78:32
    |
@@ -324,4 +314,5 @@ LL |     println!("{} {:07$.*} {}", 1, 3.2, 4);
 
 error: aborting due to 36 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

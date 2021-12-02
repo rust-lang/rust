@@ -1,6 +1,7 @@
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 #![feature(lang_items)]
 #![feature(no_core)]
+#![feature(rustdoc_internals)]
 #![no_core]
 
 #[lang = "usize"]

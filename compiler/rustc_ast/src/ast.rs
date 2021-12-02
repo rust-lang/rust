@@ -405,6 +405,21 @@ pub struct GenericParam {
     pub kind: GenericParamKind,
 }
 
+impl GenericParam {
+    pub fn span(&self) -> Span {
+        match &self.kind {
+            GenericParamKind::Lifetime | GenericParamKind::Type { default: None } => {
+                self.ident.span
+            }
+            GenericParamKind::Type { default: Some(ty) } => self.ident.span.to(ty.span),
+            GenericParamKind::Const { kw_span, default: Some(default), .. } => {
+                kw_span.to(default.value.span)
+            }
+            GenericParamKind::Const { kw_span, default: None, ty } => kw_span.to(ty.span),
+        }
+    }
+}
+
 /// Represents lifetime, type and const parameters attached to a declaration of
 /// a function, enum, trait, etc.
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -502,6 +517,8 @@ pub struct Crate {
     pub attrs: Vec<Attribute>,
     pub items: Vec<P<Item>>,
     pub span: Span,
+    // Placeholder ID if the crate node is a macro placeholder.
+    pub is_placeholder: Option<NodeId>,
 }
 
 /// Possible values inside of compile-time attribute lists.
@@ -2058,7 +2075,7 @@ pub struct InlineAsm {
     pub template: Vec<InlineAsmTemplatePiece>,
     pub template_strs: Box<[(Symbol, Option<Symbol>, Span)]>,
     pub operands: Vec<(InlineAsmOperand, Span)>,
-    pub clobber_abi: Option<(Symbol, Span)>,
+    pub clobber_abis: Vec<(Symbol, Span)>,
     pub options: InlineAsmOptions,
     pub line_spans: Vec<Span>,
 }
@@ -2645,34 +2662,42 @@ impl Default for FnHeader {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct TraitKind(
-    pub IsAuto,
-    pub Unsafe,
-    pub Generics,
-    pub GenericBounds,
-    pub Vec<P<AssocItem>>,
-);
-
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub struct TyAliasKind(pub Defaultness, pub Generics, pub GenericBounds, pub Option<P<Ty>>);
-
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub struct ImplKind {
+pub struct Trait {
     pub unsafety: Unsafe,
-    pub polarity: ImplPolarity,
-    pub defaultness: Defaultness,
-    pub constness: Const,
+    pub is_auto: IsAuto,
     pub generics: Generics,
+    pub bounds: GenericBounds,
+    pub items: Vec<P<AssocItem>>,
+}
 
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct TyAlias {
+    pub defaultness: Defaultness,
+    pub generics: Generics,
+    pub bounds: GenericBounds,
+    pub ty: Option<P<Ty>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct Impl {
+    pub defaultness: Defaultness,
+    pub unsafety: Unsafe,
+    pub generics: Generics,
+    pub constness: Const,
+    pub polarity: ImplPolarity,
     /// The trait being implemented, if any.
     pub of_trait: Option<TraitRef>,
-
     pub self_ty: P<Ty>,
     pub items: Vec<P<AssocItem>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct FnKind(pub Defaultness, pub FnSig, pub Generics, pub Option<P<Block>>);
+pub struct Fn {
+    pub defaultness: Defaultness,
+    pub generics: Generics,
+    pub sig: FnSig,
+    pub body: Option<P<Block>>,
+}
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ItemKind {
@@ -2695,7 +2720,7 @@ pub enum ItemKind {
     /// A function declaration (`fn`).
     ///
     /// E.g., `fn foo(bar: usize) -> usize { .. }`.
-    Fn(Box<FnKind>),
+    Fn(Box<Fn>),
     /// A module declaration (`mod`).
     ///
     /// E.g., `mod foo;` or `mod foo { .. }`.
@@ -2707,11 +2732,11 @@ pub enum ItemKind {
     /// E.g., `extern {}` or `extern "C" {}`.
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from `global_asm!()`).
-    GlobalAsm(InlineAsm),
+    GlobalAsm(Box<InlineAsm>),
     /// A type alias (`type`).
     ///
     /// E.g., `type Foo = Bar<u8>;`.
-    TyAlias(Box<TyAliasKind>),
+    TyAlias(Box<TyAlias>),
     /// An enum definition (`enum`).
     ///
     /// E.g., `enum Foo<A, B> { C<A>, D<B> }`.
@@ -2727,7 +2752,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(Box<TraitKind>),
+    Trait(Box<Trait>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2735,7 +2760,7 @@ pub enum ItemKind {
     /// An implementation.
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
-    Impl(Box<ImplKind>),
+    Impl(Box<Impl>),
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
@@ -2782,14 +2807,14 @@ impl ItemKind {
 
     pub fn generics(&self) -> Option<&Generics> {
         match self {
-            Self::Fn(box FnKind(_, _, generics, _))
-            | Self::TyAlias(box TyAliasKind(_, generics, ..))
+            Self::Fn(box Fn { generics, .. })
+            | Self::TyAlias(box TyAlias { generics, .. })
             | Self::Enum(_, generics)
             | Self::Struct(_, generics)
             | Self::Union(_, generics)
-            | Self::Trait(box TraitKind(_, _, generics, ..))
+            | Self::Trait(box Trait { generics, .. })
             | Self::TraitAlias(generics, _)
-            | Self::Impl(box ImplKind { generics, .. }) => Some(generics),
+            | Self::Impl(box Impl { generics, .. }) => Some(generics),
             _ => None,
         }
     }
@@ -2812,9 +2837,9 @@ pub enum AssocItemKind {
     /// If `def` is parsed, then the constant is provided, and otherwise required.
     Const(Defaultness, P<Ty>, Option<P<Expr>>),
     /// An associated function.
-    Fn(Box<FnKind>),
+    Fn(Box<Fn>),
     /// An associated type.
-    TyAlias(Box<TyAliasKind>),
+    TyAlias(Box<TyAlias>),
     /// A macro expanding to associated items.
     MacCall(MacCall),
 }
@@ -2825,9 +2850,9 @@ rustc_data_structures::static_assert_size!(AssocItemKind, 72);
 impl AssocItemKind {
     pub fn defaultness(&self) -> Defaultness {
         match *self {
-            Self::Const(def, ..)
-            | Self::Fn(box FnKind(def, ..))
-            | Self::TyAlias(box TyAliasKind(def, ..)) => def,
+            Self::Const(defaultness, ..)
+            | Self::Fn(box Fn { defaultness, .. })
+            | Self::TyAlias(box TyAlias { defaultness, .. }) => defaultness,
             Self::MacCall(..) => Defaultness::Final,
         }
     }
@@ -2864,9 +2889,9 @@ pub enum ForeignItemKind {
     /// A foreign static item (`static FOO: u8`).
     Static(P<Ty>, Mutability, Option<P<Expr>>),
     /// An foreign function.
-    Fn(Box<FnKind>),
+    Fn(Box<Fn>),
     /// An foreign type.
-    TyAlias(Box<TyAliasKind>),
+    TyAlias(Box<TyAlias>),
     /// A macro expanding to foreign items.
     MacCall(MacCall),
 }

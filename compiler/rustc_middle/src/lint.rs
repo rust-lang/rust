@@ -248,8 +248,12 @@ pub fn struct_lint_level<'s, 'd>(
             (Level::Warn, None) => sess.struct_warn(""),
             (Level::ForceWarn, Some(span)) => sess.struct_span_force_warn(span, ""),
             (Level::ForceWarn, None) => sess.struct_force_warn(""),
-            (Level::Deny | Level::Forbid, Some(span)) => sess.struct_span_err(span, ""),
-            (Level::Deny | Level::Forbid, None) => sess.struct_err(""),
+            (Level::Deny | Level::Forbid, Some(span)) => {
+                let mut builder = sess.diagnostic().struct_err_lint("");
+                builder.set_span(span);
+                builder
+            }
+            (Level::Deny | Level::Forbid, None) => sess.diagnostic().struct_err_lint(""),
         };
 
         // If this code originates in a foreign macro, aka something that this crate
@@ -391,7 +395,7 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     match expn_data.kind {
         ExpnKind::Inlined
         | ExpnKind::Root
-        | ExpnKind::Desugaring(DesugaringKind::ForLoop(_) | DesugaringKind::WhileLoop) => false,
+        | ExpnKind::Desugaring(DesugaringKind::ForLoop | DesugaringKind::WhileLoop) => false,
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
             // Dummy span for the `def_site` means it's an external macro.

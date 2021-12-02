@@ -817,7 +817,7 @@ crate fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
         .collect();
 
     let mut bound_var_substitutor = NamedBoundVarSubstitutor::new(tcx, &named_parameters);
-    let new_ty = ty.skip_binder().fold_with(&mut bound_var_substitutor);
+    let new_ty = ty.skip_binder().fold_with(&mut bound_var_substitutor).into_ok();
 
     for var in named_parameters.values() {
         parameters.insert(*var, chalk_ir::VariableKind::Lifetime);
@@ -943,20 +943,23 @@ impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: Binder<'tcx, T>,
+    ) -> Result<Binder<'tcx, T>, Self::Error> {
         self.binder_index.shift_in(1);
         let result = t.super_fold_with(self);
         self.binder_index.shift_out(1);
         result
     }
 
-    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
+    fn fold_region(&mut self, r: Region<'tcx>) -> Result<Region<'tcx>, Self::Error> {
         match r {
             ty::ReLateBound(index, br) if *index == self.binder_index => match br.kind {
                 ty::BrNamed(def_id, _name) => match self.named_parameters.get(&def_id) {
                     Some(idx) => {
                         let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(*idx) };
-                        return self.tcx.mk_region(RegionKind::ReLateBound(*index, new_br));
+                        return Ok(self.tcx.mk_region(RegionKind::ReLateBound(*index, new_br)));
                     }
                     None => panic!("Missing `BrNamed`."),
                 },
@@ -999,32 +1002,35 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
         self.tcx
     }
 
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T> {
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: Binder<'tcx, T>,
+    ) -> Result<Binder<'tcx, T>, Self::Error> {
         self.binder_index.shift_in(1);
         let result = t.super_fold_with(self);
         self.binder_index.shift_out(1);
         result
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match *t.kind() {
             // FIXME(chalk): currently we convert params to placeholders starting at
             // index `0`. To support placeholders, we'll actually need to do a
             // first pass to collect placeholders. Then we can insert params after.
             ty::Placeholder(_) => unimplemented!(),
             ty::Param(param) => match self.list.iter().position(|r| r == &param) {
-                Some(idx) => self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                Some(idx) => Ok(self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::from_usize(0),
                     name: ty::BoundVar::from_usize(idx),
-                })),
+                }))),
                 None => {
                     self.list.push(param);
                     let idx = self.list.len() - 1 + self.next_ty_placeholder;
                     self.params.insert(idx, param);
-                    self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                    Ok(self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                         universe: ty::UniverseIndex::from_usize(0),
                         name: ty::BoundVar::from_usize(idx),
-                    }))
+                    })))
                 }
             },
 
@@ -1032,7 +1038,7 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
         }
     }
 
-    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
+    fn fold_region(&mut self, r: Region<'tcx>) -> Result<Region<'tcx>, Self::Error> {
         match r {
             // FIXME(chalk) - jackh726 - this currently isn't hit in any tests.
             // This covers any region variables in a goal, right?
@@ -1042,14 +1048,14 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
                         var: ty::BoundVar::from_u32(*idx),
                         kind: ty::BrAnon(*idx),
                     };
-                    self.tcx.mk_region(RegionKind::ReLateBound(self.binder_index, br))
+                    Ok(self.tcx.mk_region(RegionKind::ReLateBound(self.binder_index, br)))
                 }
                 None => {
                     let idx = self.named_regions.len() as u32;
                     let br =
                         ty::BoundRegion { var: ty::BoundVar::from_u32(idx), kind: ty::BrAnon(idx) };
                     self.named_regions.insert(_re.def_id, idx);
-                    self.tcx.mk_region(RegionKind::ReLateBound(self.binder_index, br))
+                    Ok(self.tcx.mk_region(RegionKind::ReLateBound(self.binder_index, br)))
                 }
             },
 
@@ -1125,11 +1131,11 @@ impl<'tcx> TypeFolder<'tcx> for RegionsSubstitutor<'tcx> {
         self.tcx
     }
 
-    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
+    fn fold_region(&mut self, r: Region<'tcx>) -> Result<Region<'tcx>, Self::Error> {
         match r {
             ty::ReEmpty(ui) => {
                 assert_eq!(ui.as_usize(), 0);
-                self.reempty_placeholder
+                Ok(self.reempty_placeholder)
             }
 
             _ => r.super_fold_with(self),

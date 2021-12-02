@@ -4,17 +4,18 @@
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
+use rustc_middle::mir::visit::{MirVisitable, Visitor};
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{self, TyCtxt};
 
-use crate::drop_flag_effects;
 use crate::drop_flag_effects_for_function_entry;
 use crate::drop_flag_effects_for_location;
 use crate::elaborate_drops::DropFlagState;
 use crate::framework::SwitchIntEdgeEffects;
-use crate::move_paths::{HasMoveData, InitIndex, InitKind, MoveData, MovePathIndex};
+use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::on_lookup_result_bits;
 use crate::MoveDataParamEnv;
+use crate::{drop_flag_effects, on_all_children_bits};
 use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis};
 
 mod borrowed_locals;
@@ -307,22 +308,45 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     fn statement_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
-        _statement: &mir::Statement<'tcx>,
+        statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
+        });
+
+        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+            return;
+        }
+
+        // Mark all places as "maybe init" if they are mutably borrowed. See #90752.
+        for_each_mut_borrow(statement, location, |place| {
+            let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref()) else { return };
+            on_all_children_bits(self.tcx, self.body, self.move_data(), mpi, |child| {
+                trans.gen(child);
+            })
         })
     }
 
     fn terminator_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
-        _terminator: &mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
+        });
+
+        if !self.tcx.sess.opts.debugging_opts.precise_enum_drop_elaboration {
+            return;
+        }
+
+        for_each_mut_borrow(terminator, location, |place| {
+            let LookupResult::Exact(mpi) = self.move_data().rev_lookup.find(place.as_ref()) else { return };
+            on_all_children_bits(self.tcx, self.body, self.move_data(), mpi, |child| {
+                trans.gen(child);
+            })
         })
     }
 
@@ -427,7 +451,10 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     ) {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
-        })
+        });
+
+        // Unlike in `MaybeInitializedPlaces` above, we don't need to change the state when a
+        // mutable borrow occurs. Places cannot become uninitialized through a mutable reference.
     }
 
     fn terminator_effect(
@@ -438,7 +465,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     ) {
         drop_flag_effects_for_location(self.tcx, self.body, self.mdpe, location, |path, s| {
             Self::update_bits(trans, path, s)
-        })
+        });
     }
 
     fn call_return_effect(
@@ -703,4 +730,38 @@ fn switch_on_enum_discriminant(
 
         _ => None,
     }
+}
+
+struct OnMutBorrow<F>(F);
+
+impl<F> Visitor<'_> for OnMutBorrow<F>
+where
+    F: FnMut(&mir::Place<'_>),
+{
+    fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'_>, location: Location) {
+        // FIXME: Does `&raw const foo` allow mutation? See #90413.
+        match rvalue {
+            mir::Rvalue::Ref(_, mir::BorrowKind::Mut { .. }, place)
+            | mir::Rvalue::AddressOf(_, place) => (self.0)(place),
+
+            _ => {}
+        }
+
+        self.super_rvalue(rvalue, location)
+    }
+}
+
+/// Calls `f` for each mutable borrow or raw reference in the program.
+///
+/// This DOES NOT call `f` for a shared borrow of a type with interior mutability.  That's okay for
+/// initializedness, because we cannot move from an `UnsafeCell` (outside of `core::cell`), but
+/// other analyses will likely need to check for `!Freeze`.
+fn for_each_mut_borrow<'tcx>(
+    mir: &impl MirVisitable<'tcx>,
+    location: Location,
+    f: impl FnMut(&mir::Place<'_>),
+) {
+    let mut vis = OnMutBorrow(f);
+
+    mir.apply(location, &mut vis);
 }

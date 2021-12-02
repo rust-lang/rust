@@ -34,8 +34,8 @@ mod span_map;
 mod templates;
 mod write_shared;
 
-crate use context::*;
-crate use span_map::{collect_spans_and_sources, LinkFromSrc};
+crate use self::context::*;
+crate use self::span_map::{collect_spans_and_sources, LinkFromSrc};
 
 use std::collections::VecDeque;
 use std::default::Default;
@@ -54,6 +54,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
+use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{
     symbol::{kw, sym, Symbol},
@@ -63,7 +64,6 @@ use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
-use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -102,7 +102,7 @@ crate struct IndexItem {
     crate parent: Option<DefId>,
     crate parent_idx: Option<usize>,
     crate search_type: Option<IndexItemFunctionType>,
-    crate aliases: Box<[String]>,
+    crate aliases: Box<[Symbol]>,
 }
 
 /// A type used for the search index.
@@ -116,7 +116,7 @@ crate struct RenderType {
 #[derive(Debug)]
 crate struct IndexItemFunctionType {
     inputs: Vec<TypeWithKind>,
-    output: Option<Vec<TypeWithKind>>,
+    output: Vec<TypeWithKind>,
 }
 
 impl Serialize for IndexItemFunctionType {
@@ -125,21 +125,16 @@ impl Serialize for IndexItemFunctionType {
         S: Serializer,
     {
         // If we couldn't figure out a type, just write `null`.
-        let mut iter = self.inputs.iter();
-        if match self.output {
-            Some(ref output) => iter.chain(output.iter()).any(|i| i.ty.name.is_none()),
-            None => iter.any(|i| i.ty.name.is_none()),
-        } {
+        let has_missing = self.inputs.iter().chain(self.output.iter()).any(|i| i.ty.name.is_none());
+        if has_missing {
             serializer.serialize_none()
         } else {
             let mut seq = serializer.serialize_seq(None)?;
             seq.serialize_element(&self.inputs)?;
-            if let Some(output) = &self.output {
-                if output.len() > 1 {
-                    seq.serialize_element(&output)?;
-                } else {
-                    seq.serialize_element(&output[0])?;
-                }
+            match self.output.as_slice() {
+                [] => {}
+                [one] => seq.serialize_element(one)?,
+                all => seq.serialize_element(all)?,
             }
             seq.end()
         }
@@ -177,8 +172,12 @@ impl Serialize for TypeWithKind {
 crate struct StylePath {
     /// The path to the theme
     crate path: PathBuf,
-    /// What the `disabled` attribute should be set to in the HTML tag
-    crate disabled: bool,
+}
+
+impl StylePath {
+    pub fn basename(&self) -> Result<String, Error> {
+        Ok(try_none!(try_none!(self.path.file_stem(), &self.path).to_str(), &self.path).to_string())
+    }
 }
 
 fn write_srclink(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buffer) {
@@ -357,7 +356,7 @@ enum Setting {
         js_data_name: &'static str,
         description: &'static str,
         default_value: &'static str,
-        options: Vec<(String, String)>,
+        options: Vec<String>,
     },
 }
 
@@ -397,10 +396,9 @@ impl Setting {
                 options
                     .iter()
                     .map(|opt| format!(
-                        "<option value=\"{}\" {}>{}</option>",
-                        opt.0,
-                        if opt.0 == default_value { "selected" } else { "" },
-                        opt.1,
+                        "<option value=\"{name}\" {}>{name}</option>",
+                        if opt == default_value { "selected" } else { "" },
+                        name = opt,
                     ))
                     .collect::<String>(),
                 root_path,
@@ -425,18 +423,7 @@ impl<T: Into<Setting>> From<(&'static str, Vec<T>)> for Setting {
     }
 }
 
-fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<String, Error> {
-    let theme_names: Vec<(String, String)> = themes
-        .iter()
-        .map(|entry| {
-            let theme =
-                try_none!(try_none!(entry.path.file_stem(), &entry.path).to_str(), &entry.path)
-                    .to_string();
-
-            Ok((theme.clone(), theme))
-        })
-        .collect::<Result<_, Error>>()?;
-
+fn settings(root_path: &str, suffix: &str, theme_names: Vec<String>) -> Result<String, Error> {
     // (id, explanation, default value)
     let settings: &[Setting] = &[
         (
@@ -473,10 +460,11 @@ fn settings(root_path: &str, suffix: &str, themes: &[StylePath]) -> Result<Strin
             <span class=\"in-band\">Rustdoc settings</span>\
         </h1>\
         <div class=\"settings\">{}</div>\
-        <script src=\"{}settings{}.js\"></script>",
+        <link rel=\"stylesheet\" href=\"{root_path}settings{suffix}.css\">\
+        <script src=\"{root_path}settings{suffix}.js\"></script>",
         settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>(),
-        root_path,
-        suffix
+        root_path = root_path,
+        suffix = suffix
     ))
 }
 
@@ -686,7 +674,7 @@ fn short_item_info(
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some((StabilityLevel::Unstable { reason, issue, .. }, feature)) = item
+    if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, feature)) = item
         .stability(cx.tcx())
         .as_ref()
         .filter(|stab| stab.feature != sym::rustc_private)
@@ -705,23 +693,6 @@ fn short_item_info(
         }
 
         message.push_str(&format!(" ({})", feature));
-
-        if let Some(unstable_reason) = reason {
-            let ids = &mut cx.id_map;
-            message = format!(
-                "<details><summary>{}</summary>{}</details>",
-                message,
-                MarkdownHtml(
-                    &unstable_reason.as_str(),
-                    ids,
-                    error_codes,
-                    cx.shared.edition(),
-                    &cx.shared.playground,
-                )
-                .into_string()
-            );
-        }
-
         extra_info.push(format!("<div class=\"stab unstable\">{}</div>", message));
     }
 
@@ -832,17 +803,17 @@ fn assoc_type(
 
 fn render_stability_since_raw(
     w: &mut Buffer,
-    ver: Option<&str>,
-    const_stability: Option<&ConstStability>,
-    containing_ver: Option<&str>,
-    containing_const_ver: Option<&str>,
+    ver: Option<Symbol>,
+    const_stability: Option<ConstStability>,
+    containing_ver: Option<Symbol>,
+    containing_const_ver: Option<Symbol>,
 ) {
     let ver = ver.filter(|inner| !inner.is_empty());
 
     match (ver, const_stability) {
         // stable and const stable
         (Some(v), Some(ConstStability { level: StabilityLevel::Stable { since }, .. }))
-            if Some(since.as_str()).as_deref() != containing_const_ver =>
+            if Some(since) != containing_const_ver =>
         {
             write!(
                 w,
@@ -889,6 +860,7 @@ fn render_assoc_item(
     link: AssocItemLink<'_>,
     parent: ItemType,
     cx: &mut Context<'_>,
+    render_mode: RenderMode,
 ) {
     fn method(
         w: &mut Buffer,
@@ -899,6 +871,7 @@ fn render_assoc_item(
         link: AssocItemLink<'_>,
         parent: ItemType,
         cx: &mut Context<'_>,
+        render_mode: RenderMode,
     ) {
         let name = meth.name.as_ref().unwrap();
         let href = match link {
@@ -921,8 +894,14 @@ fn render_assoc_item(
             }
         };
         let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
-        let constness =
-            print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()));
+        // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+        // this condition.
+        let constness = match render_mode {
+            RenderMode::Normal => {
+                print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()))
+            }
+            RenderMode::ForDeref { .. } => "",
+        };
         let asyncness = header.asyncness.print_with_space();
         let unsafety = header.unsafety.print_with_space();
         let defaultness = print_default_space(meth.is_default());
@@ -973,10 +952,10 @@ fn render_assoc_item(
     match *item.kind {
         clean::StrippedItem(..) => {}
         clean::TyMethodItem(ref m) => {
-            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx)
+            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
         clean::MethodItem(ref m, _) => {
-            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx)
+            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
         clean::AssocConstItem(ref ty, ref default) => assoc_const(
             w,
@@ -1148,9 +1127,9 @@ fn render_assoc_items_inner(
         }
 
         let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) =
-            traits.iter().partition(|t| t.inner_impl().synthetic);
+            traits.iter().partition(|t| t.inner_impl().kind.is_auto());
         let (blanket_impl, concrete): (Vec<&&Impl>, _) =
-            concrete.into_iter().partition(|t| t.inner_impl().blanket_impl.is_some());
+            concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
         let mut impls = Buffer::empty_from(w);
         render_impls(cx, &mut impls, &concrete, containing_item);
@@ -1248,8 +1227,8 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
             | SelfTy::SelfExplicit(clean::BorrowedRef { mutability, .. }) => {
                 (mutability == Mutability::Mut, false, false)
             }
-            SelfTy::SelfExplicit(clean::ResolvedPath { did, .. }) => {
-                (false, Some(did) == tcx.lang_items().owned_box(), false)
+            SelfTy::SelfExplicit(clean::Type::Path { path }) => {
+                (false, Some(path.def_id()) == tcx.lang_items().owned_box(), false)
             }
             SelfTy::SelfValue => (false, false, true),
             _ => (false, false, false),
@@ -1264,10 +1243,17 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
 fn notable_traits_decl(decl: &clean::FnDecl, cx: &mut Context<'_>) -> String {
     let mut out = Buffer::html();
 
-    if let Some(did) = decl.output.as_return().and_then(|t| t.def_id(cx.cache())) {
-        if let Some(impls) = cx.clone().cache().impls.get(&did) {
+    if let Some((did, ty)) = decl.output.as_return().and_then(|t| Some((t.def_id(cx.cache())?, t)))
+    {
+        if let Some(impls) = cx.cache().impls.get(&did) {
             for i in impls {
                 let impl_ = i.inner_impl();
+                if !impl_.for_.without_borrowed_ref().is_same(ty.without_borrowed_ref(), cx.cache())
+                {
+                    // Two different types might have the same did,
+                    // without actually being the same.
+                    continue;
+                }
                 if let Some(trait_) = &impl_.trait_ {
                     let trait_did = trait_.def_id();
 
@@ -1445,7 +1431,7 @@ fn render_impl(
                         "<div id=\"{}\" class=\"{}{} has-srclink\">",
                         id, item_type, in_trait_class,
                     );
-                    render_rightside(w, cx, item, containing_item);
+                    render_rightside(w, cx, item, containing_item, render_mode);
                     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                     w.write_str("<h4 class=\"code-header\">");
                     render_assoc_item(
@@ -1454,6 +1440,7 @@ fn render_impl(
                         link.anchor(source_id.as_ref().unwrap_or(&id)),
                         ItemType::Impl,
                         cx,
+                        render_mode,
                     );
                     w.write_str("</h4>");
                     w.write_str("</div>");
@@ -1489,7 +1476,7 @@ fn render_impl(
                     "<div id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
-                render_rightside(w, cx, item, containing_item);
+                render_rightside(w, cx, item, containing_item, render_mode);
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_const(
@@ -1668,16 +1655,24 @@ fn render_rightside(
     cx: &mut Context<'_>,
     item: &clean::Item,
     containing_item: &clean::Item,
+    render_mode: RenderMode,
 ) {
     let tcx = cx.tcx();
+
+    // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+    // this condition.
+    let (const_stability, const_stable_since) = match render_mode {
+        RenderMode::Normal => (item.const_stability(tcx), containing_item.const_stable_since(tcx)),
+        RenderMode::ForDeref { .. } => (None, None),
+    };
 
     write!(w, "<div class=\"rightside\">");
     render_stability_since_raw(
         w,
-        item.stable_since(tcx).as_deref(),
-        item.const_stability(tcx),
-        containing_item.stable_since(tcx).as_deref(),
-        containing_item.const_stable_since(tcx).as_deref(),
+        item.stable_since(tcx),
+        const_stability,
+        containing_item.stable_since(tcx),
+        const_stable_since,
     );
 
     write_srclink(cx, item, w);
@@ -1713,7 +1708,7 @@ pub(crate) fn render_impl_summary(
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
     write!(w, "<div id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
-    render_rightside(w, cx, &i.impl_item, containing_item);
+    render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
     write!(w, "<h3 class=\"code-header in-band\">");
 
@@ -2036,12 +2031,12 @@ fn sidebar_assoc_items(cx: &mut Context<'_>, out: &mut Buffer, it: &clean::Item)
                             let i_display = format!("{:#}", i.print(cx));
                             let out = Escape(&i_display);
                             let encoded = small_url_encode(format!("{:#}", i.print(cx)));
-                            let generated = format!(
-                                "<a href=\"#impl-{}\">{}{}</a>",
-                                encoded,
-                                if it.inner_impl().negative_polarity { "!" } else { "" },
-                                out
-                            );
+                            let prefix = match it.inner_impl().polarity {
+                                ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
+                                ty::ImplPolarity::Negative => "!",
+                            };
+                            let generated =
+                                format!("<a href=\"#impl-{}\">{}{}</a>", encoded, prefix, out);
                             if links.insert(generated.clone()) { Some(generated) } else { None }
                         } else {
                             None
@@ -2061,10 +2056,9 @@ fn sidebar_assoc_items(cx: &mut Context<'_>, out: &mut Buffer, it: &clean::Item)
             };
 
             let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
-                v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().synthetic);
-            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) = concrete
-                .into_iter()
-                .partition::<Vec<_>, _>(|i| i.inner_impl().blanket_impl.is_some());
+                v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_auto());
+            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
+                concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_blanket());
 
             let concrete_format = format_impls(concrete);
             let synthetic_format = format_impls(synthetic);
@@ -2170,7 +2164,7 @@ fn sidebar_deref_methods(
         }
 
         // Recurse into any further impls that might exist for `target`
-        if let Some(target_did) = target.def_id_no_primitives() {
+        if let Some(target_did) = target.def_id(c) {
             if let Some(target_impls) = c.impls.get(&target_did) {
                 if let Some(target_deref_impl) = target_impls.iter().find(|i| {
                     i.inner_impl()
@@ -2545,7 +2539,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
         }
 
         match ty {
-            clean::Type::ResolvedPath { did, .. } => process_path(did),
+            clean::Type::Path { path } => process_path(path.def_id()),
             clean::Type::Tuple(tys) => {
                 work.extend(tys.into_iter());
             }

@@ -569,7 +569,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // to store those. Otherwise, we'll pass in `None` to the
         // functions below, which will trigger them to report errors
         // eagerly.
-        let mut outlives_requirements = infcx.tcx.is_closure(mir_def_id).then(Vec::new);
+        let mut outlives_requirements = infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
 
         self.check_type_tests(infcx, body, outlives_requirements.as_mut(), &mut errors_buffer);
 
@@ -2110,14 +2110,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     _ => constraint_sup_scc != target_scc,
                 }
             } else {
-                match categorized_path[*i].category {
+                !matches!(
+                    categorized_path[*i].category,
                     ConstraintCategory::OpaqueType
-                    | ConstraintCategory::Boring
-                    | ConstraintCategory::BoringNoLocation
-                    | ConstraintCategory::Internal
-                    | ConstraintCategory::Predicate(_) => false,
-                    _ => true,
-                }
+                        | ConstraintCategory::Boring
+                        | ConstraintCategory::BoringNoLocation
+                        | ConstraintCategory::Internal
+                        | ConstraintCategory::Predicate(_)
+                )
             }
         };
 
@@ -2229,7 +2229,7 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
             tcx,
             closure_substs,
             self.num_external_vids,
-            tcx.closure_base_def_id(closure_def_id),
+            tcx.typeck_root_def_id(closure_def_id),
         );
         debug!("apply_requirements: closure_mapping={:?}", closure_mapping);
 

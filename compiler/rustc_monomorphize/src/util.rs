@@ -67,7 +67,7 @@ crate fn dump_closure_profile(tcx: TyCtxt<'tcx>, closure_instance: Instance<'tcx
             src_file.prefer_local(),
             line_nos
         ) {
-            eprintln!("Error writting to file {}", e.to_string())
+            eprintln!("Error writing to file {}", e)
         }
     }
 }

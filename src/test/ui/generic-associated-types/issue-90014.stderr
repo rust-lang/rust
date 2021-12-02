@@ -1,0 +1,15 @@
+error[E0477]: the type `&mut ()` does not fulfill the required lifetime
+  --> $DIR/issue-90014.rs:14:5
+   |
+LL |     type Fut<'a> = impl Future<Output = ()>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type must outlive the lifetime `'a` as defined here
+  --> $DIR/issue-90014.rs:14:14
+   |
+LL |     type Fut<'a> = impl Future<Output = ()>;
+   |              ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0477`.

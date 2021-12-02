@@ -1,5 +1,6 @@
 // aux-crate:priv:priv_dep=priv_dep.rs
 // aux-build:pub_dep.rs
+// compile-flags: -Zunstable-options
 #![deny(exported_private_dependencies)]
 
 // This crate is a private dependency

@@ -101,7 +101,7 @@ pub(super) fn print_item(
     let mut stability_since_raw = Buffer::new();
     render_stability_since_raw(
         &mut stability_since_raw,
-        item.stable_since(cx.tcx()).as_deref(),
+        item.stable_since(cx.tcx()),
         item.const_stability(cx.tcx()),
         None,
         None,
@@ -556,7 +556,14 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                     );
                 }
                 for t in &types {
-                    render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
+                    render_assoc_item(
+                        w,
+                        t,
+                        AssocItemLink::Anchor(None),
+                        ItemType::Trait,
+                        cx,
+                        RenderMode::Normal,
+                    );
                     w.write_str(";\n");
                 }
                 // If there are too many associated constants, hide everything after them
@@ -580,7 +587,14 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                     w.write_str("\n");
                 }
                 for t in &consts {
-                    render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait, cx);
+                    render_assoc_item(
+                        w,
+                        t,
+                        AssocItemLink::Anchor(None),
+                        ItemType::Trait,
+                        cx,
+                        RenderMode::Normal,
+                    );
                     w.write_str(";\n");
                 }
                 if !toggle && should_hide_fields(count_methods) {
@@ -591,7 +605,14 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                     w.write_str("\n");
                 }
                 for (pos, m) in required.iter().enumerate() {
-                    render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait, cx);
+                    render_assoc_item(
+                        w,
+                        m,
+                        AssocItemLink::Anchor(None),
+                        ItemType::Trait,
+                        cx,
+                        RenderMode::Normal,
+                    );
                     w.write_str(";\n");
 
                     if pos < required.len() - 1 {
@@ -602,7 +623,14 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                     w.write_str("\n");
                 }
                 for (pos, m) in provided.iter().enumerate() {
-                    render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait, cx);
+                    render_assoc_item(
+                        w,
+                        m,
+                        AssocItemLink::Anchor(None),
+                        ItemType::Trait,
+                        cx,
+                        RenderMode::Normal,
+                    );
                     match *m.kind {
                         clean::MethodItem(ref inner, _)
                             if !inner.generics.where_predicates.is_empty() =>
@@ -655,7 +683,14 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         write_srclink(&mut cx.clone(), m, w);
         write!(w, "</div>");
         write!(w, "<h4 class=\"code-header\">");
-        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
+        render_assoc_item(
+            w,
+            m,
+            AssocItemLink::Anchor(Some(&id)),
+            ItemType::Impl,
+            cx,
+            RenderMode::Normal,
+        );
         w.write_str("</h4>");
         w.write_str("</div>");
         if toggled {
@@ -727,10 +762,11 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
         for implementor in implementors {
             match implementor.inner_impl().for_ {
-                clean::ResolvedPath { ref path, did, .. }
-                | clean::BorrowedRef {
-                    type_: box clean::ResolvedPath { ref path, did, .. }, ..
-                } if !path.is_assoc_ty() => {
+                clean::Type::Path { ref path }
+                | clean::BorrowedRef { type_: box clean::Type::Path { ref path }, .. }
+                    if !path.is_assoc_ty() =>
+                {
+                    let did = path.def_id();
                     let &mut (prev_did, ref mut has_duplicates) =
                         implementor_dups.entry(path.last()).or_insert((did, false));
                     if prev_did != did {
@@ -746,7 +782,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         });
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
-            local.iter().partition(|i| i.inner_impl().synthetic);
+            local.iter().partition(|i| i.inner_impl().kind.is_auto());
 
         synthetic.sort_by(|a, b| compare_impl(a, b, cx));
         concrete.sort_by(|a, b| compare_impl(a, b, cx));
@@ -1080,7 +1116,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.as_ref().unwrap()));
             write!(
                 w,
-                "<div id=\"{id}\" class=\"variant small-section-header\">\
+                "<h3 id=\"{id}\" class=\"variant small-section-header\">\
                     <a href=\"#{id}\" class=\"anchor field\"></a>\
                     <code>{name}",
                 id = id,
@@ -1093,9 +1129,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             }
             w.write_str("</code>");
             render_stability_since(w, variant, it, cx.tcx());
-            w.write_str("</div>");
-            document(w, cx, variant, Some(it), HeadingOffset::H3);
-            document_non_exhaustive(w, variant);
+            w.write_str("</h3>");
 
             use crate::clean::Variant;
             if let Some((extra, fields)) = match *variant.kind {
@@ -1109,12 +1143,8 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                     variant.name.as_ref().unwrap()
                 ));
                 write!(w, "<div class=\"sub-variant\" id=\"{id}\">", id = variant_id);
-                write!(
-                    w,
-                    "<h3>{extra}Fields of <b>{name}</b></h3><div>",
-                    extra = extra,
-                    name = variant.name.as_ref().unwrap(),
-                );
+                write!(w, "<h4>{extra}Fields</h4>", extra = extra,);
+                document_non_exhaustive(w, variant);
                 for field in fields {
                     match *field.kind {
                         clean::StrippedItem(box clean::StructFieldItem(_)) => {}
@@ -1126,7 +1156,8 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                             ));
                             write!(
                                 w,
-                                "<span id=\"{id}\" class=\"variant small-section-header\">\
+                                "<div class=\"sub-variant-field\">\
+                                 <span id=\"{id}\" class=\"variant small-section-header\">\
                                     <a href=\"#{id}\" class=\"anchor field\"></a>\
                                     <code>{f}:&nbsp;{t}</code>\
                                 </span>",
@@ -1134,13 +1165,16 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                                 f = field.name.as_ref().unwrap(),
                                 t = ty.print(cx)
                             );
-                            document(w, cx, field, Some(variant), HeadingOffset::H4);
+                            document(w, cx, field, Some(variant), HeadingOffset::H5);
+                            write!(w, "</div>");
                         }
                         _ => unreachable!(),
                     }
                 }
-                w.write_str("</div></div>");
+                w.write_str("</div>");
             }
+
+            document(w, cx, variant, Some(it), HeadingOffset::H4);
         }
     }
     let def_id = it.def_id.expect_def_id();
@@ -1428,10 +1462,10 @@ fn render_stability_since(
 ) {
     render_stability_since_raw(
         w,
-        item.stable_since(tcx).as_deref(),
+        item.stable_since(tcx),
         item.const_stability(tcx),
-        containing_item.stable_since(tcx).as_deref(),
-        containing_item.const_stable_since(tcx).as_deref(),
+        containing_item.stable_since(tcx),
+        containing_item.const_stable_since(tcx),
     )
 }
 
@@ -1454,8 +1488,8 @@ fn render_implementor(
     // If there's already another implementor that has the same abridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
     let use_absolute = match implementor.inner_impl().for_ {
-        clean::ResolvedPath { ref path, .. }
-        | clean::BorrowedRef { type_: box clean::ResolvedPath { ref path, .. }, .. }
+        clean::Type::Path { ref path, .. }
+        | clean::BorrowedRef { type_: box clean::Type::Path { ref path, .. }, .. }
             if !path.is_assoc_ty() =>
         {
             implementor_dups[&path.last()].1
@@ -1769,6 +1803,13 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                 "<p><strong>Note:</strong> Encountered an error during type layout; \
                  the type was too big.</p>"
             );
+        }
+        Err(LayoutError::NormalizationFailure(_, _)) => {
+            writeln!(
+                w,
+                "<p><strong>Note:</strong> Encountered an error during type layout; \
+                the type failed to be normalized.</p>"
+            )
         }
     }
 

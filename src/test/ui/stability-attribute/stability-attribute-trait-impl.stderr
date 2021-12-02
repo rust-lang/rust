@@ -1,11 +1,23 @@
 error: an `#[unstable]` annotation here has no effect
-  --> $DIR/stability-attribute-trait-impl.rs:24:1
+  --> $DIR/stability-attribute-trait-impl.rs:25:1
    |
-LL | #[unstable(feature = "x", issue = "none")]
+LL | #[unstable(feature = "h", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[deny(ineffective_unstable_trait_impl)]` on by default
    = note: see issue #55436 <https://github.com/rust-lang/rust/issues/55436> for more information
 
-error: aborting due to previous error
+error: module has missing stability attribute
+  --> $DIR/stability-attribute-trait-impl.rs:1:1
+   |
+LL | / #![feature(staged_api)]
+LL | |
+LL | |
+LL | | #[stable(feature = "a", since = "1")]
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error: aborting due to 2 previous errors
 

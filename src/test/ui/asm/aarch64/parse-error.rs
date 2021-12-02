@@ -1,6 +1,6 @@
 // only-aarch64
 
-#![feature(asm, global_asm)]
+#![feature(asm, global_asm, asm_const)]
 
 fn main() {
     let mut foo = 0;
@@ -40,9 +40,9 @@ fn main() {
         asm!("", clobber_abi(foo));
         //~^ ERROR expected string literal
         asm!("", clobber_abi("C" foo));
-        //~^ ERROR expected `)`, found `foo`
+        //~^ ERROR expected one of `)` or `,`, found `foo`
         asm!("", clobber_abi("C", foo));
-        //~^ ERROR expected `)`, found `,`
+        //~^ ERROR expected string literal
         asm!("{}", clobber_abi("C"), const foo);
         //~^ ERROR arguments are not allowed after clobber_abi
         //~^^ ERROR attempt to use a non-constant value in a constant
@@ -50,8 +50,6 @@ fn main() {
         //~^ ERROR clobber_abi is not allowed after options
         asm!("{}", options(), clobber_abi("C"), const foo);
         //~^ ERROR clobber_abi is not allowed after options
-        asm!("", clobber_abi("C"), clobber_abi("C"));
-        //~^ ERROR clobber_abi specified multiple times
         asm!("{a}", a = const foo, a = const bar);
         //~^ ERROR duplicate argument named `a`
         //~^^ ERROR argument never used
@@ -110,9 +108,9 @@ global_asm!("{}", options(), const FOO);
 global_asm!("", clobber_abi(FOO));
 //~^ ERROR expected string literal
 global_asm!("", clobber_abi("C" FOO));
-//~^ ERROR expected `)`, found `FOO`
+//~^ ERROR expected one of `)` or `,`, found `FOO`
 global_asm!("", clobber_abi("C", FOO));
-//~^ ERROR expected `)`, found `,`
+//~^ ERROR expected string literal
 global_asm!("{}", clobber_abi("C"), const FOO);
 //~^ ERROR arguments are not allowed after clobber_abi
 //~^^ ERROR `clobber_abi` cannot be used with `global_asm!`
@@ -120,8 +118,6 @@ global_asm!("", options(), clobber_abi("C"));
 //~^ ERROR clobber_abi is not allowed after options
 global_asm!("{}", options(), clobber_abi("C"), const FOO);
 //~^ ERROR clobber_abi is not allowed after options
-global_asm!("", clobber_abi("C"), clobber_abi("C"));
-//~^ ERROR clobber_abi specified multiple times
 global_asm!("{a}", a = const FOO, a = const BAR);
 //~^ ERROR duplicate argument named `a`
 //~^^ ERROR argument never used

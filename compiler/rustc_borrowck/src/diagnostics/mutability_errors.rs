@@ -165,10 +165,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 local: _,
                 projection:
-                    [.., ProjectionElem::Index(_)
-                    | ProjectionElem::ConstantIndex { .. }
-                    | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::Downcast(..)],
+                    [
+                        ..,
+                        ProjectionElem::Index(_)
+                        | ProjectionElem::ConstantIndex { .. }
+                        | ProjectionElem::Subslice { .. }
+                        | ProjectionElem::Downcast(..),
+                    ],
             } => bug!("Unexpected immutable place."),
         }
 
@@ -217,7 +220,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 local,
                 projection:
-                    [proj_base @ .., ProjectionElem::Deref, ProjectionElem::Field(field, _), ProjectionElem::Deref],
+                    [
+                        proj_base @ ..,
+                        ProjectionElem::Deref,
+                        ProjectionElem::Field(field, _),
+                        ProjectionElem::Deref,
+                    ],
             } => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
 
@@ -445,15 +453,27 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 },
                             ))) => {
                                 // check if the RHS is from desugaring
-                                let locations = self.body.find_assignments(local);
-                                let opt_assignment_rhs_span = locations
-                                    .first()
-                                    .map(|&location| self.body.source_info(location).span);
-                                let opt_desugaring_kind =
-                                    opt_assignment_rhs_span.and_then(|span| span.desugaring_kind());
-                                match opt_desugaring_kind {
+                                let opt_assignment_rhs_span =
+                                    self.body.find_assignments(local).first().map(|&location| {
+                                        if let Some(mir::Statement {
+                                            source_info: _,
+                                            kind:
+                                                mir::StatementKind::Assign(box (
+                                                    _,
+                                                    mir::Rvalue::Use(mir::Operand::Copy(place)),
+                                                )),
+                                        }) = self.body[location.block]
+                                            .statements
+                                            .get(location.statement_index)
+                                        {
+                                            self.body.local_decls[place.local].source_info.span
+                                        } else {
+                                            self.body.source_info(location).span
+                                        }
+                                    });
+                                match opt_assignment_rhs_span.and_then(|s| s.desugaring_kind()) {
                                     // on for loops, RHS points to the iterator part
-                                    Some(DesugaringKind::ForLoop(_)) => {
+                                    Some(DesugaringKind::ForLoop) => {
                                         self.suggest_similar_mut_method_for_for_loop(&mut err);
                                         Some((
                                             false,
@@ -751,11 +771,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                 kind:
                                                     Call(
                                                         _,
-                                                        [Expr {
-                                                            kind: MethodCall(path_segment, ..),
-                                                            hir_id,
-                                                            ..
-                                                        }, ..],
+                                                        [
+                                                            Expr {
+                                                                kind: MethodCall(path_segment, ..),
+                                                                hir_id,
+                                                                ..
+                                                            },
+                                                            ..,
+                                                        ],
                                                     ),
                                                 ..
                                             },

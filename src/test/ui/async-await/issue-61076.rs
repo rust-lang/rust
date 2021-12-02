@@ -40,11 +40,9 @@ async fn foo() -> Result<(), ()> {
 
 async fn bar() -> Result<(), ()> {
     foo()?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
-    //~^ NOTE the `?` operator cannot be applied to type `impl Future`
-    //~| HELP the trait `Try` is not implemented for `impl Future`
-    //~| NOTE required by `branch`
+    //~^ NOTE the `?` operator cannot be applied to type `impl Future<Output = Result<(), ()>>`
+    //~| HELP the trait `Try` is not implemented for `impl Future<Output = Result<(), ()>>`
     //~| HELP consider `await`ing on the `Future`
-    //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
@@ -67,9 +65,7 @@ async fn baz() -> Result<(), ()> {
     t?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
     //~^ NOTE the `?` operator cannot be applied to type `T`
     //~| HELP the trait `Try` is not implemented for `T`
-    //~| NOTE required by `branch`
     //~| HELP consider `await`ing on the `Future`
-    //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
@@ -84,7 +80,7 @@ async fn baz() -> Result<(), ()> {
     //~| NOTE field not available in `impl Future`
 
     struct_().method(); //~ ERROR no method named
-    //~^ NOTE method not found in `impl Future`
+    //~^ NOTE method not found in `impl Future<Output = Struct>`
     //~| HELP consider `await`ing on the `Future`
     Ok(())
 }
@@ -93,7 +89,7 @@ async fn match_() {
     match tuple() { //~ HELP consider `await`ing on the `Future`
         Tuple(_) => {} //~ ERROR mismatched types
         //~^ NOTE expected opaque type, found struct `Tuple`
-        //~| NOTE expected opaque type `impl Future`
+        //~| NOTE expected opaque type `impl Future<Output = Tuple>`
     }
 }
 

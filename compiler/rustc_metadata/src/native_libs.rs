@@ -309,7 +309,7 @@ impl Collector<'tcx> {
                     .libs
                     .iter()
                     .filter_map(|lib| lib.name.as_ref())
-                    .any(|n| &n.as_str() == &lib.name);
+                    .any(|n| n.as_str() == lib.name);
                 if new_name.is_empty() {
                     self.tcx.sess.err(&format!(
                         "an empty renaming target was specified for library `{}`",

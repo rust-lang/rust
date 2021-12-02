@@ -6,11 +6,6 @@ LL |     for _ in "".to_owned() {}
    |
    = help: the trait `Iterator` is not implemented for `String`
    = note: required because of the requirements on the impl of `IntoIterator` for `String`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `&str` is not an iterator
   --> $DIR/string.rs:4:14
@@ -20,11 +15,6 @@ LL |     for _ in "" {}
    |
    = help: the trait `Iterator` is not implemented for `&str`
    = note: required because of the requirements on the impl of `IntoIterator` for `&str`
-note: required by `into_iter`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

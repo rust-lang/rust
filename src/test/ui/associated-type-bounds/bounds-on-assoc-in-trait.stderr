@@ -5,17 +5,6 @@ LL |     type A: Iterator<Item: Debug>;
    |                            ^^^^^ `<<Self as Case1>::A as Iterator>::Item` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
    = help: the trait `Debug` is not implemented for `<<Self as Case1>::A as Iterator>::Item`
-note: required by a bound in `Debug`
-  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
-   |
-LL | / pub trait Debug {
-LL | |     /// Formats the value using the given formatter.
-LL | |     ///
-LL | |     /// # Examples
-...  |
-LL | |     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
-LL | | }
-   | |_^ required by this bound in `Debug`
 help: consider further restricting the associated type
    |
 LL | trait Case1 where <<Self as Case1>::A as Iterator>::Item: Debug {
@@ -27,17 +16,6 @@ error[E0277]: the trait bound `<<Self as Foo>::Out as Baz>::Assoc: Default` is n
 LL | pub trait Foo { type Out: Baz<Assoc: Default>; }
    |                                      ^^^^^^^ the trait `Default` is not implemented for `<<Self as Foo>::Out as Baz>::Assoc`
    |
-note: required by a bound in `Default`
-  --> $SRC_DIR/core/src/default.rs:LL:COL
-   |
-LL | / pub trait Default: Sized {
-LL | |     /// Returns the "default value" for a type.
-LL | |     ///
-LL | |     /// Default values are often some kind of initial value, identity value, or anything else that
-...  |
-LL | |     fn default() -> Self;
-LL | | }
-   | |_^ required by this bound in `Default`
 help: consider further restricting the associated type
    |
 LL | pub trait Foo where <<Self as Foo>::Out as Baz>::Assoc: Default { type Out: Baz<Assoc: Default>; }

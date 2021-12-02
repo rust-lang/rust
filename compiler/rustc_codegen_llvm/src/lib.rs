@@ -76,6 +76,27 @@ mod value;
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
 
+struct TimeTraceProfiler {
+    enabled: bool,
+}
+
+impl TimeTraceProfiler {
+    fn new(enabled: bool) -> Self {
+        if enabled {
+            unsafe { llvm::LLVMTimeTraceProfilerInitialize() }
+        }
+        TimeTraceProfiler { enabled }
+    }
+}
+
+impl Drop for TimeTraceProfiler {
+    fn drop(&mut self) {
+        if self.enabled {
+            unsafe { llvm::LLVMTimeTraceProfilerFinishThread() }
+        }
+    }
+}
+
 impl ExtraBackendMethods for LlvmCodegenBackend {
     fn new_metadata(&self, tcx: TyCtxt<'_>, mod_name: &str) -> ModuleLlvm {
         ModuleLlvm::new_metadata(tcx, mod_name)
@@ -118,6 +139,34 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     }
     fn tune_cpu<'b>(&self, sess: &'b Session) -> Option<&'b str> {
         llvm_util::tune_cpu(sess)
+    }
+
+    fn spawn_thread<F, T>(time_trace: bool, f: F) -> std::thread::JoinHandle<T>
+    where
+        F: FnOnce() -> T,
+        F: Send + 'static,
+        T: Send + 'static,
+    {
+        std::thread::spawn(move || {
+            let _profiler = TimeTraceProfiler::new(time_trace);
+            f()
+        })
+    }
+
+    fn spawn_named_thread<F, T>(
+        time_trace: bool,
+        name: String,
+        f: F,
+    ) -> std::io::Result<std::thread::JoinHandle<T>>
+    where
+        F: FnOnce() -> T,
+        F: Send + 'static,
+        T: Send + 'static,
+    {
+        std::thread::Builder::new().name(name).spawn(move || {
+            let _profiler = TimeTraceProfiler::new(time_trace);
+            f()
+        })
     }
 }
 
@@ -238,6 +287,31 @@ impl CodegenBackend for LlvmCodegenBackend {
                     println!("    {}", name);
                 }
                 println!();
+            }
+            PrintRequest::StackProtectorStrategies => {
+                println!(
+                    r#"Available stack protector strategies:
+    all
+        Generate stack canaries in all functions.
+
+    strong
+        Generate stack canaries in a function if it either:
+        - has a local variable of `[T; N]` type, regardless of `T` and `N`
+        - takes the address of a local variable.
+
+          (Note that a local variable being borrowed is not equivalent to its
+          address being taken: e.g. some borrows may be removed by optimization,
+          while by-value argument passing may be implemented with reference to a
+          local stack variable in the ABI.)
+
+    basic
+        Generate stack canaries in functions with:
+        - local variables of `[T; N]` type, where `T` is byte-sized and `N` > 8.
+
+    none
+        Do not generate stack canaries.
+"#
+                );
             }
             req => llvm_util::print(req, sess),
         }

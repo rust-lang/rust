@@ -267,6 +267,7 @@ fn run_compiler(
                         None,
                         compiler.output_dir(),
                         compiler.output_file(),
+                        compiler.temps_dir(),
                     );
 
                     if should_stop == Compilation::Stop {
@@ -295,6 +296,7 @@ fn run_compiler(
             Some(compiler.input()),
             compiler.output_dir(),
             compiler.output_file(),
+            compiler.temps_dir(),
         )
         .and_then(|| {
             RustcDefaultCalls::list_metadata(
@@ -647,6 +649,7 @@ impl RustcDefaultCalls {
         input: Option<&Input>,
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
+        temps_dir: &Option<PathBuf>,
     ) -> Compilation {
         use rustc_session::config::PrintRequest::*;
         // PrintRequest::NativeStaticLibs is special - printed during linking
@@ -685,7 +688,7 @@ impl RustcDefaultCalls {
                     });
                     let attrs = attrs.as_ref().unwrap();
                     let t_outputs = rustc_interface::util::build_output_filenames(
-                        input, odir, ofile, attrs, sess,
+                        input, odir, ofile, temps_dir, attrs, sess,
                     );
                     let id = rustc_session::output::find_crate_name(sess, attrs, input);
                     if *req == PrintRequest::CrateName {
@@ -733,7 +736,12 @@ impl RustcDefaultCalls {
                         println!("{}", cfg);
                     }
                 }
-                RelocationModels | CodeModels | TlsModels | TargetCPUs | TargetFeatures => {
+                RelocationModels
+                | CodeModels
+                | TlsModels
+                | TargetCPUs
+                | StackProtectorStrategies
+                | TargetFeatures => {
                     codegen_backend.print(*req, sess);
                 }
                 // Any output here interferes with Cargo's parsing of other printed output

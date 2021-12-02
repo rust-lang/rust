@@ -31,7 +31,10 @@ impl Tr for E {
     type V = u8;
     fn f() -> Self::V { 0 }
     //~^ ERROR ambiguous associated item
+    //~| ERROR ambiguous associated item
     //~| WARN this was previously accepted
+    //~| WARN this was previously accepted
+    //~| HELP use fully-qualified syntax
     //~| HELP use fully-qualified syntax
 }
 

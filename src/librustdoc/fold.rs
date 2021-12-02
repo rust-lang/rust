@@ -20,22 +20,28 @@ crate trait DocFolder: Sized {
             StructItem(mut i) => {
                 let num_fields = i.fields.len();
                 i.fields = i.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                i.fields_stripped |=
-                    num_fields != i.fields.len() || i.fields.iter().any(|f| f.is_stripped());
+                if !i.fields_stripped {
+                    i.fields_stripped =
+                        num_fields != i.fields.len() || i.fields.iter().any(|f| f.is_stripped());
+                }
                 StructItem(i)
             }
             UnionItem(mut i) => {
                 let num_fields = i.fields.len();
                 i.fields = i.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                i.fields_stripped |=
-                    num_fields != i.fields.len() || i.fields.iter().any(|f| f.is_stripped());
+                if !i.fields_stripped {
+                    i.fields_stripped =
+                        num_fields != i.fields.len() || i.fields.iter().any(|f| f.is_stripped());
+                }
                 UnionItem(i)
             }
             EnumItem(mut i) => {
                 let num_variants = i.variants.len();
                 i.variants = i.variants.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                i.variants_stripped |=
-                    num_variants != i.variants.len() || i.variants.iter().any(|f| f.is_stripped());
+                if !i.variants_stripped {
+                    i.variants_stripped = num_variants != i.variants.len()
+                        || i.variants.iter().any(|f| f.is_stripped());
+                }
                 EnumItem(i)
             }
             TraitItem(mut i) => {
@@ -50,8 +56,10 @@ crate trait DocFolder: Sized {
                 Variant::Struct(mut j) => {
                     let num_fields = j.fields.len();
                     j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
-                    j.fields_stripped |=
-                        num_fields != j.fields.len() || j.fields.iter().any(|f| f.is_stripped());
+                    if !j.fields_stripped {
+                        j.fields_stripped = num_fields != j.fields.len()
+                            || j.fields.iter().any(|f| f.is_stripped());
+                    }
                     VariantItem(Variant::Struct(j))
                 }
                 Variant::Tuple(fields) => {

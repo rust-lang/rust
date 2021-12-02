@@ -23,6 +23,7 @@ Rust MIR: a lowered representation of Rust.
 #![feature(trusted_len)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
+#![feature(unwrap_infallible)]
 #![recursion_limit = "256"]
 
 #[macro_use]

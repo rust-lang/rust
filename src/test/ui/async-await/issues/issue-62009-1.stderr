@@ -34,11 +34,6 @@ LL |     (|_| 2333).await;
    |     ^^^^^^^^^^^^^^^^ `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]` is not a future
    |
    = help: the trait `Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
-note: required by `poll`
-  --> $SRC_DIR/core/src/future/future.rs:LL:COL
-   |
-LL |     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

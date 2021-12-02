@@ -436,11 +436,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     // Very crude check to see whether the expression must be wrapped
                     // in parentheses for the suggestion to work (issue #89497).
                     // Can/should be extended in the future.
-                    let needs_parens = !has_parens
-                        && match self.expr.kind {
-                            hir::ExprKind::Cast(..) => true,
-                            _ => false,
-                        };
+                    let needs_parens =
+                        !has_parens && matches!(self.expr.kind, hir::ExprKind::Cast(..));
 
                     let mut suggestion = vec![(self.expr.span.shrink_to_lo(), sugg)];
                     if needs_parens {

@@ -1,7 +1,7 @@
 // build-pass
 
 #![allow(incomplete_features)]
-#![feature(inline_const, half_open_range_patterns, exclusive_range_pattern)]
+#![feature(inline_const_pat, half_open_range_patterns, exclusive_range_pattern)]
 fn main() {
     const N: u32 = 10;
     let x: u32 = 3;

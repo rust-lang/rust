@@ -96,17 +96,17 @@ error: expected string literal
 LL |         asm!("", clobber_abi(foo));
    |                              ^^^ not a string literal
 
-error: expected `)`, found `foo`
+error: expected one of `)` or `,`, found `foo`
   --> $DIR/parse-error.rs:42:34
    |
 LL |         asm!("", clobber_abi("C" foo));
-   |                                  ^^^ expected `)`
+   |                                  ^^^ expected one of `)` or `,`
 
-error: expected `)`, found `,`
-  --> $DIR/parse-error.rs:44:33
+error: expected string literal
+  --> $DIR/parse-error.rs:44:35
    |
 LL |         asm!("", clobber_abi("C", foo));
-   |                                 ^ expected `)`
+   |                                   ^^^ not a string literal
 
 error: arguments are not allowed after clobber_abi
   --> $DIR/parse-error.rs:46:38
@@ -132,16 +132,8 @@ LL |         asm!("{}", options(), clobber_abi("C"), const foo);
    |                    |
    |                    options
 
-error: clobber_abi specified multiple times
-  --> $DIR/parse-error.rs:53:36
-   |
-LL |         asm!("", clobber_abi("C"), clobber_abi("C"));
-   |                  ----------------  ^^^^^^^^^^^^^^^^
-   |                  |
-   |                  clobber_abi previously specified here
-
 error: duplicate argument named `a`
-  --> $DIR/parse-error.rs:55:36
+  --> $DIR/parse-error.rs:53:36
    |
 LL |         asm!("{a}", a = const foo, a = const bar);
    |                     -------------  ^^^^^^^^^^^^^ duplicate argument
@@ -149,7 +141,7 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    |                     previously here
 
 error: argument never used
-  --> $DIR/parse-error.rs:55:36
+  --> $DIR/parse-error.rs:53:36
    |
 LL |         asm!("{a}", a = const foo, a = const bar);
    |                                    ^^^^^^^^^^^^^ argument never used
@@ -157,13 +149,13 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {1} */"`
 
 error: explicit register arguments cannot have names
-  --> $DIR/parse-error.rs:60:18
+  --> $DIR/parse-error.rs:58:18
    |
 LL |         asm!("", a = in("x0") foo);
    |                  ^^^^^^^^^^^^^^^^
 
 error: named arguments cannot follow explicit register arguments
-  --> $DIR/parse-error.rs:62:35
+  --> $DIR/parse-error.rs:60:35
    |
 LL |         asm!("{a}", in("x0") foo, a = const bar);
    |                     ------------  ^^^^^^^^^^^^^ named argument
@@ -171,7 +163,7 @@ LL |         asm!("{a}", in("x0") foo, a = const bar);
    |                     explicit register argument
 
 error: named arguments cannot follow explicit register arguments
-  --> $DIR/parse-error.rs:65:35
+  --> $DIR/parse-error.rs:63:35
    |
 LL |         asm!("{a}", in("x0") foo, a = const bar);
    |                     ------------  ^^^^^^^^^^^^^ named argument
@@ -179,7 +171,7 @@ LL |         asm!("{a}", in("x0") foo, a = const bar);
    |                     explicit register argument
 
 error: positional arguments cannot follow named arguments or explicit register arguments
-  --> $DIR/parse-error.rs:68:35
+  --> $DIR/parse-error.rs:66:35
    |
 LL |         asm!("{1}", in("x0") foo, const bar);
    |                     ------------  ^^^^^^^^^ positional argument
@@ -187,19 +179,19 @@ LL |         asm!("{1}", in("x0") foo, const bar);
    |                     explicit register argument
 
 error: expected one of `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `""`
-  --> $DIR/parse-error.rs:71:29
+  --> $DIR/parse-error.rs:69:29
    |
 LL |         asm!("", options(), "");
    |                             ^^ expected one of 9 possible tokens
 
 error: expected one of `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
-  --> $DIR/parse-error.rs:73:33
+  --> $DIR/parse-error.rs:71:33
    |
 LL |         asm!("{}", in(reg) foo, "{}", out(reg) foo);
    |                                 ^^^^ expected one of 9 possible tokens
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:75:14
+  --> $DIR/parse-error.rs:73:14
    |
 LL |         asm!(format!("{{{}}}", 0), in(reg) foo);
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -207,7 +199,7 @@ LL |         asm!(format!("{{{}}}", 0), in(reg) foo);
    = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:77:21
+  --> $DIR/parse-error.rs:75:21
    |
 LL |         asm!("{1}", format!("{{{}}}", 0), in(reg) foo, out(reg) bar);
    |                     ^^^^^^^^^^^^^^^^^^^^
@@ -215,79 +207,79 @@ LL |         asm!("{1}", format!("{{{}}}", 0), in(reg) foo, out(reg) bar);
    = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: _ cannot be used for input operands
-  --> $DIR/parse-error.rs:79:28
+  --> $DIR/parse-error.rs:77:28
    |
 LL |         asm!("{}", in(reg) _);
    |                            ^
 
 error: _ cannot be used for input operands
-  --> $DIR/parse-error.rs:81:31
+  --> $DIR/parse-error.rs:79:31
    |
 LL |         asm!("{}", inout(reg) _);
    |                               ^
 
 error: _ cannot be used for input operands
-  --> $DIR/parse-error.rs:83:35
+  --> $DIR/parse-error.rs:81:35
    |
 LL |         asm!("{}", inlateout(reg) _);
    |                                   ^
 
 error: requires at least a template string argument
-  --> $DIR/parse-error.rs:90:1
+  --> $DIR/parse-error.rs:88:1
    |
 LL | global_asm!();
    | ^^^^^^^^^^^^^
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:92:13
+  --> $DIR/parse-error.rs:90:13
    |
 LL | global_asm!(FOO);
    |             ^^^
 
 error: expected token: `,`
-  --> $DIR/parse-error.rs:94:18
+  --> $DIR/parse-error.rs:92:18
    |
 LL | global_asm!("{}" FOO);
    |                  ^^^ expected `,`
 
 error: expected operand, options, or additional template string
-  --> $DIR/parse-error.rs:96:19
+  --> $DIR/parse-error.rs:94:19
    |
 LL | global_asm!("{}", FOO);
    |                   ^^^ expected operand, options, or additional template string
 
 error: expected expression, found end of macro arguments
-  --> $DIR/parse-error.rs:98:24
+  --> $DIR/parse-error.rs:96:24
    |
 LL | global_asm!("{}", const);
    |                        ^ expected expression
 
 error: expected one of `,`, `.`, `?`, or an operator, found `FOO`
-  --> $DIR/parse-error.rs:100:30
+  --> $DIR/parse-error.rs:98:30
    |
 LL | global_asm!("{}", const(reg) FOO);
    |                              ^^^ expected one of `,`, `.`, `?`, or an operator
 
 error: expected one of `)`, `att_syntax`, or `raw`, found `FOO`
-  --> $DIR/parse-error.rs:102:25
+  --> $DIR/parse-error.rs:100:25
    |
 LL | global_asm!("", options(FOO));
    |                         ^^^ expected one of `)`, `att_syntax`, or `raw`
 
 error: expected one of `)`, `att_syntax`, or `raw`, found `nomem`
-  --> $DIR/parse-error.rs:104:25
+  --> $DIR/parse-error.rs:102:25
    |
 LL | global_asm!("", options(nomem FOO));
    |                         ^^^^^ expected one of `)`, `att_syntax`, or `raw`
 
 error: expected one of `)`, `att_syntax`, or `raw`, found `nomem`
-  --> $DIR/parse-error.rs:106:25
+  --> $DIR/parse-error.rs:104:25
    |
 LL | global_asm!("", options(nomem, FOO));
    |                         ^^^^^ expected one of `)`, `att_syntax`, or `raw`
 
 error: arguments are not allowed after options
-  --> $DIR/parse-error.rs:108:30
+  --> $DIR/parse-error.rs:106:30
    |
 LL | global_asm!("{}", options(), const FOO);
    |                   ---------  ^^^^^^^^^ argument
@@ -295,25 +287,25 @@ LL | global_asm!("{}", options(), const FOO);
    |                   previous options
 
 error: expected string literal
-  --> $DIR/parse-error.rs:110:29
+  --> $DIR/parse-error.rs:108:29
    |
 LL | global_asm!("", clobber_abi(FOO));
    |                             ^^^ not a string literal
 
-error: expected `)`, found `FOO`
-  --> $DIR/parse-error.rs:112:33
+error: expected one of `)` or `,`, found `FOO`
+  --> $DIR/parse-error.rs:110:33
    |
 LL | global_asm!("", clobber_abi("C" FOO));
-   |                                 ^^^ expected `)`
+   |                                 ^^^ expected one of `)` or `,`
 
-error: expected `)`, found `,`
-  --> $DIR/parse-error.rs:114:32
+error: expected string literal
+  --> $DIR/parse-error.rs:112:34
    |
 LL | global_asm!("", clobber_abi("C", FOO));
-   |                                ^ expected `)`
+   |                                  ^^^ not a string literal
 
 error: arguments are not allowed after clobber_abi
-  --> $DIR/parse-error.rs:116:37
+  --> $DIR/parse-error.rs:114:37
    |
 LL | global_asm!("{}", clobber_abi("C"), const FOO);
    |                   ----------------  ^^^^^^^^^ argument
@@ -321,13 +313,13 @@ LL | global_asm!("{}", clobber_abi("C"), const FOO);
    |                   clobber_abi
 
 error: `clobber_abi` cannot be used with `global_asm!`
-  --> $DIR/parse-error.rs:116:19
+  --> $DIR/parse-error.rs:114:19
    |
 LL | global_asm!("{}", clobber_abi("C"), const FOO);
    |                   ^^^^^^^^^^^^^^^^
 
 error: clobber_abi is not allowed after options
-  --> $DIR/parse-error.rs:119:28
+  --> $DIR/parse-error.rs:117:28
    |
 LL | global_asm!("", options(), clobber_abi("C"));
    |                 ---------  ^^^^^^^^^^^^^^^^
@@ -335,23 +327,15 @@ LL | global_asm!("", options(), clobber_abi("C"));
    |                 options
 
 error: clobber_abi is not allowed after options
-  --> $DIR/parse-error.rs:121:30
+  --> $DIR/parse-error.rs:119:30
    |
 LL | global_asm!("{}", options(), clobber_abi("C"), const FOO);
    |                   ---------  ^^^^^^^^^^^^^^^^
    |                   |
    |                   options
 
-error: clobber_abi specified multiple times
-  --> $DIR/parse-error.rs:123:35
-   |
-LL | global_asm!("", clobber_abi("C"), clobber_abi("C"));
-   |                 ----------------  ^^^^^^^^^^^^^^^^
-   |                 |
-   |                 clobber_abi previously specified here
-
 error: duplicate argument named `a`
-  --> $DIR/parse-error.rs:125:35
+  --> $DIR/parse-error.rs:121:35
    |
 LL | global_asm!("{a}", a = const FOO, a = const BAR);
    |                    -------------  ^^^^^^^^^^^^^ duplicate argument
@@ -359,7 +343,7 @@ LL | global_asm!("{a}", a = const FOO, a = const BAR);
    |                    previously here
 
 error: argument never used
-  --> $DIR/parse-error.rs:125:35
+  --> $DIR/parse-error.rs:121:35
    |
 LL | global_asm!("{a}", a = const FOO, a = const BAR);
    |                                   ^^^^^^^^^^^^^ argument never used
@@ -367,19 +351,19 @@ LL | global_asm!("{a}", a = const FOO, a = const BAR);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {1} */"`
 
 error: expected one of `clobber_abi`, `const`, or `options`, found `""`
-  --> $DIR/parse-error.rs:128:28
+  --> $DIR/parse-error.rs:124:28
    |
 LL | global_asm!("", options(), "");
    |                            ^^ expected one of `clobber_abi`, `const`, or `options`
 
 error: expected one of `clobber_abi`, `const`, or `options`, found `"{}"`
-  --> $DIR/parse-error.rs:130:30
+  --> $DIR/parse-error.rs:126:30
    |
 LL | global_asm!("{}", const FOO, "{}", const FOO);
    |                              ^^^^ expected one of `clobber_abi`, `const`, or `options`
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:132:13
+  --> $DIR/parse-error.rs:128:13
    |
 LL | global_asm!(format!("{{{}}}", 0), const FOO);
    |             ^^^^^^^^^^^^^^^^^^^^
@@ -387,7 +371,7 @@ LL | global_asm!(format!("{{{}}}", 0), const FOO);
    = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:134:20
+  --> $DIR/parse-error.rs:130:20
    |
 LL | global_asm!("{1}", format!("{{{}}}", 0), const FOO, const BAR);
    |                    ^^^^^^^^^^^^^^^^^^^^
@@ -413,7 +397,7 @@ LL |         asm!("{}", clobber_abi("C"), const foo);
    |                                            ^^^ non-constant value
 
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/parse-error.rs:55:31
+  --> $DIR/parse-error.rs:53:31
    |
 LL |     let mut foo = 0;
    |      ---------- help: consider using `const` instead of `let`: `const foo`
@@ -422,7 +406,7 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    |                               ^^^ non-constant value
 
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/parse-error.rs:55:46
+  --> $DIR/parse-error.rs:53:46
    |
 LL |     let mut bar = 0;
    |      ---------- help: consider using `const` instead of `let`: `const bar`
@@ -431,7 +415,7 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    |                                              ^^^ non-constant value
 
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/parse-error.rs:62:45
+  --> $DIR/parse-error.rs:60:45
    |
 LL |     let mut bar = 0;
    |      ---------- help: consider using `const` instead of `let`: `const bar`
@@ -440,7 +424,7 @@ LL |         asm!("{a}", in("x0") foo, a = const bar);
    |                                             ^^^ non-constant value
 
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/parse-error.rs:65:45
+  --> $DIR/parse-error.rs:63:45
    |
 LL |     let mut bar = 0;
    |      ---------- help: consider using `const` instead of `let`: `const bar`
@@ -449,7 +433,7 @@ LL |         asm!("{a}", in("x0") foo, a = const bar);
    |                                             ^^^ non-constant value
 
 error[E0435]: attempt to use a non-constant value in a constant
-  --> $DIR/parse-error.rs:68:41
+  --> $DIR/parse-error.rs:66:41
    |
 LL |     let mut bar = 0;
    |      ---------- help: consider using `const` instead of `let`: `const bar`
@@ -457,6 +441,6 @@ LL |     let mut bar = 0;
 LL |         asm!("{1}", in("x0") foo, const bar);
    |                                         ^^^ non-constant value
 
-error: aborting due to 66 previous errors
+error: aborting due to 64 previous errors
 
 For more information about this error, try `rustc --explain E0435`.

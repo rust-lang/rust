@@ -1,4 +1,4 @@
-{"message":"unnecessary parentheses around assigned value","code":{"code":"unused_parens","explanation":null},"level":"error","spans":[{"file_name":"$DIR/unused_parens_json_suggestion.rs","byte_start":596,"byte_end":597,"line_start":16,"line_end":16,"column_start":14,"column_end":15,"is_primary":true,"text":[{"text":"    let _a = (1 / (2 + 3));
+{"message":"unnecessary parentheses around assigned value","code":{"code":"unused_parens","explanation":null},"level":"error","spans":[{"file_name":"$DIR/unused_parens_json_suggestion.rs","byte_start":577,"byte_end":578,"line_start":16,"line_end":16,"column_start":14,"column_end":15,"is_primary":true,"text":[{"text":"    let _a = (1 / (2 + 3));
   --> $DIR/unused_parens_json_suggestion.rs:16:14
    |
 LL |     let _a = (1 / (2 + 3));

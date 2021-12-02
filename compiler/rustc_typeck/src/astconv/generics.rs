@@ -344,7 +344,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                             "reorder the arguments: {}: `<{}>`",
                                             param_types_present
                                                 .into_iter()
-                                                .map(|ord| format!("{}s", ord.to_string()))
+                                                .map(|ord| format!("{}s", ord))
                                                 .collect::<Vec<String>>()
                                                 .join(", then "),
                                             ordered_params
@@ -464,16 +464,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .params
                 .iter()
                 .filter(|param| {
-                    matches!(
-                        param.kind,
-                        ty::GenericParamDefKind::Type {
-                            synthetic: Some(
-                                hir::SyntheticTyParamKind::ImplTrait
-                                    | hir::SyntheticTyParamKind::FromAttr
-                            ),
-                            ..
-                        }
-                    )
+                    matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. })
                 })
                 .count()
         } else {
@@ -670,6 +661,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             for span in spans {
                 err.span_label(span, "explicit generic argument not allowed");
+            }
+
+            err.note(
+                "see issue #83701 <https://github.com/rust-lang/rust/issues/83701> \
+                 for more information",
+            );
+            if tcx.sess.is_nightly_build() {
+                err.help(
+                    "add `#![feature(explicit_generic_args_with_impl_trait)]` \
+                     to the crate attributes to enable",
+                );
             }
 
             err.emit();

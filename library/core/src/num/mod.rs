@@ -94,7 +94,7 @@ depending on the target pointer size.
 }
 
 macro_rules! widening_impl {
-    ($SelfT:ty, $WideT:ty, $BITS:literal) => {
+    ($SelfT:ty, $WideT:ty, $BITS:literal, unsigned) => {
         /// Calculates the complete product `self * rhs` without the possibility to overflow.
         ///
         /// This returns the low-order (wrapping) bits and the high-order (overflow) bits
@@ -148,6 +148,33 @@ macro_rules! widening_impl {
         /// assert_eq!(5u32.carrying_mul(2, 10), (20, 0));
         /// assert_eq!(1_000_000_000u32.carrying_mul(10, 0), (1410065408, 2));
         /// assert_eq!(1_000_000_000u32.carrying_mul(10, 10), (1410065418, 2));
+        #[doc = concat!("assert_eq!(",
+            stringify!($SelfT), "::MAX.carrying_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
+            "(0, ", stringify!($SelfT), "::MAX));"
+        )]
+        /// ```
+        ///
+        /// If `carry` is zero, this is similar to [`overflowing_mul`](Self::overflowing_mul),
+        /// except that it gives the value of the overflow instead of just whether one happened:
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        /// let r = u8::carrying_mul(7, 13, 0);
+        /// assert_eq!((r.0, r.1 != 0), u8::overflowing_mul(7, 13));
+        /// let r = u8::carrying_mul(13, 42, 0);
+        /// assert_eq!((r.0, r.1 != 0), u8::overflowing_mul(13, 42));
+        /// ```
+        ///
+        /// The value of the first field in the returned tuple matches what you'd get
+        /// by combining the [`wrapping_mul`](Self::wrapping_mul) and
+        /// [`wrapping_add`](Self::wrapping_add) methods:
+        ///
+        /// ```
+        /// #![feature(bigint_helper_methods)]
+        /// assert_eq!(
+        ///     789_u16.carrying_mul(456, 123).0,
+        ///     789_u16.wrapping_mul(456).wrapping_add(123),
+        /// );
         /// ```
         #[unstable(feature = "bigint_helper_methods", issue = "85532")]
         #[rustc_const_unstable(feature = "bigint_helper_methods", issue = "85532")]
@@ -168,21 +195,18 @@ macro_rules! widening_impl {
 
 #[lang = "i8"]
 impl i8 {
-    widening_impl! { i8, i16, 8 }
     int_impl! { i8, i8, u8, 8, 7, -128, 127, 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
     "[0x12]", "[0x12]", "", "" }
 }
 
 #[lang = "i16"]
 impl i16 {
-    widening_impl! { i16, i32, 16 }
     int_impl! { i16, i16, u16, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
     "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "i32"]
 impl i32 {
-    widening_impl! { i32, i64, 32 }
     int_impl! { i32, i32, u32, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]", "", "" }
@@ -190,7 +214,6 @@ impl i32 {
 
 #[lang = "i64"]
 impl i64 {
-    widening_impl! { i64, i128, 64 }
     int_impl! { i64, i64, u64, 64, 63, -9223372036854775808, 9223372036854775807, 12,
     "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
     "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
@@ -212,7 +235,6 @@ impl i128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
-    widening_impl! { isize, i32, 16 }
     int_impl! { isize, i16, usize, 16, 15, -32768, 32767, 4, "-0x5ffd", "0x3a", "0x1234",
     "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
@@ -221,7 +243,6 @@ impl isize {
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
-    widening_impl! { isize, i64, 32 }
     int_impl! { isize, i32, usize, 32, 31, -2147483648, 2147483647, 8, "0x10000b3", "0xb301",
     "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78]",
@@ -231,12 +252,11 @@ impl isize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
-    widening_impl! { isize, i128, 64 }
     int_impl! { isize, i64, usize, 64, 63, -9223372036854775808, 9223372036854775807,
     12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
-     "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
 /// If 6th bit set ascii is upper case.
@@ -244,9 +264,9 @@ const ASCII_CASE_MASK: u8 = 0b0010_0000;
 
 #[lang = "u8"]
 impl u8 {
-    widening_impl! { u8, u16, 8 }
     uint_impl! { u8, u8, i8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
     "[0x12]", "", "" }
+    widening_impl! { u8, u16, 8, unsigned }
 
     /// Checks if the value is within the ASCII range.
     ///
@@ -408,7 +428,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_alphabetic());
     /// assert!(uppercase_g.is_ascii_alphabetic());
@@ -442,7 +462,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_uppercase());
     /// assert!(uppercase_g.is_ascii_uppercase());
@@ -476,7 +496,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_lowercase());
     /// assert!(!uppercase_g.is_ascii_lowercase());
@@ -513,7 +533,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_alphanumeric());
     /// assert!(uppercase_g.is_ascii_alphanumeric());
@@ -547,7 +567,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_digit());
     /// assert!(!uppercase_g.is_ascii_digit());
@@ -584,7 +604,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_hexdigit());
     /// assert!(!uppercase_g.is_ascii_hexdigit());
@@ -622,7 +642,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_punctuation());
     /// assert!(!uppercase_g.is_ascii_punctuation());
@@ -656,7 +676,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(uppercase_a.is_ascii_graphic());
     /// assert!(uppercase_g.is_ascii_graphic());
@@ -707,7 +727,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_whitespace());
     /// assert!(!uppercase_g.is_ascii_whitespace());
@@ -743,7 +763,7 @@ impl u8 {
     /// let percent = b'%';
     /// let space = b' ';
     /// let lf = b'\n';
-    /// let esc = 0x1b_u8;
+    /// let esc = b'\x1b';
     ///
     /// assert!(!uppercase_a.is_ascii_control());
     /// assert!(!uppercase_g.is_ascii_control());
@@ -793,26 +813,26 @@ impl u8 {
 
 #[lang = "u16"]
 impl u16 {
-    widening_impl! { u16, u32, 16 }
     uint_impl! { u16, u16, i16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
+    widening_impl! { u16, u32, 16, unsigned }
 }
 
 #[lang = "u32"]
 impl u32 {
-    widening_impl! { u32, u64, 32 }
     uint_impl! { u32, u32, i32, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
+    widening_impl! { u32, u64, 32, unsigned }
 }
 
 #[lang = "u64"]
 impl u64 {
-    widening_impl! { u64, u128, 64 }
     uint_impl! { u64, u64, i64, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
     "", ""}
+    widening_impl! { u64, u128, 64, unsigned }
 }
 
 #[lang = "u128"]
@@ -830,29 +850,29 @@ impl u128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
-    widening_impl! { usize, u32, 16 }
     uint_impl! { usize, u16, isize, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    widening_impl! { usize, u32, 16, unsigned }
 }
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
-    widening_impl! { usize, u64, 32 }
     uint_impl! { usize, u32, isize, 32, 4294967295, 8, "0x10000b3", "0xb301", "0x12345678",
     "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    widening_impl! { usize, u64, 32, unsigned }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
-    widening_impl! { usize, u128, 64 }
     uint_impl! { usize, u64, isize, 64, 18446744073709551615, 12, "0xaa00000000006e1", "0x6e10aa",
     "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
     "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    widening_impl! { usize, u128, 64, unsigned }
 }
 
 /// A classification of floating point numbers.

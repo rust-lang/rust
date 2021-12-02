@@ -1,6 +1,8 @@
+use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
+use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError, PResult};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
@@ -137,12 +139,8 @@ impl<'a> StringReader<'a> {
         // Opening delimiter of the length 2 is not included into the comment text.
         let content_start = start + BytePos(2);
         let content = self.str_from(content_start);
-        let span = self.mk_sp(start, self.pos);
-        const UNICODE_TEXT_FLOW_CHARS: &[char] = &[
-            '\u{202A}', '\u{202B}', '\u{202D}', '\u{202E}', '\u{2066}', '\u{2067}', '\u{2068}',
-            '\u{202C}', '\u{2069}',
-        ];
-        if content.contains(UNICODE_TEXT_FLOW_CHARS) {
+        if contains_text_flow_control_chars(content) {
+            let span = self.mk_sp(start, self.pos);
             self.sess.buffer_lint_with_diagnostic(
                 &TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
                 span,
@@ -225,6 +223,22 @@ impl<'a> StringReader<'a> {
                 }
                 token::Ident(sym, is_raw_ident)
             }
+            rustc_lexer::TokenKind::InvalidIdent
+                // Do not recover an identifier with emoji if the codepoint is a confusable
+                // with a recoverable substitution token, like `➖`.
+                if UNICODE_ARRAY
+                    .iter()
+                    .find(|&&(c, _, _)| {
+                        let sym = self.str_from(start);
+                        sym.chars().count() == 1 && c == sym.chars().next().unwrap()
+                    })
+                    .is_none() =>
+            {
+                let sym = nfc_normalize(self.str_from(start));
+                let span = self.mk_sp(start, self.pos);
+                self.sess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default().push(span);
+                token::Ident(sym, false)
+            }
             rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                 let suffix_start = start + BytePos(suffix_start as u32);
                 let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
@@ -296,7 +310,7 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
             rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
 
-            rustc_lexer::TokenKind::Unknown => {
+            rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
                 let c = self.str_from(start).chars().next().unwrap();
                 let mut err =
                     self.struct_fatal_span_char(start, self.pos, "unknown start of token", c);

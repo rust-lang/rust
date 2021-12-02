@@ -879,15 +879,30 @@ impl<T: ?Sized> *const T {
     /// # } }
     /// ```
     #[stable(feature = "align_offset", since = "1.36.0")]
-    pub fn align_offset(self, align: usize) -> usize
+    #[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
+    pub const fn align_offset(self, align: usize) -> usize
     where
         T: Sized,
     {
         if !align.is_power_of_two() {
             panic!("align_offset: align is not a power-of-two");
         }
-        // SAFETY: `align` has been checked to be a power of 2 above
-        unsafe { align_offset(self, align) }
+
+        fn rt_impl<T>(p: *const T, align: usize) -> usize {
+            // SAFETY: `align` has been checked to be a power of 2 above
+            unsafe { align_offset(p, align) }
+        }
+
+        const fn ctfe_impl<T>(_: *const T, _: usize) -> usize {
+            usize::MAX
+        }
+
+        // SAFETY:
+        // It is permisseble for `align_offset` to always return `usize::MAX`,
+        // algorithm correctness can not depend on `align_offset` returning non-max values.
+        //
+        // As such the behaviour can't change after replacing `align_offset` with `usize::MAX`, only performance can.
+        unsafe { intrinsics::const_eval_select((self, align), ctfe_impl, rt_impl) }
     }
 }
 

@@ -3,8 +3,9 @@ use smallvec::smallvec;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_middle::ty::{self, ToPredicate, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, TyCtxt};
 use rustc_span::symbol::Ident;
+use rustc_span::Span;
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -92,6 +93,22 @@ pub fn elaborate_predicates<'tcx>(
     let obligations = predicates
         .map(|predicate| {
             predicate_obligation(predicate, ty::ParamEnv::empty(), ObligationCause::dummy())
+        })
+        .collect();
+    elaborate_obligations(tcx, obligations)
+}
+
+pub fn elaborate_predicates_with_span<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: impl Iterator<Item = (ty::Predicate<'tcx>, Span)>,
+) -> Elaborator<'tcx> {
+    let obligations = predicates
+        .map(|(predicate, span)| {
+            predicate_obligation(
+                predicate,
+                ty::ParamEnv::empty(),
+                ObligationCause::dummy_with_span(span),
+            )
         })
         .collect();
     elaborate_obligations(tcx, obligations)
@@ -311,8 +328,8 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
                 ));
                 for (super_predicate, _) in super_predicates.predicates {
                     let subst_predicate = super_predicate.subst_supertrait(tcx, &trait_ref);
-                    if let Some(binder) = subst_predicate.to_opt_poly_trait_ref() {
-                        stack.push(binder.value);
+                    if let Some(binder) = subst_predicate.to_opt_poly_trait_pred() {
+                        stack.push(binder.map_bound(|t| t.trait_ref));
                     }
                 }
 
@@ -345,8 +362,8 @@ impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToT
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(obligation) = self.base_iterator.next() {
-            if let Some(data) = obligation.predicate.to_opt_poly_trait_ref() {
-                return Some(data.value);
+            if let Some(data) = obligation.predicate.to_opt_poly_trait_pred() {
+                return Some(data.map_bound(|t| t.trait_ref));
             }
         }
         None

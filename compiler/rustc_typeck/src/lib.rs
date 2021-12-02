@@ -58,7 +58,6 @@ This API is completely unstable and subject to change.
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
-#![feature(format_args_capture)]
 #![feature(if_let_guard)]
 #![feature(in_band_lifetimes)]
 #![feature(is_sorted)]
@@ -70,6 +69,8 @@ This API is completely unstable and subject to change.
 #![feature(never_type)]
 #![feature(slice_partition_dedup)]
 #![feature(control_flow_enum)]
+#![feature(hash_drain_filter)]
+#![feature(unwrap_infallible)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -156,10 +157,10 @@ fn require_same_types<'tcx>(
             }
         }
 
-        match fulfill_cx.select_all_or_error(infcx) {
-            Ok(()) => true,
-            Err(errors) => {
-                infcx.report_fulfillment_errors(&errors, None, false);
+        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+            [] => true,
+            errors => {
+                infcx.report_fulfillment_errors(errors, None, false);
                 false
             }
         }
@@ -351,8 +352,9 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
                 term_id,
                 cause,
             );
-            if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
-                infcx.report_fulfillment_errors(&err, None, false);
+            let errors = fulfillment_cx.select_all_or_error(&infcx);
+            if !errors.is_empty() {
+                infcx.report_fulfillment_errors(&errors, None, false);
                 error = true;
             }
         });

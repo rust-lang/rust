@@ -84,7 +84,7 @@ mod item;
 mod pat;
 mod path;
 
-rustc_hir::arena_types!(rustc_arena::declare_arena, 'tcx);
+rustc_hir::arena_types!(rustc_arena::declare_arena);
 
 struct LoweringContext<'a, 'hir: 'a> {
     /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
@@ -1338,10 +1338,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             pure_wrt_drop: false,
                             bounds: hir_bounds,
                             span: self.lower_span(span),
-                            kind: hir::GenericParamKind::Type {
-                                default: None,
-                                synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                            },
+                            kind: hir::GenericParamKind::Type { default: None, synthetic: true },
                         });
 
                         hir::TyKind::Path(hir::QPath::Resolved(
@@ -1789,7 +1786,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             GenericArg::Lifetime(hir::Lifetime {
                 hir_id: self.next_id(),
                 span: self.lower_span(span),
-                name: hir::LifetimeName::Implicit,
+                name: hir::LifetimeName::Implicit(false),
             })));
         let generic_args = self.arena.alloc_from_iter(generic_args);
 
@@ -1930,7 +1927,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     });
                 let param_name = match lt.name {
                     hir::LifetimeName::Param(param_name) => param_name,
-                    hir::LifetimeName::Implicit
+                    hir::LifetimeName::Implicit(_)
                     | hir::LifetimeName::Underscore
                     | hir::LifetimeName::Static => hir::ParamName::Plain(lt.name.ident()),
                     hir::LifetimeName::ImplicitObjectLifetimeDefault => {
@@ -1954,12 +1951,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     default: default.as_ref().map(|x| {
                         self.lower_ty(x, ImplTraitContext::Disallowed(ImplTraitPosition::Other))
                     }),
-                    synthetic: param
-                        .attrs
-                        .iter()
-                        .filter(|attr| attr.has_name(sym::rustc_synthetic))
-                        .map(|_| hir::SyntheticTyParamKind::FromAttr)
-                        .next(),
+                    synthetic: false,
                 };
 
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
@@ -2298,7 +2290,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
             AnonymousLifetimeMode::ReportError => self.new_error_lifetime(None, span),
 
-            AnonymousLifetimeMode::PassThrough => self.new_implicit_lifetime(span),
+            AnonymousLifetimeMode::PassThrough => self.new_implicit_lifetime(span, false),
         }
     }
 
@@ -2330,11 +2322,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &'s mut self,
         span: Span,
         count: usize,
+        param_mode: ParamMode,
     ) -> impl Iterator<Item = hir::Lifetime> + Captures<'a> + Captures<'s> + Captures<'hir> {
-        (0..count).map(move |_| self.elided_path_lifetime(span))
+        (0..count).map(move |_| self.elided_path_lifetime(span, param_mode))
     }
 
-    fn elided_path_lifetime(&mut self, span: Span) -> hir::Lifetime {
+    fn elided_path_lifetime(&mut self, span: Span, param_mode: ParamMode) -> hir::Lifetime {
         match self.anonymous_lifetime_mode {
             AnonymousLifetimeMode::CreateParameter => {
                 // We should have emitted E0726 when processing this path above
@@ -2350,7 +2343,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // lifetime. Instead, we simply create an implicit lifetime, which will be checked
             // later, at which point a suitable error will be emitted.
             AnonymousLifetimeMode::PassThrough | AnonymousLifetimeMode::ReportError => {
-                self.new_implicit_lifetime(span)
+                self.new_implicit_lifetime(span, param_mode == ParamMode::Explicit)
             }
         }
     }
@@ -2393,11 +2386,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         r
     }
 
-    fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {
+    fn new_implicit_lifetime(&mut self, span: Span, missing: bool) -> hir::Lifetime {
         hir::Lifetime {
             hir_id: self.next_id(),
             span: self.lower_span(span),
-            name: hir::LifetimeName::Implicit,
+            name: hir::LifetimeName::Implicit(missing),
         }
     }
 
@@ -2544,7 +2537,7 @@ fn lifetimes_from_impl_trait_bounds(
 
         fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {
             let name = match lifetime.name {
-                hir::LifetimeName::Implicit | hir::LifetimeName::Underscore => {
+                hir::LifetimeName::Implicit(_) | hir::LifetimeName::Underscore => {
                     if self.collect_elided_lifetimes {
                         // Use `'_` for both implicit and underscore lifetimes in
                         // `type Foo<'_> = impl SomeTrait<'_>;`.

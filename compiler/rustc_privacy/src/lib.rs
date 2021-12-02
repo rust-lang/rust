@@ -543,7 +543,7 @@ impl EmbargoVisitor<'tcx> {
         module: LocalDefId,
     ) {
         let level = Some(AccessLevel::Reachable);
-        if let ty::Visibility::Public = vis {
+        if vis.is_public() {
             self.update(def_id, level);
         }
         match def_kind {
@@ -559,8 +559,7 @@ impl EmbargoVisitor<'tcx> {
             // have normal  hygine, so we can treat them like other items without type
             // privacy and mark them reachable.
             DefKind::Macro(_) => {
-                let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                let item = self.tcx.hir().expect_item(hir_id);
+                let item = self.tcx.hir().expect_item(def_id);
                 if let hir::ItemKind::Macro(MacroDef { macro_rules: false, .. }) = item.kind {
                     if vis.is_accessible_from(module.to_def_id(), self.tcx) {
                         self.update(def_id, level);
@@ -580,9 +579,8 @@ impl EmbargoVisitor<'tcx> {
 
             DefKind::Struct | DefKind::Union => {
                 // While structs and unions have type privacy, their fields do not.
-                if let ty::Visibility::Public = vis {
-                    let item =
-                        self.tcx.hir().expect_item(self.tcx.hir().local_def_id_to_hir_id(def_id));
+                if vis.is_public() {
+                    let item = self.tcx.hir().expect_item(def_id);
                     if let hir::ItemKind::Struct(ref struct_def, _)
                     | hir::ItemKind::Union(ref struct_def, _) = item.kind
                     {
@@ -618,6 +616,7 @@ impl EmbargoVisitor<'tcx> {
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::AnonConst
+            | DefKind::InlineConst
             | DefKind::Field
             | DefKind::GlobalAsm
             | DefKind::Impl
@@ -652,9 +651,7 @@ impl EmbargoVisitor<'tcx> {
                 // If the module is `self`, i.e. the current crate,
                 // there will be no corresponding item.
                 .filter(|def_id| def_id.index != CRATE_DEF_INDEX || def_id.krate != LOCAL_CRATE)
-                .and_then(|def_id| {
-                    def_id.as_local().map(|def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
-                })
+                .and_then(|def_id| def_id.as_local())
                 .map(|module_hir_id| self.tcx.hir().expect_item(module_hir_id))
             {
                 if let hir::ItemKind::Mod(m) = &item.kind {
@@ -932,7 +929,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             let def_id = self.tcx.hir().local_def_id(id);
             if let Some(exports) = self.tcx.module_exports(def_id) {
                 for export in exports.iter() {
-                    if export.vis == ty::Visibility::Public {
+                    if export.vis.is_public() {
                         if let Some(def_id) = export.res.opt_def_id() {
                             if let Some(def_id) = def_id.as_local() {
                                 self.update(def_id, Some(AccessLevel::Exported));
@@ -1917,8 +1914,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
     /// 1. It's contained within a public type
     /// 2. It comes from a private crate
     fn leaks_private_dep(&self, item_id: DefId) -> bool {
-        let ret = self.required_visibility == ty::Visibility::Public
-            && self.tcx.is_private_dep(item_id.krate);
+        let ret = self.required_visibility.is_public() && self.tcx.is_private_dep(item_id.krate);
 
         tracing::debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
         ret

@@ -853,19 +853,21 @@ extern "rust-intrinsic" {
     /// This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_assert_type", issue = "none")]
+    #[rustc_const_stable(feature = "const_assert_type", since = "1.59.0")]
     pub fn assert_inhabited<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
     /// zero-initialization: This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
     pub fn assert_zero_valid<T>();
 
     /// A guard for unsafe functions that cannot ever be executed if `T` has invalid
     /// bit patterns: This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
+    #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
     pub fn assert_uninit_valid<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
@@ -1951,6 +1953,19 @@ pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
     !ptr.is_null() && ptr as usize % mem::align_of::<T>() == 0
 }
 
+/// Checks whether the regions of memory starting at `src` and `dst` of size
+/// `count * size_of::<T>()` do *not* overlap.
+#[cfg(debug_assertions)]
+pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
+    let src_usize = src as usize;
+    let dst_usize = dst as usize;
+    let size = mem::size_of::<T>().checked_mul(count).unwrap();
+    let diff = if src_usize > dst_usize { src_usize - dst_usize } else { dst_usize - src_usize };
+    // If the absolute distance between the ptrs is at least as big as the size of the buffer,
+    // they do not overlap.
+    diff >= size
+}
+
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
 /// and destination must *not* overlap.
 ///
@@ -2042,15 +2057,24 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
         pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
-    // FIXME: Perform these checks only at run time
-    /*if cfg!(debug_assertions)
-        && !(is_aligned_and_not_null(src)
-            && is_aligned_and_not_null(dst)
-            && is_nonoverlapping(src, dst, count))
-    {
-        // Not panicking to keep codegen impact smaller.
-        abort();
-    }*/
+    #[cfg(debug_assertions)]
+    fn runtime_check<T>(src: *const T, dst: *mut T, count: usize) {
+        if !is_aligned_and_not_null(src)
+            || !is_aligned_and_not_null(dst)
+            || !is_nonoverlapping(src, dst, count)
+        {
+            // Not panicking to keep codegen impact smaller.
+            abort();
+        }
+    }
+    #[cfg(debug_assertions)]
+    const fn compiletime_check<T>(_src: *const T, _dst: *mut T, _count: usize) {}
+    #[cfg(debug_assertions)]
+    // SAFETY: runtime debug-assertions are a best-effort basis; it's fine to
+    // not do them during compile time
+    unsafe {
+        const_eval_select((src, dst, count), compiletime_check, runtime_check);
+    }
 
     // SAFETY: the safety contract for `copy_nonoverlapping` must be
     // upheld by the caller.
@@ -2127,11 +2151,21 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
 
-    // FIXME: Perform these checks only at run time
-    /*if cfg!(debug_assertions) && !(is_aligned_and_not_null(src) && is_aligned_and_not_null(dst)) {
-        // Not panicking to keep codegen impact smaller.
-        abort();
-    }*/
+    #[cfg(debug_assertions)]
+    fn runtime_check<T>(src: *const T, dst: *mut T) {
+        if !is_aligned_and_not_null(src) || !is_aligned_and_not_null(dst) {
+            // Not panicking to keep codegen impact smaller.
+            abort();
+        }
+    }
+    #[cfg(debug_assertions)]
+    const fn compiletime_check<T>(_src: *const T, _dst: *mut T) {}
+    #[cfg(debug_assertions)]
+    // SAFETY: runtime debug-assertions are a best-effort basis; it's fine to
+    // not do them during compile time
+    unsafe {
+        const_eval_select((src, dst), compiletime_check, runtime_check);
+    }
 
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
     unsafe { copy(src, dst, count) }

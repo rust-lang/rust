@@ -1,23 +1,23 @@
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:20:5
+  --> $DIR/pub-priv1.rs:21:5
    |
 LL |     pub field: OtherType,
    |     ^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/pub-priv1.rs:3:9
+  --> $DIR/pub-priv1.rs:4:9
    |
 LL | #![deny(exported_private_dependencies)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:27:5
+  --> $DIR/pub-priv1.rs:28:5
    |
 LL |     pub fn pub_fn(param: OtherType) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:34:5
+  --> $DIR/pub-priv1.rs:35:5
    |
 LL |     type Foo: OtherTrait;
    |     ^^^^^^^^^^^^^^^^^^^^^

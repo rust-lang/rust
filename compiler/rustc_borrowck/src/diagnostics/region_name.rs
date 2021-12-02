@@ -584,7 +584,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 Some(RegionNameHighlight::MatchedAdtAndSegment(lifetime_span))
             }
 
-            hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Implicit => {
+            hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Implicit(_) => {
                 // In this case, the user left off the lifetime; so
                 // they wrote something like:
                 //
@@ -769,20 +769,24 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             let opaque_ty = hir.item(id);
             if let hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                 bounds:
-                    [hir::GenericBound::LangItemTrait(
-                        hir::LangItem::Future,
-                        _,
-                        _,
-                        hir::GenericArgs {
-                            bindings:
-                                [hir::TypeBinding {
-                                    ident: Ident { name: sym::Output, .. },
-                                    kind: hir::TypeBindingKind::Equality { ty },
-                                    ..
-                                }],
-                            ..
-                        },
-                    )],
+                    [
+                        hir::GenericBound::LangItemTrait(
+                            hir::LangItem::Future,
+                            _,
+                            _,
+                            hir::GenericArgs {
+                                bindings:
+                                    [
+                                        hir::TypeBinding {
+                                            ident: Ident { name: sym::Output, .. },
+                                            kind: hir::TypeBindingKind::Equality { ty },
+                                            ..
+                                        },
+                                    ],
+                                ..
+                            },
+                        ),
+                    ],
                 ..
             }) = opaque_ty.kind
             {

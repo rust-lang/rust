@@ -51,10 +51,8 @@ fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         // If the function itself is not annotated with `const`, it may still be a `const fn`
         // if it resides in a const trait impl.
         is_parent_const_impl_raw(tcx, hir_id)
-    } else if let hir::Node::Ctor(_) = node {
-        true
     } else {
-        false
+        matches!(node, hir::Node::Ctor(_))
     }
 }
 

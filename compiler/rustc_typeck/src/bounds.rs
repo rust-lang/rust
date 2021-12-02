@@ -1,7 +1,7 @@
 //! Bounds are restrictions applied to some types after they've been converted into the
 //! `ty` form from the HIR.
 
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 
 /// Collects together a list of type bounds. These lists of bounds occur in many places

@@ -242,11 +242,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let elem_size = first.layout.size;
                     let first_ptr = first.ptr;
                     let rest_ptr = first_ptr.offset(elem_size, self)?;
+                    // For the alignment of `rest_ptr`, we crucially do *not* use `first.align` as
+                    // that place might be more aligned than its type mandates (a `u8` array could
+                    // be 4-aligned if it sits at the right spot in a struct). Instead we use
+                    // `first.layout.align`, i.e., the alignment given by the type.
                     self.memory.copy_repeatedly(
                         first_ptr,
                         first.align,
                         rest_ptr,
-                        first.align,
+                        first.layout.align.abi,
                         elem_size,
                         length - 1,
                         /*nonoverlapping:*/ true,

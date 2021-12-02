@@ -5,7 +5,7 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Attribute, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
-use rustc_ast::{FnKind, ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
+use rustc_ast::{Fn, ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
@@ -84,13 +84,13 @@ impl AllocFnFactory<'_, '_> {
         let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(output_ty));
         let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header, span: self.span };
-        let block = Some(self.cx.block_expr(output_expr));
-        let kind = ItemKind::Fn(Box::new(FnKind(
-            ast::Defaultness::Final,
+        let body = Some(self.cx.block_expr(output_expr));
+        let kind = ItemKind::Fn(Box::new(Fn {
+            defaultness: ast::Defaultness::Final,
             sig,
-            Generics::default(),
-            block,
-        )));
+            generics: Generics::default(),
+            body,
+        }));
         let item = self.cx.item(
             self.span,
             Ident::from_str_and_span(&self.kind.fn_name(method.name), self.span),

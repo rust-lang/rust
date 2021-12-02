@@ -21,13 +21,13 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Node};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, DefIdTree,
-    Infer, InferTy, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
+    Infer, InferTy, ToPredicate, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_middle::ty::{TypeAndMut, TypeckResults};
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, DesugaringKind, ExpnKind, ForLoopLoc, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{BytePos, DesugaringKind, ExpnKind, MultiSpan, Span, DUMMY_SP};
 use rustc_target::spec::abi;
 use std::fmt;
 
@@ -290,9 +290,10 @@ fn suggest_restriction(
     } else {
         // Trivial case: `T` needs an extra bound: `T: Bound`.
         let (sp, suggestion) = match (
-            generics.params.iter().find(|p| {
-                !matches!(p.kind, hir::GenericParamKind::Type { synthetic: Some(_), .. })
-            }),
+            generics
+                .params
+                .iter()
+                .find(|p| !matches!(p.kind, hir::GenericParamKind::Type { synthetic: true, .. })),
             super_traits,
         ) {
             (_, None) => predicate_constraint(
@@ -684,7 +685,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             &obligation.cause.code
         {
             parent_code.clone()
-        } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop(ForLoopLoc::IntoIter)) =
+        } else if let ExpnKind::Desugaring(DesugaringKind::ForLoop) =
             span.ctxt().outer_expn_data().kind
         {
             Lrc::new(obligation.cause.code.clone())
@@ -706,36 +707,29 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         let param_env = obligation.param_env;
-        let trait_ref = poly_trait_ref.skip_binder();
-
-        let found_ty = trait_ref.self_ty();
-        let found_ty_str = found_ty.to_string();
-        let imm_borrowed_found_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, found_ty);
-        let imm_substs = self.tcx.mk_substs_trait(imm_borrowed_found_ty, &[]);
-        let mut_borrowed_found_ty = self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, found_ty);
-        let mut_substs = self.tcx.mk_substs_trait(mut_borrowed_found_ty, &[]);
 
         // Try to apply the original trait binding obligation by borrowing.
-        let mut try_borrowing = |new_imm_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-                                 new_mut_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
-                                 expected_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
+        let mut try_borrowing = |old_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
                                  blacklist: &[DefId]|
          -> bool {
-            if blacklist.contains(&expected_trait_ref.def_id()) {
+            if blacklist.contains(&old_ref.def_id()) {
                 return false;
             }
 
-            let imm_result = self.predicate_must_hold_modulo_regions(&Obligation::new(
-                ObligationCause::dummy(),
-                param_env,
-                new_imm_trait_ref.without_const().to_predicate(self.tcx),
-            ));
-
-            let mut_result = self.predicate_must_hold_modulo_regions(&Obligation::new(
-                ObligationCause::dummy(),
-                param_env,
-                new_mut_trait_ref.without_const().to_predicate(self.tcx),
-            ));
+            let orig_ty = old_ref.self_ty().skip_binder();
+            let mk_result = |new_ty| {
+                let new_ref = old_ref.rebind(ty::TraitRef::new(
+                    old_ref.def_id(),
+                    self.tcx.mk_substs_trait(new_ty, &old_ref.skip_binder().substs[1..]),
+                ));
+                self.predicate_must_hold_modulo_regions(&Obligation::new(
+                    ObligationCause::dummy(),
+                    param_env,
+                    new_ref.without_const().to_predicate(self.tcx),
+                ))
+            };
+            let imm_result = mk_result(self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, orig_ty));
+            let mut_result = mk_result(self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, orig_ty));
 
             if imm_result || mut_result {
                 if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
@@ -747,8 +741,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                     let msg = format!(
                         "the trait bound `{}: {}` is not satisfied",
-                        found_ty_str,
-                        expected_trait_ref.print_only_trait_path(),
+                        orig_ty.to_string(),
+                        old_ref.print_only_trait_path(),
                     );
                     if has_custom_message {
                         err.note(&msg);
@@ -764,15 +758,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span,
                         &format!(
                             "expected an implementor of trait `{}`",
-                            expected_trait_ref.print_only_trait_path(),
+                            old_ref.print_only_trait_path(),
                         ),
                     );
 
                     // This if is to prevent a special edge-case
                     if matches!(
                         span.ctxt().outer_expn_data().kind,
-                        ExpnKind::Root
-                            | ExpnKind::Desugaring(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
+                        ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop)
                     ) {
                         // We don't want a borrowing suggestion on the fields in structs,
                         // ```
@@ -807,21 +800,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         };
 
         if let ObligationCauseCode::ImplDerivedObligation(obligation) = &*code {
-            let expected_trait_ref = obligation.parent_trait_ref;
-            let new_imm_trait_ref = poly_trait_ref
-                .rebind(ty::TraitRef::new(obligation.parent_trait_ref.def_id(), imm_substs));
-            let new_mut_trait_ref = poly_trait_ref
-                .rebind(ty::TraitRef::new(obligation.parent_trait_ref.def_id(), mut_substs));
-            return try_borrowing(new_imm_trait_ref, new_mut_trait_ref, expected_trait_ref, &[]);
+            try_borrowing(obligation.parent_trait_ref, &[])
         } else if let ObligationCauseCode::BindingObligation(_, _)
         | ObligationCauseCode::ItemObligation(_) = &*code
         {
-            return try_borrowing(
-                poly_trait_ref.rebind(ty::TraitRef::new(trait_ref.def_id, imm_substs)),
-                poly_trait_ref.rebind(ty::TraitRef::new(trait_ref.def_id, mut_substs)),
-                *poly_trait_ref,
-                &never_suggest_borrow[..],
-            );
+            try_borrowing(*poly_trait_ref, &never_suggest_borrow[..])
         } else {
             false
         }
@@ -1474,7 +1457,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let span = self.tcx.def_span(generator_did);
 
         let in_progress_typeck_results = self.in_progress_typeck_results.map(|t| t.borrow());
-        let generator_did_root = self.tcx.closure_base_def_id(generator_did);
+        let generator_did_root = self.tcx.typeck_root_def_id(generator_did);
         debug!(
             "maybe_note_obligation_cause_for_async_await: generator_did={:?} \
              generator_did_root={:?} in_progress_typeck_results.hir_owner={:?} span={:?}",
@@ -1974,15 +1957,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     region, object_ty,
                 ));
             }
-            ObligationCauseCode::ItemObligation(item_def_id) => {
-                let item_name = tcx.def_path_str(item_def_id);
-                let msg = format!("required by `{}`", item_name);
-                let sp = tcx
-                    .hir()
-                    .span_if_local(item_def_id)
-                    .unwrap_or_else(|| tcx.def_span(item_def_id));
-                let sp = tcx.sess.source_map().guess_head_span(sp);
-                err.span_note(sp, &msg);
+            ObligationCauseCode::ItemObligation(_item_def_id) => {
+                // We hold the `DefId` of the item introducing the obligation, but displaying it
+                // doesn't add user usable information. It always point at an associated item.
             }
             ObligationCauseCode::BindingObligation(item_def_id, span) => {
                 let item_name = tcx.def_path_str(item_def_id);
@@ -2354,11 +2331,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     )
                 });
             }
-            ObligationCauseCode::CompareImplMethodObligation {
-                item_name,
-                trait_item_def_id,
-                ..
-            } => {
+            ObligationCauseCode::CompareImplMethodObligation { trait_item_def_id, .. } => {
+                let item_name = self.tcx.item_name(trait_item_def_id);
                 let msg = format!(
                     "the requirement `{}` appears on the impl method `{}` but not on the \
                      corresponding trait method",
@@ -2383,9 +2357,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
                 err.span_note(assoc_span, &msg);
             }
-            ObligationCauseCode::CompareImplTypeObligation {
-                item_name, trait_item_def_id, ..
-            } => {
+            ObligationCauseCode::CompareImplTypeObligation { trait_item_def_id, .. } => {
+                let item_name = self.tcx.item_name(trait_item_def_id);
                 let msg = format!(
                     "the requirement `{}` appears on the associated impl type `{}` but not on the \
                      corresponding associated trait type",
@@ -2475,13 +2448,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     obligation.param_env,
                 );
 
-                let item_def_id = self
-                    .tcx
-                    .associated_items(future_trait)
-                    .in_definition_order()
-                    .next()
-                    .unwrap()
-                    .def_id;
+                let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
                 // `<T as Future>::Output`
                 let projection_ty = ty::ProjectionTy {
                     // `T`

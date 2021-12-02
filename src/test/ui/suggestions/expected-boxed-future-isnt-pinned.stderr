@@ -46,11 +46,11 @@ LL |     Pin::new(x)
    |     ^^^^^^^^ the trait `Unpin` is not implemented for `dyn Future<Output = i32> + Send`
    |
    = note: consider using `Box::pin`
-note: required by `Pin::<P>::new`
+note: required by a bound in `Pin::<P>::new`
   --> $SRC_DIR/core/src/pin.rs:LL:COL
    |
-LL |     pub const fn new(pointer: P) -> Pin<P> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<P: Deref<Target: Unpin>> Pin<P> {
+   |                       ^^^^^ required by this bound in `Pin::<P>::new`
 
 error[E0277]: `dyn Future<Output = i32> + Send` cannot be unpinned
   --> $DIR/expected-boxed-future-isnt-pinned.rs:24:5
@@ -59,11 +59,11 @@ LL |     Pin::new(Box::new(x))
    |     ^^^^^^^^ the trait `Unpin` is not implemented for `dyn Future<Output = i32> + Send`
    |
    = note: consider using `Box::pin`
-note: required by `Pin::<P>::new`
+note: required by a bound in `Pin::<P>::new`
   --> $SRC_DIR/core/src/pin.rs:LL:COL
    |
-LL |     pub const fn new(pointer: P) -> Pin<P> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<P: Deref<Target: Unpin>> Pin<P> {
+   |                       ^^^^^ required by this bound in `Pin::<P>::new`
 
 error[E0308]: mismatched types
   --> $DIR/expected-boxed-future-isnt-pinned.rs:28:5
@@ -81,7 +81,7 @@ LL |   pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
    |                                             ------------------------------- the found opaque type
    |
    = note:   expected struct `Pin<Box<(dyn Future<Output = i32> + Send + 'static)>>`
-           found opaque type `impl Future`
+           found opaque type `impl Future<Output = [async output]>`
 help: you need to pin and box this expression
    |
 LL ~     Box::pin(async {

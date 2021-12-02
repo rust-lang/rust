@@ -11,7 +11,7 @@
 // which causes less readable LLVM errors and in the worst cases causes ICEs
 // or segfaults based on system dependent behavior and codegen flags.
 
-#![feature(asm, global_asm, naked_functions)]
+#![feature(asm, global_asm, naked_functions, asm_const)]
 
 #[no_mangle]
 pub static FOO: usize = 42;

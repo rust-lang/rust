@@ -131,7 +131,6 @@ crate fn test(options: Options) -> Result<(), String> {
         .map_err(|err| format!("{}: {}", options.input.display(), err))?;
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
-    opts.display_doctest_warnings = options.display_doctest_warnings;
     let mut collector = Collector::new(
         Symbol::intern(&options.input.display().to_string()),
         options.clone(),
@@ -146,11 +145,6 @@ crate fn test(options: Options) -> Result<(), String> {
 
     find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
 
-    crate::doctest::run_tests(
-        options.test_args,
-        options.nocapture,
-        options.display_doctest_warnings,
-        collector.tests,
-    );
+    crate::doctest::run_tests(options.test_args, options.nocapture, collector.tests);
     Ok(())
 }

@@ -13,7 +13,6 @@
 #![feature(drain_filter)]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
-#![feature(format_args_capture)]
 #![feature(iter_zip)]
 #![feature(let_else)]
 #![feature(never_type)]
@@ -988,7 +987,7 @@ pub struct Resolver<'a> {
     non_macro_attr: Lrc<SyntaxExtension>,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'a>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'a>>,
-    unused_macros: FxHashMap<LocalDefId, (NodeId, Span)>,
+    unused_macros: FxHashMap<LocalDefId, (NodeId, Ident)>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
@@ -1430,12 +1429,9 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn next_node_id(&mut self) -> NodeId {
-        let next = self
-            .next_node_id
-            .as_usize()
-            .checked_add(1)
-            .expect("input too large; ran out of NodeIds");
-        self.next_node_id = ast::NodeId::from_usize(next);
+        let next =
+            self.next_node_id.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
+        self.next_node_id = ast::NodeId::from_u32(next);
         self.next_node_id
     }
 
@@ -2523,19 +2519,29 @@ impl<'a> Resolver<'a> {
                         } else {
                             (
                                 format!("use of undeclared crate or module `{}`", ident),
-                                self.find_similarly_named_module_or_crate(
-                                    ident.name,
-                                    &parent_scope.module,
-                                )
-                                .map(|sugg| {
-                                    (
-                                        vec![(ident.span, sugg.to_string())],
+                                if ident.name == sym::alloc {
+                                    Some((
+                                        vec![],
                                         String::from(
-                                            "there is a crate or module with a similar name",
+                                            "add `extern crate alloc` to use the `alloc` crate",
                                         ),
                                         Applicability::MaybeIncorrect,
+                                    ))
+                                } else {
+                                    self.find_similarly_named_module_or_crate(
+                                        ident.name,
+                                        &parent_scope.module,
                                     )
-                                }),
+                                    .map(|sugg| {
+                                        (
+                                            vec![(ident.span, sugg.to_string())],
+                                            String::from(
+                                                "there is a crate or module with a similar name",
+                                            ),
+                                            Applicability::MaybeIncorrect,
+                                        )
+                                    })
+                                },
                             )
                         }
                     } else {
@@ -3278,7 +3284,9 @@ impl<'a> Resolver<'a> {
                 Some(binding)
             } else {
                 let crate_id = if !speculative {
-                    self.crate_loader.process_path_extern(ident.name, ident.span)
+                    let Some(crate_id) =
+                        self.crate_loader.process_path_extern(ident.name, ident.span) else { return Some(self.dummy_binding); };
+                    crate_id
                 } else {
                     self.crate_loader.maybe_process_path_extern(ident.name)?
                 };

@@ -20,8 +20,8 @@ use rustc_span::symbol::sym;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    expr_path_res, get_item_name, get_parent_expr, higher, in_constant, is_diag_trait_item, is_integer_const,
-    iter_input_pats, last_path_segment, match_any_def_paths, paths, unsext, SpanlessEq,
+    expr_path_res, get_item_name, get_parent_expr, in_constant, is_diag_trait_item, is_integer_const, iter_input_pats,
+    last_path_segment, match_any_def_paths, paths, unsext, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -312,7 +312,6 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
             if let StmtKind::Local(local) = stmt.kind;
             if let PatKind::Binding(an, .., name, None) = local.pat.kind;
             if let Some(init) = local.init;
-            if !higher::is_from_for_desugar(local);
             if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut;
             then {
                 // use the macro callsite when the init span (but not the whole local span)

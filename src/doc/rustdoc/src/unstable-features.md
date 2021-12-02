@@ -138,7 +138,8 @@ This is for Rust compiler internal use only.
 
 Since primitive types are defined in the compiler, there's no place to attach documentation
 attributes. The `#[doc(primitive)]` attribute is used by the standard library to provide a way
-to generate documentation for primitive types, and requires `#![feature(doc_primitive)]` to enable.
+to generate documentation for primitive types, and requires `#![feature(rustdoc_internals)]` to
+enable.
 
 ## Document keywords
 
@@ -149,7 +150,7 @@ Rust keywords are documented in the standard library (look for `match` for examp
 To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 
 ```rust
-#![feature(doc_keyword)]
+#![feature(rustdoc_internals)]
 
 /// Some documentation about the keyword.
 #[doc(keyword = "keyword")]
@@ -256,22 +257,6 @@ all these files are linked from every page, changing where they are can be cumbe
 specially cache them. This flag will rename all these files in the output to include the suffix in
 the filename. For example, `light.css` would become `light-suf.css` with the above command.
 
-### `--display-doctest-warnings`: display warnings when documenting or running documentation tests
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --display-doctest-warnings
-$ rustdoc --test src/lib.rs -Z unstable-options --display-doctest-warnings
-```
-
-The intent behind this flag is to allow the user to see warnings that occur within their library or
-their documentation tests, which are usually suppressed. However, [due to a
-bug][issue-display-warnings], this flag doesn't 100% work as intended. See the linked issue for
-details.
-
-[issue-display-warnings]: https://github.com/rust-lang/rust/issues/41574
-
 ### `--extern-html-root-url`: control how rustdoc links to non-local crates
 
 Using this flag looks like this:
@@ -348,6 +333,18 @@ Using this flag looks like this:
 $ rustdoc src/lib.rs -Z unstable-options --show-coverage
 ```
 
+It generates something like this:
+
+```bash
++-------------------------------------+------------+------------+------------+------------+
+| File                                | Documented | Percentage |   Examples | Percentage |
++-------------------------------------+------------+------------+------------+------------+
+| lib.rs                              |          4 |     100.0% |          1 |      25.0% |
++-------------------------------------+------------+------------+------------+------------+
+| Total                               |          4 |     100.0% |          1 |      25.0% |
++-------------------------------------+------------+------------+------------+------------+
+```
+
 If you want to determine how many items in your crate are documented, pass this flag to rustdoc.
 When it receives this flag, it will count the public items in your crate that have documentation,
 and print out the counts and a percentage instead of generating docs.
@@ -367,12 +364,21 @@ Some methodology notes about what rustdoc counts in this metric:
 Public items that are not documented can be seen with the built-in `missing_docs` lint. Private
 items that are not documented can be seen with Clippy's `missing_docs_in_private_items` lint.
 
-### `-w`/`--output-format`: output format
+Calculating code examples follows these rules:
 
-When using
-[`--show-coverage`](https://doc.rust-lang.org/nightly/rustdoc/unstable-features.html#--show-coverage-get-statistics-about-code-documentation-coverage),
-passing `--output-format json` will display the coverage information in JSON format. For example,
-here is the JSON for a file with one documented item and one undocumented item:
+1. These items aren't accounted by default:
+  * struct/union field
+  * enum variant
+  * constant
+  * static
+  * typedef
+2. If one of the previously listed items has a code example, then it'll be counted.
+
+#### JSON output
+
+When using `--output-format json` with this option, it will display the coverage information in
+JSON format. For example, here is the JSON for a file with one documented item and one
+undocumented item:
 
 ```rust
 /// This item has documentation
@@ -387,9 +393,15 @@ pub fn no_documentation() {}
 
 Note that the third item is the crate root, which in this case is undocumented.
 
-When not using `--show-coverage`, `--output-format json` emits documentation in the experimental
+### `-w`/`--output-format`: output format
+
+`--output-format json` emits documentation in the experimental
 [JSON format](https://github.com/rust-lang/rfcs/pull/2963). `--output-format html` has no effect,
 and is also accepted on stable toolchains.
+
+It can also be used with `--show-coverage`. Take a look at its
+[documentation](#--show-coverage-get-statistics-about-code-documentation-coverage) for more
+information.
 
 ### `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
 
@@ -440,39 +452,6 @@ $ rustdoc src/lib.rs -Z unstable-options --runtool valgrind
 ```
 
 Another use case would be to run a test inside an emulator, or through a Virtual Machine.
-
-### `--show-coverage`: get statistics about code documentation coverage
-
-This option allows you to get a nice overview over your code documentation coverage, including both
-doc-comments and code examples in the doc-comments. Example:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --show-coverage
-+-------------------------------------+------------+------------+------------+------------+
-| File                                | Documented | Percentage |   Examples | Percentage |
-+-------------------------------------+------------+------------+------------+------------+
-| lib.rs                              |          4 |     100.0% |          1 |      25.0% |
-+-------------------------------------+------------+------------+------------+------------+
-| Total                               |          4 |     100.0% |          1 |      25.0% |
-+-------------------------------------+------------+------------+------------+------------+
-```
-
-You can also use this option with the `--output-format` one:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --show-coverage --output-format json
-{"lib.rs":{"total":4,"with_docs":4,"total_examples":4,"with_examples":1}}
-```
-
-Calculating code examples follows these rules:
-
-1. These items aren't accounted by default:
-  * struct/union field
-  * enum variant
-  * constant
-  * static
-  * typedef
-2. If one of the previously listed items has a code example, then it'll be counted.
 
 ### `--with-examples`: include examples of uses of items as documentation
 

@@ -187,8 +187,12 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             })
             .enumerate()
             .map(|(i, r)| match r {
-                Err(TypeError::Sorts(exp_found)) => Err(TypeError::ArgumentSorts(exp_found, i)),
-                Err(TypeError::Mutability) => Err(TypeError::ArgumentMutability(i)),
+                Err(TypeError::Sorts(exp_found) | TypeError::ArgumentSorts(exp_found, _)) => {
+                    Err(TypeError::ArgumentSorts(exp_found, i))
+                }
+                Err(TypeError::Mutability | TypeError::ArgumentMutability(_)) => {
+                    Err(TypeError::ArgumentMutability(i))
+                }
                 r => r,
             });
         Ok(ty::FnSig {
@@ -211,19 +215,6 @@ impl<'tcx> Relate<'tcx> for ty::BoundConstness {
         } else {
             Ok(a)
         }
-    }
-}
-
-impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for ty::ConstnessAnd<T> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: ty::ConstnessAnd<T>,
-        b: ty::ConstnessAnd<T>,
-    ) -> RelateResult<'tcx, ty::ConstnessAnd<T>> {
-        Ok(ty::ConstnessAnd {
-            constness: relation.relate(a.constness, b.constness)?,
-            value: relation.relate(a.value, b.value)?,
-        })
     }
 }
 

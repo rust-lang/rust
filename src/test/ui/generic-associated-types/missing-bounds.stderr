@@ -1,3 +1,15 @@
+error: equality constraints are not yet supported in `where` clauses
+  --> $DIR/missing-bounds.rs:37:33
+   |
+LL | impl<B: Add> Add for E<B> where <B as Add>::Output = B {
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^ not supported
+   |
+   = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
+help: if `Output` is an associated type you're trying to set, use the associated type binding syntax
+   |
+LL | impl<B: Add> Add for E<B> where B: Add<Output = B> {
+   |                                 ~~~~~~~~~~~~~~~~~~
+
 error[E0308]: mismatched types
   --> $DIR/missing-bounds.rs:11:11
    |
@@ -43,7 +55,23 @@ help: consider restricting type parameter `B`
 LL | impl<B: std::ops::Add<Output = B>> Add for D<B> {
    |       +++++++++++++++++++++++++++
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/missing-bounds.rs:42:14
+   |
+LL | impl<B: Add> Add for E<B> where <B as Add>::Output = B {
+   |      - this type parameter
+...
+LL |         Self(self.0 + rhs.0)
+   |              ^^^^^^^^^^^^^^ expected type parameter `B`, found associated type
+   |
+   = note: expected type parameter `B`
+             found associated type `<B as Add>::Output`
+help: consider further restricting type parameter `B`
+   |
+LL | impl<B: Add> Add for E<B> where <B as Add>::Output = B, B: Add<Output = B> {
+   |                                                       ++++++++++++++++++++
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0308, E0369.
 For more information about an error, try `rustc --explain E0308`.

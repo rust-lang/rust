@@ -1,3 +1,4 @@
+use ast::visit;
 use rustc_ast as ast;
 use rustc_hir::def::Namespace::TypeNS;
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
@@ -16,7 +17,7 @@ crate fn load_intra_link_crates(resolver: Resolver, krate: &ast::Crate) -> Resol
     let mut loader = IntraLinkCrateLoader { current_mod: CRATE_DEF_ID, resolver };
     // `walk_crate` doesn't visit the crate itself for some reason.
     loader.load_links_in_attrs(&krate.attrs, krate.span);
-    ast::visit::walk_crate(&mut loader, krate);
+    visit::walk_crate(&mut loader, krate);
     loader.resolver
 }
 
@@ -54,7 +55,12 @@ impl IntraLinkCrateLoader {
     }
 }
 
-impl ast::visit::Visitor<'_> for IntraLinkCrateLoader {
+impl visit::Visitor<'_> for IntraLinkCrateLoader {
+    fn visit_foreign_item(&mut self, item: &ast::ForeignItem) {
+        self.load_links_in_attrs(&item.attrs, item.span);
+        visit::walk_foreign_item(self, item)
+    }
+
     fn visit_item(&mut self, item: &ast::Item) {
         use rustc_ast_lowering::ResolverAstLowering;
 
@@ -64,12 +70,29 @@ impl ast::visit::Visitor<'_> for IntraLinkCrateLoader {
             let old_mod = mem::replace(&mut self.current_mod, new_mod);
 
             self.load_links_in_attrs(&item.attrs, item.span);
-            ast::visit::walk_item(self, item);
+            visit::walk_item(self, item);
 
             self.current_mod = old_mod;
         } else {
             self.load_links_in_attrs(&item.attrs, item.span);
-            ast::visit::walk_item(self, item);
+            visit::walk_item(self, item);
         }
+    }
+
+    // NOTE: if doc-comments are ever allowed on function parameters, this will have to implement `visit_param` too.
+
+    fn visit_assoc_item(&mut self, item: &ast::AssocItem, ctxt: visit::AssocCtxt) {
+        self.load_links_in_attrs(&item.attrs, item.span);
+        visit::walk_assoc_item(self, item, ctxt)
+    }
+
+    fn visit_field_def(&mut self, field: &ast::FieldDef) {
+        self.load_links_in_attrs(&field.attrs, field.span);
+        visit::walk_field_def(self, field)
+    }
+
+    fn visit_variant(&mut self, v: &ast::Variant) {
+        self.load_links_in_attrs(&v.attrs, v.span);
+        visit::walk_variant(self, v)
     }
 }

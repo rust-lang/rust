@@ -1,6 +1,7 @@
 # The Rustdoc Book
 
 - [What is rustdoc?](what-is-rustdoc.md)
+- [How to read rustdoc output](how-to-read-rustdoc.md)
 - [How to write documentation](how-to-write-documentation.md)
 - [What to include (and exclude)](what-to-include.md)
 - [Command-line arguments](command-line-arguments.md)

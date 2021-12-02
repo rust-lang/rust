@@ -92,7 +92,9 @@ pub enum LifetimeName {
     Param(ParamName),
 
     /// User wrote nothing (e.g., the lifetime in `&u32`).
-    Implicit,
+    ///
+    /// The bool indicates whether the user should have written something.
+    Implicit(bool),
 
     /// Implicit lifetime in a context like `dyn Foo`. This is
     /// distinguished from implicit lifetimes elsewhere because the
@@ -122,7 +124,7 @@ impl LifetimeName {
     pub fn ident(&self) -> Ident {
         match *self {
             LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Implicit
+            | LifetimeName::Implicit(_)
             | LifetimeName::Error => Ident::empty(),
             LifetimeName::Underscore => Ident::with_dummy_span(kw::UnderscoreLifetime),
             LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
@@ -133,7 +135,7 @@ impl LifetimeName {
     pub fn is_elided(&self) -> bool {
         match self {
             LifetimeName::ImplicitObjectLifetimeDefault
-            | LifetimeName::Implicit
+            | LifetimeName::Implicit(_)
             | LifetimeName::Underscore => true,
 
             // It might seem surprising that `Fresh(_)` counts as
@@ -504,7 +506,7 @@ pub enum GenericParamKind<'hir> {
     },
     Type {
         default: Option<&'hir Ty<'hir>>,
-        synthetic: Option<SyntheticTyParamKind>,
+        synthetic: bool,
     },
     Const {
         ty: &'hir Ty<'hir>,
@@ -577,16 +579,6 @@ impl Generics<'hir> {
     }
 }
 
-/// Synthetic type parameters are converted to another form during lowering; this allows
-/// us to track the original form they had, and is useful for error messages.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
-pub enum SyntheticTyParamKind {
-    ImplTrait,
-    // Created by the `#[rustc_synthetic]` attribute.
-    FromAttr,
-}
-
 /// A where-clause in a definition.
 #[derive(Debug, HashStable_Generic)]
 pub struct WhereClause<'hir> {
@@ -645,6 +637,22 @@ pub struct WhereBoundPredicate<'hir> {
     pub bounded_ty: &'hir Ty<'hir>,
     /// Trait and lifetime bounds (e.g., `Clone + Send + 'static`).
     pub bounds: GenericBounds<'hir>,
+}
+
+impl WhereBoundPredicate<'hir> {
+    /// Returns `true` if `param_def_id` matches the `bounded_ty` of this predicate.
+    pub fn is_param_bound(&self, param_def_id: DefId) -> bool {
+        let path = match self.bounded_ty.kind {
+            TyKind::Path(QPath::Resolved(None, path)) => path,
+            _ => return false,
+        };
+        match path.res {
+            Res::Def(DefKind::TyParam, def_id) | Res::SelfTy(Some(def_id), None) => {
+                def_id == param_def_id
+            }
+            _ => false,
+        }
+    }
 }
 
 /// A lifetime predicate (e.g., `'a: 'b + 'c`).
@@ -1815,8 +1823,6 @@ impl<'hir> QPath<'hir> {
 pub enum LocalSource {
     /// A `match _ { .. }`.
     Normal,
-    /// A desugared `for _ in _ { .. }` loop.
-    ForLoopDesugar,
     /// When lowering async functions, we create locals within the `async move` so that
     /// all parameters are dropped after the future is polled.
     ///
@@ -3224,31 +3230,6 @@ impl<'hir> Node<'hir> {
         }
     }
 
-    /// Returns `Constness::Const` when this node is a const fn/impl/item.
-    pub fn constness_for_typeck(&self) -> Constness {
-        match self {
-            Node::Item(Item {
-                kind: ItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
-                ..
-            })
-            | Node::TraitItem(TraitItem {
-                kind: TraitItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
-                ..
-            })
-            | Node::ImplItem(ImplItem {
-                kind: ImplItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
-                ..
-            })
-            | Node::Item(Item { kind: ItemKind::Impl(Impl { constness, .. }), .. }) => *constness,
-
-            Node::Item(Item { kind: ItemKind::Const(..), .. })
-            | Node::TraitItem(TraitItem { kind: TraitItemKind::Const(..), .. })
-            | Node::ImplItem(ImplItem { kind: ImplItemKind::Const(..), .. }) => Constness::Const,
-
-            _ => Constness::NotConst,
-        }
-    }
-
     pub fn as_owner(self) -> Option<OwnerNode<'hir>> {
         match self {
             Node::Item(i) => Some(OwnerNode::Item(i)),
@@ -3294,7 +3275,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Expr<'static>, 64);
     rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
-    rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
+    rustc_data_structures::static_assert_size!(super::Ty<'static>, 80);
 
     rustc_data_structures::static_assert_size!(super::Item<'static>, 184);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);

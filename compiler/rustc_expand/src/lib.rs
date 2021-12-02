@@ -1,7 +1,6 @@
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(destructuring_assignment)]
-#![feature(format_args_capture)]
 #![feature(if_let_guard)]
 #![feature(iter_zip)]
 #![feature(let_else)]

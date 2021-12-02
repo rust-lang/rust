@@ -1,15 +1,3 @@
-error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker1`
-  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:15:1
-   |
-LL | impl !Marker1 for dyn Object + Marker2 { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker1`
-
-error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker2`
-  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:17:1
-   |
-LL | impl !Marker2 for dyn Object + Marker2 { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker2`
-
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:23:1
    |
@@ -32,6 +20,18 @@ error[E0321]: cross-crate traits with a default impl, like `Send`, can only be i
    |
 LL | impl !Send for dyn Object + Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
+
+error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker1`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:15:1
+   |
+LL | impl !Marker1 for dyn Object + Marker2 { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker1`
+
+error[E0371]: the object type `(dyn Object + Marker2 + 'static)` automatically implements the trait `Marker2`
+  --> $DIR/coherence-impl-trait-for-marker-trait-negative.rs:17:1
+   |
+LL | impl !Marker2 for dyn Object + Marker2 { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Object + Marker2 + 'static)` automatically implements trait `Marker2`
 
 error: aborting due to 5 previous errors
 

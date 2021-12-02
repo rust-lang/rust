@@ -5,11 +5,6 @@ LL |     let _f: base::Foo = base::HasNew::new();
    |                         ^^^^^^^^^^^^^^^^^ cannot infer type
    |
    = note: cannot satisfy `_: HasNew<Foo>`
-note: required by `HasNew::new`
-  --> $DIR/static-method-generic-inference.rs:8:9
-   |
-LL |         fn new() -> T;
-   |         ^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

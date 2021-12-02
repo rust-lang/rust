@@ -7,7 +7,10 @@ standard library, and documentation.
 
 **Note: this README is for _users_ rather than _contributors_.
 If you wish to _contribute_ to the compiler, you should read the
-[Getting Started][gettingstarted] section of the rustc-dev-guide instead.**
+[Getting Started][gettingstarted] section of the rustc-dev-guide instead.
+You can ask for help in the [#new members Zulip stream][new-members].**
+
+[new-members]: https://rust-lang.zulipchat.com/#narrow/stream/122652-new-members
 
 ## Quick Start
 

@@ -1,4 +1,4 @@
-#![deny(intra_doc_link_resolution_failure)]
+#![deny(rustdoc::broken_intra_doc_links)]
 // first try backticks
 /// Trait: [`trait@Name`], fn: [`fn@Name`], [`Name`][`macro@Name`]
 // @has disambiguators_removed/struct.AtDisambiguator.html

@@ -225,8 +225,18 @@ fn fulfill_implication<'a, 'tcx>(
         for oblig in obligations.chain(more_obligations) {
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
         }
-        match fulfill_cx.select_all_or_error(infcx) {
-            Err(errors) => {
+        match fulfill_cx.select_all_or_error(infcx).as_slice() {
+            [] => {
+                debug!(
+                    "fulfill_implication: an impl for {:?} specializes {:?}",
+                    source_trait_ref, target_trait_ref
+                );
+
+                // Now resolve the *substitution* we built for the target earlier, replacing
+                // the inference variables inside with whatever we got from fulfillment.
+                Ok(infcx.resolve_vars_if_possible(target_substs))
+            }
+            errors => {
                 // no dice!
                 debug!(
                     "fulfill_implication: for impls on {:?} and {:?}, \
@@ -237,17 +247,6 @@ fn fulfill_implication<'a, 'tcx>(
                     param_env.caller_bounds()
                 );
                 Err(())
-            }
-
-            Ok(()) => {
-                debug!(
-                    "fulfill_implication: an impl for {:?} specializes {:?}",
-                    source_trait_ref, target_trait_ref
-                );
-
-                // Now resolve the *substitution* we built for the target earlier, replacing
-                // the inference variables inside with whatever we got from fulfillment.
-                Ok(infcx.resolve_vars_if_possible(target_substs))
             }
         }
     })
@@ -292,6 +291,11 @@ pub(super) fn specialization_graph_provider(
     sg
 }
 
+// This function is only used when
+// encountering errors and inlining
+// it negatively impacts perf.
+#[cold]
+#[inline(never)]
 fn report_overlap_conflict(
     tcx: TyCtxt<'_>,
     overlap: OverlapError,
@@ -444,8 +448,12 @@ fn report_conflicting_impls(
     match used_to_be_allowed {
         None => {
             sg.has_errored = true;
-            let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
-            decorate(LintDiagnosticBuilder::new(err));
+            if overlap.with_impl.is_local() || !tcx.orphan_check_crate(()).contains(&impl_def_id) {
+                let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
+                decorate(LintDiagnosticBuilder::new(err));
+            } else {
+                tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check");
+            }
         }
         Some(kind) => {
             let lint = match kind {
@@ -500,9 +508,9 @@ crate fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<St
         Vec::with_capacity(predicates.len() + types_without_default_bounds.len());
 
     for (p, _) in predicates {
-        if let Some(poly_trait_ref) = p.to_opt_poly_trait_ref() {
-            if Some(poly_trait_ref.value.def_id()) == sized_trait {
-                types_without_default_bounds.remove(poly_trait_ref.value.self_ty().skip_binder());
+        if let Some(poly_trait_ref) = p.to_opt_poly_trait_pred() {
+            if Some(poly_trait_ref.def_id()) == sized_trait {
+                types_without_default_bounds.remove(poly_trait_ref.self_ty().skip_binder());
                 continue;
             }
         }

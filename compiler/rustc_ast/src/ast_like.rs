@@ -1,7 +1,7 @@
 use super::ptr::P;
 use super::token::Nonterminal;
 use super::tokenstream::LazyTokenStream;
-use super::{Arm, ExprField, FieldDef, GenericParam, Param, PatField, Variant};
+use super::{Arm, Crate, ExprField, FieldDef, GenericParam, Param, PatField, Variant};
 use super::{AssocItem, Expr, ForeignItem, Item, Local, MacCallStmt};
 use super::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};
 use super::{AttrVec, Attribute, Stmt, StmtKind};
@@ -276,7 +276,7 @@ derive_has_tokens_and_attrs! {
 // These ast nodes only support inert attributes, so they don't
 // store tokens (since nothing can observe them)
 derive_has_attrs_no_tokens! {
-    FieldDef, Arm, ExprField, PatField, Variant, Param, GenericParam
+    FieldDef, Arm, ExprField, PatField, Variant, Param, GenericParam, Crate
 }
 
 // These AST nodes don't support attributes, but can

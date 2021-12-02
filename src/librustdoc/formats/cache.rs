@@ -6,8 +6,8 @@ use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
-use crate::clean::{self, ItemId, PrimitiveType};
-use crate::config::RenderOptions;
+use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
+use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
@@ -27,7 +27,7 @@ use crate::html::render::IndexItem;
 #[derive(Default)]
 crate struct Cache {
     /// Maps a type ID to all known implementations for that type. This is only
-    /// recognized for intra-crate `ResolvedPath` types, and is used to print
+    /// recognized for intra-crate [`clean::Type::Path`]s, and is used to print
     /// out extra documentation on the page of an enum/struct.
     ///
     /// The values of the map are a list of implementations and documentation
@@ -136,46 +136,47 @@ impl Cache {
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
     /// in `krate` due to the data being moved into the `Cache`.
-    crate fn populate(
-        &mut self,
-        mut krate: clean::Crate,
-        tcx: TyCtxt<'_>,
-        render_options: &RenderOptions,
-    ) -> clean::Crate {
+    crate fn populate(cx: &mut DocContext<'_>, mut krate: clean::Crate) -> clean::Crate {
+        let tcx = cx.tcx;
+
         // Crawl the crate to build various caches used for the output
-        debug!(?self.crate_version);
-        self.traits = krate.external_traits.take();
-        let RenderOptions { extern_html_root_takes_precedence, output: dst, .. } = render_options;
+        debug!(?cx.cache.crate_version);
+        cx.cache.traits = krate.external_traits.take();
 
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
-        for &e in &krate.externs {
+        for &crate_num in cx.tcx.crates(()) {
+            let e = ExternalCrate { crate_num };
+
             let name = e.name(tcx);
+            let render_options = &cx.render_options;
             let extern_url =
                 render_options.extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
-            let location = e.location(extern_url, *extern_html_root_takes_precedence, dst, tcx);
-            self.extern_locations.insert(e.crate_num, location);
-            self.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
+            let extern_url_takes_precedence = render_options.extern_html_root_takes_precedence;
+            let dst = &render_options.output;
+            let location = e.location(extern_url, extern_url_takes_precedence, dst, tcx);
+            cx.cache.extern_locations.insert(e.crate_num, location);
+            cx.cache.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
         }
 
         // FIXME: avoid this clone (requires implementing Default manually)
-        self.primitive_locations = PrimitiveType::primitive_locations(tcx).clone();
-        for (prim, &def_id) in &self.primitive_locations {
+        cx.cache.primitive_locations = PrimitiveType::primitive_locations(tcx).clone();
+        for (prim, &def_id) in &cx.cache.primitive_locations {
             let crate_name = tcx.crate_name(def_id.krate);
             // Recall that we only allow primitive modules to be at the root-level of the crate.
             // If that restriction is ever lifted, this will have to include the relative paths instead.
-            self.external_paths.insert(
+            cx.cache.external_paths.insert(
                 def_id,
                 (vec![crate_name.to_string(), prim.as_sym().to_string()], ItemType::Primitive),
             );
         }
 
-        krate = CacheBuilder { tcx, cache: self }.fold_crate(krate);
+        krate = CacheBuilder { tcx, cache: &mut cx.cache }.fold_crate(krate);
 
-        for (trait_did, dids, impl_) in self.orphan_trait_impls.drain(..) {
-            if self.traits.contains_key(&trait_did) {
+        for (trait_did, dids, impl_) in cx.cache.orphan_trait_impls.drain(..) {
+            if cx.cache.traits.contains_key(&trait_did) {
                 for did in dids {
-                    self.impls.entry(did).or_default().push(impl_.clone());
+                    cx.cache.impls.entry(did).or_default().push(impl_.clone());
                 }
             }
         }
@@ -228,7 +229,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Collect all the implementors of traits.
         if let clean::ImplItem(ref i) = *item.kind {
             if let Some(trait_) = &i.trait_ {
-                if i.blanket_impl.is_none() {
+                if !i.kind.is_blanket() {
                     self.cache
                         .implementors
                         .entry(trait_.def_id())
@@ -303,7 +304,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             desc,
                             parent,
                             parent_idx: None,
-                            search_type: get_index_search_type(&item, self.tcx),
+                            search_type: get_index_search_type(&item, self.tcx, self.cache),
                             aliases: item.attrs.get_doc_aliases(),
                         });
                     }
@@ -400,8 +401,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             clean::ImplItem(ref i) => {
                 self.cache.parent_is_trait_impl = i.trait_.is_some();
                 match i.for_ {
-                    clean::ResolvedPath { did, .. } => {
-                        self.cache.parent_stack.push(did);
+                    clean::Type::Path { ref path } => {
+                        self.cache.parent_stack.push(path.def_id());
                         true
                     }
                     clean::DynTrait(ref bounds, _)
@@ -435,9 +436,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             // Note: matching twice to restrict the lifetime of the `i` borrow.
             let mut dids = FxHashSet::default();
             match i.for_ {
-                clean::ResolvedPath { did, .. }
-                | clean::BorrowedRef { type_: box clean::ResolvedPath { did, .. }, .. } => {
-                    dids.insert(did);
+                clean::Type::Path { ref path }
+                | clean::BorrowedRef { type_: box clean::Type::Path { ref path }, .. } => {
+                    dids.insert(path.def_id());
                 }
                 clean::DynTrait(ref bounds, _)
                 | clean::BorrowedRef { type_: box clean::DynTrait(ref bounds, _), .. } => {

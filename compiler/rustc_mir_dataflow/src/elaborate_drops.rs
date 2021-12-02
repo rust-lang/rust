@@ -604,7 +604,7 @@ where
         debug!("destructor_call_block({:?}, {:?})", self, succ);
         let tcx = self.tcx();
         let drop_trait = tcx.require_lang_item(LangItem::Drop, None);
-        let drop_fn = tcx.associated_items(drop_trait).in_definition_order().next().unwrap();
+        let drop_fn = tcx.associated_item_def_ids(drop_trait)[0];
         let ty = self.place_ty(self.place);
         let substs = tcx.mk_substs_trait(ty, &[]);
 
@@ -624,12 +624,7 @@ where
             )],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
-                    func: Operand::function_handle(
-                        tcx,
-                        drop_fn.def_id,
-                        substs,
-                        self.source_info.span,
-                    ),
+                    func: Operand::function_handle(tcx, drop_fn, substs, self.source_info.span),
                     args: vec![Operand::Move(Place::from(ref_place))],
                     destination: Some((unit_temp, succ)),
                     cleanup: unwind.into_option(),

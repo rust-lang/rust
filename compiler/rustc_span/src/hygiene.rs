@@ -264,7 +264,15 @@ impl ExpnId {
         HygieneData::with(|data| data.expn_data(self).clone())
     }
 
+    #[inline]
     pub fn is_descendant_of(self, ancestor: ExpnId) -> bool {
+        // a few "fast path" cases to avoid locking HygieneData
+        if ancestor == ExpnId::root() || ancestor == self {
+            return true;
+        }
+        if ancestor.krate != self.krate {
+            return false;
+        }
         HygieneData::with(|data| data.is_descendant_of(self, ancestor))
     }
 
@@ -376,13 +384,22 @@ impl HygieneData {
     }
 
     fn is_descendant_of(&self, mut expn_id: ExpnId, ancestor: ExpnId) -> bool {
-        while expn_id != ancestor {
+        // a couple "fast path" cases to avoid traversing parents in the loop below
+        if ancestor == ExpnId::root() {
+            return true;
+        }
+        if expn_id.krate != ancestor.krate {
+            return false;
+        }
+        loop {
+            if expn_id == ancestor {
+                return true;
+            }
             if expn_id == ExpnId::root() {
                 return false;
             }
             expn_id = self.expn_data(expn_id).parent;
         }
-        true
     }
 
     fn normalize_to_macros_2_0(&self, ctxt: SyntaxContext) -> SyntaxContext {
@@ -1099,16 +1116,9 @@ pub enum DesugaringKind {
     OpaqueTy,
     Async,
     Await,
-    ForLoop(ForLoopLoc),
+    ForLoop,
     LetElse,
     WhileLoop,
-}
-
-/// A location in the desugaring of a `for` loop
-#[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
-pub enum ForLoopLoc {
-    Head,
-    IntoIter,
 }
 
 impl DesugaringKind {
@@ -1121,7 +1131,7 @@ impl DesugaringKind {
             DesugaringKind::QuestionMark => "operator `?`",
             DesugaringKind::TryBlock => "`try` block",
             DesugaringKind::OpaqueTy => "`impl Trait`",
-            DesugaringKind::ForLoop(_) => "`for` loop",
+            DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::LetElse => "`let...else`",
             DesugaringKind::WhileLoop => "`while` loop",
         }
@@ -1230,6 +1240,7 @@ pub fn register_expn_id(
     data: ExpnData,
     hash: ExpnHash,
 ) -> ExpnId {
+    debug_assert!(data.parent == ExpnId::root() || krate == data.parent.krate);
     let expn_id = ExpnId { krate, local_id };
     HygieneData::with(|hygiene_data| {
         let _old_data = hygiene_data.foreign_expn_data.insert(expn_id, data);

@@ -173,6 +173,12 @@ impl<'tcx> CheckConstVisitor<'tcx> {
                 None => return true,
             };
 
+            // If the function belongs to a trait, then it must enable the const_trait_impl
+            // feature to use that trait function (with a const default body).
+            if tcx.trait_of_item(def_id).is_some() {
+                return true;
+            }
+
             // If this crate is not using stability attributes, or this function is not claiming to be a
             // stable `const fn`, that is all that is required.
             if !tcx.features().staged_api || tcx.has_attr(def_id, sym::rustc_const_unstable) {
@@ -210,10 +216,10 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             required_gates.iter().copied().filter(|&g| !features.enabled(g)).collect();
 
         match missing_gates.as_slice() {
-            &[] => struct_span_err!(tcx.sess, span, E0744, "{}", msg).emit(),
+            [] => struct_span_err!(tcx.sess, span, E0744, "{}", msg).emit(),
 
-            &[missing_primary, ref missing_secondary @ ..] => {
-                let mut err = feature_err(&tcx.sess.parse_sess, missing_primary, span, &msg);
+            [missing_primary, ref missing_secondary @ ..] => {
+                let mut err = feature_err(&tcx.sess.parse_sess, *missing_primary, span, &msg);
 
                 // If multiple feature gates would be required to enable this expression, include
                 // them as help messages. Don't emit a separate error for each missing feature gate.

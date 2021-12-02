@@ -1606,13 +1606,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // encounter a candidate where the test is not relevant; at
         // that point, we stop sorting.
         while let Some(candidate) = candidates.first_mut() {
-            if let Some(idx) = self.sort_candidate(&match_place.clone(), &test, candidate) {
-                let (candidate, rest) = candidates.split_first_mut().unwrap();
-                target_candidates[idx].push(candidate);
-                candidates = rest;
-            } else {
+            let Some(idx) = self.sort_candidate(&match_place.clone(), &test, candidate) else {
                 break;
-            }
+            };
+            let (candidate, rest) = candidates.split_first_mut().unwrap();
+            target_candidates[idx].push(candidate);
+            candidates = rest;
         }
         // at least the first candidate ought to be tested
         assert!(total_candidate_count > candidates.len());
@@ -1762,8 +1761,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         let expr_span = expr.span;
         let expr_place_builder = unpack!(block = self.lower_scrutinee(block, expr, expr_span));
-        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), &pat, false);
         let wildcard = Pat::wildcard_from_ty(pat.ty);
+        let mut guard_candidate = Candidate::new(expr_place_builder.clone(), &pat, false);
         let mut otherwise_candidate = Candidate::new(expr_place_builder.clone(), &wildcard, false);
         let fake_borrow_temps = self.lower_match_tree(
             block,

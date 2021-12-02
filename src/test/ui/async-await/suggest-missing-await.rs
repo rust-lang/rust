@@ -26,4 +26,49 @@ async fn suggest_await_in_async_fn_return() {
     //~| SUGGESTION .await
 }
 
+#[allow(unused)]
+async fn suggest_await_on_if() {
+    let _x = if true {
+        dummy()
+        //~^ HELP consider `await`ing on the `Future`
+    } else {
+        dummy().await
+        //~^ ERROR `if` and `else` have incompatible types [E0308]
+    };
+}
+
+#[allow(unused)]
+async fn suggest_await_on_previous_match_arms() {
+    let _x = match 0usize {
+        0 => dummy(), //~ HELP consider `await`ing on the `Future`
+        1 => dummy(),
+        2 => dummy().await,
+        //~^ `match` arms have incompatible types [E0308]
+    };
+}
+
+#[allow(unused)]
+async fn suggest_await_on_match_expr() {
+    let _x = match dummy() { //~ HELP consider `await`ing on the `Future`
+        () => {} //~ ERROR mismatched types [E0308]
+    };
+}
+
+async fn dummy_result() -> Result<(), ()> {
+    Ok(())
+}
+
+#[allow(unused)]
+async fn suggest_await_in_generic_pattern() {
+    match dummy_result() {
+        //~^ HELP consider `await`ing on the `Future`
+        //~| HELP consider `await`ing on the `Future`
+        //~| SUGGESTION .await
+        Ok(_) => {}
+        //~^ ERROR mismatched types [E0308]
+        Err(_) => {}
+        //~^ ERROR mismatched types [E0308]
+    }
+}
+
 fn main() {}

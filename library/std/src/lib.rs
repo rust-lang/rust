@@ -264,7 +264,7 @@
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
 #![feature(const_option)]
-#![feature(const_raw_ptr_deref)]
+#![feature(const_mut_refs)]
 #![feature(const_socketaddr)]
 #![feature(const_trait_impl)]
 #![feature(container_error_extra)]
@@ -274,10 +274,9 @@
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
-#![feature(doc_keyword)]
+#![feature(rustdoc_internals)]
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
-#![feature(doc_primitive)]
 #![feature(dropck_eyepatch)]
 #![feature(duration_checked_float)]
 #![feature(duration_constants)]
@@ -286,6 +285,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
 #![feature(fn_traits)]
+#![feature(float_minimum_maximum)]
 #![feature(format_args_nl)]
 #![feature(gen_future)]
 #![feature(generator_trait)]
@@ -320,6 +320,7 @@
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(pin_static_ref)]
+#![feature(portable_simd)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(rustc_attrs)]
@@ -471,6 +472,8 @@ pub use core::pin;
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
+#[unstable(feature = "portable_simd", issue = "86656")]
+pub use core::simd;
 #[unstable(feature = "async_stream", issue = "79024")]
 pub use core::stream;
 #[stable(feature = "i128", since = "1.26.0")]

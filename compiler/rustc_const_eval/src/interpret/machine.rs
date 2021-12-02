@@ -131,6 +131,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
+    /// Whether to enforce validity (e.g., initialization and not having ptr provenance)
+    /// of integers and floats.
+    fn enforce_number_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+
     /// Whether function calls should be [ABI](Abi)-checked.
     fn enforce_abi(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         true
@@ -424,6 +428,11 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     #[inline(always)]
     fn enforce_validity(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
         false // for now, we don't enforce validity
+    }
+
+    #[inline(always)]
+    fn enforce_number_validity(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+        true
     }
 
     #[inline(always)]

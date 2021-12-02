@@ -1,9 +1,11 @@
 goto: file://|DOC_PATH|/test_docs/index.html
+show-text: true
 write: (".search-input", "test")
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-text: ("#results .externcrate", "test_docs")
-text: (".search-input", "")
+
+goto: file://|DOC_PATH|/test_docs/index.html
 // We now want to change the crate filter.
 click: "#crate-search"
 // We select "lib2" option then press enter to change the filter.

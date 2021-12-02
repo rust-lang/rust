@@ -278,6 +278,7 @@ mod this_crate {
         let _ = nested::DeprecatedStruct {
             //~^ ERROR use of deprecated struct `this_crate::nested::DeprecatedStruct`: text
             i: 0 //~ ERROR use of deprecated field `this_crate::nested::DeprecatedStruct::i`: text
+            //~| ERROR field `i` of struct `this_crate::nested::DeprecatedStruct` is private
         };
 
         let _ = nested::DeprecatedUnitStruct; //~ ERROR use of deprecated unit struct `this_crate::nested::DeprecatedUnitStruct`: text

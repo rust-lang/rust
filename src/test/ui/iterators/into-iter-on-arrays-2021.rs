@@ -1,6 +1,5 @@
 // check-pass
 // edition:2021
-// compile-flags: -Zunstable-options
 
 use std::array::IntoIter;
 use std::ops::Deref;

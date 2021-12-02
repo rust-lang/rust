@@ -27,7 +27,9 @@ use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, S
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
-use rustc_target::spec::{SanitizerSet, SplitDebuginfo, Target, TargetTriple, TlsModel};
+use rustc_target::spec::{
+    SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
+};
 
 use std::cell::{self, RefCell};
 use std::env;
@@ -411,7 +413,7 @@ impl Session {
         self.diagnostic().abort_if_errors();
     }
     pub fn compile_status(&self) -> Result<(), ErrorReported> {
-        if self.has_errors() {
+        if self.diagnostic().has_errors_or_lint_errors() {
             self.diagnostic().emit_stashed_diagnostics();
             Err(ErrorReported)
         } else {
@@ -676,11 +678,7 @@ impl Session {
         self.opts.debugging_opts.sanitizer.contains(SanitizerSet::CFI)
     }
     pub fn overflow_checks(&self) -> bool {
-        self.opts
-            .cg
-            .overflow_checks
-            .or(self.opts.debugging_opts.force_overflow_checks)
-            .unwrap_or(self.opts.debug_assertions)
+        self.opts.cg.overflow_checks.unwrap_or(self.opts.debug_assertions)
     }
 
     /// Check whether this compile session and crate type use static crt.
@@ -730,6 +728,14 @@ impl Session {
 
     pub fn split_debuginfo(&self) -> SplitDebuginfo {
         self.opts.cg.split_debuginfo.unwrap_or(self.target.split_debuginfo)
+    }
+
+    pub fn stack_protector(&self) -> StackProtector {
+        if self.target.options.supports_stack_protector {
+            self.opts.debugging_opts.stack_protector
+        } else {
+            StackProtector::None
+        }
     }
 
     pub fn target_can_use_split_dwarf(&self) -> bool {
@@ -1409,6 +1415,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             || sess.opts.cg.lto == config::LtoCli::Thin
         {
             sess.err("`-Zsanitizer=cfi` requires `-Clto`");
+        }
+    }
+
+    if sess.opts.debugging_opts.stack_protector != StackProtector::None {
+        if !sess.target.options.supports_stack_protector {
+            sess.warn(&format!(
+                "`-Z stack-protector={}` is not supported for target {} and will be ignored",
+                sess.opts.debugging_opts.stack_protector, sess.opts.target_triple
+            ))
         }
     }
 }

@@ -11,7 +11,7 @@ use rustc_infer::traits::TraitEngine;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
 use rustc_target::spec::abi::Abi;
 
 use crate::traits;
@@ -303,8 +303,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if lang_items.drop_trait() == Some(def_id)
                 && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
             {
-                if self.is_in_const_context {
-                    self.assemble_const_drop_candidates(obligation, &mut candidates)?;
+                if obligation.param_env.constness() == hir::Constness::Const {
+                    self.assemble_const_drop_candidates(obligation, stack, &mut candidates)?;
                 } else {
                     debug!("passing ~const Drop bound; in non-const context");
                     // `~const Drop` when we are not in a const context has no effect.
@@ -383,17 +383,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .param_env
             .caller_bounds()
             .iter()
-            .filter_map(|o| o.to_opt_poly_trait_ref());
+            .filter_map(|o| o.to_opt_poly_trait_pred());
 
         // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =
-            all_bounds.filter(|p| p.value.def_id() == stack.obligation.predicate.def_id());
+            all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
 
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in matching_bounds {
-            let wc = self.evaluate_where_clause(stack, bound.value)?;
+            // FIXME(oli-obk): it is suspicious that we are dropping the constness and
+            // polarity here.
+            let wc = self.evaluate_where_clause(stack, bound.map_bound(|t| t.trait_ref))?;
             if wc.may_apply() {
-                candidates.vec.push(ParamCandidate((bound, stack.obligation.polarity())));
+                candidates.vec.push(ParamCandidate(bound));
             }
         }
 
@@ -536,7 +538,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // This helps us avoid overflow: see issue #72839
         // Since compilation is already guaranteed to fail, this is just
         // to try to show the 'nicest' possible errors to the user.
-        if obligation.references_error() {
+        // We don't check for errors in the `ParamEnv` - in practice,
+        // it seems to cause us to be overly aggressive in deciding
+        // to give up searching for candidates, leading to spurious errors.
+        if obligation.predicate.references_error() {
             return;
         }
 
@@ -911,9 +916,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn assemble_const_drop_candidates(
+    fn assemble_const_drop_candidates<'a>(
         &mut self,
         obligation: &TraitObligation<'tcx>,
+        obligation_stack: &TraitObligationStack<'a, 'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         let mut stack: Vec<(Ty<'tcx>, usize)> = vec![(obligation.self_ty().skip_binder(), 0)];
@@ -922,7 +928,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut noreturn = false;
 
             self.check_recursion_depth(depth, obligation)?;
-            let mut copy_candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
+            let mut new_candidates = SelectionCandidateSet { vec: Vec::new(), ambiguous: false };
             let mut copy_obligation =
                 obligation.with(obligation.predicate.rebind(ty::TraitPredicate {
                     trait_ref: ty::TraitRef {
@@ -933,13 +939,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     polarity: ty::ImplPolarity::Positive,
                 }));
             copy_obligation.recursion_depth = depth + 1;
-            self.assemble_candidates_from_impls(&copy_obligation, &mut copy_candidates);
+            self.assemble_candidates_from_impls(&copy_obligation, &mut new_candidates);
             let copy_conditions = self.copy_clone_conditions(&copy_obligation);
-            self.assemble_builtin_bound_candidates(copy_conditions, &mut copy_candidates);
-            if !copy_candidates.vec.is_empty() {
+            self.assemble_builtin_bound_candidates(copy_conditions, &mut new_candidates);
+            let copy_stack = self.push_stack(obligation_stack.list(), &copy_obligation);
+            self.assemble_candidates_from_caller_bounds(&copy_stack, &mut new_candidates)?;
+
+            let const_drop_obligation =
+                obligation.with(obligation.predicate.rebind(ty::TraitPredicate {
+                    trait_ref: ty::TraitRef {
+                        def_id: self.tcx().require_lang_item(hir::LangItem::Drop, None),
+                        substs: self.tcx().mk_substs_trait(ty, &[]),
+                    },
+                    constness: ty::BoundConstness::ConstIfConst,
+                    polarity: ty::ImplPolarity::Positive,
+                }));
+
+            let const_drop_stack = self.push_stack(obligation_stack.list(), &const_drop_obligation);
+            self.assemble_candidates_from_caller_bounds(&const_drop_stack, &mut new_candidates)?;
+
+            if !new_candidates.vec.is_empty() {
                 noreturn = true;
             }
-            debug!(?copy_candidates.vec, "assemble_const_drop_candidates - copy");
+            debug!(?new_candidates.vec, "assemble_const_drop_candidates");
 
             match ty.kind() {
                 ty::Int(_)

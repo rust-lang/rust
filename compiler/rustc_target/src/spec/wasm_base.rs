@@ -128,6 +128,12 @@ pub fn options() -> TargetOptions {
         // gdb scripts don't work on wasm blobs
         emit_debug_gdb_scripts: false,
 
+        // There's more discussion of this at
+        // https://bugs.llvm.org/show_bug.cgi?id=52442 but the general result is
+        // that this isn't useful for wasm and has tricky issues with
+        // representation, so this is disabled.
+        generate_arange_section: false,
+
         ..Default::default()
     }
 }

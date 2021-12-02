@@ -3,7 +3,7 @@ use crate::traits::{self, TraitEngine};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
-use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
 use rustc_middle::ty::{ToPredicate, TypeFoldable};
 use rustc_session::{DiagnosticMessageId, Limit};
 use rustc_span::def_id::LOCAL_CRATE;
@@ -152,11 +152,12 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             },
             cause,
         );
-        if let Err(e) = fulfillcx.select_where_possible(&self.infcx) {
+        let errors = fulfillcx.select_where_possible(&self.infcx);
+        if !errors.is_empty() {
             // This shouldn't happen, except for evaluate/fulfill mismatches,
             // but that's not a reason for an ICE (`predicate_may_hold` is conservative
             // by design).
-            debug!("overloaded_deref_ty: encountered errors {:?} while fulfilling", e);
+            debug!("overloaded_deref_ty: encountered errors {:?} while fulfilling", errors);
             return None;
         }
         let obligations = fulfillcx.pending_obligations();

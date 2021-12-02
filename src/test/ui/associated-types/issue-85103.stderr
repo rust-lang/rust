@@ -1,0 +1,8 @@
+error: layout error: NormalizationFailure(<[E] as std::borrow::ToOwned>::Owned, Type(<[E] as std::borrow::ToOwned>::Owned))
+  --> $DIR/issue-85103.rs:6:1
+   |
+LL | type Edges<'a, E> = Cow<'a, [E]>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

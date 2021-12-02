@@ -75,6 +75,10 @@ extern "C" void LLVMTimeTraceProfilerInitialize() {
       /* ProcName */ "rustc");
 }
 
+extern "C" void LLVMTimeTraceProfilerFinishThread() {
+  timeTraceProfilerFinishThread();
+}
+
 extern "C" void LLVMTimeTraceProfilerFinish(const char* FileName) {
   StringRef FN(FileName);
   std::error_code EC;
@@ -885,15 +889,17 @@ LLVMRustOptimizeWithNewPassManager(
       OptimizerLastEPCallbacks.push_back(
         [SanitizerOptions](ModulePassManager &MPM, OptimizationLevel Level) {
           MPM.addPass(RequireAnalysisPass<ASanGlobalsMetadataAnalysis, Module>());
+#if LLVM_VERSION_GE(14, 0)
+          AddressSanitizerOptions opts = AddressSanitizerOptions{
+            /*CompileKernel=*/false,
+            SanitizerOptions->SanitizeAddressRecover,
+            /*UseAfterScope=*/true,
+            AsanDetectStackUseAfterReturnMode::Runtime,
+          };
+          MPM.addPass(ModuleAddressSanitizerPass(opts));
+#else
           MPM.addPass(ModuleAddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover));
-#if LLVM_VERSION_GE(14, 0)
-          AddressSanitizerOptions opts(/*CompileKernel=*/false,
-                                       SanitizerOptions->SanitizeAddressRecover,
-                                       /*UseAfterScope=*/true,
-                                       AsanDetectStackUseAfterReturnMode::Runtime);
-          MPM.addPass(createModuleToFunctionPassAdaptor(AddressSanitizerPass(opts)));
-#else
           MPM.addPass(createModuleToFunctionPassAdaptor(AddressSanitizerPass(
               /*CompileKernel=*/false, SanitizerOptions->SanitizeAddressRecover,
               /*UseAfterScope=*/true)));

@@ -119,13 +119,13 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
 
     for extern_crate in &crates_to_lint {
         let def_id = extern_crate.def_id.expect_local();
-        let id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let item = tcx.hir().expect_item(id);
+        let item = tcx.hir().expect_item(def_id);
 
         // If the crate is fully unused, we suggest removing it altogether.
         // We do this in any edition.
         if extern_crate.warn_if_unused {
             if let Some(&span) = unused_extern_crates.get(&def_id) {
+                let id = tcx.hir().local_def_id_to_hir_id(def_id);
                 tcx.struct_span_lint_hir(lint, id, span, |lint| {
                     // Removal suggestion span needs to include attributes (Issue #54400)
                     let span_with_attrs = tcx
@@ -173,6 +173,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         if !tcx.get_attrs(extern_crate.def_id).is_empty() {
             continue;
         }
+        let id = tcx.hir().local_def_id_to_hir_id(def_id);
         tcx.struct_span_lint_hir(lint, id, extern_crate.span, |lint| {
             // Otherwise, we can convert it into a `use` of some kind.
             let base_replacement = match extern_crate.orig_name {

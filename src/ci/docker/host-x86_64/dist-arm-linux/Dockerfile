@@ -8,6 +8,7 @@ RUN sh /scripts/crosstool-ng-1.24.sh
 
 WORKDIR /build
 
+COPY scripts/musl-patch-configure.diff /build/
 COPY scripts/musl-toolchain.sh /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
 RUN CFLAGS="-Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \

@@ -4,7 +4,7 @@ use std::ops::{Deref, Range};
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
-use rustc_ast::ast::{Expr, ExprKind, ImplKind, Item, ItemKind, MacCall, Path, StrLit, StrStyle};
+use rustc_ast::ast::{Expr, ExprKind, Impl, Item, ItemKind, MacCall, Path, StrLit, StrStyle};
 use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;
@@ -243,7 +243,7 @@ impl_lint_pass!(Write => [
 
 impl EarlyLintPass for Write {
     fn check_item(&mut self, _: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Impl(box ImplKind {
+        if let ItemKind::Impl(box Impl {
             of_trait: Some(trait_ref),
             ..
         }) = &item.kind

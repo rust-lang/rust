@@ -117,7 +117,7 @@ datecheck() {
   echo -n "  local time: "
   date
   echo -n "  network time: "
-  curl -fs --head http://detectportal.firefox.com/success.txt | grep ^Date: \
+  curl -fs --head http://ci-caches.rust-lang.org | grep ^Date: \
       | sed 's/Date: //g' || true
   echo "== end clock drift check =="
 }

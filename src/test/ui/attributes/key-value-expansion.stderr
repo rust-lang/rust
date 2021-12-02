@@ -16,15 +16,15 @@ LL | bug!();
    = note: this error originates in the macro `bug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unexpected token: `{
-    let res =
-        ::alloc::fmt::format(::core::fmt::Arguments::new_v1(&[""],
-                                                            &match (&"u8",) {
-                                                                 (arg0,) =>
-                                                                 [::core::fmt::ArgumentV1::new(arg0,
-                                                                                               ::core::fmt::Display::fmt)],
-                                                             }));
-    res
-}.as_str()`
+           let res =
+               ::alloc::fmt::format(::core::fmt::Arguments::new_v1(&[""],
+                                                                   &match (&"u8",) {
+                                                                        _args =>
+                                                                        [::core::fmt::ArgumentV1::new(_args.0,
+                                                                                                      ::core::fmt::Display::fmt)],
+                                                                    }));
+           res
+       }.as_str()`
   --> $DIR/key-value-expansion.rs:48:23
    |
 LL |         doc_comment! {format!("{coor}", coor = stringify!($t1)).as_str()}

@@ -832,7 +832,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // FIXME(rcvalle): Add support for generalized identifiers.
             // FIXME(rcvalle): Create distinct unnamed MDNodes for internal identifiers.
             let typeid = typeid_for_fnabi(bx.tcx(), fn_abi);
-            let typeid_metadata = bx.typeid_metadata(typeid.clone());
+            let typeid_metadata = bx.typeid_metadata(typeid);
 
             // Test whether the function pointer is associated with the type identifier.
             let cond = bx.type_test(fn_ptr, typeid_metadata);
@@ -980,17 +980,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Goto { target } => {
-                if bb == target {
-                    // This is an unconditional branch back to this same basic block. That means we
-                    // have something like a `loop {}` statement. LLVM versions before 12.0
-                    // miscompile this because they assume forward progress. For older versions
-                    // try to handle just this specific case which comes up commonly in practice
-                    // (e.g., in embedded code).
-                    //
-                    // NB: the `sideeffect` currently checks for the LLVM version used internally.
-                    bx.sideeffect();
-                }
-
                 helper.funclet_br(self, &mut bx, target);
             }
 

@@ -34,39 +34,47 @@ pub struct SortedIndexMultiMap<I: Idx, K, V> {
 }
 
 impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
+    #[inline]
     pub fn new() -> Self {
         SortedIndexMultiMap { items: IndexVec::new(), idx_sorted_by_item_key: Vec::new() }
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
         self.items.len()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 
     /// Returns an iterator over the items in the map in insertion order.
+    #[inline]
     pub fn into_iter(self) -> impl DoubleEndedIterator<Item = (K, V)> {
         self.items.into_iter()
     }
 
     /// Returns an iterator over the items in the map in insertion order along with their indices.
+    #[inline]
     pub fn into_iter_enumerated(self) -> impl DoubleEndedIterator<Item = (I, (K, V))> {
         self.items.into_iter_enumerated()
     }
 
     /// Returns an iterator over the items in the map in insertion order.
+    #[inline]
     pub fn iter(&self) -> impl '_ + DoubleEndedIterator<Item = (&K, &V)> {
         self.items.iter().map(|(ref k, ref v)| (k, v))
     }
 
     /// Returns an iterator over the items in the map in insertion order along with their indices.
+    #[inline]
     pub fn iter_enumerated(&self) -> impl '_ + DoubleEndedIterator<Item = (I, (&K, &V))> {
         self.items.iter_enumerated().map(|(i, (ref k, ref v))| (i, (k, v)))
     }
 
     /// Returns the item in the map with the given index.
+    #[inline]
     pub fn get(&self, idx: I) -> Option<&(K, V)> {
         self.items.get(idx)
     }
@@ -75,6 +83,7 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
     ///
     /// If there are multiple items that are equivalent to `key`, they will be yielded in
     /// insertion order.
+    #[inline]
     pub fn get_by_key(&'a self, key: K) -> impl 'a + Iterator<Item = &'a V> {
         self.get_by_key_enumerated(key).map(|(_, v)| v)
     }
@@ -84,6 +93,7 @@ impl<I: Idx, K: Ord, V> SortedIndexMultiMap<I, K, V> {
     ///
     /// If there are multiple items that are equivalent to `key`, they will be yielded in
     /// insertion order.
+    #[inline]
     pub fn get_by_key_enumerated(&'a self, key: K) -> impl '_ + Iterator<Item = (I, &V)> {
         let lower_bound = self.idx_sorted_by_item_key.partition_point(|&i| self.items[i].0 < key);
         self.idx_sorted_by_item_key[lower_bound..].iter().map_while(move |&i| {

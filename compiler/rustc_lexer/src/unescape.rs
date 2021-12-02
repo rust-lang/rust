@@ -68,11 +68,10 @@ pub enum EscapeError {
 impl EscapeError {
     /// Returns true for actual errors, as opposed to warnings.
     pub fn is_fatal(&self) -> bool {
-        match self {
-            EscapeError::UnskippedWhitespaceWarning => false,
-            EscapeError::MultipleSkippedLinesWarning => false,
-            _ => true,
-        }
+        !matches!(
+            self,
+            EscapeError::UnskippedWhitespaceWarning | EscapeError::MultipleSkippedLinesWarning
+        )
     }
 }
 

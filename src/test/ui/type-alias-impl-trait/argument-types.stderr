@@ -4,6 +4,8 @@ error[E0308]: mismatched types
 LL | type Foo = impl Debug;
    |            ---------- the expected opaque type
 ...
+LL | fn foo1(mut x: Foo) {
+   |                --- expected due to this parameter type
 LL |     x = 22_u32;
    |         ^^^^^^ expected opaque type, found `u32`
    |

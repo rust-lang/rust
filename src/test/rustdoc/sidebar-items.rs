@@ -30,11 +30,11 @@ pub struct Bar {
 
 // @has foo/enum.En.html
 // @has - '//*[@class="sidebar-title"]/a[@href="#variants"]' 'Variants'
-// @has - '//*[@class="sidebar-links"]/a' 'foo'
-// @has - '//*[@class="sidebar-links"]/a' 'bar'
+// @has - '//*[@class="sidebar-links"]/a' 'Foo'
+// @has - '//*[@class="sidebar-links"]/a' 'Bar'
 pub enum En {
-    foo,
-    bar,
+    Foo,
+    Bar,
 }
 
 // @has foo/union.MyUnion.html

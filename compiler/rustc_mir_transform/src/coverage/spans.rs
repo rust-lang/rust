@@ -94,10 +94,9 @@ impl CoverageSpan {
         stmt_index: usize,
     ) -> Self {
         let is_closure = match statement.kind {
-            StatementKind::Assign(box (_, Rvalue::Aggregate(box ref kind, _))) => match kind {
-                AggregateKind::Closure(_, _) | AggregateKind::Generator(_, _, _) => true,
-                _ => false,
-            },
+            StatementKind::Assign(box (_, Rvalue::Aggregate(box ref kind, _))) => {
+                matches!(kind, AggregateKind::Closure(_, _) | AggregateKind::Generator(_, _, _))
+            }
             _ => false,
         };
 

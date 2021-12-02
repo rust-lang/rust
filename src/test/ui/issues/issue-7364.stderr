@@ -1,21 +1,14 @@
-error[E0010]: allocations are not allowed in statics
-  --> $DIR/issue-7364.rs:6:37
-   |
-LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
-   |                                     ^^^^^^^^^^^^^^^^^^^ allocation not allowed in statics
-
 error[E0277]: `RefCell<isize>` cannot be shared between threads safely
-  --> $DIR/issue-7364.rs:6:1
+  --> $DIR/issue-7364.rs:6:15
    |
 LL | static boxed: Box<RefCell<isize>> = box RefCell::new(0);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `RefCell<isize>` cannot be shared between threads safely
+   |               ^^^^^^^^^^^^^^^^^^^ `RefCell<isize>` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `RefCell<isize>`
    = note: required because of the requirements on the impl of `Sync` for `Unique<RefCell<isize>>`
    = note: required because it appears within the type `Box<RefCell<isize>>`
    = note: shared static variables must have a type that implements `Sync`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0010, E0277.
-For more information about an error, try `rustc --explain E0010`.
+For more information about this error, try `rustc --explain E0277`.

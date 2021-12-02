@@ -1,5 +1,5 @@
 error: this looks like you are trying to use `.. -= ..`, but you really are doing `.. = (- ..)`
-  --> $DIR/formatting.rs:15:6
+  --> $DIR/formatting.rs:16:6
    |
 LL |     a =- 35;
    |      ^^^^
@@ -8,7 +8,7 @@ LL |     a =- 35;
    = note: to remove this lint, use either `-=` or `= -`
 
 error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
-  --> $DIR/formatting.rs:16:6
+  --> $DIR/formatting.rs:17:6
    |
 LL |     a =* &191;
    |      ^^^^
@@ -16,7 +16,7 @@ LL |     a =* &191;
    = note: to remove this lint, use either `*=` or `= *`
 
 error: this looks like you are trying to use `.. != ..`, but you really are doing `.. = (! ..)`
-  --> $DIR/formatting.rs:19:6
+  --> $DIR/formatting.rs:20:6
    |
 LL |     b =! false;
    |      ^^^^
@@ -24,7 +24,7 @@ LL |     b =! false;
    = note: to remove this lint, use either `!=` or `= !`
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:28:19
+  --> $DIR/formatting.rs:29:19
    |
 LL |         -1, -2, -3 // <= no comma here
    |                   ^
@@ -33,7 +33,7 @@ LL |         -1, -2, -3 // <= no comma here
    = note: to remove this lint, add a comma or write the expr in a single line
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:32:19
+  --> $DIR/formatting.rs:33:19
    |
 LL |         -1, -2, -3 // <= no comma here
    |                   ^
@@ -41,7 +41,7 @@ LL |         -1, -2, -3 // <= no comma here
    = note: to remove this lint, add a comma or write the expr in a single line
 
 error: possibly missing a comma here
-  --> $DIR/formatting.rs:69:11
+  --> $DIR/formatting.rs:70:11
    |
 LL |         -1
    |           ^

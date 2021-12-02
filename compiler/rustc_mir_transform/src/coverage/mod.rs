@@ -485,7 +485,7 @@ fn inject_statement(
 
 // Non-code expressions are injected into the coverage map, without generating executable code.
 fn inject_intermediate_expression(mir_body: &mut mir::Body<'tcx>, expression: CoverageKind) {
-    debug_assert!(if let CoverageKind::Expression { .. } = expression { true } else { false });
+    debug_assert!(matches!(expression, CoverageKind::Expression { .. }));
     debug!("  injecting non-code expression {:?}", expression);
     let inject_in_bb = mir::START_BLOCK;
     let data = &mut mir_body[inject_in_bb];

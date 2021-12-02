@@ -1,11 +1,11 @@
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/region-extra.rs:9:5
+  --> $DIR/region-extra.rs:9:24
    |
 LL |     fn foo();
    |     --------- definition of `foo` from trait
 ...
 LL |     fn foo() where 'a: 'b { }
-   |     ^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `'a: 'b`
+   |                        ^^ impl has extra requirement `'a: 'b`
 
 error: aborting due to previous error
 

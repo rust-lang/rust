@@ -1272,6 +1272,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// The removed element is replaced by the last element of the vector.
     ///
     /// This does not preserve ordering, but is *O*(1).
+    /// If you need to preserve the element order, use [`remove`] instead.
+    ///
+    /// [`remove`]: Vec::remove
     ///
     /// # Panics
     ///
@@ -1368,7 +1371,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// shifting all elements after it to the left.
     ///
     /// Note: Because this shifts over the remaining elements, it has a
-    /// worst-case performance of O(n). If you don't need the order of elements
+    /// worst-case performance of *O*(*n*). If you don't need the order of elements
     /// to be preserved, use [`swap_remove`] instead.
     ///
     /// [`swap_remove`]: Vec::swap_remove
@@ -1445,6 +1448,34 @@ impl<T, A: Allocator> Vec<T, A> {
     where
         F: FnMut(&T) -> bool,
     {
+        self.retain_mut(|elem| f(elem));
+    }
+
+    /// Retains only the elements specified by the predicate, passing a mutable reference to it.
+    ///
+    /// In other words, remove all elements `e` such that `f(&mut e)` returns `false`.
+    /// This method operates in place, visiting each element exactly once in the
+    /// original order, and preserves the order of the retained elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_retain_mut)]
+    ///
+    /// let mut vec = vec![1, 2, 3, 4];
+    /// vec.retain_mut(|x| if *x > 3 {
+    ///     false
+    /// } else {
+    ///     *x += 1;
+    ///     true
+    /// });
+    /// assert_eq!(vec, [2, 3, 4]);
+    /// ```
+    #[unstable(feature = "vec_retain_mut", issue = "90829")]
+    pub fn retain_mut<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut T) -> bool,
+    {
         let original_len = self.len();
         // Avoid double drop if the drop guard is not executed,
         // since we may make some holes during the process.
@@ -1496,7 +1527,7 @@ impl<T, A: Allocator> Vec<T, A> {
             g: &mut BackshiftOnDrop<'_, T, A>,
         ) -> bool
         where
-            F: FnMut(&T) -> bool,
+            F: FnMut(&mut T) -> bool,
         {
             // SAFETY: Unchecked element must be valid.
             let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.processed_len) };
@@ -1695,7 +1726,7 @@ impl<T, A: Allocator> Vec<T, A> {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
         if self.len == self.buf.capacity() {
-            self.reserve(1);
+            self.buf.reserve_for_push(self.len);
         }
         unsafe {
             let end = self.as_mut_ptr().add(self.len);

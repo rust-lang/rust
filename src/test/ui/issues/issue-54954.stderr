@@ -11,11 +11,6 @@ LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
    |
    = note: cannot satisfy `_: Tt`
-note: required by a bound in `Tt::const_val`
-  --> $DIR/issue-54954.rs:5:24
-   |
-LL |     const fn const_val<T: Sized>() -> usize {
-   |                        ^ required by this bound in `Tt::const_val`
 
 error: aborting due to 2 previous errors
 

@@ -7,7 +7,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 #[rustfmt::skip] // for line breaks
-const UNICODE_ARRAY: &[(char, &str, char)] = &[
+pub(crate) const UNICODE_ARRAY: &[(char, &str, char)] = &[
     (' ', "Line Separator", ' '),
     (' ', "Paragraph Separator", ' '),
     (' ', "Ogham Space mark", ' '),

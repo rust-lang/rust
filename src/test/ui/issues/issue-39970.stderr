@@ -9,11 +9,6 @@ note: required because of the requirements on the impl of `Visit` for `()`
    |
 LL | impl Visit for () where
    |      ^^^^^     ^^
-note: required by `Visit::visit`
-  --> $DIR/issue-39970.rs:6:5
-   |
-LL |     fn visit() {}
-   |     ^^^^^^^^^^
 
 error: aborting due to previous error
 

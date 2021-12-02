@@ -44,7 +44,7 @@ pre, .rustdoc.source .example-wrap {
 	scrollbar-color: rgb(64, 65, 67) #717171;
 }
 .sidebar {
-	scrollbar-color: rgba(32,34,37,.6) transparent;
+	scrollbar-color: rgba(32,34,37,.6) #5a5a5a;
 }
 
 /* Improve the scrollbar display on webkit-based browsers */
@@ -174,21 +174,28 @@ nav.main .current {
 nav.main .separator {
 	border-color: #eee;
 }
+
 a {
+	color: #D2991D;
+}
+a.srclink,
+a#toggle-all-docs,
+a.anchor,
+.section-header a,
+#source-sidebar a,
+pre.rust a,
+.sidebar a,
+.in-band a {
 	color: #ddd;
+}
+.search-results a {
+	color: #ddd;
+}
+a.test-arrow {
+	color: #dedede;
 }
 body.source .example-wrap pre.rust a {
 	background: #333;
-}
-
-.docblock:not(.item-decl) a:not(.srclink):not(.test-arrow),
-.docblock-short a:not(.srclink):not(.test-arrow), .item-info a,
-#help a {
-	color: #D2991D;
-}
-
-a.test-arrow {
-	color: #dedede;
 }
 
 details.rustdoc-toggle > summary.hideme > span,

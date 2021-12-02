@@ -165,6 +165,7 @@ macro_rules! __thread_local_inner {
         #[cfg_attr(not(windows), inline)] // see comments below
         unsafe fn __getit() -> $crate::option::Option<&'static $t> {
             const _REQUIRE_UNSTABLE: () = $crate::thread::require_unstable_const_init_thread_local();
+            const INIT_EXPR: $t = $init;
 
             // wasm without atomics maps directly to `static mut`, and dtors
             // aren't implemented because thread dtors aren't really a thing
@@ -172,30 +173,29 @@ macro_rules! __thread_local_inner {
             //
             // FIXME(#84224) this should come after the `target_thread_local`
             // block.
-            #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+            #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
             {
-                static mut VAL: $t = $init;
+                static mut VAL: $t = INIT_EXPR;
                 Some(&VAL)
             }
 
             // If the platform has support for `#[thread_local]`, use it.
             #[cfg(all(
                 target_thread_local,
-                not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+                not(all(target_family = "wasm", not(target_feature = "atomics"))),
             ))]
             {
+                #[thread_local]
+                static mut VAL: $t = INIT_EXPR;
+
                 // If a dtor isn't needed we can do something "very raw" and
                 // just get going.
                 if !$crate::mem::needs_drop::<$t>() {
-                    #[thread_local]
-                    static mut VAL: $t = $init;
                     unsafe {
                         return Some(&VAL)
                     }
                 }
 
-                #[thread_local]
-                static mut VAL: $t = $init;
                 // 0 == dtor not registered
                 // 1 == dtor registered, dtor not run
                 // 2 == dtor registered and is running or has run
@@ -238,11 +238,11 @@ macro_rules! __thread_local_inner {
             // same implementation as below for os thread locals.
             #[cfg(all(
                 not(target_thread_local),
-                not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+                not(all(target_family = "wasm", not(target_feature = "atomics"))),
             ))]
             {
                 #[inline]
-                const fn __init() -> $t { $init }
+                const fn __init() -> $t { INIT_EXPR }
                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                     $crate::thread::__OsLocalKeyInner::new();
                 #[allow(unused_unsafe)]
@@ -285,21 +285,21 @@ macro_rules! __thread_local_inner {
             // The issue of "should enable on Windows sometimes" is #84933
             #[cfg_attr(not(windows), inline)]
             unsafe fn __getit() -> $crate::option::Option<&'static $t> {
-                #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+                #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
                 static __KEY: $crate::thread::__StaticLocalKeyInner<$t> =
                     $crate::thread::__StaticLocalKeyInner::new();
 
                 #[thread_local]
                 #[cfg(all(
                     target_thread_local,
-                    not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+                    not(all(target_family = "wasm", not(target_feature = "atomics"))),
                 ))]
                 static __KEY: $crate::thread::__FastLocalKeyInner<$t> =
                     $crate::thread::__FastLocalKeyInner::new();
 
                 #[cfg(all(
                     not(target_thread_local),
-                    not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+                    not(all(target_family = "wasm", not(target_feature = "atomics"))),
                 ))]
                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                     $crate::thread::__OsLocalKeyInner::new();
@@ -479,10 +479,10 @@ mod lazy {
     }
 }
 
-/// On some platforms like wasm32 there's no threads, so no need to generate
+/// On some targets like wasm there's no threads, so no need to generate
 /// thread locals and we can instead just use plain statics!
 #[doc(hidden)]
-#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+#[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
 pub mod statik {
     use super::lazy::LazyKeyInner;
     use crate::fmt;

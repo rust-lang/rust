@@ -3,7 +3,7 @@ fn bar<F>(blk: F) where F: FnOnce() + 'static {
 
 fn foo(x: &()) {
     bar(|| {
-        //~^ ERROR explicit lifetime required in the type of `x` [E0621]
+        //~^ ERROR `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement [E0759]
         let _ = x;
     })
 }

@@ -15,6 +15,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
+#![feature(derive_default_enum)]
 #![feature(extend_one)]
 #![feature(iter_zip)]
 #![feature(let_else)]
@@ -23,6 +24,7 @@
 #![feature(control_flow_enum)]
 #![feature(min_specialization)]
 #![feature(label_break_value)]
+#![feature(unwrap_infallible)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

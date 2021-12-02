@@ -27,7 +27,7 @@ where
         let key = f(x);
         result.entry(key).or_insert(Vec::new()).push(x);
     }
-    result //~ ERROR cannot return value referencing local binding
+    result //~ ERROR cannot return value referencing temporary value
 }
 
 fn main() {}

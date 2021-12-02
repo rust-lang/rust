@@ -264,13 +264,26 @@ where
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub(super) struct State {
     /// Describes whether a local contains qualif.
     pub qualif: BitSet<Local>,
     /// Describes whether a local's address escaped and it might become qualified as a result an
     /// indirect mutation.
     pub borrow: BitSet<Local>,
+}
+
+impl Clone for State {
+    fn clone(&self) -> Self {
+        State { qualif: self.qualif.clone(), borrow: self.borrow.clone() }
+    }
+
+    // Data flow engine when possible uses `clone_from` for domain values.
+    // Providing an implementation will avoid some intermediate memory allocations.
+    fn clone_from(&mut self, other: &Self) {
+        self.qualif.clone_from(&other.qualif);
+        self.borrow.clone_from(&other.borrow);
+    }
 }
 
 impl State {

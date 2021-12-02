@@ -2,6 +2,8 @@
 allow-unauthenticated = [
     "C-*", "A-*", "E-*", "NLL-*", "O-*", "S-*", "T-*", "WG-*", "F-*",
     "D-*",
+    "needs-fcp",
+    "relnotes",
     "requires-nightly",
     "regression-*",
     "perf-*",

@@ -61,36 +61,26 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
         }
 
         let mut i = 0;
+        let mut valid_up_to = 0;
         while i < self.source.len() {
-            let i_ = i;
-
-            // SAFETY: `i` starts at `0`, is less than `self.source.len()`, and
-            // only increases, so `0 <= i < self.source.len()`.
+            // SAFETY: `i < self.source.len()` per previous line.
+            // For some reason the following are both significantly slower:
+            // while let Some(&byte) = self.source.get(i) {
+            // while let Some(byte) = self.source.get(i).copied() {
             let byte = unsafe { *self.source.get_unchecked(i) };
             i += 1;
 
             if byte < 128 {
+                // This could be a `1 => ...` case in the match below, but for
+                // the common case of all-ASCII inputs, we bypass loading the
+                // sizeable UTF8_CHAR_WIDTH table into cache.
             } else {
                 let w = utf8_char_width(byte);
-
-                macro_rules! error {
-                    () => {{
-                        // SAFETY: We have checked up to `i` that source is valid UTF-8.
-                        unsafe {
-                            let r = Utf8LossyChunk {
-                                valid: from_utf8_unchecked(&self.source[0..i_]),
-                                broken: &self.source[i_..i],
-                            };
-                            self.source = &self.source[i..];
-                            return Some(r);
-                        }
-                    }};
-                }
 
                 match w {
                     2 => {
                         if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            error!();
+                            break;
                         }
                         i += 1;
                     }
@@ -100,13 +90,11 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
                             (0xE1..=0xEC, 0x80..=0xBF) => (),
                             (0xED, 0x80..=0x9F) => (),
                             (0xEE..=0xEF, 0x80..=0xBF) => (),
-                            _ => {
-                                error!();
-                            }
+                            _ => break,
                         }
                         i += 1;
                         if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            error!();
+                            break;
                         }
                         i += 1;
                     }
@@ -115,34 +103,45 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
                             (0xF0, 0x90..=0xBF) => (),
                             (0xF1..=0xF3, 0x80..=0xBF) => (),
                             (0xF4, 0x80..=0x8F) => (),
-                            _ => {
-                                error!();
-                            }
+                            _ => break,
                         }
                         i += 1;
                         if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            error!();
+                            break;
                         }
                         i += 1;
                         if safe_get(self.source, i) & 192 != TAG_CONT_U8 {
-                            error!();
+                            break;
                         }
                         i += 1;
                     }
-                    _ => {
-                        error!();
-                    }
+                    _ => break,
                 }
             }
+
+            valid_up_to = i;
         }
 
-        let r = Utf8LossyChunk {
-            // SAFETY: We have checked that the entire source is valid UTF-8.
-            valid: unsafe { from_utf8_unchecked(self.source) },
-            broken: &[],
-        };
-        self.source = &[];
-        Some(r)
+        // SAFETY: `i <= self.source.len()` because it is only ever incremented
+        // via `i += 1` and in between every single one of those increments, `i`
+        // is compared against `self.source.len()`. That happens either
+        // literally by `i < self.source.len()` in the while-loop's condition,
+        // or indirectly by `safe_get(self.source, i) & 192 != TAG_CONT_U8`. The
+        // loop is terminated as soon as the latest `i += 1` has made `i` no
+        // longer less than `self.source.len()`, which means it'll be at most
+        // equal to `self.source.len()`.
+        let (inspected, remaining) = unsafe { self.source.split_at_unchecked(i) };
+        self.source = remaining;
+
+        // SAFETY: `valid_up_to <= i` because it is only ever assigned via
+        // `valid_up_to = i` and `i` only increases.
+        let (valid, broken) = unsafe { inspected.split_at_unchecked(valid_up_to) };
+
+        Some(Utf8LossyChunk {
+            // SAFETY: All bytes up to `valid_up_to` are valid UTF-8.
+            valid: unsafe { from_utf8_unchecked(valid) },
+            broken,
+        })
     }
 }
 

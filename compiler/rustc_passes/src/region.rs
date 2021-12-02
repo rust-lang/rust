@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Arm, Block, Expr, Local, Node, Pat, PatKind, Stmt};
+use rustc_hir::{Arm, Block, Expr, Local, Pat, PatKind, Stmt};
 use rustc_index::vec::Idx;
 use rustc_middle::middle::region::*;
 use rustc_middle::ty::query::Providers;
@@ -334,9 +334,10 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     // properly, we can't miss any types.
 
     match expr.kind {
-        // Manually recurse over closures, because they are the only
+        // Manually recurse over closures and inline consts, because they are the only
         // case of nested bodies that share the parent environment.
-        hir::ExprKind::Closure(.., body, _, _) => {
+        hir::ExprKind::Closure(.., body, _, _)
+        | hir::ExprKind::ConstBlock(hir::AnonConst { body, .. }) => {
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
         }
@@ -817,9 +818,9 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 }
 
 fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
-    let closure_base_def_id = tcx.closure_base_def_id(def_id);
-    if closure_base_def_id != def_id {
-        return tcx.region_scope_tree(closure_base_def_id);
+    let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
+    if typeck_root_def_id != def_id {
+        return tcx.region_scope_tree(typeck_root_def_id);
     }
 
     let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
@@ -836,19 +837,7 @@ fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
 
         let body = tcx.hir().body(body_id);
         visitor.scope_tree.root_body = Some(body.value.hir_id);
-
-        // If the item is an associated const or a method,
-        // record its impl/trait parent, as it can also have
-        // lifetime parameters free in this body.
-        match tcx.hir().get(id) {
-            Node::ImplItem(_) | Node::TraitItem(_) => {
-                visitor.scope_tree.root_parent = Some(tcx.hir().get_parent_item(id));
-            }
-            _ => {}
-        }
-
         visitor.visit_body(body);
-
         visitor.scope_tree
     } else {
         ScopeTree::default()

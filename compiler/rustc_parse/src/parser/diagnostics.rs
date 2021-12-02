@@ -1,14 +1,19 @@
+use super::pat::Expected;
 use super::ty::AllowPlus;
-use super::TokenType;
-use super::{BlockMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep, TokenExpectType};
+use super::{
+    BlockMode, Parser, PathStyle, RecoverColon, RecoverComma, Restrictions, SemiColonMode, SeqSep,
+    TokenExpectType, TokenType,
+};
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Lit, LitKind, TokenKind};
 use rustc_ast::util::parser::AssocOp;
-use rustc_ast::{AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec};
-use rustc_ast::{BinOpKind, BindingMode, Block, BlockCheckMode, Expr, ExprKind, GenericArg, Item};
-use rustc_ast::{ItemKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QSelf, Ty, TyKind};
+use rustc_ast::{
+    AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
+    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Mutability, Param, Pat,
+    PatKind, Path, PathSegment, QSelf, Ty, TyKind,
+};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err};
@@ -16,6 +21,8 @@ use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
+
+use std::mem::take;
 
 use tracing::{debug, trace};
 
@@ -662,7 +669,7 @@ impl<'a> Parser<'a> {
             let snapshot = self.clone();
             self.bump();
             let lo = self.token.span;
-            match self.parse_angle_args() {
+            match self.parse_angle_args(None) {
                 Ok(args) => {
                     let span = lo.to(self.prev_token.span);
                     // Detect trailing `>` like in `x.collect::Vec<_>>()`.
@@ -719,7 +726,7 @@ impl<'a> Parser<'a> {
                     let x = self.parse_seq_to_before_end(
                         &token::Gt,
                         SeqSep::trailing_allowed(token::Comma),
-                        |p| p.parse_generic_arg(),
+                        |p| p.parse_generic_arg(None),
                     );
                     match x {
                         Ok((_, _, false)) => {
@@ -1103,7 +1110,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::ModSep)?;
 
         let mut path = ast::Path { segments: Vec::new(), span: DUMMY_SP, tokens: None };
-        self.parse_path_segments(&mut path.segments, T::PATH_STYLE)?;
+        self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
         path.span = ty_span.to(self.prev_token.span);
 
         let ty_str = self.span_to_snippet(ty_span).unwrap_or_else(|_| pprust::ty_to_string(&ty));
@@ -1121,7 +1128,7 @@ impl<'a> Parser<'a> {
         Ok(P(T::recovered(Some(QSelf { ty, path_span, position: 0 }), path)))
     }
 
-    pub(super) fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
+    pub fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
         if self.eat(&token::Semi) {
             let mut err = self.struct_span_err(self.prev_token.span, "expected item, found `;`");
             err.span_suggestion_short(
@@ -1909,6 +1916,71 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
+    fn recover_const_param_decl(
+        &mut self,
+        ty_generics: Option<&Generics>,
+    ) -> PResult<'a, Option<GenericArg>> {
+        let snapshot = self.clone();
+        let param = match self.parse_const_param(vec![]) {
+            Ok(param) => param,
+            Err(mut err) => {
+                err.cancel();
+                *self = snapshot;
+                return Err(err);
+            }
+        };
+        let mut err =
+            self.struct_span_err(param.span(), "unexpected `const` parameter declaration");
+        err.span_label(param.span(), "expected a `const` expression, not a parameter declaration");
+        if let (Some(generics), Ok(snippet)) =
+            (ty_generics, self.sess.source_map().span_to_snippet(param.span()))
+        {
+            let (span, sugg) = match &generics.params[..] {
+                [] => (generics.span, format!("<{}>", snippet)),
+                [.., generic] => (generic.span().shrink_to_hi(), format!(", {}", snippet)),
+            };
+            err.multipart_suggestion(
+                "`const` parameters must be declared for the `impl`",
+                vec![(span, sugg), (param.span(), param.ident.to_string())],
+                Applicability::MachineApplicable,
+            );
+        }
+        let value = self.mk_expr_err(param.span());
+        err.emit();
+        return Ok(Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })));
+    }
+
+    pub fn recover_const_param_declaration(
+        &mut self,
+        ty_generics: Option<&Generics>,
+    ) -> PResult<'a, Option<GenericArg>> {
+        // We have to check for a few different cases.
+        if let Ok(arg) = self.recover_const_param_decl(ty_generics) {
+            return Ok(arg);
+        }
+
+        // We haven't consumed `const` yet.
+        let start = self.token.span;
+        self.bump(); // `const`
+
+        // Detect and recover from the old, pre-RFC2000 syntax for const generics.
+        let mut err = self
+            .struct_span_err(start, "expected lifetime, type, or constant, found keyword `const`");
+        if self.check_const_arg() {
+            err.span_suggestion_verbose(
+                start.until(self.token.span),
+                "the `const` keyword is only needed in the definition of the type",
+                String::new(),
+                Applicability::MaybeIncorrect,
+            );
+            err.emit();
+            Ok(Some(GenericArg::Const(self.parse_const_arg()?)))
+        } else {
+            let after_kw_const = self.token.span;
+            self.recover_const_arg(after_kw_const, err).map(Some)
+        }
+    }
+
     /// Try to recover from possible generic const argument without `{` and `}`.
     ///
     /// When encountering code like `foo::< bar + 3 >` or `foo::< bar - baz >` we suggest
@@ -2007,5 +2079,178 @@ impl<'a> Parser<'a> {
             Applicability::MaybeIncorrect,
         );
         err
+    }
+
+    /// Some special error handling for the "top-level" patterns in a match arm,
+    /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
+    crate fn maybe_recover_colon_colon_in_pat_typo(
+        &mut self,
+        mut first_pat: P<Pat>,
+        ra: RecoverColon,
+        expected: Expected,
+    ) -> P<Pat> {
+        if RecoverColon::Yes != ra || token::Colon != self.token.kind {
+            return first_pat;
+        }
+        if !matches!(first_pat.kind, PatKind::Ident(_, _, None) | PatKind::Path(..))
+            || !self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
+        {
+            return first_pat;
+        }
+        // The pattern looks like it might be a path with a `::` -> `:` typo:
+        // `match foo { bar:baz => {} }`
+        let span = self.token.span;
+        // We only emit "unexpected `:`" error here if we can successfully parse the
+        // whole pattern correctly in that case.
+        let snapshot = self.clone();
+
+        // Create error for "unexpected `:`".
+        match self.expected_one_of_not_found(&[], &[]) {
+            Err(mut err) => {
+                self.bump(); // Skip the `:`.
+                match self.parse_pat_no_top_alt(expected) {
+                    Err(mut inner_err) => {
+                        // Carry on as if we had not done anything, callers will emit a
+                        // reasonable error.
+                        inner_err.cancel();
+                        err.cancel();
+                        *self = snapshot;
+                    }
+                    Ok(mut pat) => {
+                        // We've parsed the rest of the pattern.
+                        let new_span = first_pat.span.to(pat.span);
+                        let mut show_sugg = false;
+                        // Try to construct a recovered pattern.
+                        match &mut pat.kind {
+                            PatKind::Struct(qself @ None, path, ..)
+                            | PatKind::TupleStruct(qself @ None, path, _)
+                            | PatKind::Path(qself @ None, path) => match &first_pat.kind {
+                                PatKind::Ident(_, ident, _) => {
+                                    path.segments.insert(0, PathSegment::from_ident(ident.clone()));
+                                    path.span = new_span;
+                                    show_sugg = true;
+                                    first_pat = pat;
+                                }
+                                PatKind::Path(old_qself, old_path) => {
+                                    path.segments = old_path
+                                        .segments
+                                        .iter()
+                                        .cloned()
+                                        .chain(take(&mut path.segments))
+                                        .collect();
+                                    path.span = new_span;
+                                    *qself = old_qself.clone();
+                                    first_pat = pat;
+                                    show_sugg = true;
+                                }
+                                _ => {}
+                            },
+                            PatKind::Ident(BindingMode::ByValue(Mutability::Not), ident, None) => {
+                                match &first_pat.kind {
+                                    PatKind::Ident(_, old_ident, _) => {
+                                        let path = PatKind::Path(
+                                            None,
+                                            Path {
+                                                span: new_span,
+                                                segments: vec![
+                                                    PathSegment::from_ident(old_ident.clone()),
+                                                    PathSegment::from_ident(ident.clone()),
+                                                ],
+                                                tokens: None,
+                                            },
+                                        );
+                                        first_pat = self.mk_pat(new_span, path);
+                                        show_sugg = true;
+                                    }
+                                    PatKind::Path(old_qself, old_path) => {
+                                        let mut segments = old_path.segments.clone();
+                                        segments.push(PathSegment::from_ident(ident.clone()));
+                                        let path = PatKind::Path(
+                                            old_qself.clone(),
+                                            Path { span: new_span, segments, tokens: None },
+                                        );
+                                        first_pat = self.mk_pat(new_span, path);
+                                        show_sugg = true;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            _ => {}
+                        }
+                        if show_sugg {
+                            err.span_suggestion(
+                                span,
+                                "maybe write a path separator here",
+                                "::".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            first_pat = self.mk_pat(new_span, PatKind::Wild);
+                        }
+                        err.emit();
+                    }
+                }
+            }
+            _ => {
+                // Carry on as if we had not done anything. This should be unreachable.
+                *self = snapshot;
+            }
+        };
+        first_pat
+    }
+
+    /// Some special error handling for the "top-level" patterns in a match arm,
+    /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
+    crate fn maybe_recover_unexpected_comma(
+        &mut self,
+        lo: Span,
+        rc: RecoverComma,
+    ) -> PResult<'a, ()> {
+        if rc == RecoverComma::No || self.token != token::Comma {
+            return Ok(());
+        }
+
+        // An unexpected comma after a top-level pattern is a clue that the
+        // user (perhaps more accustomed to some other language) forgot the
+        // parentheses in what should have been a tuple pattern; return a
+        // suggestion-enhanced error here rather than choking on the comma later.
+        let comma_span = self.token.span;
+        self.bump();
+        if let Err(mut err) = self.skip_pat_list() {
+            // We didn't expect this to work anyway; we just wanted to advance to the
+            // end of the comma-sequence so we know the span to suggest parenthesizing.
+            err.cancel();
+        }
+        let seq_span = lo.to(self.prev_token.span);
+        let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
+        if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
+            const MSG: &str = "try adding parentheses to match on a tuple...";
+
+            err.span_suggestion(
+                seq_span,
+                MSG,
+                format!("({})", seq_snippet),
+                Applicability::MachineApplicable,
+            );
+            err.span_suggestion(
+                seq_span,
+                "...or a vertical bar to match on multiple alternatives",
+                seq_snippet.replace(",", " |"),
+                Applicability::MachineApplicable,
+            );
+        }
+        Err(err)
+    }
+
+    /// Parse and throw away a parenthesized comma separated
+    /// sequence of patterns until `)` is reached.
+    fn skip_pat_list(&mut self) -> PResult<'a, ()> {
+        while !self.check(&token::CloseDelim(token::Paren)) {
+            self.parse_pat_no_top_alt(None)?;
+            if !self.eat(&token::Comma) {
+                return Ok(());
+            }
+        }
+        Ok(())
     }
 }

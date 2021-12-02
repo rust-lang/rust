@@ -37,7 +37,7 @@ use std::iter::{self, FromIterator};
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 
-/// The different settings that the `-Z strip` flag can have.
+/// The different settings that the `-C strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Strip {
     /// Do not strip at all.
@@ -163,6 +163,18 @@ pub enum LinkerPluginLto {
     LinkerPlugin(PathBuf),
     LinkerPluginAuto,
     Disabled,
+}
+
+/// Used with `-Z assert-incr-state`.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum IncrementalStateAssertion {
+    /// Found and loaded an existing session directory.
+    ///
+    /// Note that this says nothing about whether any particular query
+    /// will be found to be red or green.
+    Loaded,
+    /// Did not load an existing session directory.
+    NotLoaded,
 }
 
 impl LinkerPluginLto {
@@ -323,20 +335,15 @@ impl Default for ErrorOutputType {
 }
 
 /// Parameter to control path trimming.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum TrimmedDefPaths {
     /// `try_print_trimmed_def_path` never prints a trimmed path and never calls the expensive query
+    #[default]
     Never,
     /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call `delay_good_path_bug`
     Always,
     /// `try_print_trimmed_def_path` calls the expensive query, the query calls `delay_good_path_bug`
     GoodPath,
-}
-
-impl Default for TrimmedDefPaths {
-    fn default() -> Self {
-        Self::Never
-    }
 }
 
 /// Use tree-based collections to cheaply get a deterministic `Hash` implementation.
@@ -526,6 +533,7 @@ pub enum PrintRequest {
     TlsModels,
     TargetSpec,
     NativeStaticLibs,
+    StackProtectorStrategies,
 }
 
 #[derive(Copy, Clone)]
@@ -578,6 +586,7 @@ pub struct OutputFilenames {
     pub out_directory: PathBuf,
     filestem: String,
     pub single_output_file: Option<PathBuf>,
+    pub temps_directory: Option<PathBuf>,
     pub outputs: OutputTypes,
 }
 
@@ -592,12 +601,14 @@ impl OutputFilenames {
         out_directory: PathBuf,
         out_filestem: String,
         single_output_file: Option<PathBuf>,
+        temps_directory: Option<PathBuf>,
         extra: String,
         outputs: OutputTypes,
     ) -> Self {
         OutputFilenames {
             out_directory,
             single_output_file,
+            temps_directory,
             outputs,
             filestem: format!("{}{}", out_filestem, extra),
         }
@@ -608,7 +619,14 @@ impl OutputFilenames {
             .get(&flavor)
             .and_then(|p| p.to_owned())
             .or_else(|| self.single_output_file.clone())
-            .unwrap_or_else(|| self.temp_path(flavor, None))
+            .unwrap_or_else(|| self.output_path(flavor))
+    }
+
+    /// Gets the output path where a compilation artifact of the given type
+    /// should be placed on disk.
+    pub fn output_path(&self, flavor: OutputType) -> PathBuf {
+        let extension = flavor.extension();
+        self.with_directory_and_extension(&self.out_directory, &extension)
     }
 
     /// Gets the path where a compilation artifact of the given type for the
@@ -643,11 +661,17 @@ impl OutputFilenames {
             extension.push_str(ext);
         }
 
-        self.with_extension(&extension)
+        let temps_directory = self.temps_directory.as_ref().unwrap_or(&self.out_directory);
+
+        self.with_directory_and_extension(&temps_directory, &extension)
     }
 
     pub fn with_extension(&self, extension: &str) -> PathBuf {
-        let mut path = self.out_directory.join(&self.filestem);
+        self.with_directory_and_extension(&self.out_directory, extension)
+    }
+
+    fn with_directory_and_extension(&self, directory: &PathBuf, extension: &str) -> PathBuf {
+        let mut path = directory.join(&self.filestem);
         path.set_extension(extension);
         path
     }
@@ -688,6 +712,7 @@ pub fn host_triple() -> &'static str {
 impl Default for Options {
     fn default() -> Options {
         Options {
+            assert_incr_state: None,
             crate_types: Vec::new(),
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
@@ -808,6 +833,13 @@ impl Passes {
             Passes::All => false,
         }
     }
+
+    pub fn extend(&mut self, passes: impl IntoIterator<Item = String>) {
+        match *self {
+            Passes::Some(ref mut v) => v.extend(passes),
+            Passes::All => {}
+        }
+    }
 }
 
 pub const fn default_lib_output() -> CrateType {
@@ -914,7 +946,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateCo
 pub(super) fn build_target_config(
     opts: &Options,
     target_override: Option<Target>,
-    sysroot: &PathBuf,
+    sysroot: &Path,
 ) -> Target {
     let target_result = target_override.map_or_else(
         || Target::search(&opts.target_triple, sysroot),
@@ -1081,8 +1113,8 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "print",
             "Compiler information to print on stdout",
             "[crate-name|file-names|sysroot|target-libdir|cfg|target-list|\
-             target-cpus|target-features|relocation-models|\
-             code-models|tls-models|target-spec-json|native-static-libs]",
+             target-cpus|target-features|relocation-models|code-models|\
+             tls-models|target-spec-json|native-static-libs|stack-protector-strategies]",
         ),
         opt::flagmulti_s("g", "", "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
@@ -1498,6 +1530,7 @@ fn collect_print_requests(
         "code-models" => PrintRequest::CodeModels,
         "tls-models" => PrintRequest::TlsModels,
         "native-static-libs" => PrintRequest::NativeStaticLibs,
+        "stack-protector-strategies" => PrintRequest::StackProtectorStrategies,
         "target-spec-json" => {
             if dopts.unstable_options {
                 PrintRequest::TargetSpec
@@ -1607,6 +1640,21 @@ fn select_debuginfo(
                 );
             }
         }
+    }
+}
+
+crate fn parse_assert_incr_state(
+    opt_assertion: &Option<String>,
+    error_format: ErrorOutputType,
+) -> Option<IncrementalStateAssertion> {
+    match opt_assertion {
+        Some(s) if s.as_str() == "loaded" => Some(IncrementalStateAssertion::Loaded),
+        Some(s) if s.as_str() == "not-loaded" => Some(IncrementalStateAssertion::NotLoaded),
+        Some(s) => early_error(
+            error_format,
+            &format!("unexpected incremental state assertion value: {}", s),
+        ),
+        None => None,
     }
 }
 
@@ -1999,6 +2047,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
 
+    let assert_incr_state =
+        parse_assert_incr_state(&debugging_opts.assert_incr_state, error_format);
+
     if debugging_opts.profile && incremental.is_some() {
         early_error(
             error_format,
@@ -2163,6 +2214,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     };
 
     Options {
+        assert_incr_state,
         crate_types,
         optimize: opt_level,
         debuginfo,
@@ -2446,7 +2498,9 @@ crate mod dep_tracking {
     use rustc_span::edition::Edition;
     use rustc_span::RealFileName;
     use rustc_target::spec::{CodeModel, MergeFunctions, PanicStrategy, RelocModel};
-    use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, TargetTriple, TlsModel};
+    use rustc_target::spec::{
+        RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
+    };
     use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
     use std::hash::Hash;
@@ -2520,6 +2574,7 @@ crate mod dep_tracking {
         Edition,
         LinkerPluginLto,
         SplitDebuginfo,
+        StackProtector,
         SwitchWithOptPath,
         SymbolManglingVersion,
         SourceFileHashAlgorithm,

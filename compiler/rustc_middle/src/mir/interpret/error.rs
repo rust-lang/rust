@@ -492,9 +492,6 @@ impl dyn MachineStopType {
     }
 }
 
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(InterpError<'_>, 64);
-
 pub enum InterpError<'tcx> {
     /// The program caused undefined behavior.
     UndefinedBehavior(UndefinedBehaviorInfo<'tcx>),
@@ -538,12 +535,12 @@ impl InterpError<'_> {
     /// To avoid performance issues, there are places where we want to be sure to never raise these formatting errors,
     /// so this method lets us detect them and `bug!` on unexpected errors.
     pub fn formatted_string(&self) -> bool {
-        match self {
+        matches!(
+            self,
             InterpError::Unsupported(UnsupportedOpInfo::Unsupported(_))
-            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure { .. })
-            | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_)) => true,
-            _ => false,
-        }
+                | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ValidationFailure { .. })
+                | InterpError::UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
+        )
     }
 
     /// Should this error be reported as a hard error, preventing compilation, or a soft error,

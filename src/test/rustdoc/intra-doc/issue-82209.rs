@@ -1,5 +1,5 @@
 #![crate_name = "foo"]
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 pub enum Foo {
     Bar {
         abc: i32,
