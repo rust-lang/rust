@@ -1,7 +1,7 @@
 //! This module generates [moniker](https://microsoft.github.io/language-server-protocol/specifications/lsif/0.6.0/specification/#exportsImports)
 //! for LSIF and LSP.
 
-use hir::{db::DefDatabase, Crate, Name, Semantics};
+use hir::{db::DefDatabase, AsAssocItem, AssocItemContainer, Crate, Name, Semantics};
 use ide_db::{
     base_db::{CrateOrigin, FileId, FileLoader, FilePosition},
     defs::Definition,
@@ -106,9 +106,34 @@ pub(crate) fn def_to_moniker(
     let krate = module.krate();
     let mut path = vec![];
     path.extend(module.path_to_root(db).into_iter().filter_map(|x| x.name(db)));
+
+    // Handle associated items within a trait
+    if let Some(assoc) = def.as_assoc_item(db) {
+        let container = assoc.container(db);
+        match container {
+            AssocItemContainer::Trait(trait_) => {
+                // Because different traits can have functions with the same name,
+                // we have to include the trait name as part of the moniker for uniqueness.
+                path.push(trait_.name(db));
+            }
+            AssocItemContainer::Impl(impl_) => {
+                // Because a struct can implement multiple traits, for implementations
+                // we add both the struct name and the trait name to the path
+                if let Some(adt) = impl_.self_ty(db).as_adt() {
+                    path.push(adt.name(db));
+                }
+
+                if let Some(trait_) = impl_.trait_(db) {
+                    path.push(trait_.name(db));
+                }
+            }
+        }
+    }
+
     if let Definition::Field(it) = def {
         path.push(it.parent_def(db).name(db));
     }
+
     path.push(def.name(db)?);
     Some(MonikerResult {
         identifier: MonikerIdentifier {
@@ -187,6 +212,80 @@ pub mod module {
 }
 "#,
             "foo::module::func",
+            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            MonikerKind::Export,
+        );
+    }
+
+    #[test]
+    fn moniker_for_trait() {
+        check_moniker(
+            r#"
+//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+pub mod module {
+    pub trait MyTrait {
+        pub fn func$0() {}
+    }
+}
+"#,
+            "foo::module::MyTrait::func",
+            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            MonikerKind::Export,
+        );
+    }
+
+    #[test]
+    fn moniker_for_trait_constant() {
+        check_moniker(
+            r#"
+//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+pub mod module {
+    pub trait MyTrait {
+        const MY_CONST$0: u8;
+    }
+}
+"#,
+            "foo::module::MyTrait::MY_CONST",
+            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            MonikerKind::Export,
+        );
+    }
+
+    #[test]
+    fn moniker_for_trait_type() {
+        check_moniker(
+            r#"
+//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+pub mod module {
+    pub trait MyTrait {
+        type MyType$0;
+    }
+}
+"#,
+            "foo::module::MyTrait::MyType",
+            r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
+            MonikerKind::Export,
+        );
+    }
+
+    #[test]
+    fn moniker_for_trait_impl_function() {
+        check_moniker(
+            r#"
+//- /foo/lib.rs crate:foo@CratesIo:0.1.0,https://a.b/foo.git
+pub mod module {
+    pub trait MyTrait {
+        pub fn func() {}
+    }
+
+    struct MyStruct {}
+
+    impl MyTrait for MyStruct {
+        pub fn func$0() {}
+    }
+}
+"#,
+            "foo::module::MyStruct::MyTrait::func",
             r#"PackageInformation { name: "foo", repo: "https://a.b/foo.git", version: "0.1.0" }"#,
             MonikerKind::Export,
         );
