@@ -1279,7 +1279,7 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &mut Context<'_>) -> String {
                                 let empty_set = FxHashSet::default();
                                 let src_link =
                                     AssocItemLink::GotoSource(trait_did.into(), &empty_set);
-                                assoc_type(&mut out, it, &[], Some(&tydef.type_), src_link, "", cx);
+                                assoc_type(&mut out, it, &[], Some(&tydef.type_), src_link, "", &mut cx.clone());
                                 out.push_str(";</span>");
                             }
                         }
