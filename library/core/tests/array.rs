@@ -377,7 +377,7 @@ fn array_try_from_fn() {
     let array = core::array::try_from_fn(|i| Ok::<_, SomeError>(i));
     assert_eq!(array, Ok([0, 1, 2, 3, 4]));
 
-    let another_array = core::array::try_from_fn::<SomeError, _, (), 2>(|_| Err(SomeError::Foo));
+    let another_array = core::array::try_from_fn::<_, Result<(), _>, 2>(|_| Err(SomeError::Foo));
     assert_eq!(another_array, Err(SomeError::Foo));
 }
 

@@ -338,3 +338,61 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     fn from_residual(residual: R) -> Self;
 }
+
+/// Allows retrieving the canonical type implementing [`Try`] that has this type
+/// as its residual and allows it to hold an `O` as its output.
+///
+/// If you think of the `Try` trait as splitting a type into its [`Try::Output`]
+/// and [`Try::Residual`] components, this allows putting them back together.
+///
+/// For example,
+/// `Result<T, E>: Try<Output = T, Residual = Result<Infallible, E>>`,
+/// and in the other direction,
+/// `<Result<Infallible, E> as Residual<T>>::TryType = Result<T, E>`.
+#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+pub trait Residual<O> {
+    /// The "return" type of this meta-function.
+    #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+    type TryType: Try<Output = O, Residual = Self>;
+}
+
+#[unstable(feature = "pub_crate_should_not_need_unstable_attr", issue = "none")]
+pub(crate) type ChangeOutputType<T, V> = <<T as Try>::Residual as Residual<V>>::TryType;
+
+/// An adapter for implementing non-try methods via the `Try` implementation.
+///
+/// Conceptually the same as `Result<T, !>`, but requiring less work in trait
+/// solving and inhabited-ness checking and such, by being an obvious newtype
+/// and not having `From` bounds lying around.
+///
+/// Not currently planned to be exposed publicly, so just `pub(crate)`.
+#[repr(transparent)]
+pub(crate) struct NeverShortCircuit<T>(pub T);
+
+pub(crate) enum NeverShortCircuitResidual {}
+
+impl<T> Try for NeverShortCircuit<T> {
+    type Output = T;
+    type Residual = NeverShortCircuitResidual;
+
+    #[inline]
+    fn branch(self) -> ControlFlow<NeverShortCircuitResidual, T> {
+        ControlFlow::Continue(self.0)
+    }
+
+    #[inline]
+    fn from_output(x: T) -> Self {
+        NeverShortCircuit(x)
+    }
+}
+
+impl<T> FromResidual for NeverShortCircuit<T> {
+    #[inline]
+    fn from_residual(never: NeverShortCircuitResidual) -> Self {
+        match never {}
+    }
+}
+
+impl<T> Residual<T> for NeverShortCircuitResidual {
+    type TryType = NeverShortCircuit<T>;
+}

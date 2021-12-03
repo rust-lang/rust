@@ -2089,6 +2089,11 @@ impl<T> const ops::FromResidual for Option<T> {
     }
 }
 
+#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+impl<T> ops::Residual<T> for Option<convert::Infallible> {
+    type TryType = Option<T>;
+}
+
 impl<T> Option<Option<T>> {
     /// Converts from `Option<Option<T>>` to `Option<T>`.
     ///

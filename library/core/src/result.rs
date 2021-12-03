@@ -1959,3 +1959,8 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Res
         }
     }
 }
+
+#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+impl<T, E> ops::Residual<T> for Result<convert::Infallible, E> {
+    type TryType = Result<T, E>;
+}
