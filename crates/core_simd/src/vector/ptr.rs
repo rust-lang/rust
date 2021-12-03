@@ -23,7 +23,7 @@ where
     pub fn wrapping_add(self, addend: Simd<usize, LANES>) -> Self {
         unsafe {
             let x: Simd<usize, LANES> = mem::transmute_copy(&self);
-            mem::transmute_copy(&{ x + (addend * mem::size_of::<T>()) })
+            mem::transmute_copy(&{ x + (addend * Simd::splat(mem::size_of::<T>())) })
         }
     }
 }
@@ -49,7 +49,7 @@ where
     pub fn wrapping_add(self, addend: Simd<usize, LANES>) -> Self {
         unsafe {
             let x: Simd<usize, LANES> = mem::transmute_copy(&self);
-            mem::transmute_copy(&{ x + (addend * mem::size_of::<T>()) })
+            mem::transmute_copy(&{ x + (addend * Simd::splat(mem::size_of::<T>())) })
         }
     }
 }
