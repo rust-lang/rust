@@ -1,0 +1,50 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-91268.rs:9:12
+   |
+LL | fn main() {
+   |           - unclosed delimiter
+LL |     0: u8(ţ
+   |          - ^
+   |          |
+   |          unclosed delimiter
+
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-91268.rs:9:12
+   |
+LL | fn main() {
+   |           - unclosed delimiter
+LL |     0: u8(ţ
+   |          - ^
+   |          |
+   |          unclosed delimiter
+
+error[E0412]: cannot find type `ţ` in this scope
+  --> $DIR/issue-91268.rs:9:11
+   |
+LL |     0: u8(ţ
+   |           ^ expecting a type here because of type ascription
+
+error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
+  --> $DIR/issue-91268.rs:9:8
+   |
+LL |     0: u8(ţ
+   |        ^^^^ only `Fn` traits may use parentheses
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/issue-91268.rs:9:11
+   |
+LL |     0: u8(ţ
+   |           ^ type argument not allowed
+
+error[E0308]: mismatched types
+  --> $DIR/issue-91268.rs:9:5
+   |
+LL | fn main() {
+   |           - expected `()` because of default return type
+LL |     0: u8(ţ
+   |     ^^^^^^^ expected `()`, found `u8`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0109, E0214, E0308, E0412.
+For more information about an error, try `rustc --explain E0109`.
