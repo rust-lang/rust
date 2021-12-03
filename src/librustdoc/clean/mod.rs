@@ -54,7 +54,11 @@ impl Clean<Item> for DocModule<'_> {
         let mut items: Vec<Item> = vec![];
         items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
-        items.extend(self.items.iter().map(|x| x.clean(cx)).flatten());
+        items.extend(
+            self.items
+                .iter()
+                .flat_map(|(item, renamed)| clean_maybe_renamed_item(cx, item, *renamed)),
+        );
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -1726,94 +1730,93 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     }
 }
 
-impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Vec<Item> {
-        use hir::ItemKind;
+fn clean_maybe_renamed_item(
+    cx: &mut DocContext<'_>,
+    item: &hir::Item<'_>,
+    renamed: Option<Symbol>,
+) -> Vec<Item> {
+    use hir::ItemKind;
 
-        let (item, renamed) = self;
-        let def_id = item.def_id.to_def_id();
-        let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
-        cx.with_param_env(def_id, |cx| {
-            let kind = match item.kind {
-                ItemKind::Static(ty, mutability, body_id) => {
-                    StaticItem(Static { type_: ty.clean(cx), mutability, expr: Some(body_id) })
-                }
-                ItemKind::Const(ty, body_id) => ConstantItem(Constant {
-                    type_: ty.clean(cx),
-                    kind: ConstantKind::Local { body: body_id, def_id },
-                }),
-                ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
-                    bounds: ty.bounds.iter().map(|x| x.clean(cx)).collect(),
-                    generics: ty.generics.clean(cx),
-                }),
-                ItemKind::TyAlias(hir_ty, ref generics) => {
-                    let rustdoc_ty = hir_ty.clean(cx);
-                    let ty = hir_ty_to_ty(cx.tcx, hir_ty).clean(cx);
-                    TypedefItem(
-                        Typedef {
-                            type_: rustdoc_ty,
-                            generics: generics.clean(cx),
-                            item_type: Some(ty),
-                        },
-                        false,
-                    )
-                }
-                ItemKind::Enum(ref def, ref generics) => EnumItem(Enum {
-                    variants: def.variants.iter().map(|v| v.clean(cx)).collect(),
-                    generics: generics.clean(cx),
-                    variants_stripped: false,
-                }),
-                ItemKind::TraitAlias(ref generics, bounds) => TraitAliasItem(TraitAlias {
+    let def_id = item.def_id.to_def_id();
+    let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
+    cx.with_param_env(def_id, |cx| {
+        let kind = match item.kind {
+            ItemKind::Static(ty, mutability, body_id) => {
+                StaticItem(Static { type_: ty.clean(cx), mutability, expr: Some(body_id) })
+            }
+            ItemKind::Const(ty, body_id) => ConstantItem(Constant {
+                type_: ty.clean(cx),
+                kind: ConstantKind::Local { body: body_id, def_id },
+            }),
+            ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
+                bounds: ty.bounds.iter().map(|x| x.clean(cx)).collect(),
+                generics: ty.generics.clean(cx),
+            }),
+            ItemKind::TyAlias(hir_ty, ref generics) => {
+                let rustdoc_ty = hir_ty.clean(cx);
+                let ty = hir_ty_to_ty(cx.tcx, hir_ty).clean(cx);
+                TypedefItem(
+                    Typedef {
+                        type_: rustdoc_ty,
+                        generics: generics.clean(cx),
+                        item_type: Some(ty),
+                    },
+                    false,
+                )
+            }
+            ItemKind::Enum(ref def, ref generics) => EnumItem(Enum {
+                variants: def.variants.iter().map(|v| v.clean(cx)).collect(),
+                generics: generics.clean(cx),
+                variants_stripped: false,
+            }),
+            ItemKind::TraitAlias(ref generics, bounds) => TraitAliasItem(TraitAlias {
+                generics: generics.clean(cx),
+                bounds: bounds.iter().map(|x| x.clean(cx)).collect(),
+            }),
+            ItemKind::Union(ref variant_data, ref generics) => UnionItem(Union {
+                generics: generics.clean(cx),
+                fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
+                fields_stripped: false,
+            }),
+            ItemKind::Struct(ref variant_data, ref generics) => StructItem(Struct {
+                struct_type: CtorKind::from_hir(variant_data),
+                generics: generics.clean(cx),
+                fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
+                fields_stripped: false,
+            }),
+            ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.hir_id(), cx),
+            // proc macros can have a name set by attributes
+            ItemKind::Fn(ref sig, ref generics, body_id) => {
+                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
+            }
+            ItemKind::Macro(ref macro_def) => {
+                let ty_vis = cx.tcx.visibility(def_id).clean(cx);
+                MacroItem(Macro {
+                    source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
+                })
+            }
+            ItemKind::Trait(is_auto, unsafety, ref generics, bounds, item_ids) => {
+                let items =
+                    item_ids.iter().map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx)).collect();
+                TraitItem(Trait {
+                    unsafety,
+                    items,
                     generics: generics.clean(cx),
                     bounds: bounds.iter().map(|x| x.clean(cx)).collect(),
-                }),
-                ItemKind::Union(ref variant_data, ref generics) => UnionItem(Union {
-                    generics: generics.clean(cx),
-                    fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
-                    fields_stripped: false,
-                }),
-                ItemKind::Struct(ref variant_data, ref generics) => StructItem(Struct {
-                    struct_type: CtorKind::from_hir(variant_data),
-                    generics: generics.clean(cx),
-                    fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
-                    fields_stripped: false,
-                }),
-                ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.hir_id(), cx),
-                // proc macros can have a name set by attributes
-                ItemKind::Fn(ref sig, ref generics, body_id) => {
-                    clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
-                }
-                ItemKind::Macro(ref macro_def) => {
-                    let ty_vis = cx.tcx.visibility(def_id).clean(cx);
-                    MacroItem(Macro {
-                        source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
-                    })
-                }
-                ItemKind::Trait(is_auto, unsafety, ref generics, bounds, item_ids) => {
-                    let items = item_ids
-                        .iter()
-                        .map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx))
-                        .collect();
-                    TraitItem(Trait {
-                        unsafety,
-                        items,
-                        generics: generics.clean(cx),
-                        bounds: bounds.iter().map(|x| x.clean(cx)).collect(),
-                        is_auto: is_auto.clean(cx),
-                    })
-                }
-                ItemKind::ExternCrate(orig_name) => {
-                    return clean_extern_crate(item, name, orig_name, cx);
-                }
-                ItemKind::Use(path, kind) => {
-                    return clean_use_statement(item, name, path, kind, cx);
-                }
-                _ => unreachable!("not yet converted"),
-            };
+                    is_auto: is_auto.clean(cx),
+                })
+            }
+            ItemKind::ExternCrate(orig_name) => {
+                return clean_extern_crate(item, name, orig_name, cx);
+            }
+            ItemKind::Use(path, kind) => {
+                return clean_use_statement(item, name, path, kind, cx);
+            }
+            _ => unreachable!("not yet converted"),
+        };
 
-            vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
-        })
-    }
+        vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
+    })
 }
 
 impl Clean<Item> for hir::Variant<'_> {
