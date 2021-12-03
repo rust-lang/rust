@@ -3,6 +3,11 @@ error[E0432]: unresolved import `my_cor`
    |
 LL | use my_cor::mem;
    |     ^^^^^^ use of undeclared crate or module `my_cor`
+   |
+help: there is a crate or module with a similar name
+   |
+LL | use my_core::mem;
+   |     ~~~~~~~
 
 error[E0432]: unresolved import `my_core`
   --> $DIR/crate-or-module-typo.rs:33:5
@@ -56,7 +61,7 @@ LL |     use my_cor::mem;
    |         ^^^^^^ use of undeclared crate or module `my_cor`
 ...
 LL | a!();
-   | ----- in this macro invocation
+   | ---- in this macro invocation
    |
    = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: there is a crate or module with a similar name

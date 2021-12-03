@@ -4,7 +4,7 @@
 
 macro a() {
     extern crate core as my_core;
-    use my_cor::mem;
+    use my_cor::mem; //~ ERROR unresolved import `my_cor`
     mod a {
         pub fn bar() {}
     }
@@ -28,9 +28,9 @@ a!();
 
 b!();
 
-use my_cor::mem;
+use my_cor::mem; //~ ERROR unresolved import `my_cor`
 
-use my_core::mem;
+use my_core::mem; //~ ERROR unresolved import `my_core`
 
 use aa::bar; //~ ERROR unresolved import `aa`
 
