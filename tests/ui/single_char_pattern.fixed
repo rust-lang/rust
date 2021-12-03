@@ -56,4 +56,7 @@ fn main() {
     x.split('a');
     x.split('\'');
     x.split('#');
+    // Must escape backslash in raw strings when converting to char #8060
+    x.split('\\');
+    x.split('\\');
 }
