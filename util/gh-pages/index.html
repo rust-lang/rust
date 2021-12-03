@@ -336,7 +336,7 @@ Otherwise, have a great day =^.^=
                     </h2>
                 </header>
 
-                <ul class="list-group lint-docs" ng-class="{collapse: true, in: open[lint.id]}">
+                <div class="list-group lint-docs" ng-class="{collapse: true, in: open[lint.id]}">
                     <div class="list-group-item lint-doc-md" ng-bind-html="lint.docs | markdown"></div>
                     <div class="lint-additional-info-container">
                         <!-- Applicability -->
@@ -359,7 +359,7 @@ Otherwise, have a great day =^.^=
                             <a href="https://github.com/rust-lang/rust-clippy/blob/{{docVersion}}/clippy_lints/{{lint.id_span.path}}#L{{lint.id_span.line}}">View Source</a>
                         </div>
                     </div>
-                </ul>
+                </div>
             </article>
         </div>
     </div>
