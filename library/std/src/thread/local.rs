@@ -76,7 +76,21 @@ use crate::fmt;
 ///    destroyed, but not all platforms have this guard. Those platforms that do
 ///    not guard typically have a synthetic limit after which point no more
 ///    destructors are run.
+/// 3. When the process exits on Windows systems, TLS destructors may only be
+///    run on the thread that causes the process to exit. This is because the
+///    other threads may be forcibly terminated.
 ///
+/// ## Synchronization in thread-local destructors
+///
+/// On Windows, synchronization operations (such as [`JoinHandle::join`]) in
+/// thread local destructors are prone to deadlocks and so should be avoided.
+/// This is because the [loader lock] is held while a destructor is run. The
+/// lock is acquired whenever a thread starts or exits or when a DLL is loaded
+/// or unloaded. Therefore these events are blocked for as long as a thread
+/// local destructor is running.
+///
+/// [loader lock]: https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-best-practices
+/// [`JoinHandle::join`]: crate::thread::JoinHandle::join
 /// [`with`]: LocalKey::with
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LocalKey<T: 'static> {
