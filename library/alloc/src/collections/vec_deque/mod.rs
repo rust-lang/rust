@@ -2179,19 +2179,21 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
+    // Double the buffer size. This method is inline(never), so we expect it to only
+    // be called in cold paths.
     // This may panic or abort
     #[inline(never)]
     fn grow(&mut self) {
-        if self.is_full() {
-            let old_cap = self.cap();
-            // Double the buffer size.
-            self.buf.reserve_exact(old_cap, old_cap);
-            assert!(self.cap() == old_cap * 2);
-            unsafe {
-                self.handle_capacity_increase(old_cap);
-            }
-            debug_assert!(!self.is_full());
+        // Extend or possibly remove this assertion when valid use-cases for growing the
+        // buffer without it being full emerge
+        debug_assert!(self.is_full());
+        let old_cap = self.cap();
+        self.buf.reserve_exact(old_cap, old_cap);
+        assert!(self.cap() == old_cap * 2);
+        unsafe {
+            self.handle_capacity_increase(old_cap);
         }
+        debug_assert!(!self.is_full());
     }
 
     /// Modifies the `VecDeque` in-place so that `len()` is equal to `new_len`,
