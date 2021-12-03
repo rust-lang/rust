@@ -97,6 +97,7 @@ pub fn errno() -> i32 {
 }
 
 #[cfg(target_os = "dragonfly")]
+#[allow(dead_code)]
 pub fn set_errno(e: i32) {
     extern "C" {
         #[thread_local]
