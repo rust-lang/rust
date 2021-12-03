@@ -52,7 +52,11 @@ crate trait Clean<T> {
 impl Clean<Item> for DocModule<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let mut items: Vec<Item> = vec![];
-        items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
+        items.extend(
+            self.foreigns
+                .iter()
+                .map(|(item, renamed)| clean_maybe_renamed_foreign_item(cx, item, *renamed)),
+        );
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
         items.extend(
             self.items
@@ -2030,50 +2034,51 @@ fn clean_use_statement(
     vec![Item::from_def_id_and_parts(import.def_id.to_def_id(), None, ImportItem(inner), cx)]
 }
 
-impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
-        let (item, renamed) = self;
-        let def_id = item.def_id.to_def_id();
-        cx.with_param_env(def_id, |cx| {
-            let kind = match item.kind {
-                hir::ForeignItemKind::Fn(decl, names, ref generics) => {
-                    let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
-                    let (generics, decl) = enter_impl_trait(cx, |cx| {
-                        // NOTE: generics must be cleaned before args
-                        let generics = generics.clean(cx);
-                        let args = clean_args_from_types_and_names(cx, decl.inputs, names);
-                        let decl = clean_fn_decl_with_args(cx, decl, args);
-                        (generics, decl)
-                    });
-                    ForeignFunctionItem(Function {
-                        decl,
-                        generics,
-                        header: hir::FnHeader {
-                            unsafety: if abi == Abi::RustIntrinsic {
-                                intrinsic_operation_unsafety(item.ident.name)
-                            } else {
-                                hir::Unsafety::Unsafe
-                            },
-                            abi,
-                            constness: hir::Constness::NotConst,
-                            asyncness: hir::IsAsync::NotAsync,
+fn clean_maybe_renamed_foreign_item(
+    cx: &mut DocContext<'_>,
+    item: &hir::ForeignItem<'_>,
+    renamed: Option<Symbol>,
+) -> Item {
+    let def_id = item.def_id.to_def_id();
+    cx.with_param_env(def_id, |cx| {
+        let kind = match item.kind {
+            hir::ForeignItemKind::Fn(decl, names, ref generics) => {
+                let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
+                let (generics, decl) = enter_impl_trait(cx, |cx| {
+                    // NOTE: generics must be cleaned before args
+                    let generics = generics.clean(cx);
+                    let args = clean_args_from_types_and_names(cx, decl.inputs, names);
+                    let decl = clean_fn_decl_with_args(cx, decl, args);
+                    (generics, decl)
+                });
+                ForeignFunctionItem(Function {
+                    decl,
+                    generics,
+                    header: hir::FnHeader {
+                        unsafety: if abi == Abi::RustIntrinsic {
+                            intrinsic_operation_unsafety(item.ident.name)
+                        } else {
+                            hir::Unsafety::Unsafe
                         },
-                    })
-                }
-                hir::ForeignItemKind::Static(ref ty, mutability) => {
-                    ForeignStaticItem(Static { type_: ty.clean(cx), mutability, expr: None })
-                }
-                hir::ForeignItemKind::Type => ForeignTypeItem,
-            };
+                        abi,
+                        constness: hir::Constness::NotConst,
+                        asyncness: hir::IsAsync::NotAsync,
+                    },
+                })
+            }
+            hir::ForeignItemKind::Static(ref ty, mutability) => {
+                ForeignStaticItem(Static { type_: ty.clean(cx), mutability, expr: None })
+            }
+            hir::ForeignItemKind::Type => ForeignTypeItem,
+        };
 
-            Item::from_hir_id_and_parts(
-                item.hir_id(),
-                Some(renamed.unwrap_or(item.ident.name)),
-                kind,
-                cx,
-            )
-        })
-    }
+        Item::from_hir_id_and_parts(
+            item.hir_id(),
+            Some(renamed.unwrap_or(item.ident.name)),
+            kind,
+            cx,
+        )
+    })
 }
 
 impl Clean<TypeBinding> for hir::TypeBinding<'_> {
