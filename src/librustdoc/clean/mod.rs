@@ -119,7 +119,7 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
 
 impl Clean<Path> for (ty::TraitRef<'_>, &[TypeBinding]) {
     fn clean(&self, cx: &mut DocContext<'_>) -> Path {
-        let (trait_ref, bounds) = *self;
+        let (trait_ref, bindings) = *self;
         let kind = cx.tcx.def_kind(trait_ref.def_id).into();
         if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
             span_bug!(
@@ -129,7 +129,7 @@ impl Clean<Path> for (ty::TraitRef<'_>, &[TypeBinding]) {
             );
         }
         inline::record_extern_fqn(cx, trait_ref.def_id, kind);
-        let path = external_path(cx, trait_ref.def_id, true, bounds.to_vec(), trait_ref.substs);
+        let path = external_path(cx, trait_ref.def_id, true, bindings.to_vec(), trait_ref.substs);
 
         debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
@@ -145,7 +145,7 @@ impl Clean<Path> for ty::TraitRef<'tcx> {
 
 impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
     fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
-        let (poly_trait_ref, bounds) = *self;
+        let (poly_trait_ref, bindings) = *self;
         let poly_trait_ref = poly_trait_ref.lift_to_tcx(cx.tcx).unwrap();
 
         // collect any late bound regions
@@ -164,7 +164,7 @@ impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
 
         GenericBound::TraitBound(
             PolyTrait {
-                trait_: (poly_trait_ref.skip_binder(), bounds).clean(cx),
+                trait_: (poly_trait_ref.skip_binder(), bindings).clean(cx),
                 generic_params: late_bound_regions,
             },
             hir::TraitBoundModifier::None,
