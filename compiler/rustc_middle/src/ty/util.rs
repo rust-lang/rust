@@ -788,10 +788,14 @@ impl<'tcx> ty::TyS<'tcx> {
                     [component_ty] => component_ty,
                     _ => self,
                 };
+
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
-                let erased = tcx.normalize_erasing_regions(param_env, query_ty);
-                tcx.needs_drop_raw(param_env.and(erased))
+                // If normalization fails, we just use `query_ty`.
+                let query_ty =
+                    tcx.try_normalize_erasing_regions(param_env, query_ty).unwrap_or(query_ty);
+
+                tcx.needs_drop_raw(param_env.and(query_ty))
             }
         }
     }

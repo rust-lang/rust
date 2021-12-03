@@ -1,0 +1,29 @@
+error[E0277]: the trait bound `T: Pointee` is not satisfied in `PtrComponents<T>`
+  --> $DIR/issue-81199.rs:5:17
+   |
+LL |     components: PtrComponents<T>,
+   |                 ^^^^^^^^^^^^^^^^ within `PtrComponents<T>`, the trait `Pointee` is not implemented for `T`
+   |
+note: required because it appears within the type `PtrComponents<T>`
+  --> $DIR/issue-81199.rs:10:8
+   |
+LL | struct PtrComponents<T: Pointee + ?Sized> {
+   |        ^^^^^^^^^^^^^
+   = note: no field of a union may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: consider further restricting this bound
+   |
+LL | union PtrRepr<T: ?Sized + Pointee> {
+   |                         +++++++++
+help: borrowed types always have a statically known size
+   |
+LL |     components: &PtrComponents<T>,
+   |                 +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     components: Box<PtrComponents<T>>,
+   |                 ++++                +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
