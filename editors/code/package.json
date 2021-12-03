@@ -54,7 +54,7 @@
         "tslib": "^2.3.0",
         "typescript": "^4.5.2",
         "typescript-formatter": "^7.2.2",
-        "vsce": "^1.95.1"
+        "vsce": "^2.5.1"
     },
     "activationEvents": [
         "onLanguage:rust",
