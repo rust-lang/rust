@@ -730,7 +730,7 @@ fn clean_fn_or_proc_macro(
             ProcMacroItem(ProcMacro { kind, helpers })
         }
         None => {
-            let mut func = (sig, generics, body_id).clean(cx);
+            let mut func = clean_function(cx, sig, generics, body_id);
             let def_id = item.def_id.to_def_id();
             func.header.constness =
                 if cx.tcx.is_const_fn(def_id) && is_unstable_const_fn(cx.tcx, def_id).is_none() {
@@ -774,17 +774,20 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
     }
 }
 
-impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::BodyId) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Function {
-        let (generics, decl) = enter_impl_trait(cx, |cx| {
-            // NOTE: generics must be cleaned before args
-            let generics = self.1.clean(cx);
-            let args = (self.0.decl.inputs, self.2).clean(cx);
-            let decl = clean_fn_decl_with_args(cx, self.0.decl, args);
-            (generics, decl)
-        });
-        Function { decl, generics, header: self.0.header }
-    }
+fn clean_function(
+    cx: &mut DocContext<'_>,
+    sig: &hir::FnSig<'_>,
+    generics: &hir::Generics<'_>,
+    body_id: hir::BodyId,
+) -> Function {
+    let (generics, decl) = enter_impl_trait(cx, |cx| {
+        // NOTE: generics must be cleaned before args
+        let generics = generics.clean(cx);
+        let args = (sig.decl.inputs, body_id).clean(cx);
+        let decl = clean_fn_decl_with_args(cx, sig.decl, args);
+        (generics, decl)
+    });
+    Function { decl, generics, header: sig.header }
 }
 
 impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
@@ -901,7 +904,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx.tcx, e)))
                 }
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                    let mut m = (sig, &self.generics, body).clean(cx);
+                    let mut m = clean_function(cx, sig, &self.generics, body);
                     if m.header.constness == hir::Constness::Const
                         && is_unstable_const_fn(cx.tcx, local_did).is_some()
                     {
@@ -948,7 +951,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
                     AssocConstItem(ty.clean(cx), Some(print_const_expr(cx.tcx, expr)))
                 }
                 hir::ImplItemKind::Fn(ref sig, body) => {
-                    let mut m = (sig, &self.generics, body).clean(cx);
+                    let mut m = clean_function(cx, sig, &self.generics, body);
                     if m.header.constness == hir::Constness::Const
                         && is_unstable_const_fn(cx.tcx, local_did).is_some()
                     {
