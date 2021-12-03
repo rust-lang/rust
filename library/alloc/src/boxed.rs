@@ -1500,7 +1500,7 @@ impl<A: Allocator> Box<dyn Any, A> {
     /// print_if_string(Box::new(0i8));
     /// ```
     #[inline]
-    #[stable(feature = "box_send_sync_any_downcast", since = "1.51.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {
         if self.is::<T>() { unsafe { Ok(self.downcast_unchecked::<T>()) } } else { Err(self) }
     }
@@ -1559,7 +1559,7 @@ impl<A: Allocator> Box<dyn Any + Send, A> {
     /// print_if_string(Box::new(0i8));
     /// ```
     #[inline]
-    #[stable(feature = "box_send_sync_any_downcast", since = "1.51.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn downcast<T: Any>(self) -> Result<Box<T, A>, Self> {
         if self.is::<T>() { unsafe { Ok(self.downcast_unchecked::<T>()) } } else { Err(self) }
     }
