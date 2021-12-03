@@ -1329,6 +1329,13 @@ pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId) -> Ty<'tcx> 
     cx.tcx.erase_late_bound_regions(ret_ty)
 }
 
+/// Convenience function to get the nth argument type of a function.
+pub fn nth_arg<'tcx>(cx: &LateContext<'tcx>, fn_item: hir::HirId, nth: usize) -> Ty<'tcx> {
+    let fn_def_id = cx.tcx.hir().local_def_id(fn_item);
+    let arg = cx.tcx.fn_sig(fn_def_id).input(nth);
+    cx.tcx.erase_late_bound_regions(arg)
+}
+
 /// Checks if an expression is constructing a tuple-like enum variant or struct
 pub fn is_ctor_or_promotable_const_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(fun, _) = expr.kind {

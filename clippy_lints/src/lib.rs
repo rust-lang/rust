@@ -341,6 +341,7 @@ mod ref_option_ref;
 mod reference;
 mod regex;
 mod repeat_once;
+mod return_self_not_must_use;
 mod returns;
 mod same_name_method;
 mod self_assignment;
@@ -853,6 +854,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(trailing_empty_array::TrailingEmptyArray));
     store.register_early_pass(|| Box::new(octal_escapes::OctalEscapes));
     store.register_late_pass(|| Box::new(needless_late_init::NeedlessLateInit));
+    store.register_late_pass(|| Box::new(return_self_not_must_use::ReturnSelfNotMustUse));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
