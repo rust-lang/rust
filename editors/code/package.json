@@ -1318,26 +1318,26 @@
                     "attribute": [
                         "meta.attribute.rust"
                     ],
-                    "function.attribute": [
-                        "entity.name.function.attribute.rust"
-                    ],
                     "boolean": [
                         "constant.language.boolean.rust"
                     ],
                     "builtinType": [
                         "support.type.primitive.rust"
                     ],
-                    "lifetime": [
-                        "storage.modifier.lifetime.rust"
+                    "constParameter": [
+                        "constant.other.caps.rust"
                     ],
-                    "typeAlias": [
-                        "entity.name.type.typeAlias.rust"
+                    "enum": [
+                        "entity.name.type.enum.rust"
                     ],
-                    "union": [
-                        "entity.name.type.union.rust"
+                    "formatSpecifier": [
+                        "punctuation.section.embedded.rust"
                     ],
-                    "struct": [
-                        "entity.name.type.struct.rust"
+                    "function": [
+                        "entity.name.function.rust"
+                    ],
+                    "interface": [
+                        "entity.name.type.trait.rust"
                     ],
                     "keyword": [
                         "keyword.other.rust"
@@ -1345,11 +1345,26 @@
                     "keyword.controlFlow": [
                         "keyword.control.rust"
                     ],
+                    "lifetime": [
+                        "storage.modifier.lifetime.rust"
+                    ],
+                    "method": [
+                        "entity.name.function.rust"
+                    ],
+                    "struct": [
+                        "entity.name.type.struct.rust"
+                    ],
+                    "typeAlias": [
+                        "entity.name.type.declaration.rust"
+                    ],
+                    "union": [
+                        "entity.name.type.union.rust"
+                    ],
+                    "variable": [
+                        "variable.other.rust"
+                    ],
                     "variable.constant": [
                         "variable.other.constant.rust"
-                    ],
-                    "formatSpecifier": [
-                        "punctuation.section.embedded.rust"
                     ],
                     "*.mutable": [
                         "markup.underline"
