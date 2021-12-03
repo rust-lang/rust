@@ -72,7 +72,13 @@ declare_clippy_lint! {
     /// application and might forget to remove those prints afterward.
     ///
     /// ### Known problems
-    /// Only catches `print!` and `println!` calls.
+    /// * Only catches `print!` and `println!` calls.
+    /// * The lint level is unaffected by crate attributes. The level can still
+    ///   be set for functions, modules and other items. To change the level for
+    ///   the entire crate, please use command line flags. More information and a
+    ///   configuration example can be found in [clippy#6610].
+    ///
+    /// [clippy#6610]: https://github.com/rust-lang/rust-clippy/issues/6610#issuecomment-977120558
     ///
     /// ### Example
     /// ```rust
@@ -94,7 +100,13 @@ declare_clippy_lint! {
     /// application and might forget to remove those prints afterward.
     ///
     /// ### Known problems
-    /// Only catches `eprint!` and `eprintln!` calls.
+    /// * Only catches `eprint!` and `eprintln!` calls.
+    /// * The lint level is unaffected by crate attributes. The level can still
+    ///   be set for functions, modules and other items. To change the level for
+    ///   the entire crate, please use command line flags. More information and a
+    ///   configuration example can be found in [clippy#6610].
+    ///
+    /// [clippy#6610]: https://github.com/rust-lang/rust-clippy/issues/6610#issuecomment-977120558
     ///
     /// ### Example
     /// ```rust
