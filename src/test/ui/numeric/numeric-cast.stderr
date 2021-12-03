@@ -994,8 +994,8 @@ error[E0308]: mismatched types
 LL |     foo::<f64>(x_usize);
    |                ^^^^^^^ expected `f64`, found `usize`
    |
-help: you can cast a `usize` to an `f64`, producing the floating point representation of the integer,
-   |                                              rounded if necessary
+help: you can cast a `usize` to an `f64`, producing the floating point representation of the integer, rounded if necessary
+   |
 LL |     foo::<f64>(x_usize as f64);
    |                        ++++++
 
@@ -1005,8 +1005,8 @@ error[E0308]: mismatched types
 LL |     foo::<f64>(x_u64);
    |                ^^^^^ expected `f64`, found `u64`
    |
-help: you can cast a `u64` to an `f64`, producing the floating point representation of the integer,
-   |                                              rounded if necessary
+help: you can cast a `u64` to an `f64`, producing the floating point representation of the integer, rounded if necessary
+   |
 LL |     foo::<f64>(x_u64 as f64);
    |                      ++++++
 
@@ -1115,8 +1115,8 @@ error[E0308]: mismatched types
 LL |     foo::<f32>(x_usize);
    |                ^^^^^^^ expected `f32`, found `usize`
    |
-help: you can cast a `usize` to an `f32`, producing the floating point representation of the integer,
-   |                                              rounded if necessary
+help: you can cast a `usize` to an `f32`, producing the floating point representation of the integer, rounded if necessary
+   |
 LL |     foo::<f32>(x_usize as f32);
    |                        ++++++
 
@@ -1126,8 +1126,8 @@ error[E0308]: mismatched types
 LL |     foo::<f32>(x_u64);
    |                ^^^^^ expected `f32`, found `u64`
    |
-help: you can cast a `u64` to an `f32`, producing the floating point representation of the integer,
-   |                                              rounded if necessary
+help: you can cast a `u64` to an `f32`, producing the floating point representation of the integer, rounded if necessary
+   |
 LL |     foo::<f32>(x_u64 as f32);
    |                      ++++++
 
@@ -1137,8 +1137,8 @@ error[E0308]: mismatched types
 LL |     foo::<f32>(x_u32);
    |                ^^^^^ expected `f32`, found `u32`
    |
-help: you can cast a `u32` to an `f32`, producing the floating point representation of the integer,
-   |                                              rounded if necessary
+help: you can cast a `u32` to an `f32`, producing the floating point representation of the integer, rounded if necessary
+   |
 LL |     foo::<f32>(x_u32 as f32);
    |                      ++++++
 
