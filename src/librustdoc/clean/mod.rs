@@ -31,6 +31,7 @@ use rustc_typeck::hir_ty_to_ty;
 
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
+use std::collections::BTreeMap;
 use std::default::Default;
 use std::hash::Hash;
 use std::{mem, vec};
@@ -527,9 +528,6 @@ fn clean_ty_generics(
     gens: &ty::Generics,
     preds: ty::GenericPredicates<'tcx>,
 ) -> Generics {
-    use self::WherePredicate as WP;
-    use std::collections::BTreeMap;
-
     // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
     // since `Clean for ty::Predicate` would consume them.
     let mut impl_trait = BTreeMap::<ImplTraitParam, Vec<GenericBound>>::default();
@@ -650,7 +648,7 @@ fn clean_ty_generics(
     // handled in cleaning associated types
     let mut sized_params = FxHashSet::default();
     where_predicates.retain(|pred| match *pred {
-        WP::BoundPredicate { ty: Generic(ref g), ref bounds, .. } => {
+        WherePredicate::BoundPredicate { ty: Generic(ref g), ref bounds, .. } => {
             if bounds.iter().any(|b| b.is_sized_bound(cx)) {
                 sized_params.insert(*g);
                 false
@@ -667,7 +665,7 @@ fn clean_ty_generics(
         if matches!(tp.kind, types::GenericParamDefKind::Type { .. })
             && !sized_params.contains(&tp.name)
         {
-            where_predicates.push(WP::BoundPredicate {
+            where_predicates.push(WherePredicate::BoundPredicate {
                 ty: Type::Generic(tp.name),
                 bounds: vec![GenericBound::maybe_sized(cx)],
                 bound_params: Vec::new(),
