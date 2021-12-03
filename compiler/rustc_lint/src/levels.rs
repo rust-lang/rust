@@ -227,14 +227,12 @@ impl<'s> LintLevelsBuilder<'s> {
         let sess = self.sess;
         let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
         for attr in attrs {
-            let level = match Level::from_symbol(attr.name_or_empty()) {
-                None => continue,
-                Some(lvl) => lvl,
+            let Some(level) = Level::from_symbol(attr.name_or_empty()) else {
+                continue
             };
 
-            let mut metas = match attr.meta_item_list() {
-                Some(x) => x,
-                None => continue,
+            let Some(mut metas) = attr.meta_item_list() else {
+                continue
             };
 
             if metas.is_empty() {
@@ -481,9 +479,8 @@ impl<'s> LintLevelsBuilder<'s> {
                     continue;
                 }
 
-                let (lint_attr_name, lint_attr_span) = match *src {
-                    LintLevelSource::Node(name, span, _) => (name, span),
-                    _ => continue,
+                let LintLevelSource::Node(lint_attr_name, lint_attr_span, _) = *src else {
+                    continue
                 };
 
                 let lint = builtin::UNUSED_ATTRIBUTES;

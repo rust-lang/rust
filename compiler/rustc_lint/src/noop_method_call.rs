@@ -40,9 +40,8 @@ declare_lint_pass!(NoopMethodCall => [NOOP_METHOD_CALL]);
 impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // We only care about method calls.
-        let (call, elements) = match expr.kind {
-            ExprKind::MethodCall(call, _, elements, _) => (call, elements),
-            _ => return,
+        let ExprKind::MethodCall(call, _, elements, _) = &expr.kind else {
+            return
         };
         // We only care about method calls corresponding to the `Clone`, `Deref` and `Borrow`
         // traits and ignore any other method call.
@@ -70,9 +69,8 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         }
         let param_env = cx.tcx.param_env(trait_id);
         // Resolve the trait method instance.
-        let i = match ty::Instance::resolve(cx.tcx, param_env, did, substs) {
-            Ok(Some(i)) => i,
-            _ => return,
+        let Ok(Some(i)) = ty::Instance::resolve(cx.tcx, param_env, did, substs) else {
+            return
         };
         // (Re)check that it implements the noop diagnostic.
         let Some(name) = cx.tcx.get_diagnostic_name(i.def_id()) else { return };
