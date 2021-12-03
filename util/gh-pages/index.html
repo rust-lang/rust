@@ -25,7 +25,34 @@ Otherwise, have a great day =^.^=
         blockquote { font-size: 1em; }
         [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak { display: none !important; }
 
-        .form-inline .checkbox { margin-right: 0.6em }
+        .dropdown-menu .checkbox { 
+            width: 100%;;
+            display: block;
+            padding: 3px 20px;
+            clear: both;
+            font-weight: 400;
+            line-height: 1.42857143;
+            color: #333;
+            white-space: nowrap;
+            margin: 0;
+         }
+
+         .dropdown-menu .checkbox label { 
+             padding-left: 0;
+             width: 100%;
+         }
+
+         .dropdown-menu .checkbox input { 
+             position: relative;
+             margin: 0;
+             padding: 0;
+         }
+
+         .dropdown-menu .checkbox:hover {
+            color: #262626;
+            text-decoration: none;
+            background-color: #f5f5f5;
+        }
 
         .panel-heading { cursor: pointer; }
 
@@ -250,7 +277,7 @@ Otherwise, have a great day =^.^=
         <li id="ayu">Ayu</li>
     </ul>
 
-    <div class="container" ng-app="clippy" ng-controller="lintList">
+    <div class="container" ng-app="clippy" ng-controller="lintList" ng-click="toggleDropdown(undefined, $event)">
         <div class="page-header">
             <h1>Clippy Lints</h1>
         </div>
@@ -272,32 +299,54 @@ Otherwise, have a great day =^.^=
 
             <div class="panel panel-default" ng-show="data">
                 <div class="panel-body row filter-panel">
-                    <div class="col-md-6 form-inline">
-                        <div class="form-group form-group-lg">
-                            <p class="h4">
-                                Lint levels
-                                <a href="https://doc.rust-lang.org/rustc/lints/levels.html">(?)</a>
-                            </p>
-                            <div class="checkbox" ng-repeat="(level, enabled) in levels">
-                                <label class="text-capitalize">
-                                    <input type="checkbox" ng-model="levels[level]" />
-                                    {{level}}
-                                </label>
-                            </div>
+                    <div class="col-md-12 form-horizontal">
+                        <div class="btn-group" ng-class="{ open: selectedDropdown == 'levels' }" ng-click="toggleDropdown('levels', $event)">
+                            <button type="button" class="btn btn-default dropdown-toggle">
+                                Lint levels <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li class="checkbox">
+                                    <label ng-click="toggleLevels(true)">
+                                        All
+                                    </label>
+                                </li>
+                                <li class="checkbox">
+                                    <label ng-click="toggleLevels(false)">
+                                        None
+                                    </label>
+                                </li>
+                                <li role="separator" class="divider"></li>
+                                <li class="checkbox" ng-repeat="(level, enabled) in levels">
+                                    <label class="text-capitalize">
+                                        <input type="checkbox" ng-model="levels[level]" />
+                                        {{level}}
+                                    </label>
+                                </li>
+                            </ul>
                         </div>
-                    </div>
-                    <div class="col-md-6 form-inline">
-                        <div class="form-group form-group-lg">
-                            <p class="h4">
-                                Lint groups
-                                <a href="https://github.com/rust-lang/rust-clippy/#clippy">(?)</a>
-                            </p>
-                            <div class="checkbox" ng-repeat="(group, enabled) in groups">
-                                <label class="text-capitalize">
-                                    <input type="checkbox" ng-model="groups[group]" />
-                                    {{group}}
-                                </label>
-                            </div>
+                        <div class="btn-group" ng-class="{ open: selectedDropdown == 'groups' }" ng-click="toggleDropdown('groups', $event)">
+                            <button type="button" class="btn btn-default dropdown-toggle">
+                                Lint groups <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li class="checkbox">
+                                    <label ng-click="toggleGroups(true)">
+                                        All
+                                    </label>
+                                </li>
+                                <li class="checkbox">
+                                    <label ng-click="toggleGroups(false)">
+                                        None
+                                    </label>
+                                </li>
+                                <li role="separator" class="divider"></li>
+                                <li class="checkbox" ng-repeat="(group, enabled) in groups">
+                                    <label class="text-capitalize">
+                                        <input type="checkbox" ng-model="groups[group]" />
+                                        {{group}}
+                                    </label>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -462,6 +511,26 @@ Otherwise, have a great day =^.^=
                 suspicious: true,
             };
             $scope.groups = GROUPS_FILTER_DEFAULT;
+            $scope.toggleDropdown = function (name, $event) {
+                $scope.selectedDropdown = name;
+                $event.stopPropagation();
+            }
+            $scope.toggleLevels = function (value) {
+                const levels = $scope.levels;
+                for (const key in levels) {
+                    if (levels.hasOwnProperty(key)) {
+                        levels[key] = value;
+                    }
+                }
+            };
+            $scope.toggleGroups = function (value) {
+                const groups = $scope.groups;
+                for (const key in groups) {
+                    if (groups.hasOwnProperty(key)) {
+                        groups[key] = value;
+                    }
+                }
+            };
             $scope.byGroups = function (lint) {
                 return $scope.groups[lint.group];
             };
