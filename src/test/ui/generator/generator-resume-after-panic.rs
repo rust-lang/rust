@@ -1,4 +1,5 @@
 // run-fail
+// needs-unwind
 // error-pattern:generator resumed after panicking
 // ignore-emscripten no processes
 

@@ -1,5 +1,5 @@
 error: changes to closure capture in Rust 2021 will affect which traits the closure implements
-  --> $DIR/mir_calls_to_shims.rs:20:38
+  --> $DIR/mir_calls_to_shims.rs:21:38
    |
 LL |     let result = panic::catch_unwind(move || {
    |                                      ^^^^^^^
@@ -11,7 +11,7 @@ LL |         f.0()
    |         --- in Rust 2018, this closure captures all of `f`, but in Rust 2021, it will only capture `f.0`
    |
 note: the lint level is defined here
-  --> $DIR/mir_calls_to_shims.rs:3:9
+  --> $DIR/mir_calls_to_shims.rs:4:9
    |
 LL | #![deny(rust_2021_incompatible_closure_captures)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

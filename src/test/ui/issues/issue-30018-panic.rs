@@ -4,6 +4,7 @@
 // spawned thread to isolate the expected error result from the
 // SIGTRAP injected by the drop-flag consistency checking.
 
+// needs-unwind
 // ignore-emscripten no threads support
 
 struct Foo;

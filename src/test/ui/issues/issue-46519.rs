@@ -1,6 +1,7 @@
 // run-pass
 // compile-flags:--test -O
 
+// needs-unwind
 // ignore-wasm32-bare compiled with panic=abort by default
 
 #[test]
