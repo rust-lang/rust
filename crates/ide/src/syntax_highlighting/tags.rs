@@ -139,7 +139,7 @@ impl HlTag {
                 SymbolKind::SelfParam => "self_keyword",
                 SymbolKind::Static => "static",
                 SymbolKind::Struct => "struct",
-                SymbolKind::Tool => "tool",
+                SymbolKind::ToolModule => "tool_module",
                 SymbolKind::Trait => "trait",
                 SymbolKind::TypeAlias => "type_alias",
                 SymbolKind::TypeParam => "type_param",

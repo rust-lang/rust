@@ -51,7 +51,7 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
         SymbolKind::Trait => lsp_types::SymbolKind::INTERFACE,
         SymbolKind::Macro | SymbolKind::BuiltinAttr => lsp_types::SymbolKind::FUNCTION,
-        SymbolKind::Module | SymbolKind::Tool => lsp_types::SymbolKind::MODULE,
+        SymbolKind::Module | SymbolKind::ToolModule => lsp_types::SymbolKind::MODULE,
         SymbolKind::TypeAlias | SymbolKind::TypeParam => lsp_types::SymbolKind::TYPE_PARAMETER,
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,
         SymbolKind::Static => lsp_types::SymbolKind::CONSTANT,
@@ -129,7 +129,7 @@ pub(crate) fn completion_item_kind(
             SymbolKind::ValueParam => lsp_types::CompletionItemKind::VALUE,
             SymbolKind::Variant => lsp_types::CompletionItemKind::ENUM_MEMBER,
             SymbolKind::BuiltinAttr => lsp_types::CompletionItemKind::FUNCTION,
-            SymbolKind::Tool => lsp_types::CompletionItemKind::MODULE,
+            SymbolKind::ToolModule => lsp_types::CompletionItemKind::MODULE,
         },
     }
 }
@@ -502,7 +502,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Trait => lsp_types::SemanticTokenType::INTERFACE,
             SymbolKind::Macro => lsp_types::SemanticTokenType::MACRO,
             SymbolKind::BuiltinAttr => semantic_tokens::BUILTIN_ATTRIBUTE,
-            SymbolKind::Tool => semantic_tokens::TOOL,
+            SymbolKind::ToolModule => semantic_tokens::TOOL_MODULE,
         },
         HlTag::Attribute => semantic_tokens::ATTRIBUTE,
         HlTag::BoolLiteral => semantic_tokens::BOOLEAN,

@@ -264,7 +264,7 @@ fn module_def_to_hl_tag(def: Definition) -> HlTag {
         },
         Definition::Label(_) => SymbolKind::Label,
         Definition::BuiltinAttr(_) => SymbolKind::BuiltinAttr,
-        Definition::Tool(_) => SymbolKind::Tool,
+        Definition::ToolModule(_) => SymbolKind::ToolModule,
     };
     HlTag::Symbol(symbol)
 }

@@ -30,8 +30,8 @@ use syntax::{
 
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, BuiltinAttr, BuiltinType, Const, Field,
-    Function, Local, MacroDef, ModuleDef, Static, Struct, Tool, Trait, Type, TypeAlias, TypeParam,
-    Variant,
+    Function, Local, MacroDef, ModuleDef, Static, Struct, ToolModule, Trait, Type, TypeAlias,
+    TypeParam, Variant,
 };
 use base_db::CrateId;
 
@@ -341,8 +341,8 @@ impl SourceAnalyzer {
                 None => path.as_single_name_ref().and_then(|name_ref| {
                     if let builtin @ Some(_) = BuiltinAttr::by_name(&name_ref.text()) {
                         builtin.map(PathResolution::BuiltinAttr)
-                    } else if let tool @ Some(_) = Tool::by_name(&name_ref.text()) {
-                        tool.map(PathResolution::Tool)
+                    } else if let tool @ Some(_) = ToolModule::by_name(&name_ref.text()) {
+                        tool.map(PathResolution::ToolModule)
                     } else {
                         None
                     }
@@ -362,8 +362,8 @@ impl SourceAnalyzer {
             None if is_path_of_attr => path
                 .first_segment()
                 .and_then(|seg| seg.name_ref())
-                .and_then(|name_ref| Tool::by_name(&name_ref.text()))
-                .map(PathResolution::Tool),
+                .and_then(|name_ref| ToolModule::by_name(&name_ref.text()))
+                .map(PathResolution::ToolModule),
             None => None,
         }
     }

@@ -2039,9 +2039,9 @@ impl BuiltinAttr {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Tool(usize);
+pub struct ToolModule(usize);
 
-impl Tool {
+impl ToolModule {
     pub(crate) fn by_name(name: &str) -> Option<Self> {
         // FIXME: def maps registered tools
         hir_def::builtin_attr::TOOL_MODULES.iter().position(|&tool| tool == name).map(Self)

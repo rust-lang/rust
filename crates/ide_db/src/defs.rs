@@ -9,7 +9,7 @@ use arrayvec::ArrayVec;
 use hir::{
     Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Field, Function, GenericParam,
     HasVisibility, Impl, ItemInNs, Label, Local, MacroDef, Module, ModuleDef, Name, PathResolution,
-    Semantics, Static, Tool, Trait, TypeAlias, Variant, Visibility,
+    Semantics, Static, ToolModule, Trait, TypeAlias, Variant, Visibility,
 };
 use stdx::impl_from;
 use syntax::{
@@ -38,7 +38,7 @@ pub enum Definition {
     GenericParam(GenericParam),
     Label(Label),
     BuiltinAttr(BuiltinAttr),
-    Tool(Tool),
+    ToolModule(ToolModule),
 }
 
 impl Definition {
@@ -129,7 +129,7 @@ impl Definition {
             Definition::Local(it) => it.module(db),
             Definition::GenericParam(it) => it.module(db),
             Definition::Label(it) => it.module(db),
-            Definition::BuiltinAttr(_) | Definition::BuiltinType(_) | Definition::Tool(_) => {
+            Definition::BuiltinAttr(_) | Definition::BuiltinType(_) | Definition::ToolModule(_) => {
                 return None
             }
         };
@@ -150,7 +150,7 @@ impl Definition {
             Definition::BuiltinType(_) => Visibility::Public,
             Definition::Macro(_) => return None,
             Definition::BuiltinAttr(_)
-            | Definition::Tool(_)
+            | Definition::ToolModule(_)
             | Definition::SelfType(_)
             | Definition::Local(_)
             | Definition::GenericParam(_)
@@ -177,7 +177,7 @@ impl Definition {
             Definition::GenericParam(it) => it.name(db),
             Definition::Label(it) => it.name(db),
             Definition::BuiltinAttr(_) => return None, // FIXME
-            Definition::Tool(_) => return None,        // FIXME
+            Definition::ToolModule(_) => return None,  // FIXME
         };
         Some(name)
     }
@@ -551,7 +551,7 @@ impl From<PathResolution> for Definition {
             PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
             PathResolution::ConstParam(par) => Definition::GenericParam(par.into()),
             PathResolution::BuiltinAttr(attr) => Definition::BuiltinAttr(attr),
-            PathResolution::Tool(tool) => Definition::Tool(tool),
+            PathResolution::ToolModule(tool) => Definition::ToolModule(tool),
         }
     }
 }

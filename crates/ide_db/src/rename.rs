@@ -147,7 +147,7 @@ impl Definition {
             Definition::BuiltinType(_) => return None,
             Definition::SelfType(_) => return None,
             Definition::BuiltinAttr(_) => return None,
-            Definition::Tool(_) => return None,
+            Definition::ToolModule(_) => return None,
         };
         return res;
 

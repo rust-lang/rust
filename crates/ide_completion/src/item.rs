@@ -247,7 +247,7 @@ impl CompletionItemKind {
                 SymbolKind::SelfParam => "sp",
                 SymbolKind::Static => "sc",
                 SymbolKind::Struct => "st",
-                SymbolKind::Tool => "tl",
+                SymbolKind::ToolModule => "tm",
                 SymbolKind::Trait => "tt",
                 SymbolKind::TypeAlias => "ta",
                 SymbolKind::TypeParam => "tp",

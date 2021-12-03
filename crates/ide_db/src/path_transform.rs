@@ -166,7 +166,7 @@ impl<'a> Ctx<'a> {
             | hir::PathResolution::Macro(_)
             | hir::PathResolution::AssocItem(_)
             | hir::PathResolution::BuiltinAttr(_)
-            | hir::PathResolution::Tool(_) => (),
+            | hir::PathResolution::ToolModule(_) => (),
         }
         Some(())
     }

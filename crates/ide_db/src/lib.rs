@@ -160,7 +160,7 @@ pub enum SymbolKind {
     SelfParam,
     Static,
     Struct,
-    Tool,
+    ToolModule,
     Trait,
     TypeAlias,
     TypeParam,

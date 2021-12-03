@@ -182,7 +182,7 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::Macro(it) => it.resolve_doc_path(db, link, ns),
         Definition::Field(it) => it.resolve_doc_path(db, link, ns),
         Definition::BuiltinAttr(_)
-        | Definition::Tool(_)
+        | Definition::ToolModule(_)
         | Definition::BuiltinType(_)
         | Definition::SelfType(_)
         | Definition::Local(_)
@@ -498,7 +498,7 @@ fn filename_and_frag_for_def(
         | Definition::GenericParam(_)
         | Definition::Label(_)
         | Definition::BuiltinAttr(_)
-        | Definition::Tool(_) => return None,
+        | Definition::ToolModule(_) => return None,
     };
 
     Some((def, res, None))

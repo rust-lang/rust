@@ -27,7 +27,7 @@ use crate::{
     source_analyzer::{resolve_hir_path, resolve_hir_path_as_macro, SourceAnalyzer},
     Access, AssocItem, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource,
     HirFileId, Impl, InFile, Label, LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path,
-    ScopeDef, Tool, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,7 +44,7 @@ pub enum PathResolution {
     Macro(MacroDef),
     AssocItem(AssocItem),
     BuiltinAttr(BuiltinAttr),
-    Tool(Tool),
+    ToolModule(ToolModule),
 }
 
 impl PathResolution {
@@ -66,7 +66,7 @@ impl PathResolution {
                 Some(TypeNs::TypeAliasId((*alias).into()))
             }
             PathResolution::BuiltinAttr(_)
-            | PathResolution::Tool(_)
+            | PathResolution::ToolModule(_)
             | PathResolution::Local(_)
             | PathResolution::Macro(_)
             | PathResolution::ConstParam(_) => None,

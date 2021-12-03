@@ -513,7 +513,7 @@ fn highlight_def(
         }
         Definition::Label(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)),
         Definition::BuiltinAttr(_) => Highlight::new(HlTag::Symbol(SymbolKind::BuiltinAttr)),
-        Definition::Tool(_) => Highlight::new(HlTag::Symbol(SymbolKind::Tool)),
+        Definition::ToolModule(_) => Highlight::new(HlTag::Symbol(SymbolKind::ToolModule)),
     };
 
     let famous_defs = FamousDefs(sema, krate);
