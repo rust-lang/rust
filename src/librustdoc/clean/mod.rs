@@ -102,11 +102,9 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
                     _ => bug!("clean: parenthesized `GenericBound::LangItemTrait`"),
                 };
 
+                let trait_ = clean_trait_ref_with_bindings(cx, trait_ref, &bindings);
                 GenericBound::TraitBound(
-                    PolyTrait {
-                        trait_: (trait_ref, &bindings[..]).clean(cx),
-                        generic_params: vec![],
-                    },
+                    PolyTrait { trait_, generic_params: vec![] },
                     hir::TraitBoundModifier::None,
                 )
             }
@@ -117,29 +115,26 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     }
 }
 
-impl Clean<Path> for (ty::TraitRef<'_>, &[TypeBinding]) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Path {
-        let (trait_ref, bindings) = *self;
-        let kind = cx.tcx.def_kind(trait_ref.def_id).into();
-        if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
-            span_bug!(
-                cx.tcx.def_span(trait_ref.def_id),
-                "`TraitRef` had unexpected kind {:?}",
-                kind
-            );
-        }
-        inline::record_extern_fqn(cx, trait_ref.def_id, kind);
-        let path = external_path(cx, trait_ref.def_id, true, bindings.to_vec(), trait_ref.substs);
-
-        debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
-
-        path
+fn clean_trait_ref_with_bindings(
+    cx: &mut DocContext<'_>,
+    trait_ref: ty::TraitRef<'_>,
+    bindings: &[TypeBinding],
+) -> Path {
+    let kind = cx.tcx.def_kind(trait_ref.def_id).into();
+    if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
+        span_bug!(cx.tcx.def_span(trait_ref.def_id), "`TraitRef` had unexpected kind {:?}", kind);
     }
+    inline::record_extern_fqn(cx, trait_ref.def_id, kind);
+    let path = external_path(cx, trait_ref.def_id, true, bindings.to_vec(), trait_ref.substs);
+
+    debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
+
+    path
 }
 
 impl Clean<Path> for ty::TraitRef<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Path {
-        (*self, &[][..]).clean(cx)
+        clean_trait_ref_with_bindings(cx, *self, &[])
     }
 }
 
@@ -162,11 +157,9 @@ impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
             })
             .collect();
 
+        let trait_ = clean_trait_ref_with_bindings(cx, poly_trait_ref.skip_binder(), bindings);
         GenericBound::TraitBound(
-            PolyTrait {
-                trait_: (poly_trait_ref.skip_binder(), bindings).clean(cx),
-                generic_params: late_bound_regions,
-            },
+            PolyTrait { trait_, generic_params: late_bound_regions },
             hir::TraitBoundModifier::None,
         )
     }
