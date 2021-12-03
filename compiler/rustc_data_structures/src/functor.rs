@@ -23,11 +23,9 @@ impl<T> IdFunctor for Box<T> {
             let value = raw.read();
             // SAFETY: Converts `Box<T>` to `Box<MaybeUninit<T>>` which is the
             // inverse of `Box::assume_init()` and should be safe.
-            let mut raw: Box<mem::MaybeUninit<T>> = Box::from_raw(raw.cast());
+            let raw: Box<mem::MaybeUninit<T>> = Box::from_raw(raw.cast());
             // SAFETY: Write the mapped value back into the `Box`.
-            raw.write(f(value)?);
-            // SAFETY: We just initialized `raw`.
-            raw.assume_init()
+            Box::write(raw, f(value)?)
         })
     }
 }
