@@ -11,6 +11,7 @@ LL | fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `u32` is not a future
    |
    = help: the trait `Future` is not implemented for `u32`
+   = note: u32 must be a future or must implement `IntoFuture` to be awaited
 
 error: aborting due to 2 previous errors
 
