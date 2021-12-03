@@ -522,169 +522,166 @@ impl Clean<Generics> for hir::Generics<'_> {
     }
 }
 
-impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Generics {
-        use self::WherePredicate as WP;
-        use std::collections::BTreeMap;
+fn clean_ty_generics(
+    cx: &mut DocContext<'_>,
+    gens: &ty::Generics,
+    preds: ty::GenericPredicates<'tcx>,
+) -> Generics {
+    use self::WherePredicate as WP;
+    use std::collections::BTreeMap;
 
-        let (gens, preds) = *self;
+    // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
+    // since `Clean for ty::Predicate` would consume them.
+    let mut impl_trait = BTreeMap::<ImplTraitParam, Vec<GenericBound>>::default();
 
-        // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
-        // since `Clean for ty::Predicate` would consume them.
-        let mut impl_trait = BTreeMap::<ImplTraitParam, Vec<GenericBound>>::default();
-
-        // Bounds in the type_params and lifetimes fields are repeated in the
-        // predicates field (see rustc_typeck::collect::ty_generics), so remove
-        // them.
-        let stripped_params = gens
-            .params
-            .iter()
-            .filter_map(|param| match param.kind {
-                ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
-                ty::GenericParamDefKind::Type { synthetic, .. } => {
-                    if param.name == kw::SelfUpper {
-                        assert_eq!(param.index, 0);
-                        return None;
-                    }
-                    if synthetic {
-                        impl_trait.insert(param.index.into(), vec![]);
-                        return None;
-                    }
-                    Some(param.clean(cx))
+    // Bounds in the type_params and lifetimes fields are repeated in the
+    // predicates field (see rustc_typeck::collect::ty_generics), so remove
+    // them.
+    let stripped_params = gens
+        .params
+        .iter()
+        .filter_map(|param| match param.kind {
+            ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
+            ty::GenericParamDefKind::Type { synthetic, .. } => {
+                if param.name == kw::SelfUpper {
+                    assert_eq!(param.index, 0);
+                    return None;
                 }
-                ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
-            })
-            .collect::<Vec<GenericParamDef>>();
+                if synthetic {
+                    impl_trait.insert(param.index.into(), vec![]);
+                    return None;
+                }
+                Some(param.clean(cx))
+            }
+            ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
+        })
+        .collect::<Vec<GenericParamDef>>();
 
-        // param index -> [(DefId of trait, associated type name, type)]
-        let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'tcx>)>>::default();
+    // param index -> [(DefId of trait, associated type name, type)]
+    let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'tcx>)>>::default();
 
-        let where_predicates = preds
-            .predicates
-            .iter()
-            .flat_map(|(p, _)| {
-                let mut projection = None;
-                let param_idx = (|| {
-                    let bound_p = p.kind();
-                    match bound_p.skip_binder() {
-                        ty::PredicateKind::Trait(pred) => {
-                            if let ty::Param(param) = pred.self_ty().kind() {
-                                return Some(param.index);
-                            }
+    let where_predicates = preds
+        .predicates
+        .iter()
+        .flat_map(|(p, _)| {
+            let mut projection = None;
+            let param_idx = (|| {
+                let bound_p = p.kind();
+                match bound_p.skip_binder() {
+                    ty::PredicateKind::Trait(pred) => {
+                        if let ty::Param(param) = pred.self_ty().kind() {
+                            return Some(param.index);
                         }
-                        ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
-                            if let ty::Param(param) = ty.kind() {
-                                return Some(param.index);
-                            }
-                        }
-                        ty::PredicateKind::Projection(p) => {
-                            if let ty::Param(param) = p.projection_ty.self_ty().kind() {
-                                projection = Some(bound_p.rebind(p));
-                                return Some(param.index);
-                            }
-                        }
-                        _ => (),
                     }
-
-                    None
-                })();
-
-                if let Some(param_idx) = param_idx {
-                    if let Some(b) = impl_trait.get_mut(&param_idx.into()) {
-                        let p = p.clean(cx)?;
-
-                        b.extend(
-                            p.get_bounds()
-                                .into_iter()
-                                .flatten()
-                                .cloned()
-                                .filter(|b| !b.is_sized_bound(cx)),
-                        );
-
-                        let proj = projection
-                            .map(|p| (p.skip_binder().projection_ty.clean(cx), p.skip_binder().ty));
-                        if let Some(((_, trait_did, name), rhs)) =
-                            proj.as_ref().and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs)))
-                        {
-                            impl_trait_proj
-                                .entry(param_idx)
-                                .or_default()
-                                .push((trait_did, name, rhs));
+                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+                        if let ty::Param(param) = ty.kind() {
+                            return Some(param.index);
                         }
-
-                        return None;
                     }
+                    ty::PredicateKind::Projection(p) => {
+                        if let ty::Param(param) = p.projection_ty.self_ty().kind() {
+                            projection = Some(bound_p.rebind(p));
+                            return Some(param.index);
+                        }
+                    }
+                    _ => (),
                 }
 
-                Some(p)
-            })
-            .collect::<Vec<_>>();
+                None
+            })();
 
-        for (param, mut bounds) in impl_trait {
-            // Move trait bounds to the front.
-            bounds.sort_by_key(|b| !matches!(b, GenericBound::TraitBound(..)));
+            if let Some(param_idx) = param_idx {
+                if let Some(b) = impl_trait.get_mut(&param_idx.into()) {
+                    let p = p.clean(cx)?;
 
-            if let crate::core::ImplTraitParam::ParamIndex(idx) = param {
-                if let Some(proj) = impl_trait_proj.remove(&idx) {
-                    for (trait_did, name, rhs) in proj {
-                        let rhs = rhs.clean(cx);
-                        simplify::merge_bounds(cx, &mut bounds, trait_did, name, &rhs);
+                    b.extend(
+                        p.get_bounds()
+                            .into_iter()
+                            .flatten()
+                            .cloned()
+                            .filter(|b| !b.is_sized_bound(cx)),
+                    );
+
+                    let proj = projection
+                        .map(|p| (p.skip_binder().projection_ty.clean(cx), p.skip_binder().ty));
+                    if let Some(((_, trait_did, name), rhs)) =
+                        proj.as_ref().and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs)))
+                    {
+                        impl_trait_proj.entry(param_idx).or_default().push((trait_did, name, rhs));
                     }
+
+                    return None;
                 }
+            }
+
+            Some(p)
+        })
+        .collect::<Vec<_>>();
+
+    for (param, mut bounds) in impl_trait {
+        // Move trait bounds to the front.
+        bounds.sort_by_key(|b| !matches!(b, GenericBound::TraitBound(..)));
+
+        if let crate::core::ImplTraitParam::ParamIndex(idx) = param {
+            if let Some(proj) = impl_trait_proj.remove(&idx) {
+                for (trait_did, name, rhs) in proj {
+                    let rhs = rhs.clean(cx);
+                    simplify::merge_bounds(cx, &mut bounds, trait_did, name, &rhs);
+                }
+            }
+        } else {
+            unreachable!();
+        }
+
+        cx.impl_trait_bounds.insert(param, bounds);
+    }
+
+    // Now that `cx.impl_trait_bounds` is populated, we can process
+    // remaining predicates which could contain `impl Trait`.
+    let mut where_predicates =
+        where_predicates.into_iter().flat_map(|p| p.clean(cx)).collect::<Vec<_>>();
+
+    // Type parameters have a Sized bound by default unless removed with
+    // ?Sized. Scan through the predicates and mark any type parameter with
+    // a Sized bound, removing the bounds as we find them.
+    //
+    // Note that associated types also have a sized bound by default, but we
+    // don't actually know the set of associated types right here so that's
+    // handled in cleaning associated types
+    let mut sized_params = FxHashSet::default();
+    where_predicates.retain(|pred| match *pred {
+        WP::BoundPredicate { ty: Generic(ref g), ref bounds, .. } => {
+            if bounds.iter().any(|b| b.is_sized_bound(cx)) {
+                sized_params.insert(*g);
+                false
             } else {
-                unreachable!();
-            }
-
-            cx.impl_trait_bounds.insert(param, bounds);
-        }
-
-        // Now that `cx.impl_trait_bounds` is populated, we can process
-        // remaining predicates which could contain `impl Trait`.
-        let mut where_predicates =
-            where_predicates.into_iter().flat_map(|p| p.clean(cx)).collect::<Vec<_>>();
-
-        // Type parameters have a Sized bound by default unless removed with
-        // ?Sized. Scan through the predicates and mark any type parameter with
-        // a Sized bound, removing the bounds as we find them.
-        //
-        // Note that associated types also have a sized bound by default, but we
-        // don't actually know the set of associated types right here so that's
-        // handled in cleaning associated types
-        let mut sized_params = FxHashSet::default();
-        where_predicates.retain(|pred| match *pred {
-            WP::BoundPredicate { ty: Generic(ref g), ref bounds, .. } => {
-                if bounds.iter().any(|b| b.is_sized_bound(cx)) {
-                    sized_params.insert(*g);
-                    false
-                } else {
-                    true
-                }
-            }
-            _ => true,
-        });
-
-        // Run through the type parameters again and insert a ?Sized
-        // unbound for any we didn't find to be Sized.
-        for tp in &stripped_params {
-            if matches!(tp.kind, types::GenericParamDefKind::Type { .. })
-                && !sized_params.contains(&tp.name)
-            {
-                where_predicates.push(WP::BoundPredicate {
-                    ty: Type::Generic(tp.name),
-                    bounds: vec![GenericBound::maybe_sized(cx)],
-                    bound_params: Vec::new(),
-                })
+                true
             }
         }
+        _ => true,
+    });
 
-        // It would be nice to collect all of the bounds on a type and recombine
-        // them if possible, to avoid e.g., `where T: Foo, T: Bar, T: Sized, T: 'a`
-        // and instead see `where T: Foo + Bar + Sized + 'a`
-
-        Generics {
-            params: stripped_params,
-            where_predicates: simplify::where_clauses(cx, where_predicates),
+    // Run through the type parameters again and insert a ?Sized
+    // unbound for any we didn't find to be Sized.
+    for tp in &stripped_params {
+        if matches!(tp.kind, types::GenericParamDefKind::Type { .. })
+            && !sized_params.contains(&tp.name)
+        {
+            where_predicates.push(WP::BoundPredicate {
+                ty: Type::Generic(tp.name),
+                bounds: vec![GenericBound::maybe_sized(cx)],
+                bound_params: Vec::new(),
+            })
         }
+    }
+
+    // It would be nice to collect all of the bounds on a type and recombine
+    // them if possible, to avoid e.g., `where T: Foo, T: Bar, T: Sized, T: 'a`
+    // and instead see `where T: Foo + Bar + Sized + 'a`
+
+    Generics {
+        params: stripped_params,
+        where_predicates: simplify::where_clauses(cx, where_predicates),
     }
 }
 
@@ -1007,9 +1004,11 @@ impl Clean<Item> for ty::AssocItem {
                 AssocConstItem(ty.clean(cx), default)
             }
             ty::AssocKind::Fn => {
-                let generics =
-                    (tcx.generics_of(self.def_id), tcx.explicit_predicates_of(self.def_id))
-                        .clean(cx);
+                let generics = clean_ty_generics(
+                    cx,
+                    tcx.generics_of(self.def_id),
+                    tcx.explicit_predicates_of(self.def_id),
+                );
                 let sig = tcx.fn_sig(self.def_id);
                 let mut decl = (self.def_id, sig).clean(cx);
 
@@ -1080,7 +1079,7 @@ impl Clean<Item> for ty::AssocItem {
                 if let ty::TraitContainer(_) = self.container {
                     let bounds = tcx.explicit_item_bounds(self.def_id);
                     let predicates = ty::GenericPredicates { parent: None, predicates: bounds };
-                    let generics = (tcx.generics_of(self.def_id), predicates).clean(cx);
+                    let generics = clean_ty_generics(cx, tcx.generics_of(self.def_id), predicates);
                     let mut bounds = generics
                         .where_predicates
                         .iter()
