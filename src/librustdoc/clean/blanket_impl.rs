@@ -107,11 +107,11 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     def_id: ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                     kind: box ImplItem(Impl {
                         unsafety: hir::Unsafety::Normal,
-                        generics: (
+                        generics: clean_ty_generics(
+                            self.cx,
                             self.cx.tcx.generics_of(impl_def_id),
                             self.cx.tcx.explicit_predicates_of(impl_def_id),
-                        )
-                            .clean(self.cx),
+                        ),
                         // FIXME(eddyb) compute both `trait_` and `for_` from
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(trait_ref.clean(self.cx)),

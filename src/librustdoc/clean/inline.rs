@@ -15,12 +15,11 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, utils, Attributes, AttributesExt, ImplKind, ItemId, NestedAttributesExt, Type,
+    self, clean_fn_decl_from_did_and_sig, clean_ty_generics, utils, Attributes, AttributesExt,
+    Clean, ImplKind, ItemId, NestedAttributesExt, Type, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
-
-use super::{Clean, Visibility};
 
 type Attrs<'hir> = rustc_middle::ty::Attributes<'hir>;
 
@@ -208,7 +207,7 @@ crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Tra
         .collect();
 
     let predicates = cx.tcx.predicates_of(did);
-    let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
+    let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
     let generics = filter_non_trait_generics(did, generics);
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
     let is_auto = cx.tcx.trait_is_auto(did);
@@ -230,7 +229,9 @@ fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Functi
     let predicates = cx.tcx.predicates_of(did);
     let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
         // NOTE: generics need to be cleaned before the decl!
-        ((cx.tcx.generics_of(did), predicates).clean(cx), (did, sig).clean(cx))
+        let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
+        let decl = clean_fn_decl_from_did_and_sig(cx, did, sig);
+        (generics, decl)
     });
     clean::Function {
         decl,
@@ -243,7 +244,7 @@ fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {
     let predicates = cx.tcx.explicit_predicates_of(did);
 
     clean::Enum {
-        generics: (cx.tcx.generics_of(did), predicates).clean(cx),
+        generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
         variants_stripped: false,
         variants: cx.tcx.adt_def(did).variants.iter().map(|v| v.clean(cx)).collect(),
     }
@@ -255,7 +256,7 @@ fn build_struct(cx: &mut DocContext<'_>, did: DefId) -> clean::Struct {
 
     clean::Struct {
         struct_type: variant.ctor_kind,
-        generics: (cx.tcx.generics_of(did), predicates).clean(cx),
+        generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
         fields: variant.fields.iter().map(|x| x.clean(cx)).collect(),
         fields_stripped: false,
     }
@@ -265,7 +266,7 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
-    let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
+    let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
     let fields = variant.fields.iter().map(|x| x.clean(cx)).collect();
     clean::Union { generics, fields, fields_stripped: false }
 }
@@ -276,7 +277,7 @@ fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::Typedef {
 
     clean::Typedef {
         type_,
-        generics: (cx.tcx.generics_of(did), predicates).clean(cx),
+        generics: clean_ty_generics(cx, cx.tcx.generics_of(did), predicates),
         item_type: None,
     }
 }
@@ -440,7 +441,9 @@ crate fn build_impl(
                     }
                 })
                 .collect::<Vec<_>>(),
-            clean::enter_impl_trait(cx, |cx| (tcx.generics_of(did), predicates).clean(cx)),
+            clean::enter_impl_trait(cx, |cx| {
+                clean_ty_generics(cx, tcx.generics_of(did), predicates)
+            }),
         ),
     };
     let polarity = tcx.impl_polarity(did);

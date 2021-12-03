@@ -31,6 +31,7 @@ use rustc_typeck::hir_ty_to_ty;
 
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
+use std::collections::BTreeMap;
 use std::default::Default;
 use std::hash::Hash;
 use std::{mem, vec};
@@ -51,9 +52,17 @@ crate trait Clean<T> {
 impl Clean<Item> for DocModule<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let mut items: Vec<Item> = vec![];
-        items.extend(self.foreigns.iter().map(|x| x.clean(cx)));
+        items.extend(
+            self.foreigns
+                .iter()
+                .map(|(item, renamed)| clean_maybe_renamed_foreign_item(cx, item, *renamed)),
+        );
         items.extend(self.mods.iter().map(|x| x.clean(cx)));
-        items.extend(self.items.iter().map(|x| x.clean(cx)).flatten());
+        items.extend(
+            self.items
+                .iter()
+                .flat_map(|(item, renamed)| clean_maybe_renamed_item(cx, item, *renamed)),
+        );
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -102,11 +111,9 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
                     _ => bug!("clean: parenthesized `GenericBound::LangItemTrait`"),
                 };
 
+                let trait_ = clean_trait_ref_with_bindings(cx, trait_ref, &bindings);
                 GenericBound::TraitBound(
-                    PolyTrait {
-                        trait_: (trait_ref, &bindings[..]).clean(cx),
-                        generic_params: vec![],
-                    },
+                    PolyTrait { trait_, generic_params: vec![] },
                     hir::TraitBoundModifier::None,
                 )
             }
@@ -117,64 +124,60 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
     }
 }
 
-impl Clean<Path> for (ty::TraitRef<'_>, &[TypeBinding]) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Path {
-        let (trait_ref, bounds) = *self;
-        let kind = cx.tcx.def_kind(trait_ref.def_id).into();
-        if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
-            span_bug!(
-                cx.tcx.def_span(trait_ref.def_id),
-                "`TraitRef` had unexpected kind {:?}",
-                kind
-            );
-        }
-        inline::record_extern_fqn(cx, trait_ref.def_id, kind);
-        let path = external_path(cx, trait_ref.def_id, true, bounds.to_vec(), trait_ref.substs);
-
-        debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
-
-        path
+fn clean_trait_ref_with_bindings(
+    cx: &mut DocContext<'_>,
+    trait_ref: ty::TraitRef<'_>,
+    bindings: &[TypeBinding],
+) -> Path {
+    let kind = cx.tcx.def_kind(trait_ref.def_id).into();
+    if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
+        span_bug!(cx.tcx.def_span(trait_ref.def_id), "`TraitRef` had unexpected kind {:?}", kind);
     }
+    inline::record_extern_fqn(cx, trait_ref.def_id, kind);
+    let path = external_path(cx, trait_ref.def_id, true, bindings.to_vec(), trait_ref.substs);
+
+    debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
+
+    path
 }
 
 impl Clean<Path> for ty::TraitRef<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Path {
-        (*self, &[][..]).clean(cx)
+        clean_trait_ref_with_bindings(cx, *self, &[])
     }
 }
 
-impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
-        let (poly_trait_ref, bounds) = *self;
-        let poly_trait_ref = poly_trait_ref.lift_to_tcx(cx.tcx).unwrap();
+fn clean_poly_trait_ref_with_bindings(
+    cx: &mut DocContext<'_>,
+    poly_trait_ref: ty::PolyTraitRef<'_>,
+    bindings: &[TypeBinding],
+) -> GenericBound {
+    let poly_trait_ref = poly_trait_ref.lift_to_tcx(cx.tcx).unwrap();
 
-        // collect any late bound regions
-        let late_bound_regions: Vec<_> = cx
-            .tcx
-            .collect_referenced_late_bound_regions(&poly_trait_ref)
-            .into_iter()
-            .filter_map(|br| match br {
-                ty::BrNamed(_, name) => Some(GenericParamDef {
-                    name,
-                    kind: GenericParamDefKind::Lifetime { outlives: vec![] },
-                }),
-                _ => None,
-            })
-            .collect();
+    // collect any late bound regions
+    let late_bound_regions: Vec<_> = cx
+        .tcx
+        .collect_referenced_late_bound_regions(&poly_trait_ref)
+        .into_iter()
+        .filter_map(|br| match br {
+            ty::BrNamed(_, name) => Some(GenericParamDef {
+                name,
+                kind: GenericParamDefKind::Lifetime { outlives: vec![] },
+            }),
+            _ => None,
+        })
+        .collect();
 
-        GenericBound::TraitBound(
-            PolyTrait {
-                trait_: (poly_trait_ref.skip_binder(), bounds).clean(cx),
-                generic_params: late_bound_regions,
-            },
-            hir::TraitBoundModifier::None,
-        )
-    }
+    let trait_ = clean_trait_ref_with_bindings(cx, poly_trait_ref.skip_binder(), bindings);
+    GenericBound::TraitBound(
+        PolyTrait { trait_, generic_params: late_bound_regions },
+        hir::TraitBoundModifier::None,
+    )
 }
 
 impl<'tcx> Clean<GenericBound> for ty::PolyTraitRef<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
-        (*self, &[][..]).clean(cx)
+        clean_poly_trait_ref_with_bindings(cx, *self, &[])
     }
 }
 
@@ -528,169 +531,163 @@ impl Clean<Generics> for hir::Generics<'_> {
     }
 }
 
-impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Generics {
-        use self::WherePredicate as WP;
-        use std::collections::BTreeMap;
+fn clean_ty_generics(
+    cx: &mut DocContext<'_>,
+    gens: &ty::Generics,
+    preds: ty::GenericPredicates<'tcx>,
+) -> Generics {
+    // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
+    // since `Clean for ty::Predicate` would consume them.
+    let mut impl_trait = BTreeMap::<ImplTraitParam, Vec<GenericBound>>::default();
 
-        let (gens, preds) = *self;
-
-        // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
-        // since `Clean for ty::Predicate` would consume them.
-        let mut impl_trait = BTreeMap::<ImplTraitParam, Vec<GenericBound>>::default();
-
-        // Bounds in the type_params and lifetimes fields are repeated in the
-        // predicates field (see rustc_typeck::collect::ty_generics), so remove
-        // them.
-        let stripped_params = gens
-            .params
-            .iter()
-            .filter_map(|param| match param.kind {
-                ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
-                ty::GenericParamDefKind::Type { synthetic, .. } => {
-                    if param.name == kw::SelfUpper {
-                        assert_eq!(param.index, 0);
-                        return None;
-                    }
-                    if synthetic {
-                        impl_trait.insert(param.index.into(), vec![]);
-                        return None;
-                    }
-                    Some(param.clean(cx))
+    // Bounds in the type_params and lifetimes fields are repeated in the
+    // predicates field (see rustc_typeck::collect::ty_generics), so remove
+    // them.
+    let stripped_params = gens
+        .params
+        .iter()
+        .filter_map(|param| match param.kind {
+            ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
+            ty::GenericParamDefKind::Type { synthetic, .. } => {
+                if param.name == kw::SelfUpper {
+                    assert_eq!(param.index, 0);
+                    return None;
                 }
-                ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
-            })
-            .collect::<Vec<GenericParamDef>>();
+                if synthetic {
+                    impl_trait.insert(param.index.into(), vec![]);
+                    return None;
+                }
+                Some(param.clean(cx))
+            }
+            ty::GenericParamDefKind::Const { .. } => Some(param.clean(cx)),
+        })
+        .collect::<Vec<GenericParamDef>>();
 
-        // param index -> [(DefId of trait, associated type name, type)]
-        let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'tcx>)>>::default();
+    // param index -> [(DefId of trait, associated type name, type)]
+    let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'tcx>)>>::default();
 
-        let where_predicates = preds
-            .predicates
-            .iter()
-            .flat_map(|(p, _)| {
-                let mut projection = None;
-                let param_idx = (|| {
-                    let bound_p = p.kind();
-                    match bound_p.skip_binder() {
-                        ty::PredicateKind::Trait(pred) => {
-                            if let ty::Param(param) = pred.self_ty().kind() {
-                                return Some(param.index);
-                            }
+    let where_predicates = preds
+        .predicates
+        .iter()
+        .flat_map(|(p, _)| {
+            let mut projection = None;
+            let param_idx = (|| {
+                let bound_p = p.kind();
+                match bound_p.skip_binder() {
+                    ty::PredicateKind::Trait(pred) => {
+                        if let ty::Param(param) = pred.self_ty().kind() {
+                            return Some(param.index);
                         }
-                        ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
-                            if let ty::Param(param) = ty.kind() {
-                                return Some(param.index);
-                            }
-                        }
-                        ty::PredicateKind::Projection(p) => {
-                            if let ty::Param(param) = p.projection_ty.self_ty().kind() {
-                                projection = Some(bound_p.rebind(p));
-                                return Some(param.index);
-                            }
-                        }
-                        _ => (),
                     }
-
-                    None
-                })();
-
-                if let Some(param_idx) = param_idx {
-                    if let Some(b) = impl_trait.get_mut(&param_idx.into()) {
-                        let p = p.clean(cx)?;
-
-                        b.extend(
-                            p.get_bounds()
-                                .into_iter()
-                                .flatten()
-                                .cloned()
-                                .filter(|b| !b.is_sized_bound(cx)),
-                        );
-
-                        let proj = projection
-                            .map(|p| (p.skip_binder().projection_ty.clean(cx), p.skip_binder().ty));
-                        if let Some(((_, trait_did, name), rhs)) =
-                            proj.as_ref().and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs)))
-                        {
-                            impl_trait_proj
-                                .entry(param_idx)
-                                .or_default()
-                                .push((trait_did, name, rhs));
+                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+                        if let ty::Param(param) = ty.kind() {
+                            return Some(param.index);
                         }
-
-                        return None;
                     }
+                    ty::PredicateKind::Projection(p) => {
+                        if let ty::Param(param) = p.projection_ty.self_ty().kind() {
+                            projection = Some(bound_p.rebind(p));
+                            return Some(param.index);
+                        }
+                    }
+                    _ => (),
                 }
 
-                Some(p)
-            })
-            .collect::<Vec<_>>();
+                None
+            })();
 
-        for (param, mut bounds) in impl_trait {
-            // Move trait bounds to the front.
-            bounds.sort_by_key(|b| !matches!(b, GenericBound::TraitBound(..)));
+            if let Some(param_idx) = param_idx {
+                if let Some(b) = impl_trait.get_mut(&param_idx.into()) {
+                    let p = p.clean(cx)?;
 
-            if let crate::core::ImplTraitParam::ParamIndex(idx) = param {
-                if let Some(proj) = impl_trait_proj.remove(&idx) {
-                    for (trait_did, name, rhs) in proj {
-                        let rhs = rhs.clean(cx);
-                        simplify::merge_bounds(cx, &mut bounds, trait_did, name, &rhs);
+                    b.extend(
+                        p.get_bounds()
+                            .into_iter()
+                            .flatten()
+                            .cloned()
+                            .filter(|b| !b.is_sized_bound(cx)),
+                    );
+
+                    let proj = projection
+                        .map(|p| (p.skip_binder().projection_ty.clean(cx), p.skip_binder().ty));
+                    if let Some(((_, trait_did, name), rhs)) =
+                        proj.as_ref().and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs)))
+                    {
+                        impl_trait_proj.entry(param_idx).or_default().push((trait_did, name, rhs));
                     }
+
+                    return None;
                 }
+            }
+
+            Some(p)
+        })
+        .collect::<Vec<_>>();
+
+    for (param, mut bounds) in impl_trait {
+        // Move trait bounds to the front.
+        bounds.sort_by_key(|b| !matches!(b, GenericBound::TraitBound(..)));
+
+        if let crate::core::ImplTraitParam::ParamIndex(idx) = param {
+            if let Some(proj) = impl_trait_proj.remove(&idx) {
+                for (trait_did, name, rhs) in proj {
+                    let rhs = rhs.clean(cx);
+                    simplify::merge_bounds(cx, &mut bounds, trait_did, name, &rhs);
+                }
+            }
+        } else {
+            unreachable!();
+        }
+
+        cx.impl_trait_bounds.insert(param, bounds);
+    }
+
+    // Now that `cx.impl_trait_bounds` is populated, we can process
+    // remaining predicates which could contain `impl Trait`.
+    let mut where_predicates =
+        where_predicates.into_iter().flat_map(|p| p.clean(cx)).collect::<Vec<_>>();
+
+    // Type parameters have a Sized bound by default unless removed with
+    // ?Sized. Scan through the predicates and mark any type parameter with
+    // a Sized bound, removing the bounds as we find them.
+    //
+    // Note that associated types also have a sized bound by default, but we
+    // don't actually know the set of associated types right here so that's
+    // handled in cleaning associated types
+    let mut sized_params = FxHashSet::default();
+    where_predicates.retain(|pred| match *pred {
+        WherePredicate::BoundPredicate { ty: Generic(ref g), ref bounds, .. } => {
+            if bounds.iter().any(|b| b.is_sized_bound(cx)) {
+                sized_params.insert(*g);
+                false
             } else {
-                unreachable!();
-            }
-
-            cx.impl_trait_bounds.insert(param, bounds);
-        }
-
-        // Now that `cx.impl_trait_bounds` is populated, we can process
-        // remaining predicates which could contain `impl Trait`.
-        let mut where_predicates =
-            where_predicates.into_iter().flat_map(|p| p.clean(cx)).collect::<Vec<_>>();
-
-        // Type parameters have a Sized bound by default unless removed with
-        // ?Sized. Scan through the predicates and mark any type parameter with
-        // a Sized bound, removing the bounds as we find them.
-        //
-        // Note that associated types also have a sized bound by default, but we
-        // don't actually know the set of associated types right here so that's
-        // handled in cleaning associated types
-        let mut sized_params = FxHashSet::default();
-        where_predicates.retain(|pred| match *pred {
-            WP::BoundPredicate { ty: Generic(ref g), ref bounds, .. } => {
-                if bounds.iter().any(|b| b.is_sized_bound(cx)) {
-                    sized_params.insert(*g);
-                    false
-                } else {
-                    true
-                }
-            }
-            _ => true,
-        });
-
-        // Run through the type parameters again and insert a ?Sized
-        // unbound for any we didn't find to be Sized.
-        for tp in &stripped_params {
-            if matches!(tp.kind, types::GenericParamDefKind::Type { .. })
-                && !sized_params.contains(&tp.name)
-            {
-                where_predicates.push(WP::BoundPredicate {
-                    ty: Type::Generic(tp.name),
-                    bounds: vec![GenericBound::maybe_sized(cx)],
-                    bound_params: Vec::new(),
-                })
+                true
             }
         }
+        _ => true,
+    });
 
-        // It would be nice to collect all of the bounds on a type and recombine
-        // them if possible, to avoid e.g., `where T: Foo, T: Bar, T: Sized, T: 'a`
-        // and instead see `where T: Foo + Bar + Sized + 'a`
-
-        Generics {
-            params: stripped_params,
-            where_predicates: simplify::where_clauses(cx, where_predicates),
+    // Run through the type parameters again and insert a ?Sized
+    // unbound for any we didn't find to be Sized.
+    for tp in &stripped_params {
+        if matches!(tp.kind, types::GenericParamDefKind::Type { .. })
+            && !sized_params.contains(&tp.name)
+        {
+            where_predicates.push(WherePredicate::BoundPredicate {
+                ty: Type::Generic(tp.name),
+                bounds: vec![GenericBound::maybe_sized(cx)],
+                bound_params: Vec::new(),
+            })
         }
+    }
+
+    // It would be nice to collect all of the bounds on a type and recombine
+    // them if possible, to avoid e.g., `where T: Foo, T: Bar, T: Sized, T: 'a`
+    // and instead see `where T: Foo + Bar + Sized + 'a`
+
+    Generics {
+        params: stripped_params,
+        where_predicates: simplify::where_clauses(cx, where_predicates),
     }
 }
 
@@ -741,7 +738,7 @@ fn clean_fn_or_proc_macro(
             ProcMacroItem(ProcMacro { kind, helpers })
         }
         None => {
-            let mut func = (sig, generics, body_id).clean(cx);
+            let mut func = clean_function(cx, sig, generics, body_id);
             let def_id = item.def_id.to_def_id();
             func.header.constness =
                 if cx.tcx.is_const_fn(def_id) && is_unstable_const_fn(cx.tcx, def_id).is_none() {
@@ -785,54 +782,59 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
     }
 }
 
-impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::BodyId) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Function {
-        let (generics, decl) = enter_impl_trait(cx, |cx| {
-            // NOTE: generics must be cleaned before args
-            let generics = self.1.clean(cx);
-            let args = (self.0.decl.inputs, self.2).clean(cx);
-            let decl = clean_fn_decl_with_args(cx, self.0.decl, args);
-            (generics, decl)
-        });
-        Function { decl, generics, header: self.0.header }
+fn clean_function(
+    cx: &mut DocContext<'_>,
+    sig: &hir::FnSig<'_>,
+    generics: &hir::Generics<'_>,
+    body_id: hir::BodyId,
+) -> Function {
+    let (generics, decl) = enter_impl_trait(cx, |cx| {
+        // NOTE: generics must be cleaned before args
+        let generics = generics.clean(cx);
+        let args = clean_args_from_types_and_body_id(cx, sig.decl.inputs, body_id);
+        let decl = clean_fn_decl_with_args(cx, sig.decl, args);
+        (generics, decl)
+    });
+    Function { decl, generics, header: sig.header }
+}
+
+fn clean_args_from_types_and_names(
+    cx: &mut DocContext<'_>,
+    types: &[hir::Ty<'_>],
+    names: &[Ident],
+) -> Arguments {
+    Arguments {
+        values: types
+            .iter()
+            .enumerate()
+            .map(|(i, ty)| {
+                let mut name = names.get(i).map_or(kw::Empty, |ident| ident.name);
+                if name.is_empty() {
+                    name = kw::Underscore;
+                }
+                Argument { name, type_: ty.clean(cx), is_const: false }
+            })
+            .collect(),
     }
 }
 
-impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Arguments {
-        Arguments {
-            values: self
-                .0
-                .iter()
-                .enumerate()
-                .map(|(i, ty)| {
-                    let mut name = self.1.get(i).map_or(kw::Empty, |ident| ident.name);
-                    if name.is_empty() {
-                        name = kw::Underscore;
-                    }
-                    Argument { name, type_: ty.clean(cx), is_const: false }
-                })
-                .collect(),
-        }
-    }
-}
+fn clean_args_from_types_and_body_id(
+    cx: &mut DocContext<'_>,
+    types: &[hir::Ty<'_>],
+    body_id: hir::BodyId,
+) -> Arguments {
+    let body = cx.tcx.hir().body(body_id);
 
-impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Arguments {
-        let body = cx.tcx.hir().body(self.1);
-
-        Arguments {
-            values: self
-                .0
-                .iter()
-                .enumerate()
-                .map(|(i, ty)| Argument {
-                    name: name_from_pat(body.params[i].pat),
-                    type_: ty.clean(cx),
-                    is_const: false,
-                })
-                .collect(),
-        }
+    Arguments {
+        values: types
+            .iter()
+            .enumerate()
+            .map(|(i, ty)| Argument {
+                name: name_from_pat(body.params[i].pat),
+                type_: ty.clean(cx),
+                is_const: false,
+            })
+            .collect(),
     }
 }
 
@@ -844,27 +846,28 @@ fn clean_fn_decl_with_args(
     FnDecl { inputs: args, output: decl.output.clean(cx), c_variadic: decl.c_variadic }
 }
 
-impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> FnDecl {
-        let (did, sig) = *self;
-        let mut names = if did.is_local() { &[] } else { cx.tcx.fn_arg_names(did) }.iter();
+fn clean_fn_decl_from_did_and_sig(
+    cx: &mut DocContext<'_>,
+    did: DefId,
+    sig: ty::PolyFnSig<'_>,
+) -> FnDecl {
+    let mut names = if did.is_local() { &[] } else { cx.tcx.fn_arg_names(did) }.iter();
 
-        FnDecl {
-            output: Return(sig.skip_binder().output().clean(cx)),
-            c_variadic: sig.skip_binder().c_variadic,
-            inputs: Arguments {
-                values: sig
-                    .skip_binder()
-                    .inputs()
-                    .iter()
-                    .map(|t| Argument {
-                        type_: t.clean(cx),
-                        name: names.next().map_or(kw::Empty, |i| i.name),
-                        is_const: false,
-                    })
-                    .collect(),
-            },
-        }
+    FnDecl {
+        output: Return(sig.skip_binder().output().clean(cx)),
+        c_variadic: sig.skip_binder().c_variadic,
+        inputs: Arguments {
+            values: sig
+                .skip_binder()
+                .inputs()
+                .iter()
+                .map(|t| Argument {
+                    type_: t.clean(cx),
+                    name: names.next().map_or(kw::Empty, |i| i.name),
+                    is_const: false,
+                })
+                .collect(),
+        },
     }
 }
 
@@ -912,7 +915,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx.tcx, e)))
                 }
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                    let mut m = (sig, &self.generics, body).clean(cx);
+                    let mut m = clean_function(cx, sig, &self.generics, body);
                     if m.header.constness == hir::Constness::Const
                         && is_unstable_const_fn(cx.tcx, local_did).is_some()
                     {
@@ -924,7 +927,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
                         // NOTE: generics must be cleaned before args
                         let generics = self.generics.clean(cx);
-                        let args = (sig.decl.inputs, names).clean(cx);
+                        let args = clean_args_from_types_and_names(cx, sig.decl.inputs, names);
                         let decl = clean_fn_decl_with_args(cx, sig.decl, args);
                         (generics, decl)
                     });
@@ -959,7 +962,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
                     AssocConstItem(ty.clean(cx), Some(print_const_expr(cx.tcx, expr)))
                 }
                 hir::ImplItemKind::Fn(ref sig, body) => {
-                    let mut m = (sig, &self.generics, body).clean(cx);
+                    let mut m = clean_function(cx, sig, &self.generics, body);
                     if m.header.constness == hir::Constness::Const
                         && is_unstable_const_fn(cx.tcx, local_did).is_some()
                     {
@@ -1013,11 +1016,13 @@ impl Clean<Item> for ty::AssocItem {
                 AssocConstItem(ty.clean(cx), default)
             }
             ty::AssocKind::Fn => {
-                let generics =
-                    (tcx.generics_of(self.def_id), tcx.explicit_predicates_of(self.def_id))
-                        .clean(cx);
+                let generics = clean_ty_generics(
+                    cx,
+                    tcx.generics_of(self.def_id),
+                    tcx.explicit_predicates_of(self.def_id),
+                );
                 let sig = tcx.fn_sig(self.def_id);
-                let mut decl = (self.def_id, sig).clean(cx);
+                let mut decl = clean_fn_decl_from_did_and_sig(cx, self.def_id, sig);
 
                 if self.fn_has_self_parameter {
                     let self_ty = match self.container {
@@ -1086,7 +1091,7 @@ impl Clean<Item> for ty::AssocItem {
                 if let ty::TraitContainer(_) = self.container {
                     let bounds = tcx.explicit_item_bounds(self.def_id);
                     let predicates = ty::GenericPredicates { parent: None, predicates: bounds };
-                    let generics = (tcx.generics_of(self.def_id), predicates).clean(cx);
+                    let generics = clean_ty_generics(cx, tcx.generics_of(self.def_id), predicates);
                     let mut bounds = generics
                         .where_predicates
                         .iter()
@@ -1411,10 +1416,11 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let ty = cx.tcx.lift(*self).expect("FnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
                 let def_id = DefId::local(CRATE_DEF_INDEX);
+                let decl = clean_fn_decl_from_did_and_sig(cx, def_id, sig);
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
                     generic_params: Vec::new(),
-                    decl: (def_id, sig).clean(cx),
+                    decl,
                     abi: sig.abi(),
                 })
             }
@@ -1520,7 +1526,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             }
                         }
 
-                        let bounds: Vec<_> = bounds
+                        let bindings: Vec<_> = bounds
                             .iter()
                             .filter_map(|bound| {
                                 if let ty::PredicateKind::Projection(proj) =
@@ -1548,7 +1554,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             })
                             .collect();
 
-                        Some((trait_ref, &bounds[..]).clean(cx))
+                        Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, &bindings))
                     })
                     .collect::<Vec<_>>();
                 bounds.extend(regions);
@@ -1720,7 +1726,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
         let (generic_params, decl) = enter_impl_trait(cx, |cx| {
             // NOTE: generics must be cleaned before args
             let generic_params = self.generic_params.iter().map(|x| x.clean(cx)).collect();
-            let args = (self.decl.inputs, self.param_names).clean(cx);
+            let args = clean_args_from_types_and_names(cx, self.decl.inputs, self.param_names);
             let decl = clean_fn_decl_with_args(cx, self.decl, args);
             (generic_params, decl)
         });
@@ -1728,94 +1734,93 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     }
 }
 
-impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Vec<Item> {
-        use hir::ItemKind;
+fn clean_maybe_renamed_item(
+    cx: &mut DocContext<'_>,
+    item: &hir::Item<'_>,
+    renamed: Option<Symbol>,
+) -> Vec<Item> {
+    use hir::ItemKind;
 
-        let (item, renamed) = self;
-        let def_id = item.def_id.to_def_id();
-        let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
-        cx.with_param_env(def_id, |cx| {
-            let kind = match item.kind {
-                ItemKind::Static(ty, mutability, body_id) => {
-                    StaticItem(Static { type_: ty.clean(cx), mutability, expr: Some(body_id) })
-                }
-                ItemKind::Const(ty, body_id) => ConstantItem(Constant {
-                    type_: ty.clean(cx),
-                    kind: ConstantKind::Local { body: body_id, def_id },
-                }),
-                ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
-                    bounds: ty.bounds.iter().map(|x| x.clean(cx)).collect(),
-                    generics: ty.generics.clean(cx),
-                }),
-                ItemKind::TyAlias(hir_ty, ref generics) => {
-                    let rustdoc_ty = hir_ty.clean(cx);
-                    let ty = hir_ty_to_ty(cx.tcx, hir_ty).clean(cx);
-                    TypedefItem(
-                        Typedef {
-                            type_: rustdoc_ty,
-                            generics: generics.clean(cx),
-                            item_type: Some(ty),
-                        },
-                        false,
-                    )
-                }
-                ItemKind::Enum(ref def, ref generics) => EnumItem(Enum {
-                    variants: def.variants.iter().map(|v| v.clean(cx)).collect(),
-                    generics: generics.clean(cx),
-                    variants_stripped: false,
-                }),
-                ItemKind::TraitAlias(ref generics, bounds) => TraitAliasItem(TraitAlias {
+    let def_id = item.def_id.to_def_id();
+    let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
+    cx.with_param_env(def_id, |cx| {
+        let kind = match item.kind {
+            ItemKind::Static(ty, mutability, body_id) => {
+                StaticItem(Static { type_: ty.clean(cx), mutability, expr: Some(body_id) })
+            }
+            ItemKind::Const(ty, body_id) => ConstantItem(Constant {
+                type_: ty.clean(cx),
+                kind: ConstantKind::Local { body: body_id, def_id },
+            }),
+            ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
+                bounds: ty.bounds.iter().map(|x| x.clean(cx)).collect(),
+                generics: ty.generics.clean(cx),
+            }),
+            ItemKind::TyAlias(hir_ty, ref generics) => {
+                let rustdoc_ty = hir_ty.clean(cx);
+                let ty = hir_ty_to_ty(cx.tcx, hir_ty).clean(cx);
+                TypedefItem(
+                    Typedef {
+                        type_: rustdoc_ty,
+                        generics: generics.clean(cx),
+                        item_type: Some(ty),
+                    },
+                    false,
+                )
+            }
+            ItemKind::Enum(ref def, ref generics) => EnumItem(Enum {
+                variants: def.variants.iter().map(|v| v.clean(cx)).collect(),
+                generics: generics.clean(cx),
+                variants_stripped: false,
+            }),
+            ItemKind::TraitAlias(ref generics, bounds) => TraitAliasItem(TraitAlias {
+                generics: generics.clean(cx),
+                bounds: bounds.iter().map(|x| x.clean(cx)).collect(),
+            }),
+            ItemKind::Union(ref variant_data, ref generics) => UnionItem(Union {
+                generics: generics.clean(cx),
+                fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
+                fields_stripped: false,
+            }),
+            ItemKind::Struct(ref variant_data, ref generics) => StructItem(Struct {
+                struct_type: CtorKind::from_hir(variant_data),
+                generics: generics.clean(cx),
+                fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
+                fields_stripped: false,
+            }),
+            ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.hir_id(), cx),
+            // proc macros can have a name set by attributes
+            ItemKind::Fn(ref sig, ref generics, body_id) => {
+                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
+            }
+            ItemKind::Macro(ref macro_def) => {
+                let ty_vis = cx.tcx.visibility(def_id).clean(cx);
+                MacroItem(Macro {
+                    source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
+                })
+            }
+            ItemKind::Trait(is_auto, unsafety, ref generics, bounds, item_ids) => {
+                let items =
+                    item_ids.iter().map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx)).collect();
+                TraitItem(Trait {
+                    unsafety,
+                    items,
                     generics: generics.clean(cx),
                     bounds: bounds.iter().map(|x| x.clean(cx)).collect(),
-                }),
-                ItemKind::Union(ref variant_data, ref generics) => UnionItem(Union {
-                    generics: generics.clean(cx),
-                    fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
-                    fields_stripped: false,
-                }),
-                ItemKind::Struct(ref variant_data, ref generics) => StructItem(Struct {
-                    struct_type: CtorKind::from_hir(variant_data),
-                    generics: generics.clean(cx),
-                    fields: variant_data.fields().iter().map(|x| x.clean(cx)).collect(),
-                    fields_stripped: false,
-                }),
-                ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.hir_id(), cx),
-                // proc macros can have a name set by attributes
-                ItemKind::Fn(ref sig, ref generics, body_id) => {
-                    clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
-                }
-                ItemKind::Macro(ref macro_def) => {
-                    let ty_vis = cx.tcx.visibility(def_id).clean(cx);
-                    MacroItem(Macro {
-                        source: display_macro_source(cx, name, macro_def, def_id, ty_vis),
-                    })
-                }
-                ItemKind::Trait(is_auto, unsafety, ref generics, bounds, item_ids) => {
-                    let items = item_ids
-                        .iter()
-                        .map(|ti| cx.tcx.hir().trait_item(ti.id).clean(cx))
-                        .collect();
-                    TraitItem(Trait {
-                        unsafety,
-                        items,
-                        generics: generics.clean(cx),
-                        bounds: bounds.iter().map(|x| x.clean(cx)).collect(),
-                        is_auto: is_auto.clean(cx),
-                    })
-                }
-                ItemKind::ExternCrate(orig_name) => {
-                    return clean_extern_crate(item, name, orig_name, cx);
-                }
-                ItemKind::Use(path, kind) => {
-                    return clean_use_statement(item, name, path, kind, cx);
-                }
-                _ => unreachable!("not yet converted"),
-            };
+                    is_auto: is_auto.clean(cx),
+                })
+            }
+            ItemKind::ExternCrate(orig_name) => {
+                return clean_extern_crate(item, name, orig_name, cx);
+            }
+            ItemKind::Use(path, kind) => {
+                return clean_use_statement(item, name, path, kind, cx);
+            }
+            _ => unreachable!("not yet converted"),
+        };
 
-            vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
-        })
-    }
+        vec![Item::from_def_id_and_parts(def_id, Some(name), kind, cx)]
+    })
 }
 
 impl Clean<Item> for hir::Variant<'_> {
@@ -2029,50 +2034,51 @@ fn clean_use_statement(
     vec![Item::from_def_id_and_parts(import.def_id.to_def_id(), None, ImportItem(inner), cx)]
 }
 
-impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Item {
-        let (item, renamed) = self;
-        let def_id = item.def_id.to_def_id();
-        cx.with_param_env(def_id, |cx| {
-            let kind = match item.kind {
-                hir::ForeignItemKind::Fn(decl, names, ref generics) => {
-                    let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
-                    let (generics, decl) = enter_impl_trait(cx, |cx| {
-                        // NOTE: generics must be cleaned before args
-                        let generics = generics.clean(cx);
-                        let args = (decl.inputs, names).clean(cx);
-                        let decl = clean_fn_decl_with_args(cx, decl, args);
-                        (generics, decl)
-                    });
-                    ForeignFunctionItem(Function {
-                        decl,
-                        generics,
-                        header: hir::FnHeader {
-                            unsafety: if abi == Abi::RustIntrinsic {
-                                intrinsic_operation_unsafety(item.ident.name)
-                            } else {
-                                hir::Unsafety::Unsafe
-                            },
-                            abi,
-                            constness: hir::Constness::NotConst,
-                            asyncness: hir::IsAsync::NotAsync,
+fn clean_maybe_renamed_foreign_item(
+    cx: &mut DocContext<'_>,
+    item: &hir::ForeignItem<'_>,
+    renamed: Option<Symbol>,
+) -> Item {
+    let def_id = item.def_id.to_def_id();
+    cx.with_param_env(def_id, |cx| {
+        let kind = match item.kind {
+            hir::ForeignItemKind::Fn(decl, names, ref generics) => {
+                let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
+                let (generics, decl) = enter_impl_trait(cx, |cx| {
+                    // NOTE: generics must be cleaned before args
+                    let generics = generics.clean(cx);
+                    let args = clean_args_from_types_and_names(cx, decl.inputs, names);
+                    let decl = clean_fn_decl_with_args(cx, decl, args);
+                    (generics, decl)
+                });
+                ForeignFunctionItem(Function {
+                    decl,
+                    generics,
+                    header: hir::FnHeader {
+                        unsafety: if abi == Abi::RustIntrinsic {
+                            intrinsic_operation_unsafety(item.ident.name)
+                        } else {
+                            hir::Unsafety::Unsafe
                         },
-                    })
-                }
-                hir::ForeignItemKind::Static(ref ty, mutability) => {
-                    ForeignStaticItem(Static { type_: ty.clean(cx), mutability, expr: None })
-                }
-                hir::ForeignItemKind::Type => ForeignTypeItem,
-            };
+                        abi,
+                        constness: hir::Constness::NotConst,
+                        asyncness: hir::IsAsync::NotAsync,
+                    },
+                })
+            }
+            hir::ForeignItemKind::Static(ref ty, mutability) => {
+                ForeignStaticItem(Static { type_: ty.clean(cx), mutability, expr: None })
+            }
+            hir::ForeignItemKind::Type => ForeignTypeItem,
+        };
 
-            Item::from_hir_id_and_parts(
-                item.hir_id(),
-                Some(renamed.unwrap_or(item.ident.name)),
-                kind,
-                cx,
-            )
-        })
-    }
+        Item::from_hir_id_and_parts(
+            item.hir_id(),
+            Some(renamed.unwrap_or(item.ident.name)),
+            kind,
+            cx,
+        )
+    })
 }
 
 impl Clean<TypeBinding> for hir::TypeBinding<'_> {
