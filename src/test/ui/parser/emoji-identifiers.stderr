@@ -18,6 +18,14 @@ LL | fn i_like_to_😅_a_lot() -> 👀 {
 LL |     let _ = i_like_to_😄_a_lot() ➖ 4;
    |             ^^^^^^^^^^^^^^^^^^ help: a function with a similar name exists: `i_like_to_😅_a_lot`
 
+error: Ferris cannot be used as an identifier
+  --> $DIR/emoji-identifiers.rs:17:9
+   |
+LL |     let 🦀 = 1;
+   |         ^^ help: try using their name instead: `ferris`
+LL |     dbg!(🦀);
+   |          ^^
+
 error: identifiers cannot contain emoji: `ABig👩👩👧👧Family`
   --> $DIR/emoji-identifiers.rs:1:8
    |
@@ -77,7 +85,7 @@ LL |     👀::full_of✨()
    |         function or associated item not found in `👀`
    |         help: there is an associated function with a similar name: `full_of_✨`
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0425, E0599.
 For more information about an error, try `rustc --explain E0425`.
