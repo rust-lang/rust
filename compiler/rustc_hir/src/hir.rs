@@ -3230,6 +3230,31 @@ impl<'hir> Node<'hir> {
         }
     }
 
+    /// Returns `Constness::Const` when this node is a const fn/impl/item.
+    pub fn constness_for_typeck(&self) -> Constness {
+        match self {
+            Node::Item(Item {
+                kind: ItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | Node::TraitItem(TraitItem {
+                kind: TraitItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | Node::ImplItem(ImplItem {
+                kind: ImplItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
+                ..
+            })
+            | Node::Item(Item { kind: ItemKind::Impl(Impl { constness, .. }), .. }) => *constness,
+
+            Node::Item(Item { kind: ItemKind::Const(..), .. })
+            | Node::TraitItem(TraitItem { kind: TraitItemKind::Const(..), .. })
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Const(..), .. }) => Constness::Const,
+
+            _ => Constness::NotConst,
+        }
+    }
+
     pub fn as_owner(self) -> Option<OwnerNode<'hir>> {
         match self {
             Node::Item(i) => Some(OwnerNode::Item(i)),

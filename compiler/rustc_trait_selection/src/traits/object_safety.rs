@@ -18,7 +18,7 @@ use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, Subst};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor, WithConstness};
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
 use rustc_span::symbol::Symbol;
@@ -698,11 +698,7 @@ fn receiver_is_dispatchable<'tcx>(
             .chain(array::IntoIter::new([unsize_predicate, trait_predicate]))
             .collect();
 
-        ty::ParamEnv::new(
-            tcx.intern_predicates(&caller_bounds),
-            param_env.reveal(),
-            param_env.constness(),
-        )
+        ty::ParamEnv::new(tcx.intern_predicates(&caller_bounds), param_env.reveal())
     };
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>

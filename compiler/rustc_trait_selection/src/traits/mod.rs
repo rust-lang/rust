@@ -33,7 +33,8 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::{
-    self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry, COMMON_VTABLE_ENTRIES,
+    self, GenericParamDefKind, ToPredicate, Ty, TyCtxt, VtblEntry, WithConstness,
+    COMMON_VTABLE_ENTRIES,
 };
 use rustc_span::{sym, Span};
 use smallvec::SmallVec;
@@ -306,11 +307,8 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
-    let elaborated_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
-        unnormalized_env.reveal(),
-        unnormalized_env.constness(),
-    );
+    let elaborated_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), unnormalized_env.reveal());
 
     // HACK: we are trying to normalize the param-env inside *itself*. The problem is that
     // normalization expects its param-env to be already normalized, which means we have
@@ -362,11 +360,8 @@ pub fn normalize_param_env_or_error<'tcx>(
     // predicates here anyway. Keeping them here anyway because it seems safer.
     let outlives_env: Vec<_> =
         non_outlives_predicates.iter().chain(&outlives_predicates).cloned().collect();
-    let outlives_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&outlives_env),
-        unnormalized_env.reveal(),
-        unnormalized_env.constness(),
-    );
+    let outlives_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&outlives_env), unnormalized_env.reveal());
     let outlives_predicates = match do_normalize_predicates(
         tcx,
         region_context,
@@ -386,11 +381,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
-        unnormalized_env.reveal(),
-        unnormalized_env.constness(),
-    )
+    ty::ParamEnv::new(tcx.intern_predicates(&predicates), unnormalized_env.reveal())
 }
 
 pub fn fully_normalize<'a, 'tcx, T>(
@@ -573,17 +564,14 @@ fn prepare_vtable_segments<'tcx, T>(
                     .predicates
                     .into_iter()
                     .filter_map(move |(pred, _)| {
-                        pred.subst_supertrait(tcx, &inner_most_trait_ref).to_opt_poly_trait_pred()
+                        pred.subst_supertrait(tcx, &inner_most_trait_ref).to_opt_poly_trait_ref()
                     });
 
                 'diving_in_skip_visited_traits: loop {
                     if let Some(next_super_trait) = direct_super_traits_iter.next() {
                         if visited.insert(next_super_trait.to_predicate(tcx)) {
-                            // We're throwing away potential constness of super traits here.
-                            // FIXME: handle ~const super traits
-                            let next_super_trait = next_super_trait.map_bound(|t| t.trait_ref);
                             stack.push((
-                                next_super_trait,
+                                next_super_trait.value,
                                 emit_vptr_on_new_entry,
                                 Some(direct_super_traits_iter),
                             ));
@@ -615,11 +603,7 @@ fn prepare_vtable_segments<'tcx, T>(
                     if let Some(siblings) = siblings_opt {
                         if let Some(next_inner_most_trait_ref) = siblings.next() {
                             if visited.insert(next_inner_most_trait_ref.to_predicate(tcx)) {
-                                // We're throwing away potential constness of super traits here.
-                                // FIXME: handle ~const super traits
-                                let next_inner_most_trait_ref =
-                                    next_inner_most_trait_ref.map_bound(|t| t.trait_ref);
-                                *inner_most_trait_ref = next_inner_most_trait_ref;
+                                *inner_most_trait_ref = next_inner_most_trait_ref.value;
                                 *emit_vptr = emit_vptr_on_new_entry;
                                 break 'exiting_out;
                             } else {

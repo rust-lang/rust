@@ -26,9 +26,9 @@ impl<'tcx> Elaborator<'tcx> {
             .predicates
             .into_iter()
             .flat_map(|(pred, _)| {
-                pred.subst_supertrait(self.tcx, &trait_ref).to_opt_poly_trait_pred()
+                pred.subst_supertrait(self.tcx, &trait_ref).to_opt_poly_trait_ref()
             })
-            .map(|t| t.map_bound(|pred| pred.trait_ref))
+            .map(|t| t.value)
             .filter(|supertrait_ref| self.visited.insert(*supertrait_ref));
 
         self.stack.extend(supertrait_refs);

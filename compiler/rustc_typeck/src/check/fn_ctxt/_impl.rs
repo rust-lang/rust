@@ -616,7 +616,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(in super::super) fn select_all_obligations_or_error(&self) {
-        let errors = self.fulfillment_cx.borrow_mut().select_all_or_error(&self);
+        let errors = self
+            .fulfillment_cx
+            .borrow_mut()
+            .select_all_with_constness_or_error(&self, self.inh.constness);
 
         if !errors.is_empty() {
             self.report_fulfillment_errors(&errors, self.inh.body_id, false);
@@ -629,7 +632,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fallback_has_occurred: bool,
         mutate_fulfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
-        let mut result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
+        let mut result = self
+            .fulfillment_cx
+            .borrow_mut()
+            .select_with_constness_where_possible(self, self.inh.constness);
         if !result.is_empty() {
             mutate_fulfillment_errors(&mut result);
             self.report_fulfillment_errors(&result, self.inh.body_id, fallback_has_occurred);

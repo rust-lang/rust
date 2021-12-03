@@ -6,7 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
 use rustc_span::Span;
 
 use std::iter;
@@ -298,10 +298,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         let extend = |obligation: traits::PredicateObligation<'tcx>| {
             let mut cause = cause.clone();
-            if let Some(parent_trait_ref) = obligation.predicate.to_opt_poly_trait_pred() {
+            if let Some(parent_trait_ref) = obligation.predicate.to_opt_poly_trait_ref() {
                 let derived_cause = traits::DerivedObligationCause {
-                    // FIXME(fee1-dead): when improving error messages, change this to PolyTraitPredicate
-                    parent_trait_ref: parent_trait_ref.map_bound(|t| t.trait_ref),
+                    parent_trait_ref: parent_trait_ref.value,
                     parent_code: Lrc::new(obligation.cause.code.clone()),
                 };
                 cause.make_mut().code =
