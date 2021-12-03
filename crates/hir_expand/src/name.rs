@@ -272,6 +272,7 @@ pub mod known {
         // Safe intrinsics
         abort,
         add_with_overflow,
+        black_box,
         bitreverse,
         bswap,
         caller_location,
