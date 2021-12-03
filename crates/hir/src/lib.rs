@@ -103,6 +103,7 @@ pub use {
     hir_def::{
         adt::StructKind,
         attr::{Attr, Attrs, AttrsWithOwner, Documentation},
+        builtin_attr::AttributeTemplate,
         find_path::PrefixKind,
         import_map,
         item_scope::ItemScope,
@@ -2035,6 +2036,10 @@ impl BuiltinAttr {
     pub fn name(&self, _: &dyn HirDatabase) -> &str {
         // FIXME: Return a `Name` here
         hir_def::builtin_attr::INERT_ATTRIBUTES[self.0].name
+    }
+
+    pub fn template(&self, _: &dyn HirDatabase) -> AttributeTemplate {
+        hir_def::builtin_attr::INERT_ATTRIBUTES[self.0].template
     }
 }
 

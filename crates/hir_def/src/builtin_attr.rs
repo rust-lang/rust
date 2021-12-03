@@ -21,15 +21,15 @@ pub struct BuiltinAttribute {
 
 /// A template that the attribute input must match.
 /// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
+#[derive(Clone, Copy)]
 pub struct AttributeTemplate {
     pub word: bool,
     pub list: Option<&'static str>,
     pub name_value_str: Option<&'static str>,
 }
 
-static BUILTIN_LOOKUP_TABLE: OnceCell<FxHashMap<&'static str, usize>> = OnceCell::new();
-
 pub fn find_builtin_attr_idx(name: &str) -> Option<usize> {
+    static BUILTIN_LOOKUP_TABLE: OnceCell<FxHashMap<&'static str, usize>> = OnceCell::new();
     BUILTIN_LOOKUP_TABLE
         .get_or_init(|| {
             INERT_ATTRIBUTES.iter().map(|attr| attr.name).enumerate().map(|(a, b)| (b, a)).collect()
@@ -58,9 +58,11 @@ macro_rules! template {
     (Word, List: $descr1: expr, NameValueStr: $descr2: expr) => {
         template!(@ true, Some($descr1), Some($descr2))
     };
-    (@ $word: expr, $list: expr, $name_value_str: expr) => { AttributeTemplate {
-        word: $word, list: $list, name_value_str: $name_value_str
-    } };
+    (@ $word: expr, $list: expr, $name_value_str: expr) => {
+        AttributeTemplate {
+            word: $word, list: $list, name_value_str: $name_value_str
+        }
+    };
 }
 
 macro_rules! ungated {

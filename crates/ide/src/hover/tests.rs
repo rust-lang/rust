@@ -4277,3 +4277,46 @@ pub struct Foo;
         "#]],
     );
 }
+
+#[test]
+fn hover_inert_attr() {
+    check(
+        r#"
+#[doc$0 = ""]
+pub struct Foo;
+"#,
+        expect![[r##"
+            *doc*
+
+            ```rust
+            #[doc]
+            ```
+
+            ---
+
+            Valid forms are:
+
+            * \#\[doc(hidden|inline|...)\]
+            * \#\[doc = string\]
+        "##]],
+    );
+    check(
+        r#"
+#[allow$0()]
+pub struct Foo;
+"#,
+        expect![[r##"
+            *allow*
+
+            ```rust
+            #[allow]
+            ```
+
+            ---
+
+            Valid forms are:
+
+            * \#\[allow(lint1, lint2, ..., /\*opt\*/ reason = "...")\]
+        "##]],
+    );
+}
