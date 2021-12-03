@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=4
+// compile-flags: -Z mir-opt-level=4 -Zunsound-mir-opts
 
 // must not optimize as it does not follow the pattern of
 // left and right hand side being the same variant
