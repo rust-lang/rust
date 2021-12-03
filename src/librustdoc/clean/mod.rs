@@ -138,36 +138,37 @@ impl Clean<Path> for ty::TraitRef<'tcx> {
     }
 }
 
-impl Clean<GenericBound> for (ty::PolyTraitRef<'_>, &[TypeBinding]) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
-        let (poly_trait_ref, bindings) = *self;
-        let poly_trait_ref = poly_trait_ref.lift_to_tcx(cx.tcx).unwrap();
+fn clean_poly_trait_ref_with_bindings(
+    cx: &mut DocContext<'_>,
+    poly_trait_ref: ty::PolyTraitRef<'_>,
+    bindings: &[TypeBinding],
+) -> GenericBound {
+    let poly_trait_ref = poly_trait_ref.lift_to_tcx(cx.tcx).unwrap();
 
-        // collect any late bound regions
-        let late_bound_regions: Vec<_> = cx
-            .tcx
-            .collect_referenced_late_bound_regions(&poly_trait_ref)
-            .into_iter()
-            .filter_map(|br| match br {
-                ty::BrNamed(_, name) => Some(GenericParamDef {
-                    name,
-                    kind: GenericParamDefKind::Lifetime { outlives: vec![] },
-                }),
-                _ => None,
-            })
-            .collect();
+    // collect any late bound regions
+    let late_bound_regions: Vec<_> = cx
+        .tcx
+        .collect_referenced_late_bound_regions(&poly_trait_ref)
+        .into_iter()
+        .filter_map(|br| match br {
+            ty::BrNamed(_, name) => Some(GenericParamDef {
+                name,
+                kind: GenericParamDefKind::Lifetime { outlives: vec![] },
+            }),
+            _ => None,
+        })
+        .collect();
 
-        let trait_ = clean_trait_ref_with_bindings(cx, poly_trait_ref.skip_binder(), bindings);
-        GenericBound::TraitBound(
-            PolyTrait { trait_, generic_params: late_bound_regions },
-            hir::TraitBoundModifier::None,
-        )
-    }
+    let trait_ = clean_trait_ref_with_bindings(cx, poly_trait_ref.skip_binder(), bindings);
+    GenericBound::TraitBound(
+        PolyTrait { trait_, generic_params: late_bound_regions },
+        hir::TraitBoundModifier::None,
+    )
 }
 
 impl<'tcx> Clean<GenericBound> for ty::PolyTraitRef<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
-        (*self, &[][..]).clean(cx)
+        clean_poly_trait_ref_with_bindings(cx, *self, &[])
     }
 }
 
@@ -1513,7 +1514,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             }
                         }
 
-                        let bounds: Vec<_> = bounds
+                        let bindings: Vec<_> = bounds
                             .iter()
                             .filter_map(|bound| {
                                 if let ty::PredicateKind::Projection(proj) =
@@ -1541,7 +1542,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                             })
                             .collect();
 
-                        Some((trait_ref, &bounds[..]).clean(cx))
+                        Some(clean_poly_trait_ref_with_bindings(cx, trait_ref, &bindings))
                     })
                     .collect::<Vec<_>>();
                 bounds.extend(regions);
