@@ -13,7 +13,7 @@ use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{self, Ty};
-use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
+use rustc_middle::ty::{ToPolyTraitRef, ToPredicate, WithConstness};
 use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
@@ -58,9 +58,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ParamCandidate(param) => {
-                let obligations =
-                    self.confirm_param_candidate(obligation, param.map_bound(|t| t.trait_ref));
-                Ok(ImplSource::Param(obligations, param.skip_binder().constness))
+                let obligations = self.confirm_param_candidate(obligation, param.0.value);
+                Ok(ImplSource::Param(obligations, param.0.constness))
             }
 
             ImplCandidate(impl_def_id) => {
@@ -140,7 +139,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let trait_predicate = self.infcx.shallow_resolve(obligation.predicate);
             let placeholder_trait_predicate =
-                self.infcx().replace_bound_vars_with_placeholders(trait_predicate).trait_ref;
+                self.infcx().replace_bound_vars_with_placeholders(trait_predicate);
             let placeholder_self_ty = placeholder_trait_predicate.self_ty();
             let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
             let (def_id, substs) = match *placeholder_self_ty.kind() {
@@ -151,9 +150,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let candidate_predicate = tcx.item_bounds(def_id)[idx].subst(tcx, substs);
             let candidate = candidate_predicate
-                .to_opt_poly_trait_pred()
-                .expect("projection candidate is not a trait predicate")
-                .map_bound(|t| t.trait_ref);
+                .to_opt_poly_trait_ref()
+                .expect("projection candidate is not a trait predicate");
             let mut obligations = Vec::new();
             let candidate = normalize_with_depth_to(
                 self,
@@ -167,7 +165,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligations.extend(self.infcx.commit_if_ok(|_| {
                 self.infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .sup(placeholder_trait_predicate, candidate)
+                    .sup(placeholder_trait_predicate.to_poly_trait_ref(), candidate.value)
                     .map(|InferOk { obligations, .. }| obligations)
                     .map_err(|_| Unimplemented)
             })?);

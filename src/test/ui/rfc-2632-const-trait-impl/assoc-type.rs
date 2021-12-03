@@ -1,5 +1,6 @@
 // FIXME(fee1-dead): this should have a better error message
 #![feature(const_trait_impl)]
+
 struct NonConstAdd(i32);
 
 impl std::ops::Add for NonConstAdd {

@@ -208,11 +208,8 @@ fn compare_predicate_entailment<'tcx>(
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_hir_id);
-    let param_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&hybrid_preds.predicates),
-        Reveal::UserFacing,
-        hir::Constness::NotConst,
-    );
+    let param_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates), Reveal::UserFacing);
     let param_env =
         traits::normalize_param_env_or_error(tcx, impl_m.def_id, param_env, normalize_cause);
 
@@ -1168,11 +1165,8 @@ fn compare_type_predicate_entailment<'tcx>(
     debug!("compare_type_predicate_entailment: bounds={:?}", hybrid_preds);
 
     let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
-    let param_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&hybrid_preds.predicates),
-        Reveal::UserFacing,
-        hir::Constness::NotConst,
-    );
+    let param_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&hybrid_preds.predicates), Reveal::UserFacing);
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         impl_ty.def_id,
@@ -1357,11 +1351,7 @@ pub fn check_type_bounds<'tcx>(
                 .to_predicate(tcx),
             ),
         };
-        ty::ParamEnv::new(
-            tcx.intern_predicates(&predicates),
-            Reveal::UserFacing,
-            param_env.constness(),
-        )
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), Reveal::UserFacing)
     };
     debug!(?normalize_param_env);
 
@@ -1370,7 +1360,13 @@ pub fn check_type_bounds<'tcx>(
         impl_ty_substs.rebase_onto(tcx, impl_ty.container.id(), impl_trait_ref.substs);
 
     tcx.infer_ctxt().enter(move |infcx| {
-        let inh = Inherited::new(infcx, impl_ty.def_id.expect_local());
+        let constness = impl_ty
+            .container
+            .impl_def_id()
+            .map(|did| tcx.impl_constness(did))
+            .unwrap_or(hir::Constness::NotConst);
+
+        let inh = Inherited::with_constness(infcx, impl_ty.def_id.expect_local(), constness);
         let infcx = &inh.infcx;
         let mut selcx = traits::SelectionContext::new(&infcx);
 
@@ -1414,7 +1410,8 @@ pub fn check_type_bounds<'tcx>(
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
+        let errors =
+            inh.fulfillment_cx.borrow_mut().select_all_with_constness_or_error(&infcx, constness);
         if !errors.is_empty() {
             infcx.report_fulfillment_errors(&errors, None, false);
             return Err(ErrorReported);
