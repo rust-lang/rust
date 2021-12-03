@@ -34,6 +34,8 @@ LL |     (|_| 2333).await;
    |     ^^^^^^^^^^^^^^^^ `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]` is not a future
    |
    = help: the trait `Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
+   = note: [closure@$DIR/issue-62009-1.rs:12:5: 12:15] must be a future or must implement `IntoFuture` to be awaited
+   = note: required because of the requirements on the impl of `IntoFuture` for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
 
 error: aborting due to 4 previous errors
 
