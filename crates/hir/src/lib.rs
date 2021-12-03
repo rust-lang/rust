@@ -2024,6 +2024,26 @@ impl Local {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct BuiltinAttr(usize);
+
+impl BuiltinAttr {
+    pub(crate) fn by_name(name: &str) -> Option<Self> {
+        // TODO: def maps registered attrs?
+        hir_def::builtin_attr::find_builtin_attr_idx(name).map(Self)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Tool(usize);
+
+impl Tool {
+    pub(crate) fn by_name(name: &str) -> Option<Self> {
+        // TODO: def maps registered tools
+        hir_def::builtin_attr::TOOL_MODULES.iter().position(|&tool| tool == name).map(Self)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Label {
     pub(crate) parent: DefWithBodyId,
     pub(crate) label_id: LabelId,

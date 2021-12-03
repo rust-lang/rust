@@ -181,7 +181,9 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
         Definition::Macro(it) => it.resolve_doc_path(db, link, ns),
         Definition::Field(it) => it.resolve_doc_path(db, link, ns),
-        Definition::BuiltinType(_)
+        Definition::BuiltinAttr(_)
+        | Definition::Tool(_)
+        | Definition::BuiltinType(_)
         | Definition::SelfType(_)
         | Definition::Local(_)
         | Definition::GenericParam(_)
@@ -492,9 +494,11 @@ fn filename_and_frag_for_def(
             // FIXME fragment numbering
             return Some((adt, file, Some(String::from("impl"))));
         }
-        Definition::Local(_) => return None,
-        Definition::GenericParam(_) => return None,
-        Definition::Label(_) => return None,
+        Definition::Local(_)
+        | Definition::GenericParam(_)
+        | Definition::Label(_)
+        | Definition::BuiltinAttr(_)
+        | Definition::Tool(_) => return None,
     };
 
     Some((def, res, None))

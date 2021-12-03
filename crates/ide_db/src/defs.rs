@@ -7,9 +7,9 @@
 
 use arrayvec::ArrayVec;
 use hir::{
-    Adt, AsAssocItem, AssocItem, BuiltinType, Const, Field, Function, GenericParam, HasVisibility,
-    Impl, ItemInNs, Label, Local, MacroDef, Module, ModuleDef, Name, PathResolution, Semantics,
-    Static, Trait, TypeAlias, Variant, Visibility,
+    Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Field, Function, GenericParam,
+    HasVisibility, Impl, ItemInNs, Label, Local, MacroDef, Module, ModuleDef, Name, PathResolution,
+    Semantics, Static, Tool, Trait, TypeAlias, Variant, Visibility,
 };
 use stdx::impl_from;
 use syntax::{
@@ -37,6 +37,8 @@ pub enum Definition {
     Local(Local),
     GenericParam(GenericParam),
     Label(Label),
+    BuiltinAttr(BuiltinAttr),
+    Tool(Tool),
 }
 
 impl Definition {
@@ -48,10 +50,9 @@ impl Definition {
             Some(parent) => parent,
             None => return Default::default(),
         };
+        // resolve derives if possible
         if let Some(ident) = ast::Ident::cast(token.clone()) {
-            let attr = parent
-                .ancestors()
-                .find_map(ast::TokenTree::cast)
+            let attr = ast::TokenTree::cast(parent.clone())
                 .and_then(|tt| tt.parent_meta())
                 .and_then(|meta| meta.parent_attr());
             if let Some(attr) = attr {
@@ -128,7 +129,9 @@ impl Definition {
             Definition::Local(it) => it.module(db),
             Definition::GenericParam(it) => it.module(db),
             Definition::Label(it) => it.module(db),
-            Definition::BuiltinType(_) => return None,
+            Definition::BuiltinAttr(_) | Definition::BuiltinType(_) | Definition::Tool(_) => {
+                return None
+            }
         };
         Some(module)
     }
@@ -146,7 +149,9 @@ impl Definition {
             Definition::Variant(it) => it.visibility(db),
             Definition::BuiltinType(_) => Visibility::Public,
             Definition::Macro(_) => return None,
-            Definition::SelfType(_)
+            Definition::BuiltinAttr(_)
+            | Definition::Tool(_)
+            | Definition::SelfType(_)
             | Definition::Local(_)
             | Definition::GenericParam(_)
             | Definition::Label(_) => return None,
@@ -171,6 +176,8 @@ impl Definition {
             Definition::Local(it) => it.name(db)?,
             Definition::GenericParam(it) => it.name(db),
             Definition::Label(it) => it.name(db),
+            Definition::BuiltinAttr(_) => return None, // FIXME
+            Definition::Tool(_) => return None,        // FIXME
         };
         Some(name)
     }
@@ -450,30 +457,7 @@ impl NameRefClass {
                     }
                 }
             }
-            let top_path = path.top_path();
-            let is_attribute_path = top_path
-                .syntax()
-                .ancestors()
-                .find_map(ast::Attr::cast)
-                .map(|attr| attr.path().as_ref() == Some(&top_path));
-            return match is_attribute_path {
-                Some(true) if path == top_path => sema
-                    .resolve_path_as_macro(&path)
-                    .filter(|mac| mac.kind() == hir::MacroKind::Attr)
-                    .map(Definition::Macro)
-                    .map(NameRefClass::Definition),
-                // in case of the path being a qualifier, don't resolve to anything but a module
-                Some(true) => match sema.resolve_path(&path)? {
-                    PathResolution::Def(ModuleDef::Module(module)) => {
-                        cov_mark::hit!(name_ref_classify_attr_path_qualifier);
-                        Some(NameRefClass::Definition(Definition::Module(module)))
-                    }
-                    _ => None,
-                },
-                // inside attribute, but our path isn't part of the attribute's path(might be in its expression only)
-                Some(false) => None,
-                None => sema.resolve_path(&path).map(Into::into).map(NameRefClass::Definition),
-            };
+            return sema.resolve_path(&path).map(Into::into).map(NameRefClass::Definition);
         }
 
         let extern_crate = ast::ExternCrate::cast(parent)?;
@@ -566,6 +550,8 @@ impl From<PathResolution> for Definition {
             PathResolution::Macro(def) => Definition::Macro(def),
             PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
             PathResolution::ConstParam(par) => Definition::GenericParam(par.into()),
+            PathResolution::BuiltinAttr(attr) => Definition::BuiltinAttr(attr),
+            PathResolution::Tool(tool) => Definition::Tool(tool),
         }
     }
 }

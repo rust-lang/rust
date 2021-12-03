@@ -214,6 +214,8 @@ impl TryToNav for Definition {
             Definition::Trait(it) => it.try_to_nav(db),
             Definition::TypeAlias(it) => it.try_to_nav(db),
             Definition::BuiltinType(_) => None,
+            Definition::Tool(_) => None,
+            Definition::BuiltinAttr(_) => None,
         }
     }
 }

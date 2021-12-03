@@ -1798,14 +1798,18 @@ impl ModCollector<'_, '_> {
 
             let registered = self.def_collector.registered_tools.iter().map(SmolStr::as_str);
             let is_tool = builtin_attr::TOOL_MODULES.iter().copied().chain(registered).any(pred);
+            // FIXME: tool modules can be shadowed by actual modules
             if is_tool {
                 return true;
             }
 
             if segments.len() == 1 {
                 let registered = self.def_collector.registered_attrs.iter().map(SmolStr::as_str);
-                let is_inert =
-                    builtin_attr::INERT_ATTRIBUTES.iter().copied().chain(registered).any(pred);
+                let is_inert = builtin_attr::INERT_ATTRIBUTES
+                    .iter()
+                    .map(|it| it.name)
+                    .chain(registered)
+                    .any(pred);
                 return is_inert;
             }
         }

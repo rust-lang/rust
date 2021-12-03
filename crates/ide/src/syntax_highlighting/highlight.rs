@@ -542,6 +542,8 @@ fn highlight_def(
             h
         }
         Definition::Label(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)),
+        Definition::BuiltinAttr(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)), // FIXME
+        Definition::Tool(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)),        // FIXME
     };
 
     let famous_defs = FamousDefs(sema, krate);

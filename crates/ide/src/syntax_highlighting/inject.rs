@@ -263,6 +263,8 @@ fn module_def_to_hl_tag(def: Definition) -> HlTag {
             hir::GenericParam::ConstParam(_) => SymbolKind::ConstParam,
         },
         Definition::Label(_) => SymbolKind::Label,
+        Definition::BuiltinAttr(_) => SymbolKind::Label, // FIXME
+        Definition::Tool(_) => SymbolKind::Label,        // FIXME
     };
     HlTag::Symbol(symbol)
 }
