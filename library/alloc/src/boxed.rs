@@ -763,6 +763,42 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
         let (raw, alloc) = Box::into_raw_with_allocator(self);
         unsafe { Box::from_raw_in(raw as *mut T, alloc) }
     }
+
+    /// Writes the value and converts to `Box<T, A>`.
+    ///
+    /// This method converts the box similarly to [`Box::assume_init`] but
+    /// writes `value` into it before conversion thus guaranteeing safety.
+    /// In some scenarios use of this method may improve performance because
+    /// the compiler may be able to optimize copying from stack.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let big_box = Box::<[usize; 1024]>::new_uninit();
+    ///
+    /// let mut array = [0; 1024];
+    /// for (i, place) in array.iter_mut().enumerate() {
+    ///     *place = i;
+    /// }
+    ///
+    /// // The optimizer may be able to elide this copy, so previous code writes
+    /// // to heap directly.
+    /// let big_box = Box::write(big_box, array);
+    ///
+    /// for (i, x) in big_box.iter().enumerate() {
+    ///     assert_eq!(*x, i);
+    /// }
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
+    pub fn write(mut boxed: Self, value: T) -> Box<T, A> {
+        unsafe {
+            (*boxed).write(value);
+            boxed.assume_init()
+        }
+    }
 }
 
 impl<T, A: Allocator> Box<[mem::MaybeUninit<T>], A> {

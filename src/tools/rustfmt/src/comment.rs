@@ -3,6 +3,8 @@
 use std::{self, borrow::Cow, iter};
 
 use itertools::{multipeek, MultiPeek};
+use lazy_static::lazy_static;
+use regex::Regex;
 use rustc_span::Span;
 
 use crate::config::Config;
@@ -14,6 +16,17 @@ use crate::utils::{
     trimmed_last_line_width, unicode_str_width,
 };
 use crate::{ErrorKind, FormattingError};
+
+lazy_static! {
+    /// A regex matching reference doc links.
+    ///
+    /// ```markdown
+    /// /// An [example].
+    /// ///
+    /// /// [example]: this::is::a::link
+    /// ```
+    static ref REFERENCE_LINK_URL: Regex = Regex::new(r"^\[.+\]\s?:").unwrap();
+}
 
 fn is_custom_comment(comment: &str) -> bool {
     if !comment.starts_with("//") {
@@ -506,6 +519,7 @@ struct CommentRewrite<'a> {
     opener: String,
     closer: String,
     line_start: String,
+    style: CommentStyle<'a>,
 }
 
 impl<'a> CommentRewrite<'a> {
@@ -515,10 +529,14 @@ impl<'a> CommentRewrite<'a> {
         shape: Shape,
         config: &'a Config,
     ) -> CommentRewrite<'a> {
-        let (opener, closer, line_start) = if block_style {
-            CommentStyle::SingleBullet.to_str_tuplet()
+        let ((opener, closer, line_start), style) = if block_style {
+            (
+                CommentStyle::SingleBullet.to_str_tuplet(),
+                CommentStyle::SingleBullet,
+            )
         } else {
-            comment_style(orig, config.normalize_comments()).to_str_tuplet()
+            let style = comment_style(orig, config.normalize_comments());
+            (style.to_str_tuplet(), style)
         };
 
         let max_width = shape
@@ -551,6 +569,7 @@ impl<'a> CommentRewrite<'a> {
             opener: opener.to_owned(),
             closer: closer.to_owned(),
             line_start: line_start.to_owned(),
+            style,
         };
         cr.result.push_str(opener);
         cr
@@ -570,6 +589,15 @@ impl<'a> CommentRewrite<'a> {
         result
     }
 
+    /// Check if any characters were written to the result buffer after the start of the comment.
+    /// when calling [`CommentRewrite::new()`] the result buffer is initiazlied with the opening
+    /// characters for the comment.
+    fn buffer_contains_comment(&self) -> bool {
+        // if self.result.len() < self.opener.len() then an empty comment is in the buffer
+        // if self.result.len() > self.opener.len() then a non empty comment is in the buffer
+        self.result.len() != self.opener.len()
+    }
+
     fn finish(mut self) -> String {
         if !self.code_block_buffer.is_empty() {
             // There is a code block that is not properly enclosed by backticks.
@@ -585,7 +613,12 @@ impl<'a> CommentRewrite<'a> {
             // the last few lines are part of an itemized block
             self.fmt.shape = Shape::legacy(self.max_width, self.fmt_indent);
             let item_fmt = ib.create_string_format(&self.fmt);
-            self.result.push_str(&self.comment_line_separator);
+
+            // only push a comment_line_separator for ItemizedBlocks if the comment is not empty
+            if self.buffer_contains_comment() {
+                self.result.push_str(&self.comment_line_separator);
+            }
+
             self.result.push_str(&ib.opener);
             match rewrite_string(
                 &ib.trimmed_block_as_string(),
@@ -619,7 +652,13 @@ impl<'a> CommentRewrite<'a> {
         line: &'a str,
         has_leading_whitespace: bool,
     ) -> bool {
-        let is_last = i == count_newlines(orig);
+        let num_newlines = count_newlines(orig);
+        let is_last = i == num_newlines;
+        let needs_new_comment_line = if self.style.is_block_comment() {
+            num_newlines > 0 || self.buffer_contains_comment()
+        } else {
+            self.buffer_contains_comment()
+        };
 
         if let Some(ref mut ib) = self.item_block {
             if ib.add_line(line) {
@@ -628,7 +667,12 @@ impl<'a> CommentRewrite<'a> {
             self.is_prev_line_multi_line = false;
             self.fmt.shape = Shape::legacy(self.max_width, self.fmt_indent);
             let item_fmt = ib.create_string_format(&self.fmt);
-            self.result.push_str(&self.comment_line_separator);
+
+            // only push a comment_line_separator if we need to start a new comment line
+            if needs_new_comment_line {
+                self.result.push_str(&self.comment_line_separator);
+            }
+
             self.result.push_str(&ib.opener);
             match rewrite_string(
                 &ib.trimmed_block_as_string(),
@@ -842,7 +886,11 @@ fn trim_custom_comment_prefix(s: &str) -> String {
 /// Returns `true` if the given string MAY include URLs or alike.
 fn has_url(s: &str) -> bool {
     // This function may return false positive, but should get its job done in most cases.
-    s.contains("https://") || s.contains("http://") || s.contains("ftp://") || s.contains("file://")
+    s.contains("https://")
+        || s.contains("http://")
+        || s.contains("ftp://")
+        || s.contains("file://")
+        || REFERENCE_LINK_URL.is_match(s)
 }
 
 /// Given the span, rewrite the missing comment inside it if available.

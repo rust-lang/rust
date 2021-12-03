@@ -147,8 +147,10 @@ where
                             Ok(tys) => tys,
                         };
                         for required_ty in tys {
-                            let required =
-                                tcx.normalize_erasing_regions(self.param_env, required_ty);
+                            let required = tcx
+                                .try_normalize_erasing_regions(self.param_env, required_ty)
+                                .unwrap_or(required_ty);
+
                             queue_type(self, required);
                         }
                     }
