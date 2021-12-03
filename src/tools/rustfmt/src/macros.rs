@@ -27,7 +27,7 @@ use crate::comment::{
     contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
 };
 use crate::config::lists::*;
-use crate::expr::rewrite_array;
+use crate::expr::{rewrite_array, rewrite_assign_rhs, RhsAssignKind};
 use crate::lists::{itemize_list, write_list, ListFormatting};
 use crate::overflow;
 use crate::rewrite::{Rewrite, RewriteContext};
@@ -1468,10 +1468,11 @@ fn format_lazy_static(
             id,
             ty.rewrite(context, nested_shape)?
         ));
-        result.push_str(&crate::expr::rewrite_assign_rhs(
+        result.push_str(&rewrite_assign_rhs(
             context,
             stmt,
             &*expr,
+            &RhsAssignKind::Expr(&expr.kind, expr.span),
             nested_shape.sub_width(1)?,
         )?);
         result.push(';');

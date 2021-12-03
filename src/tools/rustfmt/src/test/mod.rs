@@ -15,6 +15,8 @@ use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChu
 use crate::source_file;
 use crate::{is_nightly_channel, FormatReport, FormatReportFormatterBuilder, Input, Session};
 
+use rustfmt_config_proc_macro::nightly_only_test;
+
 mod configuration_snippet;
 mod mod_resolver;
 mod parser;
@@ -307,14 +309,11 @@ fn assert_output(source: &Path, expected_filename: &Path) {
 
 // Idempotence tests. Files in tests/target are checked to be unaltered by
 // rustfmt.
+#[nightly_only_test]
 #[test]
 fn idempotence_tests() {
     init_log();
     run_test_with(&TestSetting::default(), || {
-        // these tests require nightly
-        if !is_nightly_channel!() {
-            return;
-        }
         // Get all files in the tests/target directory.
         let files = get_test_files(Path::new("tests/target"), true);
         let (_reports, count, fails) = check_files(files, &None);
@@ -332,13 +331,11 @@ fn idempotence_tests() {
 
 // Run rustfmt on itself. This operation must be idempotent. We also check that
 // no warnings are emitted.
+// Issue-3443: these tests require nightly
+#[nightly_only_test]
 #[test]
 fn self_tests() {
     init_log();
-    // Issue-3443: these tests require nightly
-    if !is_nightly_channel!() {
-        return;
-    }
     let mut files = get_test_files(Path::new("tests"), false);
     let bin_directories = vec!["cargo-fmt", "git-rustfmt", "bin", "format-diff"];
     for dir in bin_directories {
