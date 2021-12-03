@@ -10,7 +10,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{ErrorReported, PResult};
+use rustc_errors::{Applicability, ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::Crate;
@@ -456,10 +456,26 @@ pub fn configure_and_expand(
         identifiers.sort_by_key(|&(key, _)| key);
         for (ident, mut spans) in identifiers.into_iter() {
             spans.sort();
-            sess.diagnostic().span_err(
-                MultiSpan::from(spans),
-                &format!("identifiers cannot contain emoji: `{}`", ident),
-            );
+            if ident == sym::ferris {
+                let first_span = spans[0];
+                sess.diagnostic()
+                    .struct_span_err(
+                        MultiSpan::from(spans),
+                        "Ferris cannot be used as an identifier",
+                    )
+                    .span_suggestion(
+                        first_span,
+                        "try using their name instead",
+                        "ferris".to_string(),
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
+            } else {
+                sess.diagnostic().span_err(
+                    MultiSpan::from(spans),
+                    &format!("identifiers cannot contain emoji: `{}`", ident),
+                );
+            }
         }
     });
 
