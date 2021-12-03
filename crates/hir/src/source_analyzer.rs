@@ -252,7 +252,9 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         path: &ast::Path,
     ) -> Option<PathResolution> {
-        let parent = || path.syntax().parent();
+        let parent = path.syntax().parent();
+        let parent = || parent.clone();
+
         let mut prefer_value_ns = false;
         if let Some(path_expr) = parent().and_then(ast::PathExpr::cast) {
             let expr_id = self.expr_id(db, &path_expr.into())?;
@@ -337,10 +339,10 @@ impl SourceAnalyzer {
             return match res {
                 Some(_) => res.map(PathResolution::Macro),
                 None => path.as_single_name_ref().and_then(|name_ref| {
-                    if let Some(builtin) = BuiltinAttr::by_name(&name_ref.text()) {
-                        Some(PathResolution::BuiltinAttr(builtin))
-                    } else if let Some(tool) = Tool::by_name(&name_ref.text()) {
-                        Some(PathResolution::Tool(tool))
+                    if let builtin @ Some(_) = BuiltinAttr::by_name(&name_ref.text()) {
+                        builtin.map(PathResolution::BuiltinAttr)
+                    } else if let tool @ Some(_) = Tool::by_name(&name_ref.text()) {
+                        tool.map(PathResolution::Tool)
                     } else {
                         None
                     }
@@ -355,6 +357,8 @@ impl SourceAnalyzer {
         };
         match res {
             Some(_) => res,
+            // this labels any path that starts with a tool module as the tool itself, this is technically wrong
+            // but there is no benefit in differentiating these two cases for the time being
             None if is_path_of_attr => path
                 .first_segment()
                 .and_then(|seg| seg.name_ref())
