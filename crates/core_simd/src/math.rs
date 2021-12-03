@@ -17,7 +17,7 @@ macro_rules! impl_uint_arith {
             /// let max = Simd::splat(MAX);
             /// let unsat = x + max;
             /// let sat = x.saturating_add(max);
-            /// assert_eq!(x - 1, unsat);
+            /// assert_eq!(unsat, Simd::from_array([1, 0, MAX, MAX - 1]));
             /// assert_eq!(sat, max);
             /// ```
             #[inline]
@@ -37,7 +37,7 @@ macro_rules! impl_uint_arith {
             /// let max = Simd::splat(MAX);
             /// let unsat = x - max;
             /// let sat = x.saturating_sub(max);
-            /// assert_eq!(unsat, x + 1);
+            /// assert_eq!(unsat, Simd::from_array([3, 2, 1, 0]));
             /// assert_eq!(sat, Simd::splat(0));
             #[inline]
             pub fn saturating_sub(self, second: Self) -> Self {
@@ -105,7 +105,7 @@ macro_rules! impl_int_arith {
             #[inline]
             pub fn abs(self) -> Self {
                 const SHR: $ty = <$ty>::BITS as $ty - 1;
-                let m = self >> SHR;
+                let m = self >> Simd::splat(SHR);
                 (self^m) - m
             }
 
@@ -128,7 +128,7 @@ macro_rules! impl_int_arith {
             pub fn saturating_abs(self) -> Self {
                 // arith shift for -1 or 0 mask based on sign bit, giving 2s complement
                 const SHR: $ty = <$ty>::BITS as $ty - 1;
-                let m = self >> SHR;
+                let m = self >> Simd::splat(SHR);
                 (self^m).saturating_sub(m)
             }
 

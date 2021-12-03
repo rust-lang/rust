@@ -17,6 +17,7 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
     fn select(mask: Mask<T::Mask, LANES>, true_values: Self, false_values: Self) -> Self {
         unsafe { intrinsics::simd_select(mask.to_int(), true_values, false_values) }
     }
@@ -35,6 +36,7 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
     fn select(mask: Self, true_values: Self, false_values: Self) -> Self {
         mask & true_values | !mask & false_values
     }
@@ -80,6 +82,7 @@ where
     /// assert_eq!(c.to_array(), [true, false, true, false]);
     /// ```
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn select<S: Select<Self>>(self, true_values: S, false_values: S) -> S {
         S::select(self, true_values, false_values)
     }
