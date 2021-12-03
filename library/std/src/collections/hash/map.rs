@@ -380,7 +380,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
+    /// let mut map = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
     ///     ("c", 3),
@@ -431,7 +431,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let map = HashMap::from([
+    /// let mut map = HashMap::from([
     ///     ("a", 1),
     ///     ("b", 2),
     ///     ("c", 3),
@@ -1246,7 +1246,7 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let map = HashMap::from([
+/// let mut map = HashMap::from([
 ///     ("a", 1),
 /// ]);
 /// let iter = map.iter_mut();
@@ -1383,7 +1383,7 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let map = HashMap::from([
+/// let mut map = HashMap::from([
 ///     ("a", 1),
 /// ]);
 /// let iter = map.drain();
@@ -1414,7 +1414,7 @@ impl<'a, K, V> Drain<'a, K, V> {
 ///
 /// use std::collections::HashMap;
 ///
-/// let map = HashMap::from([
+/// let mut map = HashMap::from([
 ///     ("a", 1),
 /// ]);
 /// let iter = map.drain_filter(|_k, v| *v % 2 == 0);
@@ -1439,7 +1439,7 @@ where
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let map = HashMap::from([
+/// let mut map = HashMap::from([
 ///     ("a", 1),
 /// ]);
 /// let iter_values = map.values_mut();
