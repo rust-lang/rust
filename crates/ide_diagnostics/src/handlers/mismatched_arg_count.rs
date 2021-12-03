@@ -2,7 +2,7 @@ use ide_db::base_db::{FileRange, SourceDatabase};
 use syntax::{
     algo::find_node_at_range,
     ast::{self, HasArgList},
-    AstNode,
+    AstNode, TextRange,
 };
 
 use crate::{Diagnostic, DiagnosticsContext};
@@ -16,22 +16,16 @@ pub(crate) fn mismatched_arg_count(
 ) -> Diagnostic {
     let s = if d.expected == 1 { "" } else { "s" };
     let message = format!("expected {} argument{}, found {}", d.expected, s, d.found);
-    Diagnostic::new(
-        "mismatched-arg-count",
-        message,
-        invalid_args_range(ctx, d).unwrap_or_else(|it| it).range,
-    )
+    Diagnostic::new("mismatched-arg-count", message, invalid_args_range(ctx, d))
 }
 
-fn invalid_args_range(
-    ctx: &DiagnosticsContext<'_>,
-    d: &hir::MismatchedArgCount,
-) -> Result<FileRange, FileRange> {
-    let full_range = ctx.sema.diagnostics_display_range(d.call_expr.clone().map(|it| it.into()));
+fn invalid_args_range(ctx: &DiagnosticsContext<'_>, d: &hir::MismatchedArgCount) -> TextRange {
+    let FileRange { file_id, range } =
+        ctx.sema.diagnostics_display_range(d.call_expr.clone().map(|it| it.into()));
 
-    let source_file = ctx.sema.db.parse(full_range.file_id);
-    let expr = find_node_at_range::<ast::Expr>(&source_file.syntax_node(), full_range.range)
-        .filter(|it| it.syntax().text_range() == full_range.range);
+    let source_file = ctx.sema.db.parse(file_id);
+    let expr = find_node_at_range::<ast::Expr>(&source_file.syntax_node(), range)
+        .filter(|it| it.syntax().text_range() == range);
     let arg_list = match expr {
         Some(ast::Expr::CallExpr(call)) => call.arg_list(),
         Some(ast::Expr::MethodCallExpr(call)) => call.arg_list(),
@@ -39,23 +33,27 @@ fn invalid_args_range(
     };
     let arg_list = match arg_list {
         Some(it) => it,
-        None => return Err(full_range),
+        None => return range,
     };
-    let arg_list_range =
-        FileRange { file_id: full_range.file_id, range: arg_list.syntax().text_range() };
     if d.found < d.expected {
         if d.found == 0 {
-            return Ok(arg_list_range);
+            return arg_list.syntax().text_range();
         }
         if let Some(r_paren) = arg_list.r_paren_token() {
-            return Ok(FileRange { file_id: full_range.file_id, range: r_paren.text_range() });
+            return r_paren.text_range();
         }
     }
     if d.expected < d.found {
-        return Ok(arg_list_range);
+        if d.expected == 0 {
+            return arg_list.syntax().text_range();
+        }
+        let zip = arg_list.args().nth(d.expected).zip(arg_list.r_paren_token());
+        if let Some((arg, r_paren)) = zip {
+            return arg.syntax().text_range().cover(r_paren.text_range());
+        }
     }
 
-    Err(full_range)
+    range
 }
 
 #[cfg(test)]
@@ -204,7 +202,7 @@ impl Foo {
     fn new() {
         Foo::Bar(0);
         Foo::Bar(0, 1);
-              //^^^^^^ error: expected 1 argument, found 2
+                  //^^ error: expected 1 argument, found 2
         Foo::Bar();
               //^^ error: expected 1 argument, found 0
     }
@@ -227,7 +225,7 @@ fn f() {
     unsafe {
         fixed(0);
         fixed(0, 1);
-           //^^^^^^ error: expected 1 argument, found 2
+               //^^ error: expected 1 argument, found 2
         varargs(0);
         varargs(0, 1);
         varargs2();
@@ -249,7 +247,7 @@ fn main() {
    //^^ error: expected 1 argument, found 0
     f(());
     f((), ());
-   //^^^^^^^^ error: expected 1 argument, found 2
+        //^^^ error: expected 1 argument, found 2
 }
 "#,
         )
