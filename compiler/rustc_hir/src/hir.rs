@@ -531,7 +531,6 @@ impl GenericParam<'hir> {
             .fold(None, |span: Option<Span>, bound| {
                 // We include bounds that come from a `#[derive(_)]` but point at the user's code,
                 // as we use this method to get a span appropriate for suggestions.
-                // FIXME: a more "principled" approach should be taken here.
                 if !bound.span().can_be_used_for_suggestions() {
                     None
                 } else {
