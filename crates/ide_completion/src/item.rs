@@ -232,6 +232,7 @@ impl CompletionItemKind {
     pub(crate) fn tag(&self) -> &'static str {
         match self {
             CompletionItemKind::SymbolKind(kind) => match kind {
+                SymbolKind::BuiltinAttr => "ba",
                 SymbolKind::Const => "ct",
                 SymbolKind::ConstParam => "cp",
                 SymbolKind::Enum => "en",
@@ -246,6 +247,7 @@ impl CompletionItemKind {
                 SymbolKind::SelfParam => "sp",
                 SymbolKind::Static => "sc",
                 SymbolKind::Struct => "st",
+                SymbolKind::Tool => "tl",
                 SymbolKind::Trait => "tt",
                 SymbolKind::TypeAlias => "ta",
                 SymbolKind::TypeParam => "tp",
