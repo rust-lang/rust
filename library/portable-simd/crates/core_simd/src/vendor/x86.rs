@@ -8,10 +8,10 @@ use core::arch::x86_64::*;
 
 from_transmute! { unsafe u8x16 => __m128i }
 from_transmute! { unsafe u8x32 => __m256i }
-//from_transmute! { unsafe u8x64 => __m512i }
+from_transmute! { unsafe u8x64 => __m512i }
 from_transmute! { unsafe i8x16 => __m128i }
 from_transmute! { unsafe i8x32 => __m256i }
-//from_transmute! { unsafe i8x64 => __m512i }
+from_transmute! { unsafe i8x64 => __m512i }
 
 from_transmute! { unsafe u16x8 => __m128i }
 from_transmute! { unsafe u16x16 => __m256i }

@@ -87,6 +87,8 @@ pub trait Swizzle<const INPUT_LANES: usize, const OUTPUT_LANES: usize> {
     /// Create a new vector from the lanes of `vector`.
     ///
     /// Lane `i` of the output is `vector[Self::INDEX[i]]`.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
     fn swizzle<T>(vector: Simd<T, INPUT_LANES>) -> Simd<T, OUTPUT_LANES>
     where
         T: SimdElement,
@@ -106,6 +108,8 @@ pub trait Swizzle2<const INPUT_LANES: usize, const OUTPUT_LANES: usize> {
     ///
     /// Lane `i` is `first[j]` when `Self::INDEX[i]` is `First(j)`, or `second[j]` when it is
     /// `Second(j)`.
+    #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
     fn swizzle2<T>(
         first: Simd<T, INPUT_LANES>,
         second: Simd<T, INPUT_LANES>,
@@ -182,6 +186,7 @@ where
 {
     /// Reverse the order of the lanes in the vector.
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn reverse(self) -> Self {
         const fn reverse_index<const LANES: usize>() -> [usize; LANES] {
             let mut index = [0; LANES];
@@ -206,6 +211,7 @@ where
     /// while the last `LANES - OFFSET` elements move to the front. After calling `rotate_lanes_left`,
     /// the element previously in lane `OFFSET` will become the first element in the slice.
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn rotate_lanes_left<const OFFSET: usize>(self) -> Self {
         const fn rotate_index<const OFFSET: usize, const LANES: usize>() -> [usize; LANES] {
             let offset = OFFSET % LANES;
@@ -231,6 +237,7 @@ where
     /// the end while the last `OFFSET` elements move to the front. After calling `rotate_lanes_right`,
     /// the element previously at index `LANES - OFFSET` will become the first element in the slice.
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn rotate_lanes_right<const OFFSET: usize>(self) -> Self {
         const fn rotate_index<const OFFSET: usize, const LANES: usize>() -> [usize; LANES] {
             let offset = LANES - OFFSET % LANES;
@@ -273,6 +280,7 @@ where
     /// assert_eq!(y.to_array(), [2, 6, 3, 7]);
     /// ```
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn interleave(self, other: Self) -> (Self, Self) {
         const fn lo<const LANES: usize>() -> [Which; LANES] {
             let mut idx = [Which::First(0); LANES];
@@ -336,6 +344,7 @@ where
     /// assert_eq!(y.to_array(), [4, 5, 6, 7]);
     /// ```
     #[inline]
+    #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn deinterleave(self, other: Self) -> (Self, Self) {
         const fn even<const LANES: usize>() -> [Which; LANES] {
             let mut idx = [Which::First(0); LANES];

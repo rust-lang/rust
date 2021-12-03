@@ -97,7 +97,7 @@ mod nbody {
         let sun = &mut sun[0];
         for body in rest {
             let m_ratio = body.mass / SOLAR_MASS;
-            sun.v -= body.v * m_ratio;
+            sun.v -= body.v * Simd::splat(m_ratio);
         }
     }
 
@@ -143,14 +143,14 @@ mod nbody {
         let mut i = 0;
         for j in 0..N_BODIES {
             for k in j + 1..N_BODIES {
-                let f = r[i] * mag[i];
-                bodies[j].v -= f * bodies[k].mass;
-                bodies[k].v += f * bodies[j].mass;
+                let f = r[i] * Simd::splat(mag[i]);
+                bodies[j].v -= f * Simd::splat(bodies[k].mass);
+                bodies[k].v += f * Simd::splat(bodies[j].mass);
                 i += 1
             }
         }
         for body in bodies {
-            body.x += dt * body.v
+            body.x += Simd::splat(dt) * body.v
         }
     }
 
