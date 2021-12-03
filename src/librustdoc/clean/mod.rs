@@ -783,7 +783,7 @@ fn clean_function(
     let (generics, decl) = enter_impl_trait(cx, |cx| {
         // NOTE: generics must be cleaned before args
         let generics = generics.clean(cx);
-        let args = (sig.decl.inputs, body_id).clean(cx);
+        let args = clean_args_from_types_and_body_id(cx, sig.decl.inputs, body_id);
         let decl = clean_fn_decl_with_args(cx, sig.decl, args);
         (generics, decl)
     });
@@ -810,22 +810,23 @@ fn clean_args_from_types_and_names(
     }
 }
 
-impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], hir::BodyId) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Arguments {
-        let body = cx.tcx.hir().body(self.1);
+fn clean_args_from_types_and_body_id(
+    cx: &mut DocContext<'_>,
+    types: &[hir::Ty<'_>],
+    body_id: hir::BodyId,
+) -> Arguments {
+    let body = cx.tcx.hir().body(body_id);
 
-        Arguments {
-            values: self
-                .0
-                .iter()
-                .enumerate()
-                .map(|(i, ty)| Argument {
-                    name: name_from_pat(body.params[i].pat),
-                    type_: ty.clean(cx),
-                    is_const: false,
-                })
-                .collect(),
-        }
+    Arguments {
+        values: types
+            .iter()
+            .enumerate()
+            .map(|(i, ty)| Argument {
+                name: name_from_pat(body.params[i].pat),
+                type_: ty.clean(cx),
+                is_const: false,
+            })
+            .collect(),
     }
 }
 
