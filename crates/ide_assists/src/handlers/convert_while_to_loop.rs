@@ -42,11 +42,8 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext) -> O
     let while_expr = while_kw.parent().and_then(ast::WhileExpr::cast)?;
     let while_body = while_expr.loop_body()?;
     let while_cond = while_expr.condition()?;
+    let while_cond_expr = while_cond.expr()?;
 
-    let if_cond = match while_cond.pat() {
-        Some(_) => while_expr.condition()?,
-        None => make::condition(invert_boolean_expression(while_cond.expr()?), None),
-    };
     let target = while_expr.syntax().text_range();
     acc.add(
         AssistId("convert_while_to_loop", AssistKind::RefactorRewrite),
@@ -60,11 +57,12 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext) -> O
                     .indent(while_indent_level);
             let block_expr = match while_cond.pat() {
                 Some(_) => {
-                    let if_expr = make::expr_if(if_cond, while_body, Some(break_block.into()));
+                    let if_expr = make::expr_if(while_cond, while_body, Some(break_block.into()));
                     let stmts = once(make::expr_stmt(if_expr).into());
                     make::block_expr(stmts, None)
                 }
                 None => {
+                    let if_cond = make::condition(invert_boolean_expression(while_cond_expr), None);
                     let if_expr = make::expr_if(if_cond, break_block, None);
                     let stmts =
                         once(make::expr_stmt(if_expr).into()).chain(while_body.statements());
