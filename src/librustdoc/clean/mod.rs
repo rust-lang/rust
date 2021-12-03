@@ -790,22 +790,23 @@ fn clean_function(
     Function { decl, generics, header: sig.header }
 }
 
-impl<'a> Clean<Arguments> for (&'a [hir::Ty<'a>], &'a [Ident]) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Arguments {
-        Arguments {
-            values: self
-                .0
-                .iter()
-                .enumerate()
-                .map(|(i, ty)| {
-                    let mut name = self.1.get(i).map_or(kw::Empty, |ident| ident.name);
-                    if name.is_empty() {
-                        name = kw::Underscore;
-                    }
-                    Argument { name, type_: ty.clean(cx), is_const: false }
-                })
-                .collect(),
-        }
+fn clean_args_from_types_and_names(
+    cx: &mut DocContext<'_>,
+    types: &[hir::Ty<'_>],
+    names: &[Ident],
+) -> Arguments {
+    Arguments {
+        values: types
+            .iter()
+            .enumerate()
+            .map(|(i, ty)| {
+                let mut name = names.get(i).map_or(kw::Empty, |ident| ident.name);
+                if name.is_empty() {
+                    name = kw::Underscore;
+                }
+                Argument { name, type_: ty.clean(cx), is_const: false }
+            })
+            .collect(),
     }
 }
 
@@ -916,7 +917,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
                         // NOTE: generics must be cleaned before args
                         let generics = self.generics.clean(cx);
-                        let args = (sig.decl.inputs, names).clean(cx);
+                        let args = clean_args_from_types_and_names(cx, sig.decl.inputs, names);
                         let decl = clean_fn_decl_with_args(cx, sig.decl, args);
                         (generics, decl)
                     });
@@ -1714,7 +1715,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
         let (generic_params, decl) = enter_impl_trait(cx, |cx| {
             // NOTE: generics must be cleaned before args
             let generic_params = self.generic_params.iter().map(|x| x.clean(cx)).collect();
-            let args = (self.decl.inputs, self.param_names).clean(cx);
+            let args = clean_args_from_types_and_names(cx, self.decl.inputs, self.param_names);
             let decl = clean_fn_decl_with_args(cx, self.decl, args);
             (generic_params, decl)
         });
@@ -2034,7 +2035,7 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
                         // NOTE: generics must be cleaned before args
                         let generics = generics.clean(cx);
-                        let args = (decl.inputs, names).clean(cx);
+                        let args = clean_args_from_types_and_names(cx, decl.inputs, names);
                         let decl = clean_fn_decl_with_args(cx, decl, args);
                         (generics, decl)
                     });
