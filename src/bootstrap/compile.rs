@@ -1143,7 +1143,6 @@ impl Step for Assemble {
         let libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
         let libdir_bin = libdir.parent().unwrap().join("bin");
         t!(fs::create_dir_all(&libdir_bin));
-
         if let Some(lld_install) = lld_install {
             let src_exe = exe("lld", target_compiler.host);
             let dst_exe = exe("rust-lld", target_compiler.host);
@@ -1161,17 +1160,11 @@ impl Step for Assemble {
             }
         }
 
-        // Similarly, copy `llvm-dwp` into libdir for Split DWARF. Only copy it when the LLVM
-        // backend is used to avoid unnecessarily building LLVM and because LLVM is not checked
-        // out by default when the LLVM backend is not enabled.
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
-            let src_exe = exe("llvm-dwp", target_compiler.host);
-            let dst_exe = exe("rust-llvm-dwp", target_compiler.host);
             let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
             if !builder.config.dry_run {
                 let llvm_bin_dir = output(Command::new(llvm_config_bin).arg("--bindir"));
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
-                builder.copy(&llvm_bin_dir.join(&src_exe), &libdir_bin.join(&dst_exe));
 
                 // Since we've already built the LLVM tools, install them to the sysroot.
                 // This is the equivalent of installing the `llvm-tools-preview` component via
