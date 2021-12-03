@@ -1,4 +1,6 @@
+use rustc_arena::TypedArena;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorReported, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
@@ -32,7 +34,10 @@ use cc::windows_registry;
 use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
-use std::ffi::{OsStr, OsString};
+use std::borrow::Borrow;
+use std::ffi::OsString;
+use std::fs::{File, OpenOptions};
+use std::io::{BufWriter, Write};
 use std::lazy::OnceCell;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
@@ -261,8 +266,14 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 
     let mut ab = <B as ArchiveBuilder>::new(sess, out_filename, None);
 
-    for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
-        ab.add_file(obj);
+    for m in &codegen_results.modules {
+        if let Some(obj) = m.object.as_ref() {
+            ab.add_file(obj);
+        }
+
+        if let Some(dwarf_obj) = m.dwarf_object.as_ref() {
+            ab.add_file(dwarf_obj);
+        }
     }
 
     // Note that in this loop we are ignoring the value of `lib.cfg`. That is,
@@ -518,59 +529,108 @@ fn escape_stdout_stderr_string(s: &[u8]) -> String {
     })
 }
 
-const LLVM_DWP_EXECUTABLE: &'static str = "rust-llvm-dwp";
-
-/// Invoke `llvm-dwp` (shipped alongside rustc) to link debuginfo in object files into a `dwp`
-/// file.
-fn link_dwarf_object<'a, I>(sess: &'a Session, executable_out_filename: &Path, object_files: I)
-where
-    I: IntoIterator<Item: AsRef<OsStr>>,
-{
-    info!("preparing dwp to {}.dwp", executable_out_filename.to_str().unwrap());
-
+/// Use `thorin` (rust implementation of a dwarf packaging utility) to link DWARF objects into a
+/// DWARF package.
+fn link_dwarf_object<'a>(
+    sess: &'a Session,
+    cg_results: &CodegenResults,
+    executable_out_filename: &Path,
+) {
     let dwp_out_filename = executable_out_filename.with_extension("dwp");
-    let mut cmd = Command::new(LLVM_DWP_EXECUTABLE);
-    cmd.arg("-o");
-    cmd.arg(&dwp_out_filename);
-    cmd.args(object_files);
+    debug!(?dwp_out_filename, ?executable_out_filename);
 
-    let mut new_path = sess.get_tools_search_paths(false);
-    if let Some(path) = env::var_os("PATH") {
-        new_path.extend(env::split_paths(&path));
+    #[derive(Default)]
+    struct ThorinSession<Relocations> {
+        arena_data: TypedArena<Vec<u8>>,
+        arena_mmap: TypedArena<Mmap>,
+        arena_relocations: TypedArena<Relocations>,
     }
-    let new_path = env::join_paths(new_path).unwrap();
-    cmd.env("PATH", new_path);
 
-    info!("{:?}", &cmd);
-    match sess.time("run_dwp", || cmd.output()) {
-        Ok(prog) if !prog.status.success() => {
-            sess.struct_err(&format!(
-                "linking dwarf objects with `{}` failed: {}",
-                LLVM_DWP_EXECUTABLE, prog.status
-            ))
-            .note(&format!("{:?}", &cmd))
-            .note(&escape_stdout_stderr_string(&prog.stdout))
-            .note(&escape_stdout_stderr_string(&prog.stderr))
-            .emit();
-            info!("linker stderr:\n{}", escape_stdout_stderr_string(&prog.stderr));
-            info!("linker stdout:\n{}", escape_stdout_stderr_string(&prog.stdout));
+    impl<Relocations> ThorinSession<Relocations> {
+        fn alloc_mmap<'arena>(&'arena self, data: Mmap) -> &'arena Mmap {
+            (*self.arena_mmap.alloc(data)).borrow()
         }
-        Ok(_) => {}
-        Err(e) => {
-            let dwp_not_found = e.kind() == io::ErrorKind::NotFound;
-            let mut err = if dwp_not_found {
-                sess.struct_err(&format!("linker `{}` not found", LLVM_DWP_EXECUTABLE))
-            } else {
-                sess.struct_err(&format!("could not exec the linker `{}`", LLVM_DWP_EXECUTABLE))
-            };
+    }
 
-            err.note(&e.to_string());
+    impl<Relocations> thorin::Session<Relocations> for ThorinSession<Relocations> {
+        fn alloc_data<'arena>(&'arena self, data: Vec<u8>) -> &'arena [u8] {
+            (*self.arena_data.alloc(data)).borrow()
+        }
 
-            if !dwp_not_found {
-                err.note(&format!("{:?}", &cmd));
+        fn alloc_relocation<'arena>(&'arena self, data: Relocations) -> &'arena Relocations {
+            (*self.arena_relocations.alloc(data)).borrow()
+        }
+
+        fn read_input<'arena>(&'arena self, path: &Path) -> std::io::Result<&'arena [u8]> {
+            let file = File::open(&path)?;
+            let mmap = (unsafe { Mmap::map(file) })?;
+            Ok(self.alloc_mmap(mmap))
+        }
+    }
+
+    match sess.time("run_thorin", || -> Result<(), thorin::Error> {
+        let thorin_sess = ThorinSession::default();
+        let mut package = thorin::DwarfPackage::new(&thorin_sess);
+
+        // Input objs contain .o/.dwo files from the current crate.
+        match sess.opts.debugging_opts.split_dwarf_kind {
+            SplitDwarfKind::Single => {
+                for input_obj in cg_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+                    package.add_input_object(input_obj)?;
+                }
             }
+            SplitDwarfKind::Split => {
+                for input_obj in cg_results.modules.iter().filter_map(|m| m.dwarf_object.as_ref()) {
+                    package.add_input_object(input_obj)?;
+                }
+            }
+        }
 
-            err.emit();
+        // Input rlibs contain .o/.dwo files from dependencies.
+        let input_rlibs = cg_results
+            .crate_info
+            .used_crate_source
+            .values()
+            .filter_map(|csource| csource.rlib.as_ref())
+            .map(|(path, _)| path);
+        for input_rlib in input_rlibs {
+            debug!(?input_rlib);
+            package.add_input_object(input_rlib)?;
+        }
+
+        // Failing to read the referenced objects is expected for dependencies where the path in the
+        // executable will have been cleaned by Cargo, but the referenced objects will be contained
+        // within rlibs provided as inputs.
+        //
+        // If paths have been remapped, then .o/.dwo files from the current crate also won't be
+        // found, but are provided explicitly above.
+        //
+        // Adding an executable is primarily done to make `thorin` check that all the referenced
+        // dwarf objects are found in the end.
+        package.add_executable(
+            &executable_out_filename,
+            thorin::MissingReferencedObjectBehaviour::Skip,
+        )?;
+
+        let output = package.finish()?.write()?;
+        let mut output_stream = BufWriter::new(
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(dwp_out_filename)?,
+        );
+        output_stream.write_all(&output)?;
+        output_stream.flush()?;
+
+        Ok(())
+    }) {
+        Ok(()) => {}
+        Err(e) => {
+            sess.struct_err("linking dwarf objects with thorin failed")
+                .note(&format!("{:?}", e))
+                .emit();
         }
     }
 }
@@ -916,14 +976,11 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         SplitDebuginfo::Packed if sess.target.is_like_msvc => {}
 
         // ... and otherwise we're processing a `*.dwp` packed dwarf file.
+        //
         // We cannot rely on the .o paths in the exectuable because they may have been
-        // remapped by --remap-path-prefix and therefore invalid. So we need to provide
-        // the .o paths explicitly
-        SplitDebuginfo::Packed => link_dwarf_object(
-            sess,
-            &out_filename,
-            codegen_results.modules.iter().filter_map(|m| m.object.as_ref()),
-        ),
+        // remapped by --remap-path-prefix and therefore invalid, so we need to provide
+        // the .o/.dwo paths explicitly.
+        SplitDebuginfo::Packed => link_dwarf_object(sess, codegen_results, out_filename),
     }
 
     let strip = strip_value(sess);

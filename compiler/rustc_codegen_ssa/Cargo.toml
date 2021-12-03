@@ -14,12 +14,14 @@ tracing = "0.1"
 libc = "0.2.50"
 jobserver = "0.1.22"
 tempfile = "3.2"
+thorin-dwp = "0.1.1"
 pathdiff = "0.2.0"
 snap = "1"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 regex = "1.4"
 
 rustc_serialize = { path = "../rustc_serialize" }
+rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_middle = { path = "../rustc_middle" }
