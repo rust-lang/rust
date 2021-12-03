@@ -299,6 +299,7 @@ pub func() {
             r#"
 //- minicore:derive
 #[rustc_builtin_macro]
+//^^^^^^^^^^^^^^^^^^^
 pub macro Copy {}
         //^^^^
 #[derive(Copy)]

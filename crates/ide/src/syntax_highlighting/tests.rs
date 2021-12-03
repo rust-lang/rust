@@ -16,6 +16,7 @@ fn test_highlighting() {
 use inner::{self as inner_mod};
 mod inner {}
 
+#[allow()]
 #[proc_macros::identity]
 pub mod ops {
     #[lang = "fn_once"]

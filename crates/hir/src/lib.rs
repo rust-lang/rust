@@ -103,6 +103,7 @@ pub use {
     hir_def::{
         adt::StructKind,
         attr::{Attr, Attrs, AttrsWithOwner, Documentation},
+        builtin_attr::AttributeTemplate,
         find_path::PrefixKind,
         import_map,
         item_scope::ItemScope,
@@ -2020,6 +2021,40 @@ impl Local {
         src.map(|ast| {
             ast.map_left(|it| it.cast().unwrap().to_node(&root)).map_right(|it| it.to_node(&root))
         })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct BuiltinAttr(usize);
+
+impl BuiltinAttr {
+    pub(crate) fn by_name(name: &str) -> Option<Self> {
+        // FIXME: def maps registered attrs?
+        hir_def::builtin_attr::find_builtin_attr_idx(name).map(Self)
+    }
+
+    pub fn name(&self, _: &dyn HirDatabase) -> &str {
+        // FIXME: Return a `Name` here
+        hir_def::builtin_attr::INERT_ATTRIBUTES[self.0].name
+    }
+
+    pub fn template(&self, _: &dyn HirDatabase) -> AttributeTemplate {
+        hir_def::builtin_attr::INERT_ATTRIBUTES[self.0].template
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ToolModule(usize);
+
+impl ToolModule {
+    pub(crate) fn by_name(name: &str) -> Option<Self> {
+        // FIXME: def maps registered tools
+        hir_def::builtin_attr::TOOL_MODULES.iter().position(|&tool| tool == name).map(Self)
+    }
+
+    pub fn name(&self, _: &dyn HirDatabase) -> &str {
+        // FIXME: Return a `Name` here
+        hir_def::builtin_attr::TOOL_MODULES[self.0]
     }
 }
 

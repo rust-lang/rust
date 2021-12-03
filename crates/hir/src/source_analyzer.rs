@@ -29,8 +29,9 @@ use syntax::{
 };
 
 use crate::{
-    db::HirDatabase, semantics::PathResolution, Adt, BuiltinType, Const, Field, Function, Local,
-    MacroDef, ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Variant,
+    db::HirDatabase, semantics::PathResolution, Adt, BuiltinAttr, BuiltinType, Const, Field,
+    Function, Local, MacroDef, ModuleDef, Static, Struct, ToolModule, Trait, Type, TypeAlias,
+    TypeParam, Variant,
 };
 use base_db::CrateId;
 
@@ -246,24 +247,14 @@ impl SourceAnalyzer {
         }
     }
 
-    pub(crate) fn resolve_path_as_macro(
-        &self,
-        db: &dyn HirDatabase,
-        path: &ast::Path,
-    ) -> Option<MacroDef> {
-        // This must be a normal source file rather than macro file.
-        let hygiene = Hygiene::new(db.upcast(), self.file_id);
-        let ctx = body::LowerCtx::with_hygiene(db.upcast(), &hygiene);
-        let hir_path = Path::from_src(path.clone(), &ctx)?;
-        resolve_hir_path_as_macro(db, &self.resolver, &hir_path)
-    }
-
     pub(crate) fn resolve_path(
         &self,
         db: &dyn HirDatabase,
         path: &ast::Path,
     ) -> Option<PathResolution> {
-        let parent = || path.syntax().parent();
+        let parent = path.syntax().parent();
+        let parent = || parent.clone();
+
         let mut prefer_value_ns = false;
         if let Some(path_expr) = parent().and_then(ast::PathExpr::cast) {
             let expr_id = self.expr_id(db, &path_expr.into())?;
@@ -318,15 +309,6 @@ impl SourceAnalyzer {
         let ctx = body::LowerCtx::with_hygiene(db.upcast(), &hygiene);
         let hir_path = Path::from_src(path.clone(), &ctx)?;
 
-        // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we are
-        // trying to resolve foo::bar.
-        if let Some(outer_path) = parent().and_then(ast::Path::cast) {
-            if let Some(qualifier) = outer_path.qualifier() {
-                if path == &qualifier {
-                    return resolve_hir_path_qualifier(db, &self.resolver, &hir_path);
-                }
-            }
-        }
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are
         // trying to resolve foo::bar.
         if let Some(use_tree) = parent().and_then(ast::UseTree::cast) {
@@ -337,10 +319,52 @@ impl SourceAnalyzer {
             }
         }
 
-        if parent().map_or(false, |it| ast::Visibility::can_cast(it.kind())) {
+        let is_path_of_attr = path
+            .top_path()
+            .syntax()
+            .ancestors()
+            .nth(2) // Path -> Meta -> Attr
+            .map_or(false, |it| ast::Attr::can_cast(it.kind()));
+
+        // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we are
+        // trying to resolve foo::bar.
+        if let Some(outer_path) = path.parent_path() {
+            if let Some(qualifier) = outer_path.qualifier() {
+                if path == &qualifier {
+                    return resolve_hir_path_qualifier(db, &self.resolver, &hir_path);
+                }
+            }
+        } else if is_path_of_attr {
+            let res = resolve_hir_path_as_macro(db, &self.resolver, &hir_path);
+            return match res {
+                Some(_) => res.map(PathResolution::Macro),
+                None => path.as_single_name_ref().and_then(|name_ref| {
+                    if let builtin @ Some(_) = BuiltinAttr::by_name(&name_ref.text()) {
+                        builtin.map(PathResolution::BuiltinAttr)
+                    } else if let tool @ Some(_) = ToolModule::by_name(&name_ref.text()) {
+                        tool.map(PathResolution::ToolModule)
+                    } else {
+                        None
+                    }
+                }),
+            };
+        }
+
+        let res = if parent().map_or(false, |it| ast::Visibility::can_cast(it.kind())) {
             resolve_hir_path_qualifier(db, &self.resolver, &hir_path)
         } else {
             resolve_hir_path_(db, &self.resolver, &hir_path, prefer_value_ns)
+        };
+        match res {
+            Some(_) => res,
+            // this labels any path that starts with a tool module as the tool itself, this is technically wrong
+            // but there is no benefit in differentiating these two cases for the time being
+            None if is_path_of_attr => path
+                .first_segment()
+                .and_then(|seg| seg.name_ref())
+                .and_then(|name_ref| ToolModule::by_name(&name_ref.text()))
+                .map(PathResolution::ToolModule),
+            None => None,
         }
     }
 

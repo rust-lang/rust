@@ -208,22 +208,14 @@ fn node(
             },
             // Highlight references like the definitions they resolve to
             ast::NameRef(name_ref) => {
-                if node.ancestors().any(|it| it.kind() == ATTR) {
-
-                    // FIXME: We highlight paths in attributes slightly differently to work around this module
-                    // currently not knowing about tool attributes and rustc builtin attributes as
-                    // we do not want to resolve those to functions that may be defined in scope.
-                    highlight_name_ref_in_attr(sema, name_ref)
-                } else {
-                    highlight_name_ref(
-                        sema,
-                        krate,
-                        bindings_shadow_count,
-                        &mut binding_hash,
-                        syntactic_name_ref_highlighting,
-                        name_ref,
-                    )
-                }
+                highlight_name_ref(
+                    sema,
+                    krate,
+                    bindings_shadow_count,
+                    &mut binding_hash,
+                    syntactic_name_ref_highlighting,
+                    name_ref,
+                )
             },
             ast::Lifetime(lifetime) => {
                 match NameClass::classify_lifetime(sema, &lifetime) {
@@ -241,28 +233,6 @@ fn node(
         }
     };
     Some((highlight, binding_hash))
-}
-
-fn highlight_name_ref_in_attr(sema: &Semantics<RootDatabase>, name_ref: ast::NameRef) -> Highlight {
-    match NameRefClass::classify(sema, &name_ref) {
-        Some(name_class) => match name_class {
-            NameRefClass::Definition(Definition::Module(_))
-                if name_ref
-                    .syntax()
-                    .ancestors()
-                    .find_map(ast::Path::cast)
-                    .map_or(false, |it| it.parent_path().is_some()) =>
-            {
-                HlTag::Symbol(SymbolKind::Module)
-            }
-            NameRefClass::Definition(Definition::Macro(m)) if m.kind() == hir::MacroKind::Attr => {
-                HlTag::Symbol(SymbolKind::Macro)
-            }
-            _ => HlTag::BuiltinAttr,
-        },
-        None => HlTag::BuiltinAttr,
-    }
-    .into()
 }
 
 fn highlight_name_ref(
@@ -542,6 +512,8 @@ fn highlight_def(
             h
         }
         Definition::Label(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)),
+        Definition::BuiltinAttr(_) => Highlight::new(HlTag::Symbol(SymbolKind::BuiltinAttr)),
+        Definition::ToolModule(_) => Highlight::new(HlTag::Symbol(SymbolKind::ToolModule)),
     };
 
     let famous_defs = FamousDefs(sema, krate);

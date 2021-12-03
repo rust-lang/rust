@@ -3678,7 +3678,6 @@ fn hover_clippy_lint() {
 
 #[test]
 fn hover_attr_path_qualifier() {
-    cov_mark::check!(name_ref_classify_attr_path_qualifier);
     check(
         r#"
 //- /foo.rs crate:foo
@@ -4276,5 +4275,48 @@ pub struct Foo;
 
             Doc comment for [`Foo`](https://doc.rust-lang.org/nightly/test/struct.Foo.html)
         "#]],
+    );
+}
+
+#[test]
+fn hover_inert_attr() {
+    check(
+        r#"
+#[doc$0 = ""]
+pub struct Foo;
+"#,
+        expect![[r##"
+            *doc*
+
+            ```rust
+            #[doc]
+            ```
+
+            ---
+
+            Valid forms are:
+
+            * \#\[doc(hidden|inline|...)\]
+            * \#\[doc = string\]
+        "##]],
+    );
+    check(
+        r#"
+#[allow$0()]
+pub struct Foo;
+"#,
+        expect![[r##"
+            *allow*
+
+            ```rust
+            #[allow]
+            ```
+
+            ---
+
+            Valid forms are:
+
+            * \#\[allow(lint1, lint2, ..., /\*opt\*/ reason = "...")\]
+        "##]],
     );
 }

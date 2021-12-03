@@ -25,9 +25,9 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, resolve_hir_path_as_macro, SourceAnalyzer},
-    Access, AssocItem, Callable, ConstParam, Crate, Field, Function, HasSource, HirFileId, Impl,
-    InFile, Label, LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path, ScopeDef, Trait,
-    Type, TypeAlias, TypeParam, VariantDef,
+    Access, AssocItem, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource,
+    HirFileId, Impl, InFile, Label, LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path,
+    ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,6 +43,8 @@ pub enum PathResolution {
     SelfType(Impl),
     Macro(MacroDef),
     AssocItem(AssocItem),
+    BuiltinAttr(BuiltinAttr),
+    ToolModule(ToolModule),
 }
 
 impl PathResolution {
@@ -63,9 +65,11 @@ impl PathResolution {
             PathResolution::Def(ModuleDef::TypeAlias(alias)) => {
                 Some(TypeNs::TypeAliasId((*alias).into()))
             }
-            PathResolution::Local(_) | PathResolution::Macro(_) | PathResolution::ConstParam(_) => {
-                None
-            }
+            PathResolution::BuiltinAttr(_)
+            | PathResolution::ToolModule(_)
+            | PathResolution::Local(_)
+            | PathResolution::Macro(_)
+            | PathResolution::ConstParam(_) => None,
             PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
             PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
             PathResolution::AssocItem(AssocItem::Const(_) | AssocItem::Function(_)) => None,
@@ -332,10 +336,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.imp.resolve_path(path)
-    }
-
-    pub fn resolve_path_as_macro(&self, path: &ast::Path) -> Option<MacroDef> {
-        self.imp.resolve_path_as_macro(path)
     }
 
     pub fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {
@@ -858,12 +858,6 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
         self.analyze(path.syntax()).resolve_path(self.db, path)
-    }
-
-    // FIXME: This shouldn't exist, but is currently required to always resolve attribute paths in
-    // the IDE layer due to namespace collisions
-    fn resolve_path_as_macro(&self, path: &ast::Path) -> Option<MacroDef> {
-        self.analyze(path.syntax()).resolve_path_as_macro(self.db, path)
     }
 
     fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {

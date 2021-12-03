@@ -65,6 +65,7 @@ define_semantic_token_types![
     (SELF_KEYWORD, "selfKeyword"),
     (SEMICOLON, "semicolon"),
     (TYPE_ALIAS, "typeAlias"),
+    (TOOL_MODULE, "toolModule"),
     (UNION, "union"),
     (UNRESOLVED_REFERENCE, "unresolvedReference"),
 ];
