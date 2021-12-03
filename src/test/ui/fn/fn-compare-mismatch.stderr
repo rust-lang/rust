@@ -9,11 +9,11 @@ LL |     let x = f == g;
 help: you might have forgotten to call this function
    |
 LL |     let x = f() == g;
-   |             ~~~
+   |              ++
 help: you might have forgotten to call this function
    |
 LL |     let x = f == g();
-   |                  ~~~
+   |                   ++
 
 error[E0308]: mismatched types
   --> $DIR/fn-compare-mismatch.rs:4:18
