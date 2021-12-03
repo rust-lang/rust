@@ -510,6 +510,26 @@ impl<'tcx> CPlace<'tcx> {
         let dst_layout = self.layout();
         let to_ptr = match self.inner {
             CPlaceInner::Var(_local, var) => {
+                if let ty::Array(element, len) = dst_layout.ty.kind() {
+                    // Can only happen for vector types
+                    let len =
+                        u16::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
+                    let vector_ty = fx.clif_type(element).unwrap().by(len).unwrap();
+
+                    let data = match from.0 {
+                        CValueInner::ByRef(ptr, None) => {
+                            let mut flags = MemFlags::new();
+                            flags.set_notrap();
+                            ptr.load(fx, vector_ty, flags)
+                        }
+                        CValueInner::ByVal(_)
+                        | CValueInner::ByValPair(_, _)
+                        | CValueInner::ByRef(_, Some(_)) => bug!("array should be ByRef"),
+                    };
+
+                    fx.bcx.def_var(var, data);
+                    return;
+                }
                 let data = CValue(from.0, dst_layout).load_scalar(fx);
                 let dst_ty = fx.clif_type(self.layout().ty).unwrap();
                 transmute_value(fx, var, data, dst_ty);
@@ -603,14 +623,39 @@ impl<'tcx> CPlace<'tcx> {
         let layout = self.layout();
 
         match self.inner {
-            CPlaceInner::Var(local, var) => {
-                if let Abi::Vector { .. } = layout.abi {
+            CPlaceInner::Var(local, var) => match layout.ty.kind() {
+                ty::Array(_, _) => {
+                    // Can only happen for vector types
                     return CPlace {
                         inner: CPlaceInner::VarLane(local, var, field.as_u32().try_into().unwrap()),
                         layout: layout.field(fx, field.as_u32().try_into().unwrap()),
                     };
                 }
-            }
+                ty::Adt(adt_def, substs) if layout.ty.is_simd() => {
+                    let f0_ty = adt_def.non_enum_variant().fields[0].ty(fx.tcx, substs);
+
+                    match f0_ty.kind() {
+                        ty::Array(_, _) => {
+                            assert_eq!(field.as_u32(), 0);
+                            return CPlace {
+                                inner: CPlaceInner::Var(local, var),
+                                layout: layout.field(fx, field.as_u32().try_into().unwrap()),
+                            };
+                        }
+                        _ => {
+                            return CPlace {
+                                inner: CPlaceInner::VarLane(
+                                    local,
+                                    var,
+                                    field.as_u32().try_into().unwrap(),
+                                ),
+                                layout: layout.field(fx, field.as_u32().try_into().unwrap()),
+                            };
+                        }
+                    }
+                }
+                _ => {}
+            },
             CPlaceInner::VarPair(local, var1, var2) => {
                 let layout = layout.field(&*fx, field.index());
 
