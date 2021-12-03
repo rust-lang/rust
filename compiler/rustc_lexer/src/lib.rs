@@ -227,14 +227,15 @@ pub fn first_token(input: &str) -> Token {
 }
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn tokenize(mut input: &str) -> impl Iterator<Item = Token> + '_ {
+pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
+    let mut cursor = Cursor::new(input);
     std::iter::from_fn(move || {
-        if input.is_empty() {
-            return None;
+        if cursor.is_eof() {
+            None
+        } else {
+            cursor.reset_len_consumed();
+            Some(cursor.advance_token())
         }
-        let token = first_token(input);
-        input = &input[token.len..];
-        Some(token)
     })
 }
 
@@ -831,12 +832,5 @@ impl Cursor<'_> {
         self.bump();
 
         self.eat_while(is_id_continue);
-    }
-
-    /// Eats symbols while predicate returns true or until the end of file is reached.
-    fn eat_while(&mut self, mut predicate: impl FnMut(char) -> bool) {
-        while predicate(self.first()) && !self.is_eof() {
-            self.bump();
-        }
     }
 }
