@@ -231,7 +231,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         if let Ok(Some(command)) =
             OnUnimplementedDirective::of_item(self.tcx, trait_ref.def_id, def_id)
         {
-            command.evaluate(self.tcx, trait_ref, &flags[..])
+            command.evaluate(self.tcx, trait_ref, &flags)
         } else {
             OnUnimplementedNote::default()
         }

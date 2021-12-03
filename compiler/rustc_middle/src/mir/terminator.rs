@@ -342,7 +342,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | InlineAsm { destination: Some(ref t), cleanup: Some(ref u), .. } => {
                 Some(t).into_iter().chain(slice::from_ref(u))
             }
-            SwitchInt { ref targets, .. } => None.into_iter().chain(&targets.targets[..]),
+            SwitchInt { ref targets, .. } => None.into_iter().chain(&targets.targets),
             FalseEdge { ref real_target, ref imaginary_target } => {
                 Some(real_target).into_iter().chain(slice::from_ref(imaginary_target))
             }
@@ -380,7 +380,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | InlineAsm { destination: Some(ref mut t), cleanup: Some(ref mut u), .. } => {
                 Some(t).into_iter().chain(slice::from_mut(u))
             }
-            SwitchInt { ref mut targets, .. } => None.into_iter().chain(&mut targets.targets[..]),
+            SwitchInt { ref mut targets, .. } => None.into_iter().chain(&mut targets.targets),
             FalseEdge { ref mut real_target, ref mut imaginary_target } => {
                 Some(real_target).into_iter().chain(slice::from_mut(imaginary_target))
             }
