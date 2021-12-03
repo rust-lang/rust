@@ -17,6 +17,9 @@ fn main() {
         } else {
             println!("cargo:rustc-link-lib=gcc");
         }
+
+        // Android's unwinding library depends on dl_iterate_phdr in `libdl`.
+        println!("cargo:rustc-link-lib=dl");
     } else if target.contains("freebsd") {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("netbsd") {
