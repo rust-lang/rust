@@ -838,27 +838,28 @@ fn clean_fn_decl_with_args(
     FnDecl { inputs: args, output: decl.output.clean(cx), c_variadic: decl.c_variadic }
 }
 
-impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
-    fn clean(&self, cx: &mut DocContext<'_>) -> FnDecl {
-        let (did, sig) = *self;
-        let mut names = if did.is_local() { &[] } else { cx.tcx.fn_arg_names(did) }.iter();
+fn clean_fn_decl_from_did_and_sig(
+    cx: &mut DocContext<'_>,
+    did: DefId,
+    sig: ty::PolyFnSig<'_>,
+) -> FnDecl {
+    let mut names = if did.is_local() { &[] } else { cx.tcx.fn_arg_names(did) }.iter();
 
-        FnDecl {
-            output: Return(sig.skip_binder().output().clean(cx)),
-            c_variadic: sig.skip_binder().c_variadic,
-            inputs: Arguments {
-                values: sig
-                    .skip_binder()
-                    .inputs()
-                    .iter()
-                    .map(|t| Argument {
-                        type_: t.clean(cx),
-                        name: names.next().map_or(kw::Empty, |i| i.name),
-                        is_const: false,
-                    })
-                    .collect(),
-            },
-        }
+    FnDecl {
+        output: Return(sig.skip_binder().output().clean(cx)),
+        c_variadic: sig.skip_binder().c_variadic,
+        inputs: Arguments {
+            values: sig
+                .skip_binder()
+                .inputs()
+                .iter()
+                .map(|t| Argument {
+                    type_: t.clean(cx),
+                    name: names.next().map_or(kw::Empty, |i| i.name),
+                    is_const: false,
+                })
+                .collect(),
+        },
     }
 }
 
@@ -1013,7 +1014,7 @@ impl Clean<Item> for ty::AssocItem {
                     tcx.explicit_predicates_of(self.def_id),
                 );
                 let sig = tcx.fn_sig(self.def_id);
-                let mut decl = (self.def_id, sig).clean(cx);
+                let mut decl = clean_fn_decl_from_did_and_sig(cx, self.def_id, sig);
 
                 if self.fn_has_self_parameter {
                     let self_ty = match self.container {
@@ -1407,10 +1408,11 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let ty = cx.tcx.lift(*self).expect("FnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
                 let def_id = DefId::local(CRATE_DEF_INDEX);
+                let decl = clean_fn_decl_from_did_and_sig(cx, def_id, sig);
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
                     generic_params: Vec::new(),
-                    decl: (def_id, sig).clean(cx),
+                    decl,
                     abi: sig.abi(),
                 })
             }

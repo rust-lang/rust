@@ -15,8 +15,8 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
-    self, clean_ty_generics, utils, Attributes, AttributesExt, Clean, ImplKind, ItemId,
-    NestedAttributesExt, Type, Visibility,
+    self, clean_fn_decl_from_did_and_sig, clean_ty_generics, utils, Attributes, AttributesExt,
+    Clean, ImplKind, ItemId, NestedAttributesExt, Type, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -230,7 +230,7 @@ fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Functi
     let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
         // NOTE: generics need to be cleaned before the decl!
         let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
-        let decl = (did, sig).clean(cx);
+        let decl = clean_fn_decl_from_did_and_sig(cx, did, sig);
         (generics, decl)
     });
     clean::Function {
