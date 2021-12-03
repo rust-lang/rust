@@ -875,6 +875,7 @@ symbols! {
         mem_zeroed,
         member_constraints,
         memory,
+        memtag,
         message,
         meta,
         metadata_type,
