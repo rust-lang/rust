@@ -1,5 +1,6 @@
 // min-llvm-version: 13.0.0
 // compile-flags: -O
+// only-x86_64
 
 #![crate_type = "rlib"]
 #![feature(asm, asm_unwind)]
