@@ -8,7 +8,7 @@ use rustc_middle::{
     ty::{self, Ty},
 };
 use rustc_target::abi;
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::abi::call::{ArgAbi, ArgAttribute, ArgAttributes, FnAbi, PassMode};
 use rustc_target::spec::abi::Abi;
 
 use super::{
@@ -199,41 +199,50 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
         // Padding must be fully equal.
-        let pad_compat = || {
-            if caller_abi.pad != callee_abi.pad {
-                trace!(
-                    "check_argument_compat: incompatible pad: {:?} != {:?}",
-                    caller_abi.pad,
-                    callee_abi.pad
-                );
+        let pad_compat = || caller_abi.pad == callee_abi.pad;
+        // When comparing the PassMode, we have to be smart about comparing the attributes.
+        let arg_attr_compat = |a1: ArgAttributes, a2: ArgAttributes| {
+            // There's only one regular attribute that matters for the call ABI: InReg.
+            // Everything else is things like noalias, dereferencable, nonnull, ...
+            // (This also applies to pointee_size, pointee_align.)
+            if a1.regular.contains(ArgAttribute::InReg) != a2.regular.contains(ArgAttribute::InReg)
+            {
+                return false;
+            }
+            // We also compare the sign extension mode -- this could let the callee make assumptions
+            // about bits that conceptually were not even passed.
+            if a1.arg_ext != a2.arg_ext {
                 return false;
             }
             return true;
         };
-        // For comparing the PassMode, we allow the attributes to differ
-        // (e.g., it is okay for NonNull to differ between caller and callee).
-        // FIXME: Are there attributes (`call::ArgAttributes`) that do need to be checked?
-        let mode_compat = || {
-            match (caller_abi.mode, callee_abi.mode) {
-                (PassMode::Ignore, PassMode::Ignore) => return true,
-                (PassMode::Direct(_), PassMode::Direct(_)) => return true,
-                (PassMode::Pair(_, _), PassMode::Pair(_, _)) => return true,
-                (PassMode::Cast(c1), PassMode::Cast(c2)) if c1 == c2 => return true,
-                (
-                    PassMode::Indirect { attrs: _, extra_attrs: e1, on_stack: s1 },
-                    PassMode::Indirect { attrs: _, extra_attrs: e2, on_stack: s2 },
-                ) if e1.is_some() == e2.is_some() && s1 == s2 => return true,
-                _ => {}
+        let mode_compat = || match (caller_abi.mode, callee_abi.mode) {
+            (PassMode::Ignore, PassMode::Ignore) => true,
+            (PassMode::Direct(a1), PassMode::Direct(a2)) => arg_attr_compat(a1, a2),
+            (PassMode::Pair(a1, b1), PassMode::Pair(a2, b2)) => {
+                arg_attr_compat(a1, a2) && arg_attr_compat(b1, b2)
             }
-            trace!(
-                "check_argument_compat: incompatible modes:\ncaller: {:?}\ncallee: {:?}",
-                caller_abi.mode,
-                callee_abi.mode
-            );
-            return false;
+            (PassMode::Cast(c1), PassMode::Cast(c2)) => c1 == c2,
+            (
+                PassMode::Indirect { attrs: a1, extra_attrs: None, on_stack: s1 },
+                PassMode::Indirect { attrs: a2, extra_attrs: None, on_stack: s2 },
+            ) => arg_attr_compat(a1, a2) && s1 == s2,
+            (
+                PassMode::Indirect { attrs: a1, extra_attrs: Some(e1), on_stack: s1 },
+                PassMode::Indirect { attrs: a2, extra_attrs: Some(e2), on_stack: s2 },
+            ) => arg_attr_compat(a1, a2) && arg_attr_compat(e1, e2) && s1 == s2,
+            _ => false,
         };
 
-        layout_compat() && pad_compat() && mode_compat()
+        if layout_compat() && pad_compat() && mode_compat() {
+            return true;
+        }
+        trace!(
+            "check_argument_compat: incompatible ABIs:\ncaller: {:?}\ncallee: {:?}",
+            caller_abi,
+            callee_abi
+        );
+        return false;
     }
 
     /// Initialize a single callee argument, checking the types for compatibility.
