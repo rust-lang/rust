@@ -1113,8 +1113,23 @@
         ],
         "semanticTokenTypes": [
             {
+                "id": "angle",
+                "description": "Style for < or >",
+                "superType": "punctuation"
+            },
+            {
+                "id": "arithmetic",
+                "description": "Style for arithmetic operators",
+                "superType": "operator"
+            },
+            {
                 "id": "attribute",
                 "description": "Style for attributes"
+            },
+            {
+                "id": "bitwise",
+                "description": "Style for bitwise operators",
+                "superType": "operator"
             },
             {
                 "id": "boolean",
@@ -1122,18 +1137,98 @@
                 "superType": "keyword"
             },
             {
+                "id": "brace",
+                "description": "Style for { or }",
+                "superType": "punctuation"
+            },
+            {
+                "id": "bracket",
+                "description": "Style for [ or ]",
+                "superType": "punctuation"
+            },
+            {
+                "id": "builtinAttribute",
+                "description": "Style for builtin attributes",
+                "superType": "attribute"
+            },
+            {
                 "id": "builtinType",
                 "description": "Style for builtin types",
                 "superType": "type"
+            },
+            {
+                "id": "char",
+                "description": "Style for character literals",
+                "superType": "type"
+            },
+            {
+                "id": "colon",
+                "description": "Style for :",
+                "superType": "punctuation"
+            },
+            {
+                "id": "comma",
+                "description": "Style for ,",
+                "superType": "punctuation"
+            },
+            {
+                "id": "comparison",
+                "description": "Style for comparison operators",
+                "superType": "operator"
+            },
+            {
+                "id": "constParameter",
+                "description": "Style for const generics"
+            },
+            {
+                "id": "dot",
+                "description": "Style for .",
+                "superType": "punctuation"
+            },
+            {
+                "id": "escapeSequence",
+                "description": "Style for char escapes in strings"
+            },
+            {
+                "id": "formatSpecifier",
+                "description": "Style for {} placeholders in format strings"
+            },
+            {
+                "id": "label",
+                "description": "Style for labels"
             },
             {
                 "id": "lifetime",
                 "description": "Style for lifetimes"
             },
             {
+                "id": "logical",
+                "description": "Style for logic operators",
+                "superType": "operator"
+            },
+            {
+                "id": "operator",
+                "description": "Style for operators",
+                "superType": "punctuation"
+            },
+            {
+                "id": "parenthesis",
+                "description": "Style for ( or )",
+                "superType": "punctuation"
+            },
+            {
+                "id": "punctuation",
+                "description": "Style for generic punctuation"
+            },
+            {
                 "id": "selfKeyword",
                 "description": "Style for the self keyword",
                 "superType": "keyword"
+            },
+            {
+                "id": "semicolon",
+                "description": "Style for ;",
+                "superType": "punctuation"
             },
             {
                 "id": "typeAlias",
@@ -1148,54 +1243,6 @@
             {
                 "id": "unresolvedReference",
                 "description": "Style for names which can not be resolved due to compilation errors"
-            },
-            {
-                "id": "formatSpecifier",
-                "description": "Style for {} placeholders in format strings"
-            },
-            {
-                "id": "punctuation",
-                "description": "generic punctuation"
-            },
-            {
-                "id": "parenthesis",
-                "description": "( or )",
-                "superType": "punctuation"
-            },
-            {
-                "id": "bracket",
-                "description": "[ or ]",
-                "superType": "punctuation"
-            },
-            {
-                "id": "brace",
-                "description": "{ or }",
-                "superType": "punctuation"
-            },
-            {
-                "id": "angle",
-                "description": "< or >",
-                "superType": "punctuation"
-            },
-            {
-                "id": "comma",
-                "description": ",",
-                "superType": "punctuation"
-            },
-            {
-                "id": "colon",
-                "description": ":",
-                "superType": "punctuation"
-            },
-            {
-                "id": "semicolon",
-                "description": ";",
-                "superType": "punctuation"
-            },
-            {
-                "id": "dot",
-                "description": ".",
-                "superType": "punctuation"
             }
         ],
         "semanticTokenModifiers": [
@@ -1208,12 +1255,12 @@
                 "description": "Style for elements within attributes"
             },
             {
-                "id": "constant",
-                "description": "Style for compile-time constants"
-            },
-            {
                 "id": "callable",
                 "description": "Style for locals whose types implements one of the `Fn*` traits"
+            },
+            {
+                "id": "constant",
+                "description": "Style for compile-time constants"
             },
             {
                 "id": "consuming",
@@ -1224,8 +1271,8 @@
                 "description": "Style for control-flow related tokens, this includes the `?` operator"
             },
             {
-                "id": "definition",
-                "description": "Style for mutable bindings"
+                "id": "crateRoot",
+                "description": "Style for names resolving to a crate root"
             },
             {
                 "id": "injected",
@@ -1267,26 +1314,26 @@
                     "attribute": [
                         "meta.attribute.rust"
                     ],
-                    "function.attribute": [
-                        "entity.name.function.attribute.rust"
-                    ],
                     "boolean": [
                         "constant.language.boolean.rust"
                     ],
                     "builtinType": [
                         "support.type.primitive.rust"
                     ],
-                    "lifetime": [
-                        "storage.modifier.lifetime.rust"
+                    "constParameter": [
+                        "constant.other.caps.rust"
                     ],
-                    "typeAlias": [
-                        "entity.name.type.typeAlias.rust"
+                    "enum": [
+                        "entity.name.type.enum.rust"
                     ],
-                    "union": [
-                        "entity.name.type.union.rust"
+                    "formatSpecifier": [
+                        "punctuation.section.embedded.rust"
                     ],
-                    "struct": [
-                        "entity.name.type.struct.rust"
+                    "function": [
+                        "entity.name.function.rust"
+                    ],
+                    "interface": [
+                        "entity.name.type.trait.rust"
                     ],
                     "keyword": [
                         "keyword.other.rust"
@@ -1294,11 +1341,26 @@
                     "keyword.controlFlow": [
                         "keyword.control.rust"
                     ],
+                    "lifetime": [
+                        "storage.modifier.lifetime.rust"
+                    ],
+                    "method": [
+                        "entity.name.function.rust"
+                    ],
+                    "struct": [
+                        "entity.name.type.struct.rust"
+                    ],
+                    "typeAlias": [
+                        "entity.name.type.declaration.rust"
+                    ],
+                    "union": [
+                        "entity.name.type.union.rust"
+                    ],
+                    "variable": [
+                        "variable.other.rust"
+                    ],
                     "variable.constant": [
                         "variable.other.constant.rust"
-                    ],
-                    "formatSpecifier": [
-                        "punctuation.section.embedded.rust"
                     ],
                     "*.mutable": [
                         "markup.underline"
