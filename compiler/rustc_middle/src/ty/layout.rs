@@ -533,7 +533,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
         }
 
-        if sized && fields.iter().any(|f| f.abi.is_uninhabited()) {
+        if fields.iter().any(|f| f.abi.is_uninhabited()) {
             abi = Abi::Uninhabited;
         }
 
