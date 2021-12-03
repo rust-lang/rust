@@ -369,8 +369,9 @@ pub(super) fn definition(
         }
         Definition::GenericParam(it) => label_and_docs(db, it),
         Definition::Label(it) => return Some(Markup::fenced_block(&it.name(db))),
-        Definition::BuiltinAttr(_) => return None, // FIXME
-        Definition::Tool(_) => return None,        // FIXME
+        // FIXME: We should be able to show more info about these
+        Definition::BuiltinAttr(it) => return Some(Markup::fenced_block(&it.name(db))),
+        Definition::Tool(it) => return Some(Markup::fenced_block(&it.name(db))),
     };
 
     markup(docs.filter(|_| config.documentation.is_some()).map(Into::into), label, mod_path)

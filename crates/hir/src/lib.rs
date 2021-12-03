@@ -2031,6 +2031,11 @@ impl BuiltinAttr {
         // FIXME: def maps registered attrs?
         hir_def::builtin_attr::find_builtin_attr_idx(name).map(Self)
     }
+
+    pub fn name(&self, _: &dyn HirDatabase) -> &str {
+        // FIXME: Return a `Name` here
+        hir_def::builtin_attr::INERT_ATTRIBUTES[self.0].name
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -2040,6 +2045,11 @@ impl Tool {
     pub(crate) fn by_name(name: &str) -> Option<Self> {
         // FIXME: def maps registered tools
         hir_def::builtin_attr::TOOL_MODULES.iter().position(|&tool| tool == name).map(Self)
+    }
+
+    pub fn name(&self, _: &dyn HirDatabase) -> &str {
+        // FIXME: Return a `Name` here
+        hir_def::builtin_attr::TOOL_MODULES[self.0]
     }
 }
 
