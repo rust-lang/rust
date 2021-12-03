@@ -306,7 +306,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let expect = tokens_to_string(&expected[..]);
+        let expect = tokens_to_string(&expected);
         let actual = super::token_descr(&self.token);
         let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
             let short_expect = if expected.len() > 6 {
@@ -909,7 +909,7 @@ impl<'a> Parser<'a> {
                         // So far we have parsed `foo<bar<`, consume the rest of the type args.
                         let modifiers =
                             [(token::Lt, 1), (token::Gt, -1), (token::BinOp(token::Shr), -2)];
-                        self.consume_tts(1, &modifiers[..]);
+                        self.consume_tts(1, &modifiers);
 
                         if !&[token::OpenDelim(token::Paren), token::ModSep]
                             .contains(&self.token.kind)
@@ -1001,7 +1001,7 @@ impl<'a> Parser<'a> {
         // Consume the fn call arguments.
         let modifiers =
             [(token::OpenDelim(token::Paren), 1), (token::CloseDelim(token::Paren), -1)];
-        self.consume_tts(1, &modifiers[..]);
+        self.consume_tts(1, &modifiers);
 
         if self.token.kind == token::Eof {
             // Not entirely sure that what we consumed were fn arguments, rollback.

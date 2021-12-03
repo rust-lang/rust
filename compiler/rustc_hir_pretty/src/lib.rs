@@ -316,7 +316,7 @@ impl<'a> State<'a> {
             }
             hir::TyKind::Tup(ref elts) => {
                 self.popen();
-                self.commasep(Inconsistent, &elts[..], |s, ty| s.print_type(&ty));
+                self.commasep(Inconsistent, &elts, |s, ty| s.print_type(&ty));
                 if elts.len() == 1 {
                     self.s.word(",");
                 }
@@ -1862,7 +1862,7 @@ impl<'a> State<'a> {
                         self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(&p));
                     }
                 } else {
-                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(&p));
+                    self.commasep(Inconsistent, &elts, |s, p| s.print_pat(&p));
                 }
                 self.pclose();
             }
@@ -1875,7 +1875,7 @@ impl<'a> State<'a> {
                 self.word_space("{");
                 self.commasep_cmnt(
                     Consistent,
-                    &fields[..],
+                    &fields,
                     |s, f| {
                         s.cbox(INDENT_UNIT);
                         if !f.is_shorthand {
@@ -1897,7 +1897,7 @@ impl<'a> State<'a> {
                 self.s.word("}");
             }
             PatKind::Or(ref pats) => {
-                self.strsep("|", true, Inconsistent, &pats[..], |s, p| s.print_pat(&p));
+                self.strsep("|", true, Inconsistent, &pats, |s, p| s.print_pat(&p));
             }
             PatKind::Tuple(ref elts, ddpos) => {
                 self.popen();
@@ -1958,7 +1958,7 @@ impl<'a> State<'a> {
             }
             PatKind::Slice(ref before, ref slice, ref after) => {
                 self.s.word("[");
-                self.commasep(Inconsistent, &before[..], |s, p| s.print_pat(&p));
+                self.commasep(Inconsistent, &before, |s, p| s.print_pat(&p));
                 if let Some(ref p) = *slice {
                     if !before.is_empty() {
                         self.word_space(",");
@@ -1973,7 +1973,7 @@ impl<'a> State<'a> {
                         self.word_space(",");
                     }
                 }
-                self.commasep(Inconsistent, &after[..], |s, p| s.print_pat(&p));
+                self.commasep(Inconsistent, &after, |s, p| s.print_pat(&p));
                 self.s.word("]");
             }
         }

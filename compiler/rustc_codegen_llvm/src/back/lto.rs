@@ -587,7 +587,7 @@ pub(crate) fn run_pass_manager(
     config: &ModuleConfig,
     thin: bool,
 ) -> Result<(), FatalError> {
-    let _timer = cgcx.prof.extra_verbose_generic_activity("LLVM_lto_optimize", &module.name[..]);
+    let _timer = cgcx.prof.extra_verbose_generic_activity("LLVM_lto_optimize", &*module.name);
 
     // Now we have one massive module inside of llmod. Time to run the
     // LTO-specific optimization passes that LLVM provides.

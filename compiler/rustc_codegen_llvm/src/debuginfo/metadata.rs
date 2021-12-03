@@ -456,7 +456,7 @@ fn vec_slice_metadata(
     let metadata = composite_type_metadata(
         cx,
         slice_ptr_type,
-        &slice_type_name[..],
+        &slice_type_name,
         unique_type_id,
         member_descriptions,
         NO_SCOPE_METADATA,
@@ -579,7 +579,7 @@ fn trait_pointer_metadata(
     composite_type_metadata(
         cx,
         trait_object_type.unwrap_or(trait_type),
-        &trait_type_name[..],
+        &trait_type_name,
         unique_type_id,
         member_descriptions,
         containing_scope,
@@ -2398,7 +2398,7 @@ fn set_members_of_composite_type(
 
     let type_params = compute_type_parameters(cx, composite_type);
     unsafe {
-        let type_array = create_DIArray(DIB(cx), &member_metadata[..]);
+        let type_array = create_DIArray(DIB(cx), &member_metadata);
         llvm::LLVMRustDICompositeTypeReplaceArrays(
             DIB(cx),
             composite_type_metadata,
@@ -2437,7 +2437,7 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> &'ll DIAr
                 })
                 .collect();
 
-            return create_DIArray(DIB(cx), &template_params[..]);
+            return create_DIArray(DIB(cx), &template_params);
         }
     }
     return create_DIArray(DIB(cx), &[]);

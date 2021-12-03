@@ -1324,7 +1324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if candidates.len() > limit {
                 msg.push_str(&format!("\nand {} others", candidates.len() - limit));
             }
-            err.note(&msg[..]);
+            err.note(&msg);
         }
     }
 
