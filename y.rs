@@ -43,7 +43,9 @@ mod utils;
 fn usage() {
     eprintln!("Usage:");
     eprintln!("  ./y.rs prepare");
-    eprintln!("  ./y.rs build [--debug] [--sysroot none|clif|llvm] [--target-dir DIR]");
+    eprintln!(
+        "  ./y.rs build [--debug] [--sysroot none|clif|llvm] [--target-dir DIR] [--no-unstable-features]"
+    );
 }
 
 macro_rules! arg_error {
@@ -92,6 +94,7 @@ fn main() {
     let mut target_dir = PathBuf::from("build");
     let mut channel = "release";
     let mut sysroot_kind = SysrootKind::Clif;
+    let mut use_unstable_features = true;
     while let Some(arg) = args.next().as_deref() {
         match arg {
             "--target-dir" => {
@@ -109,6 +112,7 @@ fn main() {
                     None => arg_error!("--sysroot requires argument"),
                 }
             }
+            "--no-unstable-features" => use_unstable_features = false,
             flag if flag.starts_with("-") => arg_error!("Unknown flag {}", flag),
             arg => arg_error!("Unexpected argument {}", arg),
         }
@@ -141,7 +145,8 @@ fn main() {
         process::exit(1);
     }
 
-    let cg_clif_build_dir = build_backend::build_backend(channel, &host_triple);
+    let cg_clif_build_dir =
+        build_backend::build_backend(channel, &host_triple, use_unstable_features);
     build_sysroot::build_sysroot(
         channel,
         sysroot_kind,

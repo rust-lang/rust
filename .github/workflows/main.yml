@@ -65,6 +65,12 @@ jobs:
         git config --global user.name "User"
         ./y.rs prepare
 
+    - name: Build without unstable features
+      env:
+        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
+      # This is the config rust-lang/rust uses for builds
+      run: ./y.rs build --no-unstable-features
+
     - name: Build
       run: ./y.rs build --sysroot none
 
