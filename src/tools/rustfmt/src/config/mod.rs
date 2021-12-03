@@ -405,6 +405,8 @@ mod test {
     use super::*;
     use std::str;
 
+    use rustfmt_config_proc_macro::{nightly_only_test, stable_only_test};
+
     #[allow(dead_code)]
     mod mock {
         use super::super::*;
@@ -525,21 +527,17 @@ mod test {
         assert!(config.license_template.is_none());
     }
 
+    #[nightly_only_test]
     #[test]
     fn test_valid_license_template_path() {
-        if !crate::is_nightly_channel!() {
-            return;
-        }
         let toml = r#"license_template_path = "tests/license-template/lt.txt""#;
         let config = Config::from_toml(toml, Path::new("")).unwrap();
         assert!(config.license_template.is_some());
     }
 
+    #[nightly_only_test]
     #[test]
     fn test_override_existing_license_with_no_license() {
-        if !crate::is_nightly_channel!() {
-            return;
-        }
         let toml = r#"license_template_path = "tests/license-template/lt.txt""#;
         let mut config = Config::from_toml(toml, Path::new("")).unwrap();
         assert!(config.license_template.is_some());
@@ -634,48 +632,42 @@ make_backup = false
         assert_eq!(&toml, &default_config);
     }
 
-    // FIXME(#2183): these tests cannot be run in parallel because they use env vars.
-    // #[test]
-    // fn test_as_not_nightly_channel() {
-    //     let mut config = Config::default();
-    //     assert_eq!(config.was_set().unstable_features(), false);
-    //     config.set().unstable_features(true);
-    //     assert_eq!(config.was_set().unstable_features(), false);
-    // }
+    #[stable_only_test]
+    #[test]
+    fn test_as_not_nightly_channel() {
+        let mut config = Config::default();
+        assert_eq!(config.was_set().unstable_features(), false);
+        config.set().unstable_features(true);
+        assert_eq!(config.was_set().unstable_features(), false);
+    }
 
-    // #[test]
-    // fn test_as_nightly_channel() {
-    //     let v = ::std::env::var("CFG_RELEASE_CHANNEL").unwrap_or(String::from(""));
-    //     ::std::env::set_var("CFG_RELEASE_CHANNEL", "nightly");
-    //     let mut config = Config::default();
-    //     config.set().unstable_features(true);
-    //     assert_eq!(config.was_set().unstable_features(), false);
-    //     config.set().unstable_features(true);
-    //     assert_eq!(config.unstable_features(), true);
-    //     ::std::env::set_var("CFG_RELEASE_CHANNEL", v);
-    // }
+    #[nightly_only_test]
+    #[test]
+    fn test_as_nightly_channel() {
+        let mut config = Config::default();
+        config.set().unstable_features(true);
+        // When we don't set the config from toml or command line options it
+        // doesn't get marked as set by the user.
+        assert_eq!(config.was_set().unstable_features(), false);
+        config.set().unstable_features(true);
+        assert_eq!(config.unstable_features(), true);
+    }
 
-    // #[test]
-    // fn test_unstable_from_toml() {
-    //     let mut config = Config::from_toml("unstable_features = true").unwrap();
-    //     assert_eq!(config.was_set().unstable_features(), false);
-    //     let v = ::std::env::var("CFG_RELEASE_CHANNEL").unwrap_or(String::from(""));
-    //     ::std::env::set_var("CFG_RELEASE_CHANNEL", "nightly");
-    //     config = Config::from_toml("unstable_features = true").unwrap();
-    //     assert_eq!(config.was_set().unstable_features(), true);
-    //     assert_eq!(config.unstable_features(), true);
-    //     ::std::env::set_var("CFG_RELEASE_CHANNEL", v);
-    // }
+    #[nightly_only_test]
+    #[test]
+    fn test_unstable_from_toml() {
+        let config = Config::from_toml("unstable_features = true", Path::new("")).unwrap();
+        assert_eq!(config.was_set().unstable_features(), true);
+        assert_eq!(config.unstable_features(), true);
+    }
 
     #[cfg(test)]
     mod deprecated_option_merge_imports {
         use super::*;
 
+        #[nightly_only_test]
         #[test]
         fn test_old_option_set() {
-            if !crate::is_nightly_channel!() {
-                return;
-            }
             let toml = r#"
                 unstable_features = true
                 merge_imports = true
@@ -684,11 +676,9 @@ make_backup = false
             assert_eq!(config.imports_granularity(), ImportGranularity::Crate);
         }
 
+        #[nightly_only_test]
         #[test]
         fn test_both_set() {
-            if !crate::is_nightly_channel!() {
-                return;
-            }
             let toml = r#"
                 unstable_features = true
                 merge_imports = true
@@ -698,11 +688,9 @@ make_backup = false
             assert_eq!(config.imports_granularity(), ImportGranularity::Preserve);
         }
 
+        #[nightly_only_test]
         #[test]
         fn test_new_overridden() {
-            if !crate::is_nightly_channel!() {
-                return;
-            }
             let toml = r#"
                 unstable_features = true
                 merge_imports = true
@@ -712,11 +700,9 @@ make_backup = false
             assert_eq!(config.imports_granularity(), ImportGranularity::Preserve);
         }
 
+        #[nightly_only_test]
         #[test]
         fn test_old_overridden() {
-            if !crate::is_nightly_channel!() {
-                return;
-            }
             let toml = r#"
                 unstable_features = true
                 imports_granularity = "Module"
