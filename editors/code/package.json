@@ -48,13 +48,13 @@
         "@types/vscode": "^1.57.0",
         "@typescript-eslint/eslint-plugin": "^4.28.2",
         "@typescript-eslint/parser": "^4.28.2",
+        "@vscode/test-electron": "^1.6.2",
         "esbuild": "^0.12.19",
         "eslint": "^7.30.0",
         "tslib": "^2.3.0",
         "typescript": "^4.3.5",
         "typescript-formatter": "^7.2.2",
-        "vsce": "^1.95.1",
-        "vscode-test": "^1.5.1"
+        "vsce": "^1.95.1"
     },
     "activationEvents": [
         "onLanguage:rust",
