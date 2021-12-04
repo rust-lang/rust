@@ -474,3 +474,109 @@ fn array_split_array_mut_out_of_bounds() {
 
     v.split_array_mut::<7>();
 }
+
+#[test]
+fn array_intoiter_advance_by() {
+    use std::cell::Cell;
+    struct DropCounter<'a>(usize, &'a Cell<usize>);
+    impl Drop for DropCounter<'_> {
+        fn drop(&mut self) {
+            let x = self.1.get();
+            self.1.set(x + 1);
+        }
+    }
+
+    let counter = Cell::new(0);
+    let a: [_; 100] = std::array::from_fn(|i| DropCounter(i, &counter));
+    let mut it = IntoIterator::into_iter(a);
+
+    let r = it.advance_by(1);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_by(11);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 88);
+    assert_eq!(counter.get(), 12);
+
+    let x = it.next();
+    assert_eq!(x.as_ref().map(|x| x.0), Some(12));
+    assert_eq!(it.len(), 87);
+    assert_eq!(counter.get(), 12);
+    drop(x);
+    assert_eq!(counter.get(), 13);
+
+    let r = it.advance_by(123456);
+    assert_eq!(r, Err(87));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_by(10);
+    assert_eq!(r, Err(0));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+}
+
+#[test]
+fn array_intoiter_advance_back_by() {
+    use std::cell::Cell;
+    struct DropCounter<'a>(usize, &'a Cell<usize>);
+    impl Drop for DropCounter<'_> {
+        fn drop(&mut self) {
+            let x = self.1.get();
+            self.1.set(x + 1);
+        }
+    }
+
+    let counter = Cell::new(0);
+    let a: [_; 100] = std::array::from_fn(|i| DropCounter(i, &counter));
+    let mut it = IntoIterator::into_iter(a);
+
+    let r = it.advance_back_by(1);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_back_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_back_by(11);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 88);
+    assert_eq!(counter.get(), 12);
+
+    let x = it.next_back();
+    assert_eq!(x.as_ref().map(|x| x.0), Some(87));
+    assert_eq!(it.len(), 87);
+    assert_eq!(counter.get(), 12);
+    drop(x);
+    assert_eq!(counter.get(), 13);
+
+    let r = it.advance_back_by(123456);
+    assert_eq!(r, Err(87));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_back_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_back_by(10);
+    assert_eq!(r, Err(0));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+}
