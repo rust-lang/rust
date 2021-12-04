@@ -225,6 +225,12 @@ name = "countme"
 version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "328b822bdcba4d4e402be8d9adb6eebf269f969f8eadef977a553ff3c4fbcb58"
+
+[[package]]
+name = "countme"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03746e0c6dd9b5d2d9132ffe0bede35fb5f815604fd371bb42599fd37bc8e483"
 dependencies = [
  "dashmap",
  "once_cell",
@@ -1171,7 +1177,7 @@ name = "profile"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
- "countme",
+ "countme 3.0.0",
  "la-arena",
  "libc",
  "once_cell",
@@ -1294,7 +1300,7 @@ version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f77412a3d1f26af0c0783c23b3555a301b1a49805cba7bf9a7827a9e9e285f0"
 dependencies = [
- "countme",
+ "countme 2.0.4",
  "hashbrown",
  "memoffset",
  "rustc-hash",

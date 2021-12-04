@@ -14,7 +14,7 @@ once_cell = "1.3.1"
 cfg-if = "1"
 libc = "0.2"
 la-arena = { version = "0.3.0", path = "../../lib/arena" }
-countme = { version = "2.0.1", features = ["enable"] }
+countme = { version = "3.0", features = ["enable"] }
 jemalloc-ctl = { version = "0.4.1", package = "tikv-jemalloc-ctl", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
