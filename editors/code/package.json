@@ -37,24 +37,23 @@
     },
     "dependencies": {
         "https-proxy-agent": "^5.0.0",
-        "node-fetch": "^2.6.1",
+        "node-fetch": "^3.0.3",
         "vscode-languageclient": "8.0.0-next.2",
         "d3": "^7.1.0",
         "d3-graphviz": "^4.0.0"
     },
     "devDependencies": {
         "@types/node": "~14.17.5",
-        "@types/node-fetch": "^2.5.11",
         "@types/vscode": "^1.61.0",
         "@typescript-eslint/eslint-plugin": "^5.5.0",
         "@typescript-eslint/parser": "^5.5.0",
         "@vscode/test-electron": "^1.6.2",
-        "esbuild": "^0.12.29",
+        "esbuild": "^0.14.1",
         "eslint": "^8.3.0",
         "tslib": "^2.3.0",
         "typescript": "^4.5.2",
         "typescript-formatter": "^7.2.2",
-        "vsce": "^1.95.1"
+        "vsce": "^2.5.1"
     },
     "activationEvents": [
         "onLanguage:rust",

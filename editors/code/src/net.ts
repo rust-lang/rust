@@ -73,8 +73,8 @@ export async function fetchRelease(
         );
     }
 
-    // We skip runtime type checks for simplicity (here we cast from `any` to `GithubRelease`)
-    const release: GithubRelease = await response.json();
+    // We skip runtime type checks for simplicity (here we cast from `unknown` to `GithubRelease`)
+    const release = await response.json() as GithubRelease;
     return release;
 }
 
@@ -203,6 +203,12 @@ async function downloadFile(
         log.error({ body: await res.text(), headers: res.headers });
 
         throw new Error(`Got response ${res.status} when trying to download a file.`);
+    }
+
+    if (!res.body) {
+        log.error("Empty body while downloading file from", urlString);
+        log.error({ headers: res.headers });
+        throw new Error(`Got empty body when trying to download a file.`);
     }
 
     const totalBytes = Number(res.headers.get('content-length'));
