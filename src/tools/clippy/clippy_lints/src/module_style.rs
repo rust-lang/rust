@@ -80,9 +80,9 @@ impl EarlyLintPass for ModStyle {
             return;
         }
 
-        let files = cx.sess.source_map().files();
+        let files = cx.sess().source_map().files();
 
-        let trim_to_src = if let RealFileName::LocalPath(p) = &cx.sess.opts.working_dir {
+        let trim_to_src = if let RealFileName::LocalPath(p) = &cx.sess().opts.working_dir {
             p.to_string_lossy()
         } else {
             return;
