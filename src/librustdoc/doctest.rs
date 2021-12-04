@@ -293,14 +293,11 @@ fn run_test(
     crate_name: &str,
     line: usize,
     options: Options,
-    should_panic: bool,
+    mut lang_string: LangString,
     no_run: bool,
-    as_test_harness: bool,
     runtool: Option<String>,
     runtool_args: Vec<String>,
     target: TargetTriple,
-    compile_fail: bool,
-    mut error_codes: Vec<String>,
     opts: &TestOptions,
     edition: Edition,
     outdir: DirState,
@@ -309,7 +306,7 @@ fn run_test(
     report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
     let (test, line_offset, supports_color) =
-        make_test(test, Some(crate_name), as_test_harness, opts, edition, Some(test_id));
+        make_test(test, Some(crate_name), lang_string.test_harness, opts, edition, Some(test_id));
 
     let output_file = outdir.path().join("rust_out");
 
@@ -329,10 +326,10 @@ fn run_test(
     compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", path);
     compiler.env("UNSTABLE_RUSTDOC_TEST_LINE", format!("{}", line as isize - line_offset as isize));
     compiler.arg("-o").arg(&output_file);
-    if as_test_harness {
+    if lang_string.test_harness {
         compiler.arg("--test");
     }
-    if options.json_unused_externs && !compile_fail {
+    if options.json_unused_externs && !lang_string.compile_fail {
         compiler.arg("--error-format=json");
         compiler.arg("--json").arg("unused-externs");
         compiler.arg("-Z").arg("unstable-options");
@@ -351,7 +348,7 @@ fn run_test(
     for debugging_option_str in &options.debugging_opts_strs {
         compiler.arg("-Z").arg(&debugging_option_str);
     }
-    if no_run && !compile_fail && options.persist_doctests.is_none() {
+    if no_run && !lang_string.compile_fail && options.persist_doctests.is_none() {
         compiler.arg("--emit=metadata");
     }
     compiler.arg("--target").arg(match target {
@@ -418,20 +415,20 @@ fn run_test(
 
     let out = out_lines.join("\n");
     let _bomb = Bomb(&out);
-    match (output.status.success(), compile_fail) {
+    match (output.status.success(), lang_string.compile_fail) {
         (true, true) => {
             return Err(TestFailure::UnexpectedCompilePass);
         }
         (true, false) => {}
         (false, true) => {
-            if !error_codes.is_empty() {
+            if !lang_string.error_codes.is_empty() {
                 // We used to check if the output contained "error[{}]: " but since we added the
                 // colored output, we can't anymore because of the color escape characters before
                 // the ":".
-                error_codes.retain(|err| !out.contains(&format!("error[{}]", err)));
+                lang_string.error_codes.retain(|err| !out.contains(&format!("error[{}]", err)));
 
-                if !error_codes.is_empty() {
-                    return Err(TestFailure::MissingErrorCodes(error_codes));
+                if !lang_string.error_codes.is_empty() {
+                    return Err(TestFailure::MissingErrorCodes(lang_string.error_codes));
                 }
             }
         }
@@ -470,9 +467,9 @@ fn run_test(
     match result {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
         Ok(out) => {
-            if should_panic && out.status.success() {
+            if lang_string.should_panic && out.status.success() {
                 return Err(TestFailure::UnexpectedRunPass);
-            } else if !should_panic && !out.status.success() {
+            } else if !lang_string.should_panic && !out.status.success() {
                 return Err(TestFailure::ExecutionFailure(out));
             }
         }
@@ -966,14 +963,11 @@ impl Tester for Collector {
                     &crate_name,
                     line,
                     options,
-                    config.should_panic,
+                    config,
                     no_run,
-                    config.test_harness,
                     runtool,
                     runtool_args,
                     target,
-                    config.compile_fail,
-                    config.error_codes,
                     &opts,
                     edition,
                     outdir,
