@@ -296,7 +296,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             let (short, name) = item_ty_to_strs(myty.unwrap());
             write!(
                 w,
-                "<h2 id=\"{id}\" class=\"section-header\">\
+                "<h2 id=\"{id}\" class=\"small-section-header\">\
                     <a href=\"#{id}\">{name}</a>\
                  </h2>\n{}",
                 ITEM_TABLE_OPEN,
