@@ -302,7 +302,7 @@ Otherwise, have a great day =^.^=
                     <div class="col-md-12 form-horizontal">
                         <div class="btn-group" ng-class="{ open: selectedDropdown == 'levels' }" ng-click="toggleDropdown('levels', $event)">
                             <button type="button" class="btn btn-default dropdown-toggle">
-                                Lint levels <span class="caret"></span>
+                                <span class="badge">{{selectedValuesCount(levels)}}</span> Lint levels <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu">
                                 <li class="checkbox">
@@ -326,7 +326,7 @@ Otherwise, have a great day =^.^=
                         </div>
                         <div class="btn-group" ng-class="{ open: selectedDropdown == 'groups' }" ng-click="toggleDropdown('groups', $event)">
                             <button type="button" class="btn btn-default dropdown-toggle">
-                                Lint groups <span class="caret"></span>
+                                <span class="badge">{{selectedValuesCount(groups)}}</span> Lint groups <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu">
                                 <li class="checkbox">
@@ -531,6 +531,9 @@ Otherwise, have a great day =^.^=
                     }
                 }
             };
+            $scope.selectedValuesCount = function (obj) {
+                return Object.values(obj).filter(x => x).length;
+            }
             $scope.byGroups = function (lint) {
                 return $scope.groups[lint.group];
             };
