@@ -159,6 +159,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(methods::MANUAL_SPLIT_ONCE),
     LintId::of(methods::MANUAL_STR_REPEAT),
     LintId::of(methods::MAP_COLLECT_RESULT_UNIT),
+    LintId::of(methods::MAP_FLATTEN),
     LintId::of(methods::MAP_IDENTITY),
     LintId::of(methods::NEEDLESS_SPLITN),
     LintId::of(methods::NEW_RET_NO_SELF),

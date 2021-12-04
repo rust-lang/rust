@@ -543,7 +543,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.31.0"]
     pub MAP_FLATTEN,
-    pedantic,
+    complexity,
     "using combinations of `flatten` and `map` which can usually be written as a single method call"
 }
 

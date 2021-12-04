@@ -63,7 +63,6 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(methods::FROM_ITER_INSTEAD_OF_COLLECT),
     LintId::of(methods::IMPLICIT_CLONE),
     LintId::of(methods::INEFFICIENT_TO_STRING),
-    LintId::of(methods::MAP_FLATTEN),
     LintId::of(methods::MAP_UNWRAP_OR),
     LintId::of(misc::FLOAT_CMP),
     LintId::of(misc::USED_UNDERSCORE_BINDING),
