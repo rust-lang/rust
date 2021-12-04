@@ -23,7 +23,7 @@ use rustc_middle::middle::resolve_lifetime::*;
 use rustc_middle::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -160,9 +160,6 @@ pub(crate) struct LifetimeContext<'a, 'tcx> {
     /// be false if the `Item` we are resolving lifetimes for is not a trait or
     /// we eventually need lifetimes resolve for trait items.
     trait_definition_only: bool,
-
-    /// List of labels in the function/method currently under analysis.
-    labels_in_fn: Vec<Ident>,
 
     /// Cache for cross-crate per-definition object lifetime defaults.
     xcrate_object_lifetime_defaults: DefIdMap<Vec<ObjectLifetimeDefault>>,
@@ -434,7 +431,6 @@ fn do_resolve(
         map: &mut named_region_map,
         scope: ROOT_SCOPE,
         trait_definition_only,
-        labels_in_fn: vec![],
         xcrate_object_lifetime_defaults: Default::default(),
         missing_named_lifetime_spots: vec![],
     };
@@ -641,14 +637,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        // Each body has their own set of labels, save labels.
-        let saved = take(&mut self.labels_in_fn);
         let body = self.tcx.hir().body(body);
-        extract_labels(self, body);
-        self.with(Scope::Body { id: body.id(), s: self.scope }, |_, this| {
+        self.with(Scope::Body { id: body.id(), s: self.scope }, |this| {
             this.visit_body(body);
         });
-        self.labels_in_fn = saved;
     }
 
     fn visit_fn(
@@ -683,9 +675,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: true,
                 };
-                self.with(scope, move |_old_scope, this| {
-                    intravisit::walk_fn(this, fk, fd, b, s, hir_id)
-                });
+                self.with(scope, move |this| intravisit::walk_fn(this, fk, fd, b, s, hir_id));
             }
         }
     }
@@ -720,7 +710,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => {
                 // No lifetime parameters, but implied 'static.
                 let scope = Scope::Elision { elide: Elide::Exact(Region::Static), s: ROOT_SCOPE };
-                self.with(scope, |_, this| intravisit::walk_item(this, item));
+                self.with(scope, |this| intravisit::walk_item(this, item));
             }
             hir::ItemKind::OpaqueTy(hir::OpaqueTy { .. }) => {
                 // Opaque types are visited when we visit the
@@ -807,10 +797,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     s: ROOT_SCOPE,
                     allow_late_bound: false,
                 };
-                self.with(scope, |old_scope, this| {
-                    this.check_lifetime_params(old_scope, &generics.params);
+                self.with(scope, |this| {
                     let scope = Scope::TraitRefBoundary { s: this.scope };
-                    this.with(scope, |_, this| {
+                    this.with(scope, |this| {
                         intravisit::walk_item(this, item);
                     });
                 });
@@ -873,10 +862,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: true,
                 };
-                self.with(scope, |old_scope, this| {
+                self.with(scope, |this| {
                     // a bare fn has no bounds, so everything
                     // contained within is scoped within its binder.
-                    this.check_lifetime_params(old_scope, &c.generic_params);
                     intravisit::walk_ty(this, ty);
                 });
                 self.missing_named_lifetime_spots.pop();
@@ -884,7 +872,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::TyKind::TraitObject(bounds, ref lifetime, _) => {
                 debug!(?bounds, ?lifetime, "TraitObject");
                 let scope = Scope::TraitRefBoundary { s: self.scope };
-                self.with(scope, |_, this| {
+                self.with(scope, |this| {
                     for bound in bounds {
                         this.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
                     }
@@ -923,7 +911,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     lifetime: self.map.defs.get(&lifetime_ref.hir_id).cloned(),
                     s: self.scope,
                 };
-                self.with(scope, |_, this| this.visit_ty(&mt.ty));
+                self.with(scope, |this| this.visit_ty(&mt.ty));
             }
             hir::TyKind::OpaqueDef(item_id, lifetimes) => {
                 // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
@@ -944,9 +932,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // Elided lifetimes are not allowed in non-return
                         // position impl Trait
                         let scope = Scope::TraitRefBoundary { s: self.scope };
-                        self.with(scope, |_, this| {
+                        self.with(scope, |this| {
                             let scope = Scope::Elision { elide: Elide::Forbid, s: this.scope };
-                            this.with(scope, |_, this| {
+                            this.with(scope, |this| {
                                 intravisit::walk_item(this, opaque_ty);
                             })
                         });
@@ -1052,7 +1040,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 if let Some(elision_region) = elision {
                     let scope =
                         Scope::Elision { elide: Elide::Exact(elision_region), s: self.scope };
-                    self.with(scope, |_old_scope, this| {
+                    self.with(scope, |this| {
                         let scope = Scope::Binder {
                             hir_id: ty.hir_id,
                             lifetimes,
@@ -1062,10 +1050,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             scope_type: BinderScopeType::Normal,
                             allow_late_bound: false,
                         };
-                        this.with(scope, |_old_scope, this| {
+                        this.with(scope, |this| {
                             this.visit_generics(generics);
                             let scope = Scope::TraitRefBoundary { s: this.scope };
-                            this.with(scope, |_, this| {
+                            this.with(scope, |this| {
                                 for bound in bounds {
                                     this.visit_param_bound(bound);
                                 }
@@ -1082,9 +1070,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         scope_type: BinderScopeType::Normal,
                         allow_late_bound: false,
                     };
-                    self.with(scope, |_old_scope, this| {
+                    self.with(scope, |this| {
                         let scope = Scope::TraitRefBoundary { s: this.scope };
-                        this.with(scope, |_, this| {
+                        this.with(scope, |this| {
                             this.visit_generics(generics);
                             for bound in bounds {
                                 this.visit_param_bound(bound);
@@ -1141,10 +1129,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: false,
                 };
-                self.with(scope, |old_scope, this| {
-                    this.check_lifetime_params(old_scope, &generics.params);
+                self.with(scope, |this| {
                     let scope = Scope::TraitRefBoundary { s: this.scope };
-                    this.with(scope, |_, this| {
+                    this.with(scope, |this| {
                         this.visit_generics(generics);
                         for bound in bounds {
                             this.visit_param_bound(bound);
@@ -1210,10 +1197,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     scope_type: BinderScopeType::Normal,
                     allow_late_bound: true,
                 };
-                self.with(scope, |old_scope, this| {
-                    this.check_lifetime_params(old_scope, &generics.params);
+                self.with(scope, |this| {
                     let scope = Scope::TraitRefBoundary { s: this.scope };
-                    this.with(scope, |_, this| {
+                    this.with(scope, |this| {
                         this.visit_generics(generics);
                         this.visit_ty(ty);
                     })
@@ -1300,7 +1286,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
         let scope = Scope::TraitRefBoundary { s: self.scope };
-        self.with(scope, |_, this| {
+        self.with(scope, |this| {
             for param in generics.params {
                 match param.kind {
                     GenericParamKind::Lifetime { .. } => {}
@@ -1354,8 +1340,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             scope_type: BinderScopeType::Normal,
                             allow_late_bound: true,
                         };
-                        this.with(scope, |old_scope, this| {
-                            this.check_lifetime_params(old_scope, &bound_generic_params);
+                        this.with(scope, |this| {
                             this.visit_ty(&bounded_ty);
                             walk_list!(this, visit_param_bound, bounds);
                         })
@@ -1427,7 +1412,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     scope_type,
                     allow_late_bound: true,
                 };
-                self.with(scope, |_, this| {
+                self.with(scope, |this| {
                     intravisit::walk_param_bound(this, bound);
                 });
             }
@@ -1479,162 +1464,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             scope_type,
             allow_late_bound: true,
         };
-        self.with(scope, |old_scope, this| {
-            this.check_lifetime_params(old_scope, &trait_ref.bound_generic_params);
+        self.with(scope, |this| {
             walk_list!(this, visit_generic_param, trait_ref.bound_generic_params);
             this.visit_trait_ref(&trait_ref.trait_ref);
         });
 
         if should_pop_missing_lt {
             self.missing_named_lifetime_spots.pop();
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq)]
-enum ShadowKind {
-    Label,
-    Lifetime,
-}
-struct Original {
-    kind: ShadowKind,
-    span: Span,
-}
-struct Shadower {
-    kind: ShadowKind,
-    span: Span,
-}
-
-fn original_label(span: Span) -> Original {
-    Original { kind: ShadowKind::Label, span }
-}
-fn shadower_label(span: Span) -> Shadower {
-    Shadower { kind: ShadowKind::Label, span }
-}
-fn original_lifetime(span: Span) -> Original {
-    Original { kind: ShadowKind::Lifetime, span }
-}
-fn shadower_lifetime(param: &hir::GenericParam<'_>) -> Shadower {
-    Shadower { kind: ShadowKind::Lifetime, span: param.span }
-}
-
-impl ShadowKind {
-    fn desc(&self) -> &'static str {
-        match *self {
-            ShadowKind::Label => "label",
-            ShadowKind::Lifetime => "lifetime",
-        }
-    }
-}
-
-fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: Symbol, orig: Original, shadower: Shadower) {
-    let mut err = if let (ShadowKind::Lifetime, ShadowKind::Lifetime) = (orig.kind, shadower.kind) {
-        // lifetime/lifetime shadowing is an error
-        struct_span_err!(
-            tcx.sess,
-            shadower.span,
-            E0496,
-            "{} name `{}` shadows a \
-             {} name that is already in scope",
-            shadower.kind.desc(),
-            name,
-            orig.kind.desc()
-        )
-        .forget_guarantee()
-    } else {
-        // shadowing involving a label is only a warning, due to issues with
-        // labels and lifetimes not being macro-hygienic.
-        tcx.sess.struct_span_warn(
-            shadower.span,
-            &format!(
-                "{} name `{}` shadows a \
-                 {} name that is already in scope",
-                shadower.kind.desc(),
-                name,
-                orig.kind.desc()
-            ),
-        )
-    };
-    err.span_label(orig.span, "first declared here");
-    err.span_label(shadower.span, format!("{} `{}` already in scope", orig.kind.desc(), name));
-    err.emit();
-}
-
-// Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning
-// if one of the label shadows a lifetime or another label.
-fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
-    struct GatherLabels<'a, 'tcx> {
-        tcx: TyCtxt<'tcx>,
-        scope: ScopeRef<'a>,
-        labels_in_fn: &'a mut Vec<Ident>,
-    }
-
-    let mut gather =
-        GatherLabels { tcx: ctxt.tcx, scope: ctxt.scope, labels_in_fn: &mut ctxt.labels_in_fn };
-    gather.visit_body(body);
-
-    impl<'v, 'a, 'tcx> Visitor<'v> for GatherLabels<'a, 'tcx> {
-        fn visit_expr(&mut self, ex: &hir::Expr<'_>) {
-            if let Some(label) = expression_label(ex) {
-                for prior_label in &self.labels_in_fn[..] {
-                    // FIXME (#24278): non-hygienic comparison
-                    if label.name == prior_label.name {
-                        signal_shadowing_problem(
-                            self.tcx,
-                            label.name,
-                            original_label(prior_label.span),
-                            shadower_label(label.span),
-                        );
-                    }
-                }
-
-                check_if_label_shadows_lifetime(self.tcx, self.scope, label);
-
-                self.labels_in_fn.push(label);
-            }
-            intravisit::walk_expr(self, ex)
-        }
-    }
-
-    fn expression_label(ex: &hir::Expr<'_>) -> Option<Ident> {
-        match ex.kind {
-            hir::ExprKind::Loop(_, Some(label), ..) => Some(label.ident),
-            hir::ExprKind::Block(_, Some(label)) => Some(label.ident),
-            _ => None,
-        }
-    }
-
-    fn check_if_label_shadows_lifetime(tcx: TyCtxt<'_>, mut scope: ScopeRef<'_>, label: Ident) {
-        loop {
-            match *scope {
-                Scope::Body { s, .. }
-                | Scope::Elision { s, .. }
-                | Scope::ObjectLifetimeDefault { s, .. }
-                | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. } => {
-                    scope = s;
-                }
-
-                Scope::Root => {
-                    return;
-                }
-
-                Scope::Binder { ref lifetimes, s, .. } => {
-                    // FIXME (#24278): non-hygienic comparison
-                    if let Some(def) =
-                        lifetimes.get(&hir::ParamName::Plain(label.normalize_to_macros_2_0()))
-                    {
-                        signal_shadowing_problem(
-                            tcx,
-                            label.name,
-                            original_lifetime(tcx.def_span(def.id().unwrap().expect_local())),
-                            shadower_label(label.span),
-                        );
-                        return;
-                    }
-                    scope = s;
-                }
-            }
         }
     }
 }
@@ -1774,10 +1610,9 @@ fn object_lifetime_defaults_for_item<'tcx>(
 impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn with<F>(&mut self, wrap_scope: Scope<'_>, f: F)
     where
-        F: for<'b> FnOnce(ScopeRef<'_>, &mut LifetimeContext<'b, 'tcx>),
+        F: for<'b> FnOnce(&mut LifetimeContext<'b, 'tcx>),
     {
         let LifetimeContext { tcx, map, .. } = self;
-        let labels_in_fn = take(&mut self.labels_in_fn);
         let xcrate_object_lifetime_defaults = take(&mut self.xcrate_object_lifetime_defaults);
         let missing_named_lifetime_spots = take(&mut self.missing_named_lifetime_spots);
         let mut this = LifetimeContext {
@@ -1785,16 +1620,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             map,
             scope: &wrap_scope,
             trait_definition_only: self.trait_definition_only,
-            labels_in_fn,
             xcrate_object_lifetime_defaults,
             missing_named_lifetime_spots,
         };
         let span = tracing::debug_span!("scope", scope = ?TruncatedScopeDebug(&this.scope));
         {
             let _enter = span.enter();
-            f(self.scope, &mut this);
+            f(&mut this);
         }
-        self.labels_in_fn = this.labels_in_fn;
         self.xcrate_object_lifetime_defaults = this.xcrate_object_lifetime_defaults;
         self.missing_named_lifetime_spots = this.missing_named_lifetime_spots;
     }
@@ -1891,10 +1724,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             scope_type: BinderScopeType::Normal,
             allow_late_bound: true,
         };
-        self.with(scope, move |old_scope, this| {
-            this.check_lifetime_params(old_scope, &generics.params);
-            walk(this);
-        });
+        self.with(scope, walk);
     }
 
     fn next_early_index_helper(&self, only_opaque_type_parent: bool) -> u32 {
@@ -2165,7 +1995,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 GenericArg::Type(ty) => {
                     if let Some(&lt) = object_lifetime_defaults.get(i) {
                         let scope = Scope::ObjectLifetimeDefault { lifetime: lt, s: self.scope };
-                        self.with(scope, |_, this| this.visit_ty(ty));
+                        self.with(scope, |this| this.visit_ty(ty));
                     } else {
                         self.visit_ty(ty);
                     }
@@ -2222,15 +2052,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     type_def_id,
                     binding.ident,
                 );
-                self.with(scope, |_, this| {
+                self.with(scope, |this| {
                     let scope = Scope::Supertrait {
                         lifetimes: lifetimes.unwrap_or_default(),
                         s: this.scope,
                     };
-                    this.with(scope, |_, this| this.visit_assoc_type_binding(binding));
+                    this.with(scope, |this| this.visit_assoc_type_binding(binding));
                 });
             } else {
-                self.with(scope, |_, this| this.visit_assoc_type_binding(binding));
+                self.with(scope, |this| this.visit_assoc_type_binding(binding));
             }
         }
     }
@@ -2346,7 +2176,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             elide: Elide::FreshLateAnon(named_late_bound_vars, Cell::new(0)),
             s: self.scope,
         };
-        self.with(arg_scope, |_, this| {
+        self.with(arg_scope, |this| {
             for input in inputs {
                 this.visit_ty(input);
             }
@@ -2466,7 +2296,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             visitor.visit_ty(&inputs[0]);
             if let Set1::One(lifetime) = visitor.lifetime {
                 let scope = Scope::Elision { elide: Elide::Exact(lifetime), s: self.scope };
-                self.with(scope, |_, this| this.visit_ty(output));
+                self.with(scope, |this| this.visit_ty(output));
                 return;
             }
         }
@@ -2517,7 +2347,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         debug!(?elide);
 
         let scope = Scope::Elision { elide, s: self.scope };
-        self.with(scope, |_, this| this.visit_ty(output));
+        self.with(scope, |this| this.visit_ty(output));
 
         struct GatherLifetimes<'a> {
             map: &'a NamedRegionMap,
@@ -2787,101 +2617,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
         self.insert_lifetime(lifetime_ref, lifetime.shifted(late_depth));
-    }
-
-    fn check_lifetime_params(
-        &mut self,
-        old_scope: ScopeRef<'_>,
-        params: &'tcx [hir::GenericParam<'tcx>],
-    ) {
-        let lifetimes: Vec<_> = params
-            .iter()
-            .filter_map(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => {
-                    Some((param, param.name.normalize_to_macros_2_0()))
-                }
-                _ => None,
-            })
-            .collect();
-        for (i, (lifetime_i, lifetime_i_name)) in lifetimes.iter().enumerate() {
-            if let hir::ParamName::Plain(_) = lifetime_i_name {
-                let name = lifetime_i_name.ident().name;
-                if name == kw::UnderscoreLifetime || name == kw::StaticLifetime {
-                    self.tcx.sess.delay_span_bug(
-                        lifetime_i.span,
-                        &format!("invalid lifetime parameter name: `{}`", lifetime_i.name.ident()),
-                    );
-                }
-            }
-
-            // It is a hard error to shadow a lifetime within the same scope.
-            for (lifetime_j, lifetime_j_name) in lifetimes.iter().skip(i + 1) {
-                if lifetime_i_name == lifetime_j_name {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        lifetime_j.span,
-                        E0263,
-                        "lifetime name `{}` declared twice in the same scope",
-                        lifetime_j.name.ident()
-                    )
-                    .span_label(lifetime_j.span, "declared twice")
-                    .span_label(lifetime_i.span, "previous declaration here")
-                    .emit();
-                }
-            }
-
-            // It is a soft error to shadow a lifetime within a parent scope.
-            self.check_lifetime_param_for_shadowing(old_scope, &lifetime_i);
-        }
-    }
-
-    fn check_lifetime_param_for_shadowing(
-        &self,
-        mut old_scope: ScopeRef<'_>,
-        param: &'tcx hir::GenericParam<'tcx>,
-    ) {
-        for label in &self.labels_in_fn {
-            // FIXME (#24278): non-hygienic comparison
-            if param.name.ident().name == label.name {
-                signal_shadowing_problem(
-                    self.tcx,
-                    label.name,
-                    original_label(label.span),
-                    shadower_lifetime(&param),
-                );
-                return;
-            }
-        }
-
-        loop {
-            match *old_scope {
-                Scope::Body { s, .. }
-                | Scope::Elision { s, .. }
-                | Scope::ObjectLifetimeDefault { s, .. }
-                | Scope::Supertrait { s, .. }
-                | Scope::TraitRefBoundary { s, .. } => {
-                    old_scope = s;
-                }
-
-                Scope::Root => {
-                    return;
-                }
-
-                Scope::Binder { ref lifetimes, s, .. } => {
-                    if let Some(&def) = lifetimes.get(&param.name.normalize_to_macros_2_0()) {
-                        signal_shadowing_problem(
-                            self.tcx,
-                            param.name.ident().name,
-                            original_lifetime(self.tcx.def_span(def.id().unwrap())),
-                            shadower_lifetime(&param),
-                        );
-                        return;
-                    }
-
-                    old_scope = s;
-                }
-            }
-        }
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
