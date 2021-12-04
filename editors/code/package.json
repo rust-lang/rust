@@ -1127,6 +1127,11 @@
                 "description": "Style for attributes"
             },
             {
+                "id": "attributeBracket",
+                "description": "Style for attribute invocation brackets, that is the `#[` and `]` tokens",
+                "superType": "punctuation"
+            },
+            {
                 "id": "bitwise",
                 "description": "Style for bitwise operators",
                 "superType": "operator"
@@ -1179,6 +1184,11 @@
             {
                 "id": "constParameter",
                 "description": "Style for const generics"
+            },
+            {
+                "id": "derive",
+                "description": "Style for derives",
+                "superType": "attribute"
             },
             {
                 "id": "dot",
