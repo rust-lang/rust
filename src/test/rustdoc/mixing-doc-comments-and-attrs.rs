@@ -1,10 +1,7 @@
 #![crate_name = "foo"]
 
 // @has 'foo/struct.S1.html'
-// @count - '//details[@class="rustdoc-toggle top-doc"]/div[@class="docblock"]/p' \
-//     1
-// @has - '//details[@class="rustdoc-toggle top-doc"]/div[@class="docblock"]/p[1]' \
-//     'Hello world! Goodbye! Hello again!'
+// @snapshot S1_top-doc - '//details[@class="rustdoc-toggle top-doc"]/div[@class="docblock"]'
 
 #[doc = "Hello world!\n\n"]
 /// Goodbye!
@@ -12,12 +9,7 @@
 pub struct S1;
 
 // @has 'foo/struct.S2.html'
-// @count - '//details[@class="rustdoc-toggle top-doc"]/div[@class="docblock"]/p' \
-//     2
-// @has - '//details[@class="rustdoc-toggle top-doc"]/div[@class="docblock"]/p[1]' \
-//     'Hello world!'
-// @has - '//details[@class="rustdoc-toggle top-doc"]/div[@class="docblock"]/p[2]' \
-//     'Goodbye! Hello again!'
+// @snapshot S2_top-doc - '//details[@class="rustdoc-toggle top-doc"]/div[@class="docblock"]'
 
 /// Hello world!
 ///
