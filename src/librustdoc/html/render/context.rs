@@ -43,7 +43,6 @@ use crate::try_err;
 /// It is intended that this context is a lightweight object which can be fairly
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
-
 #[derive(Clone)]
 crate struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
