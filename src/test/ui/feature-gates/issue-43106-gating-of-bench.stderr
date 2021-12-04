@@ -6,5 +6,16 @@ LL | #![bench                   = "4100"]
    |
    = note: import resolution is stuck, try simplifying macro imports
 
-error: aborting due to previous error
+error: `bench` attribute cannot be used at crate level
+  --> $DIR/issue-43106-gating-of-bench.rs:7:1
+   |
+LL | #![bench                   = "4100"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[bench                   = "4100"]
+   |
+
+error: aborting due to 2 previous errors
 

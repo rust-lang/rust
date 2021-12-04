@@ -10,6 +10,10 @@ note: required because of the requirements on the impl of `IntoNullable` for `<C
 LL | impl<T: NotNull> IntoNullable for T {
    |                  ^^^^^^^^^^^^     ^
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider further restricting the associated type
+   |
+LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Col as Expression>::SqlType: NotNull,
+   |                                                                       +++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

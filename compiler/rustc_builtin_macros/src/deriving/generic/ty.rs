@@ -211,14 +211,6 @@ fn mk_ty_param(
     cx.typaram(span, Ident::new(name, span), attrs.to_owned(), bounds, None)
 }
 
-fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {
-    Generics {
-        params,
-        where_clause: ast::WhereClause { has_where_token: false, predicates: Vec::new(), span },
-        span,
-    }
-}
-
 /// Bounds on type parameters.
 #[derive(Clone)]
 pub struct Bounds {
@@ -236,7 +228,7 @@ impl Bounds {
         self_ty: Ident,
         self_generics: &Generics,
     ) -> Generics {
-        let generic_params = self
+        let params = self
             .bounds
             .iter()
             .map(|t| {
@@ -245,7 +237,11 @@ impl Bounds {
             })
             .collect();
 
-        mk_generics(generic_params, span)
+        Generics {
+            params,
+            where_clause: ast::WhereClause { has_where_token: false, predicates: Vec::new(), span },
+            span,
+        }
     }
 }
 

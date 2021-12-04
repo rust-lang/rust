@@ -551,6 +551,16 @@ impl Span {
         matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
     }
 
+    /// Gate suggestions that would not be appropriate in a context the user didn't write.
+    pub fn can_be_used_for_suggestions(self) -> bool {
+        !self.from_expansion()
+        // FIXME: If this span comes from a `derive` macro but it points at code the user wrote,
+        // the callsite span and the span will be pointing at different places. It also means that
+        // we can safely provide suggestions on this span.
+            || (matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
+                && self.parent_callsite().map(|p| (p.lo(), p.hi())) != Some((self.lo(), self.hi())))
+    }
+
     #[inline]
     pub fn with_root_ctxt(lo: BytePos, hi: BytePos) -> Span {
         Span::new(lo, hi, SyntaxContext::root(), None)

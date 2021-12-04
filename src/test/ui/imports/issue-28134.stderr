@@ -6,5 +6,16 @@ LL | #![test]
    |
    = note: import resolution is stuck, try simplifying macro imports
 
-error: aborting due to previous error
+error: `test` attribute cannot be used at crate level
+  --> $DIR/issue-28134.rs:4:1
+   |
+LL | #![test]
+   | ^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[test]
+   | ~~~~~~~
+
+error: aborting due to 2 previous errors
 
