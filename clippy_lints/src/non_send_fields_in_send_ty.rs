@@ -13,24 +13,28 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Warns about fields in struct implementing `Send` that are neither `Send` nor `Copy`.
+    /// This lint warns about a `Send` implementation for a type that
+    /// contains fields that are not safe to be sent across threads.
+    /// It tries to detect fields that can cause a soundness issue
+    /// when sent to another thread (e.g., `Rc`) while allowing `!Send` fields
+    /// that are expected to exist in a `Send` type such as raw pointers.
     ///
     /// ### Why is this bad?
-    /// Sending the struct to another thread will transfer the ownership to
-    /// the new thread by dropping in the current thread during the transfer.
-    /// This causes soundness issues for non-`Send` fields, as they are also
-    /// dropped and might not be set up to handle this.
+    /// Sending the struct to another thread effectively sends all of its fields,
+    /// and the fields that do not implement `Send` can lead to soundness bugs
+    /// such as data races when accessed in a thread
+    /// that is different from the thread that created it.
     ///
     /// See:
     /// * [*The Rustonomicon* about *Send and Sync*](https://doc.rust-lang.org/nomicon/send-and-sync.html)
     /// * [The documentation of `Send`](https://doc.rust-lang.org/std/marker/trait.Send.html)
     ///
     /// ### Known Problems
-    /// Data structures that contain raw pointers may cause false positives.
-    /// They are sometimes safe to be sent across threads but do not implement
-    /// the `Send` trait. This lint has a heuristic to filter out basic cases
-    /// such as `Vec<*const T>`, but it's not perfect. Feel free to create an
-    /// issue if you have a suggestion on how this heuristic can be improved.
+    /// This lint relies on heuristics to distinguish types that are actually
+    /// unsafe to be sent across threads and `!Send` types that are expected to
+    /// exist in  `Send` type. Its rule can filter out basic cases such as
+    /// `Vec<*const T>`, but it's not perfect. Feel free to create an issue if
+    /// you have a suggestion on how this heuristic can be improved.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -47,7 +51,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.57.0"]
     pub NON_SEND_FIELDS_IN_SEND_TY,
     suspicious,
-    "there is field that does not implement `Send` in a `Send` struct"
+    "there is a field that is not safe to be sent to another thread in a `Send` struct"
 }
 
 #[derive(Copy, Clone)]
@@ -120,14 +124,14 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                         NON_SEND_FIELDS_IN_SEND_TY,
                         item.span,
                         &format!(
-                            "this implementation is unsound, as some fields in `{}` are `!Send`",
+                            "there are some fields in `{}` are not safe to be sent to another thread",
                             snippet(cx, hir_impl.self_ty.span, "Unknown")
                         ),
                         |diag| {
                             for field in non_send_fields {
                                 diag.span_note(
                                     field.def.span,
-                                    &format!("the type of field `{}` is `!Send`", field.def.ident.name),
+                                    &format!("it is not safe to send field `{}` to another thread", field.def.ident.name),
                                 );
 
                                 match field.generic_params.len() {
