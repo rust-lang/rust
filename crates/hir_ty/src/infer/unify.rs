@@ -3,8 +3,8 @@
 use std::{fmt, mem, sync::Arc};
 
 use chalk_ir::{
-    cast::Cast, fold::Fold, interner::HasInterner, zip::Zip, FloatTy, IntTy, TyVariableKind,
-    UniverseIndex,
+    cast::Cast, fold::Fold, interner::HasInterner, zip::Zip, FloatTy, IntTy, NoSolution,
+    TyVariableKind, UniverseIndex,
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
@@ -412,7 +412,9 @@ impl<'a> InferenceTable<'a> {
             highest_known_var: InferenceVar,
         }
         impl<'a, 'b> Folder<'static, Interner> for VarFudger<'a, 'b> {
-            fn as_dyn(&mut self) -> &mut dyn Folder<'static, Interner> {
+            type Error = NoSolution;
+
+            fn as_dyn(&mut self) -> &mut dyn Folder<'static, Interner, Error = Self::Error> {
                 self
             }
 
@@ -538,7 +540,7 @@ mod resolve {
     use chalk_ir::{
         cast::Cast,
         fold::{Fold, Folder},
-        Fallible,
+        Fallible, NoSolution,
     };
     use hir_def::type_ref::ConstScalar;
 
@@ -551,7 +553,9 @@ mod resolve {
     where
         F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg + 'i,
     {
-        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner> {
+        type Error = NoSolution;
+
+        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner, Error = Self::Error> {
             self
         }
 

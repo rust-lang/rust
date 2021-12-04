@@ -35,7 +35,7 @@ use std::sync::Arc;
 use chalk_ir::{
     fold::{Fold, Shift},
     interner::HasInterner,
-    UintTy,
+    NoSolution, UintTy,
 };
 use hir_def::{
     expr::ExprId,
@@ -228,11 +228,11 @@ impl CallableSig {
 impl Fold<Interner> for CallableSig {
     type Result = CallableSig;
 
-    fn fold_with<'i>(
+    fn fold_with<'i, E>(
         self,
-        folder: &mut dyn chalk_ir::fold::Folder<'i, Interner>,
+        folder: &mut dyn chalk_ir::fold::Folder<'i, Interner, Error = E>,
         outer_binder: DebruijnIndex,
-    ) -> chalk_ir::Fallible<Self::Result>
+    ) -> Result<Self::Result, E>
     where
         Interner: 'i,
     {
@@ -282,7 +282,9 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + Fold<Interner
     use chalk_ir::{fold::Folder, Fallible};
     struct FreeVarFolder<F>(F);
     impl<'i, F: FnMut(BoundVar, DebruijnIndex) -> Ty + 'i> Folder<'i, Interner> for FreeVarFolder<F> {
-        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner> {
+        type Error = NoSolution;
+
+        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner, Error = Self::Error> {
             self
         }
 
@@ -312,7 +314,9 @@ pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + Fold<Interner>>(
     };
     struct TyFolder<F>(F);
     impl<'i, F: FnMut(Ty, DebruijnIndex) -> Ty + 'i> Folder<'i, Interner> for TyFolder<F> {
-        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner> {
+        type Error = NoSolution;
+
+        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner, Error = Self::Error> {
             self
         }
 
@@ -338,13 +342,15 @@ where
 {
     use chalk_ir::{
         fold::{Folder, SuperFold},
-        Fallible, NoSolution,
+        Fallible,
     };
     struct ErrorReplacer {
         vars: usize,
     }
     impl<'i> Folder<'i, Interner> for ErrorReplacer {
-        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner> {
+        type Error = NoSolution;
+
+        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner, Error = Self::Error> {
             self
         }
 

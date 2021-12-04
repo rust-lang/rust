@@ -62,7 +62,7 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
         doc,
         &mut out,
         None,
-        CMarkOptions { code_block_backticks: 3, ..Default::default() },
+        CMarkOptions { code_block_token_count: 3, ..Default::default() },
     )
     .ok();
     out
@@ -98,7 +98,7 @@ pub(crate) fn remove_links(markdown: &str) -> String {
         doc,
         &mut out,
         None,
-        CMarkOptions { code_block_backticks: 3, ..Default::default() },
+        CMarkOptions { code_block_token_count: 3, ..Default::default() },
     )
     .ok();
     out
