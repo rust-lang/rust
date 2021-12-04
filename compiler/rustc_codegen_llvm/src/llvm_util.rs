@@ -187,7 +187,6 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]
         ("x86", "avx512vaes") => smallvec!["vaes"],
         ("x86", "avx512gfni") => smallvec!["gfni"],
         ("x86", "avx512vpclmulqdq") => smallvec!["vpclmulqdq"],
-        ("aarch64", "fp") => smallvec!["fp-armv8"],
         ("aarch64", "rcpc2") => smallvec!["rcpc-immo"],
         ("aarch64", "dpb") => smallvec!["ccpp"],
         ("aarch64", "dpb2") => smallvec!["ccdp"],
