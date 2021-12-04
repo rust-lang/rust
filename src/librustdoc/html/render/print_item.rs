@@ -108,10 +108,10 @@ pub(super) fn print_item(
     );
     let stability_since_raw: String = stability_since_raw.into_inner();
 
-    // Write `src` tag
+    // Write source tag
     //
     // When this item is part of a `crate use` in a downstream crate, the
-    // [src] link in the downstream documentation will actually come back to
+    // source link in the downstream documentation will actually come back to
     // this page, and this link will be auto-clicked. The `id` attribute is
     // used to find the link to auto-click.
     let src_href =
@@ -1467,7 +1467,7 @@ fn render_stability_since(
         item.const_stability(tcx),
         containing_item.stable_since(tcx),
         containing_item.const_stable_since(tcx),
-    )
+    );
 }
 
 fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cx: &Context<'_>) -> Ordering {
