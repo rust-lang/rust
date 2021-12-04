@@ -82,11 +82,17 @@ impl Into<Intrinsic> for ACLEIntrinsicLine {
             })
             .collect();
         let arguments = ArgumentList { args };
+        let a64_only = match &*self.supported_architectures {
+            "A64" => true,
+            "v7/A32/A64" | "A32/A64" => false,
+            _ => panic!("Invalid supported architectures"),
+        };
 
         Intrinsic {
             name: name.to_string(),
             arguments,
             results,
+            a64_only,
         }
     }
 }

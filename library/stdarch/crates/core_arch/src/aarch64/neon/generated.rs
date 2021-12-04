@@ -4455,7 +4455,7 @@ pub unsafe fn vnegq_s64(a: int64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(neg))]
 pub unsafe fn vnegd_s64(a: i64) -> i64 {
-    -a
+    a.wrapping_neg()
 }
 
 /// Negate
@@ -5213,7 +5213,7 @@ pub unsafe fn vld2q_s64(a: *const i64) -> int64x2x2_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2.v2i64.p0v2i64")]
         fn vld2q_s64_(ptr: *const int64x2_t) -> int64x2x2_t;
     }
-    vld2q_s64_(a.cast())
+    vld2q_s64_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
@@ -5242,7 +5242,7 @@ pub unsafe fn vld2_f64(a: *const f64) -> float64x1x2_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2.v1f64.p0v1f64")]
         fn vld2_f64_(ptr: *const float64x1_t) -> float64x1x2_t;
     }
-    vld2_f64_(a.cast())
+    vld2_f64_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
@@ -5255,7 +5255,7 @@ pub unsafe fn vld2q_f64(a: *const f64) -> float64x2x2_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2.v2f64.p0v2f64")]
         fn vld2q_f64_(ptr: *const float64x2_t) -> float64x2x2_t;
     }
-    vld2q_f64_(a.cast())
+    vld2q_f64_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
@@ -5268,7 +5268,7 @@ pub unsafe fn vld2q_dup_s64(a: *const i64) -> int64x2x2_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2r.v2i64.p0i64")]
         fn vld2q_dup_s64_(ptr: *const i64) -> int64x2x2_t;
     }
-    vld2q_dup_s64_(a.cast())
+    vld2q_dup_s64_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
@@ -5297,7 +5297,7 @@ pub unsafe fn vld2_dup_f64(a: *const f64) -> float64x1x2_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2r.v1f64.p0f64")]
         fn vld2_dup_f64_(ptr: *const f64) -> float64x1x2_t;
     }
-    vld2_dup_f64_(a.cast())
+    vld2_dup_f64_(a as _)
 }
 
 /// Load single 2-element structure and replicate to all lanes of two registers
@@ -5310,7 +5310,7 @@ pub unsafe fn vld2q_dup_f64(a: *const f64) -> float64x2x2_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2r.v2f64.p0f64")]
         fn vld2q_dup_f64_(ptr: *const f64) -> float64x2x2_t;
     }
-    vld2q_dup_f64_(a.cast())
+    vld2q_dup_f64_(a as _)
 }
 
 /// Load multiple 2-element structures to two registers
@@ -5325,7 +5325,7 @@ pub unsafe fn vld2q_lane_s8<const LANE: i32>(a: *const i8, b: int8x16x2_t) -> in
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2lane.v16i8.p0i8")]
         fn vld2q_lane_s8_(a: int8x16_t, b: int8x16_t, n: i64, ptr: *const i8) -> int8x16x2_t;
     }
-    vld2q_lane_s8_(b.0, b.1, LANE as i64, a.cast())
+    vld2q_lane_s8_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 2-element structures to two registers
@@ -5340,7 +5340,7 @@ pub unsafe fn vld2_lane_s64<const LANE: i32>(a: *const i64, b: int64x1x2_t) -> i
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2lane.v1i64.p0i8")]
         fn vld2_lane_s64_(a: int64x1_t, b: int64x1_t, n: i64, ptr: *const i8) -> int64x1x2_t;
     }
-    vld2_lane_s64_(b.0, b.1, LANE as i64, a.cast())
+    vld2_lane_s64_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 2-element structures to two registers
@@ -5355,7 +5355,7 @@ pub unsafe fn vld2q_lane_s64<const LANE: i32>(a: *const i64, b: int64x2x2_t) -> 
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2lane.v2i64.p0i8")]
         fn vld2q_lane_s64_(a: int64x2_t, b: int64x2_t, n: i64, ptr: *const i8) -> int64x2x2_t;
     }
-    vld2q_lane_s64_(b.0, b.1, LANE as i64, a.cast())
+    vld2q_lane_s64_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 2-element structures to two registers
@@ -5430,7 +5430,7 @@ pub unsafe fn vld2_lane_f64<const LANE: i32>(a: *const f64, b: float64x1x2_t) ->
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2lane.v1f64.p0i8")]
         fn vld2_lane_f64_(a: float64x1_t, b: float64x1_t, n: i64, ptr: *const i8) -> float64x1x2_t;
     }
-    vld2_lane_f64_(b.0, b.1, LANE as i64, a.cast())
+    vld2_lane_f64_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 2-element structures to two registers
@@ -5445,7 +5445,7 @@ pub unsafe fn vld2q_lane_f64<const LANE: i32>(a: *const f64, b: float64x2x2_t) -
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld2lane.v2f64.p0i8")]
         fn vld2q_lane_f64_(a: float64x2_t, b: float64x2_t, n: i64, ptr: *const i8) -> float64x2x2_t;
     }
-    vld2q_lane_f64_(b.0, b.1, LANE as i64, a.cast())
+    vld2q_lane_f64_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to three registers
@@ -5458,7 +5458,7 @@ pub unsafe fn vld3q_s64(a: *const i64) -> int64x2x3_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3.v2i64.p0v2i64")]
         fn vld3q_s64_(ptr: *const int64x2_t) -> int64x2x3_t;
     }
-    vld3q_s64_(a.cast())
+    vld3q_s64_(a as _)
 }
 
 /// Load multiple 3-element structures to three registers
@@ -5487,7 +5487,7 @@ pub unsafe fn vld3_f64(a: *const f64) -> float64x1x3_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3.v1f64.p0v1f64")]
         fn vld3_f64_(ptr: *const float64x1_t) -> float64x1x3_t;
     }
-    vld3_f64_(a.cast())
+    vld3_f64_(a as _)
 }
 
 /// Load multiple 3-element structures to three registers
@@ -5500,7 +5500,7 @@ pub unsafe fn vld3q_f64(a: *const f64) -> float64x2x3_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3.v2f64.p0v2f64")]
         fn vld3q_f64_(ptr: *const float64x2_t) -> float64x2x3_t;
     }
-    vld3q_f64_(a.cast())
+    vld3q_f64_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
@@ -5513,7 +5513,7 @@ pub unsafe fn vld3q_dup_s64(a: *const i64) -> int64x2x3_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3r.v2i64.p0i64")]
         fn vld3q_dup_s64_(ptr: *const i64) -> int64x2x3_t;
     }
-    vld3q_dup_s64_(a.cast())
+    vld3q_dup_s64_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
@@ -5542,7 +5542,7 @@ pub unsafe fn vld3_dup_f64(a: *const f64) -> float64x1x3_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3r.v1f64.p0f64")]
         fn vld3_dup_f64_(ptr: *const f64) -> float64x1x3_t;
     }
-    vld3_dup_f64_(a.cast())
+    vld3_dup_f64_(a as _)
 }
 
 /// Load single 3-element structure and replicate to all lanes of three registers
@@ -5555,7 +5555,7 @@ pub unsafe fn vld3q_dup_f64(a: *const f64) -> float64x2x3_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3r.v2f64.p0f64")]
         fn vld3q_dup_f64_(ptr: *const f64) -> float64x2x3_t;
     }
-    vld3q_dup_f64_(a.cast())
+    vld3q_dup_f64_(a as _)
 }
 
 /// Load multiple 3-element structures to two registers
@@ -5570,7 +5570,7 @@ pub unsafe fn vld3q_lane_s8<const LANE: i32>(a: *const i8, b: int8x16x3_t) -> in
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3lane.v16i8.p0i8")]
         fn vld3q_lane_s8_(a: int8x16_t, b: int8x16_t, c: int8x16_t, n: i64, ptr: *const i8) -> int8x16x3_t;
     }
-    vld3q_lane_s8_(b.0, b.1, b.2, LANE as i64, a.cast())
+    vld3q_lane_s8_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to two registers
@@ -5585,7 +5585,7 @@ pub unsafe fn vld3_lane_s64<const LANE: i32>(a: *const i64, b: int64x1x3_t) -> i
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3lane.v1i64.p0i8")]
         fn vld3_lane_s64_(a: int64x1_t, b: int64x1_t, c: int64x1_t, n: i64, ptr: *const i8) -> int64x1x3_t;
     }
-    vld3_lane_s64_(b.0, b.1, b.2, LANE as i64, a.cast())
+    vld3_lane_s64_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to two registers
@@ -5600,7 +5600,7 @@ pub unsafe fn vld3q_lane_s64<const LANE: i32>(a: *const i64, b: int64x2x3_t) -> 
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3lane.v2i64.p0i8")]
         fn vld3q_lane_s64_(a: int64x2_t, b: int64x2_t, c: int64x2_t, n: i64, ptr: *const i8) -> int64x2x3_t;
     }
-    vld3q_lane_s64_(b.0, b.1, b.2, LANE as i64, a.cast())
+    vld3q_lane_s64_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to three registers
@@ -5675,7 +5675,7 @@ pub unsafe fn vld3_lane_f64<const LANE: i32>(a: *const f64, b: float64x1x3_t) ->
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3lane.v1f64.p0i8")]
         fn vld3_lane_f64_(a: float64x1_t, b: float64x1_t, c: float64x1_t, n: i64, ptr: *const i8) -> float64x1x3_t;
     }
-    vld3_lane_f64_(b.0, b.1, b.2, LANE as i64, a.cast())
+    vld3_lane_f64_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 3-element structures to three registers
@@ -5690,7 +5690,7 @@ pub unsafe fn vld3q_lane_f64<const LANE: i32>(a: *const f64, b: float64x2x3_t) -
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld3lane.v2f64.p0i8")]
         fn vld3q_lane_f64_(a: float64x2_t, b: float64x2_t, c: float64x2_t, n: i64, ptr: *const i8) -> float64x2x3_t;
     }
-    vld3q_lane_f64_(b.0, b.1, b.2, LANE as i64, a.cast())
+    vld3q_lane_f64_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
@@ -5703,7 +5703,7 @@ pub unsafe fn vld4q_s64(a: *const i64) -> int64x2x4_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4.v2i64.p0v2i64")]
         fn vld4q_s64_(ptr: *const int64x2_t) -> int64x2x4_t;
     }
-    vld4q_s64_(a.cast())
+    vld4q_s64_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
@@ -5732,7 +5732,7 @@ pub unsafe fn vld4_f64(a: *const f64) -> float64x1x4_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4.v1f64.p0v1f64")]
         fn vld4_f64_(ptr: *const float64x1_t) -> float64x1x4_t;
     }
-    vld4_f64_(a.cast())
+    vld4_f64_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
@@ -5745,7 +5745,7 @@ pub unsafe fn vld4q_f64(a: *const f64) -> float64x2x4_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4.v2f64.p0v2f64")]
         fn vld4q_f64_(ptr: *const float64x2_t) -> float64x2x4_t;
     }
-    vld4q_f64_(a.cast())
+    vld4q_f64_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
@@ -5758,7 +5758,7 @@ pub unsafe fn vld4q_dup_s64(a: *const i64) -> int64x2x4_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4r.v2i64.p0i64")]
         fn vld4q_dup_s64_(ptr: *const i64) -> int64x2x4_t;
     }
-    vld4q_dup_s64_(a.cast())
+    vld4q_dup_s64_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
@@ -5787,7 +5787,7 @@ pub unsafe fn vld4_dup_f64(a: *const f64) -> float64x1x4_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4r.v1f64.p0f64")]
         fn vld4_dup_f64_(ptr: *const f64) -> float64x1x4_t;
     }
-    vld4_dup_f64_(a.cast())
+    vld4_dup_f64_(a as _)
 }
 
 /// Load single 4-element structure and replicate to all lanes of four registers
@@ -5800,7 +5800,7 @@ pub unsafe fn vld4q_dup_f64(a: *const f64) -> float64x2x4_t {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4r.v2f64.p0f64")]
         fn vld4q_dup_f64_(ptr: *const f64) -> float64x2x4_t;
     }
-    vld4q_dup_f64_(a.cast())
+    vld4q_dup_f64_(a as _)
 }
 
 /// Load multiple 4-element structures to four registers
@@ -5815,7 +5815,7 @@ pub unsafe fn vld4q_lane_s8<const LANE: i32>(a: *const i8, b: int8x16x4_t) -> in
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4lane.v16i8.p0i8")]
         fn vld4q_lane_s8_(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: int8x16_t, n: i64, ptr: *const i8) -> int8x16x4_t;
     }
-    vld4q_lane_s8_(b.0, b.1, b.2, b.3, LANE as i64, a.cast())
+    vld4q_lane_s8_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
@@ -5830,7 +5830,7 @@ pub unsafe fn vld4_lane_s64<const LANE: i32>(a: *const i64, b: int64x1x4_t) -> i
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4lane.v1i64.p0i8")]
         fn vld4_lane_s64_(a: int64x1_t, b: int64x1_t, c: int64x1_t, d: int64x1_t, n: i64, ptr: *const i8) -> int64x1x4_t;
     }
-    vld4_lane_s64_(b.0, b.1, b.2, b.3, LANE as i64, a.cast())
+    vld4_lane_s64_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
@@ -5845,7 +5845,7 @@ pub unsafe fn vld4q_lane_s64<const LANE: i32>(a: *const i64, b: int64x2x4_t) -> 
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4lane.v2i64.p0i8")]
         fn vld4q_lane_s64_(a: int64x2_t, b: int64x2_t, c: int64x2_t, d: int64x2_t, n: i64, ptr: *const i8) -> int64x2x4_t;
     }
-    vld4q_lane_s64_(b.0, b.1, b.2, b.3, LANE as i64, a.cast())
+    vld4q_lane_s64_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
@@ -5920,7 +5920,7 @@ pub unsafe fn vld4_lane_f64<const LANE: i32>(a: *const f64, b: float64x1x4_t) ->
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4lane.v1f64.p0i8")]
         fn vld4_lane_f64_(a: float64x1_t, b: float64x1_t, c: float64x1_t, d: float64x1_t, n: i64, ptr: *const i8) -> float64x1x4_t;
     }
-    vld4_lane_f64_(b.0, b.1, b.2, b.3, LANE as i64, a.cast())
+    vld4_lane_f64_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Load multiple 4-element structures to four registers
@@ -5935,7 +5935,7 @@ pub unsafe fn vld4q_lane_f64<const LANE: i32>(a: *const f64, b: float64x2x4_t) -
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.ld4lane.v2f64.p0i8")]
         fn vld4q_lane_f64_(a: float64x2_t, b: float64x2_t, c: float64x2_t, d: float64x2_t, n: i64, ptr: *const i8) -> float64x2x4_t;
     }
-    vld4q_lane_f64_(b.0, b.1, b.2, b.3, LANE as i64, a.cast())
+    vld4q_lane_f64_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple single-element structures from one, two, three, or four registers
@@ -6046,7 +6046,7 @@ pub unsafe fn vst2q_s64(a: *mut i64, b: int64x2x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st2.v2i64.p0i8")]
         fn vst2q_s64_(a: int64x2_t, b: int64x2_t, ptr: *mut i8);
     }
-    vst2q_s64_(b.0, b.1, a.cast())
+    vst2q_s64_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
@@ -6075,7 +6075,7 @@ pub unsafe fn vst2_f64(a: *mut f64, b: float64x1x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st2.v1f64.p0i8")]
         fn vst2_f64_(a: float64x1_t, b: float64x1_t, ptr: *mut i8);
     }
-    vst2_f64_(b.0, b.1, a.cast())
+    vst2_f64_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
@@ -6088,7 +6088,7 @@ pub unsafe fn vst2q_f64(a: *mut f64, b: float64x2x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st2.v2f64.p0i8")]
         fn vst2q_f64_(a: float64x2_t, b: float64x2_t, ptr: *mut i8);
     }
-    vst2q_f64_(b.0, b.1, a.cast())
+    vst2q_f64_(b.0, b.1, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
@@ -6103,7 +6103,7 @@ pub unsafe fn vst2q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st2lane.v16i8.p0i8")]
         fn vst2q_lane_s8_(a: int8x16_t, b: int8x16_t, n: i64, ptr: *mut i8);
     }
-    vst2q_lane_s8_(b.0, b.1, LANE as i64, a.cast())
+    vst2q_lane_s8_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
@@ -6118,7 +6118,7 @@ pub unsafe fn vst2_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st2lane.v1i64.p0i8")]
         fn vst2_lane_s64_(a: int64x1_t, b: int64x1_t, n: i64, ptr: *mut i8);
     }
-    vst2_lane_s64_(b.0, b.1, LANE as i64, a.cast())
+    vst2_lane_s64_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
@@ -6133,7 +6133,7 @@ pub unsafe fn vst2q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st2lane.v2i64.p0i8")]
         fn vst2q_lane_s64_(a: int64x2_t, b: int64x2_t, n: i64, ptr: *mut i8);
     }
-    vst2q_lane_s64_(b.0, b.1, LANE as i64, a.cast())
+    vst2q_lane_s64_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
@@ -6208,7 +6208,7 @@ pub unsafe fn vst2_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st2lane.v1f64.p0i8")]
         fn vst2_lane_f64_(a: float64x1_t, b: float64x1_t, n: i64, ptr: *mut i8);
     }
-    vst2_lane_f64_(b.0, b.1, LANE as i64, a.cast())
+    vst2_lane_f64_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 2-element structures from two registers
@@ -6223,7 +6223,7 @@ pub unsafe fn vst2q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2x2_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st2lane.v2f64.p0i8")]
         fn vst2q_lane_f64_(a: float64x2_t, b: float64x2_t, n: i64, ptr: *mut i8);
     }
-    vst2q_lane_f64_(b.0, b.1, LANE as i64, a.cast())
+    vst2q_lane_f64_(b.0, b.1, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
@@ -6236,7 +6236,7 @@ pub unsafe fn vst3q_s64(a: *mut i64, b: int64x2x3_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st3.v2i64.p0i8")]
         fn vst3q_s64_(a: int64x2_t, b: int64x2_t, c: int64x2_t, ptr: *mut i8);
     }
-    vst3q_s64_(b.0, b.1, b.2, a.cast())
+    vst3q_s64_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
@@ -6265,7 +6265,7 @@ pub unsafe fn vst3_f64(a: *mut f64, b: float64x1x3_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st3.v1f64.p0i8")]
         fn vst3_f64_(a: float64x1_t, b: float64x1_t, c: float64x1_t, ptr: *mut i8);
     }
-    vst3_f64_(b.0, b.1, b.2, a.cast())
+    vst3_f64_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
@@ -6278,7 +6278,7 @@ pub unsafe fn vst3q_f64(a: *mut f64, b: float64x2x3_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st3.v2f64.p0i8")]
         fn vst3q_f64_(a: float64x2_t, b: float64x2_t, c: float64x2_t, ptr: *mut i8);
     }
-    vst3q_f64_(b.0, b.1, b.2, a.cast())
+    vst3q_f64_(b.0, b.1, b.2, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
@@ -6293,7 +6293,7 @@ pub unsafe fn vst3q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16x3_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st3lane.v16i8.p0i8")]
         fn vst3q_lane_s8_(a: int8x16_t, b: int8x16_t, c: int8x16_t, n: i64, ptr: *mut i8);
     }
-    vst3q_lane_s8_(b.0, b.1, b.2, LANE as i64, a.cast())
+    vst3q_lane_s8_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
@@ -6308,7 +6308,7 @@ pub unsafe fn vst3_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1x3_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st3lane.v1i64.p0i8")]
         fn vst3_lane_s64_(a: int64x1_t, b: int64x1_t, c: int64x1_t, n: i64, ptr: *mut i8);
     }
-    vst3_lane_s64_(b.0, b.1, b.2, LANE as i64, a.cast())
+    vst3_lane_s64_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
@@ -6323,7 +6323,7 @@ pub unsafe fn vst3q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2x3_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st3lane.v2i64.p0i8")]
         fn vst3q_lane_s64_(a: int64x2_t, b: int64x2_t, c: int64x2_t, n: i64, ptr: *mut i8);
     }
-    vst3q_lane_s64_(b.0, b.1, b.2, LANE as i64, a.cast())
+    vst3q_lane_s64_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
@@ -6398,7 +6398,7 @@ pub unsafe fn vst3_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1x3_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st3lane.v1f64.p0i8")]
         fn vst3_lane_f64_(a: float64x1_t, b: float64x1_t, c: float64x1_t, n: i64, ptr: *mut i8);
     }
-    vst3_lane_f64_(b.0, b.1, b.2, LANE as i64, a.cast())
+    vst3_lane_f64_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 3-element structures from three registers
@@ -6413,7 +6413,7 @@ pub unsafe fn vst3q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2x3_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st3lane.v2f64.p0i8")]
         fn vst3q_lane_f64_(a: float64x2_t, b: float64x2_t, c: float64x2_t, n: i64, ptr: *mut i8);
     }
-    vst3q_lane_f64_(b.0, b.1, b.2, LANE as i64, a.cast())
+    vst3q_lane_f64_(b.0, b.1, b.2, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
@@ -6426,7 +6426,7 @@ pub unsafe fn vst4q_s64(a: *mut i64, b: int64x2x4_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st4.v2i64.p0i8")]
         fn vst4q_s64_(a: int64x2_t, b: int64x2_t, c: int64x2_t, d: int64x2_t, ptr: *mut i8);
     }
-    vst4q_s64_(b.0, b.1, b.2, b.3, a.cast())
+    vst4q_s64_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
@@ -6455,7 +6455,7 @@ pub unsafe fn vst4_f64(a: *mut f64, b: float64x1x4_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st4.v1f64.p0i8")]
         fn vst4_f64_(a: float64x1_t, b: float64x1_t, c: float64x1_t, d: float64x1_t, ptr: *mut i8);
     }
-    vst4_f64_(b.0, b.1, b.2, b.3, a.cast())
+    vst4_f64_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
@@ -6468,7 +6468,7 @@ pub unsafe fn vst4q_f64(a: *mut f64, b: float64x2x4_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st4.v2f64.p0i8")]
         fn vst4q_f64_(a: float64x2_t, b: float64x2_t, c: float64x2_t, d: float64x2_t, ptr: *mut i8);
     }
-    vst4q_f64_(b.0, b.1, b.2, b.3, a.cast())
+    vst4q_f64_(b.0, b.1, b.2, b.3, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
@@ -6483,7 +6483,7 @@ pub unsafe fn vst4q_lane_s8<const LANE: i32>(a: *mut i8, b: int8x16x4_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st4lane.v16i8.p0i8")]
         fn vst4q_lane_s8_(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: int8x16_t, n: i64, ptr: *mut i8);
     }
-    vst4q_lane_s8_(b.0, b.1, b.2, b.3, LANE as i64, a.cast())
+    vst4q_lane_s8_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
@@ -6498,7 +6498,7 @@ pub unsafe fn vst4_lane_s64<const LANE: i32>(a: *mut i64, b: int64x1x4_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st4lane.v1i64.p0i8")]
         fn vst4_lane_s64_(a: int64x1_t, b: int64x1_t, c: int64x1_t, d: int64x1_t, n: i64, ptr: *mut i8);
     }
-    vst4_lane_s64_(b.0, b.1, b.2, b.3, LANE as i64, a.cast())
+    vst4_lane_s64_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
@@ -6513,7 +6513,7 @@ pub unsafe fn vst4q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2x4_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st4lane.v2i64.p0i8")]
         fn vst4q_lane_s64_(a: int64x2_t, b: int64x2_t, c: int64x2_t, d: int64x2_t, n: i64, ptr: *mut i8);
     }
-    vst4q_lane_s64_(b.0, b.1, b.2, b.3, LANE as i64, a.cast())
+    vst4q_lane_s64_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
@@ -6588,7 +6588,7 @@ pub unsafe fn vst4_lane_f64<const LANE: i32>(a: *mut f64, b: float64x1x4_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st4lane.v1f64.p0i8")]
         fn vst4_lane_f64_(a: float64x1_t, b: float64x1_t, c: float64x1_t, d: float64x1_t, n: i64, ptr: *mut i8);
     }
-    vst4_lane_f64_(b.0, b.1, b.2, b.3, LANE as i64, a.cast())
+    vst4_lane_f64_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Store multiple 4-element structures from four registers
@@ -6603,7 +6603,7 @@ pub unsafe fn vst4q_lane_f64<const LANE: i32>(a: *mut f64, b: float64x2x4_t) {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.st4lane.v2f64.p0i8")]
         fn vst4q_lane_f64_(a: float64x2_t, b: float64x2_t, c: float64x2_t, d: float64x2_t, n: i64, ptr: *mut i8);
     }
-    vst4q_lane_f64_(b.0, b.1, b.2, b.3, LANE as i64, a.cast())
+    vst4q_lane_f64_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 }
 
 /// Multiply
@@ -7512,7 +7512,7 @@ pub unsafe fn vsubq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vsubd_s64(a: i64, b: i64) -> i64 {
-    a - b
+    a.wrapping_sub(b)
 }
 
 /// Subtract
@@ -7520,7 +7520,7 @@ pub unsafe fn vsubd_s64(a: i64, b: i64) -> i64 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vsubd_u64(a: u64, b: u64) -> u64 {
-    a - b
+    a.wrapping_sub(b)
 }
 
 /// Add
@@ -7528,7 +7528,7 @@ pub unsafe fn vsubd_u64(a: u64, b: u64) -> u64 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vaddd_s64(a: i64, b: i64) -> i64 {
-    a + b
+    a.wrapping_add(b)
 }
 
 /// Add
@@ -7536,7 +7536,7 @@ pub unsafe fn vaddd_s64(a: i64, b: i64) -> i64 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(nop))]
 pub unsafe fn vaddd_u64(a: u64, b: u64) -> u64 {
-    a + b
+    a.wrapping_add(b)
 }
 
 /// Floating-point add across vector
@@ -11536,7 +11536,7 @@ pub unsafe fn vrshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> u
 pub unsafe fn vrsrad_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     let b: i64 = vrshrd_n_s64::<N>(b);
-    a + b
+    a.wrapping_add(b)
 }
 
 /// Ungisned rounding shift right and accumulate.
@@ -11547,7 +11547,7 @@ pub unsafe fn vrsrad_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
 pub unsafe fn vrsrad_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
     static_assert!(N : i32 where N >= 1 && N <= 64);
     let b: u64 = vrshrd_n_u64::<N>(b);
-    a + b
+    a.wrapping_add(b)
 }
 
 /// Rounding subtract returning high narrow
@@ -17802,7 +17802,7 @@ mod test {
         let a: [f64; 2] = [0., 1.];
         let e: [f64; 1] = [1.];
         let mut r: [f64; 1] = [0f64; 1];
-        vst1_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst1_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17811,7 +17811,7 @@ mod test {
         let a: [f64; 3] = [0., 1., 2.];
         let e: [f64; 2] = [1., 0.];
         let mut r: [f64; 2] = [0f64; 2];
-        vst1q_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst1q_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17820,7 +17820,7 @@ mod test {
         let a: [f64; 3] = [0., 1., 2.];
         let e: [f64; 2] = [1., 2.];
         let mut r: [f64; 2] = [0f64; 2];
-        vst1_f64_x2(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst1_f64_x2(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17829,7 +17829,7 @@ mod test {
         let a: [f64; 5] = [0., 1., 2., 3., 4.];
         let e: [f64; 4] = [1., 2., 3., 4.];
         let mut r: [f64; 4] = [0f64; 4];
-        vst1q_f64_x2(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst1q_f64_x2(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17838,7 +17838,7 @@ mod test {
         let a: [f64; 4] = [0., 1., 2., 3.];
         let e: [f64; 3] = [1., 2., 3.];
         let mut r: [f64; 3] = [0f64; 3];
-        vst1_f64_x3(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst1_f64_x3(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17847,7 +17847,7 @@ mod test {
         let a: [f64; 7] = [0., 1., 2., 3., 4., 5., 6.];
         let e: [f64; 6] = [1., 2., 3., 4., 5., 6.];
         let mut r: [f64; 6] = [0f64; 6];
-        vst1q_f64_x3(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst1q_f64_x3(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17856,7 +17856,7 @@ mod test {
         let a: [f64; 5] = [0., 1., 2., 3., 4.];
         let e: [f64; 4] = [1., 2., 3., 4.];
         let mut r: [f64; 4] = [0f64; 4];
-        vst1_f64_x4(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst1_f64_x4(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17865,7 +17865,7 @@ mod test {
         let a: [f64; 9] = [0., 1., 2., 3., 4., 5., 6., 7., 8.];
         let e: [f64; 8] = [1., 2., 3., 4., 5., 6., 7., 8.];
         let mut r: [f64; 8] = [0f64; 8];
-        vst1q_f64_x4(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst1q_f64_x4(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17874,7 +17874,7 @@ mod test {
         let a: [i64; 5] = [0, 1, 2, 2, 3];
         let e: [i64; 4] = [1, 2, 2, 3];
         let mut r: [i64; 4] = [0i64; 4];
-        vst2q_s64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_s64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17883,7 +17883,7 @@ mod test {
         let a: [u64; 5] = [0, 1, 2, 2, 3];
         let e: [u64; 4] = [1, 2, 2, 3];
         let mut r: [u64; 4] = [0u64; 4];
-        vst2q_u64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_u64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17892,7 +17892,7 @@ mod test {
         let a: [u64; 5] = [0, 1, 2, 2, 3];
         let e: [u64; 4] = [1, 2, 2, 3];
         let mut r: [u64; 4] = [0u64; 4];
-        vst2q_p64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_p64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17901,7 +17901,7 @@ mod test {
         let a: [f64; 3] = [0., 1., 2.];
         let e: [f64; 2] = [1., 2.];
         let mut r: [f64; 2] = [0f64; 2];
-        vst2_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17910,7 +17910,7 @@ mod test {
         let a: [f64; 5] = [0., 1., 2., 2., 3.];
         let e: [f64; 4] = [1., 2., 2., 3.];
         let mut r: [f64; 4] = [0f64; 4];
-        vst2q_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17919,7 +17919,7 @@ mod test {
         let a: [i8; 33] = [0, 1, 2, 2, 3, 2, 3, 4, 5, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
         let e: [i8; 32] = [1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r: [i8; 32] = [0i8; 32];
-        vst2q_lane_s8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_lane_s8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17928,7 +17928,7 @@ mod test {
         let a: [i64; 3] = [0, 1, 2];
         let e: [i64; 2] = [1, 2];
         let mut r: [i64; 2] = [0i64; 2];
-        vst2_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17937,7 +17937,7 @@ mod test {
         let a: [i64; 5] = [0, 1, 2, 2, 3];
         let e: [i64; 4] = [1, 2, 0, 0];
         let mut r: [i64; 4] = [0i64; 4];
-        vst2q_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17946,7 +17946,7 @@ mod test {
         let a: [u8; 33] = [0, 1, 2, 2, 3, 2, 3, 4, 5, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
         let e: [u8; 32] = [1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r: [u8; 32] = [0u8; 32];
-        vst2q_lane_u8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_lane_u8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17955,7 +17955,7 @@ mod test {
         let a: [u64; 3] = [0, 1, 2];
         let e: [u64; 2] = [1, 2];
         let mut r: [u64; 2] = [0u64; 2];
-        vst2_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17964,7 +17964,7 @@ mod test {
         let a: [u64; 5] = [0, 1, 2, 2, 3];
         let e: [u64; 4] = [1, 2, 0, 0];
         let mut r: [u64; 4] = [0u64; 4];
-        vst2q_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17973,7 +17973,7 @@ mod test {
         let a: [u8; 33] = [0, 1, 2, 2, 3, 2, 3, 4, 5, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
         let e: [u8; 32] = [1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r: [u8; 32] = [0u8; 32];
-        vst2q_lane_p8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_lane_p8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17982,7 +17982,7 @@ mod test {
         let a: [u64; 3] = [0, 1, 2];
         let e: [u64; 2] = [1, 2];
         let mut r: [u64; 2] = [0u64; 2];
-        vst2_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -17991,7 +17991,7 @@ mod test {
         let a: [u64; 5] = [0, 1, 2, 2, 3];
         let e: [u64; 4] = [1, 2, 0, 0];
         let mut r: [u64; 4] = [0u64; 4];
-        vst2q_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18000,7 +18000,7 @@ mod test {
         let a: [f64; 3] = [0., 1., 2.];
         let e: [f64; 2] = [1., 2.];
         let mut r: [f64; 2] = [0f64; 2];
-        vst2_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18009,7 +18009,7 @@ mod test {
         let a: [f64; 5] = [0., 1., 2., 2., 3.];
         let e: [f64; 4] = [1., 2., 0., 0.];
         let mut r: [f64; 4] = [0f64; 4];
-        vst2q_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst2q_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18018,7 +18018,7 @@ mod test {
         let a: [i64; 7] = [0, 1, 2, 2, 4, 2, 4];
         let e: [i64; 6] = [1, 2, 2, 2, 4, 4];
         let mut r: [i64; 6] = [0i64; 6];
-        vst3q_s64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_s64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18027,7 +18027,7 @@ mod test {
         let a: [u64; 7] = [0, 1, 2, 2, 4, 2, 4];
         let e: [u64; 6] = [1, 2, 2, 2, 4, 4];
         let mut r: [u64; 6] = [0u64; 6];
-        vst3q_u64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_u64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18036,7 +18036,7 @@ mod test {
         let a: [u64; 7] = [0, 1, 2, 2, 4, 2, 4];
         let e: [u64; 6] = [1, 2, 2, 2, 4, 4];
         let mut r: [u64; 6] = [0u64; 6];
-        vst3q_p64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_p64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18045,7 +18045,7 @@ mod test {
         let a: [f64; 4] = [0., 1., 2., 2.];
         let e: [f64; 3] = [1., 2., 2.];
         let mut r: [f64; 3] = [0f64; 3];
-        vst3_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18054,7 +18054,7 @@ mod test {
         let a: [f64; 7] = [0., 1., 2., 2., 4., 2., 4.];
         let e: [f64; 6] = [1., 2., 2., 2., 4., 4.];
         let mut r: [f64; 6] = [0f64; 6];
-        vst3q_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18063,7 +18063,7 @@ mod test {
         let a: [i8; 49] = [0, 1, 2, 2, 4, 2, 4, 7, 8, 2, 4, 7, 8, 13, 14, 15, 16, 2, 4, 7, 8, 13, 14, 15, 16, 25, 26, 27, 28, 29, 30, 31, 32, 2, 4, 7, 8, 13, 14, 15, 16, 41, 42, 43, 44, 45, 46, 47, 48];
         let e: [i8; 48] = [1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r: [i8; 48] = [0i8; 48];
-        vst3q_lane_s8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_lane_s8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18072,7 +18072,7 @@ mod test {
         let a: [i64; 4] = [0, 1, 2, 2];
         let e: [i64; 3] = [1, 2, 2];
         let mut r: [i64; 3] = [0i64; 3];
-        vst3_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18081,7 +18081,7 @@ mod test {
         let a: [i64; 7] = [0, 1, 2, 2, 4, 2, 4];
         let e: [i64; 6] = [1, 2, 2, 0, 0, 0];
         let mut r: [i64; 6] = [0i64; 6];
-        vst3q_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18090,7 +18090,7 @@ mod test {
         let a: [u8; 49] = [0, 1, 2, 2, 4, 2, 4, 7, 8, 2, 4, 7, 8, 13, 14, 15, 16, 2, 4, 7, 8, 13, 14, 15, 16, 25, 26, 27, 28, 29, 30, 31, 32, 2, 4, 7, 8, 13, 14, 15, 16, 41, 42, 43, 44, 45, 46, 47, 48];
         let e: [u8; 48] = [1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r: [u8; 48] = [0u8; 48];
-        vst3q_lane_u8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_lane_u8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18099,7 +18099,7 @@ mod test {
         let a: [u64; 4] = [0, 1, 2, 2];
         let e: [u64; 3] = [1, 2, 2];
         let mut r: [u64; 3] = [0u64; 3];
-        vst3_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18108,7 +18108,7 @@ mod test {
         let a: [u64; 7] = [0, 1, 2, 2, 4, 2, 4];
         let e: [u64; 6] = [1, 2, 2, 0, 0, 0];
         let mut r: [u64; 6] = [0u64; 6];
-        vst3q_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18117,7 +18117,7 @@ mod test {
         let a: [u8; 49] = [0, 1, 2, 2, 4, 2, 4, 7, 8, 2, 4, 7, 8, 13, 14, 15, 16, 2, 4, 7, 8, 13, 14, 15, 16, 25, 26, 27, 28, 29, 30, 31, 32, 2, 4, 7, 8, 13, 14, 15, 16, 41, 42, 43, 44, 45, 46, 47, 48];
         let e: [u8; 48] = [1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r: [u8; 48] = [0u8; 48];
-        vst3q_lane_p8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_lane_p8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18126,7 +18126,7 @@ mod test {
         let a: [u64; 4] = [0, 1, 2, 2];
         let e: [u64; 3] = [1, 2, 2];
         let mut r: [u64; 3] = [0u64; 3];
-        vst3_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18135,7 +18135,7 @@ mod test {
         let a: [u64; 7] = [0, 1, 2, 2, 4, 2, 4];
         let e: [u64; 6] = [1, 2, 2, 0, 0, 0];
         let mut r: [u64; 6] = [0u64; 6];
-        vst3q_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18144,7 +18144,7 @@ mod test {
         let a: [f64; 4] = [0., 1., 2., 2.];
         let e: [f64; 3] = [1., 2., 2.];
         let mut r: [f64; 3] = [0f64; 3];
-        vst3_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18153,7 +18153,7 @@ mod test {
         let a: [f64; 7] = [0., 1., 2., 2., 3., 2., 3.];
         let e: [f64; 6] = [1., 2., 2., 0., 0., 0.];
         let mut r: [f64; 6] = [0f64; 6];
-        vst3q_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst3q_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18162,7 +18162,7 @@ mod test {
         let a: [i64; 9] = [0, 1, 2, 2, 6, 2, 6, 6, 8];
         let e: [i64; 8] = [1, 2, 2, 6, 2, 6, 6, 8];
         let mut r: [i64; 8] = [0i64; 8];
-        vst4q_s64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_s64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18171,7 +18171,7 @@ mod test {
         let a: [u64; 9] = [0, 1, 2, 2, 6, 2, 6, 6, 8];
         let e: [u64; 8] = [1, 2, 2, 6, 2, 6, 6, 8];
         let mut r: [u64; 8] = [0u64; 8];
-        vst4q_u64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_u64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18180,7 +18180,7 @@ mod test {
         let a: [u64; 9] = [0, 1, 2, 2, 6, 2, 6, 6, 8];
         let e: [u64; 8] = [1, 2, 2, 6, 2, 6, 6, 8];
         let mut r: [u64; 8] = [0u64; 8];
-        vst4q_p64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_p64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18189,7 +18189,7 @@ mod test {
         let a: [f64; 5] = [0., 1., 2., 2., 6.];
         let e: [f64; 4] = [1., 2., 2., 6.];
         let mut r: [f64; 4] = [0f64; 4];
-        vst4_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18198,7 +18198,7 @@ mod test {
         let a: [f64; 9] = [0., 1., 2., 2., 6., 2., 6., 6., 8.];
         let e: [f64; 8] = [1., 2., 2., 6., 2., 6., 6., 8.];
         let mut r: [f64; 8] = [0f64; 8];
-        vst4q_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_f64(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18207,7 +18207,7 @@ mod test {
         let a: [i8; 65] = [0, 1, 2, 2, 6, 2, 6, 6, 8, 2, 6, 6, 8, 6, 8, 8, 16, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 8, 16, 8, 16, 16, 32, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 43, 44, 8, 16, 44, 48, 6, 8, 8, 16, 8, 16, 16, 32, 8, 16, 44, 48, 16, 32, 48, 64];
         let e: [i8; 64] = [1, 2, 2, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r: [i8; 64] = [0i8; 64];
-        vst4q_lane_s8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_lane_s8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18216,7 +18216,7 @@ mod test {
         let a: [i64; 5] = [0, 1, 2, 2, 6];
         let e: [i64; 4] = [1, 2, 2, 6];
         let mut r: [i64; 4] = [0i64; 4];
-        vst4_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18225,7 +18225,7 @@ mod test {
         let a: [i64; 9] = [0, 1, 2, 2, 6, 2, 6, 6, 8];
         let e: [i64; 8] = [1, 2, 2, 6, 0, 0, 0, 0];
         let mut r: [i64; 8] = [0i64; 8];
-        vst4q_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_lane_s64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18234,7 +18234,7 @@ mod test {
         let a: [u8; 65] = [0, 1, 2, 2, 6, 2, 6, 6, 8, 2, 6, 6, 8, 6, 8, 8, 16, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 8, 16, 8, 16, 16, 32, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 43, 44, 8, 16, 44, 48, 6, 8, 8, 16, 8, 16, 16, 32, 8, 16, 44, 48, 16, 32, 48, 64];
         let e: [u8; 64] = [1, 2, 2, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r: [u8; 64] = [0u8; 64];
-        vst4q_lane_u8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_lane_u8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18243,7 +18243,7 @@ mod test {
         let a: [u64; 5] = [0, 1, 2, 2, 6];
         let e: [u64; 4] = [1, 2, 2, 6];
         let mut r: [u64; 4] = [0u64; 4];
-        vst4_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18252,7 +18252,7 @@ mod test {
         let a: [u64; 9] = [0, 1, 2, 2, 6, 2, 6, 6, 8];
         let e: [u64; 8] = [1, 2, 2, 6, 0, 0, 0, 0];
         let mut r: [u64; 8] = [0u64; 8];
-        vst4q_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_lane_u64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18261,7 +18261,7 @@ mod test {
         let a: [u8; 65] = [0, 1, 2, 2, 6, 2, 6, 6, 8, 2, 6, 6, 8, 6, 8, 8, 16, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 8, 16, 8, 16, 16, 32, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 43, 44, 8, 16, 44, 48, 6, 8, 8, 16, 8, 16, 16, 32, 8, 16, 44, 48, 16, 32, 48, 64];
         let e: [u8; 64] = [1, 2, 2, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let mut r: [u8; 64] = [0u8; 64];
-        vst4q_lane_p8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_lane_p8::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18270,7 +18270,7 @@ mod test {
         let a: [u64; 5] = [0, 1, 2, 2, 6];
         let e: [u64; 4] = [1, 2, 2, 6];
         let mut r: [u64; 4] = [0u64; 4];
-        vst4_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18279,7 +18279,7 @@ mod test {
         let a: [u64; 9] = [0, 1, 2, 2, 6, 2, 6, 6, 8];
         let e: [u64; 8] = [1, 2, 2, 6, 0, 0, 0, 0];
         let mut r: [u64; 8] = [0u64; 8];
-        vst4q_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_lane_p64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18288,7 +18288,7 @@ mod test {
         let a: [f64; 5] = [0., 1., 2., 2., 6.];
         let e: [f64; 4] = [1., 2., 2., 6.];
         let mut r: [f64; 4] = [0f64; 4];
-        vst4_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 
@@ -18297,7 +18297,7 @@ mod test {
         let a: [f64; 9] = [0., 1., 2., 2., 6., 2., 6., 6., 8.];
         let e: [f64; 8] = [1., 2., 2., 6., 0., 0., 0., 0.];
         let mut r: [f64; 8] = [0f64; 8];
-        vst4q_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        vst4q_lane_f64::<0>(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
     }
 

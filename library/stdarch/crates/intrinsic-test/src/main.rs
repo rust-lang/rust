@@ -72,12 +72,15 @@ fn generate_c_program(header_files: &[&str], intrinsic: &Intrinsic) -> String {
 #include <cstring>
 #include <iomanip>
 #include <sstream>
+
 template<typename T1, typename T2> T1 cast(T2 x) {{
   static_assert(sizeof(T1) == sizeof(T2), "sizeof T1 and T2 must be the same");
   T1 ret = 0;
   memcpy(&ret, &x, sizeof(T1));
   return ret;
 }}
+
+#ifdef __aarch64__
 std::ostream& operator<<(std::ostream& os, poly128_t value) {{
   std::stringstream temp;
   do {{
@@ -90,6 +93,8 @@ std::ostream& operator<<(std::ostream& os, poly128_t value) {{
   os << res;
   return os;
 }}
+#endif
+
 int main(int argc, char **argv) {{
 {passes}
     return 0;
@@ -133,7 +138,7 @@ fn gen_code_rust(intrinsic: &Intrinsic, constraints: &[&Argument], name: String)
     }
 }
 
-fn generate_rust_program(intrinsic: &Intrinsic) -> String {
+fn generate_rust_program(intrinsic: &Intrinsic, a32: bool) -> String {
     let constraints = intrinsic
         .arguments
         .iter()
@@ -146,25 +151,26 @@ fn generate_rust_program(intrinsic: &Intrinsic) -> String {
 #![feature(stdsimd)]
 #![allow(overflowing_literals)]
 #![allow(non_upper_case_globals)]
-use core_arch::arch::aarch64::*;
+use core_arch::arch::{target_arch}::*;
 
 fn main() {{
 {passes}
 }}
 "#,
+        target_arch = if a32 { "arm" } else { "aarch64" },
         passes = gen_code_rust(intrinsic, &constraints, Default::default())
     )
 }
 
-fn compile_c(c_filename: &str, intrinsic: &Intrinsic, compiler: &str) -> bool {
+fn compile_c(c_filename: &str, intrinsic: &Intrinsic, compiler: &str, a32: bool) -> bool {
     let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
 
     let output = Command::new("sh")
         .arg("-c")
         .arg(format!(
             "{cpp} {cppflags} {arch_flags} -Wno-narrowing -O2 -target {target} -o c_programs/{intrinsic} {filename}",
-            target = "aarch64-unknown-linux-gnu",
-            arch_flags = "-march=armv8.6-a+crypto+sha3+crc+dotprod",
+            target = if a32 { "armv7-unknown-linux-gnueabihf" } else { "aarch64-unknown-linux-gnu" },
+            arch_flags = if a32 { "-march=armv8.6-a+crypto+crc+dotprod" } else { "-march=armv8.6-a+crypto+sha3+crc+dotprod" },
             filename = c_filename,
             intrinsic = intrinsic.name,
             cpp = compiler,
@@ -175,19 +181,13 @@ fn compile_c(c_filename: &str, intrinsic: &Intrinsic, compiler: &str) -> bool {
         if output.status.success() {
             true
         } else {
-            let stderr = std::str::from_utf8(&output.stderr).unwrap_or("");
-            if stderr.contains("error: use of undeclared identifier") {
-                warn!("Skipping intrinsic due to no support: {}", intrinsic.name);
-                true
-            } else {
-                error!(
-                    "Failed to compile code for intrinsic: {}\n\nstdout:\n{}\n\nstderr:\n{}",
-                    intrinsic.name,
-                    std::str::from_utf8(&output.stdout).unwrap_or(""),
-                    std::str::from_utf8(&output.stderr).unwrap_or("")
-                );
-                false
-            }
+            error!(
+                "Failed to compile code for intrinsic: {}\n\nstdout:\n{}\n\nstderr:\n{}",
+                intrinsic.name,
+                std::str::from_utf8(&output.stdout).unwrap_or(""),
+                std::str::from_utf8(&output.stderr).unwrap_or("")
+            );
+            false
         }
     } else {
         error!("Command failed: {:#?}", output);
@@ -195,7 +195,7 @@ fn compile_c(c_filename: &str, intrinsic: &Intrinsic, compiler: &str) -> bool {
     }
 }
 
-fn build_c(intrinsics: &Vec<Intrinsic>, compiler: &str) -> bool {
+fn build_c(intrinsics: &Vec<Intrinsic>, compiler: &str, a32: bool) -> bool {
     let _ = std::fs::create_dir("c_programs");
     intrinsics
         .par_iter()
@@ -205,20 +205,20 @@ fn build_c(intrinsics: &Vec<Intrinsic>, compiler: &str) -> bool {
 
             let c_code = generate_c_program(&["arm_neon.h", "arm_acle.h"], &i);
             file.write_all(c_code.into_bytes().as_slice()).unwrap();
-            compile_c(&c_filename, &i, compiler)
+            compile_c(&c_filename, &i, compiler, a32)
         })
         .find_any(|x| !x)
         .is_none()
 }
 
-fn build_rust(intrinsics: &Vec<Intrinsic>, toolchain: &str) -> bool {
+fn build_rust(intrinsics: &Vec<Intrinsic>, toolchain: &str, a32: bool) -> bool {
     intrinsics.iter().for_each(|i| {
         let rust_dir = format!(r#"rust_programs/{}"#, i.name);
         let _ = std::fs::create_dir_all(&rust_dir);
         let rust_filename = format!(r#"{}/main.rs"#, rust_dir);
         let mut file = File::create(&rust_filename).unwrap();
 
-        let c_code = generate_rust_program(&i);
+        let c_code = generate_rust_program(&i, a32);
         file.write_all(c_code.into_bytes().as_slice()).unwrap();
     });
 
@@ -259,10 +259,15 @@ path = "{intrinsic}/main.rs""#,
         .current_dir("rust_programs")
         .arg("-c")
         .arg(format!(
-            "cargo {toolchain} build --release --target {target}",
+            "cargo {toolchain} build --target {target}",
             toolchain = toolchain,
-            target = "aarch64-unknown-linux-gnu",
+            target = if a32 {
+                "armv7-unknown-linux-gnueabihf"
+            } else {
+                "aarch64-unknown-linux-gnu"
+            },
         ))
+        .env("RUSTFLAGS", "-Cdebuginfo=0")
         .output();
     if let Ok(output) = output {
         if output.status.success() {
@@ -317,6 +322,12 @@ fn main() {
                 .long("skip")
                 .help("Filename for a list of intrinsics to skip (one per line)"),
         )
+        .arg(
+            Arg::with_name("A32")
+                .takes_value(false)
+                .long("a32")
+                .help("Run tests for A32 instrinsics instead of A64"),
+        )
         .get_matches();
 
     let filename = matches.value_of("INPUT").unwrap();
@@ -328,10 +339,15 @@ fn main() {
     let c_runner = matches.value_of("RUNNER").unwrap_or("");
     let skip = if let Some(filename) = matches.value_of("SKIP") {
         let data = std::fs::read_to_string(&filename).expect("Failed to open file");
-        data.lines().map(String::from).collect_vec()
+        data.lines()
+            .map(str::trim)
+            .filter(|s| !s.contains('#'))
+            .map(String::from)
+            .collect_vec()
     } else {
         Default::default()
     };
+    let a32 = matches.is_present("A32");
 
     let intrinsics = get_acle_intrinsics(filename);
 
@@ -352,18 +368,19 @@ fn main() {
         .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))
         .filter(|i| !i.arguments.iter().any(|a| a.ty.inner_size() == 128))
         .filter(|i| !skip.contains(&i.name))
+        .filter(|i| !(a32 && i.a64_only))
         .collect::<Vec<_>>();
     intrinsics.dedup();
 
-    if !build_c(&intrinsics, cpp_compiler) {
+    if !build_c(&intrinsics, cpp_compiler, a32) {
         std::process::exit(2);
     }
 
-    if !build_rust(&intrinsics, &toolchain) {
+    if !build_rust(&intrinsics, &toolchain, a32) {
         std::process::exit(3);
     }
 
-    if !compare_outputs(&intrinsics, &toolchain, &c_runner) {
+    if !compare_outputs(&intrinsics, &toolchain, &c_runner, a32) {
         std::process::exit(1)
     }
 }
@@ -374,7 +391,7 @@ enum FailureReason {
     Difference(String, String, String),
 }
 
-fn compare_outputs(intrinsics: &Vec<Intrinsic>, toolchain: &str, runner: &str) -> bool {
+fn compare_outputs(intrinsics: &Vec<Intrinsic>, toolchain: &str, runner: &str, a32: bool) -> bool {
     let intrinsics = intrinsics
         .par_iter()
         .filter_map(|intrinsic| {
@@ -390,11 +407,16 @@ fn compare_outputs(intrinsics: &Vec<Intrinsic>, toolchain: &str, runner: &str) -
                 .current_dir("rust_programs")
                 .arg("-c")
                 .arg(format!(
-                    "cargo {toolchain} run --release --target {target} --bin {intrinsic}",
+                    "cargo {toolchain} run --target {target} --bin {intrinsic}",
                     intrinsic = intrinsic.name,
                     toolchain = toolchain,
-                    target = "aarch64-unknown-linux-gnu",
+                    target = if a32 {
+                        "armv7-unknown-linux-gnueabihf"
+                    } else {
+                        "aarch64-unknown-linux-gnu"
+                    },
                 ))
+                .env("RUSTFLAGS", "-Cdebuginfo=0")
                 .output();
 
             let (c, rust) = match (c, rust) {

@@ -10,7 +10,7 @@ macro_rules! simd_ty {
 
         #[allow(clippy::use_self)]
         impl $id {
-            #[inline]
+            #[inline(always)]
             pub(crate) const fn new($($elem_name: $elem_ty),*) -> Self {
                 $id($($elem_name),*)
             }
@@ -43,12 +43,12 @@ macro_rules! simd_m_ty {
 
         #[allow(clippy::use_self)]
         impl $id {
-            #[inline]
+            #[inline(always)]
             const fn bool_to_internal(x: bool) -> $ety {
                 [0 as $ety, !(0 as $ety)][x as usize]
             }
 
-            #[inline]
+            #[inline(always)]
             pub(crate) const fn new($($elem_name: bool),*) -> Self {
                 $id($(Self::bool_to_internal($elem_name)),*)
             }

@@ -258,6 +258,9 @@ impl IntrinsicType {
     /// This is required for 8 bit types due to printing as the 8 bit types use
     /// a char and when using that in `std::cout` it will print as a character,
     /// which means value of 0 will be printed as a null byte.
+    ///
+    /// This is also needed for polynomial types because we want them to be
+    /// printed as unsigned integers to match Rust's `Debug` impl.
     pub fn c_promotion(&self) -> &str {
         match *self {
             IntrinsicType::Type {
@@ -267,8 +270,20 @@ impl IntrinsicType {
             } if bit_len == 8 => match kind {
                 TypeKind::Int => "(int)",
                 TypeKind::UInt => "(unsigned int)",
-                TypeKind::Poly => "(unsigned int)",
+                TypeKind::Poly => "(unsigned int)(uint8_t)",
                 _ => "",
+            },
+            IntrinsicType::Type {
+                kind: TypeKind::Poly,
+                bit_len: Some(bit_len),
+                ..
+            } => match bit_len {
+                8 => unreachable!("handled above"),
+                16 => "(uint16_t)",
+                32 => "(uint32_t)",
+                64 => "(uint64_t)",
+                128 => "",
+                _ => panic!("invalid bit_len"),
             },
             _ => "",
         }

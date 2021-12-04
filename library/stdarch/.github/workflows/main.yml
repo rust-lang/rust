@@ -116,7 +116,6 @@ jobs:
           os: ubuntu-latest
         - target: armv7-unknown-linux-gnueabihf
           os: ubuntu-latest
-          rustflags: -C target-feature=+neon
         - target: mips-unknown-linux-gnu
           os: ubuntu-latest
           norun: true

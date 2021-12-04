@@ -25,7 +25,7 @@ run() {
       --env NORUN \
       --env RUSTFLAGS \
       --env STDARCH_TEST_NORUN \
-      --volume "$(dirname "$(dirname "$(command -v cargo)")")":/cargo \
+      --volume "${HOME}/.cargo":/cargo \
       --volume "$(rustc --print sysroot)":/rust:ro \
       --volume "$(pwd)":/checkout:ro \
       --volume "$(pwd)"/target:/checkout/target \

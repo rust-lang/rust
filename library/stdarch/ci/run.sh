@@ -37,6 +37,13 @@ case ${TARGET} in
     mips-* | mipsel-*)
 	export RUSTFLAGS="${RUSTFLAGS} -C llvm-args=-fast-isel=false"
 	;;
+    # Some of our test dependencies use the deprecated `gcc` crates which is
+    # missing a fix from https://github.com/alexcrichton/cc-rs/pull/627. Apply
+    # the workaround manually here.
+    armv7-*eabihf | thumbv7-*eabihf)
+        export RUSTFLAGS="${RUSTFLAGS} -Ctarget-feature=+neon"
+        export TARGET_CFLAGS="-mfpu=vfpv3-d16"
+        ;;
 esac
 
 echo "RUSTFLAGS=${RUSTFLAGS}"
@@ -122,7 +129,10 @@ esac
 
 if [ "${TARGET}" = "aarch64-unknown-linux-gnu" ]; then
     export CPPFLAGS="-fuse-ld=lld -I/usr/aarch64-linux-gnu/include/ -I/usr/aarch64-linux-gnu/include/c++/9/aarch64-linux-gnu/"
-    cargo run ${INTRINSIC_TEST} --release --bin intrinsic-test -- crates/intrinsic-test/acle/tools/intrinsic_db/advsimd.csv --runner "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}" --cppcompiler "clang++-12" --skip crates/intrinsic-test/missing.txt
+    RUST_LOG=warn cargo run ${INTRINSIC_TEST} --release --bin intrinsic-test -- crates/intrinsic-test/acle/tools/intrinsic_db/advsimd.csv --runner "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}" --cppcompiler "clang++-13" --skip crates/intrinsic-test/missing_aarch64.txt
+elif [ "${TARGET}" = "armv7-unknown-linux-gnueabihf" ]; then
+    export CPPFLAGS="-fuse-ld=lld -I/usr/arm-linux-gnueabihf/include/ -I/usr/arm-linux-gnueabihf/include/c++/9/arm-linux-gnueabihf/"
+    RUST_LOG=warn cargo run ${INTRINSIC_TEST} --release --bin intrinsic-test -- crates/intrinsic-test/acle/tools/intrinsic_db/advsimd.csv --runner "${CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER}" --cppcompiler "clang++-13" --skip crates/intrinsic-test/missing_arm.txt --a32
 fi
 
 if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ]; then

@@ -1304,7 +1304,7 @@ fn gen_aarch64(
                 };
                 format!(
                     r#"{}
-    {}{}({}, {} as i64, a.cast())"#,
+    {}{}({}, {} as i64, a as _)"#,
                     multi_calls,
                     ext_c,
                     current_fn,
@@ -1327,7 +1327,7 @@ fn gen_aarch64(
                 }
             }
         } else if link_aarch64.is_some() && matches!(fn_type, Fntype::Store) {
-            let cast = if is_vstx(&name) { ".cast()" } else { "" };
+            let cast = if is_vstx(&name) { " as _" } else { "" };
             match type_sub_len(in_t[1]) {
                 1 => format!(r#"{}{}(b, a{})"#, ext_c, current_fn, cast),
                 2 => format!(r#"{}{}(b.0, b.1, a{})"#, ext_c, current_fn, cast),
@@ -1336,7 +1336,7 @@ fn gen_aarch64(
                 _ => panic!("unsupported type: {}", in_t[1]),
             }
         } else if link_aarch64.is_some() && is_vldx(&name) {
-            format!(r#"{}{}(a.cast())"#, ext_c, current_fn,)
+            format!(r#"{}{}(a as _)"#, ext_c, current_fn,)
         } else {
             let trans: [&str; 2] = if link_t[3] != out_t {
                 ["transmute(", ")"]
@@ -1553,7 +1553,7 @@ fn gen_store_test(
         let a: [{}; {}] = {};
         let e: [{}; {}] = {};
         let mut r: [{}; {}] = [0{}; {}];
-        {}{}(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr().cast()));
+        {}{}(r.as_mut_ptr(), core::ptr::read_unaligned(a[1..].as_ptr() as _));
         assert_eq!(r, e);
 "#,
             type_to_native_type(in_t[1]),
@@ -2196,7 +2196,7 @@ fn gen_arm(
                         _ => "",
                     };
                     format!(
-                        "{}(a.cast(), {}, {}, {})",
+                        "{}(a as _, {}, {}, {})",
                         current_fn,
                         subs,
                         constn.as_deref().unwrap(),
@@ -2235,7 +2235,7 @@ fn gen_arm(
             } else if matches!(fn_type, Fntype::Store) {
                 let (cast, size) = if is_vstx(&name) {
                     (
-                        ".cast()",
+                        " as _",
                         format!(", {}", type_bits(&type_to_sub_type(in_t[1])) / 8),
                     )
                 } else {
@@ -2276,7 +2276,7 @@ fn gen_arm(
                             _ => "",
                         };
                         format!(
-                            "{}({}, {} as i64, a.cast())",
+                            "{}({}, {} as i64, a as _)",
                             current_fn,
                             subs,
                             constn.as_deref().unwrap()
@@ -2307,7 +2307,7 @@ fn gen_arm(
                         _ => String::new(),
                     }
                 } else if matches!(fn_type, Fntype::Store) {
-                    let cast = if is_vstx(&name) { ".cast()" } else { "" };
+                    let cast = if is_vstx(&name) { " as _" } else { "" };
                     match type_sub_len(in_t[1]) {
                         1 => format!("{}(b, a{})", current_fn, cast),
                         2 => format!("{}(b.0, b.1, a{})", current_fn, cast),
@@ -2316,7 +2316,7 @@ fn gen_arm(
                         _ => String::new(),
                     }
                 } else if link_aarch64.is_some() && is_vldx(&name) {
-                    format!("{}(a.cast())", current_fn)
+                    format!("{}(a as _)", current_fn)
                 } else {
                     String::new()
                 };
