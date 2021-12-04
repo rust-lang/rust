@@ -12,3 +12,4 @@ out/**
 !ra_syntax_tree.tmGrammar.json
 !icon.png
 !README.md
+!LICENSE
