@@ -18,10 +18,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
 ) {
     // FIXME add .eh_frame unwind info directives
 
-    if template.is_empty() {
-        // Black box
-        return;
-    } else if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
+    if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
         let true_ = fx.bcx.ins().iconst(types::I32, 1);
         fx.bcx.ins().trapnz(true_, TrapCode::User(1));
         return;
