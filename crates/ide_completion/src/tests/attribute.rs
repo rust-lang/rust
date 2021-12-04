@@ -560,9 +560,9 @@ mod cfg {
         check(
             r#"#[cfg(target_endian = $0"#,
             expect![[r#"
-            at little
-            at big
-"#]],
+                ba little
+                ba big
+            "#]],
         );
     }
 }
@@ -594,13 +594,13 @@ mod derive {
 #[derive($0)] struct Test;
 "#,
             expect![[r#"
-                at Default
-                at Clone, Copy
-                at PartialEq
-                at PartialEq, Eq
-                at PartialEq, Eq, PartialOrd, Ord
-                at Clone
-                at PartialEq, PartialOrd
+                de Default
+                de Clone, Copy
+                de PartialEq
+                de PartialEq, Eq
+                de PartialEq, Eq, PartialOrd, Ord
+                de Clone
+                de PartialEq, PartialOrd
             "#]],
         );
     }
@@ -613,12 +613,12 @@ mod derive {
 #[derive(serde::Serialize, PartialEq, $0)] struct Test;
 "#,
             expect![[r#"
-                at Default
-                at Clone, Copy
-                at Eq
-                at Eq, PartialOrd, Ord
-                at Clone
-                at PartialOrd
+                de Default
+                de Clone, Copy
+                de Eq
+                de Eq, PartialOrd, Ord
+                de Clone
+                de PartialOrd
             "#]],
         )
     }
@@ -631,12 +631,12 @@ mod derive {
 #[derive($0 serde::Serialize, PartialEq)] struct Test;
 "#,
             expect![[r#"
-                at Default
-                at Clone, Copy
-                at Eq
-                at Eq, PartialOrd, Ord
-                at Clone
-                at PartialOrd
+                de Default
+                de Clone, Copy
+                de Eq
+                de Eq, PartialOrd, Ord
+                de Clone
+                de PartialOrd
             "#]],
         )
     }
@@ -649,7 +649,7 @@ mod derive {
 #[derive(der$0)] struct Test;
 "#,
             expect![[r#"
-                at DeriveIdentity (use proc_macros::DeriveIdentity)
+                de DeriveIdentity (use proc_macros::DeriveIdentity)
             "#]],
         );
         check_derive(
@@ -659,7 +659,7 @@ use proc_macros::DeriveIdentity;
 #[derive(der$0)] struct Test;
 "#,
             expect![[r#"
-                at DeriveIdentity
+                de DeriveIdentity
             "#]],
         );
     }
@@ -775,23 +775,23 @@ mod repr {
         check_repr(
             r#"#[repr($0)] struct Test;"#,
             expect![[r#"
-            at align($0)
-            at packed
-            at transparent
-            at C
-            at u8
-            at u16
-            at u32
-            at u64
-            at u128
-            at usize
-            at i8
-            at i16
-            at i32
-            at i64
-            at i28
-            at isize
-        "#]],
+                ba align($0)
+                ba packed
+                ba transparent
+                ba C
+                ba u8
+                ba u16
+                ba u32
+                ba u64
+                ba u128
+                ba usize
+                ba i8
+                ba i16
+                ba i32
+                ba i64
+                ba i28
+                ba isize
+            "#]],
         );
     }
 
@@ -805,21 +805,21 @@ mod repr {
         check_repr(
             r#"#[repr(align(1), $0)] struct Test;"#,
             expect![[r#"
-            at transparent
-            at C
-            at u8
-            at u16
-            at u32
-            at u64
-            at u128
-            at usize
-            at i8
-            at i16
-            at i32
-            at i64
-            at i28
-            at isize
-        "#]],
+                ba transparent
+                ba C
+                ba u8
+                ba u16
+                ba u32
+                ba u64
+                ba u128
+                ba usize
+                ba i8
+                ba i16
+                ba i32
+                ba i64
+                ba i28
+                ba isize
+            "#]],
         );
     }
 
@@ -828,21 +828,21 @@ mod repr {
         check_repr(
             r#"#[repr(packed, $0)] struct Test;"#,
             expect![[r#"
-            at transparent
-            at C
-            at u8
-            at u16
-            at u32
-            at u64
-            at u128
-            at usize
-            at i8
-            at i16
-            at i32
-            at i64
-            at i28
-            at isize
-        "#]],
+                ba transparent
+                ba C
+                ba u8
+                ba u16
+                ba u32
+                ba u64
+                ba u128
+                ba usize
+                ba i8
+                ba i16
+                ba i32
+                ba i64
+                ba i28
+                ba isize
+            "#]],
         );
     }
 
@@ -851,21 +851,21 @@ mod repr {
         check_repr(
             r#"#[repr(C, $0)] struct Test;"#,
             expect![[r#"
-            at align($0)
-            at packed
-            at u8
-            at u16
-            at u32
-            at u64
-            at u128
-            at usize
-            at i8
-            at i16
-            at i32
-            at i64
-            at i28
-            at isize
-        "#]],
+                ba align($0)
+                ba packed
+                ba u8
+                ba u16
+                ba u32
+                ba u64
+                ba u128
+                ba usize
+                ba i8
+                ba i16
+                ba i32
+                ba i64
+                ba i28
+                ba isize
+            "#]],
         );
     }
 
@@ -874,10 +874,10 @@ mod repr {
         check_repr(
             r#"#[repr(usize, $0)] struct Test;"#,
             expect![[r#"
-            at align($0)
-            at packed
-            at C
-        "#]],
+                ba align($0)
+                ba packed
+                ba C
+            "#]],
         );
     }
 }

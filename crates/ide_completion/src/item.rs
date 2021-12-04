@@ -216,7 +216,6 @@ impl CompletionRelevance {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompletionItemKind {
     SymbolKind(SymbolKind),
-    Attribute,
     Binding,
     BuiltinType,
     Keyword,
@@ -232,9 +231,11 @@ impl CompletionItemKind {
     pub(crate) fn tag(&self) -> &'static str {
         match self {
             CompletionItemKind::SymbolKind(kind) => match kind {
+                SymbolKind::Attribute => "at",
                 SymbolKind::BuiltinAttr => "ba",
                 SymbolKind::Const => "ct",
                 SymbolKind::ConstParam => "cp",
+                SymbolKind::Derive => "de",
                 SymbolKind::Enum => "en",
                 SymbolKind::Field => "fd",
                 SymbolKind::Function => "fn",
@@ -255,7 +256,6 @@ impl CompletionItemKind {
                 SymbolKind::ValueParam => "vp",
                 SymbolKind::Variant => "ev",
             },
-            CompletionItemKind::Attribute => "at",
             CompletionItemKind::Binding => "bn",
             CompletionItemKind::BuiltinType => "bt",
             CompletionItemKind::Keyword => "kw",

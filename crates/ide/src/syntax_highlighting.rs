@@ -57,9 +57,11 @@ pub struct HlRange {
 // - For items:
 // +
 // [horizontal]
+// attribute:: Emitted for attribute macros.
 // enum:: Emitted for enums.
 // function:: Emitted for free-standing functions.
-// macro:: Emitted for macros.
+// derive:: Emitted for derive macros.
+// macro:: Emitted for function-like macros.
 // method:: Emitted for associated functions, also knowns as methods.
 // namespace:: Emitted for modules.
 // struct:: Emitted for structs.
@@ -90,6 +92,7 @@ pub struct HlRange {
 // +
 // [horizontal]
 // punctuation:: Emitted for general punctuation.
+// attributeBracket:: Emitted for attribute invocation brackets, that is the `#[` and `]` tokens.
 // angle:: Emitted for `<>` angle brackets.
 // brace:: Emitted for `{}` braces.
 // bracket:: Emitted for `[]` brackets.
@@ -102,7 +105,6 @@ pub struct HlRange {
 // //-
 //
 // [horizontal]
-// attribute:: Emitted for the `#[` `]` tokens.
 // builtinAttribute:: Emitted for names to builtin attributes in attribute path, the `repr` in `#[repr(u8)]` for example.
 // builtinType:: Emitted for builtin types like `u32`, `str` and `f32`.
 // comment:: Emitted for comments.

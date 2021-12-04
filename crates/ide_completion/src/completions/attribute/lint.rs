@@ -1,12 +1,8 @@
 //! Completion for lints
-use ide_db::helpers::generated_lints::Lint;
+use ide_db::{helpers::generated_lints::Lint, SymbolKind};
 use syntax::{ast, T};
 
-use crate::{
-    context::CompletionContext,
-    item::{CompletionItem, CompletionItemKind},
-    Completions,
-};
+use crate::{context::CompletionContext, item::CompletionItem, Completions};
 
 pub(super) fn complete_lint(
     acc: &mut Completions,
@@ -58,8 +54,7 @@ pub(super) fn complete_lint(
             Some(qual) if !is_qualified => format!("{}::{}", qual, name),
             _ => name.to_owned(),
         };
-        let mut item =
-            CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), label);
+        let mut item = CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label);
         item.documentation(hir::Documentation::new(description.to_owned()));
         item.add_to(acc)
     }

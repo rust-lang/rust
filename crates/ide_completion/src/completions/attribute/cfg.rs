@@ -2,16 +2,14 @@
 
 use std::iter;
 
+use ide_db::SymbolKind;
 use syntax::SyntaxKind;
 
-use crate::{
-    completions::Completions, context::CompletionContext, CompletionItem, CompletionItemKind,
-};
+use crate::{completions::Completions, context::CompletionContext, CompletionItem};
 
 pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
     let add_completion = |item: &str| {
-        let mut completion =
-            CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), item);
+        let mut completion = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), item);
         completion.insert_text(format!(r#""{}""#, item));
         acc.add(completion.build());
     };
@@ -34,7 +32,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
                 krate.potential_cfg(ctx.db).get_cfg_values(&name).cloned().for_each(|s| {
                     let insert_text = format!(r#""{}""#, s);
                     let mut item =
-                        CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), s);
+                        CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);
                     item.insert_text(insert_text);
 
                     acc.add(item.build());
@@ -44,8 +42,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
         None => {
             if let Some(krate) = ctx.krate {
                 krate.potential_cfg(ctx.db).get_cfg_keys().cloned().for_each(|s| {
-                    let item =
-                        CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), s);
+                    let item = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);
                     acc.add(item.build());
                 })
             }
