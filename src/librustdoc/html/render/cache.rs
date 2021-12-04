@@ -347,19 +347,19 @@ crate fn get_real_types<'tcx>(
             let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
             for bound in bounds.iter() {
                 if let GenericBound::TraitBound(poly_trait, _) = bound {
-                    for x in poly_trait.generic_params.iter() {
-                        if !x.is_type() {
-                            continue;
-                        }
-                        if let Some(ty) = x.get_type() {
-                            get_real_types(
-                                generics,
-                                &ty,
-                                tcx,
-                                recurse + 1,
-                                &mut ty_generics,
-                                cache,
-                            );
+                    for param_def in poly_trait.generic_params.iter() {
+                        match &param_def.kind {
+                            clean::GenericParamDefKind::Type { default: Some(ty), .. } => {
+                                get_real_types(
+                                    generics,
+                                    ty,
+                                    tcx,
+                                    recurse + 1,
+                                    &mut ty_generics,
+                                    cache,
+                                )
+                            }
+                            _ => {}
                         }
                     }
                 }
