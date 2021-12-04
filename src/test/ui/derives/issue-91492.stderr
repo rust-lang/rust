@@ -1,0 +1,54 @@
+error[E0599]: the method `extend_from_slice` exists for mutable reference `&mut Vec<NoDerives>`, but its trait bounds were not satisfied
+  --> $DIR/issue-91492.rs:4:9
+   |
+LL | pub struct NoDerives;
+   | --------------------- doesn't satisfy `NoDerives: Clone`
+LL | fn fun1(foo: &mut Vec<NoDerives>, bar: &[NoDerives]) {
+LL |     foo.extend_from_slice(bar);
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: the following trait bounds were not satisfied:
+           `NoDerives: Clone`
+help: consider annotating `NoDerives` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
+
+error[E0599]: the method `extend_from_slice` exists for mutable reference `&mut Vec<SomeDerives>`, but its trait bounds were not satisfied
+  --> $DIR/issue-91492.rs:12:9
+   |
+LL | pub struct SomeDerives;
+   | ----------------------- doesn't satisfy `SomeDerives: Clone`
+LL | fn fun2(foo: &mut Vec<SomeDerives>, bar: &[SomeDerives]) {
+LL |     foo.extend_from_slice(bar);
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = note: the following trait bounds were not satisfied:
+           `SomeDerives: Clone`
+help: consider annotating `SomeDerives` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
+
+error[E0599]: the method `use_clone` exists for struct `Object<NoDerives, SomeDerives>`, but its trait bounds were not satisfied
+  --> $DIR/issue-91492.rs:22:9
+   |
+LL | pub struct NoDerives;
+   | --------------------- doesn't satisfy `NoDerives: Clone`
+...
+LL | struct Object<T, A>(T, A);
+   | -------------------------- method `use_clone` not found for this
+...
+LL |     foo.use_clone();
+   |         ^^^^^^^^^ method cannot be called on `Object<NoDerives, SomeDerives>` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `NoDerives: Clone`
+help: consider annotating `NoDerives` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.
