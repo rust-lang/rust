@@ -1207,10 +1207,6 @@ impl GenericBound {
 crate struct Lifetime(pub Symbol);
 
 impl Lifetime {
-    crate fn get_ref(&self) -> SymbolStr {
-        self.0.as_str()
-    }
-
     crate fn statik() -> Lifetime {
         Lifetime(kw::StaticLifetime)
     }
