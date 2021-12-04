@@ -56,6 +56,7 @@
 #![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
 #![feature(iter_order_by)]
+#![feature(iterator_try_reduce)]
 #![feature(const_mut_refs)]
 #![feature(const_pin)]
 #![feature(const_slice_from_raw_parts)]

@@ -455,6 +455,34 @@ fn test_find_map() {
 }
 
 #[test]
+fn test_try_reduce() {
+    let v: Vec<usize> = vec![1, 2, 3, 4, 5];
+    let sum = v.into_iter().try_reduce(|x, y| x.checked_add(y));
+    assert_eq!(sum, Some(Some(15)));
+
+    let v: Vec<usize> = vec![1, 2, 3, 4, 5, usize::MAX];
+    let sum = v.into_iter().try_reduce(|x, y| x.checked_add(y));
+    assert_eq!(sum, None);
+
+    let v: Vec<usize> = Vec::new();
+    let sum = v.into_iter().try_reduce(|x, y| x.checked_add(y));
+    assert_eq!(sum, Some(None));
+
+    let v = vec!["1", "2", "3", "4", "5"];
+    let max = v.into_iter().try_reduce(|x, y| {
+        if x.parse::<usize>().ok()? > y.parse::<usize>().ok()? { Some(x) } else { Some(y) }
+    });
+    assert_eq!(max, Some(Some("5")));
+
+    let v = vec!["1", "2", "3", "4", "5"];
+    let max: Result<Option<_>, <usize as std::str::FromStr>::Err> =
+        v.into_iter().try_reduce(|x, y| {
+            if x.parse::<usize>()? > y.parse::<usize>()? { Ok(x) } else { Ok(y) }
+        });
+    assert_eq!(max, Ok(Some("5")));
+}
+
+#[test]
 fn test_iterator_len() {
     let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     assert_eq!(v[..4].iter().count(), 4);
