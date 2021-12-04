@@ -552,7 +552,7 @@ fn hover_const_static() {
             ```
 
             ```rust
-            const foo: u32 = 123
+            const foo: u32 = 123 (0x7B)
             ```
         "#]],
     );
@@ -3275,6 +3275,140 @@ impl<const LEN: usize> Foo<LEN$0> {}
                 const LEN: usize
                 ```
             "#]],
+    );
+}
+
+#[test]
+fn hover_const_eval() {
+    check(
+        r#"
+/// This is a doc
+const FOO$0: usize = !0 & !(!0 >> 1);
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: usize = 9223372036854775808 (0x8000000000000000)
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+/// This is a doc
+const FOO$0: usize = {
+    let a = 3 + 2;
+    let b = a * a;
+    b
+};
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: usize = 25 (0x19)
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+/// This is a doc
+const FOO$0: usize = 1 << 10;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: usize = 1024 (0x400)
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+/// This is a doc
+const FOO$0: usize = 2 - 3;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: usize = 2 - 3
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+/// This is a doc
+const FOO$0: i32 = 2 - 3;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: i32 = -1
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+/// This is a doc
+const FOO$0: usize = 1 << 100;
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: usize = 1 << 100
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
     );
 }
 
