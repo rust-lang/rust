@@ -567,8 +567,11 @@ impl<'a> TraitDef<'a> {
             })
         });
 
-        let Generics { mut params, mut where_clause, span } =
+        let Generics { mut params, mut where_clause, .. } =
             self.generics.to_generics(cx, self.span, type_ident, generics);
+        where_clause.span = generics.where_clause.span;
+        let ctxt = self.span.ctxt();
+        let span = generics.span.with_ctxt(ctxt);
 
         // Create the generic parameters
         params.extend(generics.params.iter().map(|param| match &param.kind {
@@ -589,12 +592,12 @@ impl<'a> TraitDef<'a> {
                         param.bounds.iter().cloned()
                     ).collect();
 
-                cx.typaram(self.span, param.ident, vec![], bounds, None)
+                cx.typaram(param.ident.span.with_ctxt(ctxt), param.ident, vec![], bounds, None)
             }
             GenericParamKind::Const { ty, kw_span, .. } => {
                 let const_nodefault_kind = GenericParamKind::Const {
                     ty: ty.clone(),
-                    kw_span: *kw_span,
+                    kw_span: kw_span.with_ctxt(ctxt),
 
                     // We can't have default values inside impl block
                     default: None,
@@ -607,28 +610,27 @@ impl<'a> TraitDef<'a> {
 
         // and similarly for where clauses
         where_clause.predicates.extend(generics.where_clause.predicates.iter().map(|clause| {
-            match *clause {
-                ast::WherePredicate::BoundPredicate(ref wb) => {
+            match clause {
+                ast::WherePredicate::BoundPredicate(wb) => {
+                    let span = wb.span.with_ctxt(ctxt);
                     ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                        span: self.span,
-                        bound_generic_params: wb.bound_generic_params.clone(),
-                        bounded_ty: wb.bounded_ty.clone(),
-                        bounds: wb.bounds.to_vec(),
+                        span,
+                        ..wb.clone()
                     })
                 }
-                ast::WherePredicate::RegionPredicate(ref rb) => {
+                ast::WherePredicate::RegionPredicate(wr) => {
+                    let span = wr.span.with_ctxt(ctxt);
                     ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
-                        span: self.span,
-                        lifetime: rb.lifetime,
-                        bounds: rb.bounds.to_vec(),
+                        span,
+                        ..wr.clone()
                     })
                 }
-                ast::WherePredicate::EqPredicate(ref we) => {
+                ast::WherePredicate::EqPredicate(we) => {
+                    let span = we.span.with_ctxt(ctxt);
                     ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                         id: ast::DUMMY_NODE_ID,
-                        span: self.span,
-                        lhs_ty: we.lhs_ty.clone(),
-                        rhs_ty: we.rhs_ty.clone(),
+                        span,
+                        ..we.clone()
                     })
                 }
             }
@@ -691,13 +693,13 @@ impl<'a> TraitDef<'a> {
             .iter()
             .map(|param| match param.kind {
                 GenericParamKind::Lifetime { .. } => {
-                    GenericArg::Lifetime(cx.lifetime(self.span, param.ident))
+                    GenericArg::Lifetime(cx.lifetime(param.ident.span.with_ctxt(ctxt), param.ident))
                 }
                 GenericParamKind::Type { .. } => {
-                    GenericArg::Type(cx.ty_ident(self.span, param.ident))
+                    GenericArg::Type(cx.ty_ident(param.ident.span.with_ctxt(ctxt), param.ident))
                 }
                 GenericParamKind::Const { .. } => {
-                    GenericArg::Const(cx.const_ident(self.span, param.ident))
+                    GenericArg::Const(cx.const_ident(param.ident.span.with_ctxt(ctxt), param.ident))
                 }
             })
             .collect();
@@ -845,16 +847,17 @@ impl<'a> MethodDef<'a> {
         nonself_args: &[P<Expr>],
         fields: &SubstructureFields<'_>,
     ) -> P<Expr> {
+        let span = trait_.span;
         let substructure = Substructure {
             type_ident,
-            method_ident: Ident::new(self.name, trait_.span),
+            method_ident: Ident::new(self.name, span),
             self_args,
             nonself_args,
             fields,
         };
         let mut f = self.combine_substructure.borrow_mut();
         let f: &mut CombineSubstructureFunc<'_> = &mut *f;
-        f(cx, trait_.span, &substructure)
+        f(cx, span, &substructure)
     }
 
     fn get_ret_ty(
@@ -882,9 +885,10 @@ impl<'a> MethodDef<'a> {
         let mut nonself_args = Vec::new();
         let mut arg_tys = Vec::new();
         let mut nonstatic = false;
+        let span = trait_.span;
 
         let ast_explicit_self = self.explicit_self.as_ref().map(|self_ptr| {
-            let (self_expr, explicit_self) = ty::get_explicit_self(cx, trait_.span, self_ptr);
+            let (self_expr, explicit_self) = ty::get_explicit_self(cx, span, self_ptr);
 
             self_args.push(self_expr);
             nonstatic = true;
@@ -893,11 +897,11 @@ impl<'a> MethodDef<'a> {
         });
 
         for (ty, name) in self.args.iter() {
-            let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
-            let ident = Ident::new(*name, trait_.span);
+            let ast_ty = ty.to_ty(cx, span, type_ident, generics);
+            let ident = Ident::new(*name, span);
             arg_tys.push((ident, ast_ty));
 
-            let arg_expr = cx.expr_ident(trait_.span, ident);
+            let arg_expr = cx.expr_ident(span, ident);
 
             match *ty {
                 // for static methods, just treat any Self
@@ -906,7 +910,7 @@ impl<'a> MethodDef<'a> {
                     self_args.push(arg_expr);
                 }
                 Ptr(ref ty, _) if matches!(**ty, Self_) && nonstatic => {
-                    self_args.push(cx.expr_deref(trait_.span, arg_expr))
+                    self_args.push(cx.expr_deref(span, arg_expr))
                 }
                 _ => {
                     nonself_args.push(arg_expr);
@@ -927,33 +931,33 @@ impl<'a> MethodDef<'a> {
         arg_types: Vec<(Ident, P<ast::Ty>)>,
         body: P<Expr>,
     ) -> P<ast::AssocItem> {
+        let span = trait_.span;
         // Create the generics that aren't for `Self`.
-        let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
+        let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
 
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
-                let ident = Ident::with_dummy_span(kw::SelfLower).with_span_pos(trait_.span);
+                let ident = Ident::with_dummy_span(kw::SelfLower).with_span_pos(span);
                 ast::Param::from_self(ast::AttrVec::default(), explicit_self, ident)
             });
-            let nonself_args =
-                arg_types.into_iter().map(|(name, ty)| cx.param(trait_.span, name, ty));
+            let nonself_args = arg_types.into_iter().map(|(name, ty)| cx.param(span, name, ty));
             self_args.into_iter().chain(nonself_args).collect()
         };
 
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
 
-        let method_ident = Ident::new(self.name, trait_.span);
+        let method_ident = Ident::new(self.name, span);
         let fn_decl = cx.fn_decl(args, ast::FnRetTy::Ty(ret_type));
         let body_block = cx.block_expr(body);
 
-        let unsafety = if self.is_unsafe { ast::Unsafe::Yes(trait_.span) } else { ast::Unsafe::No };
+        let unsafety = if self.is_unsafe { ast::Unsafe::Yes(span) } else { ast::Unsafe::No };
 
-        let trait_lo_sp = trait_.span.shrink_to_lo();
+        let trait_lo_sp = span.shrink_to_lo();
 
         let sig = ast::FnSig {
             header: ast::FnHeader { unsafety, ext: ast::Extern::None, ..ast::FnHeader::default() },
             decl: fn_decl,
-            span: trait_.span,
+            span,
         };
         let defaultness = ast::Defaultness::Final;
 
@@ -961,7 +965,7 @@ impl<'a> MethodDef<'a> {
         P(ast::AssocItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
-            span: trait_.span,
+            span,
             vis: ast::Visibility {
                 span: trait_lo_sp,
                 kind: ast::VisibilityKind::Inherited,
@@ -1024,11 +1028,11 @@ impl<'a> MethodDef<'a> {
         nonself_args: &[P<Expr>],
         use_temporaries: bool,
     ) -> P<Expr> {
-        let mut raw_fields = Vec::new(); // Vec<[fields of self],
-        // [fields of next Self arg], [etc]>
+        let mut raw_fields = Vec::new(); // Vec<[fields of self], [fields of next Self arg], [etc]>
+        let span = trait_.span;
         let mut patterns = Vec::new();
         for i in 0..self_args.len() {
-            let struct_path = cx.path(trait_.span, vec![type_ident]);
+            let struct_path = cx.path(span, vec![type_ident]);
             let (pat, ident_expr) = trait_.create_struct_pattern(
                 cx,
                 struct_path,
@@ -1048,7 +1052,7 @@ impl<'a> MethodDef<'a> {
             let mut other_fields: Vec<vec::IntoIter<_>> = raw_fields.collect();
             first_field
                 .map(|(span, opt_id, field, attrs)| FieldInfo {
-                    span,
+                    span: span.with_ctxt(trait_.span.ctxt()),
                     name: opt_id,
                     self_: field,
                     other: other_fields
@@ -1062,7 +1066,7 @@ impl<'a> MethodDef<'a> {
                 })
                 .collect()
         } else {
-            cx.span_bug(trait_.span, "no `self` parameter for method in generic `derive`")
+            cx.span_bug(span, "no `self` parameter for method in generic `derive`")
         };
 
         // body of the inner most destructuring match
@@ -1079,11 +1083,7 @@ impl<'a> MethodDef<'a> {
         // structs. This is actually right-to-left, but it shouldn't
         // matter.
         for (arg_expr, pat) in iter::zip(self_args, patterns) {
-            body = cx.expr_match(
-                trait_.span,
-                arg_expr.clone(),
-                vec![cx.arm(trait_.span, pat.clone(), body)],
-            )
+            body = cx.expr_match(span, arg_expr.clone(), vec![cx.arm(span, pat.clone(), body)])
         }
 
         body
@@ -1193,7 +1193,7 @@ impl<'a> MethodDef<'a> {
         mut self_args: Vec<P<Expr>>,
         nonself_args: &[P<Expr>],
     ) -> P<Expr> {
-        let sp = trait_.span;
+        let span = trait_.span;
         let variants = &enum_def.variants;
 
         let self_arg_names = iter::once("__self".to_string())
@@ -1208,7 +1208,7 @@ impl<'a> MethodDef<'a> {
 
         let self_arg_idents = self_arg_names
             .iter()
-            .map(|name| Ident::from_str_and_span(name, sp))
+            .map(|name| Ident::from_str_and_span(name, span))
             .collect::<Vec<Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
@@ -1218,7 +1218,7 @@ impl<'a> MethodDef<'a> {
             .iter()
             .map(|name| {
                 let vi_suffix = format!("{}_vi", &name[..]);
-                Ident::from_str_and_span(&vi_suffix, trait_.span)
+                Ident::from_str_and_span(&vi_suffix, span)
             })
             .collect::<Vec<Ident>>();
 
@@ -1248,7 +1248,7 @@ impl<'a> MethodDef<'a> {
                         self_arg_name,
                         ast::Mutability::Not,
                     );
-                    (cx.pat(sp, PatKind::Ref(p, ast::Mutability::Not)), idents)
+                    (cx.pat(span, PatKind::Ref(p, ast::Mutability::Not)), idents)
                 };
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
@@ -1267,7 +1267,7 @@ impl<'a> MethodDef<'a> {
                 }
 
                 // Here is the pat = `(&VariantK, &VariantK, ...)`
-                let single_pat = cx.pat_tuple(sp, subpats);
+                let single_pat = cx.pat_tuple(span, subpats);
 
                 // For the BodyK, we need to delegate to our caller,
                 // passing it an EnumMatching to indicate which case
@@ -1284,7 +1284,7 @@ impl<'a> MethodDef<'a> {
                     .into_iter()
                     .enumerate()
                     // For each arg field of self, pull out its getter expr ...
-                    .map(|(field_index, (sp, opt_ident, self_getter_expr, attrs))| {
+                    .map(|(field_index, (span, opt_ident, self_getter_expr, attrs))| {
                         // ... but FieldInfo also wants getter expr
                         // for matching other arguments of Self type;
                         // so walk across the *other* self_pats_idents
@@ -1307,7 +1307,7 @@ impl<'a> MethodDef<'a> {
                             .collect::<Vec<P<Expr>>>();
 
                         FieldInfo {
-                            span: sp,
+                            span,
                             name: opt_ident,
                             self_: self_getter_expr,
                             other: others,
@@ -1330,7 +1330,7 @@ impl<'a> MethodDef<'a> {
                     &substructure,
                 );
 
-                cx.arm(sp, single_pat, arm_expr)
+                cx.arm(span, single_pat, arm_expr)
             })
             .collect();
 
@@ -1353,12 +1353,12 @@ impl<'a> MethodDef<'a> {
                 // Since we know that all the arguments will match if we reach
                 // the match expression we add the unreachable intrinsics as the
                 // result of the catch all which should help llvm in optimizing it
-                Some(deriving::call_unreachable(cx, sp))
+                Some(deriving::call_unreachable(cx, span))
             }
             _ => None,
         };
         if let Some(arm) = default {
-            match_arms.push(cx.arm(sp, cx.pat_wild(sp), arm));
+            match_arms.push(cx.arm(span, cx.pat_wild(span), arm));
         }
 
         // We will usually need the catch-all after matching the
@@ -1392,23 +1392,23 @@ impl<'a> MethodDef<'a> {
 
             // We also build an expression which checks whether all discriminants are equal
             // discriminant_test = __self0_vi == __self1_vi && __self0_vi == __self2_vi && ...
-            let mut discriminant_test = cx.expr_bool(sp, true);
+            let mut discriminant_test = cx.expr_bool(span, true);
 
             let mut first_ident = None;
             for (&ident, self_arg) in iter::zip(&vi_idents, &self_args) {
-                let self_addr = cx.expr_addr_of(sp, self_arg.clone());
+                let self_addr = cx.expr_addr_of(span, self_arg.clone());
                 let variant_value =
-                    deriving::call_intrinsic(cx, sp, sym::discriminant_value, vec![self_addr]);
-                let let_stmt = cx.stmt_let(sp, false, ident, variant_value);
+                    deriving::call_intrinsic(cx, span, sym::discriminant_value, vec![self_addr]);
+                let let_stmt = cx.stmt_let(span, false, ident, variant_value);
                 index_let_stmts.push(let_stmt);
 
                 match first_ident {
                     Some(first) => {
-                        let first_expr = cx.expr_ident(sp, first);
-                        let id = cx.expr_ident(sp, ident);
-                        let test = cx.expr_binary(sp, BinOpKind::Eq, first_expr, id);
+                        let first_expr = cx.expr_ident(span, first);
+                        let id = cx.expr_ident(span, ident);
+                        let test = cx.expr_binary(span, BinOpKind::Eq, first_expr, id);
                         discriminant_test =
-                            cx.expr_binary(sp, BinOpKind::And, discriminant_test, test)
+                            cx.expr_binary(span, BinOpKind::And, discriminant_test, test)
                     }
                     None => {
                         first_ident = Some(ident);
@@ -1430,8 +1430,8 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            self_args.map_in_place(|self_arg| cx.expr_addr_of(sp, self_arg));
-            let match_arg = cx.expr(sp, ast::ExprKind::Tup(self_args));
+            self_args.map_in_place(|self_arg| cx.expr_addr_of(span, self_arg));
+            let match_arg = cx.expr(span, ast::ExprKind::Tup(self_args));
 
             // Lastly we create an expression which branches on all discriminants being equal
             //  if discriminant_test {
@@ -1445,10 +1445,10 @@ impl<'a> MethodDef<'a> {
             //  else {
             //      <delegated expression referring to __self0_vi, et al.>
             //  }
-            let all_match = cx.expr_match(sp, match_arg, match_arms);
-            let arm_expr = cx.expr_if(sp, discriminant_test, all_match, Some(arm_expr));
+            let all_match = cx.expr_match(span, match_arg, match_arms);
+            let arm_expr = cx.expr_if(span, discriminant_test, all_match, Some(arm_expr));
             index_let_stmts.push(cx.stmt_expr(arm_expr));
-            cx.expr_block(cx.block(sp, index_let_stmts))
+            cx.expr_block(cx.block(span, index_let_stmts))
         } else if variants.is_empty() {
             // As an additional wrinkle, For a zero-variant enum A,
             // currently the compiler
@@ -1499,16 +1499,16 @@ impl<'a> MethodDef<'a> {
             // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
-            deriving::call_unreachable(cx, sp)
+            deriving::call_unreachable(cx, span)
         } else {
             // Final wrinkle: the self_args are expressions that deref
             // down to desired places, but we cannot actually deref
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            self_args.map_in_place(|self_arg| cx.expr_addr_of(sp, self_arg));
-            let match_arg = cx.expr(sp, ast::ExprKind::Tup(self_args));
-            cx.expr_match(sp, match_arg, match_arms)
+            self_args.map_in_place(|self_arg| cx.expr_addr_of(span, self_arg));
+            let match_arg = cx.expr(span, ast::ExprKind::Tup(self_args));
+            cx.expr_match(span, match_arg, match_arms)
         }
     }
 
@@ -1556,11 +1556,9 @@ impl<'a> TraitDef<'a> {
 
         let is_tuple = matches!(struct_def, ast::VariantData::Tuple(..));
         match (just_spans.is_empty(), named_idents.is_empty()) {
-            (false, false) => cx.span_bug(
-                self.span,
-                "a struct with named and unnamed \
-                                          fields in generic `derive`",
-            ),
+            (false, false) => {
+                cx.span_bug(self.span, "a struct with named and unnamed fields in generic `derive`")
+            }
             // named fields
             (_, false) => Named(named_idents),
             // unnamed fields

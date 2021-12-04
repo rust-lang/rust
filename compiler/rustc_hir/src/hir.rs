@@ -17,8 +17,7 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{def_id::LocalDefId, BytePos};
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{def_id::LocalDefId, BytePos, MultiSpan, Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use rustc_target::spec::abi::Abi;
 
@@ -526,12 +525,20 @@ pub struct GenericParam<'hir> {
 }
 
 impl GenericParam<'hir> {
-    pub fn bounds_span(&self) -> Option<Span> {
-        self.bounds.iter().fold(None, |span, bound| {
-            let span = span.map(|s| s.to(bound.span())).unwrap_or_else(|| bound.span());
-
-            Some(span)
-        })
+    pub fn bounds_span_for_suggestions(&self) -> Option<Span> {
+        self.bounds
+            .iter()
+            .fold(None, |span: Option<Span>, bound| {
+                // We include bounds that come from a `#[derive(_)]` but point at the user's code,
+                // as we use this method to get a span appropriate for suggestions.
+                if !bound.span().can_be_used_for_suggestions() {
+                    None
+                } else {
+                    let span = span.map(|s| s.to(bound.span())).unwrap_or_else(|| bound.span());
+                    Some(span)
+                }
+            })
+            .map(|sp| sp.shrink_to_hi())
     }
 }
 

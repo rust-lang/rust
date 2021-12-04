@@ -1735,7 +1735,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         (generics.span, format!("<{}>", ident))
                     };
                     // Do not suggest if this is coming from macro expansion.
-                    if !span.from_expansion() {
+                    if span.can_be_used_for_suggestions() {
                         return Some((
                             span.shrink_to_hi(),
                             msg,
@@ -1803,7 +1803,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         );
         err.span_label(lifetime_ref.span, "undeclared lifetime");
         let mut suggests_in_band = false;
-        let mut suggest_note = true;
+        let mut suggested_spans = vec![];
         for missing in &self.missing_named_lifetime_spots {
             match missing {
                 MissingLifetimeSpot::Generics(generics) => {
@@ -1821,22 +1821,16 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         suggests_in_band = true;
                         (generics.span, format!("<{}>", lifetime_ref))
                     };
-                    if !span.from_expansion() {
+                    if suggested_spans.contains(&span) {
+                        continue;
+                    }
+                    suggested_spans.push(span);
+                    if span.can_be_used_for_suggestions() {
                         err.span_suggestion(
                             span,
                             &format!("consider introducing lifetime `{}` here", lifetime_ref),
                             sugg,
                             Applicability::MaybeIncorrect,
-                        );
-                    } else if suggest_note {
-                        suggest_note = false; // Avoid displaying the same help multiple times.
-                        err.span_label(
-                            span,
-                            &format!(
-                                "lifetime `{}` is missing in item created through this procedural \
-                                 macro",
-                                lifetime_ref,
-                            ),
                         );
                     }
                 }
