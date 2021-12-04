@@ -244,77 +244,71 @@ fn highlight_name_ref(
     name_ref: ast::NameRef,
 ) -> Highlight {
     let db = sema.db;
-    highlight_method_call_by_name_ref(sema, krate, &name_ref).unwrap_or_else(|| {
-        let name_class = match NameRefClass::classify(sema, &name_ref) {
-            Some(name_kind) => name_kind,
-            None => {
-                return if syntactic_name_ref_highlighting {
-                    highlight_name_ref_by_syntax(name_ref, sema, krate)
-                } else {
-                    // FIXME: Workaround for https://github.com/rust-analyzer/rust-analyzer/issues/10708
-                    //
-                    // Some popular proc macros (namely async_trait) will rewrite `self` in such a way that it no
-                    // longer resolves via NameRefClass. If we can't be resolved, but we know we're a self token,
-                    // within a function with a self param, pretend to still be `self`, rather than
-                    // an unresolved reference.
-                    if name_ref.self_token().is_some() && is_in_fn_with_self_param(&name_ref) {
-                        SymbolKind::SelfParam.into()
-                    } else {
-                        HlTag::UnresolvedReference.into()
-                    }
-                };
-            }
-        };
-        let mut h = match name_class {
-            NameRefClass::Definition(def) => {
-                if let Definition::Local(local) = &def {
-                    if let Some(name) = local.name(db) {
-                        let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-                        *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-                    }
-                };
+    if let Some(res) = highlight_method_call_by_name_ref(sema, krate, &name_ref) {
+        return res;
+    }
 
-                let mut h = highlight_def(sema, krate, def);
+    let name_class = match NameRefClass::classify(sema, &name_ref) {
+        Some(name_kind) => name_kind,
+        None if syntactic_name_ref_highlighting => {
+            return highlight_name_ref_by_syntax(name_ref, sema, krate)
+        }
+        // FIXME: Workaround for https://github.com/rust-analyzer/rust-analyzer/issues/10708
+        //
+        // Some popular proc macros (namely async_trait) will rewrite `self` in such a way that it no
+        // longer resolves via NameRefClass. If we can't be resolved, but we know we're a self token,
+        // within a function with a self param, pretend to still be `self`, rather than
+        // an unresolved reference.
+        None if name_ref.self_token().is_some() && is_in_fn_with_self_param(&name_ref) => {
+            return SymbolKind::SelfParam.into()
+        }
+        None => return HlTag::UnresolvedReference.into(),
+    };
+    let mut h = match name_class {
+        NameRefClass::Definition(def) => {
+            if let Definition::Local(local) = &def {
+                if let Some(name) = local.name(db) {
+                    let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+                    *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
+                }
+            };
 
-                match def {
-                    Definition::Local(local)
-                        if is_consumed_lvalue(name_ref.syntax(), &local, db) =>
+            let mut h = highlight_def(sema, krate, def);
+
+            match def {
+                Definition::Local(local) if is_consumed_lvalue(name_ref.syntax(), &local, db) => {
+                    h |= HlMod::Consuming;
+                }
+                Definition::Trait(trait_) if trait_.is_unsafe(db) => {
+                    if ast::Impl::for_trait_name_ref(&name_ref)
+                        .map_or(false, |impl_| impl_.unsafe_token().is_some())
                     {
-                        h |= HlMod::Consuming;
+                        h |= HlMod::Unsafe;
                     }
-                    Definition::Trait(trait_) if trait_.is_unsafe(db) => {
-                        if ast::Impl::for_trait_name_ref(&name_ref)
-                            .map_or(false, |impl_| impl_.unsafe_token().is_some())
-                        {
-                            h |= HlMod::Unsafe;
-                        }
-                    }
-                    Definition::Field(field) => {
-                        if let Some(parent) = name_ref.syntax().parent() {
-                            if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
-                                if let hir::VariantDef::Union(_) = field.parent_def(db) {
-                                    h |= HlMod::Unsafe;
-                                }
+                }
+                Definition::Field(field) => {
+                    if let Some(parent) = name_ref.syntax().parent() {
+                        if matches!(parent.kind(), FIELD_EXPR | RECORD_PAT_FIELD) {
+                            if let hir::VariantDef::Union(_) = field.parent_def(db) {
+                                h |= HlMod::Unsafe;
                             }
                         }
                     }
-                    _ => (),
                 }
+                _ => (),
+            }
 
-                h
-            }
-            NameRefClass::FieldShorthand { .. } => SymbolKind::Field.into(),
-        };
-        if h.tag == HlTag::Symbol(SymbolKind::Module) {
-            if name_ref.self_token().is_some() {
-                return SymbolKind::SelfParam.into();
-            }
-            if name_ref.crate_token().is_some() || name_ref.super_token().is_some() {
-                h.tag = HlTag::Keyword;
-            }
+            h
         }
-        h
-    })
+        NameRefClass::FieldShorthand { .. } => SymbolKind::Field.into(),
+    };
+    if name_ref.self_token().is_some() {
+        h.tag = HlTag::Symbol(SymbolKind::SelfParam);
+    }
+    if name_ref.crate_token().is_some() || name_ref.super_token().is_some() {
+        h.tag = HlTag::Keyword;
+    }
+    h
 }
 
 fn highlight_name(

@@ -60,6 +60,7 @@ impl Foo {
     }
 }
 
+use self::FooCopy::{self as BarCopy};
 #[derive(Copy)]
 struct FooCopy {
     x: u32,
