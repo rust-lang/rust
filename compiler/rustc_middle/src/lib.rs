@@ -51,7 +51,6 @@
 #![feature(control_flow_enum)]
 #![feature(associated_type_defaults)]
 #![feature(iter_zip)]
-#![feature(thread_local_const_init)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(try_reserve_kind)]

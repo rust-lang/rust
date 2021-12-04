@@ -178,7 +178,6 @@ macro_rules! __thread_local_inner {
     (@key $t:ty, const $init:expr) => {{
         #[cfg_attr(not(windows), inline)] // see comments below
         unsafe fn __getit() -> $crate::option::Option<&'static $t> {
-            const _REQUIRE_UNSTABLE: () = $crate::thread::require_unstable_const_init_thread_local();
             const INIT_EXPR: $t = $init;
 
             // wasm without atomics maps directly to `static mut`, and dtors
