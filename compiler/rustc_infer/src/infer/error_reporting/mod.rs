@@ -2045,18 +2045,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // parentheses around it, perhaps the user meant to write `(expr,)` to
                         // build a tuple (issue #86100)
                         (ty::Tuple(_), _) if expected.tuple_fields().count() == 1 => {
-                            if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
-                                let code_stripped = code
-                                    .strip_prefix('(')
-                                    .and_then(|s| s.strip_suffix(')'))
-                                    .unwrap_or(&code);
-                                err.span_suggestion(
-                                    span,
-                                    "use a trailing comma to create a tuple with one element",
-                                    format!("({},)", code_stripped),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
+                            err.multipart_suggestion(
+                                "use a trailing comma to create a tuple with one element",
+                                vec![
+                                    (span.shrink_to_lo(), "(".into()),
+                                    (span.shrink_to_hi(), ",)".into()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
                         }
                         // If a character was expected and the found expression is a string literal
                         // containing a single character, perhaps the user meant to write `'c'` to
