@@ -34,8 +34,9 @@ use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
 use crate::lint::init_lints;
 use crate::passes::span_of_attrs;
 
+/// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone, Default)]
-crate struct TestOptions {
+crate struct GlobalTestOptions {
     /// Whether to disable the default `extern crate my_crate;` when creating doctests.
     crate no_crate_inject: bool,
     /// Additional crate-level attributes to add to doctests.
@@ -214,10 +215,10 @@ crate fn run_tests(mut test_args: Vec<String>, nocapture: bool, tests: Vec<test:
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(attrs: &[ast::Attribute]) -> TestOptions {
+fn scrape_test_config(attrs: &[ast::Attribute]) -> GlobalTestOptions {
     use rustc_ast_pretty::pprust;
 
-    let mut opts = TestOptions { no_crate_inject: false, attrs: Vec::new() };
+    let mut opts = GlobalTestOptions { no_crate_inject: false, attrs: Vec::new() };
 
     let test_attrs: Vec<_> = attrs
         .iter()
@@ -298,7 +299,7 @@ fn run_test(
     runtool: Option<String>,
     runtool_args: Vec<String>,
     target: TargetTriple,
-    opts: &TestOptions,
+    opts: &GlobalTestOptions,
     edition: Edition,
     outdir: DirState,
     path: PathBuf,
@@ -484,7 +485,7 @@ crate fn make_test(
     s: &str,
     crate_name: Option<&str>,
     dont_insert_main: bool,
-    opts: &TestOptions,
+    opts: &GlobalTestOptions,
     edition: Edition,
     test_id: Option<&str>,
 ) -> (String, usize, bool) {
@@ -805,7 +806,7 @@ crate struct Collector {
     use_headers: bool,
     enable_per_target_ignores: bool,
     crate_name: Symbol,
-    opts: TestOptions,
+    opts: GlobalTestOptions,
     position: Span,
     source_map: Option<Lrc<SourceMap>>,
     filename: Option<PathBuf>,
@@ -819,7 +820,7 @@ impl Collector {
         crate_name: Symbol,
         options: Options,
         use_headers: bool,
-        opts: TestOptions,
+        opts: GlobalTestOptions,
         source_map: Option<Lrc<SourceMap>>,
         filename: Option<PathBuf>,
         enable_per_target_ignores: bool,

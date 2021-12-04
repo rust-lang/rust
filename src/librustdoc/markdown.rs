@@ -7,7 +7,7 @@ use rustc_span::source_map::DUMMY_SP;
 use rustc_span::Symbol;
 
 use crate::config::{Options, RenderOptions};
-use crate::doctest::{Collector, TestOptions};
+use crate::doctest::{Collector, GlobalTestOptions};
 use crate::html::escape::Escape;
 use crate::html::markdown;
 use crate::html::markdown::{
@@ -129,7 +129,7 @@ crate fn render<P: AsRef<Path>>(
 crate fn test(options: Options) -> Result<(), String> {
     let input_str = read_to_string(&options.input)
         .map_err(|err| format!("{}: {}", options.input.display(), err))?;
-    let mut opts = TestOptions::default();
+    let mut opts = GlobalTestOptions::default();
     opts.no_crate_inject = true;
     let mut collector = Collector::new(
         Symbol::intern(&options.input.display().to_string()),

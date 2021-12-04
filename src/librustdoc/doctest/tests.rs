@@ -1,10 +1,10 @@
-use super::{make_test, TestOptions};
+use super::{make_test, GlobalTestOptions};
 use rustc_span::edition::DEFAULT_EDITION;
 
 #[test]
 fn make_test_basic() {
     //basic use: wraps with `fn main`, adds `#![allow(unused)]`
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
 fn main() {
@@ -19,7 +19,7 @@ assert_eq!(2+2, 4);
 fn make_test_crate_name_no_use() {
     // If you give a crate name but *don't* use it within the test, it won't bother inserting
     // the `extern crate` statement.
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
 fn main() {
@@ -34,7 +34,7 @@ assert_eq!(2+2, 4);
 fn make_test_crate_name() {
     // If you give a crate name and use it within the test, it will insert an `extern crate`
     // statement before `fn main`.
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
@@ -52,7 +52,7 @@ assert_eq!(2+2, 4);
 fn make_test_no_crate_inject() {
     // Even if you do use the crate within the test, setting `opts.no_crate_inject` will skip
     // adding it anyway.
-    let opts = TestOptions { no_crate_inject: true, attrs: vec![] };
+    let opts = GlobalTestOptions { no_crate_inject: true, attrs: vec![] };
     let input = "use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
@@ -70,7 +70,7 @@ fn make_test_ignore_std() {
     // Even if you include a crate name, and use it in the doctest, we still won't include an
     // `extern crate` statement if the crate is "std" -- that's included already by the
     // compiler!
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "use std::*;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
@@ -87,7 +87,7 @@ assert_eq!(2+2, 4);
 fn make_test_manual_extern_crate() {
     // When you manually include an `extern crate` statement in your doctest, `make_test`
     // assumes you've included one for your own crate too.
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "extern crate asdf;
 use asdf::qwop;
 assert_eq!(2+2, 4);";
@@ -104,7 +104,7 @@ assert_eq!(2+2, 4);
 
 #[test]
 fn make_test_manual_extern_crate_with_macro_use() {
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "#[macro_use] extern crate asdf;
 use asdf::qwop;
 assert_eq!(2+2, 4);";
@@ -123,7 +123,7 @@ assert_eq!(2+2, 4);
 fn make_test_opts_attrs() {
     // If you supplied some doctest attributes with `#![doc(test(attr(...)))]`, it will use
     // those instead of the stock `#![allow(unused)]`.
-    let mut opts = TestOptions::default();
+    let mut opts = GlobalTestOptions::default();
     opts.attrs.push("feature(sick_rad)".to_string());
     let input = "use asdf::qwop;
 assert_eq!(2+2, 4);";
@@ -155,7 +155,7 @@ assert_eq!(2+2, 4);
 fn make_test_crate_attrs() {
     // Including inner attributes in your doctest will apply them to the whole "crate", pasting
     // them outside the generated main function.
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "#![feature(sick_rad)]
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
@@ -171,7 +171,7 @@ assert_eq!(2+2, 4);
 #[test]
 fn make_test_with_main() {
     // Including your own `fn main` wrapper lets the test use it verbatim.
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "fn main() {
     assert_eq!(2+2, 4);
 }";
@@ -187,7 +187,7 @@ fn main() {
 #[test]
 fn make_test_fake_main() {
     // ... but putting it in a comment will still provide a wrapper.
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "//Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
@@ -203,7 +203,7 @@ assert_eq!(2+2, 4);
 #[test]
 fn make_test_dont_insert_main() {
     // Even with that, if you set `dont_insert_main`, it won't create the `fn main` wrapper.
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "//Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
@@ -216,7 +216,7 @@ assert_eq!(2+2, 4);"
 
 #[test]
 fn make_test_issues_21299_33731() {
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
 
     let input = "// fn main
 assert_eq!(2+2, 4);";
@@ -248,7 +248,7 @@ assert_eq!(asdf::foo, 4);
 
 #[test]
 fn make_test_main_in_macro() {
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "#[macro_use] extern crate my_crate;
 test_wrapper! {
     fn main() {}
@@ -267,7 +267,7 @@ test_wrapper! {
 #[test]
 fn make_test_returns_result() {
     // creates an inner function and unwraps it
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "use std::io;
 let mut input = String::new();
 io::stdin().read_line(&mut input)?;
@@ -287,7 +287,7 @@ Ok::<(), io:Error>(())
 #[test]
 fn make_test_named_wrapper() {
     // creates an inner function with a specific name
-    let opts = TestOptions::default();
+    let opts = GlobalTestOptions::default();
     let input = "assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
 fn main() { #[allow(non_snake_case)] fn _doctest_main__some_unique_name() {
