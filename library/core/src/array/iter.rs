@@ -104,6 +104,27 @@ impl<T, const N: usize> IntoIter<T, N> {
             MaybeUninit::slice_assume_init_mut(slice)
         }
     }
+
+    /// Returns the remaining `M` items of this iterator as an array.
+    ///
+    /// If there are more than `M` items left in this iterator, the rest of
+    /// them will be leaked.  So that should be avoided, but it's sound.
+    ///
+    /// # Safety
+    ///
+    /// There must be at least `M` items remaining.
+    pub(crate) unsafe fn into_array_unchecked<const M: usize>(self) -> [T; M] {
+        debug_assert!(self.len() >= M);
+
+        // SAFETY: The precondition of at least M items left means that
+        // there are enough valid contiguous items for the `read`.
+        let array: [T; M] = unsafe { ptr::read(self.as_slice().as_ptr().cast()) };
+
+        // We better not run any drops for the items we're about to return.
+        mem::forget(self);
+
+        array
+    }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]

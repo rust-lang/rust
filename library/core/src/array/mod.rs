@@ -17,7 +17,10 @@ use crate::ops::{
 use crate::slice::{Iter, IterMut};
 
 mod equality;
+mod guard;
 mod iter;
+
+use guard::Guard;
 
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
@@ -92,6 +95,36 @@ where
     // SAFETY: we know for certain that this iterator will yield exactly `N`
     // items.
     unsafe { try_collect_into_array_unchecked(&mut (0..N).map(cb)) }
+}
+
+/// Creates an array by repeatedly cloning a value.
+///
+/// This is only needed for types which are not `Copy`.  If `T` is always `Copy`,
+/// you can use `[value; N]` instead.
+///
+/// If you don't have a constant `N`, but instead of runtime value `n`, then you
+/// can create a `Vec<T>` (instead of an array) via `vec![value; n]`.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(array_repeat)]
+///
+/// let array: [_; 4] = std::array::repeat(vec![1, 2, 3, 4]);
+/// assert_eq!(
+///     array,
+///     [
+///         vec![1, 2, 3, 4],
+///         vec![1, 2, 3, 4],
+///         vec![1, 2, 3, 4],
+///         vec![1, 2, 3, 4],
+///     ]
+/// );
+/// ```
+#[inline]
+#[unstable(feature = "array_repeat", issue = "88888888")]
+pub fn repeat<T: Clone, const N: usize>(value: T) -> [T; N] {
+    SpecArrayFill::repeat(value)
 }
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
@@ -473,6 +506,105 @@ impl<T, const N: usize> [T; N] {
         unsafe { try_collect_into_array_unchecked(&mut IntoIterator::into_iter(self).map(f)) }
     }
 
+    /// Creates a new array with length equal to `NEW_LEN`.
+    ///
+    /// If `NEW_LEN` is greater than `N`, the additional elements are filled
+    /// with `value`.  If `NEW_LEN` is less than `N`, the array is truncated.
+    ///
+    /// This method requires `T` to implement [`Clone`], in order to be able to
+    /// clone the passed value.  If you need more flexibility (or want to rely
+    /// on [`Default`] instead of [`Clone`]), use [`resize_with`](#method.resize_with).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_resize)]
+    ///
+    /// let array = ["hello"];
+    /// let array = array.resize::<3>("world");
+    /// assert_eq!(array, ["hello", "world", "world"]);
+    ///
+    /// let array = [1, 2, 3, 4];
+    /// let array: [i32; 2] = array.resize(0);
+    /// assert_eq!(array, [1, 2]);
+    ///
+    /// let rgb = [0xA8, 0x3C, 0x09];
+    /// let pixel = u32::from_be_bytes(rgb.resize(0));
+    /// assert_eq!(pixel, 0xA83C0900);
+    /// ```
+    #[must_use = "Unlike `Vec::resize`, this returns a new array"]
+    #[unstable(feature = "array_resize", issue = "88888888")]
+    pub fn resize<const NEW_LEN: usize>(self, value: T) -> [T; NEW_LEN]
+    where
+        T: Clone,
+    {
+        SpecArrayFill::resize(self, value)
+    }
+
+    /// Creates a new array with length equal to `NEW_LEN`.
+    ///
+    /// If `NEW_LEN` is greater than `N`, the additional elements are filled
+    /// by calling `f`.  The return values from `f` will end up in the array
+    /// in the order they have been generated.
+    ///
+    /// If `NEW_LEN` is less than `N`, the array is truncated.
+    ///
+    /// This method uses a closure to create new values.  If you'd rather `Clone`
+    /// a given value, use [`resize`](#method.resize).  If you want to use the
+    /// [`Default`] trait to generate values, you can pass [`Default::default`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(array_resize)]
+    ///
+    /// let array = [1, 2, 3];
+    /// let array: [_; 5] = array.resize_with(Default::default);
+    /// assert_eq!(array, [1, 2, 3, 0, 0]);
+    /// let array: [_; 4] = array.resize_with(Default::default);
+    /// assert_eq!(array, [1, 2, 3, 0]);
+    ///
+    /// let array = [7];
+    /// let mut p = 1;
+    /// let array: [_; 5] = array.resize_with(|| { p *= 2; p });
+    /// assert_eq!(array, [7, 2, 4, 8, 16]);
+    /// ```
+    #[must_use = "Unlike `Vec::resize_with`, this returns a new array"]
+    #[unstable(feature = "array_resize", issue = "88888888")]
+    pub fn resize_with<const NEW_LEN: usize>(self, mut f: impl FnMut() -> T) -> [T; NEW_LEN] {
+        if NEW_LEN <= N {
+            self.truncate()
+        } else {
+            let mut buffer = MaybeUninit::uninit_array::<NEW_LEN>();
+            let mut guard = Guard::new(&mut buffer);
+
+            // SAFETY: since `NEW_LEN > N` and we haven't pushed anything into
+            // the guard yet, there's definitely enough space.
+            unsafe { guard.push_chunk_unchecked(self) };
+
+            while guard.len() < NEW_LEN {
+                // SAFETY: The loop condition ensures there's space available
+                unsafe { guard.push_unchecked(f()) };
+            }
+
+            // SAFETY: The previous loop filled all the remaining spots.
+            unsafe { guard.into_array_unchecked() }
+        }
+    }
+
+    // Leaving this an implementation detail for now, since it wants to enforce
+    // `M <= N` at compile-time, but that's unavailable on stable.
+    fn truncate<const M: usize>(self) -> [T; M] {
+        assert!(M <= N);
+
+        let remove = N - M;
+        let mut iter = IntoIterator::into_iter(self);
+        iter.advance_back_by(remove).expect("in-bounds by construction");
+
+        // SAFETY: `N - (N - M) => M`, so this is exactly the correct length
+        unsafe { iter.into_array_unchecked() }
+    }
+
     /// 'Zips up' two arrays into a single array of pairs.
     ///
     /// `zip()` returns a new array where every element is a tuple where the
@@ -647,6 +779,80 @@ impl<T, const N: usize> [T; N] {
     }
 }
 
+// Like `SpecFill` over in the `slice` module
+trait SpecArrayFill<const N: usize>: Clone {
+    fn repeat(value: Self) -> [Self; N];
+    fn resize<const M: usize>(array: [Self; N], value: Self) -> [Self; M];
+    fn fill_rest(guard: Guard<'_, Self, N>, value: Self) -> [Self; N];
+}
+
+impl<T: Clone, const N: usize> SpecArrayFill<N> for T {
+    default fn repeat(value: Self) -> [Self; N] {
+        // Not using `from_fn` or `collect_into_array_unchecked` so that we can
+        // *move* the argument into the final element instead of always cloning.
+
+        let mut buffer = MaybeUninit::uninit_array::<N>();
+        let guard = Guard::new(&mut buffer);
+        Self::fill_rest(guard, value)
+    }
+
+    default fn resize<const M: usize>(array: [Self; N], value: Self) -> [Self; M] {
+        if M <= N {
+            array.truncate()
+        } else {
+            let mut buffer = MaybeUninit::uninit_array::<M>();
+            let mut guard = Guard::new(&mut buffer);
+
+            // SAFETY: since `M > N` and we haven't pushed anything into the
+            // guard yet, there's definitely enough space.
+            unsafe { guard.push_chunk_unchecked(array) };
+
+            Self::fill_rest(guard, value)
+        }
+    }
+
+    default fn fill_rest(mut guard: Guard<'_, T, N>, value: Self) -> [Self; N] {
+        if guard.len() != N {
+            while N - guard.len() >= 2 {
+                // SAFETY: We checked there's at least two spaces
+                unsafe { guard.push_unchecked(value.clone()) };
+            }
+
+            // SAFETY: The `len != N` check ensures that we needed to write
+            // at least one element, and the loop only writes when two or more
+            // are needed, so there's always exactly one spot left here.
+            unsafe { guard.push_unchecked(value) };
+        }
+
+        // SAFETY: The previous pushes filled all the remaining spots.
+        unsafe { guard.into_array_unchecked() }
+    }
+}
+
+// No need for special handling of the last item with `Copy` types.
+// (Indeed, it can make it harder for the `memset` to kick in.)
+// So specialize them to do the simpler thing instead.
+impl<T: Copy, const N: usize> SpecArrayFill<N> for T {
+    fn repeat(value: Self) -> [Self; N] {
+        // Don't generate the closure type for every `N`
+        fn cloner<T: Copy>(x: T) -> impl Fn(usize) -> T {
+            move |_| x
+        }
+
+        from_fn(cloner(value))
+    }
+
+    fn fill_rest(mut guard: Guard<'_, T, N>, value: Self) -> [Self; N] {
+        while guard.len() < N {
+            // SAFETY: The loop condition ensures there's space available
+            unsafe { guard.push_unchecked(value) };
+        }
+
+        // SAFETY: The previous pushes filled all the remaining spots.
+        unsafe { guard.into_array_unchecked() }
+    }
+}
+
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
 /// yields fewer than `N` items, this function exhibits undefined behavior.
 ///
@@ -710,26 +916,8 @@ where
         return unsafe { Some(Try::from_output(mem::zeroed())) };
     }
 
-    struct Guard<'a, T, const N: usize> {
-        array_mut: &'a mut [MaybeUninit<T>; N],
-        initialized: usize,
-    }
-
-    impl<T, const N: usize> Drop for Guard<'_, T, N> {
-        fn drop(&mut self) {
-            debug_assert!(self.initialized <= N);
-
-            // SAFETY: this slice will contain only initialized objects.
-            unsafe {
-                crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
-                    &mut self.array_mut.get_unchecked_mut(..self.initialized),
-                ));
-            }
-        }
-    }
-
     let mut array = MaybeUninit::uninit_array::<N>();
-    let mut guard = Guard { array_mut: &mut array, initialized: 0 };
+    let mut guard = Guard::new(&mut array);
 
     while let Some(item_rslt) = iter.next() {
         let item = match item_rslt.branch() {
@@ -743,17 +931,14 @@ where
         // loop and the loop is aborted once it reaches N (which is
         // `array.len()`).
         unsafe {
-            guard.array_mut.get_unchecked_mut(guard.initialized).write(item);
+            guard.push_unchecked(item);
         }
-        guard.initialized += 1;
 
         // Check if the whole array was initialized.
-        if guard.initialized == N {
-            mem::forget(guard);
-
+        if guard.len() == N {
             // SAFETY: the condition above asserts that all elements are
             // initialized.
-            let out = unsafe { MaybeUninit::array_assume_init(array) };
+            let out = unsafe { guard.into_array_unchecked() };
             return Some(Try::from_output(out));
         }
     }
