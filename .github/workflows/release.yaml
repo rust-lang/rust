@@ -106,7 +106,7 @@ jobs:
     - name: Install Nodejs
       uses: actions/setup-node@v1
       with:
-        node-version: 12.x
+        node-version: 14.x
 
     - name: Dist
       run: cargo xtask dist --client-patch-version $GITHUB_RUN_NUMBER
@@ -262,7 +262,7 @@ jobs:
     - name: Install Nodejs
       uses: actions/setup-node@v1
       with:
-        node-version: 12.x
+        node-version: 14.x
 
     - run: echo "TAG=$(date --iso -u)" >> $GITHUB_ENV
       if: github.ref == 'refs/heads/release'
