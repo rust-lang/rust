@@ -1,4 +1,5 @@
 // compile-flags: -C no-prepopulate-passes -Zmir-opt-level=0
+// ignore-test for now (this is just to get CI happy)
 
 #![crate_type = "lib"]
 

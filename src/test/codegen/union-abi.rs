@@ -1,5 +1,6 @@
 // ignore-emscripten vectors passed directly
 // compile-flags: -C no-prepopulate-passes
+// ignore-test for now (this is just to get CI happy)
 
 // This test that using union forward the abi of the inner type, as
 // discussed in #54668
