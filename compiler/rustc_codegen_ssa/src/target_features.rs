@@ -43,10 +43,8 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 ];
 
 const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // FEAT_AdvSimd
+    // FEAT_AdvSimd & FEAT_FP
     ("neon", None),
-    // FEAT_FP
-    ("fp", None),
     // FEAT_FP16
     ("fp16", None),
     // FEAT_SVE
@@ -143,7 +141,6 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 ];
 
 const AARCH64_TIED_FEATURES: &[&[&str]] = &[
-    &["fp", "neon"],   // Silicon always has both, so avoid needless complications
     &["paca", "pacg"], // Together these represent `pauth` in LLVM
 ];
 
