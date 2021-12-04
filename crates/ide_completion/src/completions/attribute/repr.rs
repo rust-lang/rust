@@ -26,7 +26,7 @@ pub(super) fn complete_repr(acc: &mut Completions, ctx: &CompletionContext, inpu
                 continue;
             }
 
-            let mut item = CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label);
+            let mut item = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), label);
             if let Some(lookup) = lookup {
                 item.lookup_by(lookup);
             }

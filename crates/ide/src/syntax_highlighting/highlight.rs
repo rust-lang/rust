@@ -374,7 +374,13 @@ fn highlight_def(
 ) -> Highlight {
     let db = sema.db;
     let mut h = match def {
-        Definition::Macro(_) => Highlight::new(HlTag::Symbol(SymbolKind::Macro)),
+        Definition::Macro(m) => Highlight::new(HlTag::Symbol(match m.kind() {
+            hir::MacroKind::Declarative | hir::MacroKind::BuiltIn | hir::MacroKind::ProcMacro => {
+                SymbolKind::Macro
+            }
+            hir::MacroKind::Derive => SymbolKind::Derive,
+            hir::MacroKind::Attr => SymbolKind::Attribute,
+        })),
         Definition::Field(_) => Highlight::new(HlTag::Symbol(SymbolKind::Field)),
         Definition::Module(module) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));

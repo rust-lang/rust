@@ -44,7 +44,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">mod</span> <span class="module declaration">inner</span> <span class="brace">{</span><span class="brace">}</span>
 
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">allow</span><span class="parenthesis attribute">(</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
-<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="module attribute crate_root library">proc_macros</span><span class="operator attribute">::</span><span class="macro attribute library">identity</span><span class="attribute_bracket attribute">]</span>
+<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="module attribute crate_root library">proc_macros</span><span class="operator attribute">::</span><span class="attribute attribute library">identity</span><span class="attribute_bracket attribute">]</span>
 <span class="keyword">pub</span> <span class="keyword">mod</span> <span class="module declaration public">ops</span> <span class="brace">{</span>
     <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute library">lang</span> <span class="operator attribute">=</span> <span class="string_literal attribute">"fn_once"</span><span class="attribute_bracket attribute">]</span>
     <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration public">FnOnce</span><span class="angle">&lt;</span><span class="type_param declaration">Args</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="brace">}</span>
@@ -87,7 +87,7 @@ proc_macros::<span class="macro">mirror!</span> <span class="brace">{</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 
-<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="macro attribute default_library library">derive</span><span class="parenthesis attribute">(</span><span class="macro attribute default_library library">Copy</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
+<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="attribute attribute default_library library">derive</span><span class="parenthesis attribute">(</span><span class="derive attribute default_library library">Copy</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
 <span class="keyword">struct</span> <span class="struct declaration">FooCopy</span> <span class="brace">{</span>
     <span class="field declaration">x</span><span class="colon">:</span> <span class="builtin_type">u32</span><span class="comma">,</span>
 <span class="brace">}</span>

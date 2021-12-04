@@ -53,6 +53,7 @@ define_semantic_token_types![
     (COMMA, "comma"),
     (COMPARISON, "comparison"),
     (CONST_PARAMETER, "constParameter"),
+    (DERIVE, "derive"),
     (DOT, "dot"),
     (ESCAPE_SEQUENCE, "escapeSequence"),
     (FORMAT_SPECIFIER, "formatSpecifier"),

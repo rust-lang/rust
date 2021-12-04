@@ -57,7 +57,7 @@ pub(super) fn complete_derive(
             _ => (name, None),
         };
 
-        let mut item = CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label);
+        let mut item = CompletionItem::new(SymbolKind::Derive, ctx.source_range(), label);
         if let Some(docs) = mac.docs(ctx.db) {
             item.documentation(docs);
         }
@@ -67,7 +67,7 @@ pub(super) fn complete_derive(
         item.add_to(acc);
     }
 
-    flyimport_attribute(acc, ctx);
+    flyimport_derive(acc, ctx);
 }
 
 fn get_derives_in_scope(ctx: &CompletionContext) -> Vec<(hir::Name, MacroDef)> {
@@ -82,7 +82,7 @@ fn get_derives_in_scope(ctx: &CompletionContext) -> Vec<(hir::Name, MacroDef)> {
     result
 }
 
-fn flyimport_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
+fn flyimport_derive(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
     if ctx.token.kind() != SyntaxKind::IDENT {
         return None;
     };
@@ -106,13 +106,14 @@ fn flyimport_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option
                 hir::ItemInNs::Macros(mac) => Some((import, mac)),
                 _ => None,
             })
+            .filter(|&(_, mac)| mac.kind() == MacroKind::Derive)
             .filter(|&(_, mac)| !ctx.is_item_hidden(&hir::ItemInNs::Macros(mac)))
             .sorted_by_key(|(import, _)| {
                 compute_fuzzy_completion_order_key(&import.import_path, &user_input_lowercased)
             })
             .filter_map(|(import, mac)| {
                 let mut item = CompletionItem::new(
-                    SymbolKind::Attribute,
+                    SymbolKind::Derive,
                     ctx.source_range(),
                     mac.name(ctx.db)?.to_smol_str(),
                 );

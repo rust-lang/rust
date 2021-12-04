@@ -149,6 +149,7 @@ pub enum SymbolKind {
     BuiltinAttr,
     Const,
     ConstParam,
+    Derive,
     Enum,
     Field,
     Function,

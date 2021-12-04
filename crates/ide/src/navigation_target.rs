@@ -363,7 +363,13 @@ impl TryToNav for hir::MacroDef {
         let mut res = NavigationTarget::from_named(
             db,
             src.as_ref().with_value(name_owner),
-            SymbolKind::Macro,
+            match self.kind() {
+                hir::MacroKind::Declarative
+                | hir::MacroKind::BuiltIn
+                | hir::MacroKind::ProcMacro => SymbolKind::Macro,
+                hir::MacroKind::Derive => SymbolKind::Derive,
+                hir::MacroKind::Attr => SymbolKind::Attribute,
+            },
         );
         res.docs = self.docs(db);
         Some(res)

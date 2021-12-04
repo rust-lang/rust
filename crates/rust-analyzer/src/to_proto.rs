@@ -50,9 +50,10 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::Enum => lsp_types::SymbolKind::ENUM,
         SymbolKind::Variant => lsp_types::SymbolKind::ENUM_MEMBER,
         SymbolKind::Trait => lsp_types::SymbolKind::INTERFACE,
-        SymbolKind::Macro | SymbolKind::BuiltinAttr | SymbolKind::Attribute => {
-            lsp_types::SymbolKind::FUNCTION
-        }
+        SymbolKind::Macro
+        | SymbolKind::BuiltinAttr
+        | SymbolKind::Attribute
+        | SymbolKind::Derive => lsp_types::SymbolKind::FUNCTION,
         SymbolKind::Module | SymbolKind::ToolModule => lsp_types::SymbolKind::MODULE,
         SymbolKind::TypeAlias | SymbolKind::TypeParam => lsp_types::SymbolKind::TYPE_PARAMETER,
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,
@@ -112,6 +113,7 @@ pub(crate) fn completion_item_kind(
             SymbolKind::Attribute => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::Const => lsp_types::CompletionItemKind::CONSTANT,
             SymbolKind::ConstParam => lsp_types::CompletionItemKind::TYPE_PARAMETER,
+            SymbolKind::Derive => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::Enum => lsp_types::CompletionItemKind::ENUM,
             SymbolKind::Field => lsp_types::CompletionItemKind::FIELD,
             SymbolKind::Function => lsp_types::CompletionItemKind::FUNCTION,
@@ -471,6 +473,7 @@ fn semantic_token_type_and_modifiers(
     let type_ = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
             SymbolKind::Attribute => semantic_tokens::ATTRIBUTE,
+            SymbolKind::Derive => semantic_tokens::DERIVE,
             SymbolKind::Module => lsp_types::SemanticTokenType::NAMESPACE,
             SymbolKind::Impl => semantic_tokens::TYPE_ALIAS,
             SymbolKind::Field => lsp_types::SemanticTokenType::PROPERTY,
