@@ -129,36 +129,66 @@ error: `macro_export` attribute cannot be used at crate level
    |
 LL | #![macro_export]
    | ^^^^^^^^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[macro_export]
+   |
 
 error: `rustc_main` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:14:1
    |
 LL | #![rustc_main]
    | ^^^^^^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[rustc_main]
+   | ~~~~~~~~~~~~~
 
 error: `start` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:16:1
    |
 LL | #![start]
    | ^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[start]
+   |
 
 error: `repr` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:18:1
    |
 LL | #![repr()]
    | ^^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[repr()]
+   |
 
 error: `path` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:20:1
    |
 LL | #![path = "3800"]
    | ^^^^^^^^^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[path = "3800"]
+   |
 
 error: `automatically_derived` attribute cannot be used at crate level
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:22:1
    |
 LL | #![automatically_derived]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL | #[automatically_derived]
+   |
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:36:17

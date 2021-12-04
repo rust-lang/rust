@@ -1953,7 +1953,12 @@ fn is_c_like_enum(item: &Item<'_>) -> bool {
     }
 }
 
+// FIXME: Fix "Cannot determine resolution" error and remove built-in macros
+// from this check.
 fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
+    // Check for builtin attributes at the crate level
+    // which were unsuccessfully resolved due to cannot determine
+    // resolution for the attribute macro error.
     const ATTRS_TO_CHECK: &[Symbol] = &[
         sym::macro_export,
         sym::repr,
@@ -1961,20 +1966,39 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         sym::automatically_derived,
         sym::start,
         sym::rustc_main,
+        sym::derive,
+        sym::test,
+        sym::test_case,
+        sym::global_allocator,
+        sym::bench,
     ];
 
     for attr in attrs {
-        for attr_to_check in ATTRS_TO_CHECK {
-            if attr.has_name(*attr_to_check) {
-                tcx.sess
-                    .struct_span_err(
+        // This function should only be called with crate attributes
+        // which are inner attributes always but lets check to make sure
+        if attr.style == AttrStyle::Inner {
+            for attr_to_check in ATTRS_TO_CHECK {
+                if attr.has_name(*attr_to_check) {
+                    let mut err = tcx.sess.struct_span_err(
                         attr.span,
                         &format!(
                             "`{}` attribute cannot be used at crate level",
                             attr_to_check.to_ident_string()
                         ),
-                    )
-                    .emit();
+                    );
+                    // Only emit an error with a suggestion if we can create a
+                    // string out of the attribute span
+                    if let Ok(src) = tcx.sess.source_map().span_to_snippet(attr.span) {
+                        let replacement = src.replace("#!", "#");
+                        err.span_suggestion_verbose(
+                            attr.span,
+                            "perhaps you meant to use an outer attribute",
+                            replacement,
+                            rustc_errors::Applicability::MachineApplicable,
+                        );
+                    }
+                    err.emit()
+                }
             }
         }
     }

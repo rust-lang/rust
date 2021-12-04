@@ -6,5 +6,5 @@
 
 #![bench                   = "4100"]
 //~^ ERROR cannot determine resolution for the attribute macro `bench`
-
+//~^^ ERROR `bench` attribute cannot be used at crate level
 fn main() {}
