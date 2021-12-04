@@ -208,6 +208,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                             MutatingUseContext::Store
                                 | MutatingUseContext::Drop
                                 | MutatingUseContext::AsmOutput
+                                | MutatingUseContext::LlvmAsmOutput
                         )
                     );
                 // If this is just an assignment, determine if the assigned type needs dropping.

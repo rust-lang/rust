@@ -118,7 +118,14 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         true
     }
 
-    fn codegen_inline_asm(&mut self, template: &[InlineAsmTemplatePiece], rust_operands: &[InlineAsmOperandRef<'tcx, Self>], options: InlineAsmOptions, _span: &[Span], _instance: Instance<'_>) {
+    fn codegen_inline_asm(&mut self, template: &[InlineAsmTemplatePiece], rust_operands: &[InlineAsmOperandRef<'tcx, Self>], options: InlineAsmOptions, span: &[Span], _instance: Instance<'_>, _dest_catch_funclet: Option<(Self::BasicBlock, Self::BasicBlock, Option<&Self::Funclet>)>) {
+        if options.contains(InlineAsmOptions::MAY_UNWIND) {
+            self.sess()
+                .struct_span_err(span[0], "GCC backend does not support unwinding from inline asm")
+                .emit();
+            return;
+        }
+
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
         let is_x86 = matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64);
         let att_dialect = is_x86 && options.contains(InlineAsmOptions::ATT_SYNTAX);

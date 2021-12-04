@@ -2,7 +2,7 @@
 //!
 //! A local will be maybe initialized if *any* projections of that local might be initialized.
 
-use crate::GenKill;
+use crate::{CallReturnPlaces, GenKill};
 
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
@@ -53,11 +53,9 @@ impl crate::GenKillAnalysis<'tcx> for MaybeInitializedLocals {
         &self,
         trans: &mut impl GenKill<Self::Idx>,
         _block: BasicBlock,
-        _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
-        return_place: mir::Place<'tcx>,
+        return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        trans.gen(return_place.local)
+        return_places.for_each(|place| trans.gen(place.local));
     }
 
     /// See `Analysis::apply_yield_resume_effect`.
@@ -83,7 +81,11 @@ where
         use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, NonUseContext};
         match context {
             // These are handled specially in `call_return_effect` and `yield_resume_effect`.
-            PlaceContext::MutatingUse(MutatingUseContext::Call | MutatingUseContext::Yield) => {}
+            PlaceContext::MutatingUse(
+                MutatingUseContext::Call
+                | MutatingUseContext::AsmOutput
+                | MutatingUseContext::Yield,
+            ) => {}
 
             // Otherwise, when a place is mutated, we must consider it possibly initialized.
             PlaceContext::MutatingUse(_) => self.trans.gen(local),

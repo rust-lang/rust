@@ -7,6 +7,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Local, Location, Statement, StatementKind};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::JoinSemiLattice;
+use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces};
 use rustc_span::DUMMY_SP;
 
 use std::fmt;
@@ -80,18 +81,18 @@ where
     fn apply_call_return_effect(
         &mut self,
         _block: BasicBlock,
-        _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
-        return_place: mir::Place<'tcx>,
+        return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        // We cannot reason about another function's internals, so use conservative type-based
-        // qualification for the result of a function call.
-        let return_ty = return_place.ty(self.ccx.body, self.ccx.tcx).ty;
-        let qualif = Q::in_any_value_of_ty(self.ccx, return_ty);
+        return_places.for_each(|place| {
+            // We cannot reason about another function's internals, so use conservative type-based
+            // qualification for the result of a function call.
+            let return_ty = place.ty(self.ccx.body, self.ccx.tcx).ty;
+            let qualif = Q::in_any_value_of_ty(self.ccx, return_ty);
 
-        if !return_place.is_indirect() {
-            self.assign_qualif_direct(&return_place, qualif);
-        }
+            if !place.is_indirect() {
+                self.assign_qualif_direct(&place, qualif);
+            }
+        });
     }
 
     fn address_of_allows_mutation(&self, _mt: mir::Mutability, _place: mir::Place<'tcx>) -> bool {
@@ -329,7 +330,7 @@ impl JoinSemiLattice for State {
     }
 }
 
-impl<Q> rustc_mir_dataflow::AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<Q> AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -349,7 +350,7 @@ where
     }
 }
 
-impl<Q> rustc_mir_dataflow::Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -375,10 +376,8 @@ where
         &self,
         state: &mut Self::Domain,
         block: BasicBlock,
-        func: &mir::Operand<'tcx>,
-        args: &[mir::Operand<'tcx>],
-        return_place: mir::Place<'tcx>,
+        return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        self.transfer_function(state).apply_call_return_effect(block, func, args, return_place)
+        self.transfer_function(state).apply_call_return_effect(block, return_places)
     }
 }

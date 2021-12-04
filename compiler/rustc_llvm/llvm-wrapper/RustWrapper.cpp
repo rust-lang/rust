@@ -445,11 +445,20 @@ extern "C" LLVMValueRef
 LLVMRustInlineAsm(LLVMTypeRef Ty, char *AsmString, size_t AsmStringLen,
                   char *Constraints, size_t ConstraintsLen,
                   LLVMBool HasSideEffects, LLVMBool IsAlignStack,
-                  LLVMRustAsmDialect Dialect) {
+                  LLVMRustAsmDialect Dialect, LLVMBool CanThrow) {
+#if LLVM_VERSION_GE(13, 0)
   return wrap(InlineAsm::get(unwrap<FunctionType>(Ty),
                              StringRef(AsmString, AsmStringLen),
                              StringRef(Constraints, ConstraintsLen),
-                             HasSideEffects, IsAlignStack, fromRust(Dialect)));
+                             HasSideEffects, IsAlignStack,
+                             fromRust(Dialect), CanThrow));
+#else
+  return wrap(InlineAsm::get(unwrap<FunctionType>(Ty),
+                             StringRef(AsmString, AsmStringLen),
+                             StringRef(Constraints, ConstraintsLen),
+                             HasSideEffects, IsAlignStack,
+                             fromRust(Dialect)));
+#endif
 }
 
 extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,

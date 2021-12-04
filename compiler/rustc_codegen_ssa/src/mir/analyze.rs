@@ -211,6 +211,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
+                | MutatingUseContext::LlvmAsmOutput
                 | MutatingUseContext::AsmOutput
                 | MutatingUseContext::Borrow
                 | MutatingUseContext::AddressOf
@@ -275,9 +276,9 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 | TerminatorKind::SwitchInt { .. }
                 | TerminatorKind::Yield { .. }
                 | TerminatorKind::FalseEdge { .. }
-                | TerminatorKind::FalseUnwind { .. }
-                | TerminatorKind::InlineAsm { .. } => { /* nothing to do */ }
+                | TerminatorKind::FalseUnwind { .. } => { /* nothing to do */ }
                 TerminatorKind::Call { cleanup: unwind, .. }
+                | TerminatorKind::InlineAsm { cleanup: unwind, .. }
                 | TerminatorKind::Assert { cleanup: unwind, .. }
                 | TerminatorKind::DropAndReplace { unwind, .. }
                 | TerminatorKind::Drop { unwind, .. } => {
