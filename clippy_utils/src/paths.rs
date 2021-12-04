@@ -206,3 +206,4 @@ pub const WEAK_RC: [&str; 3] = ["alloc", "rc", "Weak"];
 pub const WRITE_MACRO: [&str; 3] = ["core", "macros", "write"];
 #[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
 pub const WRITELN_MACRO: [&str; 3] = ["core", "macros", "writeln"];
+pub const PTR_NON_NULL: [&str; 4] = ["core", "ptr", "non_null", "NonNull"];
