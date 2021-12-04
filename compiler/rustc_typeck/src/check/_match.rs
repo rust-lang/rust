@@ -80,7 +80,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.diverges.set(Diverges::Maybe);
                 match g {
                     hir::Guard::If(e) => {
-                        self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {});
+                        self.check_expr_has_type_or_error(e, tcx.types.bool, |_, _| {});
                     }
                     hir::Guard::IfLet(pat, e) => {
                         let scrutinee_ty = self.demand_scrutinee_type(
@@ -478,7 +478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: TypeVariableOriginKind::TypeInference,
                 span: scrut.span,
             });
-            self.check_expr_has_type_or_error(scrut, scrut_ty, |_| {});
+            self.check_expr_has_type_or_error(scrut, scrut_ty, |_, _| {});
             scrut_ty
         }
     }

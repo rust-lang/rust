@@ -59,7 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
-        extend_err: impl Fn(&mut DiagnosticBuilder<'_>),
+        extend_err: impl Fn(&mut DiagnosticBuilder<'_>, Ty<'tcx>),
     ) -> Ty<'tcx> {
         self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected), extend_err)
     }
@@ -68,7 +68,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-        extend_err: impl Fn(&mut DiagnosticBuilder<'_>),
+        extend_err: impl Fn(&mut DiagnosticBuilder<'_>, Ty<'tcx>),
     ) -> Ty<'tcx> {
         let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
         let mut ty = self.check_expr_with_expectation(expr, expected);
@@ -94,7 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
             let expr = expr.peel_drop_temps();
             self.suggest_deref_ref_or_into(&mut err, expr, expected_ty, ty, None);
-            extend_err(&mut err);
+            extend_err(&mut err, ty);
             err.emit();
         }
         ty
@@ -907,7 +907,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         orig_expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let cond_ty = self.check_expr_has_type_or_error(cond_expr, self.tcx.types.bool, |_| {});
+        let cond_ty = self.check_expr_has_type_or_error(cond_expr, self.tcx.types.bool, |_, _| {});
 
         self.warn_if_unreachable(
             cond_expr.hir_id,
@@ -1264,7 +1264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: element.span,
                 });
-                let element_ty = self.check_expr_has_type_or_error(&element, ty, |_| {});
+                let element_ty = self.check_expr_has_type_or_error(&element, ty, |_, _| {});
                 (element_ty, ty)
             }
         };
@@ -1508,8 +1508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             } else {
-                self.check_expr_has_type_or_error(base_expr, adt_ty, |_| {
-                    let base_ty = self.check_expr(base_expr);
+                self.check_expr_has_type_or_error(base_expr, adt_ty, |_, base_ty| {
                     let same_adt = match (adt_ty.kind(), base_ty.kind()) {
                         (ty::Adt(adt, _), ty::Adt(base_adt, _)) if adt == base_adt => true,
                         _ => false,
