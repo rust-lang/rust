@@ -91,9 +91,8 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
 
         let predicates = cx.tcx.explicit_predicates_of(item.def_id);
         for &(predicate, span) in predicates.predicates {
-            let trait_predicate = match predicate.kind().skip_binder() {
-                Trait(trait_predicate) => trait_predicate,
-                _ => continue,
+            let Trait(trait_predicate) = predicate.kind().skip_binder() else {
+                continue
             };
             if trait_predicate.constness == ty::BoundConstness::ConstIfConst {
                 // `~const Drop` definitely have meanings so avoid linting here.
@@ -106,9 +105,8 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                     continue;
                 }
                 cx.struct_span_lint(DROP_BOUNDS, span, |lint| {
-                    let needs_drop = match cx.tcx.get_diagnostic_item(sym::needs_drop) {
-                        Some(needs_drop) => needs_drop,
-                        None => return,
+                    let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
+                        return
                     };
                     let msg = format!(
                         "bounds on `{}` are most likely incorrect, consider instead \
@@ -123,17 +121,15 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx>) {
-        let bounds = match &ty.kind {
-            hir::TyKind::TraitObject(bounds, _lifetime, _syntax) => bounds,
-            _ => return,
+        let hir::TyKind::TraitObject(bounds, _lifetime, _syntax) = &ty.kind else {
+            return
         };
         for bound in &bounds[..] {
             let def_id = bound.trait_ref.trait_def_id();
             if cx.tcx.lang_items().drop_trait() == def_id {
                 cx.struct_span_lint(DYN_DROP, bound.span, |lint| {
-                    let needs_drop = match cx.tcx.get_diagnostic_item(sym::needs_drop) {
-                        Some(needs_drop) => needs_drop,
-                        None => return,
+                    let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop) else {
+                        return
                     };
                     let msg = format!(
                         "types that do not implement `Drop` can still have drop glue, consider \
