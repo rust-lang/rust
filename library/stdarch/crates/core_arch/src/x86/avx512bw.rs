@@ -4227,6 +4227,330 @@ pub unsafe fn _mm_storeu_epi8(mem_addr: *mut i8, a: __m128i) {
     ptr::write_unaligned(mem_addr as *mut __m128i, a);
 }
 
+/// Load packed 16-bit integers from memory into dst using writemask k
+/// (elements are copied from src when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_loadu_epi16)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw")]
+pub unsafe fn _mm512_mask_loadu_epi16(src: __m512i, k: __mmask32, mem_addr: *const i16) -> __m512i {
+    let mut dst: __m512i = src;
+    asm!(
+         "vmovdqu16 {2}{{{1}}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         inout(zmm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 16-bit integers from memory into dst using zeromask k
+/// (elements are zeroed out when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_loadu_epi16)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw")]
+pub unsafe fn _mm512_maskz_loadu_epi16(k: __mmask32, mem_addr: *const i16) -> __m512i {
+    let mut dst: __m512i;
+    asm!(
+         "vmovdqu16 {2}{{{1}}} {{z}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         out(zmm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 8-bit integers from memory into dst using writemask k
+/// (elements are copied from src when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_loadu_epi8)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw")]
+pub unsafe fn _mm512_mask_loadu_epi8(src: __m512i, k: __mmask64, mem_addr: *const i8) -> __m512i {
+    let mut dst: __m512i = src;
+    asm!(
+         "vmovdqu8 {2}{{{1}}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         inout(zmm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 8-bit integers from memory into dst using zeromask k
+/// (elements are zeroed out when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_loadu_epi8)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw")]
+pub unsafe fn _mm512_maskz_loadu_epi8(k: __mmask64, mem_addr: *const i8) -> __m512i {
+    let mut dst: __m512i;
+    asm!(
+         "vmovdqu8 {2}{{{1}}} {{z}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         out(zmm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 16-bit integers from memory into dst using writemask k
+/// (elements are copied from src when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_loadu_epi16)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+pub unsafe fn _mm256_mask_loadu_epi16(src: __m256i, k: __mmask16, mem_addr: *const i16) -> __m256i {
+    let mut dst: __m256i = src;
+    asm!(
+         "vmovdqu16 {2}{{{1}}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         inout(ymm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 16-bit integers from memory into dst using zeromask k
+/// (elements are zeroed out when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_loadu_epi16)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+pub unsafe fn _mm256_maskz_loadu_epi16(k: __mmask16, mem_addr: *const i16) -> __m256i {
+    let mut dst: __m256i;
+    asm!(
+         "vmovdqu16 {2}{{{1}}} {{z}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         out(ymm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 8-bit integers from memory into dst using writemask k
+/// (elements are copied from src when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_loadu_epi8)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+pub unsafe fn _mm256_mask_loadu_epi8(src: __m256i, k: __mmask32, mem_addr: *const i8) -> __m256i {
+    let mut dst: __m256i = src;
+    asm!(
+         "vmovdqu8 {2}{{{1}}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         inout(ymm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 8-bit integers from memory into dst using zeromask k
+/// (elements are zeroed out when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_loadu_epi8)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+pub unsafe fn _mm256_maskz_loadu_epi8(k: __mmask32, mem_addr: *const i8) -> __m256i {
+    let mut dst: __m256i;
+    asm!(
+         "vmovdqu8 {2}{{{1}}} {{z}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         out(ymm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 16-bit integers from memory into dst using writemask k
+/// (elements are copied from src when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_loadu_epi16)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+pub unsafe fn _mm_mask_loadu_epi16(src: __m128i, k: __mmask8, mem_addr: *const i16) -> __m128i {
+    let mut dst: __m128i = src;
+    asm!(
+         "vmovdqu16 {2}{{{1}}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         inout(xmm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 16-bit integers from memory into dst using zeromask k
+/// (elements are zeroed out when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_loadu_epi16)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+pub unsafe fn _mm_maskz_loadu_epi16(k: __mmask8, mem_addr: *const i16) -> __m128i {
+    let mut dst: __m128i;
+    asm!(
+         "vmovdqu16 {2}{{{1}}} {{z}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         out(xmm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 8-bit integers from memory into dst using writemask k
+/// (elements are copied from src when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_loadu_epi8)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+pub unsafe fn _mm_mask_loadu_epi8(src: __m128i, k: __mmask16, mem_addr: *const i8) -> __m128i {
+    let mut dst: __m128i = src;
+    asm!(
+         "vmovdqu8 {2}{{{1}}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         inout(xmm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Load packed 8-bit integers from memory into dst using zeromask k
+/// (elements are zeroed out when the corresponding mask bit is not set).
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_loadu_epi8)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+pub unsafe fn _mm_maskz_loadu_epi8(k: __mmask16, mem_addr: *const i8) -> __m128i {
+    let mut dst: __m128i;
+    asm!(
+         "vmovdqu8 {2}{{{1}}} {{z}}, [{0}]",
+         in(reg) mem_addr,
+         in(kreg) k,
+         out(xmm_reg) dst,
+         options(pure, readonly, nostack)
+    );
+    dst
+}
+
+/// Store packed 16-bit integers from a into memory using writemask k.
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_storeu_epi16)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw")]
+pub unsafe fn _mm512_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask32, a: __m512i) {
+    asm!(
+         "vmovdqu16 [{0}]{{{1}}}, {2}",
+         in(reg) mem_addr,
+         in(kreg) mask,
+         in(zmm_reg) a,
+         options(nostack)
+    );
+}
+
+/// Store packed 8-bit integers from a into memory using writemask k.
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_storeu_epi8)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw")]
+pub unsafe fn _mm512_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask64, a: __m512i) {
+    asm!(
+         "vmovdqu8 [{0}]{{{1}}}, {2}",
+         in(reg) mem_addr,
+         in(kreg) mask,
+         in(zmm_reg) a,
+         options(nostack)
+    );
+}
+
+/// Store packed 16-bit integers from a into memory using writemask k.
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_storeu_epi16)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+pub unsafe fn _mm256_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask16, a: __m256i) {
+    asm!(
+         "vmovdqu16 [{0}]{{{1}}}, {2}",
+         in(reg) mem_addr,
+         in(kreg) mask,
+         in(ymm_reg) a,
+         options(nostack)
+    );
+}
+
+/// Store packed 8-bit integers from a into memory using writemask k.
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_storeu_epi8)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx")]
+pub unsafe fn _mm256_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask32, a: __m256i) {
+    asm!(
+         "vmovdqu8 [{0}]{{{1}}}, {2}",
+         in(reg) mem_addr,
+         in(kreg) mask,
+         in(ymm_reg) a,
+         options(nostack)
+    );
+}
+
+/// Store packed 16-bit integers from a into memory using writemask k.
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_storeu_epi16)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+pub unsafe fn _mm_mask_storeu_epi16(mem_addr: *mut i16, mask: __mmask8, a: __m128i) {
+    asm!(
+         "vmovdqu16 [{0}]{{{1}}}, {2}",
+         in(reg) mem_addr,
+         in(kreg) mask,
+         in(xmm_reg) a,
+         options(nostack)
+    );
+}
+
+/// Store packed 8-bit integers from a into memory using writemask k.
+/// mem_addr does not need to be aligned on any particular boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_storeu_epi8)
+#[inline]
+#[target_feature(enable = "avx512f,avx512bw,avx512vl,avx,sse")]
+pub unsafe fn _mm_mask_storeu_epi8(mem_addr: *mut i8, mask: __mmask16, a: __m128i) {
+    asm!(
+         "vmovdqu8 [{0}]{{{1}}}, {2}",
+         in(reg) mem_addr,
+         in(kreg) mask,
+         in(xmm_reg) a,
+         options(nostack)
+    );
+}
+
 /// Multiply packed signed 16-bit integers in a and b, producing intermediate signed 32-bit integers. Horizontally add adjacent pairs of intermediate 32-bit integers, and pack the results in dst.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_madd_epi16&expand=3511)
@@ -13824,6 +14148,284 @@ mod tests {
         let mut r = _mm_set1_epi32(0);
         _mm_storeu_epi8(&mut r as *mut _ as *mut i8, a);
         assert_eq_m128i(r, a);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw")]
+    unsafe fn test_mm512_mask_loadu_epi16() {
+        let src = _mm512_set1_epi16(42);
+        let a = &[
+            1_i16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31, 32,
+        ];
+        let p = a.as_ptr();
+        let m = 0b10101010_11001100_11101000_11001010;
+        let r = _mm512_mask_loadu_epi16(src, m, black_box(p));
+        let e = &[
+            42_i16, 2, 42, 4, 42, 42, 7, 8, 42, 42, 42, 12, 42, 14, 15, 16, 42, 42, 19, 20, 42, 42,
+            23, 24, 42, 26, 42, 28, 42, 30, 42, 32,
+        ];
+        let e = _mm512_loadu_epi16(e.as_ptr());
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw")]
+    unsafe fn test_mm512_maskz_loadu_epi16() {
+        let a = &[
+            1_i16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31, 32,
+        ];
+        let p = a.as_ptr();
+        let m = 0b10101010_11001100_11101000_11001010;
+        let r = _mm512_maskz_loadu_epi16(m, black_box(p));
+        let e = &[
+            0_i16, 2, 0, 4, 0, 0, 7, 8, 0, 0, 0, 12, 0, 14, 15, 16, 0, 0, 19, 20, 0, 0, 23, 24, 0,
+            26, 0, 28, 0, 30, 0, 32,
+        ];
+        let e = _mm512_loadu_epi16(e.as_ptr());
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw")]
+    unsafe fn test_mm512_mask_storeu_epi16() {
+        let mut r = [42_i16; 32];
+        let a = &[
+            1_i16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31, 32,
+        ];
+        let a = _mm512_loadu_epi16(a.as_ptr());
+        let m = 0b10101010_11001100_11101000_11001010;
+        _mm512_mask_storeu_epi16(r.as_mut_ptr(), m, a);
+        let e = &[
+            42_i16, 2, 42, 4, 42, 42, 7, 8, 42, 42, 42, 12, 42, 14, 15, 16, 42, 42, 19, 20, 42, 42,
+            23, 24, 42, 26, 42, 28, 42, 30, 42, 32,
+        ];
+        let e = _mm512_loadu_epi16(e.as_ptr());
+        assert_eq_m512i(_mm512_loadu_epi16(r.as_ptr()), e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw")]
+    unsafe fn test_mm512_mask_loadu_epi8() {
+        let src = _mm512_set1_epi8(42);
+        let a = &[
+            1_i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+            46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
+        ];
+        let p = a.as_ptr();
+        let m = 0b00000000_11111111_11111111_00000000_10101010_11001100_11101000_11001010;
+        let r = _mm512_mask_loadu_epi8(src, m, black_box(p));
+        let e = &[
+            42_i8, 2, 42, 4, 42, 42, 7, 8, 42, 42, 42, 12, 42, 14, 15, 16, 42, 42, 19, 20, 42, 42,
+            23, 24, 42, 26, 42, 28, 42, 30, 42, 32, 42, 42, 42, 42, 42, 42, 42, 42, 41, 42, 43, 44,
+            45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 42, 42, 42, 42, 42, 42, 42, 42,
+        ];
+        let e = _mm512_loadu_epi8(e.as_ptr());
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw")]
+    unsafe fn test_mm512_maskz_loadu_epi8() {
+        let a = &[
+            1_i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+            46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
+        ];
+        let p = a.as_ptr();
+        let m = 0b00000000_11111111_11111111_00000000_10101010_11001100_11101000_11001010;
+        let r = _mm512_maskz_loadu_epi8(m, black_box(p));
+        let e = &[
+            0_i8, 2, 0, 4, 0, 0, 7, 8, 0, 0, 0, 12, 0, 14, 15, 16, 0, 0, 19, 20, 0, 0, 23, 24, 0,
+            26, 0, 28, 0, 30, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+            50, 51, 52, 53, 54, 55, 56, 0, 0, 0, 0, 0, 0, 0, 0,
+        ];
+        let e = _mm512_loadu_epi8(e.as_ptr());
+        assert_eq_m512i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw")]
+    unsafe fn test_mm512_mask_storeu_epi8() {
+        let mut r = [42_i8; 64];
+        let a = &[
+            1_i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
+            46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
+        ];
+        let a = _mm512_loadu_epi8(a.as_ptr());
+        let m = 0b00000000_11111111_11111111_00000000_10101010_11001100_11101000_11001010;
+        _mm512_mask_storeu_epi8(r.as_mut_ptr(), m, a);
+        let e = &[
+            42_i8, 2, 42, 4, 42, 42, 7, 8, 42, 42, 42, 12, 42, 14, 15, 16, 42, 42, 19, 20, 42, 42,
+            23, 24, 42, 26, 42, 28, 42, 30, 42, 32, 42, 42, 42, 42, 42, 42, 42, 42, 41, 42, 43, 44,
+            45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 42, 42, 42, 42, 42, 42, 42, 42,
+        ];
+        let e = _mm512_loadu_epi8(e.as_ptr());
+        assert_eq_m512i(_mm512_loadu_epi8(r.as_ptr()), e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_loadu_epi16() {
+        let src = _mm256_set1_epi16(42);
+        let a = &[1_i16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let p = a.as_ptr();
+        let m = 0b11101000_11001010;
+        let r = _mm256_mask_loadu_epi16(src, m, black_box(p));
+        let e = &[
+            42_i16, 2, 42, 4, 42, 42, 7, 8, 42, 42, 42, 12, 42, 14, 15, 16,
+        ];
+        let e = _mm256_loadu_epi16(e.as_ptr());
+        assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm256_maskz_loadu_epi16() {
+        let a = &[1_i16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let p = a.as_ptr();
+        let m = 0b11101000_11001010;
+        let r = _mm256_maskz_loadu_epi16(m, black_box(p));
+        let e = &[0_i16, 2, 0, 4, 0, 0, 7, 8, 0, 0, 0, 12, 0, 14, 15, 16];
+        let e = _mm256_loadu_epi16(e.as_ptr());
+        assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_storeu_epi16() {
+        let mut r = [42_i16; 16];
+        let a = &[1_i16, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let a = _mm256_loadu_epi16(a.as_ptr());
+        let m = 0b11101000_11001010;
+        _mm256_mask_storeu_epi16(r.as_mut_ptr(), m, a);
+        let e = &[
+            42_i16, 2, 42, 4, 42, 42, 7, 8, 42, 42, 42, 12, 42, 14, 15, 16,
+        ];
+        let e = _mm256_loadu_epi16(e.as_ptr());
+        assert_eq_m256i(_mm256_loadu_epi16(r.as_ptr()), e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_loadu_epi8() {
+        let src = _mm256_set1_epi8(42);
+        let a = &[
+            1_i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31, 32,
+        ];
+        let p = a.as_ptr();
+        let m = 0b10101010_11001100_11101000_11001010;
+        let r = _mm256_mask_loadu_epi8(src, m, black_box(p));
+        let e = &[
+            42_i8, 2, 42, 4, 42, 42, 7, 8, 42, 42, 42, 12, 42, 14, 15, 16, 42, 42, 19, 20, 42, 42,
+            23, 24, 42, 26, 42, 28, 42, 30, 42, 32,
+        ];
+        let e = _mm256_loadu_epi8(e.as_ptr());
+        assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm256_maskz_loadu_epi8() {
+        let a = &[
+            1_i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31, 32,
+        ];
+        let p = a.as_ptr();
+        let m = 0b10101010_11001100_11101000_11001010;
+        let r = _mm256_maskz_loadu_epi8(m, black_box(p));
+        let e = &[
+            0_i8, 2, 0, 4, 0, 0, 7, 8, 0, 0, 0, 12, 0, 14, 15, 16, 0, 0, 19, 20, 0, 0, 23, 24, 0,
+            26, 0, 28, 0, 30, 0, 32,
+        ];
+        let e = _mm256_loadu_epi8(e.as_ptr());
+        assert_eq_m256i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm256_mask_storeu_epi8() {
+        let mut r = [42_i8; 32];
+        let a = &[
+            1_i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+            24, 25, 26, 27, 28, 29, 30, 31, 32,
+        ];
+        let a = _mm256_loadu_epi8(a.as_ptr());
+        let m = 0b10101010_11001100_11101000_11001010;
+        _mm256_mask_storeu_epi8(r.as_mut_ptr(), m, a);
+        let e = &[
+            42_i8, 2, 42, 4, 42, 42, 7, 8, 42, 42, 42, 12, 42, 14, 15, 16, 42, 42, 19, 20, 42, 42,
+            23, 24, 42, 26, 42, 28, 42, 30, 42, 32,
+        ];
+        let e = _mm256_loadu_epi8(e.as_ptr());
+        assert_eq_m256i(_mm256_loadu_epi8(r.as_ptr()), e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_loadu_epi16() {
+        let src = _mm_set1_epi16(42);
+        let a = &[1_i16, 2, 3, 4, 5, 6, 7, 8];
+        let p = a.as_ptr();
+        let m = 0b11001010;
+        let r = _mm_mask_loadu_epi16(src, m, black_box(p));
+        let e = &[42_i16, 2, 42, 4, 42, 42, 7, 8];
+        let e = _mm_loadu_epi16(e.as_ptr());
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm_maskz_loadu_epi16() {
+        let a = &[1_i16, 2, 3, 4, 5, 6, 7, 8];
+        let p = a.as_ptr();
+        let m = 0b11001010;
+        let r = _mm_maskz_loadu_epi16(m, black_box(p));
+        let e = &[0_i16, 2, 0, 4, 0, 0, 7, 8];
+        let e = _mm_loadu_epi16(e.as_ptr());
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_storeu_epi16() {
+        let mut r = [42_i16; 8];
+        let a = &[1_i16, 2, 3, 4, 5, 6, 7, 8];
+        let a = _mm_loadu_epi16(a.as_ptr());
+        let m = 0b11001010;
+        _mm_mask_storeu_epi16(r.as_mut_ptr(), m, a);
+        let e = &[42_i16, 2, 42, 4, 42, 42, 7, 8];
+        let e = _mm_loadu_epi16(e.as_ptr());
+        assert_eq_m128i(_mm_loadu_epi16(r.as_ptr()), e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_loadu_epi8() {
+        let src = _mm_set1_epi8(42);
+        let a = &[1_i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let p = a.as_ptr();
+        let m = 0b11101000_11001010;
+        let r = _mm_mask_loadu_epi8(src, m, black_box(p));
+        let e = &[
+            42_i8, 2, 42, 4, 42, 42, 7, 8, 42, 42, 42, 12, 42, 14, 15, 16,
+        ];
+        let e = _mm_loadu_epi8(e.as_ptr());
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm_maskz_loadu_epi8() {
+        let a = &[1_i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let p = a.as_ptr();
+        let m = 0b11101000_11001010;
+        let r = _mm_maskz_loadu_epi8(m, black_box(p));
+        let e = &[0_i8, 2, 0, 4, 0, 0, 7, 8, 0, 0, 0, 12, 0, 14, 15, 16];
+        let e = _mm_loadu_epi8(e.as_ptr());
+        assert_eq_m128i(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512bw,avx512vl")]
+    unsafe fn test_mm_mask_storeu_epi8() {
+        let mut r = [42_i8; 16];
+        let a = &[1_i8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let a = _mm_loadu_epi8(a.as_ptr());
+        let m = 0b11101000_11001010;
+        _mm_mask_storeu_epi8(r.as_mut_ptr(), m, a);
+        let e = &[
+            42_i8, 2, 42, 4, 42, 42, 7, 8, 42, 42, 42, 12, 42, 14, 15, 16,
+        ];
+        let e = _mm_loadu_epi8(e.as_ptr());
+        assert_eq_m128i(_mm_loadu_epi8(r.as_ptr()), e);
     }
 
     #[simd_test(enable = "avx512bw")]
