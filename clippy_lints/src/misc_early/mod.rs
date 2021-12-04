@@ -12,7 +12,7 @@ use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{Expr, ExprKind, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -342,7 +342,7 @@ impl EarlyLintPass for MiscEarlyLints {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx.sess, expr.span) {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 

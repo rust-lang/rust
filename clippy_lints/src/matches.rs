@@ -25,7 +25,7 @@ use rustc_hir::{
     Mutability, Node, Pat, PatKind, PathSegment, QPath, RangeEnd, TyKind,
 };
 use rustc_hir::{HirIdMap, HirIdSet};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty, TyS, VariantDef};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
