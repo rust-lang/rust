@@ -991,14 +991,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mut bx = self.build_block(bb);
         let mir = self.mir;
         let data = &mir[bb];
+        let statements = &data.statements;
+        let terminator = data.terminator();
 
         debug!("codegen_block({:?}={:?})", bb, data);
 
-        for statement in &data.statements {
+        for statement in statements {
             bx = self.codegen_statement(bx, statement);
         }
 
-        self.codegen_terminator(bx, bb, data.terminator());
+        self.codegen_terminator(bx, bb, terminator);
     }
 
     fn codegen_terminator(
