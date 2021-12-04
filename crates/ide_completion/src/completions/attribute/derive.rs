@@ -1,15 +1,16 @@
 //! Completion for derives
 use hir::{HasAttrs, MacroDef, MacroKind};
-use ide_db::helpers::{import_assets::ImportAssets, insert_use::ImportScope, FamousDefs};
+use ide_db::{
+    helpers::{import_assets::ImportAssets, insert_use::ImportScope, FamousDefs},
+    SymbolKind,
+};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::{ast, SmolStr, SyntaxKind};
 
 use crate::{
-    completions::flyimport::compute_fuzzy_completion_order_key,
-    context::CompletionContext,
-    item::{CompletionItem, CompletionItemKind},
-    Completions, ImportEdit,
+    completions::flyimport::compute_fuzzy_completion_order_key, context::CompletionContext,
+    item::CompletionItem, Completions, ImportEdit,
 };
 
 pub(super) fn complete_derive(
@@ -56,8 +57,7 @@ pub(super) fn complete_derive(
             _ => (name, None),
         };
 
-        let mut item =
-            CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), label);
+        let mut item = CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label);
         if let Some(docs) = mac.docs(ctx.db) {
             item.documentation(docs);
         }
@@ -112,7 +112,7 @@ fn flyimport_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option
             })
             .filter_map(|(import, mac)| {
                 let mut item = CompletionItem::new(
-                    CompletionItemKind::Attribute,
+                    SymbolKind::Attribute,
                     ctx.source_range(),
                     mac.name(ctx.db)?.to_smol_str(),
                 );

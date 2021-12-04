@@ -4,20 +4,19 @@
 //! for built-in attributes.
 
 use hir::HasAttrs;
-use ide_db::helpers::{
-    generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS},
-    parse_tt_as_comma_sep_paths,
+use ide_db::{
+    helpers::{
+        generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS},
+        parse_tt_as_comma_sep_paths,
+    },
+    SymbolKind,
 };
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
 use syntax::{algo::non_trivia_sibling, ast, AstNode, Direction, SyntaxKind, T};
 
-use crate::{
-    context::CompletionContext,
-    item::{CompletionItem, CompletionItemKind},
-    Completions,
-};
+use crate::{context::CompletionContext, item::CompletionItem, Completions};
 
 mod cfg;
 mod derive;
@@ -73,11 +72,8 @@ fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attrib
     });
 
     let add_completion = |attr_completion: &AttrCompletion| {
-        let mut item = CompletionItem::new(
-            CompletionItemKind::Attribute,
-            ctx.source_range(),
-            attr_completion.label,
-        );
+        let mut item =
+            CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), attr_completion.label);
 
         if let Some(lookup) = attr_completion.lookup {
             item.lookup_by(lookup);
@@ -107,7 +103,7 @@ fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attrib
         if let hir::ScopeDef::MacroDef(mac) = scope_def {
             if mac.kind() == hir::MacroKind::Attr {
                 let mut item = CompletionItem::new(
-                    CompletionItemKind::Attribute,
+                    SymbolKind::Attribute,
                     ctx.source_range(),
                     name.to_smol_str(),
                 );

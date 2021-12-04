@@ -41,6 +41,7 @@ define_semantic_token_types![
     (ANGLE, "angle"),
     (ARITHMETIC, "arithmetic"),
     (ATTRIBUTE, "attribute"),
+    (ATTRIBUTE_BRACKET, "attributeBracket"),
     (BITWISE, "bitwise"),
     (BOOLEAN, "boolean"),
     (BRACE, "brace"),

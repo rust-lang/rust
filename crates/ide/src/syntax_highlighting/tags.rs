@@ -18,7 +18,7 @@ pub struct HlMods(u32);
 pub enum HlTag {
     Symbol(SymbolKind),
 
-    Attribute,
+    AttributeBracket,
     BoolLiteral,
     BuiltinType,
     ByteLiteral,
@@ -124,6 +124,7 @@ impl HlTag {
     fn as_str(self) -> &'static str {
         match self {
             HlTag::Symbol(symbol) => match symbol {
+                SymbolKind::Attribute => "attribute",
                 SymbolKind::BuiltinAttr => "builtin_attr",
                 SymbolKind::Const => "constant",
                 SymbolKind::ConstParam => "const_param",
@@ -147,7 +148,7 @@ impl HlTag {
                 SymbolKind::ValueParam => "value_param",
                 SymbolKind::Variant => "enum_variant",
             },
-            HlTag::Attribute => "attribute",
+            HlTag::AttributeBracket => "attribute_bracket",
             HlTag::BoolLiteral => "bool_literal",
             HlTag::BuiltinType => "builtin_type",
             HlTag::ByteLiteral => "byte_literal",

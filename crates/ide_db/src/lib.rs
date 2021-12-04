@@ -145,6 +145,7 @@ fn line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SymbolKind {
+    Attribute,
     BuiltinAttr,
     Const,
     ConstParam,

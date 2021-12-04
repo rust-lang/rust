@@ -133,7 +133,7 @@ fn token(
                 _ if parent_matches::<ast::RangeExpr>(&token) => HlOperator::Other.into(),
                 _ if parent_matches::<ast::RangePat>(&token) => HlOperator::Other.into(),
                 _ if parent_matches::<ast::RestPat>(&token) => HlOperator::Other.into(),
-                _ if parent_matches::<ast::Attr>(&token) => HlTag::Attribute.into(),
+                _ if parent_matches::<ast::Attr>(&token) => HlTag::AttributeBracket.into(),
                 kind => match kind {
                     T!['['] | T![']'] => HlPunct::Bracket,
                     T!['{'] | T!['}'] => HlPunct::Brace,
@@ -200,7 +200,7 @@ fn node(
                 return None;
             },
             ast::Attr(__) => {
-                HlTag::Attribute.into()
+                HlTag::AttributeBracket.into()
             },
             // Highlight definitions depending on the "type" of the definition.
             ast::Name(name) => {

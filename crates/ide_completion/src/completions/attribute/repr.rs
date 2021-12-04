@@ -1,12 +1,9 @@
 //! Completion for representations.
 
+use ide_db::SymbolKind;
 use syntax::ast;
 
-use crate::{
-    context::CompletionContext,
-    item::{CompletionItem, CompletionItemKind},
-    Completions,
-};
+use crate::{context::CompletionContext, item::CompletionItem, Completions};
 
 pub(super) fn complete_repr(acc: &mut Completions, ctx: &CompletionContext, input: ast::TokenTree) {
     if let Some(existing_reprs) = super::parse_comma_sep_expr(input) {
@@ -29,8 +26,7 @@ pub(super) fn complete_repr(acc: &mut Completions, ctx: &CompletionContext, inpu
                 continue;
             }
 
-            let mut item =
-                CompletionItem::new(CompletionItemKind::Attribute, ctx.source_range(), label);
+            let mut item = CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label);
             if let Some(lookup) = lookup {
                 item.lookup_by(lookup);
             }
