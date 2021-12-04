@@ -176,7 +176,7 @@ where
     }
 }
 
-#[stable(feature = "try_from_mut_slice_to_array", since = "1.58.0")]
+#[stable(feature = "try_from_mut_slice_to_array", since = "1.59.0")]
 impl<T, const N: usize> TryFrom<&mut [T]> for [T; N]
 where
     T: Copy,
