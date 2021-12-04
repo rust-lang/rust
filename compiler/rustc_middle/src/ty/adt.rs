@@ -64,6 +64,30 @@ bitflags! {
 /// Moreover, Rust only allows recursive data types through indirection.
 ///
 /// [adt]: https://en.wikipedia.org/wiki/Algebraic_data_type
+///
+/// # Recursive types
+///
+/// It may seem impossible to represent recursive types using [`Ty`],
+/// since [`TyKind::Adt`] includes [`AdtDef`], which includes its fields,
+/// creating a cycle. However, `AdtDef` does not actually include the *types*
+/// of its fields; it includes just their [`DefId`]s.
+///
+/// [`TyKind::Adt`]: ty::TyKind::Adt
+///
+/// For example, the following type:
+///
+/// ```
+/// struct S { x: Box<S> }
+/// ```
+///
+/// is essentially represented with [`Ty`] as the following pseudocode:
+///
+/// ```
+/// struct S { x }
+/// ```
+///
+/// where `x` here represents the `DefId` of `S.x`. Then, the `DefId`
+/// can be used with [`TyCtxt::type_of()`] to get the type of the field.
 pub struct AdtDef {
     /// The `DefId` of the struct, enum or union item.
     pub did: DefId,

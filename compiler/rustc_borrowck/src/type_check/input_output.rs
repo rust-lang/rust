@@ -117,9 +117,29 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         }
 
-        assert!(body.yield_ty().is_some() == universal_regions.yield_ty.is_some());
-        if let Some(mir_yield_ty) = body.yield_ty() {
-            let ur_yield_ty = universal_regions.yield_ty.unwrap();
+        debug!(
+            "equate_inputs_and_outputs: body.yield_ty {:?}, universal_regions.yield_ty {:?}",
+            body.yield_ty(),
+            universal_regions.yield_ty
+        );
+
+        // We will not have a universal_regions.yield_ty if we yield (by accident)
+        // outside of a generator and return an `impl Trait`, so emit a delay_span_bug
+        // because we don't want to panic in an assert here if we've already got errors.
+        if body.yield_ty().is_some() != universal_regions.yield_ty.is_some() {
+            self.tcx().sess.delay_span_bug(
+                body.span,
+                &format!(
+                    "Expected body to have yield_ty ({:?}) iff we have a UR yield_ty ({:?})",
+                    body.yield_ty(),
+                    universal_regions.yield_ty,
+                ),
+            );
+        }
+
+        if let (Some(mir_yield_ty), Some(ur_yield_ty)) =
+            (body.yield_ty(), universal_regions.yield_ty)
+        {
             let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
             self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty, yield_span);
         }

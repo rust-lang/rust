@@ -1027,6 +1027,24 @@ fn check_matcher_core(
                                 ),
                             );
                             err.span_label(sp, format!("not allowed after `{}` fragments", kind));
+
+                            if kind == NonterminalKind::PatWithOr
+                                && sess.edition == Edition::Edition2021
+                                && next_token.is_token(&BinOp(token::BinOpToken::Or))
+                            {
+                                let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
+                                    span,
+                                    name,
+                                    Some(NonterminalKind::PatParam { inferred: false }),
+                                ));
+                                err.span_suggestion(
+                                    span,
+                                    &format!("try a `pat_param` fragment specifier instead"),
+                                    suggestion,
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+
                             let msg = "allowed there are: ";
                             match possible {
                                 &[] => {}

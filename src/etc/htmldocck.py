@@ -90,9 +90,19 @@ There are a number of supported commands:
   highlights for example. If you want to simply check for the presence of
   a given node or attribute, use an empty string (`""`) as a `PATTERN`.
 
-* `@count PATH XPATH COUNT' checks for the occurrence of the given XPath
+* `@count PATH XPATH COUNT` checks for the occurrence of the given XPath
   in the specified file. The number of occurrences must match the given
   count.
+
+* `@snapshot NAME PATH XPATH` creates a snapshot test named NAME.
+  A snapshot test captures a subtree of the DOM, at the location
+  determined by the XPath, and compares it to a pre-recorded value
+  in a file. The file's name is the test's name with the `.rs` extension
+  replaced with `.NAME.html`, where NAME is the snapshot's name.
+
+  htmldocck supports the `--bless` option to accept the current subtree
+  as expected, saving it to the file determined by the snapshot's name.
+  compiletest's `--bless` flag is forwarded to htmldocck.
 
 * `@has-dir PATH` checks for the existence of the given directory.
 
@@ -136,6 +146,10 @@ except NameError:
 
 
 channel = os.environ["DOC_RUST_LANG_ORG_CHANNEL"]
+
+# Initialized in main
+rust_test_path = None
+bless = None
 
 class CustomHTMLParser(HTMLParser):
     """simplified HTML parser.
@@ -387,6 +401,32 @@ def get_tree_count(tree, path):
     return len(tree.findall(path))
 
 
+def check_snapshot(snapshot_name, tree):
+    assert rust_test_path.endswith('.rs')
+    snapshot_path = '{}.{}.{}'.format(rust_test_path[:-3], snapshot_name, 'html')
+    try:
+        with open(snapshot_path, 'r') as snapshot_file:
+            expected_str = snapshot_file.read()
+    except FileNotFoundError:
+        if bless:
+            expected_str = None
+        else:
+            raise FailedCheck('No saved snapshot value')
+
+    actual_str = ET.tostring(tree).decode('utf-8')
+
+    if expected_str != actual_str:
+        if bless:
+            with open(snapshot_path, 'w') as snapshot_file:
+                snapshot_file.write(actual_str)
+        else:
+            print('--- expected ---\n')
+            print(expected_str)
+            print('\n\n--- actual ---\n')
+            print(actual_str)
+            print()
+            raise FailedCheck('Actual snapshot value is different than expected')
+
 def stderr(*args):
     if sys.version_info.major < 3:
         file = codecs.getwriter('utf-8')(sys.stderr)
@@ -448,6 +488,28 @@ def check_command(c, cache):
                 ret = expected == found
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+
+        elif c.cmd == 'snapshot':  # snapshot test
+            if len(c.args) == 3:  # @snapshot <snapshot-name> <html-path> <xpath>
+                [snapshot_name, html_path, pattern] = c.args
+                tree = cache.get_tree(html_path)
+                xpath = normalize_xpath(pattern)
+                subtrees = tree.findall(xpath)
+                if len(subtrees) == 1:
+                    [subtree] = subtrees
+                    try:
+                        check_snapshot(snapshot_name, subtree)
+                        ret = True
+                    except FailedCheck as err:
+                        cerr = str(err)
+                        ret = False
+                elif len(subtrees) == 0:
+                    raise FailedCheck('XPATH did not match')
+                else:
+                    raise FailedCheck('Expected 1 match, but found {}'.format(len(subtrees)))
+            else:
+                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+
         elif c.cmd == 'has-dir':  # has-dir test
             if len(c.args) == 1:  # @has-dir <path> = has-dir test
                 try:
@@ -458,11 +520,13 @@ def check_command(c, cache):
                     ret = False
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+
         elif c.cmd == 'valid-html':
             raise InvalidCheck('Unimplemented @valid-html')
 
         elif c.cmd == 'valid-links':
             raise InvalidCheck('Unimplemented @valid-links')
+
         else:
             raise InvalidCheck('Unrecognized @{}'.format(c.cmd))
 
@@ -483,11 +547,19 @@ def check(target, commands):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        stderr('Usage: {} <doc dir> <template>'.format(sys.argv[0]))
+    if len(sys.argv) not in [3, 4]:
+        stderr('Usage: {} <doc dir> <template> [--bless]'.format(sys.argv[0]))
         raise SystemExit(1)
 
-    check(sys.argv[1], get_commands(sys.argv[2]))
+    rust_test_path = sys.argv[2]
+    if len(sys.argv) > 3 and sys.argv[3] == '--bless':
+        bless = True
+    else:
+        # We only support `--bless` at the end of the arguments.
+        # This assert is to prevent silent failures.
+        assert '--bless' not in sys.argv
+        bless = False
+    check(sys.argv[1], get_commands(rust_test_path))
     if ERR_COUNT:
         stderr("\nEncountered {} errors".format(ERR_COUNT))
         raise SystemExit(1)
