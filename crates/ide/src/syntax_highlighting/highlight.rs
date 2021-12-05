@@ -262,6 +262,13 @@ fn highlight_name_ref(
         None if name_ref.self_token().is_some() && is_in_fn_with_self_param(&name_ref) => {
             return SymbolKind::SelfParam.into()
         }
+        // FIXME: This is required for helper attributes used by proc-macros, as those do not map down
+        // to anything when used.
+        // We can fix this for derive attributes since derive helpers are recorded, but not for
+        // general attributes.
+        None if name_ref.syntax().ancestors().any(|it| it.kind() == ATTR) => {
+            return HlTag::Symbol(SymbolKind::Attribute).into();
+        }
         None => return HlTag::UnresolvedReference.into(),
     };
     let mut h = match name_class {
