@@ -25,14 +25,23 @@ Otherwise, have a great day =^.^=
         blockquote { font-size: 1em; }
         [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak { display: none !important; }
 
+        .dropdown-menu {
+            color: var(--fg);
+            background: var(--theme-popup-bg);
+            border: 1px solid var(--theme-popup-border);
+        }
+
+        .dropdown-menu .divider {
+            background-color: var(--theme-popup-border);
+        }
+
         .dropdown-menu .checkbox { 
-            width: 100%;;
+            width: 100%;
             display: block;
             padding: 3px 20px;
             clear: both;
             font-weight: 400;
             line-height: 1.42857143;
-            color: #333;
             white-space: nowrap;
             margin: 0;
          }
@@ -44,14 +53,23 @@ Otherwise, have a great day =^.^=
 
          .dropdown-menu .checkbox input { 
              position: relative;
-             margin: 0;
+             margin: 0 0.5rem 0;
              padding: 0;
+             vertical-align: middle;
          }
 
          .dropdown-menu .checkbox:hover {
-            color: #262626;
-            text-decoration: none;
-            background-color: #f5f5f5;
+            background-color: var(--theme-hover);
+        }
+
+        div.panel div.panel-body button.dropdown-toggle {
+            background: var(--searchbar-bg);
+            color: var(--searchbar-fg);
+            border-color: var(--theme-popup-border);
+        }
+
+        div.panel div.panel-body button.dropdown-toggle:hover {
+            box-shadow: 0 0 3px var(--searchbar-shadow-color);
         }
 
         .dropdown-toggle .badge {
@@ -271,7 +289,7 @@ Otherwise, have a great day =^.^=
 
     </style>
 </head>
-<body>
+<body ng-app="clippy" ng-controller="lintList" ng-click="toggleDropdown(undefined, $event)">
     <div id="theme-icon" class="theme-icon">&#128396;</div>
     <ul id="theme-menu" class="theme-choice" style="display: none;">
         <li id="light">Light</li>
@@ -281,7 +299,7 @@ Otherwise, have a great day =^.^=
         <li id="ayu">Ayu</li>
     </ul>
 
-    <div class="container" ng-app="clippy" ng-controller="lintList" ng-click="toggleDropdown(undefined, $event)">
+    <div class="container">
         <div class="page-header">
             <h1>Clippy Lints</h1>
         </div>
@@ -304,7 +322,8 @@ Otherwise, have a great day =^.^=
             <div class="panel panel-default" ng-show="data">
                 <div class="panel-body row filter-panel">
                     <div class="col-md-12 form-horizontal">
-                        <div class="btn-group" ng-class="{ open: selectedDropdown == 'levels' }" ng-click="toggleDropdown('levels', $event)">
+                        <div class="btn-group" ng-class="{ open: selectedDropdown == 'levels' }"
+                            ng-click="toggleDropdown('levels', $event)">
                             <button type="button" class="btn btn-default dropdown-toggle">
                                 Lint levels <span class="badge">{{selectedValuesCount(levels)}}</span> <span class="caret"></span>
                             </button>
@@ -328,7 +347,8 @@ Otherwise, have a great day =^.^=
                                 </li>
                             </ul>
                         </div>
-                        <div class="btn-group" ng-class="{ open: selectedDropdown == 'groups' }" ng-click="toggleDropdown('groups', $event)">
+                        <div class="btn-group" ng-class="{ open: selectedDropdown == 'groups' }"
+                            ng-click="toggleDropdown('groups', $event)">
                             <button type="button" class="btn btn-default dropdown-toggle">
                                 Lint groups <span class="badge">{{selectedValuesCount(groups)}}</span> <span class="caret"></span>
                             </button>
@@ -516,7 +536,11 @@ Otherwise, have a great day =^.^=
             };
             $scope.groups = GROUPS_FILTER_DEFAULT;
             $scope.toggleDropdown = function (name, $event) {
-                $scope.selectedDropdown = name;
+                if (name === $scope.selectedDropdown && $event.path.find(x => x.tagName === 'BUTTON')) {
+                    $scope.selectedDropdown = undefined;
+                } else {
+                    $scope.selectedDropdown = name;
+                }
                 $event.stopPropagation();
             }
             $scope.toggleLevels = function (value) {
