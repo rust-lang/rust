@@ -1019,8 +1019,13 @@ pub(crate) fn handle_code_action(
     for fix in snap.check_fixes.get(&frange.file_id).into_iter().flatten() {
         // FIXME: this mapping is awkward and shouldn't exist. Refactor
         // `snap.check_fixes` to not convert to LSP prematurely.
-        let fix_range = from_proto::text_range(&line_index, fix.range);
-        if fix_range.intersect(frange.range).is_some() {
+        let intersect_fix_range = fix
+            .ranges
+            .iter()
+            .copied()
+            .map(|range| from_proto::text_range(&line_index, range))
+            .any(|fix_range| fix_range.intersect(frange.range).is_some());
+        if intersect_fix_range {
             res.push(fix.action.clone());
         }
     }
