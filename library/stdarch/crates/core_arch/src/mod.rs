@@ -55,6 +55,16 @@ pub mod arch {
         pub use crate::core_arch::aarch64::*;
     }
 
+    /// Platform-specific intrinsics for the `riscv` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "riscv32", target_arch = "riscv64", doc))]
+    #[doc(cfg(any(target_arch = "riscv32", target_arch = "riscv64")))]
+    #[unstable(feature = "stdsimd", issue = "27731")]
+    pub mod riscv {
+        pub use crate::core_arch::riscv::*;
+    }
+
     /// Platform-specific intrinsics for the `wasm32` platform.
     ///
     /// This module provides intrinsics specific to the WebAssembly
@@ -250,6 +260,10 @@ mod aarch64;
 #[cfg(any(target_arch = "arm", doc))]
 #[doc(cfg(any(target_arch = "arm")))]
 mod arm;
+
+#[cfg(any(target_arch = "riscv32", target_arch = "riscv64", doc))]
+#[doc(cfg(any(target_arch = "riscv32", target_arch = "riscv64")))]
+mod riscv;
 
 #[cfg(any(target_family = "wasm", doc))]
 #[doc(cfg(target_family = "wasm"))]
