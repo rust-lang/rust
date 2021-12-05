@@ -2,6 +2,7 @@
 
 use std::iter;
 
+use hir::ScopeDef;
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
@@ -31,12 +32,12 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
             if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
                 for (name, def) in module.scope(ctx.db, context_module) {
-                    if let hir::ScopeDef::MacroDef(macro_def) = def {
+                    if let ScopeDef::MacroDef(macro_def) = def {
                         if macro_def.is_fn_like() {
                             acc.add_macro(ctx, Some(name.clone()), macro_def);
                         }
                     }
-                    if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
+                    if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
                         acc.add_resolution(ctx, name, &def);
                     }
                 }
@@ -44,17 +45,32 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             return;
         }
         Some(ImmediateLocation::Visibility(_)) => {
-            if let hir::PathResolution::Def(hir::ModuleDef::Module(resolved)) = resolution {
+            if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
                 if let Some(current_module) = ctx.scope.module() {
                     if let Some(next) = current_module
                         .path_to_root(ctx.db)
                         .into_iter()
-                        .take_while(|&it| it != resolved)
+                        .take_while(|&it| it != module)
                         .next()
                     {
                         if let Some(name) = next.name(ctx.db) {
-                            acc.add_resolution(ctx, name, &hir::ScopeDef::ModuleDef(next.into()));
+                            acc.add_resolution(ctx, name, &ScopeDef::ModuleDef(next.into()));
                         }
+                    }
+                }
+            }
+            return;
+        }
+        Some(ImmediateLocation::Attribute(_)) => {
+            if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
+                for (name, def) in module.scope(ctx.db, context_module) {
+                    let add_resolution = match def {
+                        ScopeDef::MacroDef(mac) => mac.is_attr(),
+                        ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => true,
+                        _ => false,
+                    };
+                    if add_resolution {
+                        acc.add_resolution(ctx, name, &def);
                     }
                 }
             }
@@ -91,7 +107,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
                 if ctx.in_use_tree() {
-                    if let hir::ScopeDef::Unknown = def {
+                    if let ScopeDef::Unknown = def {
                         if let Some(ast::NameLike::NameRef(name_ref)) = ctx.name_syntax.as_ref() {
                             if name_ref.syntax().text() == name.to_smol_str().as_str() {
                                 // for `use self::foo$0`, don't suggest `foo` as a completion
@@ -104,16 +120,16 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
                 let add_resolution = match def {
                     // Don't suggest attribute macros and derives.
-                    hir::ScopeDef::MacroDef(mac) => mac.is_fn_like(),
+                    ScopeDef::MacroDef(mac) => mac.is_fn_like(),
                     // no values in type places
-                    hir::ScopeDef::ModuleDef(
+                    ScopeDef::ModuleDef(
                         hir::ModuleDef::Function(_)
                         | hir::ModuleDef::Variant(_)
                         | hir::ModuleDef::Static(_),
                     )
-                    | hir::ScopeDef::Local(_) => !ctx.expects_type(),
+                    | ScopeDef::Local(_) => !ctx.expects_type(),
                     // unless its a constant in a generic arg list position
-                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Const(_)) => {
+                    ScopeDef::ModuleDef(hir::ModuleDef::Const(_)) => {
                         !ctx.expects_type() || ctx.expects_generic_arg()
                     }
                     _ => true,

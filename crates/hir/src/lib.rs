@@ -1716,6 +1716,10 @@ impl MacroDef {
             MacroKind::Attr | MacroKind::Derive => false,
         }
     }
+
+    pub fn is_attr(&self) -> bool {
+        matches!(self.kind(), MacroKind::Attr)
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]

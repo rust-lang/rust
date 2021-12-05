@@ -9,12 +9,12 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[test]
-fn doesnt_complete_items() {
+fn proc_macros() {
     check(
         r#"
-struct Foo;
+//- proc_macros: identity
 #[$0]
-use self as this;
+struct Foo;
 "#,
         expect![[r#"
             at allow(…)
@@ -29,19 +29,29 @@ use self as this;
             at doc(alias = "…")
             at must_use
             at no_mangle
+            at derive(…)
+            at repr(…)
+            at non_exhaustive
+            kw self
+            kw super
+            kw crate
+            md proc_macros
         "#]],
     )
 }
 
 #[test]
-fn doesnt_complete_qualified() {
+fn proc_macros_qualified() {
     check(
         r#"
+//- proc_macros: identity
+#[proc_macros::$0]
 struct Foo;
-#[foo::$0]
-use self as this;
 "#,
-        expect![[r#""#]],
+        expect![[r#"
+            at input_replace pub macro input_replace
+            at identity      pub macro identity
+        "#]],
     )
 }
 
@@ -61,6 +71,9 @@ fn with_existing_attr() {
             at deny(…)
             at forbid(…)
             at warn(…)
+            kw self
+            kw super
+            kw crate
         "#]],
     )
 }
@@ -90,6 +103,9 @@ fn attr_on_source_file() {
             at recursion_limit = "…"
             at type_length_limit = …
             at windows_subsystem = "…"
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -113,6 +129,9 @@ fn attr_on_module() {
             at no_mangle
             at macro_use
             at path = "…"
+            kw self
+            kw super
+            kw crate
         "#]],
     );
     check(
@@ -131,6 +150,9 @@ fn attr_on_module() {
             at must_use
             at no_mangle
             at no_implicit_prelude
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -154,6 +176,9 @@ fn attr_on_macro_rules() {
             at no_mangle
             at macro_export
             at macro_use
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -175,6 +200,9 @@ fn attr_on_macro_def() {
             at doc(alias = "…")
             at must_use
             at no_mangle
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -197,6 +225,9 @@ fn attr_on_extern_crate() {
             at must_use
             at no_mangle
             at macro_use
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -218,6 +249,9 @@ fn attr_on_use() {
             at doc(alias = "…")
             at must_use
             at no_mangle
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -239,6 +273,9 @@ fn attr_on_type_alias() {
             at doc(alias = "…")
             at must_use
             at no_mangle
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -263,6 +300,9 @@ fn attr_on_struct() {
             at derive(…)
             at repr(…)
             at non_exhaustive
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -287,6 +327,9 @@ fn attr_on_enum() {
             at derive(…)
             at repr(…)
             at non_exhaustive
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -308,6 +351,9 @@ fn attr_on_const() {
             at doc(alias = "…")
             at must_use
             at no_mangle
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -334,6 +380,9 @@ fn attr_on_static() {
             at link_section = "…"
             at global_allocator
             at used
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -356,6 +405,9 @@ fn attr_on_trait() {
             at must_use
             at no_mangle
             at must_use
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -378,6 +430,9 @@ fn attr_on_impl() {
             at must_use
             at no_mangle
             at automatically_derived
+            kw self
+            kw super
+            kw crate
         "#]],
     );
     check(
@@ -395,6 +450,9 @@ fn attr_on_impl() {
             at doc(alias = "…")
             at must_use
             at no_mangle
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -417,6 +475,9 @@ fn attr_on_extern_block() {
             at must_use
             at no_mangle
             at link
+            kw self
+            kw super
+            kw crate
         "#]],
     );
     check(
@@ -435,6 +496,9 @@ fn attr_on_extern_block() {
             at must_use
             at no_mangle
             at link
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -451,6 +515,9 @@ fn attr_on_variant() {
             at forbid(…)
             at warn(…)
             at non_exhaustive
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -487,6 +554,9 @@ fn attr_on_fn() {
             at target_feature = "…"
             at test
             at track_caller
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -503,6 +573,9 @@ fn attr_on_expr() {
             at deny(…)
             at forbid(…)
             at warn(…)
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -548,6 +621,9 @@ fn attr_in_source_file_end() {
             at track_caller
             at used
             at warn(…)
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }

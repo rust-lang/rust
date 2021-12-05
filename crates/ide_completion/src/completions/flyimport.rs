@@ -1,13 +1,14 @@
 //! See [`import_on_the_fly`].
+use hir::ItemInNs;
 use ide_db::helpers::{
-    import_assets::{ImportAssets, ImportCandidate},
+    import_assets::{ImportAssets, ImportCandidate, LocatedImport},
     insert_use::ImportScope,
 };
 use itertools::Itertools;
 use syntax::{AstNode, SyntaxNode, T};
 
 use crate::{
-    context::CompletionContext,
+    context::{CompletionContext, PathKind},
     render::{render_resolution_with_import, RenderContext},
     ImportEdit,
 };
@@ -135,10 +136,35 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         &ctx.sema,
     )?;
 
+    let ns_filter = |import: &LocatedImport| {
+        let kind = match ctx.path_kind() {
+            Some(kind) => kind,
+            None => {
+                return match import.original_item {
+                    ItemInNs::Macros(mac) => mac.is_fn_like(),
+                    _ => true,
+                }
+            }
+        };
+        match (kind, import.original_item) {
+            (PathKind::Expr, ItemInNs::Types(_) | ItemInNs::Values(_)) => true,
+
+            (PathKind::Type, ItemInNs::Types(_)) => true,
+            (PathKind::Type, ItemInNs::Values(_)) => false,
+
+            (PathKind::Expr | PathKind::Type, ItemInNs::Macros(mac)) => mac.is_fn_like(),
+
+            (PathKind::Attr, ItemInNs::Types(hir::ModuleDef::Module(_))) => true,
+            (PathKind::Attr, ItemInNs::Macros(mac)) => mac.is_attr(),
+            (PathKind::Attr, _) => false,
+        }
+    };
+
     acc.add_all(
         import_assets
             .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
             .into_iter()
+            .filter(ns_filter)
             .filter(|import| {
                 !ctx.is_item_hidden(&import.item_to_import)
                     && !ctx.is_item_hidden(&import.original_item)

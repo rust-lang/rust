@@ -30,10 +30,11 @@ pub(crate) enum PatternRefutability {
     Irrefutable,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub(super) enum PathKind {
     Expr,
     Type,
+    Attr,
 }
 
 #[derive(Debug)]
@@ -232,8 +233,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn is_path_disallowed(&self) -> bool {
-        self.attribute_under_caret.is_some()
-            || self.previous_token_is(T![unsafe])
+        self.previous_token_is(T![unsafe])
             || matches!(
                 self.prev_sibling,
                 Some(ImmediatePrevSibling::Attribute | ImmediatePrevSibling::Visibility)
@@ -241,8 +241,7 @@ impl<'a> CompletionContext<'a> {
             || matches!(
                 self.completion_location,
                 Some(
-                    ImmediateLocation::Attribute(_)
-                        | ImmediateLocation::ModDeclaration(_)
+                    ImmediateLocation::ModDeclaration(_)
                         | ImmediateLocation::RecordPat(_)
                         | ImmediateLocation::RecordExpr(_)
                         | ImmediateLocation::Rename
@@ -272,6 +271,10 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
         self.path_context.as_ref().and_then(|it| it.qualifier.as_ref())
+    }
+
+    pub(crate) fn path_kind(&self) -> Option<PathKind> {
+        self.path_context.as_ref().and_then(|it| it.kind)
     }
 
     /// Checks if an item is visible and not `doc(hidden)` at the completion site.
@@ -785,6 +788,7 @@ impl<'a> CompletionContext<'a> {
                 match parent {
                     ast::PathType(_it) => Some(PathKind::Type),
                     ast::PathExpr(_it) => Some(PathKind::Expr),
+                    ast::Meta(_it) => Some(PathKind::Attr),
                     _ => None,
                 }
             };

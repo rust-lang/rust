@@ -56,6 +56,19 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
             });
             return;
         }
+        Some(ImmediateLocation::Attribute(_)) => {
+            ctx.process_all_names(&mut |name, res| {
+                let add_resolution = match res {
+                    ScopeDef::MacroDef(mac) => mac.is_attr(),
+                    ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => true,
+                    _ => false,
+                };
+                if add_resolution {
+                    acc.add_resolution(ctx, name, &res);
+                }
+            });
+            return;
+        }
         _ => (),
     }
 
