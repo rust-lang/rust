@@ -1207,10 +1207,6 @@ impl GenericBound {
 crate struct Lifetime(pub Symbol);
 
 impl Lifetime {
-    crate fn get_ref(&self) -> SymbolStr {
-        self.0.as_str()
-    }
-
     crate fn statik() -> Lifetime {
         Lifetime(kw::StaticLifetime)
     }
@@ -1248,17 +1244,6 @@ impl GenericParamDefKind {
     crate fn is_type(&self) -> bool {
         matches!(self, GenericParamDefKind::Type { .. })
     }
-
-    // FIXME(eddyb) this either returns the default of a type parameter, or the
-    // type of a `const` parameter. It seems that the intention is to *visit*
-    // any embedded types, but `get_type` seems to be the wrong name for that.
-    crate fn get_type(&self) -> Option<Type> {
-        match self {
-            GenericParamDefKind::Type { default, .. } => default.as_deref().cloned(),
-            GenericParamDefKind::Const { ty, .. } => Some((&**ty).clone()),
-            GenericParamDefKind::Lifetime { .. } => None,
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1281,10 +1266,6 @@ impl GenericParamDef {
 
     crate fn is_type(&self) -> bool {
         self.kind.is_type()
-    }
-
-    crate fn get_type(&self) -> Option<Type> {
-        self.kind.get_type()
     }
 
     crate fn get_bounds(&self) -> Option<&[GenericBound]> {
