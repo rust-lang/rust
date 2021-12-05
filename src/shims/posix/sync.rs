@@ -189,6 +189,14 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
     ecx.write_scalar_at_offset(attr_op, 0, clock_id, ecx.machine.layouts.i32)
 }
 
+fn condattr_deinit_clock_id<'mir, 'tcx: 'mir>(
+    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    attr_op: &OpTy<'tcx, Tag>,
+) -> InterpResult<'tcx, ()> {
+    let layout = layout_of_maybe_uninit(ecx.tcx, ecx.machine.layouts.i32.ty);
+    ecx.write_scalar_at_offset(attr_op, 0, ScalarMaybeUninit::Uninit, layout)
+}
+
 // pthread_cond_t
 
 // Our chosen memory layout for the emulated conditional variable (does not have
@@ -652,7 +660,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_condattr_destroy(&mut self, attr_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        condattr_set_clock_id(this, attr_op, ScalarMaybeUninit::Uninit)?;
+        condattr_get_clock_id(this, attr_op)?.check_init()?;
+
+        condattr_deinit_clock_id(this, attr_op)?;
 
         Ok(0)
     }
