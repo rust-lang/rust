@@ -49,6 +49,10 @@ impl Error {
 pub struct InstrumentCoverage;
 
 impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.instrument_coverage()
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
         let mir_source = mir_body.source;
 

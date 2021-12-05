@@ -62,6 +62,13 @@ macro_rules! throw_machine_stop_str {
 pub struct ConstProp;
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
+    fn is_enabled(&self, _sess: &rustc_session::Session) -> bool {
+        // FIXME(#70073): Unlike the other passes in "optimizations", this one emits errors, so it
+        // runs even when MIR optimizations are disabled. We should separate the lint out from the
+        // transform and move the lint as early in the pipeline as possible.
+        true
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // will be evaluated by miri and produce its errors there
         if body.source.promoted.is_some() {

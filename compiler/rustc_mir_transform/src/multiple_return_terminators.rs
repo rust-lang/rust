@@ -9,11 +9,11 @@ use rustc_middle::ty::TyCtxt;
 pub struct MultipleReturnTerminators;
 
 impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.mir_opt_level() < 4 {
-            return;
-        }
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() >= 4
+    }
 
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // find basic blocks with no statement and a return terminator
         let mut bbs_simple_returns = BitSet::new_empty(body.basic_blocks().len());
         let def_id = body.source.def_id();

@@ -19,6 +19,10 @@ use std::fmt;
 pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {
+    fn phase_change(&self) -> Option<MirPhase> {
+        Some(MirPhase::DropLowering)
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("elaborate_drops({:?} @ {:?})", body.source, body.span);
 

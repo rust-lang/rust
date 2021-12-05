@@ -11,13 +11,13 @@ use rustc_middle::ty::TyCtxt;
 pub struct UnreachablePropagation;
 
 impl MirPass<'_> for UnreachablePropagation {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.mir_opt_level() < 4 {
-            // Enable only under -Zmir-opt-level=4 as in some cases (check the deeply-nested-opt
-            // perf benchmark) LLVM may spend quite a lot of time optimizing the generated code.
-            return;
-        }
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        // Enable only under -Zmir-opt-level=4 as in some cases (check the deeply-nested-opt
+        // perf benchmark) LLVM may spend quite a lot of time optimizing the generated code.
+        sess.mir_opt_level() >= 4
+    }
 
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut unreachable_blocks = FxHashSet::default();
         let mut replacements = FxHashMap::default();
 

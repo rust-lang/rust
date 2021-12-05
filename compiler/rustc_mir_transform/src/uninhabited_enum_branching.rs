@@ -70,6 +70,10 @@ fn variant_discriminants<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() > 0
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         if body.source.promoted.is_some() {
             return;

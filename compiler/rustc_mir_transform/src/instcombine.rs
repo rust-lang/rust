@@ -11,6 +11,10 @@ use rustc_middle::ty::{self, TyCtxt};
 pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() > 0
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let ctx = InstCombineContext { tcx, local_decls };

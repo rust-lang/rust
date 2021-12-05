@@ -16,6 +16,7 @@ use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
 use rustc_hir::{self as hir, HirId};
+use rustc_session::Session;
 use rustc_target::abi::{Size, VariantIdx};
 
 use polonius_engine::Atom;
@@ -99,7 +100,21 @@ pub trait MirPass<'tcx> {
         }
     }
 
+    /// Returns `true` if this pass is enabled with the current combination of compiler flags.
+    fn is_enabled(&self, _sess: &Session) -> bool {
+        true
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
+
+    /// If this pass causes the MIR to enter a new phase, return that phase.
+    fn phase_change(&self) -> Option<MirPhase> {
+        None
+    }
+
+    fn is_mir_dump_enabled(&self) -> bool {
+        true
+    }
 }
 
 /// The various "big phases" that MIR goes through.
