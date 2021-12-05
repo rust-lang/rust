@@ -1,4 +1,4 @@
-// compile-flags: -Zfuture-incompat-test -Zemit-future-incompat-report
+// compile-flags: -Zfuture-incompat-test
 // check-pass
 
 // The `-Zfuture-incompat-test flag causes any normal warning to be included

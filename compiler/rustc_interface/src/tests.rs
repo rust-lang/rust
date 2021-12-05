@@ -651,7 +651,6 @@ fn test_debugging_options_tracking_hash() {
     untracked!(dump_mir_dir, String::from("abc"));
     untracked!(dump_mir_exclude_pass_number, true);
     untracked!(dump_mir_graphviz, true);
-    untracked!(emit_future_incompat_report, true);
     untracked!(emit_stack_sizes, true);
     untracked!(future_incompat_test, true);
     untracked!(hir_stats, true);

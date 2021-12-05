@@ -228,6 +228,9 @@ top_level_options!(
         /// `true` if we're emitting a JSON blob containing the unused externs
         json_unused_externs: bool [UNTRACKED],
 
+        /// `true` if we're emitting a JSON job containg a future-incompat report for lints
+        json_future_incompat: bool [TRACKED],
+
         pretty: Option<PpMode> [UNTRACKED],
 
         /// The (potentially remapped) working directory
@@ -1147,8 +1150,6 @@ options! {
         computed `block` spans (one span encompassing a block's terminator and \
         all statements). If `-Z instrument-coverage` is also enabled, create \
         an additional `.html` file showing the computed coverage spans."),
-    emit_future_incompat_report: bool = (false, parse_bool, [UNTRACKED],
-        "emits a future-incompatibility report for lints (RFC 2834)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
