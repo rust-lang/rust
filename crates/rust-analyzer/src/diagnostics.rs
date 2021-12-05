@@ -29,7 +29,8 @@ pub(crate) struct DiagnosticCollection {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Fix {
-    pub(crate) range: lsp_types::Range,
+    // Fixes may be triggerable from multiple ranges.
+    pub(crate) ranges: Vec<lsp_types::Range>,
     pub(crate) action: lsp_ext::CodeAction,
 }
 
@@ -43,7 +44,7 @@ impl DiagnosticCollection {
         &mut self,
         file_id: FileId,
         diagnostic: lsp_types::Diagnostic,
-        fixes: Vec<lsp_ext::CodeAction>,
+        fix: Option<Fix>,
     ) {
         let diagnostics = self.check.entry(file_id).or_default();
         for existing_diagnostic in diagnostics.iter() {
@@ -53,10 +54,7 @@ impl DiagnosticCollection {
         }
 
         let check_fixes = Arc::make_mut(&mut self.check_fixes);
-        check_fixes
-            .entry(file_id)
-            .or_default()
-            .extend(fixes.into_iter().map(|action| Fix { range: diagnostic.range, action }));
+        check_fixes.entry(file_id).or_default().extend(fix);
         diagnostics.push(diagnostic);
         self.changes.insert(file_id);
     }

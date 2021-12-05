@@ -370,7 +370,7 @@ impl GlobalState {
                                     Ok(file_id) => self.diagnostics.add_check_diagnostic(
                                         file_id,
                                         diag.diagnostic,
-                                        diag.fixes,
+                                        diag.fix,
                                     ),
                                     Err(err) => {
                                         tracing::error!(

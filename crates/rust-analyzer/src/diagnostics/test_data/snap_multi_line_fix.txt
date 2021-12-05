@@ -114,7 +114,7 @@
             tags: None,
             data: None,
         },
-        fixes: [],
+        fix: None,
     },
     MappedRustDiagnostic {
         url: Url {
@@ -205,7 +205,7 @@
             tags: None,
             data: None,
         },
-        fixes: [],
+        fix: None,
     },
     MappedRustDiagnostic {
         url: Url {
@@ -296,68 +296,92 @@
             tags: None,
             data: None,
         },
-        fixes: [
-            CodeAction {
-                title: "return the expression directly: `(0..10).collect()`",
-                group: None,
-                kind: Some(
-                    CodeActionKind(
-                        "quickfix",
-                    ),
-                ),
-                edit: Some(
-                    SnippetWorkspaceEdit {
-                        changes: Some(
-                            {
-                                Url {
-                                    scheme: "file",
-                                    cannot_be_a_base: false,
-                                    username: "",
-                                    password: None,
-                                    host: None,
-                                    port: None,
-                                    path: "/test/src/main.rs",
-                                    query: None,
-                                    fragment: None,
-                                }: [
-                                    TextEdit {
-                                        range: Range {
-                                            start: Position {
-                                                line: 2,
-                                                character: 4,
-                                            },
-                                            end: Position {
-                                                line: 2,
-                                                character: 30,
-                                            },
-                                        },
-                                        new_text: "",
-                                    },
-                                    TextEdit {
-                                        range: Range {
-                                            start: Position {
-                                                line: 3,
-                                                character: 4,
-                                            },
-                                            end: Position {
-                                                line: 3,
-                                                character: 5,
-                                            },
-                                        },
-                                        new_text: "(0..10).collect()",
-                                    },
-                                ],
-                            },
-                        ),
-                        document_changes: None,
-                        change_annotations: None,
+        fix: Some(
+            Fix {
+                ranges: [
+                    Range {
+                        start: Position {
+                            line: 2,
+                            character: 4,
+                        },
+                        end: Position {
+                            line: 2,
+                            character: 30,
+                        },
                     },
-                ),
-                is_preferred: Some(
-                    true,
-                ),
-                data: None,
+                    Range {
+                        start: Position {
+                            line: 3,
+                            character: 4,
+                        },
+                        end: Position {
+                            line: 3,
+                            character: 5,
+                        },
+                    },
+                ],
+                action: CodeAction {
+                    title: "return the expression directly: `(0..10).collect()`",
+                    group: None,
+                    kind: Some(
+                        CodeActionKind(
+                            "quickfix",
+                        ),
+                    ),
+                    edit: Some(
+                        SnippetWorkspaceEdit {
+                            changes: Some(
+                                {
+                                    Url {
+                                        scheme: "file",
+                                        cannot_be_a_base: false,
+                                        username: "",
+                                        password: None,
+                                        host: None,
+                                        port: None,
+                                        path: "/test/src/main.rs",
+                                        query: None,
+                                        fragment: None,
+                                    }: [
+                                        TextEdit {
+                                            range: Range {
+                                                start: Position {
+                                                    line: 2,
+                                                    character: 4,
+                                                },
+                                                end: Position {
+                                                    line: 2,
+                                                    character: 30,
+                                                },
+                                            },
+                                            new_text: "",
+                                        },
+                                        TextEdit {
+                                            range: Range {
+                                                start: Position {
+                                                    line: 3,
+                                                    character: 4,
+                                                },
+                                                end: Position {
+                                                    line: 3,
+                                                    character: 5,
+                                                },
+                                            },
+                                            new_text: "(0..10).collect()",
+                                        },
+                                    ],
+                                },
+                            ),
+                            document_changes: None,
+                            change_annotations: None,
+                        },
+                    ),
+                    is_preferred: Some(
+                        true,
+                    ),
+                    data: None,
+                },
             },
-        ],
+        ),
     },
 ]

@@ -72,7 +72,7 @@
             ),
             data: None,
         },
-        fixes: [],
+        fix: None,
     },
     MappedRustDiagnostic {
         url: Url {
@@ -143,55 +143,69 @@
             tags: None,
             data: None,
         },
-        fixes: [
-            CodeAction {
-                title: "consider prefixing with an underscore: `_foo`",
-                group: None,
-                kind: Some(
-                    CodeActionKind(
-                        "quickfix",
-                    ),
-                ),
-                edit: Some(
-                    SnippetWorkspaceEdit {
-                        changes: Some(
-                            {
-                                Url {
-                                    scheme: "file",
-                                    cannot_be_a_base: false,
-                                    username: "",
-                                    password: None,
-                                    host: None,
-                                    port: None,
-                                    path: "/test/driver/subcommand/repl.rs",
-                                    query: None,
-                                    fragment: None,
-                                }: [
-                                    TextEdit {
-                                        range: Range {
-                                            start: Position {
-                                                line: 290,
-                                                character: 8,
-                                            },
-                                            end: Position {
-                                                line: 290,
-                                                character: 11,
-                                            },
-                                        },
-                                        new_text: "_foo",
-                                    },
-                                ],
-                            },
-                        ),
-                        document_changes: None,
-                        change_annotations: None,
+        fix: Some(
+            Fix {
+                ranges: [
+                    Range {
+                        start: Position {
+                            line: 290,
+                            character: 8,
+                        },
+                        end: Position {
+                            line: 290,
+                            character: 11,
+                        },
                     },
-                ),
-                is_preferred: Some(
-                    true,
-                ),
-                data: None,
+                ],
+                action: CodeAction {
+                    title: "consider prefixing with an underscore: `_foo`",
+                    group: None,
+                    kind: Some(
+                        CodeActionKind(
+                            "quickfix",
+                        ),
+                    ),
+                    edit: Some(
+                        SnippetWorkspaceEdit {
+                            changes: Some(
+                                {
+                                    Url {
+                                        scheme: "file",
+                                        cannot_be_a_base: false,
+                                        username: "",
+                                        password: None,
+                                        host: None,
+                                        port: None,
+                                        path: "/test/driver/subcommand/repl.rs",
+                                        query: None,
+                                        fragment: None,
+                                    }: [
+                                        TextEdit {
+                                            range: Range {
+                                                start: Position {
+                                                    line: 290,
+                                                    character: 8,
+                                                },
+                                                end: Position {
+                                                    line: 290,
+                                                    character: 11,
+                                                },
+                                            },
+                                            new_text: "_foo",
+                                        },
+                                    ],
+                                },
+                            ),
+                            document_changes: None,
+                            change_annotations: None,
+                        },
+                    ),
+                    is_preferred: Some(
+                        true,
+                    ),
+                    data: None,
+                },
             },
-        ],
+        ),
     },
 ]

@@ -9,7 +9,7 @@ use vfs::{AbsPath, AbsPathBuf};
 
 use crate::{lsp_ext, to_proto::url_from_abs_path};
 
-use super::DiagnosticsMapConfig;
+use super::{DiagnosticsMapConfig, Fix};
 
 /// Determines the LSP severity from a diagnostic
 fn diagnostic_severity(
@@ -124,7 +124,7 @@ fn resolve_path(
 
 struct SubDiagnostic {
     related: lsp_types::DiagnosticRelatedInformation,
-    suggested_fix: Option<lsp_ext::CodeAction>,
+    suggested_fix: Option<Fix>,
 }
 
 enum MappedRustChildDiagnostic {
@@ -181,18 +181,24 @@ fn map_rust_child_diagnostic(
                 location: location(config, workspace_root, spans[0]),
                 message: message.clone(),
             },
-            suggested_fix: Some(lsp_ext::CodeAction {
-                title: message,
-                group: None,
-                kind: Some(lsp_types::CodeActionKind::QUICKFIX),
-                edit: Some(lsp_ext::SnippetWorkspaceEdit {
-                    // FIXME: there's no good reason to use edit_map here....
-                    changes: Some(edit_map),
-                    document_changes: None,
-                    change_annotations: None,
-                }),
-                is_preferred: Some(true),
-                data: None,
+            suggested_fix: Some(Fix {
+                ranges: spans
+                    .iter()
+                    .map(|&span| location(config, workspace_root, span).range)
+                    .collect(),
+                action: lsp_ext::CodeAction {
+                    title: message,
+                    group: None,
+                    kind: Some(lsp_types::CodeActionKind::QUICKFIX),
+                    edit: Some(lsp_ext::SnippetWorkspaceEdit {
+                        // FIXME: there's no good reason to use edit_map here....
+                        changes: Some(edit_map),
+                        document_changes: None,
+                        change_annotations: None,
+                    }),
+                    is_preferred: Some(true),
+                    data: None,
+                },
             }),
         })
     }
@@ -202,7 +208,7 @@ fn map_rust_child_diagnostic(
 pub(crate) struct MappedRustDiagnostic {
     pub(crate) url: lsp_types::Url,
     pub(crate) diagnostic: lsp_types::Diagnostic,
-    pub(crate) fixes: Vec<lsp_ext::CodeAction>,
+    pub(crate) fix: Option<Fix>,
 }
 
 /// Converts a Rust root diagnostic to LSP form
@@ -359,7 +365,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 diagnostics.push(MappedRustDiagnostic {
                     url: secondary_location.uri,
                     diagnostic,
-                    fixes: Vec::new(),
+                    fix: None,
                 });
             }
 
@@ -388,7 +394,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                     tags: if tags.is_empty() { None } else { Some(tags.clone()) },
                     data: None,
                 },
-                fixes: Vec::new(),
+                fix: None,
             });
 
             // Emit hint-level diagnostics for all `related_information` entries such as "help"s.
@@ -405,7 +411,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 }
                 diagnostics.push(MappedRustDiagnostic {
                     url: sub.related.location.uri.clone(),
-                    fixes: sub.suggested_fix.iter().cloned().collect(),
+                    fix: sub.suggested_fix.clone(),
                     diagnostic: lsp_types::Diagnostic {
                         range: sub.related.location.range,
                         severity: Some(lsp_types::DiagnosticSeverity::HINT),
