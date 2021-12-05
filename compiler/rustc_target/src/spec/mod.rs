@@ -42,6 +42,7 @@ use rustc_serialize::json::{Json, ToJson};
 use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
+use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -2173,12 +2174,11 @@ impl Target {
                 // Additionally look in the sysroot under `lib/rustlib/<triple>/target.json`
                 // as a fallback.
                 let rustlib_path = crate::target_rustlib_path(&sysroot, &target_triple);
-                let p = std::array::IntoIter::new([
+                let p = PathBuf::from_iter([
                     Path::new(sysroot),
                     Path::new(&rustlib_path),
                     Path::new("target.json"),
-                ])
-                .collect::<PathBuf>();
+                ]);
                 if p.is_file() {
                     return load_file(&p);
                 }

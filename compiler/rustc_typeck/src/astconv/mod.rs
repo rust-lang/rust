@@ -35,7 +35,6 @@ use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use smallvec::SmallVec;
-use std::array;
 use std::collections::BTreeSet;
 use std::slice;
 
@@ -1635,7 +1634,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             debug!("one_bound_for_assoc_type: bound2 = {:?}", bound2);
 
             let is_equality = is_equality();
-            let bounds = array::IntoIter::new([bound, bound2]).chain(matching_candidates);
+            let bounds = IntoIterator::into_iter([bound, bound2]).chain(matching_candidates);
             let mut err = if is_equality.is_some() {
                 // More specific Error Index entry.
                 struct_span_err!(

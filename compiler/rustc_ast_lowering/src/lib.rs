@@ -70,10 +70,9 @@ use smallvec::SmallVec;
 use tracing::{debug, trace};
 
 macro_rules! arena_vec {
-    ($this:expr; $($x:expr),*) => ({
-        let a = [$($x),*];
-        $this.arena.alloc_from_iter(std::array::IntoIter::new(a))
-    });
+    ($this:expr; $($x:expr),*) => (
+        $this.arena.alloc_from_iter([$($x),*])
+    );
 }
 
 mod asm;

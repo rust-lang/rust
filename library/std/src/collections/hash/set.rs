@@ -1022,7 +1022,7 @@ where
     /// assert_eq!(set1, set2);
     /// ```
     fn from(arr: [T; N]) -> Self {
-        crate::array::IntoIter::new(arr).collect()
+        Self::from_iter(arr)
     }
 }
 

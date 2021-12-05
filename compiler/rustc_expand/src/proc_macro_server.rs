@@ -466,13 +466,12 @@ impl server::TokenStream for Rustc<'_, '_> {
             ast::ExprKind::Unary(ast::UnOp::Neg, e) => match &e.kind {
                 ast::ExprKind::Lit(l) => match l.token {
                     token::Lit { kind: token::Integer | token::Float, .. } => {
-                        Ok(std::array::IntoIter::new([
+                        Ok(Self::TokenStream::from_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
                             tokenstream::TokenTree::token(token::BinOp(token::Minus), e.span),
                             tokenstream::TokenTree::token(token::Literal(l.token), l.span),
-                        ])
-                        .collect())
+                        ]))
                     }
                     _ => Err(()),
                 },

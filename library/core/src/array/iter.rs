@@ -34,30 +34,23 @@ pub struct IntoIter<T, const N: usize> {
     alive: Range<usize>,
 }
 
-impl<T, const N: usize> IntoIter<T, N> {
-    /// Creates a new iterator over the given `array`.
+// Note: the `#[rustc_skip_array_during_method_dispatch]` on `trait IntoIterator`
+// hides this implementation from explicit `.into_iter()` calls on editions < 2021,
+// so those calls will still resolve to the slice implementation, by reference.
+#[stable(feature = "array_into_iter_impl", since = "1.53.0")]
+impl<T, const N: usize> IntoIterator for [T; N] {
+    type Item = T;
+    type IntoIter = IntoIter<T, N>;
+
+    /// Creates a consuming iterator, that is, one that moves each value out of
+    /// the array (from start to end). The array cannot be used after calling
+    /// this unless `T` implements `Copy`, so the whole array is copied.
     ///
-    /// *Note*: this method might be deprecated in the future,
-    /// since [`IntoIterator`] is now implemented for arrays.
+    /// Arrays have special behavior when calling `.into_iter()` prior to the
+    /// 2021 edition -- see the [array] Editions section for more information.
     ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::array;
-    ///
-    /// for value in array::IntoIter::new([1, 2, 3, 4, 5]) {
-    ///     // The type of `value` is an `i32` here, instead of `&i32`
-    ///     let _: i32 = value;
-    /// }
-    ///
-    /// // Since Rust 1.53, arrays implement IntoIterator directly:
-    /// for value in [1, 2, 3, 4, 5] {
-    ///     // The type of `value` is an `i32` here, instead of `&i32`
-    ///     let _: i32 = value;
-    /// }
-    /// ```
-    #[stable(feature = "array_value_iter", since = "1.51.0")]
-    pub fn new(array: [T; N]) -> Self {
+    /// [array]: prim@array
+    fn into_iter(self) -> Self::IntoIter {
         // SAFETY: The transmute here is actually safe. The docs of `MaybeUninit`
         // promise:
         //
@@ -76,10 +69,19 @@ impl<T, const N: usize> IntoIter<T, N> {
         // Until then, we can use `mem::transmute_copy` to create a bitwise copy
         // as a different type, then forget `array` so that it is not dropped.
         unsafe {
-            let iter = Self { data: mem::transmute_copy(&array), alive: 0..N };
-            mem::forget(array);
+            let iter = IntoIter { data: mem::transmute_copy(&self), alive: 0..N };
+            mem::forget(self);
             iter
         }
+    }
+}
+
+impl<T, const N: usize> IntoIter<T, N> {
+    /// Creates a new iterator over the given `array`.
+    #[stable(feature = "array_value_iter", since = "1.51.0")]
+    #[rustc_deprecated(since = "1.59.0", reason = "use `IntoIterator::into_iter` instead")]
+    pub fn new(array: [T; N]) -> Self {
+        IntoIterator::into_iter(array)
     }
 
     /// Returns an immutable slice of all elements that have not been yielded

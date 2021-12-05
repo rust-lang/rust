@@ -1,5 +1,4 @@
 use super::*;
-use core::array;
 use core::iter::*;
 
 #[test]
@@ -134,7 +133,7 @@ fn test_double_ended_flatten() {
 #[test]
 fn test_trusted_len_flatten() {
     fn assert_trusted_len<T: TrustedLen>(_: &T) {}
-    let mut iter = array::IntoIter::new([[0; 3]; 4]).flatten();
+    let mut iter = IntoIterator::into_iter([[0; 3]; 4]).flatten();
     assert_trusted_len(&iter);
 
     assert_eq!(iter.size_hint(), (12, Some(12)));
@@ -143,21 +142,21 @@ fn test_trusted_len_flatten() {
     iter.next_back();
     assert_eq!(iter.size_hint(), (10, Some(10)));
 
-    let iter = array::IntoIter::new([[(); usize::MAX]; 1]).flatten();
+    let iter = IntoIterator::into_iter([[(); usize::MAX]; 1]).flatten();
     assert_eq!(iter.size_hint(), (usize::MAX, Some(usize::MAX)));
 
-    let iter = array::IntoIter::new([[(); usize::MAX]; 2]).flatten();
+    let iter = IntoIterator::into_iter([[(); usize::MAX]; 2]).flatten();
     assert_eq!(iter.size_hint(), (usize::MAX, None));
 
     let mut a = [(); 10];
     let mut b = [(); 10];
 
-    let iter = array::IntoIter::new([&mut a, &mut b]).flatten();
+    let iter = IntoIterator::into_iter([&mut a, &mut b]).flatten();
     assert_trusted_len(&iter);
     assert_eq!(iter.size_hint(), (20, Some(20)));
     core::mem::drop(iter);
 
-    let iter = array::IntoIter::new([&a, &b]).flatten();
+    let iter = IntoIterator::into_iter([&a, &b]).flatten();
     assert_trusted_len(&iter);
     assert_eq!(iter.size_hint(), (20, Some(20)));
 

@@ -1500,7 +1500,7 @@ impl<T: Ord, const N: usize> From<[T; N]> for BinaryHeap<T> {
     /// }
     /// ```
     fn from(arr: [T; N]) -> Self {
-        core::array::IntoIter::new(arr).collect()
+        Self::from_iter(arr)
     }
 }
 

@@ -25,7 +25,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{MultiSpan, Span};
 use smallvec::SmallVec;
 
-use std::array;
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -692,11 +691,8 @@ fn receiver_is_dispatchable<'tcx>(
                 .to_predicate(tcx)
         };
 
-        let caller_bounds: Vec<Predicate<'tcx>> = param_env
-            .caller_bounds()
-            .iter()
-            .chain(array::IntoIter::new([unsize_predicate, trait_predicate]))
-            .collect();
+        let caller_bounds: Vec<Predicate<'tcx>> =
+            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]).collect();
 
         ty::ParamEnv::new(tcx.intern_predicates(&caller_bounds), param_env.reveal())
     };
