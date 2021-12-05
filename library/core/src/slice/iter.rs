@@ -640,6 +640,129 @@ where
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool {}
 
+/// An iterator over subslices separated by elements that match a predicate
+/// function. Unlike `Split`, it contains the matched part as an initiator
+/// of the subslice.
+///
+/// This struct is created by the [`split_left_inclusive`] method on [slices].
+///
+/// # Example
+///
+/// ```
+/// #![feature(split_left_inclusive)]
+///
+/// let slice = [10, 40, 33, 20];
+/// let mut iter = slice.split_left_inclusive(|num| num % 3 == 0);
+/// ```
+///
+/// [`split_left_inclusive`]: slice::split_left_inclusive
+/// [slices]: slice
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+pub struct SplitLeftInclusive<'a, T: 'a, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    v: &'a [T],
+    pred: P,
+    finished: bool,
+}
+
+impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitLeftInclusive<'a, T, P> {
+    #[inline]
+    pub(super) fn new(slice: &'a [T], pred: P) -> Self {
+        Self { v: slice, pred, finished: false }
+    }
+}
+
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+impl<T: fmt::Debug, P> fmt::Debug for SplitLeftInclusive<'_, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SplitLeftInclusive")
+            .field("v", &self.v)
+            .field("finished", &self.finished)
+            .finish()
+    }
+}
+
+// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+impl<T, P> Clone for SplitLeftInclusive<'_, T, P>
+where
+    P: Clone + FnMut(&T) -> bool,
+{
+    fn clone(&self) -> Self {
+        SplitLeftInclusive { v: self.v, pred: self.pred.clone(), finished: self.finished }
+    }
+}
+
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+impl<'a, T, P> Iterator for SplitLeftInclusive<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    type Item = &'a [T];
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a [T]> {
+        if self.finished {
+            return None;
+        }
+
+        // The first index of self.v is already checked and found to match
+        // by the last iteration, so we start searching a new match
+        // one index to the right.
+        let remainder = if self.v.is_empty() { &[] } else { &self.v[1..] };
+        let idx =
+            remainder.iter().position(|x| (self.pred)(x)).map(|x| x + 1).unwrap_or(self.v.len());
+        if idx == self.v.len() {
+            self.finished = true;
+        }
+
+        let ret = Some(&self.v[..idx]);
+        self.v = &self.v[idx..];
+        ret
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.finished {
+            (0, Some(0))
+        } else {
+            // If the predicate doesn't match anything, we yield one slice.
+            // If it matches every element, we yield `len()` one-element slices,
+            // or a single empty slice.
+            (1, Some(cmp::max(1, self.v.len())))
+        }
+    }
+}
+
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+impl<'a, T, P> DoubleEndedIterator for SplitLeftInclusive<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a [T]> {
+        if self.finished {
+            return None;
+        }
+
+        let idx = self.v.iter().rposition(|x| (self.pred)(x)).unwrap_or(0);
+        if idx == 0 {
+            self.finished = true;
+        }
+        let ret = Some(&self.v[idx..]);
+        self.v = &self.v[..idx];
+        ret
+    }
+}
+
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+impl<T, P> FusedIterator for SplitLeftInclusive<'_, T, P> where P: FnMut(&T) -> bool {}
+
 /// An iterator over the mutable subslices of the vector which are separated
 /// by elements that match `pred`.
 ///
@@ -893,6 +1016,133 @@ where
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> bool {}
+
+/// An iterator over the mutable subslices of the vector which are separated
+/// by elements that match `pred`. Unlike `SplitMut`, it contains the matched
+/// parts in the beginnings of the subslices.
+///
+/// This struct is created by the [`split_left_inclusive_mut`] method on
+/// [slices].
+///
+/// # Example
+///
+/// ```
+/// #![feature(split_left_inclusive)]
+///
+/// let mut v = [10, 40, 30, 20, 60, 50];
+/// let iter = v.split_left_inclusive_mut(|num| *num % 3 == 0);
+/// ```
+///
+/// [`split_left_inclusive_mut`]: slice::split_left_inclusive_mut
+/// [slices]: slice
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+pub struct SplitLeftInclusiveMut<'a, T: 'a, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    v: &'a mut [T],
+    pred: P,
+    finished: bool,
+}
+
+impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitLeftInclusiveMut<'a, T, P> {
+    #[inline]
+    pub(super) fn new(slice: &'a mut [T], pred: P) -> Self {
+        Self { v: slice, pred, finished: false }
+    }
+}
+
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+impl<T: fmt::Debug, P> fmt::Debug for SplitLeftInclusiveMut<'_, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SplitLeftInclusiveMut")
+            .field("v", &self.v)
+            .field("finished", &self.finished)
+            .finish()
+    }
+}
+
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+impl<'a, T, P> Iterator for SplitLeftInclusiveMut<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    type Item = &'a mut [T];
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a mut [T]> {
+        if self.finished {
+            return None;
+        }
+
+        let idx_opt = {
+            // work around borrowck limitations
+            let pred = &mut self.pred;
+
+            // The first index of self.v is already checked and found to match
+            // by the last iteration, so we start searching a new match
+            // one index to the right.
+            let remainder = if self.v.is_empty() { &[] } else { &self.v[1..] };
+            remainder.iter().position(|x| (*pred)(x)).map(|x| x + 1)
+        };
+        let idx = idx_opt.unwrap_or(self.v.len());
+        if idx == self.v.len() {
+            self.finished = true;
+        }
+        let tmp = mem::replace(&mut self.v, &mut []);
+        let (head, tail) = tmp.split_at_mut(idx);
+        self.v = tail;
+        Some(head)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.finished {
+            (0, Some(0))
+        } else {
+            // If the predicate doesn't match anything, we yield one slice.
+            // If it matches every element, we yield `len()` one-element slices,
+            // or a single empty slice.
+            (1, Some(cmp::max(1, self.v.len())))
+        }
+    }
+}
+
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+impl<'a, T, P> DoubleEndedIterator for SplitLeftInclusiveMut<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a mut [T]> {
+        if self.finished {
+            return None;
+        }
+
+        let idx_opt = if self.v.is_empty() {
+            None
+        } else {
+            // work around borrowsck limitations
+            let pred = &mut self.pred;
+
+            self.v.iter().rposition(|x| (*pred)(x))
+        };
+        let idx = idx_opt.unwrap_or(0);
+        if idx == 0 {
+            self.finished = true;
+        }
+        let tmp = mem::replace(&mut self.v, &mut []);
+        let (head, tail) = tmp.split_at_mut(idx);
+        self.v = head;
+        Some(tail)
+    }
+}
+
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+impl<T, P> FusedIterator for SplitLeftInclusiveMut<'_, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, starting from the end of the slice.

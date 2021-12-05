@@ -65,6 +65,9 @@ pub use iter::{GroupBy, GroupByMut};
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
 
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+pub use iter::{SplitLeftInclusive, SplitLeftInclusiveMut};
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use raw::{from_raw_parts, from_raw_parts_mut};
 
@@ -1967,6 +1970,71 @@ impl<T> [T] {
         F: FnMut(&T) -> bool,
     {
         SplitInclusiveMut::new(self, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`. The matched element is contained in the start of the next
+    /// subslice as an initiator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_left_inclusive)]
+    ///
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.split_left_inclusive(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[10, 40]);
+    /// assert_eq!(iter.next().unwrap(), &[33, 20]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// If the last element of the slice is matched,
+    /// that element will be considered the initiator of a new slice.
+    /// That slice will be the last item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(split_left_inclusive)]
+    ///
+    /// let slice = [3, 10, 40, 33];
+    /// let mut iter = slice.split_left_inclusive(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[3, 10, 40]);
+    /// assert_eq!(iter.next().unwrap(), &[33]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    #[unstable(feature = "split_left_inclusive", issue = "none")]
+    #[inline]
+    pub fn split_left_inclusive<F>(&self, pred: F) -> SplitLeftInclusive<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        SplitLeftInclusive::new(self, pred)
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`. The matched element is contained in the next
+    /// subslice as an initiator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_left_inclusive)]
+    ///
+    /// let mut v = [10, 40, 30, 20, 60, 50];
+    ///
+    /// for group in v.split_left_inclusive_mut(|num| *num % 3 == 0) {
+    ///     group[0] = 1;
+    /// }
+    /// assert_eq!(v, [1, 40, 1, 20, 1, 50]);
+    /// ```
+    #[unstable(feature = "split_left_inclusive", issue = "none")]
+    #[inline]
+    pub fn split_left_inclusive_mut<F>(&mut self, pred: F) -> SplitLeftInclusiveMut<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        SplitLeftInclusiveMut::new(self, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match

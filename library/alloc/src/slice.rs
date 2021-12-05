@@ -136,6 +136,8 @@ pub use core::slice::{RSplit, RSplitMut};
 pub use core::slice::{RSplitN, RSplitNMut, SplitN, SplitNMut};
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use core::slice::{SplitInclusive, SplitInclusiveMut};
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+pub use core::slice::{SplitLeftInclusive, SplitLeftInclusiveMut};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods
