@@ -761,6 +761,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(no_profiler_runtime, true);
     tracked!(no_unique_section_names, true);
     tracked!(normalize_docs, true);
+    tracked!(opt_switch_monomorphizing, true);
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);
     tracked!(panic_in_drop, PanicStrategy::Abort);

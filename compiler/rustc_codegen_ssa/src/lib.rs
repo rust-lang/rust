@@ -2,6 +2,7 @@
 #![feature(associated_type_bounds)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
+#![feature(exact_size_is_empty)]
 #![feature(in_band_lifetimes)]
 #![feature(let_else)]
 #![feature(nll)]

@@ -249,7 +249,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // `switch_ty` is redundant, sanity-check that.
         assert_eq!(discr.layout.ty, switch_ty);
         let mut target_iter = targets.iter();
-        if target_iter.len() == 1 {
+        if target_iter.is_empty() {
+            helper.funclet_br(self, &mut bx, targets.otherwise());
+        } else if target_iter.len() == 1 {
             // If there are two targets (one conditional, one fallback), emit br instead of switch
             let (test_value, target) = target_iter.next().unwrap();
             let lltrue = helper.llblock(self, target);
@@ -992,7 +994,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let mir = self.mir;
         let data = &mir[bb];
         let statements = &data.statements;
-        let terminator = data.terminator();
+        let mut terminator = data.terminator();
 
         debug!("codegen_block({:?}={:?})", bb, data);
 
@@ -1000,7 +1002,143 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx = self.codegen_statement(bx, statement);
         }
 
+        let optimized_terminator;
+        if let Some((enum_ty, discr, switch_ty, targets)) =
+            self.get_discriminant_switch_block_parts(statements, terminator)
+        {
+            let _span = debug_span!(
+                "opt_switch_monomorphizing",
+                "type" = %enum_ty,
+                terminator = ?terminator.kind,
+                span = ?terminator.source_info.span,
+            )
+            .entered();
+
+            let enum_layout = bx.cx().layout_of(enum_ty);
+            let tcx = bx.cx().tcx();
+            let discr_for_variant = |index| {
+                enum_layout
+                    .ty
+                    .discriminant_for_variant(tcx, index)
+                    .map_or(index.as_u32() as u128, |discr| discr.val)
+            };
+
+            macro_rules! optimize_terminator {
+                ($kind:expr) => {
+                    let kind = $kind;
+                    debug!(new_terminator = ?kind);
+                    optimized_terminator =
+                        mir::Terminator { source_info: terminator.source_info, kind };
+                    terminator = &optimized_terminator;
+                };
+            }
+
+            match enum_layout.layout.variants {
+                _ if enum_layout.abi.is_uninhabited() => {
+                    debug!("uninhabited");
+
+                    optimize_terminator!(mir::TerminatorKind::Unreachable);
+                }
+                abi::Variants::Single { index } => {
+                    let discr = discr_for_variant(index);
+                    debug!(?index, ?discr, "single variant");
+
+                    let target = targets
+                        .iter()
+                        .find(|(val, _)| *val == discr)
+                        .map_or(targets.otherwise(), |(_, bb)| bb);
+
+                    optimize_terminator!(mir::TerminatorKind::Goto { target });
+                }
+                abi::Variants::Multiple { ref variants, ref tag_encoding, .. } => {
+                    debug!(variants = variants.len(), "multiple variants");
+
+                    fn filter_targets(
+                        targets: &mir::SwitchTargets,
+                        mut predicate: impl FnMut(u128) -> bool,
+                    ) -> Option<mir::SwitchTargets> {
+                        let first_culled = targets.iter().position(|(val, _)| !predicate(val))?;
+
+                        Some(mir::SwitchTargets::new(
+                            targets.iter().take(first_culled).chain(
+                                targets
+                                    .iter()
+                                    .skip(first_culled + 1)
+                                    .filter(|(val, _)| predicate(*val)),
+                            ),
+                            targets.otherwise(),
+                        ))
+                    }
+
+                    let filtered_targets = match tag_encoding {
+                        abi::TagEncoding::Niche { .. } => {
+                            debug!("niche tag");
+
+                            filter_targets(targets, |index| {
+                                index < variants.len() as u128
+                                    && !variants[abi::VariantIdx::from(index as u32)]
+                                        .abi
+                                        .is_uninhabited()
+                            })
+                        }
+                        abi::TagEncoding::Direct => {
+                            debug!("direct tag");
+
+                            // FIXME(nox): Use `AdtDef::discriminants`.
+                            let inhabited_discriminants = variants
+                                .indices()
+                                .filter_map(|index| {
+                                    if variants[index].abi.is_uninhabited() {
+                                        return None;
+                                    }
+                                    Some(discr_for_variant(index))
+                                })
+                                .collect::<Vec<_>>();
+                            filter_targets(targets, |discr| {
+                                inhabited_discriminants.contains(&discr)
+                            })
+                        }
+                    };
+
+                    if let Some(filtered_targets) = filtered_targets {
+                        optimize_terminator!(mir::TerminatorKind::SwitchInt {
+                            discr: discr.clone(),
+                            switch_ty: switch_ty,
+                            targets: filtered_targets,
+                        });
+                    }
+                }
+            }
+        }
+
         self.codegen_terminator(bx, bb, terminator);
+    }
+
+    fn get_discriminant_switch_block_parts<'t>(
+        &mut self,
+        statements: &'tcx [mir::Statement<'tcx>],
+        terminator: &'t mir::Terminator<'tcx>,
+    ) -> Option<(Ty<'tcx>, &'t mir::Operand<'tcx>, Ty<'tcx>, &'t SwitchTargets)> {
+        if !self.cx.tcx().sess.opts.debugging_opts.opt_switch_monomorphizing {
+            return None;
+        }
+
+        let (discr, switch_ty, targets) = terminator.kind.as_switch()?;
+        let discr_place = discr.place()?;
+        let last = statements.last()?;
+        let (lhs, rhs) = last.kind.as_assign()?;
+
+        if *lhs != discr_place {
+            return None;
+        };
+
+        let &mir::Rvalue::Discriminant(enum_place) = rhs else { return None };
+
+        assert_eq!(switch_ty, self.monomorphized_place_ty(discr_place.as_ref()));
+
+        let enum_ty = self.monomorphized_place_ty(enum_place.as_ref());
+
+        Some((enum_ty, discr, switch_ty, targets))
     }
 
     fn codegen_terminator(
