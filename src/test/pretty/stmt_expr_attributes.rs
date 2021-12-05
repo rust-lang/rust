@@ -4,7 +4,7 @@
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 
-fn main() { }
+fn main() {}
 
 fn _0() {
 
@@ -35,7 +35,7 @@ fn _2() {
 fn _3() {
 
     #[rustc_dummy]
-    match () { _ => { } }
+    match () { _ => {} }
 }
 
 fn _4() {
@@ -117,13 +117,13 @@ fn _9() {
     stmt_mac!();
 
     #[rustc_dummy]
-    stmt_mac! { };
+    stmt_mac! {};
 
     #[rustc_dummy]
     stmt_mac![];
 
     #[rustc_dummy]
-    stmt_mac! { }
+    stmt_mac! {}
 
     let _ = ();
 }
@@ -133,7 +133,7 @@ macro_rules! expr_mac { () => { () } }
 fn _10() {
     let _ = #[rustc_dummy] expr_mac!();
     let _ = #[rustc_dummy] expr_mac![];
-    let _ = #[rustc_dummy] expr_mac! { };
+    let _ = #[rustc_dummy] expr_mac! {};
 }
 
 fn _11() {
@@ -235,7 +235,7 @@ fn _11() {
     || #[rustc_dummy] return;
     let _ = #[rustc_dummy] expr_mac!();
     let _ = #[rustc_dummy] expr_mac![];
-    let _ = #[rustc_dummy] expr_mac! { };
+    let _ = #[rustc_dummy] expr_mac! {};
     let _ = #[rustc_dummy] Foo{data: (),};
     let _ = #[rustc_dummy] Foo{..s};
     let _ = #[rustc_dummy] Foo{data: (), ..s};
@@ -258,6 +258,6 @@ fn _12() {
     }
 }
 
-fn foo() { }
-fn foo3(_: i32, _: (), _: ()) { }
-fn qux(_: i32) { }
+fn foo() {}
+fn foo3(_: i32, _: (), _: ()) {}
+fn qux(_: i32) {}

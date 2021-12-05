@@ -4,4 +4,4 @@
 
 pub(crate) macro mac { ($arg : expr) => { $arg + $arg } }
 
-fn main() { }
+fn main() {}

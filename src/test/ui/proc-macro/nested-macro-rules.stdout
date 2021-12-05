@@ -11,7 +11,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         span: $DIR/auxiliary/nested-macro-rules.rs:9:30: 9:35 (#6),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): struct FirstAttrStruct { }
+PRINT-ATTR INPUT (DISPLAY): struct FirstAttrStruct {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -46,7 +46,7 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         span: $DIR/auxiliary/nested-macro-rules.rs:9:30: 9:35 (#15),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): struct SecondAttrStruct { }
+PRINT-ATTR INPUT (DISPLAY): struct SecondAttrStruct {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",

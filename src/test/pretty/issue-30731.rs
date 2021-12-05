@@ -5,4 +5,4 @@
 // pretty-compare-only
 // pp-exact
 
-fn main() { b! { } c }
+fn main() { b! {} c }

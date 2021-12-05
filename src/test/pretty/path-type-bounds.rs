@@ -2,9 +2,9 @@
 
 
 trait Tr {
-    fn dummy(&self) { }
+    fn dummy(&self) {}
 }
-impl Tr for isize { }
+impl Tr for isize {}
 
 fn foo<'a>(x: Box<Tr + Sync + 'a>) -> Box<Tr + Sync + 'a> { x }
 

@@ -269,7 +269,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
         span: $DIR/inner-attrs.rs:20:30: 20:36 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): fn foo() { }
+PRINT-ATTR INPUT (DISPLAY): fn foo() {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "fn",
@@ -552,7 +552,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
         span: $DIR/inner-attrs.rs:27:30: 27:40 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): mod inline_mod { }
+PRINT-ATTR INPUT (DISPLAY): mod inline_mod {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "mod",
@@ -933,7 +933,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
         span: $DIR/inner-attrs.rs:82:42: 82:47 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): fn weird_extern() { }
+PRINT-ATTR INPUT (DISPLAY): fn weird_extern() {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "fn",

@@ -280,7 +280,7 @@ impl Session {
     }
 
     fn emit_future_breakage(&self) {
-        if !self.opts.debugging_opts.emit_future_incompat_report {
+        if !self.opts.json_future_incompat {
             return;
         }
 
