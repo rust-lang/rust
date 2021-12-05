@@ -335,17 +335,16 @@ impl SourceAnalyzer {
                 }
             }
         } else if is_path_of_attr {
-            let res = resolve_hir_path_as_macro(db, &self.resolver, &hir_path);
-            return match res {
-                Some(_) => res.map(PathResolution::Macro),
-                None => path.as_single_name_ref().and_then(|name_ref| {
-                    if let builtin @ Some(_) = BuiltinAttr::by_name(&name_ref.text()) {
-                        builtin.map(PathResolution::BuiltinAttr)
-                    } else if let tool @ Some(_) = ToolModule::by_name(&name_ref.text()) {
-                        tool.map(PathResolution::ToolModule)
-                    } else {
-                        None
-                    }
+            let name_ref = path.as_single_name_ref();
+            let builtin =
+                name_ref.as_ref().map(ast::NameRef::text).as_deref().and_then(BuiltinAttr::by_name);
+            if let builtin @ Some(_) = builtin {
+                return builtin.map(PathResolution::BuiltinAttr);
+            }
+            return match resolve_hir_path_as_macro(db, &self.resolver, &hir_path) {
+                res @ Some(m) if m.is_attr() => res.map(PathResolution::Macro),
+                _ => name_ref.and_then(|name_ref| {
+                    ToolModule::by_name(&name_ref.text()).map(PathResolution::ToolModule)
                 }),
             };
         }
