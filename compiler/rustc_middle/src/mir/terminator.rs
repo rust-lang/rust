@@ -66,8 +66,8 @@ impl SwitchTargets {
     /// including the `otherwise` fallback target.
     ///
     /// Note that this may yield 0 elements. Only the `otherwise` branch is mandatory.
-    pub fn iter(&self) -> SwitchTargetsIter<'_> {
-        SwitchTargetsIter { inner: iter::zip(&self.values, &self.targets) }
+    pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        self.into_iter()
     }
 
     /// Returns a slice with all possible jump targets (including the fallback target).
@@ -87,23 +87,16 @@ impl SwitchTargets {
     }
 }
 
-pub struct SwitchTargetsIter<'a> {
-    inner: iter::Zip<slice::Iter<'a, u128>, slice::Iter<'a, BasicBlock>>,
-}
-
-impl<'a> Iterator for SwitchTargetsIter<'a> {
+impl<'a> IntoIterator for &'a SwitchTargets {
     type Item = (u128, BasicBlock);
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next().map(|(val, bb)| (*val, *bb))
-    }
+    type IntoIter =
+        iter::Zip<iter::Cloned<slice::Iter<'a, u128>>, iter::Cloned<slice::Iter<'a, BasicBlock>>>;
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
+    fn into_iter(self) -> Self::IntoIter {
+        iter::zip(self.values.iter().cloned(), self.targets.iter().cloned())
     }
 }
-
-impl<'a> ExactSizeIterator for SwitchTargetsIter<'a> {}
 
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, PartialOrd)]
 pub enum TerminatorKind<'tcx> {
