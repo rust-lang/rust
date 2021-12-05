@@ -4,7 +4,7 @@ error: overly complex generic constant
 LL | fn test<const N: usize>() -> [u8; N + (|| 42)()] {}
    |                                   ^^^^-------^^
    |                                       |
-   |                                       dereferencing is not supported in generic constants
+   |                                       borrowing is not supported in generic constants
    |
    = help: consider moving this anonymous constant into a `const` function
    = note: this operation may be supported in the future
