@@ -546,10 +546,12 @@ impl<'hir> Map<'hir> {
         });
     }
 
-    pub fn ty_param_owner(&self, id: HirId) -> HirId {
+    pub fn ty_param_owner(&self, id: HirId) -> LocalDefId {
         match self.get(id) {
-            Node::Item(&Item { kind: ItemKind::Trait(..) | ItemKind::TraitAlias(..), .. }) => id,
-            Node::GenericParam(_) => self.get_parent_node(id),
+            Node::Item(&Item { kind: ItemKind::Trait(..) | ItemKind::TraitAlias(..), .. }) => {
+                id.expect_owner()
+            }
+            Node::GenericParam(_) => self.get_parent_item(id),
             _ => bug!("ty_param_owner: {} not a type parameter", self.node_to_string(id)),
         }
     }
