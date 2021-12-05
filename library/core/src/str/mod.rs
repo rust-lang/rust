@@ -69,6 +69,9 @@ pub use iter::SplitAsciiWhitespace;
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::SplitInclusive;
 
+#[unstable(feature = "split_left_inclusive", issue = "none")]
+pub use iter::SplitLeftInclusive;
+
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::{next_code_point, utf8_char_width};
 
@@ -1327,7 +1330,7 @@ impl str {
             start: 0,
             end: self.len(),
             matcher: pat.into_searcher(self),
-            allow_trailing_empty: true,
+            allow_bookending_empty: true,
             finished: false,
         })
     }
@@ -1367,8 +1370,50 @@ impl str {
             start: 0,
             end: self.len(),
             matcher: pat.into_searcher(self),
-            allow_trailing_empty: false,
+            allow_bookending_empty: false,
             finished: false,
+        })
+    }
+
+    /// An iterator over substrings of this string slice, separated by
+    /// characters matched by a pattern. Differs from the iterator produced by
+    /// `split` in that `split_left_inclusive` leaves the matched part as the
+    /// initiator of the substring.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_left_inclusive)]
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
+    ///     .split_left_inclusive('\n').collect();
+    /// assert_eq!(v, ["Mary had a little lamb", "\nlittle lamb", "\nlittle lamb."]);
+    /// ```
+    ///
+    /// If the last element of the string is matched,
+    /// that element will be considered the initiator of a new substring.
+    /// That substring will be the last item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(split_left_inclusive)]
+    /// let v: Vec<&str> = "\nMary had a little lamb\nlittle lamb\nlittle lamb.\n"
+    ///     .split_left_inclusive('\n').collect();
+    /// assert_eq!(v, ["\nMary had a little lamb", "\nlittle lamb", "\nlittle lamb.", "\n"]);
+    /// ```
+    #[unstable(feature = "split_left_inclusive", issue = "none")]
+    #[inline]
+    pub fn split_left_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitLeftInclusive<'a, P> {
+        SplitLeftInclusive(SplitInternal {
+            start: 0,
+            end: self.len(),
+            matcher: pat.into_searcher(self),
+            allow_bookending_empty: false,
+            finished: self.is_empty(),
         })
     }
 
@@ -1469,7 +1514,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
-        SplitTerminator(SplitInternal { allow_trailing_empty: false, ..self.split(pat).0 })
+        SplitTerminator(SplitInternal { allow_bookending_empty: false, ..self.split(pat).0 })
     }
 
     /// An iterator over substrings of `self`, separated by characters

@@ -1439,6 +1439,63 @@ fn test_split_char_iterator_inclusive_rev() {
 }
 
 #[test]
+fn test_split_char_iterator_left_inclusive() {
+    let split: Vec<&str> = "\n\n\n\n".split_left_inclusive('\n').collect();
+    assert_eq!(split, ["\n", "\n", "\n", "\n"]);
+
+    let split: Vec<&str> = "".split_left_inclusive('\n').collect();
+    let rhs: [&str; 0] = [];
+    assert_eq!(split, rhs);
+
+    let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+    let split: Vec<&str> = data.split_left_inclusive('\n').collect();
+    assert_eq!(split, ["\nMäry häd ä little lämb", "\nLittle lämb", "\n"]);
+
+    let uppercase_separated = "SheePSharKTurtlECaT";
+    let mut first_char = true;
+    let split: Vec<&str> = uppercase_separated
+        .split_left_inclusive(|c: char| {
+            let split = !first_char && c.is_uppercase();
+            first_char = split;
+            split
+        })
+        .collect();
+    assert_eq!(split, ["Shee", "PShar", "KTurtl", "ECa", "T"]);
+}
+
+#[test]
+fn test_split_char_iterator_left_inclusive_rev() {
+    let split: Vec<&str> = "\n\n\n\n".split_left_inclusive('\n').rev().collect();
+    assert_eq!(split, ["\n", "\n", "\n", "\n"]);
+
+    let split: Vec<&str> = "".split_left_inclusive('\n').rev().collect();
+    let rhs: [&str; 0] = [];
+    assert_eq!(split, rhs);
+
+    let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+    let split: Vec<&str> = data.split_left_inclusive('\n').rev().collect();
+    assert_eq!(split, ["\n", "\nLittle lämb", "\nMäry häd ä little lämb"]);
+
+    // Note that the predicate is stateful and thus dependent
+    // on the iteration order.
+    // (A different predicate is needed for reverse iterator vs normal iterator.)
+    // Not sure if anything can be done though.
+    let uppercase_separated = "SheePSharKTurtlECaT";
+    let mut term_char = true;
+    let split: Vec<&str> = uppercase_separated
+        .split_left_inclusive(|c: char| {
+            let split = term_char && c.is_uppercase();
+            term_char = c.is_uppercase();
+            split
+        })
+        .rev()
+        .collect();
+    assert_eq!(split, ["T", "ECa", "KTurtl", "PShar", "Shee",]);
+}
+
+#[test]
 fn test_rsplit() {
     let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
