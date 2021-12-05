@@ -1057,9 +1057,12 @@ pub fn compile_unit_metadata(
     let output_filenames = tcx.output_filenames(());
     let out_dir = &output_filenames.out_directory;
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
-        output_filenames
-            .split_dwarf_path(tcx.sess.split_debuginfo(), Some(codegen_unit_name))
-            .map(|f| out_dir.join(f))
+        output_filenames.split_dwarf_path(tcx.sess.split_debuginfo(), Some(codegen_unit_name)).map(
+            |f| {
+                let joined = out_dir.join(f);
+                tcx.sess.source_map().path_mapping().map_prefix(joined).0
+            },
+        )
     } else {
         None
     }
