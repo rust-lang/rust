@@ -574,8 +574,8 @@ fn test_codegen_options_tracking_hash() {
     tracked!(force_frame_pointers, Some(false));
     tracked!(force_unwind_tables, Some(true));
     tracked!(inline_threshold, Some(0xf007ba11));
-    tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
     tracked!(link_dead_code, Some(true));
+    tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
     tracked!(llvm_args, vec![String::from("1"), String::from("2")]);
     tracked!(lto, LtoCli::Fat);
     tracked!(metadata, vec![String::from("A"), String::from("B")]);
@@ -674,12 +674,12 @@ fn test_debugging_options_tracking_hash() {
     untracked!(perf_stats, true);
     // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
     untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
-    untracked!(profile_closures, true);
     untracked!(print_link_args, true);
     untracked!(print_llvm_passes, true);
     untracked!(print_mono_items, Some(String::from("abc")));
     untracked!(print_type_sizes, true);
     untracked!(proc_macro_backtrace, true);
+    untracked!(profile_closures, true);
     untracked!(query_dep_graph, true);
     untracked!(query_stats, true);
     untracked!(save_analysis, true);
@@ -746,8 +746,8 @@ fn test_debugging_options_tracking_hash() {
     tracked!(new_llvm_pass_manager, Some(true));
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
-    tracked!(no_unique_section_names, true);
     tracked!(no_profiler_runtime, true);
+    tracked!(no_unique_section_names, true);
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);
     tracked!(panic_in_drop, PanicStrategy::Abort);
@@ -759,8 +759,8 @@ fn test_debugging_options_tracking_hash() {
     tracked!(print_fuel, Some("abc".to_string()));
     tracked!(profile, true);
     tracked!(profile_emit, Some(PathBuf::from("abc")));
-    tracked!(profiler_runtime, "abc".to_string());
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
+    tracked!(profiler_runtime, "abc".to_string());
     tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
