@@ -184,7 +184,7 @@ When you open a PR on the [rust-lang/rust], a bot will assign your PR to a
 review. If there is a particular rust team member you are working with, you can
 request that reviewer by leaving a comment on the thread with `r?
 @reviewer-github-id` (e.g. `r? @eddyb`). If you don't know who to request,
-don't request anyone; the bot will assign someone automatically.
+don't request anyone; the bot will assign someone automatically based on which files you changed.
 
 The reviewer may request changes before they approve your PR. Feel free to ask
 questions or discuss things you don't understand or disagree with. However,

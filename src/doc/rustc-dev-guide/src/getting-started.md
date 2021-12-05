@@ -387,7 +387,6 @@ incredibly helpful:
 [wd]: ./contributing.md#writing-documentation
 [wg]: https://rust-lang.github.io/compiler-team/working-groups/
 
-
 ## Contributor Procedures
 
 There are some official procedures to know about. This is a tour of the
@@ -396,11 +395,12 @@ highlights, but there are a lot more details, which we will link to below.
 ### Code Review
 
 When you open a PR on the `rust-lang/rust` repo, a bot called `@rust-highfive` will
-automatically assign a reviewer to the PR. The reviewer is the person that will
-approve the PR to be tested and merged. If you want a specific reviewer (e.g. a
-team member you've been working with), you can specifically request them by
-writing `r? @user` (e.g. `r? @eddyb`) in either the original post or a followup
-comment (you can see [this comment][r?] for example).
+automatically assign a reviewer to the PR based on which files you changed.
+The reviewer is the person that will approve the PR to be tested and merged.
+If you want a specific reviewer (e.g. a team member you've been working with),
+you can specifically request them by writing `r? @user` (e.g. `r? @eddyb`) in
+either the original post or a followup comment
+(you can see [this comment][r?] for example).
 
 Please note that the reviewers are humans, who for the most part work on `rustc`
 in their free time. This means that they can take some time to respond and review

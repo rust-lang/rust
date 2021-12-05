@@ -70,9 +70,11 @@ when contributing to Rust under [the git section](./git.md).
 [about-pull-requests]: https://help.github.com/articles/about-pull-requests/
 [development-models]: https://help.github.com/articles/about-collaborative-development-models/
 
+### r?
+
 All pull requests are reviewed by another person. We have a bot,
 [@rust-highfive][rust-highfive], that will automatically assign a random person
-to review your request.
+to review your request based on which files you changed.
 
 If you want to request that a specific person reviews your pull request, you
 can add an `r?` to the pull request description. For example,
@@ -83,6 +85,17 @@ make a documentation change, add
 
 to the end of the pull request description, and [@rust-highfive][rust-highfive] will assign
 [@steveklabnik][steveklabnik] instead of a random person. This is entirely optional.
+
+You can also assign a random reviewer from a specific team by writing `r? rust-lang/groupname`.
+So if you were making a diagnostics change, then you could get a reviewer from the diagnostics
+team by adding:
+
+    r? rust-lang/diagnostics
+
+For a full list of possible `groupname` check the `groups` section at the
+[rust highfive config file](https://github.com/rust-lang/highfive/blob/master/highfive/configs/rust-lang/rust.json).
+
+### CI
 
 In addition to being reviewed by a human, pull requests are automatically tested
 thanks to continuous integration (CI). Basically, every time you open and update
@@ -99,6 +112,8 @@ computational resources each time you push a change. It is also perfectly fine
 (and even encouraged!) to use the CI to test your changes if it can help your
 productivity. In particular, we don't recommend running the full `./x.py test` suite locally,
 since it takes a very long time to execute.
+
+### r+
 
 After someone has reviewed your pull request, they will leave an annotation
 on the pull request with an `r+`. It will look something like this:
