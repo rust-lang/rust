@@ -54,6 +54,10 @@ Otherwise, have a great day =^.^=
             background-color: #f5f5f5;
         }
 
+        .dropdown-toggle .badge {
+            background-color: #777;
+        }
+
         .panel-heading { cursor: pointer; }
 
         .panel-title { display: flex; flex-wrap: wrap;}
@@ -302,7 +306,7 @@ Otherwise, have a great day =^.^=
                     <div class="col-md-12 form-horizontal">
                         <div class="btn-group" ng-class="{ open: selectedDropdown == 'levels' }" ng-click="toggleDropdown('levels', $event)">
                             <button type="button" class="btn btn-default dropdown-toggle">
-                                <span class="badge">{{selectedValuesCount(levels)}}</span> Lint levels <span class="caret"></span>
+                                Lint levels <span class="badge">{{selectedValuesCount(levels)}}</span> <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu">
                                 <li class="checkbox">
@@ -326,7 +330,7 @@ Otherwise, have a great day =^.^=
                         </div>
                         <div class="btn-group" ng-class="{ open: selectedDropdown == 'groups' }" ng-click="toggleDropdown('groups', $event)">
                             <button type="button" class="btn btn-default dropdown-toggle">
-                                <span class="badge">{{selectedValuesCount(groups)}}</span> Lint groups <span class="caret"></span>
+                                Lint groups <span class="badge">{{selectedValuesCount(groups)}}</span> <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu">
                                 <li class="checkbox">
