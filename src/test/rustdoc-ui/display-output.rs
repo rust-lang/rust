@@ -10,6 +10,6 @@
 /// #![warn(unused)]
 /// let x = 12;
 ///
-/// fn foo(x: &std::fmt::Display) {}
+/// fn foo(x: &dyn std::fmt::Display) {}
 /// ```
 pub fn foo() {}
