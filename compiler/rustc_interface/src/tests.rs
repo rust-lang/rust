@@ -3,6 +3,8 @@ use crate::interface::parse_cfgspecs;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::InstrumentCoverage;
+use rustc_session::config::LdImpl;
+use rustc_session::config::MirSpanview;
 use rustc_session::config::Strip;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{
@@ -651,8 +653,11 @@ fn test_debugging_options_tracking_hash() {
     untracked!(dump_mir_dir, String::from("abc"));
     untracked!(dump_mir_exclude_pass_number, true);
     untracked!(dump_mir_graphviz, true);
+    untracked!(dump_mir_spanview, Some(MirSpanview::Statement));
     untracked!(emit_stack_sizes, true);
     untracked!(future_incompat_test, true);
+    untracked!(graphviz_dark_mode, true);
+    untracked!(graphviz_font, "Comic Sans".to_string());
     untracked!(hir_stats, true);
     untracked!(identify_regions, true);
     untracked!(incremental_ignore_spans, true);
@@ -666,6 +671,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(macro_backtrace, true);
     untracked!(meta_stats, true);
     untracked!(nll_facts, true);
+    untracked!(nll_facts_dir, "nll-not-fake-news".to_string());
     untracked!(no_analysis, true);
     untracked!(no_interleave_lints, true);
     untracked!(no_leak_check, true);
@@ -687,6 +693,8 @@ fn test_debugging_options_tracking_hash() {
     untracked!(self_profile_events, Some(vec![String::new()]));
     untracked!(span_debug, true);
     untracked!(span_free_formats, true);
+    untracked!(split_dwarf_inlining, false);
+    untracked!(strip, Strip::Debuginfo);
     untracked!(temps_dir, Some(String::from("abc")));
     untracked!(terminal_width, Some(80));
     untracked!(threads, 99);
@@ -717,8 +725,10 @@ fn test_debugging_options_tracking_hash() {
     tracked!(asm_comments, true);
     tracked!(assume_incomplete_release, true);
     tracked!(binary_dep_depinfo, true);
+    tracked!(cgu_partitioning_strategy, Some("share-the-bread".to_string()));
     tracked!(chalk, true);
     tracked!(codegen_backend, Some("abc".to_string()));
+    tracked!(combine_cgu, false);
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(debug_info_for_profiling, true);
     tracked!(debug_macros, true);
@@ -728,7 +738,9 @@ fn test_debugging_options_tracking_hash() {
     tracked!(force_unstable_if_unmarked, true);
     tracked!(fuel, Some(("abc".to_string(), 99)));
     tracked!(function_sections, Some(false));
+    tracked!(gcc_ld, Some(LdImpl::Lld));
     tracked!(human_readable_cgu_names, true);
+    tracked!(incremental_relative_spans, true);
     tracked!(inline_in_all_cgus, Some(true));
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
@@ -748,6 +760,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(no_link, true);
     tracked!(no_profiler_runtime, true);
     tracked!(no_unique_section_names, true);
+    tracked!(normalize_docs, true);
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);
     tracked!(panic_in_drop, PanicStrategy::Abort);
@@ -755,12 +768,14 @@ fn test_debugging_options_tracking_hash() {
     tracked!(pick_stable_methods_before_any_unstable, false);
     tracked!(plt, Some(true));
     tracked!(polonius, true);
+    tracked!(polymorphize, true);
     tracked!(precise_enum_drop_elaboration, false);
     tracked!(print_fuel, Some("abc".to_string()));
     tracked!(profile, true);
     tracked!(profile_emit, Some(PathBuf::from("abc")));
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profiler_runtime, "abc".to_string());
+    tracked!(randomize_layout, true);
     tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
@@ -783,6 +798,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(treat_err_as_bug, NonZeroUsize::new(1));
     tracked!(tune_cpu, Some(String::from("abc")));
     tracked!(unleash_the_miri_inside_of_you, true);
+    tracked!(unsound_mir_opts, true);
     tracked!(use_ctors_section, Some(true));
     tracked!(verify_llvm_ir, true);
     tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));

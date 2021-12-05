@@ -1451,7 +1451,7 @@ pub enum WasiExecModel {
     Reactor,
 }
 
-#[derive(Clone, Copy, Hash)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq)]
 pub enum LdImpl {
     Lld,
 }
