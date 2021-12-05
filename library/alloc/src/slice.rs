@@ -132,12 +132,17 @@ pub use core::slice::{Iter, IterMut};
 pub use core::slice::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 pub use core::slice::{RSplit, RSplitMut};
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
+pub use core::slice::{
+    RSplitInclusive, RSplitInclusiveMut, RSplitLeftInclusive, RSplitLeftInclusiveMut,
+    RSplitNInclusive, RSplitNInclusiveMut, RSplitNLeftInclusive, RSplitNLeftInclusiveMut,
+    SplitLeftInclusive, SplitLeftInclusiveMut, SplitNInclusive, SplitNInclusiveMut,
+    SplitNLeftInclusive, SplitNLeftInclusiveMut,
+};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{RSplitN, RSplitNMut, SplitN, SplitNMut};
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use core::slice::{SplitInclusive, SplitInclusiveMut};
-#[unstable(feature = "split_left_inclusive", issue = "none")]
-pub use core::slice::{SplitLeftInclusive, SplitLeftInclusiveMut};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods

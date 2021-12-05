@@ -69,7 +69,7 @@ pub use iter::SplitAsciiWhitespace;
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::SplitInclusive;
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 pub use iter::SplitLeftInclusive;
 
 #[unstable(feature = "str_internals", issue = "none")]
@@ -1389,7 +1389,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(split_left_inclusive)]
+    /// #![feature(split_inclusive_variants)]
     /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
     ///     .split_left_inclusive('\n').collect();
     /// assert_eq!(v, ["Mary had a little lamb", "\nlittle lamb", "\nlittle lamb."]);
@@ -1400,12 +1400,12 @@ impl str {
     /// That substring will be the last item returned by the iterator.
     ///
     /// ```
-    /// #![feature(split_left_inclusive)]
+    /// #![feature(split_inclusive_variants)]
     /// let v: Vec<&str> = "\nMary had a little lamb\nlittle lamb\nlittle lamb.\n"
     ///     .split_left_inclusive('\n').collect();
     /// assert_eq!(v, ["\nMary had a little lamb", "\nlittle lamb", "\nlittle lamb.", "\n"]);
     /// ```
-    #[unstable(feature = "split_left_inclusive", issue = "none")]
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
     #[inline]
     pub fn split_left_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitLeftInclusive<'a, P> {
         SplitLeftInclusive(SplitInternal {

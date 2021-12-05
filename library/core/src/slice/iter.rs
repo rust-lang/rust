@@ -640,6 +640,21 @@ where
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool {}
 
+impl<'a, T, P> SplitIter for SplitInclusive<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    #[inline]
+    fn finish(&mut self) -> Option<&'a [T]> {
+        if self.finished {
+            None
+        } else {
+            self.finished = true;
+            Some(self.v)
+        }
+    }
+}
+
 /// An iterator over subslices separated by elements that match a predicate
 /// function. Unlike `Split`, it contains the matched part as an initiator
 /// of the subslice.
@@ -649,7 +664,7 @@ impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool
 /// # Example
 ///
 /// ```
-/// #![feature(split_left_inclusive)]
+/// #![feature(split_inclusive_variants)]
 ///
 /// let slice = [10, 40, 33, 20];
 /// let mut iter = slice.split_left_inclusive(|num| num % 3 == 0);
@@ -657,7 +672,7 @@ impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool
 ///
 /// [`split_left_inclusive`]: slice::split_left_inclusive
 /// [slices]: slice
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 pub struct SplitLeftInclusive<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -675,7 +690,7 @@ impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitLeftInclusive<'a, T, P> {
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitLeftInclusive<'_, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -689,7 +704,7 @@ where
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<T, P> Clone for SplitLeftInclusive<'_, T, P>
 where
     P: Clone + FnMut(&T) -> bool,
@@ -699,7 +714,7 @@ where
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<'a, T, P> Iterator for SplitLeftInclusive<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -740,7 +755,7 @@ where
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<'a, T, P> DoubleEndedIterator for SplitLeftInclusive<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -761,8 +776,23 @@ where
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<T, P> FusedIterator for SplitLeftInclusive<'_, T, P> where P: FnMut(&T) -> bool {}
+
+impl<'a, T, P> SplitIter for SplitLeftInclusive<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    #[inline]
+    fn finish(&mut self) -> Option<&'a [T]> {
+        if self.finished {
+            None
+        } else {
+            self.finished = true;
+            Some(self.v)
+        }
+    }
+}
 
 /// An iterator over the mutable subslices of the vector which are separated
 /// by elements that match `pred`.
@@ -1018,6 +1048,21 @@ where
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> bool {}
 
+impl<'a, T, P> SplitIter for SplitInclusiveMut<'a, T, P>
+where
+    P: FnMut(&T) -> bool,
+{
+    #[inline]
+    fn finish(&mut self) -> Option<&'a mut [T]> {
+        if self.finished {
+            None
+        } else {
+            self.finished = true;
+            Some(mem::replace(&mut self.v, &mut []))
+        }
+    }
+}
+
 /// An iterator over the mutable subslices of the vector which are separated
 /// by elements that match `pred`. Unlike `SplitMut`, it contains the matched
 /// parts in the beginnings of the subslices.
@@ -1028,7 +1073,7 @@ impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> b
 /// # Example
 ///
 /// ```
-/// #![feature(split_left_inclusive)]
+/// #![feature(split_inclusive_variants)]
 ///
 /// let mut v = [10, 40, 30, 20, 60, 50];
 /// let iter = v.split_left_inclusive_mut(|num| *num % 3 == 0);
@@ -1036,7 +1081,7 @@ impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> b
 ///
 /// [`split_left_inclusive_mut`]: slice::split_left_inclusive_mut
 /// [slices]: slice
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 pub struct SplitLeftInclusiveMut<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -1054,7 +1099,7 @@ impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitLeftInclusiveMut<'a, T, P> {
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitLeftInclusiveMut<'_, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -1067,7 +1112,7 @@ where
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<'a, T, P> Iterator for SplitLeftInclusiveMut<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -1113,7 +1158,7 @@ where
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<'a, T, P> DoubleEndedIterator for SplitLeftInclusiveMut<'a, T, P>
 where
     P: FnMut(&T) -> bool,
@@ -1143,196 +1188,150 @@ where
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
-impl<T, P> FusedIterator for SplitLeftInclusiveMut<'_, T, P> where P: FnMut(&T) -> bool {}
-
-/// An iterator over subslices separated by elements that match a predicate
-/// function, starting from the end of the slice.
-///
-/// This struct is created by the [`rsplit`] method on [slices].
-///
-/// # Example
-///
-/// ```
-/// let slice = [11, 22, 33, 0, 44, 55];
-/// let iter = slice.rsplit(|num| *num == 0);
-/// ```
-///
-/// [`rsplit`]: slice::rsplit
-/// [slices]: slice
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct RSplit<'a, T: 'a, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    inner: Split<'a, T, P>,
-}
-
-impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplit<'a, T, P> {
-    #[inline]
-    pub(super) fn new(slice: &'a [T], pred: P) -> Self {
-        Self { inner: Split::new(slice, pred) }
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<T: fmt::Debug, P> fmt::Debug for RSplit<'_, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplit")
-            .field("v", &self.inner.v)
-            .field("finished", &self.inner.finished)
-            .finish()
-    }
-}
-
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<T, P> Clone for RSplit<'_, T, P>
-where
-    P: Clone + FnMut(&T) -> bool,
-{
-    fn clone(&self) -> Self {
-        RSplit { inner: self.inner.clone() }
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> Iterator for RSplit<'a, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    type Item = &'a [T];
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a [T]> {
-        self.inner.next_back()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> DoubleEndedIterator for RSplit<'a, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a [T]> {
-        self.inner.next()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> SplitIter for RSplit<'a, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    #[inline]
-    fn finish(&mut self) -> Option<&'a [T]> {
-        self.inner.finish()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<T, P> FusedIterator for RSplit<'_, T, P> where P: FnMut(&T) -> bool {}
-
-/// An iterator over the subslices of the vector which are separated
-/// by elements that match `pred`, starting from the end of the slice.
-///
-/// This struct is created by the [`rsplit_mut`] method on [slices].
-///
-/// # Example
-///
-/// ```
-/// let mut slice = [11, 22, 33, 0, 44, 55];
-/// let iter = slice.rsplit_mut(|num| *num == 0);
-/// ```
-///
-/// [`rsplit_mut`]: slice::rsplit_mut
-/// [slices]: slice
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct RSplitMut<'a, T: 'a, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    inner: SplitMut<'a, T, P>,
-}
-
-impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplitMut<'a, T, P> {
-    #[inline]
-    pub(super) fn new(slice: &'a mut [T], pred: P) -> Self {
-        Self { inner: SplitMut::new(slice, pred) }
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<T: fmt::Debug, P> fmt::Debug for RSplitMut<'_, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplitMut")
-            .field("v", &self.inner.v)
-            .field("finished", &self.inner.finished)
-            .finish()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> SplitIter for RSplitMut<'a, T, P>
+impl<'a, T, P> SplitIter for SplitLeftInclusiveMut<'a, T, P>
 where
     P: FnMut(&T) -> bool,
 {
     #[inline]
     fn finish(&mut self) -> Option<&'a mut [T]> {
-        self.inner.finish()
+        if self.finished {
+            None
+        } else {
+            self.finished = true;
+            Some(mem::replace(&mut self.v, &mut []))
+        }
     }
 }
 
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> Iterator for RSplitMut<'a, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    type Item = &'a mut [T];
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
+impl<T, P> FusedIterator for SplitLeftInclusiveMut<'_, T, P> where P: FnMut(&T) -> bool {}
 
-    #[inline]
-    fn next(&mut self) -> Option<&'a mut [T]> {
-        self.inner.next_back()
-    }
+reverse_iter! {
+    #[stable(feature = "slice_rsplit", since = "1.27.0")]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, starting from the end of the slice.
+    ///
+    /// This struct is created by the [`rsplit`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let slice = [11, 22, 33, 0, 44, 55];
+    /// let iter = slice.rsplit(|num| *num == 0);
+    /// ```
+    ///
+    /// [`rsplit`]: slice::rsplit
+    /// [slices]: slice
+    pub struct RSplit { "RSplit"; Split }: Clone
 
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, in reverse order. Unlike `Split`, it contains the matched part as
+    /// an initiator of the subslice.
+    ///
+    /// This struct is created by the [`rsplit_left_inclusive`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.rsplit_inclusive(|num| num % 3 == 0);
+    /// ```
+    ///
+    /// [`rsplit_left_inclusive`]: slice::rsplit_inclusive
+    /// [slices]: slice
+    pub struct RSplitInclusive { "RSplitInclusive"; SplitInclusive }: Clone
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, in reverse order. Unlike `Split`, it contains the matched part as
+    /// an initiator of the subslice.
+    ///
+    /// This struct is created by the [`rsplit_left_inclusive`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.rsplit_left_inclusive(|num| num % 3 == 0);
+    /// ```
+    ///
+    /// [`rsplit_left_inclusive`]: slice::rsplit_left_inclusive
+    /// [slices]: slice
+    pub struct RSplitLeftInclusive { "RSplitLeftInclusive"; SplitLeftInclusive }: Clone
+
+    #[stable(feature = "slice_rsplit", since = "1.27.0")]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over the subslices of the vector which are separated
+    /// by elements that match `pred`, starting from the end of the slice.
+    ///
+    /// This struct is created by the [`rsplit_mut`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut slice = [11, 22, 33, 0, 44, 55];
+    /// let iter = slice.rsplit_mut(|num| *num == 0);
+    /// ```
+    ///
+    /// [`rsplit_mut`]: slice::rsplit_mut
+    /// [slices]: slice
+    pub struct RSplitMut { "RSplitMut"; SplitMut }
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over the mutable subslices of the vector which are separated
+    /// by elements that match `pred`, in reverse order. Unlike `SplitMut`, it
+    /// contains the matched parts in the ends of the subslices.
+    ///
+    /// This struct is created by the [`rsplit_inclusive_mut`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let mut v = [10, 40, 30, 20, 60, 50];
+    /// let iter = v.rsplit_inclusive_mut(|num| *num % 3 == 0);
+    /// ```
+    ///
+    /// [`rsplit_inclusive_mut`]: slice::rsplit_inclusive_mut
+    /// [slices]: slice
+    pub struct RSplitInclusiveMut { "RSplitInclusiveMut" ; SplitInclusiveMut }
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over the mutable subslices of the vector which are separated
+    /// by elements that match `pred`, in reverse order. Unlike `SplitMut`, it
+    /// contains the matched parts in the beginnings of the subslices.
+    ///
+    /// This struct is created by the [`rsplit_left_inclusive_mut`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let mut v = [10, 40, 30, 20, 60, 50];
+    /// let iter = v.rsplit_left_inclusive_mut(|num| *num % 3 == 0);
+    /// ```
+    ///
+    /// [`rsplit_left_inclusive_mut`]: slice::rsplit_left_inclusive_mut
+    /// [slices]: slice
+    pub struct RSplitLeftInclusiveMut { "RSplitLeftInclusiveMut" ; SplitLeftInclusiveMut }
 }
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> DoubleEndedIterator for RSplitMut<'a, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a mut [T]> {
-        self.inner.next()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<T, P> FusedIterator for RSplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
 
 /// An private iterator over subslices separated by elements that
 /// match a predicate function, splitting at most a fixed number of
 /// times.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct GenericSplitN<I> {
     iter: I,
     count: usize,
@@ -1366,172 +1365,261 @@ impl<T, I: SplitIter<Item = T>> Iterator for GenericSplitN<I> {
     }
 }
 
-/// An iterator over subslices separated by elements that match a predicate
-/// function, limited to a given number of splits.
-///
-/// This struct is created by the [`splitn`] method on [slices].
-///
-/// # Example
-///
-/// ```
-/// let slice = [10, 40, 30, 20, 60, 50];
-/// let iter = slice.splitn(2, |num| *num % 3 == 0);
-/// ```
-///
-/// [`splitn`]: slice::splitn
-/// [slices]: slice
-#[stable(feature = "rust1", since = "1.0.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct SplitN<'a, T: 'a, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    inner: GenericSplitN<Split<'a, T, P>>,
-}
+iter_n! {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[fused(stable(feature = "fused", since = "1.26.0"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, limited to a given number of splits.
+    ///
+    /// This struct is created by the [`splitn`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let slice = [10, 40, 30, 20, 60, 50];
+    /// let iter = slice.splitn(2, |num| *num % 3 == 0);
+    /// ```
+    ///
+    /// [`splitn`]: slice::splitn
+    /// [slices]: slice
+    pub struct SplitN {"SplitN"; Split }: Clone
 
-impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitN<'a, T, P> {
-    #[inline]
-    pub(super) fn new(s: Split<'a, T, P>, n: usize) -> Self {
-        Self { inner: GenericSplitN { iter: s, count: n } }
-    }
-}
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[fused(stable(feature = "fused", since = "1.26.0"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a
+    /// predicate function, limited to a given number of splits, starting
+    /// from the end of the slice.
+    ///
+    /// This struct is created by the [`rsplitn`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let slice = [10, 40, 30, 20, 60, 50];
+    /// let iter = slice.rsplitn(2, |num| *num % 3 == 0);
+    /// ```
+    ///
+    /// [`rsplitn`]: slice::rsplitn
+    /// [slices]: slice
+    pub struct RSplitN {"RSplitN"; RSplit }: Clone
 
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: fmt::Debug, P> fmt::Debug for SplitN<'_, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitN").field("inner", &self.inner).finish()
-    }
-}
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[fused(stable(feature = "fused", since = "1.26.0"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, limited to a given number of splits.
+    ///
+    /// This struct is created by the [`splitn_mut`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut slice = [10, 40, 30, 20, 60, 50];
+    /// let iter = slice.splitn_mut(2, |num| *num % 3 == 0);
+    /// ```
+    ///
+    /// [`splitn_mut`]: slice::splitn_mut
+    /// [slices]: slice
+    pub struct SplitNMut {"SplitNMut"; SplitMut }
 
-/// An iterator over subslices separated by elements that match a
-/// predicate function, limited to a given number of splits, starting
-/// from the end of the slice.
-///
-/// This struct is created by the [`rsplitn`] method on [slices].
-///
-/// # Example
-///
-/// ```
-/// let slice = [10, 40, 30, 20, 60, 50];
-/// let iter = slice.rsplitn(2, |num| *num % 3 == 0);
-/// ```
-///
-/// [`rsplitn`]: slice::rsplitn
-/// [slices]: slice
-#[stable(feature = "rust1", since = "1.0.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct RSplitN<'a, T: 'a, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    inner: GenericSplitN<RSplit<'a, T, P>>,
-}
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[fused(stable(feature = "fused", since = "1.26.0"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a
+    /// predicate function, limited to a given number of splits, starting
+    /// from the end of the slice.
+    ///
+    /// This struct is created by the [`rsplitn_mut`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut slice = [10, 40, 30, 20, 60, 50];
+    /// let iter = slice.rsplitn_mut(2, |num| *num % 3 == 0);
+    /// ```
+    ///
+    /// [`rsplitn_mut`]: slice::rsplitn_mut
+    /// [slices]: slice
+    pub struct RSplitNMut {"RSplitNMut"; RSplitMut }
 
-impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplitN<'a, T, P> {
-    #[inline]
-    pub(super) fn new(s: RSplit<'a, T, P>, n: usize) -> Self {
-        Self { inner: GenericSplitN { iter: s, count: n } }
-    }
-}
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, limited to a certain number of elements. Unlike `SplitN`, it
+    /// contains the matched part as a terminator of the subslice.
+    ///
+    /// This struct is created by the [`splitn_inclusive`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.splitn_inclusive(2, |num| num % 3 == 0);
+    /// ```
+    ///
+    /// [`splitn_inclusive`]: slice::splitn_inclusive
+    /// [slices]: slice
+    pub struct SplitNInclusive {"SplitNInclusive"; SplitInclusive}: Clone
 
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: fmt::Debug, P> fmt::Debug for RSplitN<'_, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplitN").field("inner", &self.inner).finish()
-    }
-}
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, limited to a certain number of elements. Unlike `SplitN`, it
+    /// contains the matched part as an initiator of the subslice.
+    ///
+    /// This struct is created by the [`splitn_left_inclusive`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.splitn_left_inclusive(2, |num| num % 3 == 0);
+    /// ```
+    ///
+    /// [`splitn_left_inclusive`]: slice::splitn_left_inclusive
+    /// [slices]: slice
+    pub struct SplitNLeftInclusive {"SplitNLeftInclusive"; SplitLeftInclusive}: Clone
 
-/// An iterator over subslices separated by elements that match a predicate
-/// function, limited to a given number of splits.
-///
-/// This struct is created by the [`splitn_mut`] method on [slices].
-///
-/// # Example
-///
-/// ```
-/// let mut slice = [10, 40, 30, 20, 60, 50];
-/// let iter = slice.splitn_mut(2, |num| *num % 3 == 0);
-/// ```
-///
-/// [`splitn_mut`]: slice::splitn_mut
-/// [slices]: slice
-#[stable(feature = "rust1", since = "1.0.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct SplitNMut<'a, T: 'a, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    inner: GenericSplitN<SplitMut<'a, T, P>>,
-}
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, in reverse order, limited to a certain number of elements. Unlike
+    /// `RSplitN`, it contains the matched part as a terminator of the subslice.
+    ///
+    /// This struct is created by the [`rsplitn_inclusive`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.rsplitn_inclusive(2, |num| num % 3 == 0);
+    /// ```
+    ///
+    /// [`rsplitn_inclusive`]: slice::rsplitn_inclusive
+    /// [slices]: slice
+    pub struct RSplitNInclusive {"RSplitNInclusive"; RSplitInclusive}: Clone
 
-impl<'a, T: 'a, P: FnMut(&T) -> bool> SplitNMut<'a, T, P> {
-    #[inline]
-    pub(super) fn new(s: SplitMut<'a, T, P>, n: usize) -> Self {
-        Self { inner: GenericSplitN { iter: s, count: n } }
-    }
-}
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, in reverse order, limited to a certain number of elements. Unlike
+    /// `RSplitN`, it contains the matched part as an initiator of the subslice.
+    ///
+    /// This struct is created by the [`rsplitn_left_inclusive`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.rsplitn_left_inclusive(2, |num| num % 3 == 0);
+    /// ```
+    ///
+    /// [`rsplitn_left_inclusive`]: slice::rsplitn_left_inclusive
+    /// [slices]: slice
+    pub struct RSplitNLeftInclusive {"RSplitNLeftInclusive"; RSplitLeftInclusive}: Clone
 
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: fmt::Debug, P> fmt::Debug for SplitNMut<'_, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitNMut").field("inner", &self.inner).finish()
-    }
-}
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, limited to a certain number of elements. Unlike `SplitNMut`, it
+    /// contains the matched part as a terminator of the subslice.
+    ///
+    /// This struct is created by the [`splitn_inclusive_mut`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let mut slice = [10, 40, 33, 20];
+    /// let mut iter = slice.splitn_inclusive_mut(2, |num| num % 3 == 0);
+    /// ```
+    ///
+    /// [`splitn_inclusive_mut`]: slice::splitn_inclusive_mut
+    /// [slices]: slice
+    pub struct SplitNInclusiveMut {"SplitNInclusiveMut"; SplitInclusiveMut}
 
-/// An iterator over subslices separated by elements that match a
-/// predicate function, limited to a given number of splits, starting
-/// from the end of the slice.
-///
-/// This struct is created by the [`rsplitn_mut`] method on [slices].
-///
-/// # Example
-///
-/// ```
-/// let mut slice = [10, 40, 30, 20, 60, 50];
-/// let iter = slice.rsplitn_mut(2, |num| *num % 3 == 0);
-/// ```
-///
-/// [`rsplitn_mut`]: slice::rsplitn_mut
-/// [slices]: slice
-#[stable(feature = "rust1", since = "1.0.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct RSplitNMut<'a, T: 'a, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    inner: GenericSplitN<RSplitMut<'a, T, P>>,
-}
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, limited to a certain number of elements. Unlike `SplitNMut`, it
+    /// contains the matched part as an initiator of the subslice.
+    ///
+    /// This struct is created by the [`splitn_left_inclusive_mut`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let mut slice = [10, 40, 33, 20];
+    /// let mut iter = slice.splitn_left_inclusive_mut(2, |num| num % 3 == 0);
+    /// ```
+    ///
+    /// [`splitn_left_inclusive_mut`]: slice::splitn_left_inclusive_mut
+    /// [slices]: slice
+    pub struct SplitNLeftInclusiveMut {"SplitNLeftInclusiveMut"; SplitLeftInclusiveMut}
 
-impl<'a, T: 'a, P: FnMut(&T) -> bool> RSplitNMut<'a, T, P> {
-    #[inline]
-    pub(super) fn new(s: RSplitMut<'a, T, P>, n: usize) -> Self {
-        Self { inner: GenericSplitN { iter: s, count: n } }
-    }
-}
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, in reverse order, limited to a certain number of elements. Unlike
+    /// `RSplitN`, it contains the matched part as a terminator of the subslice.
+    ///
+    /// This struct is created by the [`rsplitn_inclusive_mut`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let mut slice = [10, 40, 33, 20];
+    /// let mut iter = slice.rsplitn_inclusive_mut(2, |num| num % 3 == 0);
+    /// ```
+    ///
+    /// [`rsplitn_inclusive_mut`]: slice::rsplitn_inclusive_mut
+    /// [slices]: slice
+    pub struct RSplitNInclusiveMut {"RSplitNInclusiveMut"; RSplitInclusiveMut}
 
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: fmt::Debug, P> fmt::Debug for RSplitNMut<'_, T, P>
-where
-    P: FnMut(&T) -> bool,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplitNMut").field("inner", &self.inner).finish()
-    }
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+    #[must_use = "iterators are lazy and do nothing unless consumed"]
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, in reverse order, limited to a certain number of elements. Unlike
+    /// `RSplitN`, it contains the matched part as an initiator of the subslice.
+    ///
+    /// This struct is created by the [`rsplitn_left_inclusive_mut`] method on [slices].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let mut slice = [10, 40, 33, 20];
+    /// let mut iter = slice.rsplitn_left_inclusive_mut(2, |num| num % 3 == 0);
+    /// ```
+    ///
+    /// [`rsplitn_left_inclusive_mut`]: slice::rsplitn_left_inclusive_mut
+    /// [slices]: slice
+    pub struct RSplitNLeftInclusiveMut {"RSplitNLeftInclusiveMut"; RSplitLeftInclusiveMut}
 }
-
-forward_iterator! { SplitN: T, &'a [T] }
-forward_iterator! { RSplitN: T, &'a [T] }
-forward_iterator! { SplitNMut: T, &'a mut [T] }
-forward_iterator! { RSplitNMut: T, &'a mut [T] }
 
 /// An iterator over overlapping subslices of length `size`.
 ///

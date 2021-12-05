@@ -42,7 +42,7 @@
 #![feature(bench_black_box)]
 #![feature(strict_provenance)]
 #![feature(once_cell)]
-#![feature(split_left_inclusive)]
+#![feature(split_inclusive_variants)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};

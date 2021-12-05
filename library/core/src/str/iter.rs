@@ -1453,10 +1453,10 @@ impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
 /// See its documentation for more.
 ///
 /// [`split_left_inclusive`]: str::split_left_inclusive
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 pub struct SplitLeftInclusive<'a, P: Pattern<'a>>(pub(super) SplitInternal<'a, P>);
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<'a, P: Pattern<'a>> Iterator for SplitLeftInclusive<'a, P> {
     type Item = &'a str;
 
@@ -1466,7 +1466,7 @@ impl<'a, P: Pattern<'a>> Iterator for SplitLeftInclusive<'a, P> {
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitLeftInclusive<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitLeftInclusive").field("0", &self.0).finish()
@@ -1474,14 +1474,14 @@ impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitLeftInclusive
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitLeftInclusive<'a, P> {
     fn clone(&self) -> Self {
         SplitLeftInclusive(self.0.clone())
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     for SplitLeftInclusive<'a, P>
 {
@@ -1491,7 +1491,7 @@ impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
     }
 }
 
-#[unstable(feature = "split_left_inclusive", issue = "none")]
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
 impl<'a, P: Pattern<'a>> FusedIterator for SplitLeftInclusive<'a, P> {}
 
 impl<'a, P: Pattern<'a>> SplitLeftInclusive<'a, P> {
@@ -1501,7 +1501,7 @@ impl<'a, P: Pattern<'a>> SplitLeftInclusive<'a, P> {
     ///
     /// ```
     /// #![feature(str_split_inclusive_as_str)]
-    /// #![feature(split_left_inclusive)]
+    /// #![feature(split_inclusive_variants)]
     /// let mut split = "Mary had a little lamb".split_left_inclusive(' ');
     /// assert_eq!(split.as_str(), "Mary had a little lamb");
     /// split.next();

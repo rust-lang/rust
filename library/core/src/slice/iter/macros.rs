@@ -397,17 +397,155 @@ macro_rules! iterator {
     }
 }
 
-macro_rules! forward_iterator {
-    ($name:ident: $elem:ident, $iter_of:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, $elem, P> Iterator for $name<'a, $elem, P>
+macro_rules! reverse_iter {
+    ($(
+        #[$stablility:meta]
+        $(#[$outer:meta])*
+        $vis:vis struct $rev:ident { $str:literal ; $inner:ident } $(: $clone:ident)?
+    )*) => {$(
+        $(#[$outer])*
+        #[$stablility]
+        $vis struct $rev<'a, T: 'a, P>
         where
             P: FnMut(&T) -> bool,
         {
-            type Item = $iter_of;
+            inner: $inner<'a, T, P>,
+        }
+
+        impl<'a, T: 'a, P: FnMut(&T) -> bool> $rev<'a, T, P> {
+            #[inline]
+            pub(super) fn new(slice: <$inner<'a, T, P> as Iterator>::Item, pred: P) -> Self {
+                Self { inner: $inner::new(slice, pred) }
+            }
+        }
+
+        #[$stablility]
+        impl<T: fmt::Debug, P> fmt::Debug for $rev<'_, T, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_struct($str)
+                    .field("v", &self.inner.v)
+                    .field("finished", &self.inner.finished)
+                    .finish()
+            }
+        }
+
+        $(
+        // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+        #[$stablility]
+        impl<'a, T, P> $clone for $rev<'a, T, P>
+        where
+            P: Clone + FnMut(&T) -> bool,
+        {
+            fn clone(&self) -> Self {
+                Self { inner: self.inner.clone() }
+            }
+        }
+        )?
+
+        #[$stablility]
+        impl<'a, T, P> Iterator for $rev<'a, T, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            type Item = <$inner<'a, T, P> as Iterator>::Item;
 
             #[inline]
-            fn next(&mut self) -> Option<$iter_of> {
+            fn next(&mut self) -> Option<Self::Item> {
+                self.inner.next_back()
+            }
+
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.inner.size_hint()
+            }
+        }
+
+        #[$stablility]
+        impl<'a, T, P> DoubleEndedIterator for $rev<'a, T, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            #[inline]
+            fn next_back(&mut self) -> Option<Self::Item> {
+                self.inner.next()
+            }
+        }
+
+        #[$stablility]
+        impl<T, P> FusedIterator for $rev<'_, T, P> where P: FnMut(&T) -> bool {}
+
+        #[$stablility]
+        impl<'a, T, P> SplitIter for $rev<'a, T, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            #[inline]
+            fn finish(&mut self) -> Option<Self::Item> {
+                self.inner.finish()
+            }
+        }
+    )*};
+}
+
+#[allow(unused)]
+macro_rules! iter_n {
+    ($(
+        #[$stablility:meta]
+        #[fused($fused_stablility:meta)]
+        $(#[$outer:meta])*
+        $vis:vis struct $iter_n:ident { $str:literal ; $inner:ident } $(: $clone:ident)?
+    )*) => {$(
+        $(#[$outer])*
+        #[$stablility]
+        pub struct $iter_n<'a, T: 'a, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            inner: GenericSplitN<$inner<'a, T, P>>,
+        }
+
+        impl<'a, T: 'a, P: FnMut(&T) -> bool> $iter_n<'a, T, P> {
+            #[inline]
+            pub(super) fn new(s: $inner<'a, T, P>, n: usize) -> Self {
+                Self { inner: GenericSplitN { iter: s, count: n } }
+            }
+        }
+
+        $(
+        #[$stablility]
+        impl<'a, T: 'a, P> $clone for $iter_n<'a, T, P>
+        where
+            P: FnMut(&T) -> bool,
+            $inner<'a, T, P>: Clone,
+        {
+            fn clone(&self) -> Self {
+                Self { inner: self.inner.clone() }
+            }
+        }
+        )?
+
+        #[$stablility]
+        impl<T: fmt::Debug, P> fmt::Debug for $iter_n<'_, T, P>
+        where
+            P: Clone + FnMut(&T) -> bool,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_struct($str).field("inner", &self.inner).finish()
+            }
+        }
+
+        #[$stablility]
+        impl<'a, T, P> Iterator for $iter_n<'a, T, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            type Item = <$inner<'a, T, P> as Iterator>::Item;
+
+            #[inline]
+            fn next(&mut self) -> Option<Self::Item> {
                 self.inner.next()
             }
 
@@ -417,7 +555,7 @@ macro_rules! forward_iterator {
             }
         }
 
-        #[stable(feature = "fused", since = "1.26.0")]
-        impl<'a, $elem, P> FusedIterator for $name<'a, $elem, P> where P: FnMut(&T) -> bool {}
-    };
+        #[$fused_stablility]
+        impl<'a, T, P> FusedIterator for $iter_n<'a, T, P> where P: FnMut(&T) -> bool {}
+    )*};
 }
