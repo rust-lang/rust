@@ -115,6 +115,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Monomorphizes a type from the AST by first applying the
     /// in-scope substitutions and then normalizing any associated
     /// types.
+    /// Panics if normalization fails. In case normalization might fail
+    /// use `try_subst_and_normalize_erasing_regions` instead.
     pub fn subst_and_normalize_erasing_regions<T>(
         self,
         param_substs: SubstsRef<'tcx>,
@@ -133,6 +135,30 @@ impl<'tcx> TyCtxt<'tcx> {
         );
         let substituted = value.subst(self, param_substs);
         self.normalize_erasing_regions(param_env, substituted)
+    }
+
+    /// Monomorphizes a type from the AST by first applying the
+    /// in-scope substitutions and then trying to normalize any associated
+    /// types. Contrary to `subst_and_normalize_erasing_regions` this does
+    /// not assume that normalization succeeds.
+    pub fn try_subst_and_normalize_erasing_regions<T>(
+        self,
+        param_substs: SubstsRef<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        value: T,
+    ) -> Result<T, NormalizationError<'tcx>>
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        debug!(
+            "subst_and_normalize_erasing_regions(\
+             param_substs={:?}, \
+             value={:?}, \
+             param_env={:?})",
+            param_substs, value, param_env,
+        );
+        let substituted = value.subst(self, param_substs);
+        self.try_normalize_erasing_regions(param_env, substituted)
     }
 }
 

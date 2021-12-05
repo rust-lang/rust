@@ -7,6 +7,7 @@ use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::mir;
+use rustc_middle::mir::interpret::{InterpError, InvalidProgramInfo};
 use rustc_middle::ty::layout::{self, LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
@@ -14,7 +15,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::storage::AlwaysLiveLocals;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Limit;
-use rustc_span::{Pos, Span};
+use rustc_span::{Pos, Span, DUMMY_SP};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
@@ -508,7 +509,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub(super) fn subst_from_current_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
         value: T,
-    ) -> T {
+    ) -> Result<T, InterpError<'tcx>> {
         self.subst_from_frame_and_normalize_erasing_regions(self.frame(), value)
     }
 
@@ -518,8 +519,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         value: T,
-    ) -> T {
-        frame.instance.subst_mir_and_normalize_erasing_regions(*self.tcx, self.param_env, value)
+    ) -> Result<T, InterpError<'tcx>> {
+        frame
+            .instance
+            .try_subst_mir_and_normalize_erasing_regions(*self.tcx, self.param_env, value)
+            .or_else(|e| {
+                self.tcx.sess.delay_span_bug(
+                    DUMMY_SP,
+                    format!("failed to normalize {}", e.get_type_for_failure()).as_str(),
+                );
+
+                Err(InterpError::InvalidProgram(InvalidProgramInfo::TooGeneric))
+            })
     }
 
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
@@ -554,7 +565,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let layout = from_known_layout(self.tcx, self.param_env, layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty =
-                        self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty);
+                        self.subst_from_frame_and_normalize_erasing_regions(frame, local_ty)?;
                     self.layout_of(local_ty)
                 })?;
                 if let Some(state) = frame.locals.get(local) {
@@ -702,7 +713,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         for const_ in &body.required_consts {
             let span = const_.span;
             let const_ =
-                self.subst_from_current_frame_and_normalize_erasing_regions(const_.literal);
+                self.subst_from_current_frame_and_normalize_erasing_regions(const_.literal)?;
             self.mir_const_to_op(&const_, None).map_err(|err| {
                 // If there was an error, set the span of the current frame to this constant.
                 // Avoiding doing this when evaluation succeeds.
