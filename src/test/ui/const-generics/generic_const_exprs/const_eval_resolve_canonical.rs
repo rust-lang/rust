@@ -1,4 +1,3 @@
-// run-pass
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
@@ -22,8 +21,11 @@ where
 }
 
 fn main() {
-    // Test that we can correctly infer `T` which requires evaluating
-    // `{ N + 1 }` which has substs containing an inference var
+    // FIXME(generic_const_exprs): We can't correctly infer `T` which requires
+    // evaluating `{ N + 1 }` which has substs containing an inference var
     let mut _q = Default::default();
+    //~^ ERROR type annotations needed
+
     _q = foo::<_, 2>(_q);
+    //~^ ERROR type annotations needed
 }

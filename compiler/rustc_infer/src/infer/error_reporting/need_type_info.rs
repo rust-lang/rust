@@ -1,5 +1,6 @@
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::InferCtxt;
+use crate::rustc_middle::ty::TypeFoldable;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
@@ -400,36 +401,75 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
             GenericArgKind::Const(ct) => {
-                if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.val {
-                    let origin =
-                        self.inner.borrow_mut().const_unification_table().probe_value(vid).origin;
-                    if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
-                        origin.kind
-                    {
-                        return InferenceDiagnosticsData {
-                            name: name.to_string(),
-                            span: Some(origin.span),
-                            kind: UnderspecifiedArgKind::Const { is_parameter: true },
-                            parent: InferenceDiagnosticsParentData::for_def_id(self.tcx, def_id),
-                        };
-                    }
+                match ct.val {
+                    ty::ConstKind::Infer(InferConst::Var(vid)) => {
+                        let origin = self
+                            .inner
+                            .borrow_mut()
+                            .const_unification_table()
+                            .probe_value(vid)
+                            .origin;
+                        if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
+                            origin.kind
+                        {
+                            return InferenceDiagnosticsData {
+                                name: name.to_string(),
+                                span: Some(origin.span),
+                                kind: UnderspecifiedArgKind::Const { is_parameter: true },
+                                parent: InferenceDiagnosticsParentData::for_def_id(
+                                    self.tcx, def_id,
+                                ),
+                            };
+                        }
 
-                    debug_assert!(!origin.span.is_dummy());
-                    let mut s = String::new();
-                    let mut printer =
-                        ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::ValueNS);
-                    if let Some(highlight) = highlight {
-                        printer.region_highlight_mode = highlight;
+                        debug_assert!(!origin.span.is_dummy());
+                        let mut s = String::new();
+                        let mut printer =
+                            ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::ValueNS);
+                        if let Some(highlight) = highlight {
+                            printer.region_highlight_mode = highlight;
+                        }
+                        let _ = ct.print(printer);
+                        InferenceDiagnosticsData {
+                            name: s,
+                            span: Some(origin.span),
+                            kind: UnderspecifiedArgKind::Const { is_parameter: false },
+                            parent: None,
+                        }
                     }
-                    let _ = ct.print(printer);
-                    InferenceDiagnosticsData {
-                        name: s,
-                        span: Some(origin.span),
-                        kind: UnderspecifiedArgKind::Const { is_parameter: false },
-                        parent: None,
+                    ty::ConstKind::Unevaluated(ty::Unevaluated {
+                        substs_: Some(substs), ..
+                    }) => {
+                        assert!(substs.has_infer_types_or_consts());
+
+                        // FIXME: We only use the first inference variable we encounter in
+                        // `substs` here, this gives insufficiently informative diagnostics
+                        // in case there are multiple inference variables
+                        for s in substs.iter() {
+                            match s.unpack() {
+                                GenericArgKind::Type(t) => match t.kind() {
+                                    ty::Infer(_) => {
+                                        return self.extract_inference_diagnostics_data(s, None);
+                                    }
+                                    _ => {}
+                                },
+                                GenericArgKind::Const(c) => match c.val {
+                                    ty::ConstKind::Infer(InferConst::Var(_)) => {
+                                        return self.extract_inference_diagnostics_data(s, None);
+                                    }
+                                    _ => {}
+                                },
+                                _ => {}
+                            }
+                        }
+                        bug!(
+                            "expected an inference variable in substs of unevaluated const {:?}",
+                            ct
+                        );
                     }
-                } else {
-                    bug!("unexpect const: {:?}", ct);
+                    _ => {
+                        bug!("unexpect const: {:?}", ct);
+                    }
                 }
             }
             GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),

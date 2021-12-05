@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-83249.rs:19:13
+   |
+LL |     let _ = foo([0; 1]);
+   |         -   ^^^ cannot infer type for type parameter `T` declared on the function `foo`
+   |         |
+   |         consider giving this pattern a type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.
