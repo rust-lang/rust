@@ -1,12 +1,12 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(associated_type_bounds)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
-#![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
 #![feature(let_else)]
-#![feature(once_cell)]
 #![feature(nll)]
-#![feature(associated_type_bounds)]
+#![feature(once_cell)]
+#![feature(try_blocks)]
 #![recursion_limit = "256"]
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).
