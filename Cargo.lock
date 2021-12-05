@@ -525,7 +525,6 @@ dependencies = [
  "cfg",
  "cov-mark",
  "either",
- "expect-test",
  "itertools",
  "la-arena",
  "limit",
@@ -639,12 +638,10 @@ dependencies = [
  "profile",
  "rustc-hash",
  "smallvec",
- "sourcegen",
  "stdx",
  "syntax",
  "test_utils",
  "text_edit",
- "xshell",
 ]
 
 [[package]]
@@ -902,7 +899,6 @@ name = "mbe"
 version = "0.0.0"
 dependencies = [
  "cov-mark",
- "expect-test",
  "parser",
  "rustc-hash",
  "smallvec",
