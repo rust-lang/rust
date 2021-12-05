@@ -85,7 +85,7 @@ The array is an array of `&dyn MirPass` trait objects. Typically, a pass is
 implemented in its own module of the [`rustc_mir_transform`][trans] crate.
 
 [rop]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/fn.run_optimization_passes.html
-[`MirPass`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/trait.MirPass.html
+[`MirPass`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/trait.MirPass.html
 [trans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/index.html
 
 Some examples of passes are:
@@ -95,7 +95,7 @@ Some examples of passes are:
 
 You can see the ["Implementors" section of the `MirPass` rustdocs][impl] for more examples.
 
-[impl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/trait.MirPass.html#implementors
+[impl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/trait.MirPass.html#implementors
 [constprop]: https://en.wikipedia.org/wiki/Constant_folding#Constant_propagation
 
 ## MIR optimization levels

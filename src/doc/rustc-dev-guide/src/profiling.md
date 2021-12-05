@@ -12,7 +12,7 @@ Depending on what you're trying to measure, there are several different approach
 
 - If you want a medium-to-high level overview of where `rustc` is spending its time:
   - The `-Z self-profile` flag and [measureme](https://github.com/rust-lang/measureme) tools offer a query-based approach to profiling.
-    See [their docs](https://github.com/rust-lang/measureme/blob/master/summarize/Readme.md) for more information.
+    See [their docs](https://github.com/rust-lang/measureme/blob/master/summarize/README.md) for more information.
 
 - If you want function level performance data or even just more details than the above approaches:
   - Consider using a native code profiler such as [perf](profiling/with_perf.html)
