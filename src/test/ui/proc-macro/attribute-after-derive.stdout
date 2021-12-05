@@ -83,7 +83,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/attribute-after-derive.rs:16:24: 19:2 (#0),
     },
 ]
-PRINT-DERIVE INPUT (DISPLAY): struct AttributeDerive { }
+PRINT-DERIVE INPUT (DISPLAY): struct AttributeDerive {}
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -99,7 +99,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
         span: $DIR/attribute-after-derive.rs:16:24: 19:2 (#0),
     },
 ]
-PRINT-DERIVE INPUT (DISPLAY): #[print_attr] struct DeriveAttribute { }
+PRINT-DERIVE INPUT (DISPLAY): #[print_attr] struct DeriveAttribute {}
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',

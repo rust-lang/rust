@@ -263,14 +263,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.strsep(",", false, b, elts, op)
     }
 
-    fn maybe_print_comment(&mut self, pos: BytePos) {
+    fn maybe_print_comment(&mut self, pos: BytePos) -> bool {
+        let mut has_comment = false;
         while let Some(ref cmnt) = self.next_comment() {
             if cmnt.pos < pos {
+                has_comment = true;
                 self.print_comment(cmnt);
             } else {
                 break;
             }
         }
+        has_comment
     }
 
     fn print_comment(&mut self, cmnt: &Comment) {
@@ -570,7 +573,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.print_tts(tts, convert_dollar_crate);
         self.end();
         match delim {
-            DelimToken::Brace => self.bclose(span),
+            DelimToken::Brace => {
+                let empty = tts.is_empty();
+                self.bclose(span, empty);
+            }
             _ => {
                 let token_str = self.token_kind_to_string(&token::CloseDelim(delim));
                 self.word(token_str)
@@ -642,17 +648,20 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.end(); // Close the head-box.
     }
 
-    fn bclose_maybe_open(&mut self, span: rustc_span::Span, close_box: bool) {
-        self.maybe_print_comment(span.hi());
-        self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
+    fn bclose_maybe_open(&mut self, span: rustc_span::Span, empty: bool, close_box: bool) {
+        let has_comment = self.maybe_print_comment(span.hi());
+        if !empty || has_comment {
+            self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
+        }
         self.word("}");
         if close_box {
             self.end(); // Close the outer-box.
         }
     }
 
-    fn bclose(&mut self, span: rustc_span::Span) {
-        self.bclose_maybe_open(span, true)
+    fn bclose(&mut self, span: rustc_span::Span, empty: bool) {
+        let close_box = true;
+        self.bclose_maybe_open(span, empty, close_box)
     }
 
     fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
@@ -1196,7 +1205,8 @@ impl<'a> State<'a> {
                         for item in items {
                             self.print_item(item);
                         }
-                        self.bclose(item.span);
+                        let empty = item.attrs.is_empty() && items.is_empty();
+                        self.bclose(item.span, empty);
                     }
                     ModKind::Unloaded => {
                         self.s.word(";");
@@ -1216,7 +1226,8 @@ impl<'a> State<'a> {
                 }
                 self.bopen();
                 self.print_foreign_mod(nmod, &item.attrs);
-                self.bclose(item.span);
+                let empty = item.attrs.is_empty() && nmod.items.is_empty();
+                self.bclose(item.span, empty);
             }
             ast::ItemKind::GlobalAsm(ref asm) => {
                 self.head(visibility_qualified(&item.vis, "global_asm!"));
@@ -1291,7 +1302,8 @@ impl<'a> State<'a> {
                 for impl_item in items {
                     self.print_assoc_item(impl_item);
                 }
-                self.bclose(item.span);
+                let empty = item.attrs.is_empty() && items.is_empty();
+                self.bclose(item.span, empty);
             }
             ast::ItemKind::Trait(box ast::Trait {
                 is_auto,
@@ -1326,7 +1338,8 @@ impl<'a> State<'a> {
                 for trait_item in items {
                     self.print_assoc_item(trait_item);
                 }
-                self.bclose(item.span);
+                let empty = item.attrs.is_empty() && items.is_empty();
+                self.bclose(item.span, empty);
             }
             ast::ItemKind::TraitAlias(ref generics, ref bounds) => {
                 self.head("");
@@ -1410,7 +1423,8 @@ impl<'a> State<'a> {
             self.end();
             self.maybe_print_trailing_comment(v.span, None);
         }
-        self.bclose(span)
+        let empty = variants.is_empty();
+        self.bclose(span, empty)
     }
 
     crate fn print_visibility(&mut self, vis: &ast::Visibility) {
@@ -1441,20 +1455,24 @@ impl<'a> State<'a> {
     crate fn print_record_struct_body(&mut self, fields: &[ast::FieldDef], span: rustc_span::Span) {
         self.nbsp();
         self.bopen();
-        self.hardbreak_if_not_bol();
 
-        for field in fields {
+        let empty = fields.is_empty();
+        if !empty {
             self.hardbreak_if_not_bol();
-            self.maybe_print_comment(field.span.lo());
-            self.print_outer_attributes(&field.attrs);
-            self.print_visibility(&field.vis);
-            self.print_ident(field.ident.unwrap());
-            self.word_nbsp(":");
-            self.print_type(&field.ty);
-            self.s.word(",");
+
+            for field in fields {
+                self.hardbreak_if_not_bol();
+                self.maybe_print_comment(field.span.lo());
+                self.print_outer_attributes(&field.attrs);
+                self.print_visibility(&field.vis);
+                self.print_ident(field.ident.unwrap());
+                self.word_nbsp(":");
+                self.print_type(&field.ty);
+                self.s.word(",");
+            }
         }
 
-        self.bclose(span)
+        self.bclose(span, empty);
     }
 
     crate fn print_struct(
@@ -1633,7 +1651,8 @@ impl<'a> State<'a> {
             }
         }
 
-        self.bclose_maybe_open(blk.span, close_box);
+        let empty = attrs.is_empty() && blk.stmts.is_empty();
+        self.bclose_maybe_open(blk.span, empty, close_box);
         self.ann.post(self, AnnNode::Block(blk))
     }
 
@@ -2010,7 +2029,8 @@ impl<'a> State<'a> {
                 for arm in arms {
                     self.print_arm(arm);
                 }
-                self.bclose(expr.span);
+                let empty = attrs.is_empty() && arms.is_empty();
+                self.bclose(expr.span, empty);
             }
             ast::ExprKind::Closure(
                 capture_clause,

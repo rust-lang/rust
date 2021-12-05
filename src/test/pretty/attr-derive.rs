@@ -29,4 +29,4 @@ enum Enum {
     Qwerty,
 }
 
-fn main() { }
+fn main() {}

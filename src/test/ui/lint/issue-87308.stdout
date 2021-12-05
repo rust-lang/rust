@@ -11,4 +11,4 @@ extern crate std;
 
 macro_rules! foo { () => { break 'x ; } }
 
-pub fn main() { loop { } }
+pub fn main() { loop {} }

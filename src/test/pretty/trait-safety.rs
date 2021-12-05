@@ -5,11 +5,11 @@ unsafe trait UnsafeTrait {
 }
 
 unsafe impl UnsafeTrait for isize {
-    fn foo(&self) { }
+    fn foo(&self) {}
 }
 
 pub unsafe trait PubUnsafeTrait {
     fn foo(&self);
 }
 
-fn main() { }
+fn main() {}

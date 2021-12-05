@@ -53,7 +53,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: #4 bytes(432..433),
     },
 ]
-PRINT-DERIVE INPUT (DISPLAY): struct A { }
+PRINT-DERIVE INPUT (DISPLAY): struct A {}
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",

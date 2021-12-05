@@ -1,4 +1,4 @@
-PRINT-ATTR INPUT (DISPLAY): fn foo < T : MyTrait < MyStruct < { true } >> > () { }
+PRINT-ATTR INPUT (DISPLAY): fn foo < T : MyTrait < MyStruct < { true } >> > () {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "fn",
