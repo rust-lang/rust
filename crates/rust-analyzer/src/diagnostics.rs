@@ -43,7 +43,7 @@ impl DiagnosticCollection {
         &mut self,
         file_id: FileId,
         diagnostic: lsp_types::Diagnostic,
-        fixes: Vec<lsp_ext::CodeAction>,
+        fix: Option<lsp_ext::CodeAction>,
     ) {
         let diagnostics = self.check.entry(file_id).or_default();
         for existing_diagnostic in diagnostics.iter() {
@@ -56,7 +56,7 @@ impl DiagnosticCollection {
         check_fixes
             .entry(file_id)
             .or_default()
-            .extend(fixes.into_iter().map(|action| Fix { range: diagnostic.range, action }));
+            .extend(fix.into_iter().map(|action| Fix { range: diagnostic.range, action }));
         diagnostics.push(diagnostic);
         self.changes.insert(file_id);
     }

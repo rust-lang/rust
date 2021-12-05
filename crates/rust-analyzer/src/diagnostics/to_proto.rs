@@ -192,7 +192,7 @@ fn map_rust_child_diagnostic(
 pub(crate) struct MappedRustDiagnostic {
     pub(crate) url: lsp_types::Url,
     pub(crate) diagnostic: lsp_types::Diagnostic,
-    pub(crate) fixes: Vec<lsp_ext::CodeAction>,
+    pub(crate) fix: Option<lsp_ext::CodeAction>,
 }
 
 /// Converts a Rust root diagnostic to LSP form
@@ -349,7 +349,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 diagnostics.push(MappedRustDiagnostic {
                     url: secondary_location.uri,
                     diagnostic,
-                    fixes: Vec::new(),
+                    fix: None,
                 });
             }
 
@@ -378,7 +378,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                     tags: if tags.is_empty() { None } else { Some(tags.clone()) },
                     data: None,
                 },
-                fixes: Vec::new(),
+                fix: None,
             });
 
             // Emit hint-level diagnostics for all `related_information` entries such as "help"s.
@@ -395,7 +395,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 }
                 diagnostics.push(MappedRustDiagnostic {
                     url: sub.related.location.uri.clone(),
-                    fixes: sub.suggested_fix.iter().cloned().collect(),
+                    fix: sub.suggested_fix.clone(),
                     diagnostic: lsp_types::Diagnostic {
                         range: sub.related.location.range,
                         severity: Some(lsp_types::DiagnosticSeverity::Hint),
