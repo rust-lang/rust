@@ -10,7 +10,7 @@ use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
-use rustc_span::{self, BytePos, FileName};
+use rustc_span::{self, FileName};
 use rustc_target::spec::abi::Abi;
 
 use std::borrow::Cow;
@@ -241,36 +241,6 @@ pub fn enum_def_to_string(
 }
 
 impl<'a> State<'a> {
-    pub fn cbox(&mut self, u: usize) {
-        self.s.cbox(u);
-    }
-
-    pub fn nbsp(&mut self) {
-        self.s.word(" ")
-    }
-
-    pub fn word_nbsp<S: Into<Cow<'static, str>>>(&mut self, w: S) {
-        self.s.word(w);
-        self.nbsp()
-    }
-
-    pub fn head<S: Into<Cow<'static, str>>>(&mut self, w: S) {
-        let w = w.into();
-        // outer-box is consistent
-        self.cbox(INDENT_UNIT);
-        // head-box is inconsistent
-        self.ibox(w.len() + 1);
-        // keyword that starts the head
-        if !w.is_empty() {
-            self.word_nbsp(w);
-        }
-    }
-
-    pub fn bopen(&mut self) {
-        self.s.word("{");
-        self.end(); // close the head-box
-    }
-
     pub fn bclose_maybe_open(&mut self, span: rustc_span::Span, close_box: bool) {
         self.maybe_print_comment(span.hi());
         self.break_offset_if_not_bol(1, -(INDENT_UNIT as isize));
@@ -282,33 +252,6 @@ impl<'a> State<'a> {
 
     pub fn bclose(&mut self, span: rustc_span::Span) {
         self.bclose_maybe_open(span, true)
-    }
-
-    pub fn space_if_not_bol(&mut self) {
-        if !self.s.is_beginning_of_line() {
-            self.s.space();
-        }
-    }
-
-    pub fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
-        if !self.s.is_beginning_of_line() {
-            self.s.break_offset(n, off)
-        } else if off != 0 && self.s.last_token().is_hardbreak_tok() {
-            // We do something pretty sketchy here: tuck the nonzero
-            // offset-adjustment we were going to deposit along with the
-            // break into the previous hardbreak.
-            self.s.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
-        }
-    }
-
-    // Synthesizes a comment that was not textually present in the original source
-    // file.
-    pub fn synth_comment(&mut self, text: String) {
-        self.s.word("/*");
-        self.s.space();
-        self.s.word(text);
-        self.s.space();
-        self.s.word("*/")
     }
 
     pub fn commasep_cmnt<T, F, G>(&mut self, b: Breaks, elts: &[T], mut op: F, mut get_span: G)
@@ -2406,29 +2349,6 @@ impl<'a> State<'a> {
             None,
         );
         self.end();
-    }
-
-    pub fn maybe_print_trailing_comment(
-        &mut self,
-        span: rustc_span::Span,
-        next_pos: Option<BytePos>,
-    ) {
-        if let Some(cmnts) = self.comments() {
-            if let Some(cmnt) = cmnts.trailing_comment(span, next_pos) {
-                self.print_comment(&cmnt);
-            }
-        }
-    }
-
-    pub fn print_remaining_comments(&mut self) {
-        // If there aren't any remaining comments, then we need to manually
-        // make sure there is a line break at the end.
-        if self.next_comment().is_none() {
-            self.s.hardbreak();
-        }
-        while let Some(ref cmnt) = self.next_comment() {
-            self.print_comment(cmnt)
-        }
     }
 
     pub fn print_fn_header_info(&mut self, header: hir::FnHeader, vis: &hir::Visibility<'_>) {
