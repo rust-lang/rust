@@ -1600,22 +1600,20 @@ impl<'a> State<'a> {
             hir::ExprKind::Path(ref qpath) => self.print_qpath(qpath, true),
             hir::ExprKind::Break(destination, ref opt_expr) => {
                 self.s.word("break");
-                self.s.space();
                 if let Some(label) = destination.label {
-                    self.print_ident(label.ident);
                     self.s.space();
+                    self.print_ident(label.ident);
                 }
                 if let Some(ref expr) = *opt_expr {
-                    self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                     self.s.space();
+                    self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
             }
             hir::ExprKind::Continue(destination) => {
                 self.s.word("continue");
-                self.s.space();
                 if let Some(label) = destination.label {
+                    self.s.space();
                     self.print_ident(label.ident);
-                    self.s.space()
                 }
             }
             hir::ExprKind::Ret(ref result) => {
