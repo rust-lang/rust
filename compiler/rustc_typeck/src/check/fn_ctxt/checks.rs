@@ -18,7 +18,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, ParamEnv, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, MultiSpan, Span};
@@ -188,33 +188,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             // are we passing elements of a tuple without the tuple parentheses?
-            let chosen_arg_tys = if expected_input_tys.is_empty() {
-                // In most cases we can use expected_arg_tys, but some callers won't have the type
+            let expected_input_tys = if expected_input_tys.is_empty() {
+                // In most cases we can use expected_input_tys, but some callers won't have the type
                 // information, in which case we fall back to the types from the input expressions.
                 formal_input_tys
             } else {
                 &*expected_input_tys
             };
 
-            let sugg_tuple_wrap_args = chosen_arg_tys
-                .get(0)
-                .cloned()
-                .map(|arg_ty| self.resolve_vars_if_possible(arg_ty))
-                .and_then(|arg_ty| match arg_ty.kind() {
-                    ty::Tuple(tup_elems) => Some(tup_elems),
-                    _ => None,
-                })
-                .and_then(|tup_elems| {
-                    if tup_elems.len() == supplied_arg_count && chosen_arg_tys.len() == 1 {
-                        match provided_args {
-                            [] => None,
-                            [single] => Some(FnArgsAsTuple::Single(single)),
-                            [first, .., last] => Some(FnArgsAsTuple::Multi { first, last }),
-                        }
-                    } else {
-                        None
-                    }
-                });
+            let sugg_tuple_wrap_args = self.suggested_tuple_wrap(expected_input_tys, provided_args);
 
             error = Some((
                 expected_arg_count,
@@ -515,6 +497,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => {}
                 }
             }
+        }
+    }
+
+    fn suggested_tuple_wrap(
+        &self,
+        expected_input_tys: &[Ty<'tcx>],
+        provided_args: &'tcx [hir::Expr<'tcx>],
+    ) -> Option<FnArgsAsTuple<'_>> {
+        let [expected_arg_type] = &expected_input_tys[..] else { return None };
+
+        let ty::Tuple(expected_elems) = self.resolve_vars_if_possible(*expected_arg_type).kind()
+            else { return None };
+
+        let expected_types: Vec<_> = expected_elems.iter().map(|k| k.expect_ty()).collect();
+        let supplied_types: Vec<_> = provided_args.iter().map(|arg| self.check_expr(arg)).collect();
+
+        let all_match = iter::zip(expected_types, supplied_types)
+            .all(|(expected, supplied)| self.can_eq(ParamEnv::empty(), expected, supplied).is_ok());
+
+        if all_match {
+            match provided_args {
+                [] => None,
+                [single] => Some(FnArgsAsTuple::Single(single)),
+                [first, .., last] => Some(FnArgsAsTuple::Multi { first, last }),
+            }
+        } else {
+            None
         }
     }
 
