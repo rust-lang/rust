@@ -190,7 +190,7 @@ fn unit_closure<'tcx>(
 /// Anything else will return `a`.
 fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
     match &var_arg.kind {
-        hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
+        hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace('.', "_"),
         hir::ExprKind::Path(_) => format!("_{}", snippet(cx, var_arg.span, "")),
         _ => "a".to_string(),
     }
