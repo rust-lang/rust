@@ -1043,3 +1043,31 @@ enum Foo {
         "#]],
     )
 }
+
+#[test]
+fn flyimport_attribute() {
+    check(
+        r#"
+//- proc_macros:identity
+#[ide$0]
+struct Foo;
+"#,
+        expect![[r#"
+            at identity (use proc_macros::identity) pub macro identity
+        "#]],
+    );
+    check_edit(
+        "identity",
+        r#"
+//- proc_macros:identity
+#[ide$0]
+struct Foo;
+"#,
+        r#"
+use proc_macros::identity;
+
+#[identity]
+struct Foo;
+"#,
+    );
+}
