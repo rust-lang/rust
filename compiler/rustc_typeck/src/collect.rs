@@ -41,7 +41,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, Ty, TyCtxt};
-use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
+use rustc_middle::ty::{ReprOptions, ToPredicate, TypeFoldable, WithConstness};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -1777,7 +1777,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     visitor.visit_ty(ty);
                     let mut diag = bad_placeholder_type(tcx, visitor.0, "return type");
                     let ret_ty = fn_sig.skip_binder().output();
-                    if ret_ty != tcx.ty_error() {
+                    if !ret_ty.references_error() {
                         if !ret_ty.is_closure() {
                             let ret_ty_str = match ret_ty.kind() {
                                 // Suggest a function pointer return type instead of a unique function definition
