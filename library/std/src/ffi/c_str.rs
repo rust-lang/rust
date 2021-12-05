@@ -1261,12 +1261,10 @@ impl CStr {
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     #[rustc_const_unstable(feature = "const_cstr_unchecked", issue = "90343")]
     pub const unsafe fn from_bytes_with_nul_unchecked(bytes: &[u8]) -> &CStr {
-        // SAFETY: Casting to CStr is safe because its internal representation
-        // is a [u8] too (safe only inside std).
-        // Dereferencing the obtained pointer is safe because it comes from a
-        // reference. Making a reference is then safe because its lifetime
-        // is bound by the lifetime of the given `bytes`.
-        unsafe { &*(bytes as *const [u8] as *const CStr) }
+        // SAFETY: Transmute &[u8] to &CStr is safe because CStr and [u8] have the same
+        // internal representation (safe only inside Std) and &CStr lifetime is bound
+        // by the lifetime of the given `bytes`.
+        unsafe { mem::transmute(bytes) }
     }
 
     /// Returns the inner pointer to this C string.
@@ -1372,7 +1370,7 @@ impl CStr {
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes_with_nul(&self) -> &[u8] {
-        unsafe { &*(&self.inner as *const [c_char] as *const [u8]) }
+        unsafe { mem::transmute(&self.inner) }
     }
 
     /// Yields a <code>&[str]</code> slice if the `CStr` contains valid UTF-8.
