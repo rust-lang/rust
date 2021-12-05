@@ -1,5 +1,4 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
-#![feature(thread_local_const_init)]
 
 use std::cell::RefCell;
 use std::thread;
