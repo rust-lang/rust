@@ -200,8 +200,12 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<LocalDefId> {
-        // FIXME(#85914) is this access safe for incr. comp.?
-        self.tcx.untracked_resolutions.definitions.opt_hir_id_to_local_def_id(hir_id)
+        if hir_id.local_id == ItemLocalId::new(0) {
+            Some(hir_id.owner)
+        } else {
+            // FIXME(#85914) is this access safe for incr. comp.?
+            self.tcx.untracked_resolutions.definitions.opt_hir_id_to_local_def_id(hir_id)
+        }
     }
 
     #[inline]
