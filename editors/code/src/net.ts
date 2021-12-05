@@ -9,7 +9,6 @@ import * as zlib from "zlib";
 import * as util from "util";
 import * as path from "path";
 import { log, assert } from "./util";
-import * as url from "url";
 import * as https from "https";
 import { ProxySettings } from "./config";
 
@@ -21,7 +20,7 @@ const REPO = "rust-analyzer";
 
 function makeHttpAgent(proxy: string | null | undefined, options?: https.AgentOptions) {
     if (proxy) {
-        return new HttpsProxyAgent(proxy, { ...options, ...url.parse(proxy) });
+        return new HttpsProxyAgent({ ...options, ...new URL(proxy) });
     } else {
         return new https.Agent(options);
     }
