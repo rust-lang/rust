@@ -943,7 +943,7 @@ fn test_splitator_left_inclusive() {
     assert_eq!(xs.split_left_inclusive(|_| true).collect::<Vec<&[i32]>>(), splits);
 
     let xs: &[i32] = &[];
-    let splits: &[&[i32]] = &[&[]];
+    let splits: &[&[i32]] = &[];
     assert_eq!(xs.split_left_inclusive(|x| *x == 5).collect::<Vec<&[i32]>>(), splits);
 }
 
@@ -963,7 +963,7 @@ fn test_splitator_left_inclusive_reverse() {
     assert_eq!(xs.split_left_inclusive(|_| true).rev().collect::<Vec<_>>(), splits);
 
     let xs: &[i32] = &[];
-    let splits: &[&[i32]] = &[&[]];
+    let splits: &[&[i32]] = &[];
     assert_eq!(xs.split_left_inclusive(|x| *x == 5).rev().collect::<Vec<_>>(), splits);
 }
 
@@ -983,7 +983,7 @@ fn test_splitator_left_inclusive_mut() {
     assert_eq!(xs.split_left_inclusive_mut(|_| true).collect::<Vec<_>>(), splits);
 
     let xs: &mut [i32] = &mut [];
-    let splits: &[&[i32]] = &[&[]];
+    let splits: &[&[i32]] = &[];
     assert_eq!(xs.split_left_inclusive_mut(|x| *x == 5).collect::<Vec<_>>(), splits);
 }
 
@@ -1003,7 +1003,7 @@ fn test_splitator_left_inclusive_reverse_mut() {
     assert_eq!(xs.split_left_inclusive_mut(|_| true).rev().collect::<Vec<_>>(), splits);
 
     let xs: &mut [i32] = &mut [];
-    let splits: &[&[i32]] = &[&[]];
+    let splits: &[&[i32]] = &[];
     assert_eq!(xs.split_left_inclusive_mut(|x| *x == 5).rev().collect::<Vec<_>>(), splits);
 }
 
