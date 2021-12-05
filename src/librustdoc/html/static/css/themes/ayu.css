@@ -61,7 +61,7 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #14191f;
 }
 
-.logo-container.rust-logo > img {
+.rust-logo > img {
 	filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
@@ -97,7 +97,7 @@ pre, .rustdoc.source .example-wrap {
 }
 
 .source .sidebar {
-	background-color: #0f1419;
+	background-color: #14191f;
 }
 
 .sidebar .location {

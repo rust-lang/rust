@@ -111,7 +111,6 @@ body {
 	font: 16px/1.4 "Source Serif 4", NanumBarunGothic, serif;
 	margin: 0;
 	position: relative;
-	padding: 10px 15px 20px 15px;
 
 	-webkit-font-feature-settings: "kern", "liga";
 	-moz-font-feature-settings: "kern", "liga";
@@ -202,7 +201,7 @@ details.rustdoc-toggle > summary::before,
 div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate, a.srclink,
 /* This selector is for the items listed in the "all items" page. */
-#main > ul.docblock > li > a {
+#main-content > ul.docblock > li > a {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
@@ -248,6 +247,32 @@ textarea {
 
 /* end tweaks for normalize.css 8 */
 
+.rustdoc {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+}
+
+main {
+	position: relative;
+	flex-grow: 1;
+	padding: 10px 15px 40px 45px;
+	min-width: 0;
+}
+
+.source main {
+	padding: 15px;
+}
+
+.width-limiter {
+	max-width: 960px;
+	margin-right: auto;
+}
+
+.source .width-limiter {
+	max-width: unset;
+}
+
 details:not(.rustdoc-toggle) summary {
 	margin-bottom: .6em;
 }
@@ -285,28 +310,75 @@ li {
 }
 
 .source .content {
-	margin-top: 50px;
 	max-width: none;
 	overflow: visible;
 	margin-left: 0px;
 }
 
 nav.sub {
+	position: relative;
 	font-size: 16px;
 	text-transform: uppercase;
 }
 
+.sub-container {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+}
+
+.sub-logo-container {
+	display: none;
+	margin-right: 20px;
+}
+
+.source .sub-logo-container {
+	display: block;
+}
+
+.source .sub-logo-container > img {
+	height: 60px;
+	width: 60px;
+	object-fit: contain;
+}
+
 .sidebar {
 	width: 200px;
-	position: fixed;
-	left: 0;
-	top: 0;
-	bottom: 0;
 	overflow-y: scroll;
+	position: sticky;
+	min-width: 200px;
+	height: 100vh;
+	top: 0;
+	left: 0;
 }
 
 .rustdoc.source .sidebar {
+	width: 50px;
+	min-width: 0px;
+	max-width: 300px;
+	flex-grow: 0;
+	flex-shrink: 0;
+	flex-basis: auto;
+	border-right: 1px solid;
+	overflow-x: hidden;
+	/* The sidebar is by default hidden  */
+	overflow-y: hidden;
+}
+
+.source .sidebar > *:not(:first-child) {
+	transition: opacity 0.5s, visibility 0.2s;
+	opacity: 0;
+	visibility: hidden;
+}
+
+.source .sidebar.expanded {
 	overflow-y: auto;
+	width: 300px;
+}
+
+.source .sidebar.expanded > * {
+	opacity: 1;
+	visibility: visible;
 }
 
 /* Improve the scrollbar display on firefox */
@@ -332,10 +404,6 @@ nav.sub {
 	margin-right: -10px;
 }
 
-.content, nav {
-	max-width: 960px;
-}
-
 /* Everything else */
 
 .hidden {
@@ -343,23 +411,15 @@ nav.sub {
 }
 
 .logo-container {
-	height: 100px;
-	width: 100px;
-	position: relative;
-	margin: 20px auto;
-	display: block;
+	display: flex;
 	margin-top: 10px;
+	margin-bottom: 10px;
+	justify-content: center;
 }
 
 .logo-container > img {
-	max-width: 100px;
-	max-height: 100px;
-	height: 100%;
-	position: absolute;
-	left: 50%;
-	top: 50%;
-	transform: translate(-50%, -50%);
-	display: block;
+	height: 100px;
+	width: 100px;
 }
 
 .sidebar .location {
@@ -439,10 +499,6 @@ nav.sub {
 	display: none;
 }
 
-.content {
-	padding: 15px 0;
-}
-
 .source .content pre.rust {
 	white-space: pre;
 	overflow: auto;
@@ -487,7 +543,6 @@ nav.sub {
 }
 
 #search {
-	margin-left: 230px;
 	position: relative;
 }
 
@@ -578,10 +633,10 @@ nav.sub {
 	display: inline-block;
 }
 
-#main {
+#main-content {
 	position: relative;
 }
-#main > .since {
+#main-content > .since {
 	top: inherit;
 	font-family: "Fira Sans", Arial, sans-serif;
 }
@@ -700,14 +755,18 @@ nav.sub {
 	flex-basis: 100%;
 }
 
-#main > .item-info {
+#main-content > .item-info {
 	margin-top: 0;
 }
 
 nav:not(.sidebar) {
+	flex-grow: 1;
 	border-bottom: 1px solid;
 	padding-bottom: 10px;
-	margin-bottom: 10px;
+	margin-bottom: 25px;
+}
+.source nav:not(.sidebar).sub {
+	margin-left: 32px;
 }
 nav.main {
 	padding: 20px 0;
@@ -725,10 +784,6 @@ nav.main .separator {
 }
 nav.sum { text-align: right; }
 nav.sub form { display: inline; }
-
-nav.sub, .content {
-	margin-left: 230px;
-}
 
 a {
 	text-decoration: none;
@@ -802,6 +857,7 @@ h2.small-section-header > .anchor {
 
 .search-container {
 	position: relative;
+	max-width: 960px;
 }
 .search-container > div {
 	display: inline-flex;
@@ -1320,30 +1376,23 @@ pre.rust {
 }
 
 #sidebar-toggle {
-	position: fixed;
-	top: 30px;
-	left: 300px;
-	z-index: 10;
-	padding: 3px;
-	border-top-right-radius: 3px;
-	border-bottom-right-radius: 3px;
+	position: sticky;
+	top: 0;
+	left: 0;
 	cursor: pointer;
 	font-weight: bold;
-	transition: left .5s;
 	font-size: 1.2em;
-	border: 1px solid;
-	border-left: 0;
+	border-bottom: 1px solid;
+	display: flex;
+	height: 40px;
+	justify-content: center;
+	align-items: center;
+	z-index: 10;
 }
 #source-sidebar {
-	position: fixed;
-	top: 0;
-	bottom: 0;
-	left: 0;
 	width: 300px;
 	z-index: 1;
 	overflow: auto;
-	transition: left .5s;
-	border-right: 1px solid;
 }
 #source-sidebar > .title {
 	font-size: 1.5em;
@@ -1354,8 +1403,8 @@ pre.rust {
 
 .theme-picker {
 	position: absolute;
-	left: 211px;
-	top: 19px;
+	left: -34px;
+	top: 9px;
 }
 
 .theme-picker button {
@@ -1472,10 +1521,10 @@ kbd {
 	left: -5px;
 }
 
-#main > ul {
+#main-content > ul {
 	padding-left: 10px;
 }
-#main > ul > li {
+#main-content > ul > li {
 	list-style: none;
 }
 
@@ -1646,6 +1695,18 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	.docblock > .information:first-child > .tooltip {
 		margin-top: 16px;
 	}
+
+	/* When we expand the sidebar on the source code page, we hide the logo on the left of the
+	search bar to have more space. */
+	.sidebar.expanded + main .width-limiter .sub-logo-container.rust-logo {
+		display: none;
+	}
+
+	/* It doesn't render well on mobile because of the layout, so better only have the transition
+	on desktop. */
+	.rustdoc.source .sidebar {
+		transition: width .5s;
+	}
 }
 
 @media (max-width: 700px) {
@@ -1653,14 +1714,43 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		padding-top: 0px;
 	}
 
-	.rustdoc > .sidebar {
+	main {
+		padding-left: 15px;
+		padding-top: 0px;
+	}
+
+	.rustdoc {
+		flex-direction: column;
+	}
+
+	.rustdoc:not(.source) > .sidebar {
+		width: 100%;
 		height: 45px;
 		min-height: 40px;
+		max-height: 45px;
 		margin: 0;
-		margin-left: -15px;
 		padding: 0 15px;
 		position: static;
 		z-index: 11;
+		overflow-y: hidden;
+	}
+
+	.rustdoc.source > .sidebar {
+		position: fixed;
+		top: 0;
+		left: 0;
+		margin: 0;
+		z-index: 11;
+		width: 0;
+	}
+
+	.sidebar.mobile {
+		position: sticky !important;
+		top: 0;
+		left: 0;
+		width: 100%;
+		margin-left: 0;
+		background-color: rgba(0,0,0,0);
 	}
 
 	.sidebar > .location {
@@ -1678,7 +1768,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		padding: 0;
 	}
 
-	.sidebar .logo-container {
+	.rustdoc:not(.source) .sidebar .logo-container {
 		width: 35px;
 		height: 35px;
 		margin-top: 5px;
@@ -1699,6 +1789,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		cursor: pointer;
 		width: 45px;
 		left: 0;
+		top: 0;
 		text-align: center;
 		display: block;
 		border-bottom: 1px solid;
@@ -1748,20 +1839,25 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	nav.sub {
 		width: calc(100% - 32px);
-		float: right;
+		margin-left: 32px;
+		margin-bottom: 10px;
+	}
+
+	.source nav:not(.sidebar).sub {
+		margin-left: 32px;
 	}
 
 	.content {
 		margin-left: 0px;
 	}
 
-	#main, #search {
-		margin-top: 45px;
-		padding: 0;
+	.source .content {
+		margin-top: 10px;
 	}
 
 	#search {
 		margin-left: 0;
+		padding: 0;
 	}
 
 	.anchor {
@@ -1769,8 +1865,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 
 	.theme-picker {
-		left: 10px;
-		top: 54px;
 		z-index: 1;
 	}
 
@@ -1787,25 +1881,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	#titles {
 		height: 50px;
-	}
-
-	.sidebar.mobile {
-		position: fixed;
-		width: 100%;
-		margin-left: 0;
-		background-color: rgba(0,0,0,0);
-		height: 100%;
-	}
-	/*
-	This allows to prevent the version text to overflow the sidebar title on mobile mode when the
-	sidebar is displayed (after clicking on the "hamburger" button).
-	*/
-	.sidebar.mobile > div.version {
-		overflow: hidden;
-		max-height: 33px;
-	}
-	.sidebar {
-		width: calc(100% + 30px);
 	}
 
 	.show-it, .sidebar-elems:focus-within {
@@ -1845,8 +1920,8 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		border-bottom: 1px solid;
 	}
 
-	#main > details.rustdoc-toggle > summary::before,
-	#main > div > details.rustdoc-toggle > summary::before {
+	#main-content > details.rustdoc-toggle > summary::before,
+	#main-content > div > details.rustdoc-toggle > summary::before {
 		left: -11px;
 	}
 
@@ -1854,19 +1929,32 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		margin: 10px;
 	}
 
-	#sidebar-toggle {
+	.sidebar.expanded #sidebar-toggle {
+		font-size: 1.5rem;
+	}
+
+	.sidebar:not(.expanded) #sidebar-toggle {
+		position: fixed;
+		left: 1px;
 		top: 100px;
 		width: 30px;
 		font-size: 1.5rem;
 		text-align: center;
 		padding: 0;
+		z-index: 10;
+		border-top-right-radius: 3px;
+		border-bottom-right-radius: 3px;
+		cursor: pointer;
+		font-weight: bold;
+		border: 1px solid;
+		border-left: 0;
 	}
 
 	#source-sidebar {
 		z-index: 11;
 	}
 
-	#main > .line-numbers {
+	#main-content > .line-numbers {
 		margin-top: 0;
 	}
 
@@ -1920,14 +2008,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		height: 73px;
 	}
 
-	/* This is to prevent the search bar from being underneath the <section>
-	 * element following it.
-	 */
-	#main, #search {
-		margin-top: 100px;
-	}
-
-	#main > table:not(.table-display) td {
+	#main-content > table:not(.table-display) td {
 		word-break: break-word;
 		width: 50%;
 	}
@@ -1968,6 +2049,23 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	.docblock code {
 		overflow-wrap: anywhere;
+	}
+
+	.sub-container {
+		flex-direction: column;
+	}
+
+	.sub-logo-container {
+		align-self: center;
+	}
+
+	.source .sub-logo-container > img {
+		height: 35px;
+		width: 35px;
+	}
+
+	.sidebar:not(.expanded) #sidebar-toggle {
+		top: 10px;
 	}
 }
 

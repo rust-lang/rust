@@ -1,3 +1,3 @@
 // This test ensures that the impl blocks are open by default.
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
-assert-attribute: ("#main > details.implementors-toggle", {"open": ""})
+assert-attribute: ("#main-content > details.implementors-toggle", {"open": ""})
