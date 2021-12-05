@@ -112,6 +112,7 @@
 #![feature(const_float_classify)]
 #![feature(const_fmt_arguments_new)]
 #![feature(const_heap)]
+#![feature(const_convert)]
 #![feature(const_inherent_unchecked_arith)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_intrinsic_copy)]
