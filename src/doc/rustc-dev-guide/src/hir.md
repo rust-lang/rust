@@ -96,21 +96,16 @@ with a HIR node.
 [HIR map]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html
 [number of methods]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#methods
 
-For example, if you have a [`DefId`], and you would like to convert it
-to a [`NodeId`], you can use
-[`tcx.hir().as_local_node_id(def_id)`][as_local_node_id]. This returns
-an `Option<NodeId>` – this will be `None` if the def-id refers to
-something outside of the current crate (since then it has no HIR
-node), but otherwise returns `Some(n)` where `n` is the node-id of the
-definition.
+For example, if you have a [`LocalDefId`], and you would like to convert it
+to a [`HirId`], you can use [`tcx.hir().local_def_id_to_hir_id(def_id)`][local_def_id_to_hir_id].
+You need a `LocalDefId`, rather than a `DefId`, since only local items have HIR nodes.
 
-[`NodeId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/node_id/struct.NodeId.html
-[as_local_node_id]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.as_local_node_id
+[local_def_id_to_hir_id]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.local_def_id_to_hir_id
 
 Similarly, you can use [`tcx.hir().find(n)`][find] to lookup the node for a
-[`NodeId`]. This returns a `Option<Node<'tcx>>`, where [`Node`] is an enum
-defined in the map; by matching on this you can find out what sort of
-node the node-id referred to and also get a pointer to the data
+[`HirId`]. This returns a `Option<Node<'hir>>`, where [`Node`] is an enum
+defined in the map. By matching on this, you can find out what sort of
+node the `HirId` referred to and also get a pointer to the data
 itself. Often, you know what sort of node `n` is – e.g. if you know
 that `n` must be some HIR expression, you can do
 [`tcx.hir().expect_expr(n)`][expect_expr], which will extract and return the
