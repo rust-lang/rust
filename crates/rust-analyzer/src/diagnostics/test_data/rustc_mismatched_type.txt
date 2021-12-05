@@ -59,6 +59,6 @@
             tags: None,
             data: None,
         },
-        fixes: [],
+        fix: None,
     },
 ]
