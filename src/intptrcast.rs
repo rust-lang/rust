@@ -108,9 +108,9 @@ impl<'mir, 'tcx> GlobalState {
 
                 // Remember next base address.  Leave a gap of at least 1 to avoid two zero-sized allocations
                 // having the same base address, and to avoid ambiguous provenance for the address between two
-                // allocations.
-                let bytes = size.bytes().checked_add(1).unwrap();
-                global_state.next_base_addr = base_addr.checked_add(bytes).unwrap();
+                // allocations (also see https://github.com/rust-lang/unsafe-code-guidelines/issues/313).
+                let size_plus_1 = size.bytes().checked_add(1).unwrap();
+                global_state.next_base_addr = base_addr.checked_add(size_plus_1).unwrap();
                 // Given that `next_base_addr` increases in each allocation, pushing the
                 // corresponding tuple keeps `int_to_ptr_map` sorted
                 global_state.int_to_ptr_map.push((base_addr, alloc_id));
