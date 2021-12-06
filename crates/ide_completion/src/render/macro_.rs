@@ -9,7 +9,7 @@ use syntax::{
 };
 
 use crate::{
-    context::CallKind,
+    context::PathKind,
     item::{CompletionItem, ImportEdit},
     render::RenderContext,
 };
@@ -67,9 +67,8 @@ impl<'a> MacroRender<'a> {
         }
 
         let needs_bang = self.macro_.is_fn_like()
-            && !(self.ctx.completion.in_use_tree()
-                || matches!(self.ctx.completion.path_call_kind(), Some(CallKind::Mac)));
-        let has_parens = self.ctx.completion.path_call_kind().is_some();
+            && !matches!(self.ctx.completion.path_kind(), Some(PathKind::Mac | PathKind::Use));
+        let has_parens = self.ctx.completion.path_is_call();
 
         match self.ctx.snippet_cap() {
             Some(cap) if needs_bang && !has_parens => {
@@ -92,8 +91,7 @@ impl<'a> MacroRender<'a> {
     }
 
     fn needs_bang(&self) -> bool {
-        !self.ctx.completion.in_use_tree()
-            && !matches!(self.ctx.completion.path_call_kind(), Some(CallKind::Mac))
+        !matches!(self.ctx.completion.path_kind(), Some(PathKind::Mac | PathKind::Use))
     }
 
     fn label(&self) -> SmolStr {

@@ -1001,6 +1001,19 @@ fn function() {
 }
 
 #[test]
+fn flyimport_item_name() {
+    check(
+        r#"
+mod module {
+    pub struct Struct;
+}
+struct Str$0
+    "#,
+        expect![[r#""#]],
+    );
+}
+
+#[test]
 fn flyimport_rename() {
     check(
         r#"

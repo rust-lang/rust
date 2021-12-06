@@ -3,15 +3,23 @@
 use hir::ScopeDef;
 use syntax::{ast, AstNode};
 
-use crate::{patterns::ImmediateLocation, CompletionContext, Completions};
+use crate::{
+    context::{PathCompletionContext, PathKind},
+    patterns::ImmediateLocation,
+    CompletionContext, Completions,
+};
 
 pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionContext) {
     let _p = profile::span("complete_unqualified_path");
-    if ctx.is_path_disallowed() || !ctx.is_trivial_path() || ctx.has_impl_or_trait_prev_sibling() {
+    if ctx.is_path_disallowed() || ctx.has_impl_or_trait_prev_sibling() {
         return;
     }
+    let kind = match ctx.path_context {
+        Some(PathCompletionContext { is_trivial_path: true, kind, .. }) => kind,
+        _ => return,
+    };
 
-    if ctx.in_use_tree() {
+    if let Some(PathKind::Use) = kind {
         // only show modules in a fresh UseTree
         cov_mark::hit!(unqualified_path_only_modules_in_import);
         ctx.process_all_names(&mut |name, res| {
@@ -25,8 +33,25 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     }
     ["self", "super", "crate"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
 
+    match kind {
+        Some(PathKind::Vis { .. }) => return,
+        Some(PathKind::Attr) => {
+            ctx.process_all_names(&mut |name, res| {
+                let add_resolution = match res {
+                    ScopeDef::MacroDef(mac) => mac.is_attr(),
+                    ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => true,
+                    _ => false,
+                };
+                if add_resolution {
+                    acc.add_resolution(ctx, name, &res);
+                }
+            });
+            return;
+        }
+        _ => (),
+    }
+
     match &ctx.completion_location {
-        Some(ImmediateLocation::Visibility(_)) => return,
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
             // only show macros in {Assoc}ItemList
             ctx.process_all_names(&mut |name, res| {
@@ -48,19 +73,6 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
                     ScopeDef::ModuleDef(hir::ModuleDef::Trait(_) | hir::ModuleDef::Module(_)) => {
                         true
                     }
-                    _ => false,
-                };
-                if add_resolution {
-                    acc.add_resolution(ctx, name, &res);
-                }
-            });
-            return;
-        }
-        Some(ImmediateLocation::Attribute(_)) => {
-            ctx.process_all_names(&mut |name, res| {
-                let add_resolution = match res {
-                    ScopeDef::MacroDef(mac) => mac.is_attr(),
-                    ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => true,
                     _ => false,
                 };
                 if add_resolution {
