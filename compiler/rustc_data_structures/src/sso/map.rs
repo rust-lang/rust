@@ -423,14 +423,14 @@ impl<K, V> IntoIterator for SsoHashMap<K, V> {
 
 /// adapts Item of array reference iterator to Item of hashmap reference iterator.
 #[inline(always)]
-fn adapt_array_ref_it<K, V>(pair: &'a (K, V)) -> (&'a K, &'a V) {
+fn adapt_array_ref_it<K, V>(pair: &(K, V)) -> (&K, &V) {
     let (a, b) = pair;
     (a, b)
 }
 
 /// adapts Item of array mut reference iterator to Item of hashmap mut reference iterator.
 #[inline(always)]
-fn adapt_array_mut_it<K, V>(pair: &'a mut (K, V)) -> (&'a K, &'a mut V) {
+fn adapt_array_mut_it<K, V>(pair: &mut (K, V)) -> (&K, &mut V) {
     let (a, b) = pair;
     (a, b)
 }

@@ -94,7 +94,7 @@ impl<N: Idx> WithNumEdges for VecGraph<N> {
     }
 }
 
-impl<N: Idx> GraphSuccessors<'graph> for VecGraph<N> {
+impl<'graph, N: Idx> GraphSuccessors<'graph> for VecGraph<N> {
     type Item = N;
 
     type Iter = std::iter::Cloned<std::slice::Iter<'graph, N>>;
