@@ -349,6 +349,25 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.comments().as_mut().and_then(|c| c.next())
     }
 
+    fn maybe_print_trailing_comment(&mut self, span: rustc_span::Span, next_pos: Option<BytePos>) {
+        if let Some(cmnts) = self.comments() {
+            if let Some(cmnt) = cmnts.trailing_comment(span, next_pos) {
+                self.print_comment(&cmnt);
+            }
+        }
+    }
+
+    fn print_remaining_comments(&mut self) {
+        // If there aren't any remaining comments, then we need to manually
+        // make sure there is a line break at the end.
+        if self.next_comment().is_none() {
+            self.hardbreak();
+        }
+        while let Some(ref cmnt) = self.next_comment() {
+            self.print_comment(cmnt)
+        }
+    }
+
     fn print_literal(&mut self, lit: &ast::Lit) {
         self.maybe_print_comment(lit.span.lo());
         self.word(lit.token.to_string())
@@ -891,16 +910,6 @@ impl<'a> PrintState<'a> for State<'a> {
 impl<'a> State<'a> {
     pub fn new() -> State<'a> {
         State { s: pp::mk_printer(), comments: None, ann: &NoAnn }
-    }
-
-    // Synthesizes a comment that was not textually present in the original source
-    // file.
-    pub fn synth_comment(&mut self, text: String) {
-        self.s.word("/*");
-        self.s.space();
-        self.s.word(text);
-        self.s.space();
-        self.s.word("*/")
     }
 
     crate fn commasep_cmnt<T, F, G>(&mut self, b: Breaks, elts: &[T], mut op: F, mut get_span: G)
@@ -2918,29 +2927,6 @@ impl<'a> State<'a> {
         let header = ast::FnHeader { unsafety, ext, ..ast::FnHeader::default() };
         self.print_fn(decl, header, name, &generics);
         self.end();
-    }
-
-    crate fn maybe_print_trailing_comment(
-        &mut self,
-        span: rustc_span::Span,
-        next_pos: Option<BytePos>,
-    ) {
-        if let Some(cmnts) = self.comments() {
-            if let Some(cmnt) = cmnts.trailing_comment(span, next_pos) {
-                self.print_comment(&cmnt);
-            }
-        }
-    }
-
-    crate fn print_remaining_comments(&mut self) {
-        // If there aren't any remaining comments, then we need to manually
-        // make sure there is a line break at the end.
-        if self.next_comment().is_none() {
-            self.s.hardbreak();
-        }
-        while let Some(ref cmnt) = self.next_comment() {
-            self.print_comment(cmnt);
-        }
     }
 
     crate fn print_fn_header_info(&mut self, header: ast::FnHeader) {
