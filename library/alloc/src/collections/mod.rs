@@ -114,7 +114,7 @@ pub enum TryReserveErrorKind {
 impl TryReserveError {
     /// Panic, or worse, according to the global handlers for each case.
     pub(crate) fn handle(self) -> ! {
-        match self {
+        match self.kind {
             TryReserveErrorKind::CapacityOverflow => capacity_overflow(),
             TryReserveErrorKind::AllocError { layout, non_exhaustive: () } => {
                 handle_alloc_error(layout)
@@ -132,6 +132,13 @@ impl From<TryReserveErrorKind> for TryReserveError {
     #[inline]
     fn from(kind: TryReserveErrorKind) -> Self {
         Self { kind }
+    }
+}
+
+impl From<LayoutError> for TryReserveError {
+    #[inline]
+    fn from(_: LayoutError) -> Self {
+        TryReserveError::from(TryReserveErrorKind::CapacityOverflow)
     }
 }
 

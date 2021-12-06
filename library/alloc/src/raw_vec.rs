@@ -235,15 +235,17 @@ impl<T, A: Allocator> RawVec<T, A> {
         } else {
             // We avoid `unwrap_or_else` here because it bloats the amount of
             // LLVM IR generated.
-            let layout = match Layout::array::<T>(capacity)?;
-            match alloc_guard(layout.size())?;
+            let layout = Layout::array::<T>(capacity)?;
+            alloc_guard(layout.size())?;
             let result = match init {
                 AllocInit::Uninitialized => alloc.allocate(layout),
                 AllocInit::Zeroed => alloc.allocate_zeroed(layout),
             };
             let ptr = match result {
                 Ok(ptr) => ptr,
-                Err(_) => return Err(TryReserveErrorKind::AllocError { layout, non_exhaustive: () }),
+                Err(_) => {
+                    return Err(TryReserveError::from(AllocError { layout, non_exhaustive: () }))
+                }
             };
 
             Ok(Self {
@@ -282,7 +284,11 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline(always)]
     pub fn capacity(&self) -> usize {
-        if mem::size_of::<T>() == 0 { usize::MAX } else { self.cap }
+        if mem::size_of::<T>() == 0 {
+            usize::MAX
+        } else {
+            self.cap
+        }
     }
 
     /// Returns a shared reference to the allocator backing this `RawVec`.
@@ -390,7 +396,11 @@ impl<T, A: Allocator> RawVec<T, A> {
         len: usize,
         additional: usize,
     ) -> Result<(), TryReserveError> {
-        if self.needs_to_grow(len, additional) { self.grow_exact(len, additional) } else { Ok(()) }
+        if self.needs_to_grow(len, additional) {
+            self.grow_exact(len, additional)
+        } else {
+            Ok(())
+        }
     }
 
     /// Shrinks the allocation down to the specified amount. If the given amount
@@ -591,6 +601,6 @@ fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
 // ensure that the code generation related to these panics is minimal as there's
 // only one location which panics rather than a bunch throughout the module.
 #[cfg(not(no_global_oom_handling))]
-fn capacity_overflow() -> ! {
+pub fn capacity_overflow() -> ! {
     panic!("capacity overflow");
 }

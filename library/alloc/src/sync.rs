@@ -34,7 +34,7 @@ use crate::alloc::{box_free, WriteCloneIntoRaw};
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
-use crate::collections::TryReserveError;
+use crate::collections::{TryReserveError, TryReserveErrorKind};
 use crate::rc::is_dangling;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
@@ -960,7 +960,11 @@ impl<T: ?Sized> Arc<T> {
         let cnt = this.inner().weak.load(SeqCst);
         // If the weak count is currently locked, the value of the
         // count was 0 just before taking the lock.
-        if cnt == usize::MAX { 0 } else { cnt - 1 }
+        if cnt == usize::MAX {
+            0
+        } else {
+            cnt - 1
+        }
     }
 
     /// Gets the number of strong (`Arc`) pointers to this allocation.
@@ -1219,7 +1223,12 @@ impl<T> Arc<[T]> {
                 |l| Global.allocate(l),
                 |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
             )
-            .map_err(|_| TryReserveErrorKind::AllocError { layout, non_exhaustive: () })
+            .map_err(|_| {
+                TryReserveError::from(TryReserveErrorKind::AllocError {
+                    layout,
+                    non_exhaustive: (),
+                })
+            })
         }
     }
 
@@ -1937,7 +1946,11 @@ impl<T: ?Sized> Weak<T> {
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong.load(SeqCst) } else { 0 }
+        if let Some(inner) = self.inner() {
+            inner.strong.load(SeqCst)
+        } else {
+            0
+        }
     }
 
     /// Gets an approximation of the number of `Weak` pointers pointing to this

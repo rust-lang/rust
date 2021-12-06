@@ -1,4 +1,5 @@
 use crate::alloc::Allocator;
+use crate::collections::TryReserveErrorKind;
 use crate::vec::TryReserveError;
 use core::iter::TrustedLen;
 use core::ptr::{self};
@@ -102,7 +103,7 @@ where
             }
             Ok(())
         } else {
-            Err(TryReserveErrorKind::CapacityOverflow)
+            Err(TryReserveError::from(TryReserveErrorKind::CapacityOverflow))
         }
     }
 }
