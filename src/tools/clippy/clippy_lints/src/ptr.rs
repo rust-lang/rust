@@ -70,6 +70,7 @@ declare_clippy_lint! {
     /// // Good
     /// fn foo(&[u32]) { .. }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub PTR_ARG,
     style,
     "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively"
@@ -96,6 +97,7 @@ declare_clippy_lint! {
     ///     ..
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub CMP_NULL,
     style,
     "comparing a pointer to a null pointer, suggesting to use `.is_null()` instead"
@@ -121,6 +123,7 @@ declare_clippy_lint! {
     /// ```ignore
     /// fn foo(&Foo) -> &mut Bar { .. }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MUT_FROM_REF,
     correctness,
     "fns that create mutable refs from immutable ref args"
@@ -143,6 +146,7 @@ declare_clippy_lint! {
     /// // Good
     /// unsafe { std::slice::from_raw_parts(NonNull::dangling().as_ptr(), 0); }
     /// ```
+    #[clippy::version = "1.53.0"]
     pub INVALID_NULL_PTR_USAGE,
     correctness,
     "invalid usage of a null pointer, suggesting `NonNull::dangling()` instead"

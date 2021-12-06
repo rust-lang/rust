@@ -32,7 +32,7 @@ bullet points might be helpful:
   need to check out the Rust release tag of the stable release.
   [Link][rust_stable_tools]
 
-Usually you want to wirte the changelog of the **upcoming stable release**. Make
+Usually you want to write the changelog of the **upcoming stable release**. Make
 sure though, that `beta` was already branched in the Rust repository.
 
 To find the commit hash, issue the following command when in a `rust-lang/rust` checkout:

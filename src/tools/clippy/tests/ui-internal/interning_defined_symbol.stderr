@@ -1,5 +1,5 @@
 error: interning a defined symbol
-  --> $DIR/interning_defined_symbol.rs:17:13
+  --> $DIR/interning_defined_symbol.rs:18:13
    |
 LL |     let _ = Symbol::intern("f32");
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::sym::f32`
@@ -12,19 +12,19 @@ LL | #![deny(clippy::internal)]
    = note: `#[deny(clippy::interning_defined_symbol)]` implied by `#[deny(clippy::internal)]`
 
 error: interning a defined symbol
-  --> $DIR/interning_defined_symbol.rs:20:13
+  --> $DIR/interning_defined_symbol.rs:21:13
    |
 LL |     let _ = sym!(f32);
    |             ^^^^^^^^^ help: try: `rustc_span::sym::f32`
 
 error: interning a defined symbol
-  --> $DIR/interning_defined_symbol.rs:23:13
+  --> $DIR/interning_defined_symbol.rs:24:13
    |
 LL |     let _ = Symbol::intern("proc-macro");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::sym::proc_dash_macro`
 
 error: interning a defined symbol
-  --> $DIR/interning_defined_symbol.rs:26:13
+  --> $DIR/interning_defined_symbol.rs:27:13
    |
 LL |     let _ = Symbol::intern("self");
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::symbol::kw::SelfLower`

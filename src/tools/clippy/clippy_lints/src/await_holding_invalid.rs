@@ -47,6 +47,7 @@ declare_clippy_lint! {
     ///   bar.await;
     /// }
     /// ```
+    #[clippy::version = "1.45.0"]
     pub AWAIT_HOLDING_LOCK,
     pedantic,
     "Inside an async function, holding a MutexGuard while calling await"
@@ -88,6 +89,7 @@ declare_clippy_lint! {
     ///   bar.await;
     /// }
     /// ```
+    #[clippy::version = "1.49.0"]
     pub AWAIT_HOLDING_REFCELL_REF,
     pedantic,
     "Inside an async function, holding a RefCell ref while calling await"

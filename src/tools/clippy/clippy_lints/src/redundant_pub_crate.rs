@@ -26,6 +26,7 @@ declare_clippy_lint! {
     ///     pub fn internal_fn() { }
     /// }
     /// ```
+    #[clippy::version = "1.44.0"]
     pub REDUNDANT_PUB_CRATE,
     nursery,
     "Using `pub(crate)` visibility on items that are not crate visible due to the visibility of the module that contains them."

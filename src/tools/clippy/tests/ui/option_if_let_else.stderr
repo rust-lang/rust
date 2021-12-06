@@ -142,14 +142,24 @@ LL +         y
 LL ~     }, |x| x * x * x * x);
    |
 
+error: use Option::map_or_else instead of an if let/else
+  --> $DIR/option_if_let_else.rs:103:13
+   |
+LL | /             if let Some(idx) = s.find('.') {
+LL | |                 vec![s[..idx].to_string(), s[idx..].to_string()]
+LL | |             } else {
+LL | |                 vec![s.to_string()]
+LL | |             }
+   | |_____________^ help: try: `s.find('.').map_or_else(|| vec![s.to_string()], |idx| vec![s[..idx].to_string(), s[idx..].to_string()])`
+
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:99:13
+  --> $DIR/option_if_let_else.rs:114:13
    |
 LL |     let _ = if let Some(x) = optional { x + 2 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `optional.map_or(5, |x| x + 2)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:108:13
+  --> $DIR/option_if_let_else.rs:123:13
    |
 LL |       let _ = if let Some(x) = Some(0) {
    |  _____________^
@@ -170,14 +180,14 @@ LL +             }
 LL ~         });
    |
 
-error: use Option::map_or_else instead of an if let/else
-  --> $DIR/option_if_let_else.rs:136:13
+error: use Option::map_or instead of an if let/else
+  --> $DIR/option_if_let_else.rs:151:13
    |
 LL |     let _ = if let Some(x) = Some(0) { s.len() + x } else { s.len() };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(0).map_or_else(|| s.len(), |x| s.len() + x)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(0).map_or(s.len(), |x| s.len() + x)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:140:13
+  --> $DIR/option_if_let_else.rs:155:13
    |
 LL |       let _ = if let Some(x) = Some(0) {
    |  _____________^
@@ -196,5 +206,5 @@ LL +         s.len() + x
 LL ~     });
    |
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 

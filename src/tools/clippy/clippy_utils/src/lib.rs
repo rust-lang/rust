@@ -1,6 +1,7 @@
 #![feature(box_patterns)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
+#![feature(let_else)]
 #![feature(rustc_private)]
 #![feature(control_flow_enum)]
 #![recursion_limit = "512"]
@@ -68,7 +69,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
-use rustc_hir::intravisit::{self, walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
@@ -96,6 +97,7 @@ use rustc_target::abi::Integer;
 
 use crate::consts::{constant, Constant};
 use crate::ty::{can_partially_move_ty, is_copy, is_recursively_primitive_type};
+use crate::visitors::expr_visitor_no_bodies;
 
 pub fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
     if let Ok(version) = RustcVersion::parse(msrv) {
@@ -248,12 +250,6 @@ pub fn is_lang_ctor(cx: &LateContext<'_>, qpath: &QPath<'_>, lang_item: LangItem
         }
     }
     false
-}
-
-/// Returns `true` if this `span` was expanded by any macro.
-#[must_use]
-pub fn in_macro(span: Span) -> bool {
-    span.from_expansion() && !matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
 }
 
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
@@ -1113,63 +1109,30 @@ pub fn contains_name(name: Symbol, expr: &Expr<'_>) -> bool {
 
 /// Returns `true` if `expr` contains a return expression
 pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
-    struct RetCallFinder {
-        found: bool,
-    }
-
-    impl<'tcx> hir::intravisit::Visitor<'tcx> for RetCallFinder {
-        type Map = Map<'tcx>;
-
-        fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-            if self.found {
-                return;
-            }
+    let mut found = false;
+    expr_visitor_no_bodies(|expr| {
+        if !found {
             if let hir::ExprKind::Ret(..) = &expr.kind {
-                self.found = true;
-            } else {
-                hir::intravisit::walk_expr(self, expr);
+                found = true;
             }
         }
-
-        fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
-            hir::intravisit::NestedVisitorMap::None
-        }
-    }
-
-    let mut visitor = RetCallFinder { found: false };
-    visitor.visit_expr(expr);
-    visitor.found
-}
-
-struct FindMacroCalls<'a, 'b> {
-    names: &'a [&'b str],
-    result: Vec<Span>,
-}
-
-impl<'a, 'b, 'tcx> Visitor<'tcx> for FindMacroCalls<'a, 'b> {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.names.iter().any(|fun| is_expn_of(expr.span, fun).is_some()) {
-            self.result.push(expr.span);
-        }
-        // and check sub-expressions
-        intravisit::walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
+        !found
+    })
+    .visit_expr(expr);
+    found
 }
 
 /// Finds calls of the specified macros in a function body.
 pub fn find_macro_calls(names: &[&str], body: &Body<'_>) -> Vec<Span> {
-    let mut fmc = FindMacroCalls {
-        names,
-        result: Vec::new(),
-    };
-    fmc.visit_expr(&body.value);
-    fmc.result
+    let mut result = Vec::new();
+    expr_visitor_no_bodies(|expr| {
+        if names.iter().any(|fun| is_expn_of(expr.span, fun).is_some()) {
+            result.push(expr.span);
+        }
+        true
+    })
+    .visit_expr(&body.value);
+    result
 }
 
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
@@ -1439,7 +1402,7 @@ pub fn recurse_or_patterns<'tcx, F: FnMut(&'tcx Pat<'tcx>)>(pat: &'tcx Pat<'tcx>
 /// Checks for the `#[automatically_derived]` attribute all `#[derive]`d
 /// implementations have.
 pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(|attr| attr.has_name(sym::automatically_derived))
+    has_attr(attrs, sym::automatically_derived)
 }
 
 /// Remove blocks around an expression.
@@ -1561,18 +1524,27 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: rustc_ty::UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool {
+pub fn has_attr(attrs: &[ast::Attribute], symbol: Symbol) -> bool {
+    attrs.iter().any(|attr| attr.has_name(symbol))
+}
+
+pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
     let map = &tcx.hir();
     let mut prev_enclosing_node = None;
     let mut enclosing_node = node;
     while Some(enclosing_node) != prev_enclosing_node {
-        if is_automatically_derived(map.attrs(enclosing_node)) {
+        if has_attr(map.attrs(enclosing_node), symbol) {
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);
         enclosing_node = map.get_parent_item(enclosing_node);
     }
+
     false
+}
+
+pub fn any_parent_is_automatically_derived(tcx: TyCtxt<'_>, node: HirId) -> bool {
+    any_parent_has_attr(tcx, node, sym::automatically_derived)
 }
 
 /// Matches a function call with the given path and returns the arguments.
@@ -1623,6 +1595,14 @@ pub fn match_def_path<'tcx>(cx: &LateContext<'tcx>, did: DefId, syms: &[&str]) -
     // We should probably move to Symbols in Clippy as well rather than interning every time.
     let path = cx.get_def_path(did);
     syms.iter().map(|x| Symbol::intern(x)).eq(path.iter().copied())
+}
+
+/// Checks if the given `DefId` matches the `libc` item.
+pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: &str) -> bool {
+    let path = cx.get_def_path(did);
+    // libc is meant to be used as a flat list of names, but they're all actually defined in different
+    // modules based on the target platform. Ignore everything but crate name and the item name.
+    path.first().map_or(false, |s| s.as_str() == "libc") && path.last().map_or(false, |s| s.as_str() == name)
 }
 
 pub fn match_panic_call(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
@@ -1837,10 +1817,30 @@ pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     matches!(get_parent_node(tcx, expr.hir_id), Some(Node::Block(..)))
 }
 
+pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
+    if !is_no_std_crate(cx) {
+        Some("std")
+    } else if !is_no_core_crate(cx) {
+        Some("core")
+    } else {
+        None
+    }
+}
+
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
         if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
             attr.path == sym::no_std
+        } else {
+            false
+        }
+    })
+}
+
+pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
+    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
+        if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
+            attr.path == sym::no_core
         } else {
             false
         }

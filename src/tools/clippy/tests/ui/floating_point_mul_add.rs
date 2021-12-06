@@ -1,5 +1,16 @@
 // run-rustfix
+#![feature(const_fn_floating_point_arithmetic)]
 #![warn(clippy::suboptimal_flops)]
+
+/// Allow suboptimal_ops in constant context
+pub const fn in_const_context() {
+    let a: f64 = 1234.567;
+    let b: f64 = 45.67834;
+    let c: f64 = 0.0004;
+
+    let _ = a * b + c;
+    let _ = c + a * b;
+}
 
 fn main() {
     let a: f64 = 1234.567;

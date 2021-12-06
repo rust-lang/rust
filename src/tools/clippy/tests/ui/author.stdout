@@ -1,11 +1,11 @@
 if_chain! {
-    if let StmtKind::Local(ref local) = stmt.kind;
-    if let Some(ref init) = local.init;
-    if let ExprKind::Cast(ref expr, ref cast_ty) = init.kind;
-    if let TyKind::Path(ref qp) = cast_ty.kind;
-    if match_qpath(qp, &["char"]);
+    if let StmtKind::Local(local) = stmt.kind;
+    if let Some(init) = local.init;
+    if let ExprKind::Cast(expr, cast_ty) = init.kind;
+    if let TyKind::Path(ref qpath) = cast_ty.kind;
+    if match_qpath(qpath, &["char"]);
     if let ExprKind::Lit(ref lit) = expr.kind;
-    if let LitKind::Int(69, _) = lit.node;
+    if let LitKind::Int(69, LitIntType::Unsuffixed) = lit.node;
     if let PatKind::Binding(BindingAnnotation::Unannotated, _, name, None) = local.pat.kind;
     if name.as_str() == "x";
     then {

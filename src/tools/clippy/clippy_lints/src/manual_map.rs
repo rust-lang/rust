@@ -2,7 +2,7 @@ use crate::{map_unit_fn::OPTION_MAP_UNIT_FN, matches::MATCH_AS_REF};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
-use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
+use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable, type_is_unsafe_function};
 use clippy_utils::{
     can_move_expr_to_closure, in_constant, is_else_clause, is_lang_ctor, is_lint_allowed, path_to_local_id,
     peel_hir_expr_refs, peel_hir_expr_while, CaptureKind,
@@ -11,7 +11,8 @@ use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{
-    def::Res, Arm, BindingAnnotation, Block, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath,
+    def::Res, Arm, BindingAnnotation, Block, BlockCheckMode, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path,
+    QPath, UnsafeSource,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -36,6 +37,7 @@ declare_clippy_lint! {
     /// ```rust
     /// Some(0).map(|x| x + 1);
     /// ```
+    #[clippy::version = "1.52.0"]
     pub MANUAL_MAP,
     style,
     "reimplementation of `map`"
@@ -92,20 +94,20 @@ impl LateLintPass<'_> for ManualMap {
             return;
         }
 
-        let some_expr = match get_some_expr(cx, some_expr, expr_ctxt) {
+        let some_expr = match get_some_expr(cx, some_expr, false, expr_ctxt) {
             Some(expr) => expr,
             None => return,
         };
 
         // These two lints will go back and forth with each other.
-        if cx.typeck_results().expr_ty(some_expr) == cx.tcx.types.unit
+        if cx.typeck_results().expr_ty(some_expr.expr) == cx.tcx.types.unit
             && !is_lint_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id)
         {
             return;
         }
 
         // `map` won't perform any adjustments.
-        if !cx.typeck_results().expr_adjustments(some_expr).is_empty() {
+        if !cx.typeck_results().expr_adjustments(some_expr.expr).is_empty() {
             return;
         }
 
@@ -119,7 +121,7 @@ impl LateLintPass<'_> for ManualMap {
             None => "",
         };
 
-        match can_move_expr_to_closure(cx, some_expr) {
+        match can_move_expr_to_closure(cx, some_expr.expr) {
             Some(captures) => {
                 // Check if captures the closure will need conflict with borrows made in the scrutinee.
                 // TODO: check all the references made in the scrutinee expression. This will require interacting
@@ -157,12 +159,14 @@ impl LateLintPass<'_> for ManualMap {
             };
 
         let body_str = if let PatKind::Binding(annotation, id, some_binding, None) = some_pat.kind {
-            match can_pass_as_func(cx, id, some_expr) {
-                Some(func) if func.span.ctxt() == some_expr.span.ctxt() => {
+            if_chain! {
+                if !some_expr.needs_unsafe_block;
+                if let Some(func) = can_pass_as_func(cx, id, some_expr.expr);
+                if func.span.ctxt() == some_expr.expr.span.ctxt();
+                then {
                     snippet_with_applicability(cx, func.span, "..", &mut app).into_owned()
-                },
-                _ => {
-                    if path_to_local_id(some_expr, id)
+                } else {
+                    if path_to_local_id(some_expr.expr, id)
                         && !is_lint_allowed(cx, MATCH_AS_REF, expr.hir_id)
                         && binding_ref.is_some()
                     {
@@ -175,21 +179,23 @@ impl LateLintPass<'_> for ManualMap {
                     } else {
                         ""
                     };
-                    format!(
-                        "|{}{}| {}",
-                        annotation,
-                        some_binding,
-                        snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app).0
-                    )
-                },
+                    let expr_snip = snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0;
+                    if some_expr.needs_unsafe_block {
+                        format!("|{}{}| unsafe {{ {} }}", annotation, some_binding, expr_snip)
+                    } else {
+                        format!("|{}{}| {}", annotation, some_binding, expr_snip)
+                    }
+                }
             }
         } else if !is_wild_none && explicit_ref.is_none() {
             // TODO: handle explicit reference annotations.
-            format!(
-                "|{}| {}",
-                snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0,
-                snippet_with_context(cx, some_expr.span, expr_ctxt, "..", &mut app).0
-            )
+            let pat_snip = snippet_with_context(cx, some_pat.span, expr_ctxt, "..", &mut app).0;
+            let expr_snip = snippet_with_context(cx, some_expr.expr.span, expr_ctxt, "..", &mut app).0;
+            if some_expr.needs_unsafe_block {
+                format!("|{}| unsafe {{ {} }}", pat_snip, expr_snip)
+            } else {
+                format!("|{}| {}", pat_snip, expr_snip)
+            }
         } else {
             // Refutable bindings and mixed reference annotations can't be handled by `map`.
             return;
@@ -216,7 +222,9 @@ impl LateLintPass<'_> for ManualMap {
 fn can_pass_as_func(cx: &LateContext<'tcx>, binding: HirId, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     match expr.kind {
         ExprKind::Call(func, [arg])
-            if path_to_local_id(arg, binding) && cx.typeck_results().expr_adjustments(arg).is_empty() =>
+            if path_to_local_id(arg, binding)
+                && cx.typeck_results().expr_adjustments(arg).is_empty()
+                && !type_is_unsafe_function(cx, cx.typeck_results().expr_ty(func).peel_refs()) =>
         {
             Some(func)
         },
@@ -234,6 +242,11 @@ enum OptionPat<'a> {
         // e.g. `&&Some(_)` has a ref count of 2.
         ref_count: usize,
     },
+}
+
+struct SomeExpr<'tcx> {
+    expr: &'tcx Expr<'tcx>,
+    needs_unsafe_block: bool,
 }
 
 // Try to parse into a recognized `Option` pattern.
@@ -256,7 +269,12 @@ fn try_parse_pattern(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, ctxt: SyntaxCon
 }
 
 // Checks for an expression wrapped by the `Some` constructor. Returns the contained expression.
-fn get_some_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ctxt: SyntaxContext) -> Option<&'tcx Expr<'tcx>> {
+fn get_some_expr(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    needs_unsafe_block: bool,
+    ctxt: SyntaxContext,
+) -> Option<SomeExpr<'tcx>> {
     // TODO: Allow more complex expressions.
     match expr.kind {
         ExprKind::Call(
@@ -265,15 +283,24 @@ fn get_some_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ctxt: SyntaxConte
                 ..
             },
             [arg],
-        ) if ctxt == expr.span.ctxt() && is_lang_ctor(cx, qpath, OptionSome) => Some(arg),
+        ) if ctxt == expr.span.ctxt() && is_lang_ctor(cx, qpath, OptionSome) => Some(SomeExpr {
+            expr: arg,
+            needs_unsafe_block,
+        }),
         ExprKind::Block(
             Block {
                 stmts: [],
                 expr: Some(expr),
+                rules,
                 ..
             },
             _,
-        ) => get_some_expr(cx, expr, ctxt),
+        ) => get_some_expr(
+            cx,
+            expr,
+            needs_unsafe_block || *rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
+            ctxt,
+        ),
         _ => None,
     }
 }

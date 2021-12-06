@@ -15,7 +15,7 @@ pub struct Rename {
     pub rename: String,
 }
 
-/// A single disallowed method, used by the `DISALLOWED_METHOD` lint.
+/// A single disallowed method, used by the `DISALLOWED_METHODS` lint.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
 pub enum DisallowedMethod {
@@ -23,7 +23,7 @@ pub enum DisallowedMethod {
     WithReason { path: String, reason: Option<String> },
 }
 
-/// A single disallowed type, used by the `DISALLOWED_TYPE` lint.
+/// A single disallowed type, used by the `DISALLOWED_TYPES` lint.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
 pub enum DisallowedType {
@@ -148,7 +148,7 @@ define_Conf! {
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
     (avoid_breaking_exported_api: bool = true),
-    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT.
+    /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE.
     ///
     /// The minimum rust version that the project supports
     (msrv: Option<String> = None),
@@ -256,11 +256,11 @@ define_Conf! {
     ///
     /// Whether to allow certain wildcard imports (prelude, super in tests).
     (warn_on_all_wildcard_imports: bool = false),
-    /// Lint: DISALLOWED_METHOD.
+    /// Lint: DISALLOWED_METHODS.
     ///
     /// The list of disallowed methods, written as fully qualified paths.
     (disallowed_methods: Vec<crate::utils::conf::DisallowedMethod> = Vec::new()),
-    /// Lint: DISALLOWED_TYPE.
+    /// Lint: DISALLOWED_TYPES.
     ///
     /// The list of disallowed types, written as fully qualified paths.
     (disallowed_types: Vec<crate::utils::conf::DisallowedType> = Vec::new()),
@@ -296,6 +296,12 @@ define_Conf! {
     ///
     /// Whether to apply the raw pointer heuristic to determine if a type is `Send`.
     (enable_raw_pointer_heuristic_for_send: bool = true),
+    /// Lint: INDEX_REFUTABLE_SLICE.
+    ///
+    /// When Clippy suggests using a slice pattern, this is the maximum number of elements allowed in
+    /// the slice pattern that is suggested. If more elements would be necessary, the lint is suppressed.
+    /// For example, `[_, _, _, e, ..]` is a slice pattern with 4 elements.
+    (max_suggested_slice_pattern_length: u64 = 3),
 }
 
 /// Search for the configuration file.

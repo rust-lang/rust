@@ -22,6 +22,7 @@ declare_clippy_lint! {
     /// # let mut y = 1;
     /// let x = &mut &mut y;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MUT_MUT,
     pedantic,
     "usage of double-mut refs, e.g., `&mut &mut ...`"

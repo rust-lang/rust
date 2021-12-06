@@ -1,5 +1,5 @@
 error: usage of `outer_expn().expn_data()`
-  --> $DIR/outer_expn_data.rs:24:34
+  --> $DIR/outer_expn_data.rs:25:34
    |
 LL |         let _ = expr.span.ctxt().outer_expn().expn_data();
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `outer_expn_data()`

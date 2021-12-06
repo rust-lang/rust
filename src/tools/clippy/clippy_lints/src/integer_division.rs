@@ -23,6 +23,7 @@ declare_clippy_lint! {
     /// let x = 3f32 / 2f32;
     /// println!("{}", x);
     /// ```
+    #[clippy::version = "1.37.0"]
     pub INTEGER_DIVISION,
     restriction,
     "integer division may cause loss of precision"

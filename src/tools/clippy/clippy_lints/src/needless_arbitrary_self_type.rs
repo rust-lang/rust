@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use if_chain::if_chain;
 use rustc_ast::ast::{BindingMode, Lifetime, Mutability, Param, PatKind, Path, TyKind};
 use rustc_errors::Applicability;
@@ -53,6 +52,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.47.0"]
     pub NEEDLESS_ARBITRARY_SELF_TYPE,
     complexity,
     "type of `self` parameter is already by default `Self`"
@@ -78,7 +78,7 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
             let self_param = match (binding_mode, mutbl) {
                 (Mode::Ref(None), Mutability::Mut) => "&mut self".to_string(),
                 (Mode::Ref(Some(lifetime)), Mutability::Mut) => {
-                    if in_macro(lifetime.ident.span) {
+                    if lifetime.ident.span.from_expansion() {
                         applicability = Applicability::HasPlaceholders;
                         "&'_ mut self".to_string()
                     } else {
@@ -87,7 +87,7 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
                 },
                 (Mode::Ref(None), Mutability::Not) => "&self".to_string(),
                 (Mode::Ref(Some(lifetime)), Mutability::Not) => {
-                    if in_macro(lifetime.ident.span) {
+                    if lifetime.ident.span.from_expansion() {
                         applicability = Applicability::HasPlaceholders;
                         "&'_ self".to_string()
                     } else {
@@ -114,7 +114,7 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
 impl EarlyLintPass for NeedlessArbitrarySelfType {
     fn check_param(&mut self, cx: &EarlyContext<'_>, p: &Param) {
         // Bail out if the parameter it's not a receiver or was not written by the user
-        if !p.is_self() || in_macro(p.span) {
+        if !p.is_self() || p.span.from_expansion() {
             return;
         }
 

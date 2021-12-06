@@ -36,6 +36,7 @@ declare_clippy_lint! {
     ///     print!("Moving on...");
     /// }
     /// ```
+    #[clippy::version = "1.50.0"]
     pub REDUNDANT_ELSE,
     pedantic,
     "`else` branch that can be removed without changing semantics"

@@ -28,6 +28,7 @@ declare_clippy_lint! {
     /// # let radix = 10;
     /// let is_digit = c.is_digit(radix);
     /// ```
+    #[clippy::version = "1.41.0"]
     pub TO_DIGIT_IS_SOME,
     style,
     "`char.is_digit()` is clearer"

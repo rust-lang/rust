@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
 use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, snippet_opt};
 use clippy_utils::{
-    both, count_eq, eq_expr_value, get_enclosing_block, get_parent_expr, if_sequence, in_macro, is_else_clause,
-    is_lint_allowed, search_same, ContainsName, SpanlessEq, SpanlessHash,
+    both, count_eq, eq_expr_value, get_enclosing_block, get_parent_expr, if_sequence, is_else_clause, is_lint_allowed,
+    search_same, ContainsName, SpanlessEq, SpanlessHash,
 };
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
@@ -41,6 +41,7 @@ declare_clippy_lint! {
     ///     …
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub IFS_SAME_COND,
     correctness,
     "consecutive `if`s with the same condition"
@@ -88,6 +89,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.41.0"]
     pub SAME_FUNCTIONS_IN_IF_CONDITION,
     pedantic,
     "consecutive `if`s with the same function call"
@@ -109,6 +111,7 @@ declare_clippy_lint! {
     ///     42
     /// };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub IF_SAME_THEN_ELSE,
     correctness,
     "`if` with the same `then` and `else` blocks"
@@ -147,6 +150,7 @@ declare_clippy_lint! {
     ///     42
     /// };
     /// ```
+    #[clippy::version = "1.53.0"]
     pub BRANCHES_SHARING_CODE,
     nursery,
     "`if` statement with shared code in all blocks"
@@ -623,7 +627,7 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
 
     let eq: &dyn Fn(&&Expr<'_>, &&Expr<'_>) -> bool = &|&lhs, &rhs| -> bool {
         // Do not lint if any expr originates from a macro
-        if in_macro(lhs.span) || in_macro(rhs.span) {
+        if lhs.span.from_expansion() || rhs.span.from_expansion() {
             return false;
         }
         // Do not spawn warning if `IFS_SAME_COND` already produced it.

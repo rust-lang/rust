@@ -132,6 +132,18 @@ fn to_camel_case(name: &str) -> String {
         .collect()
 }
 
+fn get_stabilisation_version() -> String {
+    let mut command = cargo_metadata::MetadataCommand::new();
+    command.no_deps();
+    if let Ok(metadata) = command.exec() {
+        if let Some(pkg) = metadata.packages.iter().find(|pkg| pkg.name == "clippy") {
+            return format!("{}.{}.0", pkg.version.minor, pkg.version.patch);
+        }
+    }
+
+    String::from("<TODO set version(see doc/adding_lints.md)>")
+}
+
 fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {
     let mut contents = format!(
         indoc! {"
@@ -178,6 +190,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
         },
     };
 
+    let version = get_stabilisation_version();
     let lint_name = lint.name;
     let category = lint.category;
     let name_camel = to_camel_case(lint.name);
@@ -212,7 +225,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
     });
 
     result.push_str(&format!(
-        indoc! {"
+        indoc! {r#"
             declare_clippy_lint! {{
                 /// ### What it does
                 ///
@@ -226,11 +239,13 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
                 /// ```rust
                 /// // example code which does not raise clippy warning
                 /// ```
+                #[clippy::version = "{version}"]
                 pub {name_upper},
                 {category},
-                \"default lint description\"
+                "default lint description"
             }}
-        "},
+        "#},
+        version = version,
         name_upper = name_upper,
         category = category,
     ));

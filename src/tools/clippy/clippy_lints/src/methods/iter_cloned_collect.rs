@@ -9,7 +9,7 @@ use rustc_span::sym;
 
 use super::ITER_CLONED_COLLECT;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, recv: &'tcx hir::Expr<'_>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, method_name: &str, expr: &hir::Expr<'_>, recv: &'tcx hir::Expr<'_>) {
     if_chain! {
         if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Vec);
         if let Some(slice) = derefs_to_slice(cx, recv, cx.typeck_results().expr_ty(recv));
@@ -20,8 +20,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, recv: &'
                 cx,
                 ITER_CLONED_COLLECT,
                 to_replace,
-                "called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
-                more readable",
+                &format!("called `iter().{}().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
+                more readable", method_name),
                 "try",
                 ".to_vec()".to_string(),
                 Applicability::MachineApplicable,

@@ -2,7 +2,7 @@ error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:23:12
    |
 LL |     return Some(to.magic?);
-   |            ^^^^^^^^^^^^^^^ help: try: `to.magic`
+   |            ^^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `to.magic`
    |
    = note: `-D clippy::needless-question-mark` implied by `-D warnings`
 
@@ -10,67 +10,67 @@ error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:31:12
    |
 LL |     return Some(to.magic?)
-   |            ^^^^^^^^^^^^^^^ help: try: `to.magic`
+   |            ^^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `to.magic`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:36:5
    |
 LL |     Some(to.magic?)
-   |     ^^^^^^^^^^^^^^^ help: try: `to.magic`
+   |     ^^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `to.magic`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:41:21
    |
 LL |     to.and_then(|t| Some(t.magic?))
-   |                     ^^^^^^^^^^^^^^ help: try: `t.magic`
+   |                     ^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `t.magic`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:50:9
    |
 LL |         Some(t.magic?)
-   |         ^^^^^^^^^^^^^^ help: try: `t.magic`
+   |         ^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `t.magic`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:55:12
    |
 LL |     return Ok(tr.magic?);
-   |            ^^^^^^^^^^^^^ help: try: `tr.magic`
+   |            ^^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `tr.magic`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:62:12
    |
 LL |     return Ok(tr.magic?)
-   |            ^^^^^^^^^^^^^ help: try: `tr.magic`
+   |            ^^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `tr.magic`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:66:5
    |
 LL |     Ok(tr.magic?)
-   |     ^^^^^^^^^^^^^ help: try: `tr.magic`
+   |     ^^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `tr.magic`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:70:21
    |
 LL |     tr.and_then(|t| Ok(t.magic?))
-   |                     ^^^^^^^^^^^^ help: try: `t.magic`
+   |                     ^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `t.magic`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:78:9
    |
 LL |         Ok(t.magic?)
-   |         ^^^^^^^^^^^^ help: try: `t.magic`
+   |         ^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `t.magic`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:85:16
    |
 LL |         return Ok(t.magic?);
-   |                ^^^^^^^^^^^^ help: try: `t.magic`
+   |                ^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `t.magic`
 
 error: question mark operator is useless here
   --> $DIR/needless_question_mark.rs:120:27
    |
 LL |         || -> Option<_> { Some(Some($expr)?) }()
-   |                           ^^^^^^^^^^^^^^^^^^ help: try: `Some($expr)`
+   |                           ^^^^^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `Some($expr)`
 ...
 LL |     let _x = some_and_qmark_in_macro!(x?);
    |              ---------------------------- in this macro invocation

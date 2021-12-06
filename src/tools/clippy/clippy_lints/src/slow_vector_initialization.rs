@@ -36,6 +36,7 @@ declare_clippy_lint! {
     /// let mut vec1 = vec![0; len];
     /// let mut vec2 = vec![0; len];
     /// ```
+    #[clippy::version = "1.32.0"]
     pub SLOW_VECTOR_INITIALIZATION,
     perf,
     "slow vector initialization"

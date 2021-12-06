@@ -30,6 +30,7 @@ declare_clippy_lint! {
     /// ```rust
     /// async fn foo() -> i32 { 42 }
     /// ```
+    #[clippy::version = "1.45.0"]
     pub MANUAL_ASYNC_FN,
     style,
     "manual implementations of `async` functions can be simplified using the dedicated syntax"

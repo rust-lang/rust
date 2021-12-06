@@ -3,7 +3,8 @@
     unused_assignments,
     clippy::similar_names,
     clippy::blacklisted_name,
-    clippy::branches_sharing_code
+    clippy::branches_sharing_code,
+    clippy::needless_late_init
 )]
 #![warn(clippy::useless_let_if_seq)]
 

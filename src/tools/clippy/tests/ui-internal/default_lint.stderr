@@ -1,5 +1,5 @@
 error: the lint `TEST_LINT_DEFAULT` has the default lint description
-  --> $DIR/default_lint.rs:17:1
+  --> $DIR/default_lint.rs:18:1
    |
 LL | / declare_tool_lint! {
 LL | |     pub clippy::TEST_LINT_DEFAULT,

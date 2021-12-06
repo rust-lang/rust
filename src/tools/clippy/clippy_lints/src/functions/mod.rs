@@ -26,6 +26,7 @@ declare_clippy_lint! {
     ///     // ..
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TOO_MANY_ARGUMENTS,
     complexity,
     "functions with too many arguments"
@@ -49,6 +50,7 @@ declare_clippy_lint! {
     ///     println!("");
     /// }
     /// ```
+    #[clippy::version = "1.34.0"]
     pub TOO_MANY_LINES,
     pedantic,
     "functions with too many lines"
@@ -84,6 +86,7 @@ declare_clippy_lint! {
     ///     println!("{}", unsafe { *x });
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NOT_UNSAFE_PTR_ARG_DEREF,
     correctness,
     "public functions dereferencing raw pointer arguments but not marked `unsafe`"
@@ -103,6 +106,7 @@ declare_clippy_lint! {
     /// #[must_use]
     /// fn useless() { }
     /// ```
+    #[clippy::version = "1.40.0"]
     pub MUST_USE_UNIT,
     style,
     "`#[must_use]` attribute on a unit-returning function / method"
@@ -126,6 +130,7 @@ declare_clippy_lint! {
     ///     unimplemented!();
     /// }
     /// ```
+    #[clippy::version = "1.40.0"]
     pub DOUBLE_MUST_USE,
     style,
     "`#[must_use]` attribute on a `#[must_use]`-returning function / method"
@@ -155,6 +160,7 @@ declare_clippy_lint! {
     /// // this could be annotated with `#[must_use]`.
     /// fn id<T>(t: T) -> T { t }
     /// ```
+    #[clippy::version = "1.40.0"]
     pub MUST_USE_CANDIDATE,
     pedantic,
     "function or method that could take a `#[must_use]` attribute"
@@ -204,6 +210,7 @@ declare_clippy_lint! {
     ///
     /// Note that there are crates that simplify creating the error type, e.g.
     /// [`thiserror`](https://docs.rs/thiserror).
+    #[clippy::version = "1.49.0"]
     pub RESULT_UNIT_ERR,
     style,
     "public function returning `Result` with an `Err` type of `()`"

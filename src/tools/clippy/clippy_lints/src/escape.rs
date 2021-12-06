@@ -41,6 +41,7 @@ declare_clippy_lint! {
     /// foo(x);
     /// println!("{}", x);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub BOXED_LOCAL,
     perf,
     "using `Box<T>` where unnecessary"
