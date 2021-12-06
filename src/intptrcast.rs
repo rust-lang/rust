@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::cmp::max;
 use std::collections::hash_map::Entry;
 
 use log::trace;
@@ -107,9 +106,11 @@ impl<'mir, 'tcx> GlobalState {
                     slack,
                 );
 
-                // Remember next base address.  If this allocation is zero-sized, leave a gap
-                // of at least 1 to avoid two allocations having the same base address.
-                global_state.next_base_addr = base_addr.checked_add(max(size.bytes(), 1)).unwrap();
+                // Remember next base address.  Leave a gap of at least 1 to avoid two zero-sized allocations
+                // having the same base address, and to avoid ambiguous provenance for the address between two
+                // allocations (also see https://github.com/rust-lang/unsafe-code-guidelines/issues/313).
+                let size_plus_1 = size.bytes().checked_add(1).unwrap();
+                global_state.next_base_addr = base_addr.checked_add(size_plus_1).unwrap();
                 // Given that `next_base_addr` increases in each allocation, pushing the
                 // corresponding tuple keeps `int_to_ptr_map` sorted
                 global_state.int_to_ptr_map.push((base_addr, alloc_id));
