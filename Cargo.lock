@@ -1071,6 +1071,7 @@ name = "parser"
 version = "0.0.0"
 dependencies = [
  "drop_bomb",
+ "limit",
 ]
 
 [[package]]

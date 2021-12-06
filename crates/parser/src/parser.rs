@@ -3,6 +3,7 @@
 use std::cell::Cell;
 
 use drop_bomb::DropBomb;
+use limit::Limit;
 
 use crate::{
     event::Event,
@@ -26,6 +27,8 @@ pub(crate) struct Parser<'t> {
     steps: Cell<u32>,
 }
 
+static PARSER_STEP_LIMIT: Limit = Limit::new(15_000_000);
+
 impl<'t> Parser<'t> {
     pub(super) fn new(token_source: &'t mut dyn TokenSource) -> Parser<'t> {
         Parser { token_source, events: Vec::new(), steps: Cell::new(0) }
@@ -48,7 +51,7 @@ impl<'t> Parser<'t> {
         assert!(n <= 3);
 
         let steps = self.steps.get();
-        assert!(steps <= 10_000_000, "the parser seems stuck");
+        assert!(PARSER_STEP_LIMIT.check(steps as usize).is_ok(), "the parser seems stuck");
         self.steps.set(steps + 1);
 
         self.token_source.lookahead_nth(n).kind

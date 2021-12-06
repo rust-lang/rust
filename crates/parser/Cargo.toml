@@ -11,3 +11,5 @@ doctest = false
 
 [dependencies]
 drop_bomb = "0.1.4"
+
+limit = { path = "../limit", version = "0.0.0" }
