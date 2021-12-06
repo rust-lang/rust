@@ -6,10 +6,10 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_else_clause, is_expn_of};
+use clippy_utils::{get_parent_node, is_else_clause, is_expn_of};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Node, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
@@ -74,6 +74,36 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessBool => [NEEDLESS_BOOL]);
 
+fn condition_needs_parentheses(e: &Expr<'_>) -> bool {
+    let mut inner = e;
+    while let ExprKind::Binary(_, i, _)
+    | ExprKind::Call(i, _)
+    | ExprKind::Cast(i, _)
+    | ExprKind::Type(i, _)
+    | ExprKind::Index(i, _) = inner.kind
+    {
+        if matches!(
+            i.kind,
+            ExprKind::Block(..)
+                | ExprKind::ConstBlock(..)
+                | ExprKind::If(..)
+                | ExprKind::Loop(..)
+                | ExprKind::Match(..)
+        ) {
+            return true;
+        }
+        inner = i;
+    }
+    false
+}
+
+fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
+    matches!(
+        get_parent_node(cx.tcx, id),
+        Some(Node::Stmt(..) | Node::Block(Block { stmts: &[], .. }))
+    )
+}
+
 impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use self::Expression::{Bool, RetBool};
@@ -97,6 +127,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
 
                 if is_else_clause(cx.tcx, e) {
                     snip = snip.blockify();
+                }
+
+                if condition_needs_parentheses(cond) && is_parent_stmt(cx, e.hir_id) {
+                    snip = snip.maybe_par();
                 }
 
                 span_lint_and_sugg(
