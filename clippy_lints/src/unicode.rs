@@ -106,9 +106,9 @@ fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
             "invisible character detected",
             "consider replacing the string with",
             string
-                .replace("\u{200B}", "\\u{200B}")
-                .replace("\u{ad}", "\\u{AD}")
-                .replace("\u{2060}", "\\u{2060}"),
+                .replace('\u{200B}', "\\u{200B}")
+                .replace('\u{ad}', "\\u{AD}")
+                .replace('\u{2060}', "\\u{2060}"),
             Applicability::MachineApplicable,
         );
     }

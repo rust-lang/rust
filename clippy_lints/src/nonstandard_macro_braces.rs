@@ -112,7 +112,7 @@ fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a Mac
         if snip.starts_with(&format!("{}!", name));
         if unnested_or_local();
         // make formatting consistent
-        let c = snip.replace(" ", "");
+        let c = snip.replace(' ', "");
         if !c.starts_with(&format!("{}!{}", name, braces.0));
         if !mac_braces.done.contains(&span.ctxt().outer_expn_data().call_site);
         then {
