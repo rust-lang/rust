@@ -36,8 +36,8 @@ limit = { path = "../limit", version = "0.0.0" }
 test_utils = { path = "../test_utils" }
 expect-test = "1.2.0-pre.1"
 tracing = "0.1"
-tracing-subscriber = { version = "0.2", default-features = false, features = [
+tracing-subscriber = { version = "0.3", default-features = false, features = [
     "env-filter",
     "registry",
 ] }
-tracing-tree = { version = "0.1.10" }
+tracing-tree = "0.2"
