@@ -29,6 +29,7 @@ declare_clippy_lint! {
     ///     fn method() {}
     /// }
     /// ```
+    #[clippy::version = "1.40.0"]
     pub UNUSED_SELF,
     pedantic,
     "methods that contain a `self` argument but don't use it"

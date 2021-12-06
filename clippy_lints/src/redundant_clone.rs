@@ -62,6 +62,7 @@ declare_clippy_lint! {
     ///
     /// Path::new("/a/b").join("c").to_path_buf();
     /// ```
+    #[clippy::version = "1.32.0"]
     pub REDUNDANT_CLONE,
     perf,
     "`clone()` of an owned value that is going to be dropped immediately"

@@ -9,18 +9,21 @@ use rustc_span::symbol::Symbol;
 
 use super::SINGLE_CHAR_PATTERN;
 
-const PATTERN_METHODS: [(&str, usize); 19] = [
+const PATTERN_METHODS: [(&str, usize); 24] = [
     ("contains", 1),
     ("starts_with", 1),
     ("ends_with", 1),
     ("find", 1),
     ("rfind", 1),
     ("split", 1),
+    ("split_inclusive", 1),
     ("rsplit", 1),
     ("split_terminator", 1),
     ("rsplit_terminator", 1),
     ("splitn", 2),
     ("rsplitn", 2),
+    ("split_once", 1),
+    ("rsplit_once", 1),
     ("matches", 1),
     ("rmatches", 1),
     ("match_indices", 1),
@@ -29,6 +32,8 @@ const PATTERN_METHODS: [(&str, usize); 19] = [
     ("strip_suffix", 1),
     ("trim_start_matches", 1),
     ("trim_end_matches", 1),
+    ("replace", 1),
+    ("replacen", 1),
 ];
 
 /// lint for length-1 `str`s for methods in `PATTERN_METHODS`

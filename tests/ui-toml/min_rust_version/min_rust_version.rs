@@ -59,10 +59,20 @@ fn manual_strip_msrv() {
     }
 }
 
+fn check_index_refutable_slice() {
+    // This shouldn't trigger `clippy::index_refutable_slice` as the suggestion
+    // would only be valid from 1.42.0 onward
+    let slice: Option<&[u32]> = Some(&[1]);
+    if let Some(slice) = slice {
+        println!("{}", slice[0]);
+    }
+}
+
 fn main() {
     option_as_ref_deref();
     match_like_matches();
     match_same_arms();
     match_same_arms2();
     manual_strip_msrv();
+    check_index_refutable_slice();
 }

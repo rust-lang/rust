@@ -1,5 +1,6 @@
 // aux-build:macro_rules.rs
 #![warn(clippy::option_env_unwrap)]
+#![allow(clippy::map_flatten)]
 
 #[macro_use]
 extern crate macro_rules;

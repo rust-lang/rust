@@ -241,5 +241,17 @@ note: previous binding is here
 LL |     let _ = |[x]: [u32; 1]| {
    |               ^
 
-error: aborting due to 20 previous errors
+error: `_b` shadows a previous, unrelated binding
+  --> $DIR/shadow.rs:85:9
+   |
+LL |     let _b = _a;
+   |         ^^
+   |
+note: previous binding is here
+  --> $DIR/shadow.rs:84:28
+   |
+LL | pub async fn foo2(_a: i32, _b: i64) {
+   |                            ^^
+
+error: aborting due to 21 previous errors
 

@@ -97,6 +97,7 @@ declare_clippy_lint! {
     ///         })
     /// }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub MAP_ERR_IGNORE,
     restriction,
     "`map_err` should not ignore the original error"

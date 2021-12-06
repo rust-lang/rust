@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
                 return;
             }
 
-            if eager_or_lazy::is_eagerness_candidate(cx, body_expr) {
+            if eager_or_lazy::switch_to_eager_eval(cx, body_expr) {
                 let msg = if is_option {
                     "unnecessary closure used to substitute value for `Option::None`"
                 } else {

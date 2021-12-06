@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -30,6 +29,7 @@ declare_clippy_lint! {
     ///
     /// assert!(std::ptr::eq(a, b));
     /// ```
+    #[clippy::version = "1.49.0"]
     pub PTR_EQ,
     style,
     "use `std::ptr::eq` when comparing raw pointers"
@@ -41,7 +41,7 @@ static LINT_MSG: &str = "use `std::ptr::eq` when comparing raw pointers";
 
 impl LateLintPass<'_> for PtrEq {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_macro(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
 

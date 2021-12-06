@@ -32,6 +32,7 @@ declare_clippy_lint! {
     /// ```ignore
     /// option?;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub QUESTION_MARK,
     style,
     "checks for expressions that could be replaced by the question mark operator"

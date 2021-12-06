@@ -56,8 +56,8 @@ pub(super) fn check_fn(
                     continue;
                 }
             } else {
-                let multi_idx = line.find("/*").unwrap_or_else(|| line.len());
-                let single_idx = line.find("//").unwrap_or_else(|| line.len());
+                let multi_idx = line.find("/*").unwrap_or(line.len());
+                let single_idx = line.find("//").unwrap_or(line.len());
                 code_in_line |= multi_idx > 0 && single_idx > 0;
                 // Implies multi_idx is below line.len()
                 if multi_idx < single_idx {

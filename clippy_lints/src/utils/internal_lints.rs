@@ -8,6 +8,7 @@ use clippy_utils::{
     paths, SpanlessEq,
 };
 use if_chain::if_chain;
+use rustc_ast as ast;
 use rustc_ast::ast::{Crate, ItemKind, LitKind, ModKind, NodeId};
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -25,10 +26,11 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintCon
 use rustc_middle::hir::map::Map;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty;
+use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{Symbol, SymbolStr};
-use rustc_span::{BytePos, Span};
+use rustc_span::{sym, BytePos, Span};
 use rustc_typeck::hir_ty_to_ty;
 
 use std::borrow::{Borrow, Cow};
@@ -314,6 +316,27 @@ declare_clippy_lint! {
     "non-idiomatic `if_chain!` usage"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for invalid `clippy::version` attributes.
+    ///
+    /// Valid values are:
+    /// * "pre 1.29.0"
+    /// * any valid semantic version
+    pub INVALID_CLIPPY_VERSION_ATTRIBUTE,
+    internal,
+    "found an invalid `clippy::version` attribute"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for declared clippy lints without the `clippy::version` attribute.
+    ///
+    pub MISSING_CLIPPY_VERSION_ATTRIBUTE,
+    internal,
+    "found clippy lint without `clippy::version` attribute"
+}
+
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
 
 impl EarlyLintPass for ClippyLintsInternal {
@@ -351,7 +374,7 @@ pub struct LintWithoutLintPass {
     registered_lints: FxHashSet<Symbol>,
 }
 
-impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS]);
+impl_lint_pass!(LintWithoutLintPass => [DEFAULT_LINT, LINT_WITHOUT_LINT_PASS, INVALID_CLIPPY_VERSION_ATTRIBUTE, MISSING_CLIPPY_VERSION_ATTRIBUTE]);
 
 impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -361,6 +384,8 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
 
         if let hir::ItemKind::Static(ty, Mutability::Not, body_id) = item.kind {
             if is_lint_ref_type(cx, ty) {
+                check_invalid_clippy_version_attribute(cx, item);
+
                 let expr = &cx.tcx.hir().body(body_id).value;
                 if_chain! {
                     if let ExprKind::AddrOf(_, _, inner_exp) = expr.kind;
@@ -456,6 +481,57 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'tcx>, ty: &Ty<'_>) -> bool {
     }
 
     false
+}
+
+fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'_>) {
+    if let Some(value) = extract_clippy_version_value(cx, item) {
+        // The `sym!` macro doesn't work as it only expects a single token.
+        // It's better to keep it this way and have a direct `Symbol::intern` call here.
+        if value == Symbol::intern("pre 1.29.0") {
+            return;
+        }
+
+        if RustcVersion::parse(&*value.as_str()).is_err() {
+            span_lint_and_help(
+                cx,
+                INVALID_CLIPPY_VERSION_ATTRIBUTE,
+                item.span,
+                "this item has an invalid `clippy::version` attribute",
+                None,
+                "please use a valid sematic version, see `doc/adding_lints.md`",
+            );
+        }
+    } else {
+        span_lint_and_help(
+            cx,
+            MISSING_CLIPPY_VERSION_ATTRIBUTE,
+            item.span,
+            "this lint is missing the `clippy::version` attribute or version value",
+            None,
+            "please use a `clippy::version` attribute, see `doc/adding_lints.md`",
+        );
+    }
+}
+
+/// This function extracts the version value of a `clippy::version` attribute if the given value has
+/// one
+fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
+    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    attrs.iter().find_map(|attr| {
+        if_chain! {
+            // Identify attribute
+            if let ast::AttrKind::Normal(ref attr_kind, _) = &attr.kind;
+            if let [tool_name, attr_name] = &attr_kind.path.segments[..];
+            if tool_name.ident.name == sym::clippy;
+            if attr_name.ident.name == sym::version;
+            if let Some(version) = attr.value_str();
+            then {
+                Some(version)
+            } else {
+                None
+            }
+        }
+    })
 }
 
 struct LintCollector<'a, 'tcx> {

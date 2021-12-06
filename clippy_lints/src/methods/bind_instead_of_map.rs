@@ -1,7 +1,7 @@
 use super::{contains_return, BIND_INSTEAD_OF_MAP};
 use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_macro_callsite};
-use clippy_utils::{in_macro, remove_blocks, visitors::find_all_ret_expressions};
+use clippy_utils::{remove_blocks, visitors::find_all_ret_expressions};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -106,7 +106,7 @@ pub(crate) trait BindInsteadOfMap {
         let mut suggs = Vec::new();
         let can_sugg: bool = find_all_ret_expressions(cx, closure_expr, |ret_expr| {
             if_chain! {
-                if !in_macro(ret_expr.span);
+                if !ret_expr.span.from_expansion();
                 if let hir::ExprKind::Call(func_path, [arg]) = ret_expr.kind;
                 if let hir::ExprKind::Path(QPath::Resolved(_, path)) = func_path.kind;
                 if Self::is_variant(cx, path.res);

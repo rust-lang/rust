@@ -47,6 +47,7 @@ declare_clippy_lint! {
     ///     …
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub COLLAPSIBLE_IF,
     style,
     "nested `if`s that can be collapsed (e.g., `if x { if y { ... } }`"
@@ -82,6 +83,7 @@ declare_clippy_lint! {
     ///     …
     /// }
     /// ```
+    #[clippy::version = "1.51.0"]
     pub COLLAPSIBLE_ELSE_IF,
     style,
     "nested `else`-`if` expressions that can be collapsed (e.g., `else { if x { ... } }`)"

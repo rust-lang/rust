@@ -38,6 +38,7 @@ declare_clippy_lint! {
     ///     ptr.add(offset);
     /// }
     /// ```
+    #[clippy::version = "1.30.0"]
     pub PTR_OFFSET_WITH_CAST,
     complexity,
     "unneeded pointer offset cast"

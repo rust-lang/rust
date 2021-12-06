@@ -32,6 +32,7 @@ declare_clippy_lint! {
     /// let foo: Option<i32> = None;
     /// foo.ok_or("error");
     /// ```
+    #[clippy::version = "1.49.0"]
     pub MANUAL_OK_OR,
     pedantic,
     "finds patterns that can be encoded more concisely with `Option::ok_or`"

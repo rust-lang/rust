@@ -16,11 +16,15 @@ store.register_lints(&[
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::INTERNING_DEFINED_SYMBOL,
     #[cfg(feature = "internal-lints")]
+    utils::internal_lints::INVALID_CLIPPY_VERSION_ATTRIBUTE,
+    #[cfg(feature = "internal-lints")]
     utils::internal_lints::INVALID_PATHS,
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::LINT_WITHOUT_LINT_PASS,
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
+    #[cfg(feature = "internal-lints")]
+    utils::internal_lints::MISSING_CLIPPY_VERSION_ATTRIBUTE,
     #[cfg(feature = "internal-lints")]
     utils::internal_lints::OUTER_EXPN_EXPN_DATA,
     #[cfg(feature = "internal-lints")]
@@ -88,14 +92,16 @@ store.register_lints(&[
     default::FIELD_REASSIGN_WITH_DEFAULT,
     default_numeric_fallback::DEFAULT_NUMERIC_FALLBACK,
     dereference::EXPLICIT_DEREF_METHODS,
+    dereference::NEEDLESS_BORROW,
+    dereference::REF_BINDING_TO_REFERENCE,
     derivable_impls::DERIVABLE_IMPLS,
     derive::DERIVE_HASH_XOR_EQ,
     derive::DERIVE_ORD_XOR_PARTIAL_ORD,
     derive::EXPL_IMPL_CLONE_ON_COPY,
     derive::UNSAFE_DERIVE_DESERIALIZE,
-    disallowed_method::DISALLOWED_METHOD,
+    disallowed_methods::DISALLOWED_METHODS,
     disallowed_script_idents::DISALLOWED_SCRIPT_IDENTS,
-    disallowed_type::DISALLOWED_TYPE,
+    disallowed_types::DISALLOWED_TYPES,
     doc::DOC_MARKDOWN,
     doc::MISSING_ERRORS_DOC,
     doc::MISSING_PANICS_DOC,
@@ -164,6 +170,7 @@ store.register_lints(&[
     implicit_return::IMPLICIT_RETURN,
     implicit_saturating_sub::IMPLICIT_SATURATING_SUB,
     inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR,
+    index_refutable_slice::INDEX_REFUTABLE_SLICE,
     indexing_slicing::INDEXING_SLICING,
     indexing_slicing::OUT_OF_BOUNDS_INDEXING,
     infinite_iter::INFINITE_ITER,
@@ -288,6 +295,7 @@ store.register_lints(&[
     methods::MAP_FLATTEN,
     methods::MAP_IDENTITY,
     methods::MAP_UNWRAP_OR,
+    methods::NEEDLESS_SPLITN,
     methods::NEW_RET_NO_SELF,
     methods::OK_EXPECT,
     methods::OPTION_AS_REF_DEREF,
@@ -351,11 +359,10 @@ store.register_lints(&[
     needless_bitwise_bool::NEEDLESS_BITWISE_BOOL,
     needless_bool::BOOL_COMPARISON,
     needless_bool::NEEDLESS_BOOL,
-    needless_borrow::NEEDLESS_BORROW,
-    needless_borrow::REF_BINDING_TO_REFERENCE,
     needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
     needless_continue::NEEDLESS_CONTINUE,
     needless_for_each::NEEDLESS_FOR_EACH,
+    needless_late_init::NEEDLESS_LATE_INIT,
     needless_option_as_deref::NEEDLESS_OPTION_AS_DEREF,
     needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
     needless_question_mark::NEEDLESS_QUESTION_MARK,
@@ -374,6 +381,7 @@ store.register_lints(&[
     non_octal_unix_permissions::NON_OCTAL_UNIX_PERMISSIONS,
     non_send_fields_in_send_ty::NON_SEND_FIELDS_IN_SEND_TY,
     nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES,
+    octal_escapes::OCTAL_ESCAPES,
     open_options::NONSENSICAL_OPEN_OPTIONS,
     option_env_unwrap::OPTION_ENV_UNWRAP,
     option_if_let_else::OPTION_IF_LET_ELSE,

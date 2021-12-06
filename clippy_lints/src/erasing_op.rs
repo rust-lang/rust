@@ -21,6 +21,7 @@ declare_clippy_lint! {
     /// 0 * x;
     /// x & 0;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ERASING_OP,
     correctness,
     "using erasing operations, e.g., `x * 0` or `y & 0`"

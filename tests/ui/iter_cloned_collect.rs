@@ -26,4 +26,7 @@ fn main() {
     // Issue #6808
     let arr: [u8; 64] = [0; 64];
     let _: Vec<_> = arr.iter().cloned().collect();
+
+    // Issue #6703
+    let _: Vec<isize> = v.iter().copied().collect();
 }

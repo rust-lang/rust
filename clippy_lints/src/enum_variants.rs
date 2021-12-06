@@ -34,6 +34,7 @@ declare_clippy_lint! {
     ///     Battenberg,
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ENUM_VARIANT_NAMES,
     style,
     "enums where all variants share a prefix/postfix"
@@ -59,6 +60,7 @@ declare_clippy_lint! {
     ///     struct BlackForest;
     /// }
     /// ```
+    #[clippy::version = "1.33.0"]
     pub MODULE_NAME_REPETITIONS,
     pedantic,
     "type names prefixed/postfixed with their containing module's name"
@@ -89,6 +91,7 @@ declare_clippy_lint! {
     ///     ...
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MODULE_INCEPTION,
     style,
     "modules that have the same name as their parent module"

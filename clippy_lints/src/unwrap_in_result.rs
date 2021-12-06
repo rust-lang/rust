@@ -51,6 +51,7 @@ declare_clippy_lint! {
     ///     Ok(())
     /// }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub UNWRAP_IN_RESULT,
     restriction,
     "functions of type `Result<..>` or `Option`<...> that contain `expect()` or `unwrap()`"

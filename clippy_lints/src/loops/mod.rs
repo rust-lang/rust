@@ -47,6 +47,7 @@ declare_clippy_lint! {
     /// # let mut dst = vec![0; 65];
     /// dst[64..(src.len() + 64)].clone_from_slice(&src[..]);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MANUAL_MEMCPY,
     perf,
     "manually copying items between slices"
@@ -75,6 +76,7 @@ declare_clippy_lint! {
     ///     println!("{}", i);
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_RANGE_LOOP,
     style,
     "for-looping over a range of indices where an iterator over items would do"
@@ -107,6 +109,7 @@ declare_clippy_lint! {
     ///     // ..
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EXPLICIT_ITER_LOOP,
     pedantic,
     "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do"
@@ -135,6 +138,7 @@ declare_clippy_lint! {
     ///     // ..
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EXPLICIT_INTO_ITER_LOOP,
     pedantic,
     "for-looping over `_.into_iter()` when `_` would do"
@@ -158,6 +162,7 @@ declare_clippy_lint! {
     ///     ..
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ITER_NEXT_LOOP,
     correctness,
     "for-looping over `_.next()` which is probably not intended"
@@ -201,6 +206,7 @@ declare_clippy_lint! {
     ///     // ..
     /// }
     /// ```
+    #[clippy::version = "1.45.0"]
     pub FOR_LOOPS_OVER_FALLIBLES,
     suspicious,
     "for-looping over an `Option` or a `Result`, which is more clearly expressed as an `if let`"
@@ -233,6 +239,7 @@ declare_clippy_lint! {
     ///     // .. do something with x
     /// };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub WHILE_LET_LOOP,
     complexity,
     "`loop { if let { ... } else break }`, which can be written as a `while let` loop"
@@ -254,6 +261,7 @@ declare_clippy_lint! {
     /// // should be
     /// let len = iterator.count();
     /// ```
+    #[clippy::version = "1.30.0"]
     pub NEEDLESS_COLLECT,
     perf,
     "collecting an iterator when collect is not needed"
@@ -284,6 +292,7 @@ declare_clippy_lint! {
     /// # fn bar(bar: usize, baz: usize) {}
     /// for (i, item) in v.iter().enumerate() { bar(i, *item); }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EXPLICIT_COUNTER_LOOP,
     complexity,
     "for-looping with an explicit counter when `_.enumerate()` would do"
@@ -317,6 +326,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// loop {}
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EMPTY_LOOP,
     suspicious,
     "empty `loop {}`, which should block or sleep"
@@ -336,6 +346,7 @@ declare_clippy_lint! {
     ///     ..
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub WHILE_LET_ON_ITERATOR,
     style,
     "using a `while let` loop instead of a for loop on an iterator"
@@ -364,6 +375,7 @@ declare_clippy_lint! {
     ///     ..
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub FOR_KV_MAP,
     style,
     "looping on a map using `iter` when `keys` or `values` would do"
@@ -385,6 +397,7 @@ declare_clippy_lint! {
     ///     break;
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEVER_LOOP,
     correctness,
     "any loop that will always `break` or `return`"
@@ -420,6 +433,7 @@ declare_clippy_lint! {
     ///     println!("{}", i); // prints numbers from 0 to 42, not 0 to 21
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MUT_RANGE_BOUND,
     suspicious,
     "for loop over a range where one of the bounds is a mutable variable"
@@ -446,6 +460,7 @@ declare_clippy_lint! {
     ///     println!("let me loop forever!");
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub WHILE_IMMUTABLE_CONDITION,
     correctness,
     "variables used within while expression are not mutated in the body"
@@ -480,6 +495,7 @@ declare_clippy_lint! {
     /// let mut vec: Vec<u8> = vec![item1; 20];
     /// vec.resize(20 + 30, item2);
     /// ```
+    #[clippy::version = "1.47.0"]
     pub SAME_ITEM_PUSH,
     style,
     "the same item is pushed inside of a for loop"
@@ -506,6 +522,7 @@ declare_clippy_lint! {
     /// let item = &item1;
     /// println!("{}", item);
     /// ```
+    #[clippy::version = "1.49.0"]
     pub SINGLE_ELEMENT_LOOP,
     complexity,
     "there is no reason to have a single element loop"
@@ -537,6 +554,7 @@ declare_clippy_lint! {
     ///     println!("{}", n);
     /// }
     /// ```
+    #[clippy::version = "1.52.0"]
     pub MANUAL_FLATTEN,
     complexity,
     "for loops over `Option`s or `Result`s with a single expression can be simplified"
