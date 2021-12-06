@@ -842,6 +842,53 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
     }
 }
 
+#[inline]
+#[must_use = "if you don't need the old value, you can just assign the new value directly"]
+#[rustc_const_unstable(feature = "const_replace", issue = "83164")]
+const fn replace_r<T>(src: T, dest: &mut T) -> T {
+    replace(dest, src)
+}
+
+/// Will replace `dest` with the value return by `f`, mostly a wrapper of [`replace`]
+/// ```
+/// use std::mem::replace_succ;
+///
+/// let mut i = 0;
+/// assert_eq!(replace_succ(&mut i, |i| i + 1), 0);
+/// assert_eq!(i, 1);
+/// ```
+#[inline]
+#[unstable(feature = "replace_succ", issue = "none")]
+#[must_use = "if you don't need the old value, you can just assign the new value directly"]
+pub fn replace_succ<T, F>(dest: &mut T, f: F) -> T
+where
+    F: FnOnce(&T) -> T,
+{
+    replace_r(f(dest), dest)
+}
+
+/// Faillible version of [`replace_succ`]
+/// ```
+/// use std::mem::try_replace_succ;
+///
+/// let mut i = 0;
+/// assert_eq!(try_replace_succ(&mut i, |i| i.checked_add(1)), Ok(0));
+/// assert_eq!(i, 1);
+///
+/// let mut i = usize::MAX;
+/// assert_eq!(try_replace_succ(&mut i, |i| i.checked_add(1).ok_or(())), Err(()));
+/// assert_eq!(i, 0);
+/// ```
+#[inline]
+#[unstable(feature = "replace_succ", issue = "none")]
+#[must_use = "if you don't need the old value, you can just assign the new value directly"]
+pub fn try_replace_succ<T, F, E>(dest: &mut T, f: F) -> Result<T, E>
+where
+    F: FnOnce(&T) -> Result<T, E>,
+{
+    Ok(replace_r(f(dest)?, dest))
+}
+
 /// Disposes of a value.
 ///
 /// This does so by calling the argument's implementation of [`Drop`][drop].
