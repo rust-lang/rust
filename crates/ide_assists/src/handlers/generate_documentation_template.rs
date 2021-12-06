@@ -7,35 +7,34 @@ use syntax::{
 
 use crate::assist_context::{AssistContext, Assists};
 
-/// Assist: generate_documentation_template
-///
-/// Adds a documentation template above a function definition / declaration
-///
-/// ```
-/// fn my_func(a: i32, b: i32) -> Result<(), std::io::Error> {
-///     unimplemented!()
-/// }
-/// ```
-/// ->
-/// ```
-/// /// .
-/// ///
-/// /// # Examples
-/// ///
-/// /// ```rust
-/// /// use my_crate::my_func;
-/// ///
-/// /// let result = my_func(a, b);
-/// /// assert_eq!(result, );
-/// /// ```
-/// ///
-/// /// # Errors
-/// ///
-/// /// This function will return an error if .
-/// fn my_func(a: i32, b: i32) -> Result<(), std::io::Error> {
-///     unimplemented!()
-/// }
-/// ```
+// Assist: generate_documentation_template
+//
+// Adds a documentation template above a function definition / declaration.
+//
+// ```
+// fn my_$0func(a: i32, b: i32) -> Result<(), std::io::Error> {
+//     unimplemented!()
+// }
+// ```
+// ->
+// ```
+// /// .
+// ///
+// /// # Examples
+// ///
+// /// ```
+// /// use test::my_func;
+// ///
+// /// assert_eq!(my_func(a, b), );
+// /// ```
+// ///
+// /// # Errors
+// ///
+// /// This function will return an error if .
+// fn my_func(a: i32, b: i32) -> Result<(), std::io::Error> {
+//     unimplemented!()
+// }
+// ```
 pub(crate) fn generate_documentation_template(
     acc: &mut Assists,
     ctx: &AssistContext,
