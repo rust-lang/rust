@@ -1,7 +1,7 @@
 use ide_db::assists::{AssistId, AssistKind};
 use stdx::to_lower_snake_case;
 use syntax::{
-    ast::{self, edit::IndentLevel, HasDocComments, HasName},
+    ast::{self, edit::IndentLevel, HasDocComments, HasName, HasVisibility},
     AstNode,
 };
 
@@ -12,7 +12,7 @@ use crate::assist_context::{AssistContext, Assists};
 // Adds a documentation template above a function definition / declaration.
 //
 // ```
-// fn my_$0func(a: i32, b: i32) -> Result<(), std::io::Error> {
+// pub fn my_$0func(a: i32, b: i32) -> Result<(), std::io::Error> {
 //     unimplemented!()
 // }
 // ```
@@ -31,7 +31,7 @@ use crate::assist_context::{AssistContext, Assists};
 // /// # Errors
 // ///
 // /// This function will return an error if .
-// fn my_func(a: i32, b: i32) -> Result<(), std::io::Error> {
+// pub fn my_func(a: i32, b: i32) -> Result<(), std::io::Error> {
 //     unimplemented!()
 // }
 // ```
@@ -40,17 +40,10 @@ pub(crate) fn generate_documentation_template(
     ctx: &AssistContext,
 ) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
-    let ast_func = ast::Fn::cast(name.syntax().parent()?)?;
-    if is_in_trait_impl(&ast_func) {
+    let ast_func = name.syntax().parent().and_then(ast::Fn::cast)?;
+    if is_in_trait_impl(&ast_func) || !is_public(&ast_func) {
         return None;
     }
-    // TODO disable at least examples if function not public, as the example will fail to build on
-    // `cargo test`. What is the exact criteria of `pub`ness? All parent modules must be `pub`, for
-    // `impl { fn }` both `fn` and `struct`* must be public.
-    //
-    // What about `pub(crate)`?
-    //
-    // *: Seems complex but maybe ignoring this criteria can be ignored.
 
     let parent_syntax = ast_func.syntax();
     let text_range = parent_syntax.text_range();
@@ -215,6 +208,21 @@ fn gen_ex_start_helper(ast_func: &ast::Fn, krate_name: String) -> Option<(Vec<St
     let function_call = function_call(ast_func, &param_list, self_name.as_deref(), is_unsafe)?;
     let ex_helper = ExHelper { function_call, param_list, ref_mut_params, self_name };
     Some((lines, ex_helper))
+}
+
+/// Check if the function and all its parent modules are exactly `pub`
+fn is_public(ast_func: &ast::Fn) -> bool {
+    has_pub(ast_func)
+        && ast_func
+            .syntax()
+            .ancestors()
+            .filter_map(ast::Module::cast)
+            .all(|module| has_pub(&module))
+}
+
+/// Check if visibility is exactly `pub` (not `pub(crate)` for instance)
+fn has_pub<T: HasVisibility>(item: &T) -> bool {
+    item.visibility().map(|v| v.path().is_none()).unwrap_or(false)
 }
 
 /// `None` if function without a body; some bool to guess if function can panic
@@ -446,11 +454,59 @@ impl MyTrait for MyStruct {
     }
 
     #[test]
+    fn not_applicable_if_function_is_private() {
+        check_assist_not_applicable(generate_documentation_template, r#"fn priv$0ate() {}"#);
+    }
+
+    #[test]
+    fn not_applicable_if_function_is_pub_crate() {
+        check_assist_not_applicable(
+            generate_documentation_template,
+            r#"pub(crate) fn pri$0vate() {}"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_if_function_is_in_private_mod() {
+        check_assist_not_applicable(
+            generate_documentation_template,
+            r#"
+mod PrivateModule {
+    pub fn pri$0vate() {}
+}"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_if_function_is_in_pub_crate_mod() {
+        check_assist_not_applicable(
+            generate_documentation_template,
+            r#"
+pub(crate) mod PrivateModule {
+    pub fn pr$0ivate() {}
+}"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_if_function_is_in_non_public_mod_is_recursive() {
+        check_assist_not_applicable(
+            generate_documentation_template,
+            r#"
+mod ParentPrivateModule {
+    pub mod PrivateModule {
+        pub fn pr$0ivate() {}
+    }
+}"#,
+        );
+    }
+
+    #[test]
     fn supports_noop_function() {
         check_assist(
             generate_documentation_template,
             r#"
-fn no$0op() {}
+pub fn no$0op() {}
 "#,
             r#"
 /// .
@@ -462,7 +518,7 @@ fn no$0op() {}
 ///
 /// noop();
 /// ```
-fn noop() {}
+pub fn noop() {}
 "#,
         );
     }
@@ -472,7 +528,7 @@ fn noop() {}
         check_assist(
             generate_documentation_template,
             r#"
-fn no$0op_with_param(_a: i32) {}
+pub fn no$0op_with_param(_a: i32) {}
 "#,
             r#"
 /// .
@@ -484,7 +540,7 @@ fn no$0op_with_param(_a: i32) {}
 ///
 /// noop_with_param(_a);
 /// ```
-fn noop_with_param(_a: i32) {}
+pub fn noop_with_param(_a: i32) {}
 "#,
         );
     }
@@ -494,7 +550,7 @@ fn noop_with_param(_a: i32) {}
         check_assist(
             generate_documentation_template,
             r#"
-unsafe fn no$0op_unsafe() {}
+pub unsafe fn no$0op_unsafe() {}
 "#,
             r#"
 /// .
@@ -510,7 +566,7 @@ unsafe fn no$0op_unsafe() {}
 /// # Safety
 ///
 /// .
-unsafe fn noop_unsafe() {}
+pub unsafe fn noop_unsafe() {}
 "#,
         );
     }
@@ -520,7 +576,7 @@ unsafe fn noop_unsafe() {}
         check_assist(
             generate_documentation_template,
             r#"
-fn panic$0s_if(a: bool) {
+pub fn panic$0s_if(a: bool) {
     if a {
         panic!();
     }
@@ -546,7 +602,7 @@ fn panic$0s_if(a: bool) {
 /// # Panics
 ///
 /// Panics if .
-fn panics_if(a: bool) {
+pub fn panics_if(a: bool) {
     if a {
         panic!();
     }
@@ -560,7 +616,7 @@ fn panics_if(a: bool) {
         check_assist(
             generate_documentation_template,
             r#"
-fn $0panics_if_not(a: bool) {
+pub fn $0panics_if_not(a: bool) {
     assert!(a == true);
 }
 "#,
@@ -584,7 +640,7 @@ fn $0panics_if_not(a: bool) {
 /// # Panics
 ///
 /// Panics if .
-fn panics_if_not(a: bool) {
+pub fn panics_if_not(a: bool) {
     assert!(a == true);
 }
 "#,
@@ -596,7 +652,7 @@ fn panics_if_not(a: bool) {
         check_assist(
             generate_documentation_template,
             r#"
-fn $0panics_if_none(a: Option<()>) {
+pub fn $0panics_if_none(a: Option<()>) {
     a.unwrap();
 }
 "#,
@@ -620,7 +676,7 @@ fn $0panics_if_none(a: Option<()>) {
 /// # Panics
 ///
 /// Panics if .
-fn panics_if_none(a: Option<()>) {
+pub fn panics_if_none(a: Option<()>) {
     a.unwrap();
 }
 "#,
@@ -632,7 +688,7 @@ fn panics_if_none(a: Option<()>) {
         check_assist(
             generate_documentation_template,
             r#"
-fn $0panics_if_none2(a: Option<()>) {
+pub fn $0panics_if_none2(a: Option<()>) {
     a.expect("Bouh!");
 }
 "#,
@@ -656,7 +712,7 @@ fn $0panics_if_none2(a: Option<()>) {
 /// # Panics
 ///
 /// Panics if .
-fn panics_if_none2(a: Option<()>) {
+pub fn panics_if_none2(a: Option<()>) {
     a.expect("Bouh!");
 }
 "#,
@@ -668,7 +724,7 @@ fn panics_if_none2(a: Option<()>) {
         check_assist(
             generate_documentation_template,
             r#"
-fn returns_a_value$0() -> i32 {
+pub fn returns_a_value$0() -> i32 {
     0
 }
 "#,
@@ -682,7 +738,7 @@ fn returns_a_value$0() -> i32 {
 ///
 /// assert_eq!(returns_a_value(), );
 /// ```
-fn returns_a_value() -> i32 {
+pub fn returns_a_value() -> i32 {
     0
 }
 "#,
@@ -694,7 +750,7 @@ fn returns_a_value() -> i32 {
         check_assist(
             generate_documentation_template,
             r#"
-fn returns_a_result$0() -> Result<i32, std::io::Error> {
+pub fn returns_a_result$0() -> Result<i32, std::io::Error> {
     Ok(0)
 }
 "#,
@@ -712,7 +768,7 @@ fn returns_a_result$0() -> Result<i32, std::io::Error> {
 /// # Errors
 ///
 /// This function will return an error if .
-fn returns_a_result() -> Result<i32, std::io::Error> {
+pub fn returns_a_result() -> Result<i32, std::io::Error> {
     Ok(0)
 }
 "#,
@@ -724,7 +780,7 @@ fn returns_a_result() -> Result<i32, std::io::Error> {
         check_assist(
             generate_documentation_template,
             r#"
-fn modifies_a_value$0(a: &mut i32) {
+pub fn modifies_a_value$0(a: &mut i32) {
     *a = 0;
 }
 "#,
@@ -740,7 +796,7 @@ fn modifies_a_value$0(a: &mut i32) {
 /// modifies_a_value(&mut a);
 /// assert_eq!(a, );
 /// ```
-fn modifies_a_value(a: &mut i32) {
+pub fn modifies_a_value(a: &mut i32) {
     *a = 0;
 }
 "#,
@@ -752,7 +808,7 @@ fn modifies_a_value(a: &mut i32) {
         check_assist(
             generate_documentation_template,
             r#"
-fn sum3$0(a: i32, b: i32, c: i32) -> i32 {
+pub fn sum3$0(a: i32, b: i32, c: i32) -> i32 {
     a + b + c
 }
 "#,
@@ -767,7 +823,7 @@ fn sum3$0(a: i32, b: i32, c: i32) -> i32 {
 /// let result = sum3(a, b, c);
 /// assert_eq!(result, );
 /// ```
-fn sum3(a: i32, b: i32, c: i32) -> i32 {
+pub fn sum3(a: i32, b: i32, c: i32) -> i32 {
     a + b + c
 }
 "#,
@@ -779,15 +835,15 @@ fn sum3(a: i32, b: i32, c: i32) -> i32 {
         check_assist(
             generate_documentation_template,
             r#"
-mod a {
-    mod b {
-        fn no$0op() {}
+pub mod a {
+    pub mod b {
+        pub fn no$0op() {}
     }
 }
 "#,
             r#"
-mod a {
-    mod b {
+pub mod a {
+    pub mod b {
         /// .
         ///
         /// # Examples
@@ -797,7 +853,7 @@ mod a {
         ///
         /// noop();
         /// ```
-        fn noop() {}
+        pub fn noop() {}
     }
 }
 "#,
@@ -809,13 +865,13 @@ mod a {
         check_assist(
             generate_documentation_template,
             r#"
-struct MyStruct;
+pub struct MyStruct;
 impl MyStruct {
-    fn no$0op() {}
+    pub fn no$0op() {}
 }
 "#,
             r#"
-struct MyStruct;
+pub struct MyStruct;
 impl MyStruct {
     /// .
     ///
@@ -826,7 +882,7 @@ impl MyStruct {
     ///
     /// MyStruct::noop();
     /// ```
-    fn noop() {}
+    pub fn noop() {}
 }
 "#,
         );

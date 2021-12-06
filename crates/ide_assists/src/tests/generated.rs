@@ -844,7 +844,7 @@ fn doctest_generate_documentation_template() {
     check_doc_test(
         "generate_documentation_template",
         r#####"
-fn my_$0func(a: i32, b: i32) -> Result<(), std::io::Error> {
+pub fn my_$0func(a: i32, b: i32) -> Result<(), std::io::Error> {
     unimplemented!()
 }
 "#####,
@@ -862,7 +862,7 @@ fn my_$0func(a: i32, b: i32) -> Result<(), std::io::Error> {
 /// # Errors
 ///
 /// This function will return an error if .
-fn my_func(a: i32, b: i32) -> Result<(), std::io::Error> {
+pub fn my_func(a: i32, b: i32) -> Result<(), std::io::Error> {
     unimplemented!()
 }
 "#####,
