@@ -141,8 +141,8 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// let r: IntoIter<_, 40> = next_chunk(&mut (10..16)).unwrap_err();
     /// assert_eq!(r.collect::<Vec<_>>(), vec![10, 11, 12, 13, 14, 15]);
     /// ```
-    #[unstable(feature = "array_into_iter_constructors", issue = "88888888")]
-    #[rustc_const_unstable(feature = "array_into_iter_constructors_const", issue = "88888888")]
+    #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
+    #[rustc_const_unstable(feature = "const_array_into_iter_constructors", issue = "91583")]
     pub const unsafe fn from_raw_parts(
         buffer: [MaybeUninit<T>; N],
         initialized: Range<usize>,
@@ -202,8 +202,9 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// assert_eq!(get_bytes(true).collect::<Vec<_>>(), vec![1, 2, 3, 4]);
     /// assert_eq!(get_bytes(false).collect::<Vec<_>>(), vec![]);
     /// ```
-    #[unstable(feature = "array_into_iter_constructors", issue = "88888888")]
-    pub fn empty() -> Self {
+    #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
+    #[rustc_const_unstable(feature = "const_array_into_iter_constructors", issue = "91583")]
+    pub const fn empty() -> Self {
         let buffer = MaybeUninit::uninit_array();
         let initialized = 0..0;
 
