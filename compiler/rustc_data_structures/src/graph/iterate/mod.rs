@@ -79,7 +79,7 @@ where
     visited: BitSet<G::Node>,
 }
 
-impl<G> DepthFirstSearch<'graph, G>
+impl<'graph, G> DepthFirstSearch<'graph, G>
 where
     G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
 {
@@ -209,7 +209,7 @@ where
     settled: BitSet<G::Node>,
 }
 
-impl<G> TriColorDepthFirstSearch<'graph, G>
+impl<'graph, G> TriColorDepthFirstSearch<'graph, G>
 where
     G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
 {
@@ -276,7 +276,7 @@ where
     }
 }
 
-impl<G> TriColorDepthFirstSearch<'graph, G>
+impl<G> TriColorDepthFirstSearch<'_, G>
 where
     G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors + WithStartNode,
 {

@@ -97,7 +97,7 @@ impl<N: Idx, S: Idx> WithNumEdges for Sccs<N, S> {
     }
 }
 
-impl<N: Idx, S: Idx> GraphSuccessors<'graph> for Sccs<N, S> {
+impl<'graph, N: Idx, S: Idx> GraphSuccessors<'graph> for Sccs<N, S> {
     type Item = S;
 
     type Iter = std::iter::Cloned<std::slice::Iter<'graph, S>>;
