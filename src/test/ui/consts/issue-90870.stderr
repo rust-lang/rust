@@ -1,0 +1,36 @@
+error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-90870.rs:8:5
+   |
+LL |     a == b
+   |     ^^^^^^
+   |
+help: consider dereferencing here
+   |
+LL |     *a == *b
+   |     +     +
+
+error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-90870.rs:14:5
+   |
+LL |     a == b
+   |     ^^^^^^
+   |
+help: consider dereferencing here
+   |
+LL |     ****a == ****b
+   |     ++++     ++++
+
+error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-90870.rs:21:12
+   |
+LL |         if l == r {
+   |            ^^^^^^
+   |
+help: consider dereferencing here
+   |
+LL |         if *l == *r {
+   |            +     +
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0015`.
