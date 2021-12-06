@@ -3014,7 +3014,7 @@ pub(super) fn map_try_reserve_error(err: hashbrown::TryReserveError) -> TryReser
         hashbrown::TryReserveError::CapacityOverflow => {
             TryReserveErrorKind::CapacityOverflow.into()
         }
-        hashbrown::TryReserveErrorKind::AllocError { layout } => {
+        hashbrown::TryReserveError::AllocError { layout } => {
             TryReserveErrorKind::AllocError { layout, non_exhaustive: () }.into()
         }
     }
