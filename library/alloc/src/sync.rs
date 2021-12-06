@@ -38,6 +38,7 @@ use crate::collections::{TryReserveError, TryReserveErrorKind};
 use crate::rc::is_dangling;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
+#[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
 #[cfg(test)]

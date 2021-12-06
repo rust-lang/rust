@@ -93,6 +93,7 @@ use core::mem::size_of;
 use core::ptr;
 
 use crate::alloc::Allocator;
+#[cfg(not(no_global_oom_handling))]
 use crate::alloc::Global;
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::ToOwned;
