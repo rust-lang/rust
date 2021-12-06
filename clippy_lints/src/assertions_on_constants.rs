@@ -2,7 +2,7 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::higher;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{is_direct_expn_of, is_expn_of, match_panic_call};
+use clippy_utils::{is_direct_expn_of, is_expn_of, match_panic_call, peel_blocks};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -122,15 +122,7 @@ fn match_assert_with_message<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>)
         if let ExprKind::Unary(UnOp::Not, expr) = cond.kind;
         // bind the first argument of the `assert!` macro
         if let Some((Constant::Bool(is_true), _)) = constant(cx, cx.typeck_results(), expr);
-        // block
-        if let ExprKind::Block(block, _) = then.kind;
-        if block.stmts.is_empty();
-        if let Some(block_expr) = &block.expr;
-        // inner block is optional. unwrap it if it exists, or use the expression as is otherwise.
-        if let Some(begin_panic_call) = match block_expr.kind {
-            ExprKind::Block(inner_block, _) => &inner_block.expr,
-            _ => &block.expr,
-        };
+        let begin_panic_call = peel_blocks(then);
         // function call
         if let Some(arg) = match_panic_call(cx, begin_panic_call);
         // bind the second argument of the `assert!` macro if it exists

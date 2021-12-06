@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{is_trait_method, path_to_local_id, remove_blocks, strip_pat_refs};
+use clippy_utils::{is_trait_method, path_to_local_id, peel_blocks, strip_pat_refs};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
@@ -31,7 +31,7 @@ pub(super) fn check(
             // Extract the body of the closure passed to fold
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = acc.kind;
             let closure_body = cx.tcx.hir().body(body_id);
-            let closure_expr = remove_blocks(&closure_body.value);
+            let closure_expr = peel_blocks(&closure_body.value);
 
             // Check if the closure body is of the form `acc <op> some_expr(x)`
             if let hir::ExprKind::Binary(ref bin_op, left_expr, right_expr) = closure_expr.kind;

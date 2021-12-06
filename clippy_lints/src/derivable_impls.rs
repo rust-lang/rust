@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{is_automatically_derived, is_default_equivalent, remove_blocks};
+use clippy_utils::{is_automatically_derived, is_default_equivalent, peel_blocks};
 use rustc_hir::{
     def::{DefKind, Res},
     Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
                         }
                     }
                 }
-                let should_emit = match remove_blocks(func_expr).kind {
+                let should_emit = match peel_blocks(func_expr).kind {
                     ExprKind::Tup(fields) => fields.iter().all(|e| is_default_equivalent(cx, e)),
                     ExprKind::Call(callee, args)
                         if is_path_self(callee) => args.iter().all(|e| is_default_equivalent(cx, e)),

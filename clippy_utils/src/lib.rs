@@ -73,10 +73,10 @@ use rustc_hir::intravisit::{walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visi
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, ForeignItem, GenericArgs,
-    HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Mutability, Node,
-    Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
-    UnOp,
+    def, Arm, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind, FnDecl,
+    ForeignItem, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local,
+    MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem,
+    TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -1224,6 +1224,70 @@ pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
     }
 }
 
+/// Removes blocks around an expression, only if the block contains just one expression
+/// and no statements. Unsafe blocks are not removed.
+///
+/// Examples:
+///  * `{}`               -> `{}`
+///  * `{ x }`            -> `x`
+///  * `{{ x }}`          -> `x`
+///  * `{ x; }`           -> `{ x; }`
+///  * `{ x; y }`         -> `{ x; y }`
+///  * `{ unsafe { x } }` -> `unsafe { x }`
+pub fn peel_blocks<'a>(mut expr: &'a Expr<'a>) -> &'a Expr<'a> {
+    while let ExprKind::Block(
+        Block {
+            stmts: [],
+            expr: Some(inner),
+            rules: BlockCheckMode::DefaultBlock,
+            ..
+        },
+        _,
+    ) = expr.kind
+    {
+        expr = inner;
+    }
+    expr
+}
+
+/// Removes blocks around an expression, only if the block contains just one expression
+/// or just one expression statement with a semicolon. Unsafe blocks are not removed.
+///
+/// Examples:
+///  * `{}`               -> `{}`
+///  * `{ x }`            -> `x`
+///  * `{ x; }`           -> `x`
+///  * `{{ x; }}`         -> `x`
+///  * `{ x; y }`         -> `{ x; y }`
+///  * `{ unsafe { x } }` -> `unsafe { x }`
+pub fn peel_blocks_with_stmt<'a>(mut expr: &'a Expr<'a>) -> &'a Expr<'a> {
+    while let ExprKind::Block(
+        Block {
+            stmts: [],
+            expr: Some(inner),
+            rules: BlockCheckMode::DefaultBlock,
+            ..
+        }
+        | Block {
+            stmts:
+                [
+                    Stmt {
+                        kind: StmtKind::Expr(inner) | StmtKind::Semi(inner),
+                        ..
+                    },
+                ],
+            expr: None,
+            rules: BlockCheckMode::DefaultBlock,
+            ..
+        },
+        _,
+    ) = expr.kind
+    {
+        expr = inner;
+    }
+    expr
+}
+
 /// Checks if the given expression is the else clause of either an `if` or `if let` expression.
 pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let mut iter = tcx.hir().parent_iter(expr.hir_id);
@@ -1403,20 +1467,6 @@ pub fn recurse_or_patterns<'tcx, F: FnMut(&'tcx Pat<'tcx>)>(pat: &'tcx Pat<'tcx>
 /// implementations have.
 pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
     has_attr(attrs, sym::automatically_derived)
-}
-
-/// Remove blocks around an expression.
-///
-/// Ie. `x`, `{ x }` and `{{{{ x }}}}` all give `x`. `{ x; y }` and `{}` return
-/// themselves.
-pub fn remove_blocks<'tcx>(mut expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
-    while let ExprKind::Block(block, ..) = expr.kind {
-        match (block.stmts.is_empty(), block.expr.as_ref()) {
-            (true, Some(e)) => expr = e,
-            _ => break,
-        }
-    }
-    expr
 }
 
 pub fn is_self(slf: &Param<'_>) -> bool {
