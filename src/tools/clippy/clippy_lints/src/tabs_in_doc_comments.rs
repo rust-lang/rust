@@ -51,6 +51,7 @@ declare_clippy_lint! {
     ///    second_string: String,
     ///}
     /// ```
+    #[clippy::version = "1.41.0"]
     pub TABS_IN_DOC_COMMENTS,
     style,
     "using tabs in doc comments is not recommended"

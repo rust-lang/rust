@@ -32,6 +32,7 @@ declare_clippy_lint! {
     /// let mut options = OpenOptions::new();
     /// options.mode(0o644);
     /// ```
+    #[clippy::version = "1.53.0"]
     pub NON_OCTAL_UNIX_PERMISSIONS,
     correctness,
     "use of non-octal value to set unix file permissions, which will be translated into octal"

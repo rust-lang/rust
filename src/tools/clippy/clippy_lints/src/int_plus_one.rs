@@ -28,6 +28,7 @@ declare_clippy_lint! {
     /// # let y = 1;
     /// if x > y {}
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INT_PLUS_ONE,
     complexity,
     "instead of using `x >= y + 1`, use `x > y`"

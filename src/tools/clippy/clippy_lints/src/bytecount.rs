@@ -30,6 +30,7 @@ declare_clippy_lint! {
     /// # let vec = vec![1_u8];
     /// &vec.iter().filter(|x| **x == 0u8).count(); // use bytecount::count instead
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NAIVE_BYTECOUNT,
     pedantic,
     "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values"
@@ -73,10 +74,10 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
                     if (p == sym::iter || p == sym!(iter_mut)) && args.len() == 1 {
                         &args[0]
                     } else {
-                        &filter_recv
+                        filter_recv
                     }
                 } else {
-                    &filter_recv
+                    filter_recv
                 };
                 let mut applicability = Applicability::MaybeIncorrect;
                 span_lint_and_sugg(

@@ -574,7 +574,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.58"
+version = "0.1.59"
 dependencies = [
  "cargo_metadata 0.14.0",
  "clippy_lints",
@@ -584,6 +584,7 @@ dependencies = [
  "filetime",
  "if_chain",
  "itertools 0.10.1",
+ "parking_lot",
  "quote",
  "regex",
  "rustc-workspace-hack",
@@ -600,6 +601,7 @@ name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
  "bytecount",
+ "cargo_metadata 0.14.0",
  "clap",
  "indoc",
  "itertools 0.10.1",
@@ -611,7 +613,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.58"
+version = "0.1.59"
 dependencies = [
  "cargo_metadata 0.14.0",
  "clippy_utils",
@@ -632,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.58"
+version = "0.1.59"
 dependencies = [
  "if_chain",
  "rustc-semver",
@@ -1713,9 +1715,12 @@ dependencies = [
 
 [[package]]
 name = "instant"
-version = "0.1.6"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b141fdc7836c525d4d594027d318c84161ca17aaf8113ab1f81ab93ae897485"
+checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
+dependencies = [
+ "cfg-if 1.0.0",
+]
 
 [[package]]
 name = "itertools"
@@ -1992,9 +1997,9 @@ version = "0.1.0"
 
 [[package]]
 name = "lock_api"
-version = "0.4.1"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28247cc5a5be2f05fbcd76dd0cf2c7d3b5400cb978a28042abcd4fa0b3f8261c"
+checksum = "712a4d093c9976e24e7dbca41db895dabcbac38eb5f4045393d17a95bdfb1109"
 dependencies = [
  "scopeguard",
 ]
@@ -2511,9 +2516,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.11.1"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d7744ac029df22dca6284efe4e898991d28e3085c706c972bcd7da4a27a15eb"
+checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
 dependencies = [
  "instant",
  "lock_api",
@@ -2522,9 +2527,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.8.3"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa7a782938e745763fe6907fc6ba86946d72f49fe7e21de074e08128a99fb018"
+checksum = "d76e8e1493bcac0d2766c42737f34458f1c8c50c0d23bcb24ea953affb273216"
 dependencies = [
  "cfg-if 1.0.0",
  "instant",

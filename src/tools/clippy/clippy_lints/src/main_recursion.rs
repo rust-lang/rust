@@ -20,6 +20,7 @@ declare_clippy_lint! {
     ///     main();
     /// }
     /// ```
+    #[clippy::version = "1.38.0"]
     pub MAIN_RECURSION,
     style,
     "recursion using the entrypoint"

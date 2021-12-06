@@ -1,0 +1,293 @@
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:10:13
+   |
+LL |     let _ = v.iter().find(|&x| *x < 0).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x| *x < 0)`
+   |
+   = note: `-D clippy::search-is-some` implied by `-D warnings`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:11:13
+   |
+LL |     let _ = (0..1).find(|x| **y == *x).is_none(); // one dereference less
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!(0..1).any(|x| **y == x)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:12:13
+   |
+LL |     let _ = (0..1).find(|x| *x == 0).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!(0..1).any(|x| x == 0)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:13:13
+   |
+LL |     let _ = v.iter().find(|x| **x == 0).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x| *x == 0)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:14:13
+   |
+LL |     let _ = (4..5).find(|x| *x == 1 || *x == 3 || *x == 5).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!(4..5).any(|x| x == 1 || x == 3 || x == 5)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:15:13
+   |
+LL |     let _ = (1..3).find(|x| [1, 2, 3].contains(x)).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!(1..3).any(|x| [1, 2, 3].contains(&x))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:16:13
+   |
+LL |     let _ = (1..3).find(|x| *x == 0 || [1, 2, 3].contains(x)).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!(1..3).any(|x| x == 0 || [1, 2, 3].contains(&x))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:17:13
+   |
+LL |     let _ = (1..3).find(|x| [1, 2, 3].contains(x) || *x == 0).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!(1..3).any(|x| [1, 2, 3].contains(&x) || x == 0)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:18:13
+   |
+LL |       let _ = (1..3)
+   |  _____________^
+LL | |         .find(|x| [1, 2, 3].contains(x) || *x == 0 || [4, 5, 6].contains(x) || *x == -1)
+LL | |         .is_none();
+   | |__________________^ help: use `!_.any()` instead: `!(1..3).any(|x| [1, 2, 3].contains(&x) || x == 0 || [4, 5, 6].contains(&x) || x == -1)`
+
+error: called `is_none()` after searching an `Iterator` with `position`
+  --> $DIR/search_is_some_fixable_none.rs:23:13
+   |
+LL |     let _ = v.iter().position(|&x| x < 0).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|&x| x < 0)`
+
+error: called `is_none()` after searching an `Iterator` with `rposition`
+  --> $DIR/search_is_some_fixable_none.rs:26:13
+   |
+LL |     let _ = v.iter().rposition(|&x| x < 0).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|&x| x < 0)`
+
+error: called `is_none()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_none.rs:32:13
+   |
+LL |     let _ = "hello world".find("world").is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.contains()` instead: `!"hello world".contains("world")`
+
+error: called `is_none()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_none.rs:33:13
+   |
+LL |     let _ = "hello world".find(&s2).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.contains()` instead: `!"hello world".contains(&s2)`
+
+error: called `is_none()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_none.rs:34:13
+   |
+LL |     let _ = "hello world".find(&s2[2..]).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.contains()` instead: `!"hello world".contains(&s2[2..])`
+
+error: called `is_none()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_none.rs:36:13
+   |
+LL |     let _ = s1.find("world").is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.contains()` instead: `!s1.contains("world")`
+
+error: called `is_none()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_none.rs:37:13
+   |
+LL |     let _ = s1.find(&s2).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.contains()` instead: `!s1.contains(&s2)`
+
+error: called `is_none()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_none.rs:38:13
+   |
+LL |     let _ = s1.find(&s2[2..]).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.contains()` instead: `!s1.contains(&s2[2..])`
+
+error: called `is_none()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_none.rs:40:13
+   |
+LL |     let _ = s1[2..].find("world").is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.contains()` instead: `!s1[2..].contains("world")`
+
+error: called `is_none()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_none.rs:41:13
+   |
+LL |     let _ = s1[2..].find(&s2).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.contains()` instead: `!s1[2..].contains(&s2)`
+
+error: called `is_none()` after calling `find()` on a string
+  --> $DIR/search_is_some_fixable_none.rs:42:13
+   |
+LL |     let _ = s1[2..].find(&s2[2..]).is_none();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.contains()` instead: `!s1[2..].contains(&s2[2..])`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:58:25
+   |
+LL |             .filter(|c| filter_hand.iter().find(|cc| c == cc).is_none())
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!filter_hand.iter().any(|cc| c == &cc)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:74:30
+   |
+LL |             .filter(|(c, _)| filter_hand.iter().find(|cc| c == *cc).is_none())
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!filter_hand.iter().any(|cc| c == cc)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:85:17
+   |
+LL |         let _ = vfoo.iter().find(|v| v.foo == 1 && v.bar == 2).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|v| v.foo == 1 && v.bar == 2)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:88:17
+   |
+LL |           let _ = vfoo
+   |  _________________^
+LL | |             .iter()
+LL | |             .find(|(i, v)| *i == 42 && v.foo == 1 && v.bar == 2)
+LL | |             .is_none();
+   | |______________________^
+   |
+help: use `!_.any()` instead
+   |
+LL ~         let _ = !vfoo
+LL ~             .iter().any(|(i, v)| *i == 42 && v.foo == 1 && v.bar == 2);
+   |
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:96:17
+   |
+LL |         let _ = vfoo.iter().find(|a| a[0] == 42).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|a| a[0] == 42)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:102:17
+   |
+LL |         let _ = vfoo.iter().find(|sub| sub[1..4].len() == 3).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|sub| sub[1..4].len() == 3)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:120:17
+   |
+LL |         let _ = [ppx].iter().find(|ppp_x: &&&u32| please(**ppp_x)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `![ppx].iter().any(|ppp_x: &&u32| please(ppp_x))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:121:17
+   |
+LL |         let _ = [String::from("Hey hey")].iter().find(|s| s.len() == 2).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `![String::from("Hey hey")].iter().any(|s| s.len() == 2)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:124:17
+   |
+LL |         let _ = v.iter().find(|x| deref_enough(**x)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x| deref_enough(*x))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:125:17
+   |
+LL |         let _ = v.iter().find(|x: &&u32| deref_enough(**x)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x: &u32| deref_enough(*x))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:128:17
+   |
+LL |         let _ = v.iter().find(|x| arg_no_deref(x)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x| arg_no_deref(&x))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:130:17
+   |
+LL |         let _ = v.iter().find(|x: &&u32| arg_no_deref(x)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x: &u32| arg_no_deref(&x))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:150:17
+   |
+LL |           let _ = vfoo
+   |  _________________^
+LL | |             .iter()
+LL | |             .find(|v| v.inner_double.bar[0][0] == 2 && v.inner.bar[0] == 2)
+LL | |             .is_none();
+   | |______________________^
+   |
+help: use `!_.any()` instead
+   |
+LL ~         let _ = !vfoo
+LL ~             .iter().any(|v| v.inner_double.bar[0][0] == 2 && v.inner.bar[0] == 2);
+   |
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:166:17
+   |
+LL |         let _ = vfoo.iter().find(|v| v.inner[0].bar == 2).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|v| v.inner[0].bar == 2)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:171:17
+   |
+LL |         let _ = vfoo.iter().find(|x| (**x)[0] == 9).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|x| (**x)[0] == 9)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:184:17
+   |
+LL |         let _ = vfoo.iter().find(|v| v.by_ref(&v.bar)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!vfoo.iter().any(|v| v.by_ref(&v.bar))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:188:17
+   |
+LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|(&x, y)| x == *y).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y)`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:189:17
+   |
+LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y)`
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do
+  --> $DIR/search_is_some_fixable_none.rs:192:25
+   |
+LL |     fn test_string_1(s: &String) -> bool {
+   |                         ^^^^^^^ help: change this to: `&str`
+   |
+   = note: `-D clippy::ptr-arg` implied by `-D warnings`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:208:17
+   |
+LL |         let _ = v.iter().find(|s| s[0].is_empty()).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|s| s[0].is_empty())`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:209:17
+   |
+LL |         let _ = v.iter().find(|s| test_string_1(&s[0])).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|s| test_string_1(&s[0]))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:218:17
+   |
+LL |         let _ = v.iter().find(|fp| fp.field.is_power_of_two()).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|fp| fp.field.is_power_of_two())`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:219:17
+   |
+LL |         let _ = v.iter().find(|fp| test_u32_1(fp.field)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|fp| test_u32_1(fp.field))`
+
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:220:17
+   |
+LL |         let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_none();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|fp| test_u32_2(*fp.field))`
+
+error: aborting due to 44 previous errors
+

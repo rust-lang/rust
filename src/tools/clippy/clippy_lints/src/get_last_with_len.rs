@@ -39,6 +39,7 @@ declare_clippy_lint! {
     /// let x = vec![2, 3, 5];
     /// let last_element = x.last();
     /// ```
+    #[clippy::version = "1.37.0"]
     pub GET_LAST_WITH_LEN,
     complexity,
     "Using `x.get(x.len() - 1)` when `x.last()` is correct and simpler"

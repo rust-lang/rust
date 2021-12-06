@@ -31,6 +31,7 @@ declare_clippy_lint! {
     /// # let y = 2;
     /// if x <= y {}
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DOUBLE_COMPARISONS,
     complexity,
     "unnecessary double comparisons that can be simplified"

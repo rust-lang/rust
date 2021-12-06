@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_test_module_or_function;
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::{in_macro, is_test_module_or_function};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -34,6 +34,7 @@ declare_clippy_lint! {
     /// use std::cmp::Ordering;
     /// foo(Ordering::Less)
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ENUM_GLOB_USE,
     pedantic,
     "use items that import all variants of an enum"
@@ -86,6 +87,7 @@ declare_clippy_lint! {
     ///
     /// foo();
     /// ```
+    #[clippy::version = "1.43.0"]
     pub WILDCARD_IMPORTS,
     pedantic,
     "lint `use _::*` statements"
@@ -196,7 +198,7 @@ impl LateLintPass<'_> for WildcardImports {
 
 impl WildcardImports {
     fn check_exceptions(&self, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
-        in_macro(item.span)
+        item.span.from_expansion()
             || is_prelude_import(segments)
             || (is_super_only_import(segments) && self.test_modules_deep > 0)
     }

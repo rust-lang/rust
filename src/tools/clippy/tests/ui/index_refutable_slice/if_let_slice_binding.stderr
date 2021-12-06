@@ -1,0 +1,158 @@
+error: this binding can be a slice pattern to avoid indexing
+  --> $DIR/if_let_slice_binding.rs:13:17
+   |
+LL |     if let Some(slice) = slice {
+   |                 ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/if_let_slice_binding.rs:1:9
+   |
+LL | #![deny(clippy::index_refutable_slice)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try using a slice pattern here
+   |
+LL |     if let Some([slice_0, ..]) = slice {
+   |                 ~~~~~~~~~~~~~
+help: and replace the index expressions here
+   |
+LL |         println!("{}", slice_0);
+   |                        ~~~~~~~
+
+error: this binding can be a slice pattern to avoid indexing
+  --> $DIR/if_let_slice_binding.rs:19:17
+   |
+LL |     if let Some(slice) = slice {
+   |                 ^^^^^
+   |
+help: try using a slice pattern here
+   |
+LL |     if let Some([slice_0, ..]) = slice {
+   |                 ~~~~~~~~~~~~~
+help: and replace the index expressions here
+   |
+LL |         println!("{}", slice_0);
+   |                        ~~~~~~~
+
+error: this binding can be a slice pattern to avoid indexing
+  --> $DIR/if_let_slice_binding.rs:25:17
+   |
+LL |     if let Some(slice) = slice {
+   |                 ^^^^^
+   |
+help: try using a slice pattern here
+   |
+LL |     if let Some([slice_0, _, slice_2, ..]) = slice {
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~
+help: and replace the index expressions here
+   |
+LL ~         println!("{}", slice_2);
+LL ~         println!("{}", slice_0);
+   |
+
+error: this binding can be a slice pattern to avoid indexing
+  --> $DIR/if_let_slice_binding.rs:32:26
+   |
+LL |     if let SomeEnum::One(slice) | SomeEnum::Three(slice) = slice_wrapped {
+   |                          ^^^^^
+   |
+help: try using a slice pattern here
+   |
+LL |     if let SomeEnum::One([slice_0, ..]) | SomeEnum::Three([slice_0, ..]) = slice_wrapped {
+   |                          ~~~~~~~~~~~~~                    ~~~~~~~~~~~~~
+help: and replace the index expressions here
+   |
+LL |         println!("{}", slice_0);
+   |                        ~~~~~~~
+
+error: this binding can be a slice pattern to avoid indexing
+  --> $DIR/if_let_slice_binding.rs:39:29
+   |
+LL |     if let (SomeEnum::Three(a), Some(b)) = (a_wrapped, b_wrapped) {
+   |                             ^
+   |
+help: try using a slice pattern here
+   |
+LL |     if let (SomeEnum::Three([_, _, a_2, ..]), Some(b)) = (a_wrapped, b_wrapped) {
+   |                             ~~~~~~~~~~~~~~~
+help: and replace the index expressions here
+   |
+LL |         println!("{} -> {}", a_2, b[1]);
+   |                              ~~~
+
+error: this binding can be a slice pattern to avoid indexing
+  --> $DIR/if_let_slice_binding.rs:39:38
+   |
+LL |     if let (SomeEnum::Three(a), Some(b)) = (a_wrapped, b_wrapped) {
+   |                                      ^
+   |
+help: try using a slice pattern here
+   |
+LL |     if let (SomeEnum::Three(a), Some([_, b_1, ..])) = (a_wrapped, b_wrapped) {
+   |                                      ~~~~~~~~~~~~
+help: and replace the index expressions here
+   |
+LL |         println!("{} -> {}", a[2], b_1);
+   |                                    ~~~
+
+error: this binding can be a slice pattern to avoid indexing
+  --> $DIR/if_let_slice_binding.rs:46:21
+   |
+LL |     if let Some(ref slice) = slice {
+   |                     ^^^^^
+   |
+help: try using a slice pattern here
+   |
+LL |     if let Some([_, ref slice_1, ..]) = slice {
+   |                 ~~~~~~~~~~~~~~~~~~~~
+help: and replace the index expressions here
+   |
+LL |         println!("{:?}", slice_1);
+   |                          ~~~~~~~
+
+error: this binding can be a slice pattern to avoid indexing
+  --> $DIR/if_let_slice_binding.rs:54:17
+   |
+LL |     if let Some(slice) = &slice {
+   |                 ^^^^^
+   |
+help: try using a slice pattern here
+   |
+LL |     if let Some([slice_0, ..]) = &slice {
+   |                 ~~~~~~~~~~~~~
+help: and replace the index expressions here
+   |
+LL |         println!("{:?}", slice_0);
+   |                          ~~~~~~~
+
+error: this binding can be a slice pattern to avoid indexing
+  --> $DIR/if_let_slice_binding.rs:123:17
+   |
+LL |     if let Some(slice) = wrap.inner {
+   |                 ^^^^^
+   |
+help: try using a slice pattern here
+   |
+LL |     if let Some([slice_0, ..]) = wrap.inner {
+   |                 ~~~~~~~~~~~~~
+help: and replace the index expressions here
+   |
+LL |             println!("This is awesome! {}", slice_0);
+   |                                             ~~~~~~~
+
+error: this binding can be a slice pattern to avoid indexing
+  --> $DIR/if_let_slice_binding.rs:130:17
+   |
+LL |     if let Some(slice) = wrap.inner {
+   |                 ^^^^^
+   |
+help: try using a slice pattern here
+   |
+LL |     if let Some([slice_0, ..]) = wrap.inner {
+   |                 ~~~~~~~~~~~~~
+help: and replace the index expressions here
+   |
+LL |             println!("This is super awesome! {}", slice_0);
+   |                                                   ~~~~~~~
+
+error: aborting due to 10 previous errors
+

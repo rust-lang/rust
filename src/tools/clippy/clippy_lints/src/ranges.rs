@@ -35,6 +35,7 @@ declare_clippy_lint! {
     /// # let x = vec![1];
     /// x.iter().enumerate();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub RANGE_ZIP_WITH_LEN,
     complexity,
     "zipping iterator with a range when `enumerate()` would do"
@@ -72,6 +73,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// for x..=y { .. }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub RANGE_PLUS_ONE,
     pedantic,
     "`x..(y+1)` reads better as `x..=y`"
@@ -100,6 +102,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// for x..y { .. }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub RANGE_MINUS_ONE,
     pedantic,
     "`x..=(y-1)` reads better as `x..y`"
@@ -132,6 +135,7 @@ declare_clippy_lint! {
     ///     let sub = &arr[1..3];
     /// }
     /// ```
+    #[clippy::version = "1.45.0"]
     pub REVERSED_EMPTY_RANGES,
     correctness,
     "reversing the limits of range expressions, resulting in empty ranges"
@@ -158,6 +162,7 @@ declare_clippy_lint! {
     ///# let x = 6;
     /// assert!((3..8).contains(&x));
     /// ```
+    #[clippy::version = "1.49.0"]
     pub MANUAL_RANGE_CONTAINS,
     style,
     "manually reimplementing {`Range`, `RangeInclusive`}`::contains`"

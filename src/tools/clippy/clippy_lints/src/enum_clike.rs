@@ -28,6 +28,7 @@ declare_clippy_lint! {
     ///     Y = 0,
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ENUM_CLIKE_UNPORTABLE_VARIANT,
     correctness,
     "C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`"

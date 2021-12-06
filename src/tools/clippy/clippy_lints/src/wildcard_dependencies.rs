@@ -20,6 +20,7 @@ declare_clippy_lint! {
     /// [dependencies]
     /// regex = "*"
     /// ```
+    #[clippy::version = "1.32.0"]
     pub WILDCARD_DEPENDENCIES,
     cargo,
     "wildcard dependencies being used"

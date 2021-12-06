@@ -32,6 +32,7 @@ declare_clippy_lint! {
     ///   stuff.rs
     ///   lib.rs
     /// ```
+    #[clippy::version = "1.57.0"]
     pub MOD_MODULE_FILES,
     restriction,
     "checks that module layout is consistent"
@@ -61,6 +62,7 @@ declare_clippy_lint! {
     ///   lib.rs
     /// ```
 
+    #[clippy::version = "1.57.0"]
     pub SELF_NAMED_MODULE_FILES,
     restriction,
     "checks that module layout is consistent"

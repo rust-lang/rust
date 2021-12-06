@@ -27,6 +27,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// No. You'll see it when you get the warning.
+    #[clippy::version = "1.35.0"]
     pub COGNITIVE_COMPLEXITY,
     nursery,
     "functions that should be split up into multiple functions"

@@ -40,6 +40,7 @@ declare_clippy_lint! {
     ///     _ => {},
     /// }
     /// ```
+    #[clippy::version = "1.45.0"]
     pub MATCH_ON_VEC_ITEMS,
     pedantic,
     "matching on vector elements can panic"

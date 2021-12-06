@@ -37,6 +37,7 @@ declare_clippy_lint! {
     /// let y = x.iter();
     /// let z = y.cloned();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MAP_CLONE,
     style,
     "using `iterator.map(|x| x.clone())`, or dereferencing closures for `Copy` types"

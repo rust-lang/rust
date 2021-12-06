@@ -118,6 +118,12 @@ Otherwise, have a great day =^.^=
             background-color: #777777;
             margin: auto 5px;
         }
+
+        .label-version {
+            background-color: #777777;
+            margin: auto 5px;
+            font-family: monospace;
+        }
     </style>
     <style>
         /* Expanding the mdBoom theme*/
@@ -330,7 +336,7 @@ Otherwise, have a great day =^.^=
                     </h2>
                 </header>
 
-                <ul class="list-group lint-docs" ng-class="{collapse: true, in: open[lint.id]}">
+                <div class="list-group lint-docs" ng-class="{collapse: true, in: open[lint.id]}">
                     <div class="list-group-item lint-doc-md" ng-bind-html="lint.docs | markdown"></div>
                     <div class="lint-additional-info-container">
                         <!-- Applicability -->
@@ -339,7 +345,11 @@ Otherwise, have a great day =^.^=
                             <span class="label label-default label-applicability">{{lint.applicability.applicability}}</span>
                             <a href="https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/enum.Applicability.html#variants">(?)</a>
                         </div>
-                        <!-- TODO xFrednet 2021-05-19: Somehow collect and show the version See rust-clippy#6492 -->
+                        <!-- Clippy version -->
+                        <div class="lint-additional-info-item">
+                            <span>{{lint.group == "deprecated" ? "Deprecated" : "Added"}} in: </span>
+                            <span class="label label-default label-version">{{lint.version}}</span>
+                        </div>
                         <!-- Open related issues -->
                         <div class="lint-additional-info-item">
                             <a href="https://github.com/rust-lang/rust-clippy/issues?q=is%3Aissue+{{lint.id}}">Related Issues</a>
@@ -349,7 +359,7 @@ Otherwise, have a great day =^.^=
                             <a href="https://github.com/rust-lang/rust-clippy/blob/{{docVersion}}/clippy_lints/{{lint.id_span.path}}#L{{lint.id_span.line}}">View Source</a>
                         </div>
                     </div>
-                </ul>
+                </div>
             </article>
         </div>
     </div>

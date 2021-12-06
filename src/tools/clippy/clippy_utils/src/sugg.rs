@@ -1,19 +1,27 @@
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::higher;
-use crate::source::{snippet, snippet_opt, snippet_with_context, snippet_with_macro_callsite};
+use crate::source::{
+    snippet, snippet_opt, snippet_with_applicability, snippet_with_context, snippet_with_macro_callsite,
+};
+use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{ast, token};
 use rustc_ast_pretty::pprust::token_kind_to_string;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::{ExprKind, HirId, MutTy, TyKind};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{EarlyContext, LateContext, LintContext};
-use rustc_span::source_map::{CharPos, Span};
-use rustc_span::{BytePos, Pos, SyntaxContext};
+use rustc_middle::hir::place::ProjectionKind;
+use rustc_middle::mir::{FakeReadCause, Mutability};
+use rustc_middle::ty;
+use rustc_span::source_map::{BytePos, CharPos, Pos, Span, SyntaxContext};
+use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
+use std::iter;
 use std::ops::{Add, Neg, Not, Sub};
 
 /// A helper type to build suggestion correctly handling parentheses.
@@ -714,6 +722,267 @@ impl<T: LintContext> DiagnosticBuilderExt<T> for rustc_errors::DiagnosticBuilder
 
         self.span_suggestion(remove_span, msg, String::new(), applicability);
     }
+}
+
+/// Suggestion results for handling closure
+/// args dereferencing and borrowing
+pub struct DerefClosure {
+    /// confidence on the built suggestion
+    pub applicability: Applicability,
+    /// gradually built suggestion
+    pub suggestion: String,
+}
+
+/// Build suggestion gradually by handling closure arg specific usages,
+/// such as explicit deref and borrowing cases.
+/// Returns `None` if no such use cases have been triggered in closure body
+///
+/// note: this only works on single line immutable closures with exactly one input parameter.
+pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'_>) -> Option<DerefClosure> {
+    if let hir::ExprKind::Closure(_, fn_decl, body_id, ..) = closure.kind {
+        let closure_body = cx.tcx.hir().body(body_id);
+        // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
+        // a type annotation is present if param `kind` is different from `TyKind::Infer`
+        let closure_arg_is_type_annotated_double_ref = if let TyKind::Rptr(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind
+        {
+            matches!(ty.kind, TyKind::Rptr(_, MutTy { .. }))
+        } else {
+            false
+        };
+
+        let mut visitor = DerefDelegate {
+            cx,
+            closure_span: closure.span,
+            closure_arg_is_type_annotated_double_ref,
+            next_pos: closure.span.lo(),
+            suggestion_start: String::new(),
+            applicability: Applicability::MaybeIncorrect,
+        };
+
+        let fn_def_id = cx.tcx.hir().local_def_id(closure.hir_id);
+        cx.tcx.infer_ctxt().enter(|infcx| {
+            ExprUseVisitor::new(&mut visitor, &infcx, fn_def_id, cx.param_env, cx.typeck_results())
+                .consume_body(closure_body);
+        });
+
+        if !visitor.suggestion_start.is_empty() {
+            return Some(DerefClosure {
+                applicability: visitor.applicability,
+                suggestion: visitor.finish(),
+            });
+        }
+    }
+    None
+}
+
+/// Visitor struct used for tracking down
+/// dereferencing and borrowing of closure's args
+struct DerefDelegate<'a, 'tcx> {
+    /// The late context of the lint
+    cx: &'a LateContext<'tcx>,
+    /// The span of the input closure to adapt
+    closure_span: Span,
+    /// Indicates if the arg of the closure is a type annotated double reference
+    closure_arg_is_type_annotated_double_ref: bool,
+    /// last position of the span to gradually build the suggestion
+    next_pos: BytePos,
+    /// starting part of the gradually built suggestion
+    suggestion_start: String,
+    /// confidence on the built suggestion
+    applicability: Applicability,
+}
+
+impl DerefDelegate<'_, 'tcx> {
+    /// build final suggestion:
+    /// - create the ending part of suggestion
+    /// - concatenate starting and ending parts
+    /// - potentially remove needless borrowing
+    pub fn finish(&mut self) -> String {
+        let end_span = Span::new(self.next_pos, self.closure_span.hi(), self.closure_span.ctxt(), None);
+        let end_snip = snippet_with_applicability(self.cx, end_span, "..", &mut self.applicability);
+        let sugg = format!("{}{}", self.suggestion_start, end_snip);
+        if self.closure_arg_is_type_annotated_double_ref {
+            sugg.replacen('&', "", 1)
+        } else {
+            sugg
+        }
+    }
+
+    /// indicates whether the function from `parent_expr` takes its args by double reference
+    fn func_takes_arg_by_double_ref(&self, parent_expr: &'tcx hir::Expr<'_>, cmt_hir_id: HirId) -> bool {
+        let (call_args, inputs) = match parent_expr.kind {
+            ExprKind::MethodCall(_, _, call_args, _) => {
+                if let Some(method_did) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
+                    (call_args, self.cx.tcx.fn_sig(method_did).skip_binder().inputs())
+                } else {
+                    return false;
+                }
+            },
+            ExprKind::Call(func, call_args) => {
+                let typ = self.cx.typeck_results().expr_ty(func);
+                (call_args, typ.fn_sig(self.cx.tcx).skip_binder().inputs())
+            },
+            _ => return false,
+        };
+
+        iter::zip(call_args, inputs)
+            .any(|(arg, ty)| arg.hir_id == cmt_hir_id && matches!(ty.kind(), ty::Ref(_, inner, _) if inner.is_ref()))
+    }
+}
+
+impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    #[allow(clippy::too_many_lines)]
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
+        if let PlaceBase::Local(id) = cmt.place.base {
+            let map = self.cx.tcx.hir();
+            let span = map.span(cmt.hir_id);
+            let start_span = Span::new(self.next_pos, span.lo(), span.ctxt(), None);
+            let mut start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
+
+            // identifier referring to the variable currently triggered (i.e.: `fp`)
+            let ident_str = map.name(id).to_string();
+            // full identifier that includes projection (i.e.: `fp.field`)
+            let ident_str_with_proj = snippet(self.cx, span, "..").to_string();
+
+            if cmt.place.projections.is_empty() {
+                // handle item without any projection, that needs an explicit borrowing
+                // i.e.: suggest `&x` instead of `x`
+                self.suggestion_start.push_str(&format!("{}&{}", start_snip, ident_str));
+            } else {
+                // cases where a parent `Call` or `MethodCall` is using the item
+                // i.e.: suggest `.contains(&x)` for `.find(|x| [1, 2, 3].contains(x)).is_none()`
+                //
+                // Note about method calls:
+                // - compiler automatically dereference references if the target type is a reference (works also for
+                //   function call)
+                // - `self` arguments in the case of `x.is_something()` are also automatically (de)referenced, and
+                //   no projection should be suggested
+                if let Some(parent_expr) = get_parent_expr_for_hir(self.cx, cmt.hir_id) {
+                    match &parent_expr.kind {
+                        // given expression is the self argument and will be handled completely by the compiler
+                        // i.e.: `|x| x.is_something()`
+                        ExprKind::MethodCall(_, _, [self_expr, ..], _) if self_expr.hir_id == cmt.hir_id => {
+                            self.suggestion_start
+                                .push_str(&format!("{}{}", start_snip, ident_str_with_proj));
+                            self.next_pos = span.hi();
+                            return;
+                        },
+                        // item is used in a call
+                        // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
+                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, _, [_, call_args @ ..], _) => {
+                            let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
+                            let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
+
+                            if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {
+                                // suggest ampersand if call function is taking args by double reference
+                                let takes_arg_by_double_ref =
+                                    self.func_takes_arg_by_double_ref(parent_expr, cmt.hir_id);
+
+                                // compiler will automatically dereference field or index projection, so no need
+                                // to suggest ampersand, but full identifier that includes projection is required
+                                let has_field_or_index_projection =
+                                    cmt.place.projections.iter().any(|proj| {
+                                        matches!(proj.kind, ProjectionKind::Field(..) | ProjectionKind::Index)
+                                    });
+
+                                // no need to bind again if the function doesn't take arg by double ref
+                                // and if the item is already a double ref
+                                let ident_sugg = if !call_args.is_empty()
+                                    && !takes_arg_by_double_ref
+                                    && (self.closure_arg_is_type_annotated_double_ref || has_field_or_index_projection)
+                                {
+                                    let ident = if has_field_or_index_projection {
+                                        ident_str_with_proj
+                                    } else {
+                                        ident_str
+                                    };
+                                    format!("{}{}", start_snip, ident)
+                                } else {
+                                    format!("{}&{}", start_snip, ident_str)
+                                };
+                                self.suggestion_start.push_str(&ident_sugg);
+                                self.next_pos = span.hi();
+                                return;
+                            }
+
+                            self.applicability = Applicability::Unspecified;
+                        },
+                        _ => (),
+                    }
+                }
+
+                let mut replacement_str = ident_str;
+                let mut projections_handled = false;
+                cmt.place.projections.iter().enumerate().for_each(|(i, proj)| {
+                    match proj.kind {
+                        // Field projection like `|v| v.foo`
+                        // no adjustment needed here, as field projections are handled by the compiler
+                        ProjectionKind::Field(..) => match cmt.place.ty_before_projection(i).kind() {
+                            ty::Adt(..) | ty::Tuple(_) => {
+                                replacement_str = ident_str_with_proj.clone();
+                                projections_handled = true;
+                            },
+                            _ => (),
+                        },
+                        // Index projection like `|x| foo[x]`
+                        // the index is dropped so we can't get it to build the suggestion,
+                        // so the span is set-up again to get more code, using `span.hi()` (i.e.: `foo[x]`)
+                        // instead of `span.lo()` (i.e.: `foo`)
+                        ProjectionKind::Index => {
+                            let start_span = Span::new(self.next_pos, span.hi(), span.ctxt(), None);
+                            start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
+                            replacement_str.clear();
+                            projections_handled = true;
+                        },
+                        // note: unable to trigger `Subslice` kind in tests
+                        ProjectionKind::Subslice => (),
+                        ProjectionKind::Deref => {
+                            // Explicit derefs are typically handled later on, but
+                            // some items do not need explicit deref, such as array accesses,
+                            // so we mark them as already processed
+                            // i.e.: don't suggest `*sub[1..4].len()` for `|sub| sub[1..4].len() == 3`
+                            if let ty::Ref(_, inner, _) = cmt.place.ty_before_projection(i).kind() {
+                                if matches!(inner.kind(), ty::Ref(_, innermost, _) if innermost.is_array()) {
+                                    projections_handled = true;
+                                }
+                            }
+                        },
+                    }
+                });
+
+                // handle `ProjectionKind::Deref` by removing one explicit deref
+                // if no special case was detected (i.e.: suggest `*x` instead of `**x`)
+                if !projections_handled {
+                    let last_deref = cmt
+                        .place
+                        .projections
+                        .iter()
+                        .rposition(|proj| proj.kind == ProjectionKind::Deref);
+
+                    if let Some(pos) = last_deref {
+                        let mut projections = cmt.place.projections.clone();
+                        projections.truncate(pos);
+
+                        for item in projections {
+                            if item.kind == ProjectionKind::Deref {
+                                replacement_str = format!("*{}", replacement_str);
+                            }
+                        }
+                    }
+                }
+
+                self.suggestion_start
+                    .push_str(&format!("{}{}", start_snip, replacement_str));
+            }
+            self.next_pos = span.hi();
+        }
+    }
+
+    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 #[cfg(test)]

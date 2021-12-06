@@ -48,6 +48,7 @@ declare_clippy_lint! {
     ///     None
     /// };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub USELESS_LET_IF_SEQ,
     nursery,
     "unidiomatic `let mut` declaration followed by initialization in `if`"

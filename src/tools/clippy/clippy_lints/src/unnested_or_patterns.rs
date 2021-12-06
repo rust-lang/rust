@@ -39,6 +39,7 @@ declare_clippy_lint! {
     ///     if let Some(0 | 2) = Some(0) {}
     /// }
     /// ```
+    #[clippy::version = "1.46.0"]
     pub UNNESTED_OR_PATTERNS,
     pedantic,
     "unnested or-patterns, e.g., `Foo(Bar) | Foo(Baz) instead of `Foo(Bar | Baz)`"

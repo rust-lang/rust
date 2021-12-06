@@ -1,14 +1,20 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_with_context;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::peel_mid_ty_refs;
-use clippy_utils::{get_parent_node, in_macro, is_lint_allowed};
-use rustc_ast::util::parser::PREC_PREFIX;
+use clippy_utils::{get_parent_expr, get_parent_node, is_lint_allowed, path_to_local};
+use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node, UnOp};
+use rustc_hir::{
+    BindingAnnotation, Body, BodyId, BorrowKind, Destination, Expr, ExprKind, HirId, MatchSource, Mutability, Node,
+    Pat, PatKind, UnOp,
+};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::{self, Ty, TyCtxt, TyS, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span};
+use std::iter;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -34,13 +40,70 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let _ = d.unwrap().deref();
     /// ```
+    #[clippy::version = "1.44.0"]
     pub EXPLICIT_DEREF_METHODS,
     pedantic,
     "Explicit use of deref or deref_mut method while not in a method chain."
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for address of operations (`&`) that are going to
+    /// be dereferenced immediately by the compiler.
+    ///
+    /// ### Why is this bad?
+    /// Suggests that the receiver of the expression borrows
+    /// the expression.
+    ///
+    /// ### Example
+    /// ```rust
+    /// fn fun(_a: &i32) {}
+    ///
+    /// // Bad
+    /// let x: &i32 = &&&&&&5;
+    /// fun(&x);
+    ///
+    /// // Good
+    /// let x: &i32 = &5;
+    /// fun(x);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub NEEDLESS_BORROW,
+    style,
+    "taking a reference that is going to be automatically dereferenced"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `ref` bindings which create a reference to a reference.
+    ///
+    /// ### Why is this bad?
+    /// The address-of operator at the use site is clearer about the need for a reference.
+    ///
+    /// ### Example
+    /// ```rust
+    /// // Bad
+    /// let x = Some("");
+    /// if let Some(ref x) = x {
+    ///     // use `x` here
+    /// }
+    ///
+    /// // Good
+    /// let x = Some("");
+    /// if let Some(x) = x {
+    ///     // use `&x` here
+    /// }
+    /// ```
+    #[clippy::version = "1.54.0"]
+    pub REF_BINDING_TO_REFERENCE,
+    pedantic,
+    "`ref` binding to a reference"
+}
+
 impl_lint_pass!(Dereferencing => [
     EXPLICIT_DEREF_METHODS,
+    NEEDLESS_BORROW,
+    REF_BINDING_TO_REFERENCE,
 ]);
 
 #[derive(Default)]
@@ -51,6 +114,18 @@ pub struct Dereferencing {
     // expression. This is to store the id of that expression so it can be skipped when
     // `check_expr` is called for it.
     skip_expr: Option<HirId>,
+
+    /// The body the first local was found in. Used to emit lints when the traversal of the body has
+    /// been finished. Note we can't lint at the end of every body as they can be nested within each
+    /// other.
+    current_body: Option<BodyId>,
+    /// The list of locals currently being checked by the lint.
+    /// If the value is `None`, then the binding has been seen as a ref pattern, but is not linted.
+    /// This is needed for or patterns where one of the branches can be linted, but another can not
+    /// be.
+    ///
+    /// e.g. `m!(x) | Foo::Bar(ref x)`
+    ref_locals: FxIndexMap<HirId, Option<RefPat>>,
 }
 
 struct StateData {
@@ -67,6 +142,9 @@ enum State {
         ty_changed_count: usize,
         is_final_ufcs: bool,
     },
+    DerefedBorrow {
+        count: u32,
+    },
 }
 
 // A reference operation considered by this lint pass
@@ -76,15 +154,31 @@ enum RefOp {
     AddrOf,
 }
 
+struct RefPat {
+    /// Whether every usage of the binding is dereferenced.
+    always_deref: bool,
+    /// The spans of all the ref bindings for this local.
+    spans: Vec<Span>,
+    /// The applicability of this suggestion.
+    app: Applicability,
+    /// All the replacements which need to be made.
+    replacements: Vec<(Span, String)>,
+}
+
 impl<'tcx> LateLintPass<'tcx> for Dereferencing {
+    #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Skip path expressions from deref calls. e.g. `Deref::deref(e)`
         if Some(expr.hir_id) == self.skip_expr.take() {
             return;
         }
 
+        if let Some(local) = path_to_local(expr) {
+            self.check_local_usage(cx, expr, local);
+        }
+
         // Stop processing sub expressions when a macro call is seen
-        if in_macro(expr.span) {
+        if expr.span.from_expansion() {
             if let Some((state, data)) = self.state.take() {
                 report(cx, expr, state, data);
             }
@@ -127,6 +221,48 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             },
                         ));
                     },
+                    RefOp::AddrOf => {
+                        // Find the number of times the borrow is auto-derefed.
+                        let mut iter = find_adjustments(cx.tcx, typeck, expr).iter();
+                        if let Some((i, adjust)) = iter.by_ref().enumerate().find_map(|(i, adjust)| {
+                            if !matches!(adjust.kind, Adjust::Deref(_)) {
+                                Some((i, adjust))
+                            } else if !adjust.target.is_ref() {
+                                // Add one to the number of references found.
+                                Some((i + 1, adjust))
+                            } else {
+                                None
+                            }
+                        }) {
+                            // Found two consecutive derefs. At least one can be removed.
+                            if i > 1 {
+                                let target_mut = iter::once(adjust)
+                                    .chain(iter)
+                                    .find_map(|adjust| match adjust.kind {
+                                        Adjust::Borrow(AutoBorrow::Ref(_, m)) => Some(m.into()),
+                                        _ => None,
+                                    })
+                                    // This default should never happen. Auto-deref always reborrows.
+                                    .unwrap_or(Mutability::Not);
+                                self.state = Some((
+                                    // Subtract one for the current borrow expression, and one to cover the last
+                                    // reference which can't be removed (it's either reborrowed, or needed for
+                                    // auto-deref to happen).
+                                    State::DerefedBorrow {
+                                        count:
+                                            // Truncation here would require more than a `u32::MAX` level reference. The compiler
+                                            // does not support this.
+                                            #[allow(clippy::cast_possible_truncation)]
+                                            { i as u32 - 2 }
+                                    },
+                                    StateData {
+                                        span: expr.span,
+                                        target_mut,
+                                    },
+                                ));
+                            }
+                        }
+                    },
                     _ => (),
                 }
             },
@@ -143,8 +279,78 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                     data,
                 ));
             },
+            (Some((State::DerefedBorrow { count }, data)), RefOp::AddrOf) if count != 0 => {
+                self.state = Some((State::DerefedBorrow { count: count - 1 }, data));
+            },
 
             (Some((state, data)), _) => report(cx, expr, state, data),
+        }
+    }
+
+    fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
+        if let PatKind::Binding(BindingAnnotation::Ref, id, name, _) = pat.kind {
+            if let Some(opt_prev_pat) = self.ref_locals.get_mut(&id) {
+                // This binding id has been seen before. Add this pattern to the list of changes.
+                if let Some(prev_pat) = opt_prev_pat {
+                    if pat.span.from_expansion() {
+                        // Doesn't match the context of the previous pattern. Can't lint here.
+                        *opt_prev_pat = None;
+                    } else {
+                        prev_pat.spans.push(pat.span);
+                        prev_pat.replacements.push((
+                            pat.span,
+                            snippet_with_context(cx, name.span, pat.span.ctxt(), "..", &mut prev_pat.app)
+                                .0
+                                .into(),
+                        ));
+                    }
+                }
+                return;
+            }
+
+            if_chain! {
+                if !pat.span.from_expansion();
+                if let ty::Ref(_, tam, _) = *cx.typeck_results().pat_ty(pat).kind();
+                // only lint immutable refs, because borrowed `&mut T` cannot be moved out
+                if let ty::Ref(_, _, Mutability::Not) = *tam.kind();
+                then {
+                    let mut app = Applicability::MachineApplicable;
+                    let snip = snippet_with_context(cx, name.span, pat.span.ctxt(), "..", &mut app).0;
+                    self.current_body = self.current_body.or(cx.enclosing_body);
+                    self.ref_locals.insert(
+                        id,
+                        Some(RefPat {
+                            always_deref: true,
+                            spans: vec![pat.span],
+                            app,
+                            replacements: vec![(pat.span, snip.into())],
+                        }),
+                    );
+                }
+            }
+        }
+    }
+
+    fn check_body_post(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
+        if Some(body.id()) == self.current_body {
+            for pat in self.ref_locals.drain(..).filter_map(|(_, x)| x) {
+                let replacements = pat.replacements;
+                let app = pat.app;
+                span_lint_and_then(
+                    cx,
+                    if pat.always_deref {
+                        NEEDLESS_BORROW
+                    } else {
+                        REF_BINDING_TO_REFERENCE
+                    },
+                    pat.spans,
+                    "this pattern creates a reference to a reference",
+                    |diag| {
+                        diag.multipart_suggestion("try this", replacements, app);
+                    },
+                );
+            }
+            self.current_body = None;
         }
     }
 }
@@ -250,6 +456,48 @@ fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId, 
     }
 }
 
+/// Adjustments are sometimes made in the parent block rather than the expression itself.
+fn find_adjustments(
+    tcx: TyCtxt<'tcx>,
+    typeck: &'tcx TypeckResults<'_>,
+    expr: &'tcx Expr<'_>,
+) -> &'tcx [Adjustment<'tcx>] {
+    let map = tcx.hir();
+    let mut iter = map.parent_iter(expr.hir_id);
+    let mut prev = expr;
+
+    loop {
+        match typeck.expr_adjustments(prev) {
+            [] => (),
+            a => break a,
+        };
+
+        match iter.next().map(|(_, x)| x) {
+            Some(Node::Block(_)) => {
+                if let Some((_, Node::Expr(e))) = iter.next() {
+                    prev = e;
+                } else {
+                    // This shouldn't happen. Blocks are always contained in an expression.
+                    break &[];
+                }
+            },
+            Some(Node::Expr(&Expr {
+                kind: ExprKind::Break(Destination { target_id: Ok(id), .. }, _),
+                ..
+            })) => {
+                if let Some(Node::Expr(e)) = map.find(id) {
+                    prev = e;
+                    iter = map.parent_iter(id);
+                } else {
+                    // This shouldn't happen. The destination should exist.
+                    break &[];
+                }
+            },
+            _ => break &[],
+        }
+    }
+}
+
 #[allow(clippy::needless_pass_by_value)]
 fn report(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data: StateData) {
     match state {
@@ -300,5 +548,83 @@ fn report(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data: Stat
                 app,
             );
         },
+        State::DerefedBorrow { .. } => {
+            let mut app = Applicability::MachineApplicable;
+            let snip = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app).0;
+            span_lint_and_sugg(
+                cx,
+                NEEDLESS_BORROW,
+                data.span,
+                &format!(
+                    "this expression borrows a reference (`{}`) that is immediately dereferenced by the compiler",
+                    cx.typeck_results().expr_ty(expr),
+                ),
+                "change this to",
+                snip.into(),
+                app,
+            );
+        },
+    }
+}
+
+impl Dereferencing {
+    fn check_local_usage(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, local: HirId) {
+        if let Some(outer_pat) = self.ref_locals.get_mut(&local) {
+            if let Some(pat) = outer_pat {
+                // Check for auto-deref
+                if !matches!(
+                    cx.typeck_results().expr_adjustments(e),
+                    [
+                        Adjustment {
+                            kind: Adjust::Deref(_),
+                            ..
+                        },
+                        Adjustment {
+                            kind: Adjust::Deref(_),
+                            ..
+                        },
+                        ..
+                    ]
+                ) {
+                    match get_parent_expr(cx, e) {
+                        // Field accesses are the same no matter the number of references.
+                        Some(Expr {
+                            kind: ExprKind::Field(..),
+                            ..
+                        }) => (),
+                        Some(&Expr {
+                            span,
+                            kind: ExprKind::Unary(UnOp::Deref, _),
+                            ..
+                        }) if !span.from_expansion() => {
+                            // Remove explicit deref.
+                            let snip = snippet_with_context(cx, e.span, span.ctxt(), "..", &mut pat.app).0;
+                            pat.replacements.push((span, snip.into()));
+                        },
+                        Some(parent) if !parent.span.from_expansion() => {
+                            // Double reference might be needed at this point.
+                            if parent.precedence().order() == PREC_POSTFIX {
+                                // Parentheses would be needed here, don't lint.
+                                *outer_pat = None;
+                            } else {
+                                pat.always_deref = false;
+                                let snip = snippet_with_context(cx, e.span, parent.span.ctxt(), "..", &mut pat.app).0;
+                                pat.replacements.push((e.span, format!("&{}", snip)));
+                            }
+                        },
+                        _ if !e.span.from_expansion() => {
+                            // Double reference might be needed at this point.
+                            pat.always_deref = false;
+                            let snip = snippet_with_applicability(cx, e.span, "..", &mut pat.app);
+                            pat.replacements.push((e.span, format!("&{}", snip)));
+                        },
+                        // Edge case for macros. The span of the identifier will usually match the context of the
+                        // binding, but not if the identifier was created in a macro. e.g. `concat_idents` and proc
+                        // macros
+                        _ => *outer_pat = None,
+                    }
+                }
+            }
+        }
     }
 }

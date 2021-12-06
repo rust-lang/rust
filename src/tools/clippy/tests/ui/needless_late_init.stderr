@@ -1,0 +1,150 @@
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:4:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+   = note: `-D clippy::needless-late-init` implied by `-D warnings`
+help: declare `a` here
+   |
+LL |     let a = match n {
+   |     +++++++
+help: remove the assignments from the `match` arms
+   |
+LL ~         1 => "one",
+LL |         _ => {
+LL ~             "two"
+   |
+help: add a semicolon after the `match` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:13:5
+   |
+LL |     let b;
+   |     ^^^^^^
+   |
+help: declare `b` here
+   |
+LL |     let b = if n == 3 {
+   |     +++++++
+help: remove the assignments from the branches
+   |
+LL ~         "four"
+LL |     } else {
+LL ~         "five"
+   |
+help: add a semicolon after the `if` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:20:5
+   |
+LL |     let c;
+   |     ^^^^^^
+   |
+help: declare `c` here
+   |
+LL |     let c = if let Some(n) = Some(5) {
+   |     +++++++
+help: remove the assignments from the branches
+   |
+LL ~         n
+LL |     } else {
+LL ~         -50
+   |
+help: add a semicolon after the `if` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:27:5
+   |
+LL |     let d;
+   |     ^^^^^^
+   |
+help: declare `d` here
+   |
+LL |     let d = if true {
+   |     +++++++
+help: remove the assignments from the branches
+   |
+LL ~         temp
+LL |     } else {
+LL ~         15
+   |
+help: add a semicolon after the `if` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:35:5
+   |
+LL |     let e;
+   |     ^^^^^^
+   |
+help: declare `e` here
+   |
+LL |     let e = if true {
+   |     +++++++
+help: remove the assignments from the branches
+   |
+LL ~         format!("{} {}", a, b)
+LL |     } else {
+LL ~         format!("{}", c)
+   |
+help: add a semicolon after the `if` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:50:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+help: declare `a` here
+   |
+LL |     let a = match n {
+   |     +++++++
+help: remove the assignments from the `match` arms
+   |
+LL ~         1 => f().await,
+LL |         _ => {
+LL ~             "two"
+   |
+help: add a semicolon after the `match` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:67:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+help: declare `a` here
+   |
+LL |     let a = match n {
+   |     +++++++
+help: remove the assignments from the `match` arms
+   |
+LL ~         1 => f(),
+LL |         _ => {
+LL ~             "two"
+   |
+help: add a semicolon after the `match` expression
+   |
+LL |     };
+   |      +
+
+error: aborting due to 7 previous errors
+

@@ -33,6 +33,7 @@ declare_clippy_lint! {
     /// ctrlc = "=3.1.0"
     /// ansi_term = "=0.11.0"
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MULTIPLE_CRATE_VERSIONS,
     cargo,
     "multiple versions of the same crate being used"

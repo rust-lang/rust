@@ -1,0 +1,12 @@
+error: this looks like you are trying to swap `a` and `b`
+  --> $DIR/no_std_swap.rs:12:5
+   |
+LL | /     a = b;
+LL | |     b = a;
+   | |_________^ help: try: `core::mem::swap(&mut a, &mut b)`
+   |
+   = note: `-D clippy::almost-swapped` implied by `-D warnings`
+   = note: or maybe you should use `core::mem::replace`?
+
+error: aborting due to previous error
+
