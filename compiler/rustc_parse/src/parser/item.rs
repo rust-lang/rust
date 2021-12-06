@@ -1706,14 +1706,61 @@ impl<'a> Parser<'a> {
 /// The parsing configuration used to parse a parameter list (see `parse_fn_params`).
 ///
 /// The function decides if, per-parameter `p`, `p` must have a pattern or just a type.
+///
+/// This function pointer accepts an edition, because in edition 2015, trait declarations
+/// were allowed to omit parameter names. In 2018, they became required.
 type ReqName = fn(Edition) -> bool;
 
 /// Parsing configuration for functions.
-/// This include the edition-specific name requirements, plus information on whether the
-/// function is allowed to go without a body.
+///
+/// The syntax of function items is slightly different within trait definitions,
+/// impl blocks, and modules. It is still parsed using the same code, just with
+/// different flags set, so that even when the input is wrong and produces a parse
+/// error, it still gets into the AST and the rest of the parser and
+/// type checker can run.
 #[derive(Clone, Copy)]
 pub(crate) struct FnParseMode {
+    /// A function pointer that decides if, per-parameter `p`, `p` must have a
+    /// pattern or just a type. This field affects parsing of the parameters list.
+    ///
+    /// ```text
+    /// fn foo(alef: A) -> X { X::new() }
+    ///        -----^^ affects parsing this part of the function signature
+    ///        |
+    ///        if req_name returns false, then this name is optional
+    ///
+    /// fn bar(A) -> X;
+    ///        ^
+    ///        |
+    ///        if req_name returns true, this is an error
+    /// ```
+    ///
+    /// Calling this function pointer should only return false if:
+    ///
+    ///   * The item is being parsed inside of a trait definition.
+    ///     Within an impl block or a module, it should always evaluate
+    ///     to true.
+    ///   * The span is from Edition 2015. In particular, you can get a
+    ///     2015 span inside a 2021 crate using macros.
     pub req_name: ReqName,
+    /// If this flag is set to `true`, then plain, semicolon-terminated function
+    /// prototypes are not allowed here.
+    ///
+    /// ```text
+    /// fn foo(alef: A) -> X { X::new() }
+    ///                      ^^^^^^^^^^^^
+    ///                      |
+    ///                      this is always allowed
+    ///
+    /// fn bar(alef: A, bet: B) -> X;
+    ///                             ^
+    ///                             |
+    ///                             if req_body is set to true, this is an error
+    /// ```
+    ///
+    /// This field should only be set to false if the item is inside of a trait
+    /// definition or extern block. Within an impl block or a module, it should
+    /// always be set to true.
     pub req_body: bool,
 }
 
