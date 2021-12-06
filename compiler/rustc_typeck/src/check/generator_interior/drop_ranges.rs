@@ -34,8 +34,15 @@ use crate::expr_use_visitor;
 /// record the parent expression, which is the point where the drop actually takes place.
 pub struct ExprUseDelegate<'tcx> {
     hir: Map<'tcx>,
-    /// Maps a HirId to a set of HirIds that are dropped by that node.
+    /// Records the point at which an expression or local variable is dropped.
+    ///
+    /// The key is the hir-id of the expression, and the value is a set or hir-ids for variables
+    /// or values that are consumed by that expression.
+    ///
+    /// Note that this set excludes "partial drops" -- for example, a statement like `drop(x.y)` is
+    /// not considered a drop of `x`.
     consumed_places: HirIdMap<HirIdSet>,
+    /// A set of hir-ids of values or variables that are borrowed at some point within the body.
     borrowed_places: HirIdSet,
 }
 
@@ -114,6 +121,8 @@ fn place_hir_id(place: &Place<'_>) -> Option<HirId> {
 pub struct DropRangeVisitor<'tcx> {
     hir: Map<'tcx>,
     /// Maps a HirId to a set of HirIds that are dropped by that node.
+    ///
+    /// See also the more detailed comment on `ExprUseDelegate.consumed_places`.
     consumed_places: HirIdMap<HirIdSet>,
     borrowed_places: HirIdSet,
     drop_ranges: DropRanges,
