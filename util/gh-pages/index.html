@@ -35,7 +35,7 @@ Otherwise, have a great day =^.^=
             background-color: var(--theme-popup-border);
         }
 
-        .dropdown-menu .checkbox { 
+        .dropdown-menu .checkbox {
             width: 100%;
             display: block;
             padding: 3px 20px;
@@ -46,12 +46,12 @@ Otherwise, have a great day =^.^=
             margin: 0;
          }
 
-         .dropdown-menu .checkbox label { 
+         .dropdown-menu .checkbox label {
              padding-left: 0;
              width: 100%;
          }
 
-         .dropdown-menu .checkbox input { 
+         .dropdown-menu .checkbox input {
              position: relative;
              margin: 0 0.5rem 0;
              padding: 0;
@@ -93,6 +93,16 @@ Otherwise, have a great day =^.^=
 
         .panel .panel-title-name .anchor { display: none; }
         .panel:hover .panel-title-name .anchor { display: inline;}
+
+        .search-control {
+            margin-top: 15px;
+        }
+
+        @media (min-width: 992px) {
+            .search-control {
+                margin-top: 0;
+            }
+        }
 
         .label {
             padding-top: 0.3em;
@@ -225,6 +235,7 @@ Otherwise, have a great day =^.^=
             color: var(--fg);
             background: var(--theme-popup-bg);
             padding: 0 0;
+            z-index: 10;
         }
         .theme-choice > li {
             padding: 5px 10px;
@@ -327,8 +338,8 @@ Otherwise, have a great day =^.^=
             </div>
 
             <div class="panel panel-default" ng-show="data">
-                <div class="panel-body row filter-panel">
-                    <div class="col-md-12 form-horizontal">
+                <div class="panel-body row">
+                    <div class="col-12 col-md-4">
                         <div class="btn-group" ng-class="{ open: selectedDropdown == 'levels' }"
                             ng-click="toggleDropdown('levels', $event)">
                             <button type="button" class="btn btn-default dropdown-toggle">
@@ -380,9 +391,7 @@ Otherwise, have a great day =^.^=
                             </ul>
                         </div>
                     </div>
-                </div>
-                <div class="panel-body row">
-                    <div class="col-md-12 form-horizontal">
+                    <div class="col-12 col-md-8 search-control">
                         <div class="input-group">
                             <label class="input-group-addon" id="filter-label" for="filter-input">Filter:</label>
                             <input type="text" class="form-control" placeholder="Keywords or search string" id="filter-input" ng-model="search" ng-model-options="{debounce: 50}"/>
