@@ -1,12 +1,14 @@
+use crate::clean::types::rustc_span;
 use crate::clean::{self, PrimitiveType};
 use crate::html::sources;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{ExprKind, HirId, Mod, Node};
 use rustc_middle::hir::nested_filter;
+use rustc_hir::{ExprKind, GenericParam, GenericParamKind, HirId, Item, ItemKind, Mod, Node};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
@@ -24,6 +26,7 @@ pub(crate) enum LinkFromSrc {
     Local(clean::Span),
     External(DefId),
     Primitive(PrimitiveType),
+    Doc(DefId),
 }
 
 /// This function will do at most two things:
@@ -91,6 +94,21 @@ impl<'tcx> SpanMapVisitor<'tcx> {
             self.matches.insert(path_span.unwrap_or(path.span), LinkFromSrc::External(def_id));
         }
     }
+
+    /// Used to generate links on items' definition to go to their documentation page.
+    crate fn extract_info_from_hir_id(&mut self, hir_id: HirId) {
+        if let Some(def_id) = self.tcx.hir().opt_local_def_id(hir_id) {
+            if let Some(span) = self.tcx.def_ident_span(def_id) {
+                let cspan = clean::Span::new(span);
+                let def_id = def_id.to_def_id();
+                // If the span isn't from the current crate, we ignore it.
+                if cspan.is_dummy() || cspan.cnum(self.tcx.sess) != LOCAL_CRATE {
+                    return;
+                }
+                self.matches.insert(span, LinkFromSrc::Doc(def_id));
+            }
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
@@ -117,6 +135,9 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                     LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)),
                 );
             }
+        } else {
+            // If it's a "mod foo {}", we want to look to its documentation page.
+            self.extract_info_from_hir_id(id);
         }
         intravisit::walk_mod(self, m, id);
     }
@@ -150,5 +171,29 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_use(&mut self, path: &'tcx rustc_hir::Path<'tcx>, id: HirId) {
         self.handle_path(path, None);
         intravisit::walk_use(self, path, id);
+    }
+
+    fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
+        match item.kind {
+            ItemKind::Static(_, _, _)
+            | ItemKind::Const(_, _)
+            | ItemKind::Fn(_, _, _)
+            | ItemKind::Macro(_)
+            | ItemKind::TyAlias(_, _)
+            | ItemKind::Enum(_, _)
+            | ItemKind::Struct(_, _)
+            | ItemKind::Union(_, _)
+            | ItemKind::Trait(_, _, _, _, _)
+            | ItemKind::TraitAlias(_, _) => self.extract_info_from_hir_id(item.hir_id()),
+            ItemKind::Impl(_)
+            | ItemKind::Use(_, _)
+            | ItemKind::ExternCrate(_)
+            | ItemKind::ForeignMod { .. }
+            | ItemKind::GlobalAsm(_)
+            | ItemKind::OpaqueTy(_)
+            // We already have "visit_mod" above so no need to check it here.
+            | ItemKind::Mod(_) => {}
+        }
+        intravisit::walk_item(self, item);
     }
 }

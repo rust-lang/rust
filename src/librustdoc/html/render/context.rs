@@ -116,7 +116,6 @@ pub(crate) struct SharedContext<'tcx> {
     /// to `Some(...)`, it'll store redirections and then generate a JSON file at the top level of
     /// the crate.
     redirections: Option<RefCell<FxHashMap<String, String>>>,
-
     /// Correspondance map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
     pub(crate) span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,

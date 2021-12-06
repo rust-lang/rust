@@ -740,6 +740,11 @@ fn string<T: Display>(
                     )
                     .ok()
                     .map(|(url, _, _)| url),
+                    LinkFromSrc::Doc(def_id) => {
+                        format::href_with_root_path(*def_id, context, Some(&context_info.root_path))
+                            .ok()
+                            .map(|(doc_link, _, _)| doc_link)
+                    }
                 }
             })
         {
