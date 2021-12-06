@@ -231,6 +231,16 @@ macro_rules! get_provider {
     };
 }
 
+macro_rules! opt_remap_env_constness {
+    ([][$name:ident]) => {};
+    ([(remap_env_constness) $($rest:tt)*][$name:ident]) => {
+        let $name = $name.without_const();
+    };
+    ([$other:tt $($modifiers:tt)*][$name:ident]) => {
+        opt_remap_env_constness!([$($modifiers)*][$name])
+    };
+}
+
 macro_rules! define_queries {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -247,6 +257,7 @@ macro_rules! define_queries {
             // Create an eponymous constructor for each query.
             $(#[allow(nonstandard_style)] $(#[$attr])*
             pub fn $name<$tcx>(tcx: QueryCtxt<$tcx>, key: query_keys::$name<$tcx>) -> QueryStackFrame {
+                opt_remap_env_constness!([$($modifiers)*][key]);
                 let kind = dep_graph::DepKind::$name;
                 let name = stringify!($name);
                 // Disable visible paths printing for performance reasons.
@@ -521,6 +532,7 @@ macro_rules! define_queries_struct {
                 lookup: QueryLookup,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<$tcx>> {
+                opt_remap_env_constness!([$($modifiers)*][key]);
                 let qcx = QueryCtxt { tcx, queries: self };
                 get_query::<queries::$name<$tcx>, _>(qcx, span, key, lookup, mode)
             })*
