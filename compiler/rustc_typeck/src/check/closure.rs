@@ -80,7 +80,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let generator_types = check_fn(
             self,
-            self.param_env,
+            self.param_env.without_const(),
             liberated_sig,
             decl,
             expr.hir_id,
