@@ -1519,6 +1519,7 @@ impl Statement<'_> {
     }
 
     /// Changes a statement to a nop and returns the original statement.
+    #[must_use = "If you don't need the statement, use `make_nop` instead"]
     pub fn replace_nop(&mut self) -> Self {
         Statement {
             source_info: self.source_info,

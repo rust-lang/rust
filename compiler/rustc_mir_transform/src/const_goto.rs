@@ -83,20 +83,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
                     // Now find which value in the Switch matches the const value.
                     let const_value =
                         _const.literal.try_eval_bits(self.tcx, self.param_env, switch_ty)?;
-                    let found_value_idx_option = targets
-                        .iter()
-                        .enumerate()
-                        .find(|(_, (value, _))| const_value == *value)
-                        .map(|(idx, _)| idx);
-
-                    let target_to_use_in_goto =
-                        if let Some(found_value_idx) = found_value_idx_option {
-                            targets.iter().nth(found_value_idx).unwrap().1
-                        } else {
-                            // If we did not find the const value in values, it must be the otherwise case
-                            targets.otherwise()
-                        };
-
+                    let target_to_use_in_goto = targets.target_for_value(const_value);
                     self.optimizations.push(OptimizationToApply {
                         bb_with_goto: location.block,
                         target_to_use_in_goto,
