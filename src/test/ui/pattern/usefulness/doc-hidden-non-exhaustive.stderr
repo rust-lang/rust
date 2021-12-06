@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `_` not covered
-  --> $DIR/doc-hidden-non-exhaustive.rs:8:11
+  --> $DIR/doc-hidden-non-exhaustive.rs:15:11
    |
 LL |     match HiddenEnum::A {
    |           ^^^^^^^^^^^^^ pattern `_` not covered
@@ -8,7 +8,7 @@ LL |     match HiddenEnum::A {
    = note: the matched value is of type `HiddenEnum`
 
 error[E0004]: non-exhaustive patterns: `B` not covered
-  --> $DIR/doc-hidden-non-exhaustive.rs:14:11
+  --> $DIR/doc-hidden-non-exhaustive.rs:21:11
    |
 LL |     match HiddenEnum::A {
    |           ^^^^^^^^^^^^^ pattern `B` not covered
@@ -23,7 +23,7 @@ LL |     B,
    = note: the matched value is of type `HiddenEnum`
 
 error[E0004]: non-exhaustive patterns: `B` and `_` not covered
-  --> $DIR/doc-hidden-non-exhaustive.rs:20:11
+  --> $DIR/doc-hidden-non-exhaustive.rs:27:11
    |
 LL |     match HiddenEnum::A {
    |           ^^^^^^^^^^^^^ patterns `B` and `_` not covered
@@ -38,7 +38,7 @@ LL |     B,
    = note: the matched value is of type `HiddenEnum`
 
 error[E0004]: non-exhaustive patterns: `Some(B)` and `Some(_)` not covered
-  --> $DIR/doc-hidden-non-exhaustive.rs:25:11
+  --> $DIR/doc-hidden-non-exhaustive.rs:32:11
    |
 LL |     match None {
    |           ^^^^ patterns `Some(B)` and `Some(_)` not covered
@@ -52,6 +52,24 @@ LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Option<HiddenEnum>`
 
-error: aborting due to 4 previous errors
+error[E0004]: non-exhaustive patterns: `C` not covered
+  --> $DIR/doc-hidden-non-exhaustive.rs:38:11
+   |
+LL | / enum InCrate {
+LL | |     A,
+LL | |     B,
+LL | |     #[doc(hidden)]
+LL | |     C,
+   | |     - not covered
+LL | | }
+   | |_- `InCrate` defined here
+...
+LL |       match InCrate::A {
+   |             ^^^^^^^^^^ pattern `C` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = note: the matched value is of type `InCrate`
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0004`.

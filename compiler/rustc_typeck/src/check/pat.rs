@@ -1313,7 +1313,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             tcx.eval_stability(field.did, None, DUMMY_SP, None),
                             EvalResult::Deny { .. }
                         )
-                        && !tcx.is_doc_hidden(field.did)
+                        // We only want to report the error if it is hidden and not local
+                        && !(tcx.is_doc_hidden(field.did) && !field.did.is_local())
                 })
                 .collect();
 
