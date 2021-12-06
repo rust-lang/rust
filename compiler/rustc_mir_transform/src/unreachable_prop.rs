@@ -64,7 +64,7 @@ impl MirPass<'_> for UnreachablePropagation {
     }
 }
 
-fn remove_successors<F>(
+fn remove_successors<'tcx, F>(
     terminator_kind: &TerminatorKind<'tcx>,
     predicate: F,
 ) -> Option<TerminatorKind<'tcx>>

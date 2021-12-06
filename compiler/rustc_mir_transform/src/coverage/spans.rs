@@ -21,7 +21,7 @@ pub(super) enum CoverageStatement {
 }
 
 impl CoverageStatement {
-    pub fn format(&self, tcx: TyCtxt<'tcx>, mir_body: &'a mir::Body<'tcx>) -> String {
+    pub fn format<'tcx>(&self, tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> String {
         match *self {
             Self::Statement(bb, span, stmt_index) => {
                 let stmt = &mir_body[bb].statements[stmt_index];
@@ -86,7 +86,7 @@ impl CoverageSpan {
     }
 
     pub fn for_statement(
-        statement: &Statement<'tcx>,
+        statement: &Statement<'_>,
         span: Span,
         expn_span: Span,
         bcb: BasicCoverageBlock,
@@ -151,7 +151,7 @@ impl CoverageSpan {
         self.bcb == other.bcb
     }
 
-    pub fn format(&self, tcx: TyCtxt<'tcx>, mir_body: &'a mir::Body<'tcx>) -> String {
+    pub fn format<'tcx>(&self, tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> String {
         format!(
             "{}\n    {}",
             source_range_no_file(tcx, &self.span),
@@ -159,10 +159,10 @@ impl CoverageSpan {
         )
     }
 
-    pub fn format_coverage_statements(
+    pub fn format_coverage_statements<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        mir_body: &'a mir::Body<'tcx>,
+        mir_body: &mir::Body<'tcx>,
     ) -> String {
         let mut sorted_coverage_statements = self.coverage_statements.clone();
         sorted_coverage_statements.sort_unstable_by_key(|covstmt| match *covstmt {
@@ -803,7 +803,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 
 /// If the MIR `Statement` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
-pub(super) fn filtered_statement_span(statement: &'a Statement<'tcx>) -> Option<Span> {
+pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
@@ -847,7 +847,7 @@ pub(super) fn filtered_statement_span(statement: &'a Statement<'tcx>) -> Option<
 
 /// If the MIR `Terminator` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
-pub(super) fn filtered_terminator_span(terminator: &'a Terminator<'tcx>) -> Option<Span> {
+pub(super) fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
     match terminator.kind {
         // These terminators have spans that don't positively contribute to computing a reasonable
         // span of actually executed source code. (For example, SwitchInt terminators extracted from

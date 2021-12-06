@@ -86,7 +86,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
     }
 }
 
-fn is_needs_drop_and_init(
+fn is_needs_drop_and_init<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     maybe_inits: &BitSet<MovePathIndex>,
@@ -158,7 +158,7 @@ fn is_needs_drop_and_init(
     }
 }
 
-fn variant_needs_drop(
+fn variant_needs_drop<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     substs: SubstsRef<'tcx>,

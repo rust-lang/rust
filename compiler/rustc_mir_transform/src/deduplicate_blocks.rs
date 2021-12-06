@@ -54,7 +54,7 @@ impl<'tcx> MutVisitor<'tcx> for OptApplier<'tcx> {
     }
 }
 
-fn find_duplicates<'a, 'tcx>(body: &'a Body<'tcx>) -> FxHashMap<BasicBlock, BasicBlock> {
+fn find_duplicates(body: &Body<'_>) -> FxHashMap<BasicBlock, BasicBlock> {
     let mut duplicates = FxHashMap::default();
 
     let bbs_to_go_through =
@@ -102,7 +102,7 @@ struct BasicBlockHashable<'tcx, 'a> {
     basic_block_data: &'a BasicBlockData<'tcx>,
 }
 
-impl<'tcx, 'a> Hash for BasicBlockHashable<'tcx, 'a> {
+impl Hash for BasicBlockHashable<'_, '_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         hash_statements(state, self.basic_block_data.statements.iter());
         // Note that since we only hash the kind, we lose span information if we deduplicate the blocks
@@ -110,9 +110,9 @@ impl<'tcx, 'a> Hash for BasicBlockHashable<'tcx, 'a> {
     }
 }
 
-impl<'tcx, 'a> Eq for BasicBlockHashable<'tcx, 'a> {}
+impl Eq for BasicBlockHashable<'_, '_> {}
 
-impl<'tcx, 'a> PartialEq for BasicBlockHashable<'tcx, 'a> {
+impl PartialEq for BasicBlockHashable<'_, '_> {
     fn eq(&self, other: &Self) -> bool {
         self.basic_block_data.statements.len() == other.basic_block_data.statements.len()
             && &self.basic_block_data.terminator().kind == &other.basic_block_data.terminator().kind
@@ -132,7 +132,7 @@ fn hash_statements<'a, 'tcx, H: Hasher>(
     }
 }
 
-fn statement_hash<'tcx, H: Hasher>(hasher: &mut H, stmt: &StatementKind<'tcx>) {
+fn statement_hash<H: Hasher>(hasher: &mut H, stmt: &StatementKind<'_>) {
     match stmt {
         StatementKind::Assign(box (place, rvalue)) => {
             place.hash(hasher);
@@ -142,14 +142,14 @@ fn statement_hash<'tcx, H: Hasher>(hasher: &mut H, stmt: &StatementKind<'tcx>) {
     };
 }
 
-fn rvalue_hash<H: Hasher>(hasher: &mut H, rvalue: &Rvalue<'tcx>) {
+fn rvalue_hash<H: Hasher>(hasher: &mut H, rvalue: &Rvalue<'_>) {
     match rvalue {
         Rvalue::Use(op) => operand_hash(hasher, op),
         x => x.hash(hasher),
     };
 }
 
-fn operand_hash<H: Hasher>(hasher: &mut H, operand: &Operand<'tcx>) {
+fn operand_hash<H: Hasher>(hasher: &mut H, operand: &Operand<'_>) {
     match operand {
         Operand::Constant(box Constant { user_ty: _, literal, span: _ }) => literal.hash(hasher),
         x => x.hash(hasher),
@@ -168,7 +168,7 @@ fn statement_eq<'tcx>(lhs: &StatementKind<'tcx>, rhs: &StatementKind<'tcx>) -> b
     res
 }
 
-fn rvalue_eq(lhs: &Rvalue<'tcx>, rhs: &Rvalue<'tcx>) -> bool {
+fn rvalue_eq<'tcx>(lhs: &Rvalue<'tcx>, rhs: &Rvalue<'tcx>) -> bool {
     let res = match (lhs, rhs) {
         (Rvalue::Use(op1), Rvalue::Use(op2)) => operand_eq(op1, op2),
         (x, y) => x == y,
@@ -177,7 +177,7 @@ fn rvalue_eq(lhs: &Rvalue<'tcx>, rhs: &Rvalue<'tcx>) -> bool {
     res
 }
 
-fn operand_eq(lhs: &Operand<'tcx>, rhs: &Operand<'tcx>) -> bool {
+fn operand_eq<'tcx>(lhs: &Operand<'tcx>, rhs: &Operand<'tcx>) -> bool {
     let res = match (lhs, rhs) {
         (
             Operand::Constant(box Constant { user_ty: _, literal, span: _ }),

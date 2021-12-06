@@ -137,7 +137,7 @@ fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) ->
     coverage_visitor.info
 }
 
-fn covered_file_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Symbol> {
+fn covered_file_name(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
     if tcx.is_mir_available(def_id) {
         let body = mir_body(tcx, def_id);
         for bb_data in body.basic_blocks().iter() {
