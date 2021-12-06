@@ -901,17 +901,14 @@ pub(crate) unsafe fn codegen(
                     .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
 
                 let dwo_out = cgcx.output_filenames.temp_path_dwo(module_name);
-                let dwo_out = match cgcx.split_debuginfo {
-                    // Don't change how DWARF is emitted in single mode (or when disabled).
-                    SplitDebuginfo::Off | SplitDebuginfo::Packed => None,
+                let dwo_out = if cgcx.target_can_use_split_dwarf
+                    && cgcx.split_debuginfo != SplitDebuginfo::Off
+                {
                     // Emit (a subset of the) DWARF into a separate file in split mode.
-                    SplitDebuginfo::Unpacked => {
-                        if cgcx.target_can_use_split_dwarf {
-                            Some(dwo_out.as_path())
-                        } else {
-                            None
-                        }
-                    }
+                    Some(dwo_out.as_path())
+                } else {
+                    // Don't change how DWARF is emitted in single mode (or when disabled).
+                    None
                 };
 
                 with_codegen(tm, llmod, config.no_builtins, |cpm| {
@@ -948,7 +945,7 @@ pub(crate) unsafe fn codegen(
 
     Ok(module.into_compiled_module(
         config.emit_obj != EmitObj::None,
-        cgcx.target_can_use_split_dwarf && cgcx.split_debuginfo == SplitDebuginfo::Unpacked,
+        cgcx.target_can_use_split_dwarf && cgcx.split_debuginfo != SplitDebuginfo::Off,
         config.emit_bc,
         &cgcx.output_filenames,
     ))
