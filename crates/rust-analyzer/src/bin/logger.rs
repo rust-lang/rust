@@ -2,9 +2,9 @@
 //! filter syntax and `tracing_appender` for non blocking output.
 
 use std::{
-    fmt::{self, Write},
+    fmt,
     fs::File,
-    io,
+    io::{self, Stderr},
     sync::Arc,
 };
 
@@ -12,7 +12,10 @@ use rust_analyzer::Result;
 use tracing::{level_filters::LevelFilter, Event, Subscriber};
 use tracing_log::NormalizeEvent;
 use tracing_subscriber::{
-    fmt::{writer::BoxMakeWriter, FmtContext, FormatEvent, FormatFields, FormattedFields},
+    fmt::{
+        format::Writer, writer::BoxMakeWriter, FmtContext, FormatEvent, FormatFields,
+        FormattedFields, MakeWriter,
+    },
     layer::SubscriberExt,
     registry::LookupSpan,
     util::SubscriberInitExt,
@@ -23,6 +26,16 @@ use tracing_tree::HierarchicalLayer;
 pub(crate) struct Logger {
     filter: EnvFilter,
     file: Option<File>,
+}
+
+struct MakeWriterStderr;
+
+impl<'a> MakeWriter<'a> for MakeWriterStderr {
+    type Writer = Stderr;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        io::stderr()
+    }
 }
 
 impl Logger {
@@ -54,7 +67,7 @@ impl Logger {
             .with_indent_lines(true)
             .with_ansi(false)
             .with_indent_amount(2)
-            .with_writer(std::io::stderr);
+            .with_writer(io::stderr);
 
         let writer = match self.file {
             Some(file) => BoxMakeWriter::new(Arc::new(file)),
@@ -96,7 +109,7 @@ where
     fn format_event(
         &self,
         ctx: &FmtContext<'_, S, N>,
-        writer: &mut dyn Write,
+        mut writer: Writer,
         event: &Event<'_>,
     ) -> fmt::Result {
         // Write level and target
@@ -135,7 +148,7 @@ where
         })?;
 
         // Write fields on the event
-        ctx.field_format().format_fields(writer, event)?;
+        ctx.field_format().format_fields(writer.by_ref(), event)?;
 
         writeln!(writer)
     }
