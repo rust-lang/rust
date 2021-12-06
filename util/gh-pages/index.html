@@ -72,6 +72,13 @@ Otherwise, have a great day =^.^=
             box-shadow: 0 0 3px var(--searchbar-shadow-color);
         }
 
+        div.panel div.panel-body .open button.dropdown-toggle {
+            background: var(--searchbar-bg);
+            color: var(--searchbar-fg);
+            border-color: var(--theme-popup-border);
+            filter: brightness(90%);
+        }
+
         .dropdown-toggle .badge {
             background-color: #777;
         }
@@ -536,7 +543,8 @@ Otherwise, have a great day =^.^=
             };
             $scope.groups = GROUPS_FILTER_DEFAULT;
             $scope.toggleDropdown = function (name, $event) {
-                if (name === $scope.selectedDropdown && $event.path.find(x => x.tagName === 'BUTTON')) {
+                const target = $event.target;
+                if (name === $scope.selectedDropdown && target.closest('button')) {
                     $scope.selectedDropdown = undefined;
                 } else {
                     $scope.selectedDropdown = name;
