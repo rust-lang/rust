@@ -43,6 +43,8 @@
 extern "C" {
 /// Pack 8 bools together in a single byte
 extern llvm::cl::opt<bool> EfficientBoolCache;
+
+extern llvm::cl::opt<bool> EnzymeZeroCache;
 }
 
 /// Container for all loop information to synthesize gradients

@@ -531,11 +531,14 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
   return B2.CreateLoad(GV);
 }
 
-Function *getOrInsertExponentialAllocator(Module &M) {
+Function *getOrInsertExponentialAllocator(Module &M, bool ZeroInit) {
   Type *BPTy = Type::getInt8PtrTy(M.getContext());
   Type *types[] = {BPTy, Type::getInt64Ty(M.getContext()),
                    Type::getInt64Ty(M.getContext())};
   std::string name = "__enzyme_exponentialallocation";
+  if (ZeroInit)
+    name += "zero";
+  assert(!ZeroInit && "Zero initialization within reallocation not handled");
   FunctionType *FT =
       FunctionType::get(Type::getInt8PtrTy(M.getContext()), types, false);
 

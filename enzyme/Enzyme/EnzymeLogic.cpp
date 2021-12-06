@@ -2144,6 +2144,9 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   IRBuilder<> ib(NewF->getEntryBlock().getFirstNonPHI());
 
   Value *ret = noReturn ? nullptr : ib.CreateAlloca(RetType);
+  if (!noReturn && EnzymeZeroCache) {
+    ib.CreateStore(Constant::getNullValue(RetType), ret);
+  }
 
   if (!noTape) {
     Value *tapeMemory;
@@ -2168,6 +2171,19 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 #else
         malloccall->addAttribute(AttributeList::ReturnIndex, attr);
 #endif
+      }
+      if (EnzymeZeroCache) {
+        IRBuilder<> B(malloccall->getNextNode());
+        Value *args[] = {
+            malloccall,
+            ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
+            malloccall->getArgOperand(0),
+            ConstantInt::getFalse(malloccall->getContext())};
+        Type *tys[] = {args[0]->getType(), args[2]->getType()};
+
+        B.CreateCall(Intrinsic::getDeclaration(NewF->getParent(),
+                                               Intrinsic::memset, tys),
+                     args);
       }
 #if LLVM_VERSION_MAJOR >= 14
       malloccall->addDereferenceableRetAttr(size->getLimitedValue());

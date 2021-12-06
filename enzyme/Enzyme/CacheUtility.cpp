@@ -35,6 +35,10 @@ llvm::cl::opt<bool>
     EfficientBoolCache("enzyme-smallbool", cl::init(false), cl::Hidden,
                        cl::desc("Place 8 bools together in a single byte"));
 
+llvm::cl::opt<bool> EnzymeZeroCache("enzyme-zero-cache", cl::init(false),
+                                    cl::Hidden,
+                                    cl::desc("Zero initialize the cache"));
+
 llvm::cl::opt<bool>
     EnzymePrintPerf("enzyme-print-perf", cl::init(false), cl::Hidden,
                     cl::desc("Enable Enzyme to print performance info"));
@@ -640,6 +644,9 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 #endif
     }
   }
+  if (EnzymeZeroCache && sublimits.size() == 0)
+    scopeInstructions[alloc].push_back(
+        entryBuilder.CreateStore(Constant::getNullValue(types.back()), alloc));
 
   Type *BPTy = Type::getInt8PtrTy(T->getContext());
 
@@ -697,6 +704,20 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         if (malloccall == nullptr) {
           malloccall =
               cast<CallInst>(cast<Instruction>(firstallocation)->getOperand(0));
+        }
+
+        if (EnzymeZeroCache && i == 0) {
+          Value *args[] = {
+              malloccall,
+              ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
+              malloccall->getArgOperand(0),
+              ConstantInt::getFalse(malloccall->getContext())};
+          Type *tys[] = {args[0]->getType(), args[2]->getType()};
+
+          scopeInstructions[alloc].push_back(allocationBuilder.CreateCall(
+              Intrinsic::getDeclaration(newFunc->getParent(), Intrinsic::memset,
+                                        tys),
+              args));
         }
 
         // Assert computation of size of array doesn't wrap
@@ -788,8 +809,9 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         Value *realloccall = nullptr;
 
         realloccall = build.CreateCall(
-            getOrInsertExponentialAllocator(*newFunc->getParent()), idxs,
-            name + "_realloccache");
+            getOrInsertExponentialAllocator(*newFunc->getParent(),
+                                            EnzymeZeroCache && i == 0),
+            idxs, name + "_realloccache");
         scopeAllocs[alloc].push_back(cast<CallInst>(realloccall));
         allocation = build.CreateBitCast(realloccall, allocation->getType());
         storealloc = build.CreateStore(allocation, storeInto);
