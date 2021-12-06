@@ -186,15 +186,12 @@ fn condattr_set_clock_id<'mir, 'tcx: 'mir>(
     attr_op: &OpTy<'tcx, Tag>,
     clock_id: impl Into<ScalarMaybeUninit<Tag>>,
 ) -> InterpResult<'tcx, ()> {
-    ecx.write_scalar_at_offset(attr_op, 0, clock_id, ecx.machine.layouts.i32)
-}
-
-fn condattr_deinit_clock_id<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
-    attr_op: &OpTy<'tcx, Tag>,
-) -> InterpResult<'tcx, ()> {
-    let layout = layout_of_maybe_uninit(ecx.tcx, ecx.machine.layouts.i32.ty);
-    ecx.write_scalar_at_offset(attr_op, 0, ScalarMaybeUninit::Uninit, layout)
+    ecx.write_scalar_at_offset(
+        attr_op,
+        0,
+        clock_id,
+        layout_of_maybe_uninit(ecx.tcx, ecx.machine.layouts.i32.ty),
+    )
 }
 
 // pthread_cond_t
@@ -367,6 +364,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_mutexattr_destroy(&mut self, attr_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Destroying an uninit pthread_mutexattr is UB, so check to make sure it's not uninit.
+        mutexattr_get_kind(this, attr_op)?.check_init()?;
+
         mutexattr_set_kind(this, attr_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
@@ -505,6 +505,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_ub_format!("destroyed a locked mutex");
         }
 
+        // Destroying an uninit pthread_mutex is UB, so check to make sure it's not uninit.
+        mutex_get_kind(this, mutex_op)?.check_init()?;
+        mutex_get_id(this, mutex_op)?.check_init()?;
+
         mutex_set_kind(this, mutex_op, ScalarMaybeUninit::Uninit)?;
         mutex_set_id(this, mutex_op, ScalarMaybeUninit::Uninit)?;
         // FIXME: delete interpreter state associated with this mutex.
@@ -606,6 +610,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_ub_format!("destroyed a locked rwlock");
         }
 
+        // Destroying an uninit pthread_rwlock is UB, so check to make sure it's not uninit.
+        rwlock_get_id(this, rwlock_op)?.check_init()?;
+
         rwlock_set_id(this, rwlock_op, ScalarMaybeUninit::Uninit)?;
         // FIXME: delete interpreter state associated with this rwlock.
 
@@ -660,9 +667,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn pthread_condattr_destroy(&mut self, attr_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        // Destroying an uninit pthread_condattr is UB, so check to make sure it's not uninit.
         condattr_get_clock_id(this, attr_op)?.check_init()?;
 
-        condattr_deinit_clock_id(this, attr_op)?;
+        condattr_set_clock_id(this, attr_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
     }
@@ -799,6 +807,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if this.condvar_is_awaited(id) {
             throw_ub_format!("destroying an awaited conditional variable");
         }
+
+        // Destroying an uninit pthread_cond is UB, so check to make sure it's not uninit.
+        cond_get_id(this, cond_op)?.check_init()?;
+        cond_get_clock_id(this, cond_op)?.check_init()?;
+
         cond_set_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
         cond_set_clock_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
         // FIXME: delete interpreter state associated with this condvar.
