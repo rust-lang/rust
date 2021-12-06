@@ -950,7 +950,7 @@ impl<'a> Parser<'a> {
         &mut self,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Option<P<ForeignItem>>>> {
-        let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
+        let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: false };
         Ok(self.parse_item_(fn_parse_mode, force_collect)?.map(
             |Item { attrs, id, span, vis, ident, kind, tokens }| {
                 let kind = match ForeignItemKind::try_from(kind) {
