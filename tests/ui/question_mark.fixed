@@ -136,6 +136,24 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     Ok(y)
 }
 
+// see issue #8019
+pub enum NotOption {
+    None,
+    First,
+    AfterFirst,
+}
+
+fn obj(_: i32) -> Result<(), NotOption> {
+    Err(NotOption::First)
+}
+
+fn f() -> NotOption {
+    if obj(2).is_err() {
+        return NotOption::None;
+    }
+    NotOption::First
+}
+
 fn main() {
     some_func(Some(42));
     some_func(None);
@@ -157,4 +175,5 @@ fn main() {
     func();
 
     let _ = result_func(Ok(42));
+    let _ = f();
 }
