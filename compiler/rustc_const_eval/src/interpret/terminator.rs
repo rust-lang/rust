@@ -331,8 +331,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // `find_mir_or_eval_fn`.
                 // FIXME: for variadic support, do we have to somehow determine calle's extra_args?
                 let callee_fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
-                assert!(!callee_fn_abi.c_variadic);
-                assert!(!caller_fn_abi.c_variadic);
+
+                if callee_fn_abi.c_variadic != caller_fn_abi.c_variadic {
+                    throw_ub_format!(
+                        "calling a c-variadic function via a non-variadic call site, or vice versa"
+                    );
+                }
+                if callee_fn_abi.c_variadic {
+                    throw_unsup_format!("calling a c-variadic function is not supported");
+                }
 
                 if M::enforce_abi(self) {
                     if caller_fn_abi.conv != callee_fn_abi.conv {
