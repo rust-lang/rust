@@ -4,7 +4,7 @@ use either::Either;
 use itertools::Itertools;
 use syntax::ast::{self, HasName};
 
-use crate::{context::CallKind, item::Builder, patterns::ImmediateLocation, CompletionContext};
+use crate::{context::PathKind, item::Builder, patterns::ImmediateLocation, CompletionContext};
 
 #[derive(Debug)]
 pub(super) enum Params {
@@ -30,11 +30,11 @@ impl Builder {
         if !ctx.config.add_call_parenthesis {
             return false;
         }
-        if ctx.in_use_tree() {
+        if let Some(PathKind::Use) = ctx.path_kind() {
             cov_mark::hit!(no_parens_in_use_item);
             return false;
         }
-        if matches!(ctx.path_call_kind(), Some(CallKind::Expr | CallKind::Pat))
+        if matches!(ctx.path_kind(), Some(PathKind::Expr | PathKind::Pat) if ctx.path_is_call())
             | matches!(
                 ctx.completion_location,
                 Some(ImmediateLocation::MethodCall { has_parens: true, .. })

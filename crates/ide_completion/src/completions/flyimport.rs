@@ -110,12 +110,17 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     if !ctx.config.enable_imports_on_the_fly {
         return None;
     }
-    if ctx.in_use_tree()
+    if matches!(ctx.path_kind(), Some(PathKind::Vis { .. } | PathKind::Use))
         || ctx.is_path_disallowed()
         || ctx.expects_item()
         || ctx.expects_assoc_item()
         || ctx.expects_variant()
     {
+        return None;
+    }
+    // FIXME: This should be encoded in a different way
+    if ctx.pattern_ctx.is_none() && ctx.path_context.is_none() && !ctx.has_dot_receiver() {
+        // completion inside `ast::Name` of a item declaration
         return None;
     }
     let potential_import_name = {
@@ -147,14 +152,25 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             }
         };
         match (kind, import.original_item) {
+            // Aren't handled in flyimport
+            (PathKind::Vis { .. } | PathKind::Use, _) => false,
+            // modules are always fair game
+            (_, ItemInNs::Types(hir::ModuleDef::Module(_))) => true,
+            // and so are macros(except for attributes)
+            (
+                PathKind::Expr | PathKind::Type | PathKind::Mac | PathKind::Pat,
+                ItemInNs::Macros(mac),
+            ) => mac.is_fn_like(),
+            (PathKind::Mac, _) => true,
+
             (PathKind::Expr, ItemInNs::Types(_) | ItemInNs::Values(_)) => true,
+
+            (PathKind::Pat, ItemInNs::Types(_)) => true,
+            (PathKind::Pat, ItemInNs::Values(def)) => matches!(def, hir::ModuleDef::Const(_)),
 
             (PathKind::Type, ItemInNs::Types(_)) => true,
             (PathKind::Type, ItemInNs::Values(_)) => false,
 
-            (PathKind::Expr | PathKind::Type, ItemInNs::Macros(mac)) => mac.is_fn_like(),
-
-            (PathKind::Attr, ItemInNs::Types(hir::ModuleDef::Module(_))) => true,
             (PathKind::Attr, ItemInNs::Macros(mac)) => mac.is_attr(),
             (PathKind::Attr, _) => false,
         }
