@@ -126,7 +126,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///             None => {
     ///                 // SAFETY: We've initialized the first `i` items
     ///                 unsafe {
-    ///                     return Err(IntoIter::from_raw_parts(buffer, 0..i));
+    ///                     return Err(IntoIter::new_unchecked(buffer, 0..i));
     ///                 }
     ///             }
     ///         }
@@ -143,7 +143,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// ```
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
     #[rustc_const_unstable(feature = "const_array_into_iter_constructors", issue = "91583")]
-    pub const unsafe fn from_raw_parts(
+    pub const unsafe fn new_unchecked(
         buffer: [MaybeUninit<T>; N],
         initialized: Range<usize>,
     ) -> Self {
@@ -210,7 +210,7 @@ impl<T, const N: usize> IntoIter<T, N> {
 
         // SAFETY: We're telling it that none of the elements are initialized,
         // which is trivially true.  And ∀N: usize, 0 <= N.
-        unsafe { Self::from_raw_parts(buffer, initialized) }
+        unsafe { Self::new_unchecked(buffer, initialized) }
     }
 
     /// Returns an immutable slice of all elements that have not been yielded
