@@ -33,8 +33,8 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
-    // SAFETY: The unsafe operations below involves indexing without a bound check (`get_unchecked` and `get_unchecked_mut`)
-    // and copying memory (`ptr::copy_nonoverlapping`).
+    // SAFETY: The unsafe operations below involves indexing without a bounds check (by offsetting a
+    // pointer) and copying memory (`ptr::copy_nonoverlapping`).
     //
     // a. Indexing:
     //  1. We checked the size of the array to >=2.
@@ -55,17 +55,18 @@ where
             // operation panics, `hole` will get dropped and automatically write the element back
             // into the slice.
             let mut tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(0)));
-            let mut hole = CopyOnDrop { src: &mut *tmp, dest: v.get_unchecked_mut(1) };
-            ptr::copy_nonoverlapping(v.get_unchecked(1), v.get_unchecked_mut(0), 1);
+            let v = v.as_mut_ptr();
+            let mut hole = CopyOnDrop { src: &mut *tmp, dest: v.add(1) };
+            ptr::copy_nonoverlapping(v.add(1), v.add(0), 1);
 
             for i in 2..len {
-                if !is_less(v.get_unchecked(i), &*tmp) {
+                if !is_less(&*v.add(i), &*tmp) {
                     break;
                 }
 
                 // Move `i`-th element one place to the left, thus shifting the hole to the right.
-                ptr::copy_nonoverlapping(v.get_unchecked(i), v.get_unchecked_mut(i - 1), 1);
-                hole.dest = v.get_unchecked_mut(i);
+                ptr::copy_nonoverlapping(v.add(i), v.add(i - 1), 1);
+                hole.dest = v.add(i);
             }
             // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
         }
@@ -78,8 +79,8 @@ where
     F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
-    // SAFETY: The unsafe operations below involves indexing without a bound check (`get_unchecked` and `get_unchecked_mut`)
-    // and copying memory (`ptr::copy_nonoverlapping`).
+    // SAFETY: The unsafe operations below involves indexing without a bound check (by offsetting a
+    // pointer) and copying memory (`ptr::copy_nonoverlapping`).
     //
     // a. Indexing:
     //  1. We checked the size of the array to >= 2.
@@ -100,17 +101,18 @@ where
             // operation panics, `hole` will get dropped and automatically write the element back
             // into the slice.
             let mut tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(len - 1)));
-            let mut hole = CopyOnDrop { src: &mut *tmp, dest: v.get_unchecked_mut(len - 2) };
-            ptr::copy_nonoverlapping(v.get_unchecked(len - 2), v.get_unchecked_mut(len - 1), 1);
+            let v = v.as_mut_ptr();
+            let mut hole = CopyOnDrop { src: &mut *tmp, dest: v.add(len - 2) };
+            ptr::copy_nonoverlapping(v.add(len - 2), v.add(len - 1), 1);
 
             for i in (0..len - 2).rev() {
-                if !is_less(&*tmp, v.get_unchecked(i)) {
+                if !is_less(&*tmp, &*v.add(i)) {
                     break;
                 }
 
                 // Move `i`-th element one place to the right, thus shifting the hole to the left.
-                ptr::copy_nonoverlapping(v.get_unchecked(i), v.get_unchecked_mut(i + 1), 1);
-                hole.dest = v.get_unchecked_mut(i);
+                ptr::copy_nonoverlapping(v.add(i), v.add(i + 1), 1);
+                hole.dest = v.add(i);
             }
             // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
         }
@@ -302,7 +304,7 @@ where
         if start_l == end_l {
             // Trace `block_l` elements from the left side.
             start_l = MaybeUninit::slice_as_mut_ptr(&mut offsets_l);
-            end_l = MaybeUninit::slice_as_mut_ptr(&mut offsets_l);
+            end_l = start_l;
             let mut elem = l;
 
             for i in 0..block_l {
@@ -328,7 +330,7 @@ where
         if start_r == end_r {
             // Trace `block_r` elements from the right side.
             start_r = MaybeUninit::slice_as_mut_ptr(&mut offsets_r);
-            end_r = MaybeUninit::slice_as_mut_ptr(&mut offsets_r);
+            end_r = start_r;
             let mut elem = r;
 
             for i in 0..block_r {
@@ -579,7 +581,8 @@ where
 
             // Swap the found pair of out-of-order elements.
             r -= 1;
-            ptr::swap(v.get_unchecked_mut(l), v.get_unchecked_mut(r));
+            let ptr = v.as_mut_ptr();
+            ptr::swap(ptr.add(l), ptr.add(r));
             l += 1;
         }
     }
