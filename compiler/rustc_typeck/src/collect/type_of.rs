@@ -172,7 +172,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 // We've encountered an `AnonConst` in some path, so we need to
                 // figure out which generic parameter it corresponds to and return
                 // the relevant type.
-                let (arg_index, segment) = path
+                let filtered = path
                     .segments
                     .iter()
                     .filter_map(|seg| seg.args.map(|args| (args.args, seg)))
@@ -181,10 +181,17 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                             .filter(|arg| arg.is_const())
                             .position(|arg| arg.id() == hir_id)
                             .map(|index| (index, seg))
-                    })
-                    .unwrap_or_else(|| {
-                        bug!("no arg matching AnonConst in path");
                     });
+                let (arg_index, segment) = match filtered {
+                    None => {
+                        tcx.sess.delay_span_bug(
+                            tcx.def_span(def_id),
+                            "no arg matching AnonConst in path",
+                        );
+                        return None;
+                    }
+                    Some(inner) => inner,
+                };
 
                 // Try to use the segment resolution if it is valid, otherwise we
                 // default to the path resolution.
