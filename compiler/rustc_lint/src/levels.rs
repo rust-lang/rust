@@ -5,7 +5,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::{intravisit, HirId, CRATE_HIR_ID};
+use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::lint::LintDiagnosticBuilder;

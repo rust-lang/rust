@@ -3,7 +3,7 @@ use crate::proc_macro_decls;
 use crate::util;
 
 use rustc_ast::mut_visit::MutVisitor;
-use rustc_ast::{self as ast, visit, DUMMY_NODE_ID};
+use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -14,7 +14,7 @@ use rustc_errors::{Applicability, ErrorReported, PResult};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::Crate;
-use rustc_lint::LintStore;
+use rustc_lint::{EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_metadata::{encode_metadata, EncodedMetadata};
 use rustc_middle::arena::Arena;
@@ -34,7 +34,7 @@ use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{FileName, MultiSpan};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
@@ -233,11 +233,11 @@ pub fn register_plugins<'a>(
     Ok((krate, lint_store))
 }
 
-fn pre_expansion_lint(
+fn pre_expansion_lint<'a>(
     sess: &Session,
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
-    check_node: &ast::Crate,
+    check_node: impl EarlyCheckNode<'a>,
     node_name: &str,
 ) {
     sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name).run(|| {
@@ -322,10 +322,15 @@ pub fn configure_and_expand(
         };
 
         let registered_tools = resolver.registered_tools().clone();
-        let extern_mod_loaded = |ident: Ident, attrs, items, span| {
-            let krate = ast::Crate { attrs, items, span, id: DUMMY_NODE_ID, is_placeholder: false };
-            pre_expansion_lint(sess, lint_store, &registered_tools, &krate, ident.name.as_str());
-            (krate.attrs, krate.items)
+        let extern_mod_loaded = |node_id, attrs: Vec<_>, items: Vec<_>, name: Symbol| {
+            pre_expansion_lint(
+                sess,
+                lint_store,
+                &registered_tools,
+                (node_id, &*attrs, &*items),
+                name.as_str(),
+            );
+            (attrs, items)
         };
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&extern_mod_loaded));
 
@@ -507,7 +512,7 @@ pub fn lower_to_hir<'res, 'tcx>(
             resolver.registered_tools(),
             lint_buffer,
             rustc_lint::BuiltinCombinedEarlyLintPass::new(),
-            &krate,
+            &*krate,
         )
     });
 

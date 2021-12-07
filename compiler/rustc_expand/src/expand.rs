@@ -1108,7 +1108,12 @@ impl InvocationCollectorNode for P<ast::Item> {
                     );
 
                 if let Some(extern_mod_loaded) = ecx.extern_mod_loaded {
-                    (attrs, items) = extern_mod_loaded(ident, attrs, items, inner_span);
+                    (attrs, items) = extern_mod_loaded(
+                        ecx.current_expansion.lint_node_id,
+                        attrs,
+                        items,
+                        ident.name,
+                    );
                 }
 
                 *mod_kind = ModKind::Loaded(items, Inline::No, inner_span);

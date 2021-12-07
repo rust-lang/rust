@@ -959,8 +959,9 @@ pub struct ExpansionData {
     pub is_trailing_mac: bool,
 }
 
-type OnExternModLoaded<'a> =
-    Option<&'a dyn Fn(Ident, Vec<Attribute>, Vec<P<Item>>, Span) -> (Vec<Attribute>, Vec<P<Item>>)>;
+type OnExternModLoaded<'a> = Option<
+    &'a dyn Fn(NodeId, Vec<Attribute>, Vec<P<Item>>, Symbol) -> (Vec<Attribute>, Vec<P<Item>>),
+>;
 
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()

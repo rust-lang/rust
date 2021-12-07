@@ -16,9 +16,10 @@
 
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
-use rustc_ast as ast;
-use rustc_ast::visit as ast_visit;
+use rustc_ast::ptr::P;
+use rustc_ast::visit::{self as ast_visit, Visitor};
 use rustc_ast::AstLike;
+use rustc_ast::{self as ast, walk_list};
 use rustc_middle::ty::RegisteredTools;
 use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
@@ -32,7 +33,7 @@ macro_rules! run_early_pass { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
 }) }
 
-struct EarlyContextAndPass<'a, T: EarlyLintPass> {
+pub struct EarlyContextAndPass<'a, T: EarlyLintPass> {
     context: EarlyContext<'a>,
     pass: T,
 }
@@ -326,14 +327,65 @@ macro_rules! early_lint_pass_impl {
 
 crate::early_lint_methods!(early_lint_pass_impl, []);
 
-fn early_lint_node(
+/// Early lints work on different nodes - either on the crate root, or on freshly loaded modules.
+/// This trait generalizes over those nodes.
+pub trait EarlyCheckNode<'a>: Copy {
+    fn id(self) -> ast::NodeId;
+    fn attrs<'b>(self) -> &'b [ast::Attribute]
+    where
+        'a: 'b;
+    fn check<'b>(self, cx: &mut EarlyContextAndPass<'b, impl EarlyLintPass>)
+    where
+        'a: 'b;
+}
+
+impl<'a> EarlyCheckNode<'a> for &'a ast::Crate {
+    fn id(self) -> ast::NodeId {
+        ast::CRATE_NODE_ID
+    }
+    fn attrs<'b>(self) -> &'b [ast::Attribute]
+    where
+        'a: 'b,
+    {
+        &self.attrs
+    }
+    fn check<'b>(self, cx: &mut EarlyContextAndPass<'b, impl EarlyLintPass>)
+    where
+        'a: 'b,
+    {
+        run_early_pass!(cx, check_crate, self);
+        ast_visit::walk_crate(cx, self);
+        run_early_pass!(cx, check_crate_post, self);
+    }
+}
+
+impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [P<ast::Item>]) {
+    fn id(self) -> ast::NodeId {
+        self.0
+    }
+    fn attrs<'b>(self) -> &'b [ast::Attribute]
+    where
+        'a: 'b,
+    {
+        self.1
+    }
+    fn check<'b>(self, cx: &mut EarlyContextAndPass<'b, impl EarlyLintPass>)
+    where
+        'a: 'b,
+    {
+        walk_list!(cx, visit_attribute, self.1);
+        walk_list!(cx, visit_item, self.2);
+    }
+}
+
+fn early_lint_node<'a>(
     sess: &Session,
     warn_about_weird_lints: bool,
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
     buffered: LintBuffer,
     pass: impl EarlyLintPass,
-    check_node: &ast::Crate,
+    check_node: impl EarlyCheckNode<'a>,
 ) -> LintBuffer {
     let mut cx = EarlyContextAndPass {
         context: EarlyContext::new(
@@ -346,22 +398,18 @@ fn early_lint_node(
         pass,
     };
 
-    cx.with_lint_attrs(ast::CRATE_NODE_ID, &check_node.attrs, |cx| {
-        run_early_pass!(cx, check_crate, check_node);
-        ast_visit::walk_crate(cx, check_node);
-        run_early_pass!(cx, check_crate_post, check_node);
-    });
+    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
     cx.context.buffered
 }
 
-pub fn check_ast_node(
+pub fn check_ast_node<'a>(
     sess: &Session,
     pre_expansion: bool,
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
     builtin_lints: impl EarlyLintPass,
-    check_node: &ast::Crate,
+    check_node: impl EarlyCheckNode<'a>,
 ) {
     let passes =
         if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
