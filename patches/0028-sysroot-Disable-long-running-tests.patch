@@ -11,12 +11,12 @@ diff --git a/library/core/tests/slice.rs b/library/core/tests/slice.rs
 index 2c8f00a..44847ee 100644
 --- a/library/core/tests/slice.rs
 +++ b/library/core/tests/slice.rs
-@@ -2332,6 +2332,8 @@ macro_rules! empty_max_mut {
+@@ -2332,7 +2332,8 @@ macro_rules! empty_max_mut {
      };
  }
  
-+// These tests take way too long without optimizations
 +/*
+ #[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
  take_tests! {
      slice: &[(); usize::MAX], method: take,
      (take_in_bounds_max_range_to, (..usize::MAX), Some(EMPTY_MAX), &[(); 0]),
