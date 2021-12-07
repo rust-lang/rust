@@ -2320,12 +2320,12 @@ impl crate::Decoder for Decoder {
         let name = match self.pop() {
             Json::String(s) => s,
             Json::Object(mut o) => {
-                let n = match o.remove(&"variant".to_owned()) {
+                let n = match o.remove("variant") {
                     Some(Json::String(s)) => s,
                     Some(val) => return Err(ExpectedError("String".to_owned(), val.to_string())),
                     None => return Err(MissingFieldError("variant".to_owned())),
                 };
-                match o.remove(&"fields".to_string()) {
+                match o.remove("fields") {
                     Some(Json::Array(l)) => {
                         self.stack.extend(l.into_iter().rev());
                     }
@@ -2365,7 +2365,7 @@ impl crate::Decoder for Decoder {
     {
         let mut obj = expect!(self.pop(), Object)?;
 
-        let value = match obj.remove(&name.to_string()) {
+        let value = match obj.remove(name) {
             None => {
                 // Add a Null and try to parse it as an Option<_>
                 // to get None as a default value.
