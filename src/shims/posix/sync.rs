@@ -367,6 +367,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Destroying an uninit pthread_mutexattr is UB, so check to make sure it's not uninit.
         mutexattr_get_kind(this, attr_op)?.check_init()?;
 
+        // To catch double-destroys, we de-initialize the mutexattr.
         // This is technically not right and might lead to false positives. For example, the below
         // code is *likely* sound, even assuming uninit numbers are UB, but miri with
         // -Zmiri-check-number-validity complains
@@ -376,6 +377,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // libc::pthread_mutexattr_destroy(x.as_mut_ptr());
         // x.assume_init();
         //
+        // However, the way libstd uses the pthread APIs works in our favor here, so we can get away with this.
         // This can always be revisited to have some external state to catch double-destroys
         // but not complain about the above code. See https://github.com/rust-lang/miri/pull/1933
 
