@@ -13,3 +13,4 @@ generated_diagnostic.adoc
 .DS_Store
 /out/
 /dump.lsif
+.envrc

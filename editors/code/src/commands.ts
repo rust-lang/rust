@@ -85,6 +85,15 @@ export function memoryUsage(ctx: Ctx): Cmd {
     };
 }
 
+export function shuffleCrateGraph(ctx: Ctx): Cmd {
+    return async () => {
+        const client = ctx.client;
+        if (!client) return;
+
+        await client.sendRequest(ra.shuffleCrateGraph);
+    };
+}
+
 export function matchingBrace(ctx: Ctx): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;

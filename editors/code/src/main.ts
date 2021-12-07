@@ -117,6 +117,7 @@ async function initCommonContext(context: vscode.ExtensionContext, ctx: Ctx) {
 
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('memoryUsage', commands.memoryUsage);
+    ctx.registerCommand('shuffleCrateGraph', commands.shuffleCrateGraph);
     ctx.registerCommand('reloadWorkspace', commands.reloadWorkspace);
     ctx.registerCommand('matchingBrace', commands.matchingBrace);
     ctx.registerCommand('joinLines', commands.joinLines);

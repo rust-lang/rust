@@ -9,6 +9,7 @@ export interface AnalyzerStatusParams {
 }
 export const analyzerStatus = new lc.RequestType<AnalyzerStatusParams, string, void>("rust-analyzer/analyzerStatus");
 export const memoryUsage = new lc.RequestType0<string, void>("rust-analyzer/memoryUsage");
+export const shuffleCrateGraph = new lc.RequestType0<null, void>("rust-analyzer/shuffleCrateGraph");
 
 export interface ServerStatusParams {
     health: "ok" | "warning" | "error";
