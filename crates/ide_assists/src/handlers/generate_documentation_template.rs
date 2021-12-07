@@ -41,7 +41,10 @@ pub(crate) fn generate_documentation_template(
 ) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let ast_func = name.syntax().parent().and_then(ast::Fn::cast)?;
-    if is_in_trait_impl(&ast_func) || !is_public(&ast_func) {
+    if is_in_trait_impl(&ast_func)
+        || !is_public(&ast_func)
+        || ast_func.doc_comments().next().is_some()
+    {
         return None;
     }
 
@@ -69,9 +72,6 @@ pub(crate) fn generate_documentation_template(
                     doc_lines.push("".into());
                     doc_lines.append(&mut lines);
                 }
-            }
-            if ast_func.doc_comments().next().is_some() {
-                doc_lines.push("--- OLD VERSION BELOW ---".into());
             }
             builder.insert(text_range.start(), documentation_from_lines(doc_lines, indent_level));
         },
@@ -498,6 +498,17 @@ mod ParentPrivateModule {
         pub fn pr$0ivate() {}
     }
 }"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_if_function_already_documented() {
+        check_assist_not_applicable(
+            generate_documentation_template,
+            r#"
+/// Some documentation here
+pub fn $0documented_function() {}
+"#,
         );
     }
 
