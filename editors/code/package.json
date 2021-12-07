@@ -172,6 +172,11 @@
                 "category": "Rust Analyzer"
             },
             {
+                "command": "rust-analyzer.shuffleCrateGraph",
+                "title": "Shuffle Crate Graph",
+                "category": "Rust Analyzer"
+            },
+            {
                 "command": "rust-analyzer.reloadWorkspace",
                 "title": "Reload workspace",
                 "category": "Rust Analyzer"

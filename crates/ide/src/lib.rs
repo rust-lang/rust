@@ -56,6 +56,7 @@ mod typing;
 mod view_crate_graph;
 mod view_hir;
 mod view_item_tree;
+mod shuffle_crate_graph;
 
 use std::sync::Arc;
 
@@ -176,6 +177,10 @@ impl AnalysisHost {
     }
     pub fn raw_database_mut(&mut self) -> &mut RootDatabase {
         &mut self.db
+    }
+
+    pub fn shuffle_crate_graph(&mut self) {
+        shuffle_crate_graph::shuffle_crate_graph(&mut self.db);
     }
 }
 
