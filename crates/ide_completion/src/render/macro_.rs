@@ -52,14 +52,8 @@ impl<'a> MacroRender<'a> {
         } else {
             Some(self.ctx.source_range())
         }?;
-        let kind = match self.macro_.kind() {
-            hir::MacroKind::Derive => SymbolKind::Derive,
-            hir::MacroKind::Attr => SymbolKind::Attribute,
-            hir::MacroKind::BuiltIn | hir::MacroKind::Declarative | hir::MacroKind::ProcMacro => {
-                SymbolKind::Macro
-            }
-        };
-        let mut item = CompletionItem::new(kind, source_range, self.label());
+        let mut item =
+            CompletionItem::new(SymbolKind::from(self.macro_.kind()), source_range, self.label());
         item.set_deprecated(self.ctx.is_deprecated(self.macro_)).set_detail(self.detail());
 
         if let Some(import_to_add) = import_to_add {
