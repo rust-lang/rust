@@ -1,3 +1,4 @@
+use hir::ModuleDef;
 use ide_db::assists::{AssistId, AssistKind};
 use stdx::to_lower_snake_case;
 use syntax::{
@@ -51,8 +52,6 @@ pub(crate) fn generate_documentation_template(
     let parent_syntax = ast_func.syntax();
     let text_range = parent_syntax.text_range();
     let indent_level = IndentLevel::from_node(&parent_syntax);
-    let krate_name =
-        ctx.sema.scope(&parent_syntax).module()?.krate().display_name(ctx.db())?.to_string();
 
     acc.add(
         AssistId("generate_documentation_template", AssistKind::Generate),
@@ -63,7 +62,7 @@ pub(crate) fn generate_documentation_template(
             // Introduction / short function description before the sections
             doc_lines.push(introduction_builder(&ast_func));
             // Then come the sections
-            if let Some(mut lines) = examples_builder(&ast_func, krate_name) {
+            if let Some(mut lines) = examples_builder(&ast_func, ctx) {
                 doc_lines.push("".into());
                 doc_lines.append(&mut lines);
             }
@@ -94,16 +93,16 @@ fn introduction_builder(ast_func: &ast::Fn) -> String {
 }
 
 /// Builds an `# Examples` section. An option is returned to be able to manage an error in the AST.
-fn examples_builder(ast_func: &ast::Fn, krate_name: String) -> Option<Vec<String>> {
+fn examples_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Vec<String>> {
     let (no_panic_ex, panic_ex) = if is_in_trait_def(ast_func) {
         let message = "// Example template not implemented for trait functions";
         (Some(vec![message.into()]), Some(vec![message.into()]))
     } else {
         let panic_ex = match can_panic(ast_func) {
-            Some(true) => gen_panic_ex_template(ast_func, krate_name.clone()),
+            Some(true) => gen_panic_ex_template(ast_func, ctx),
             _ => None,
         };
-        let no_panic_ex = gen_ex_template(ast_func, krate_name);
+        let no_panic_ex = gen_ex_template(ast_func, ctx);
         (no_panic_ex, panic_ex)
     };
 
@@ -146,8 +145,8 @@ fn safety_builder(ast_func: &ast::Fn) -> Option<Vec<String>> {
 
 /// Generate an example template which should not panic
 /// `None` if the function has a `self` parameter but is not in an `impl`.
-fn gen_ex_template(ast_func: &ast::Fn, krate_name: String) -> Option<Vec<String>> {
-    let (mut lines, ex_helper) = gen_ex_start_helper(ast_func, krate_name)?;
+fn gen_ex_template(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Vec<String>> {
+    let (mut lines, ex_helper) = gen_ex_start_helper(ast_func, ctx)?;
     // Call the function, check result
     if returns_a_value(ast_func) {
         if count_parameters(&ex_helper.param_list) < 3 {
@@ -171,8 +170,8 @@ fn gen_ex_template(ast_func: &ast::Fn, krate_name: String) -> Option<Vec<String>
 
 /// Generate an example template which should panic
 /// `None` if the function has a `self` parameter but is not in an `impl`.
-fn gen_panic_ex_template(ast_func: &ast::Fn, krate_name: String) -> Option<Vec<String>> {
-    let (mut lines, ex_helper) = gen_ex_start_helper(ast_func, krate_name)?;
+fn gen_panic_ex_template(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Vec<String>> {
+    let (mut lines, ex_helper) = gen_ex_start_helper(ast_func, ctx)?;
     match returns_a_value(ast_func) {
         true => lines.push(format!("let _ = {}; // panics", ex_helper.function_call)),
         false => lines.push(format!("{}; // panics", ex_helper.function_call)),
@@ -190,14 +189,14 @@ struct ExHelper {
 
 /// Build the start of the example and transmit the useful intermediary results.
 /// `None` if the function has a `self` parameter but is not in an `impl`.
-fn gen_ex_start_helper(ast_func: &ast::Fn, krate_name: String) -> Option<(Vec<String>, ExHelper)> {
+fn gen_ex_start_helper(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<(Vec<String>, ExHelper)> {
     let mut lines = Vec::new();
     let is_unsafe = ast_func.unsafe_token().is_some();
     let param_list = ast_func.param_list()?;
     let ref_mut_params = ref_mut_params(&param_list);
     let self_name: Option<String> = self_name(ast_func);
 
-    lines.push(format!("use {};", build_path(ast_func, krate_name)));
+    lines.push(format!("use {};", build_path(ast_func, ctx)?));
     lines.push("".into());
     if let Some(self_definition) = self_definition(ast_func, self_name.as_deref()) {
         lines.push(self_definition);
@@ -218,6 +217,12 @@ fn is_public(ast_func: &ast::Fn) -> bool {
             .ancestors()
             .filter_map(ast::Module::cast)
             .all(|module| has_pub(&module))
+}
+
+/// Get the name of the current crate
+fn crate_name(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<String> {
+    let krate = ctx.sema.scope(&ast_func.syntax()).module()?.krate();
+    Some(krate.display_name(ctx.db())?.to_string())
 }
 
 /// Check if visibility is exactly `pub` (not `pub(crate)` for instance)
@@ -377,21 +382,16 @@ fn string_vec_from(string_array: &[&str]) -> Vec<String> {
 }
 
 /// Helper function to build the path of the module in the which is the node
-fn build_path(ast_func: &ast::Fn, krate_name: String) -> String {
-    let mut path: Vec<String> = ast_func
-        .syntax()
-        .ancestors()
-        .filter_map(|m| ast::Module::cast(m).and_then(|m| m.name()))
-        .map(|m| m.to_string())
-        .collect();
-    path.push(krate_name);
-    path.reverse();
-    path.push(
-        self_partial_type(ast_func)
-            .or_else(|| ast_func.name().map(|n| n.to_string()))
-            .unwrap_or_else(|| "*".into()),
-    );
-    intersperse_string(path.into_iter(), "::")
+fn build_path(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<String> {
+    let crate_name = crate_name(ast_func, ctx)?;
+    let leaf = self_partial_type(ast_func)
+        .or_else(|| ast_func.name().map(|n| n.to_string()))
+        .unwrap_or_else(|| "*".into());
+    let func_module_def: ModuleDef = ctx.sema.to_def(ast_func)?.module(ctx.db()).into();
+    match func_module_def.canonical_path(ctx.db()) {
+        Some(path) => Some(format!("{}::{}::{}", crate_name, path, leaf)),
+        None => Some(format!("{}::{}", crate_name, leaf)),
+    }
 }
 
 /// Helper function to get the return type of a function
