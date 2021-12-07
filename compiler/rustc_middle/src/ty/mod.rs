@@ -1354,6 +1354,10 @@ impl<'tcx> ParamEnv<'tcx> {
         self
     }
 
+    pub fn remap_constness_with(&mut self, mut constness: ty::BoundConstness) {
+        *self = self.with_constness(constness.and(self.constness()))
+    }
+
     /// Returns a new parameter environment with the same clauses, but
     /// which "reveals" the true results of projections in all cases
     /// (even for associated types that are specializable). This is

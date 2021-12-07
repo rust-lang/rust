@@ -1655,6 +1655,7 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal }
+        remap_env_constness
     }
 
     // FIXME: Implement `normalize_generic_arg_after_erasing_regions` and
@@ -1701,6 +1702,7 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "computing implied outlives bounds for `{:?}`", goal }
+        remap_env_constness
     }
 
     /// Do not call this query directly: invoke `infcx.at().dropck_outlives()` instead.
@@ -1711,6 +1713,7 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "computing dropck types for `{:?}`", goal }
+        remap_env_constness
     }
 
     /// Do not call this query directly: invoke `infcx.predicate_may_hold()` or
@@ -1738,6 +1741,7 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "evaluating `type_op_ascribe_user_type` `{:?}`", goal }
+        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `Eq` type-op
@@ -1748,6 +1752,7 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "evaluating `type_op_eq` `{:?}`", goal }
+        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `Subtype` type-op
@@ -1758,6 +1763,7 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "evaluating `type_op_subtype` `{:?}`", goal }
+        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `ProvePredicate` type-op
@@ -1778,6 +1784,7 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal }
+        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -1788,6 +1795,7 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal }
+        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -1798,6 +1806,7 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal }
+        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -1808,6 +1817,7 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal }
+        remap_env_constness
     }
 
     query subst_and_check_impossible_predicates(key: (DefId, SubstsRef<'tcx>)) -> bool {
@@ -1821,6 +1831,7 @@ rustc_queries! {
         goal: CanonicalTyGoal<'tcx>
     ) -> MethodAutoderefStepsResult<'tcx> {
         desc { "computing autoderef types for `{:?}`", goal }
+        remap_env_constness
     }
 
     query supported_target_features(_: CrateNum) -> FxHashMap<String, Option<Symbol>> {
