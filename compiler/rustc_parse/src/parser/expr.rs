@@ -1100,30 +1100,37 @@ impl<'a> Parser<'a> {
                 snapshot.bump(); // `(`
                 match snapshot.parse_struct_fields(path, false, token::Paren) {
                     Ok((fields, ..)) if snapshot.eat(&token::CloseDelim(token::Paren)) => {
-                        // We have are certain we have `Enum::Foo(a: 3, b: 4)`, suggest
+                        // We are certain we have `Enum::Foo(a: 3, b: 4)`, suggest
                         // `Enum::Foo { a: 3, b: 4 }` or `Enum::Foo(3, 4)`.
                         *self = snapshot;
                         let close_paren = self.prev_token.span;
                         let span = lo.to(self.prev_token.span);
-                        err.cancel();
-                        self.struct_span_err(
-                            span,
-                            "invalid `struct` delimiters or `fn` call arguments",
-                        )
-                        .multipart_suggestion(
-                            &format!("if `{}` is a struct, use braces as delimiters", name),
-                            vec![(open_paren, " { ".to_string()), (close_paren, " }".to_string())],
-                            Applicability::MaybeIncorrect,
-                        )
-                        .multipart_suggestion(
-                            &format!("if `{}` is a function, use the arguments directly", name),
-                            fields
-                                .into_iter()
-                                .map(|field| (field.span.until(field.expr.span), String::new()))
-                                .collect(),
-                            Applicability::MaybeIncorrect,
-                        )
-                        .emit();
+                        if !fields.is_empty() {
+                            err.cancel();
+                            let mut err = self.struct_span_err(
+                                span,
+                                "invalid `struct` delimiters or `fn` call arguments",
+                            );
+                            err.multipart_suggestion(
+                                &format!("if `{}` is a struct, use braces as delimiters", name),
+                                vec![
+                                    (open_paren, " { ".to_string()),
+                                    (close_paren, " }".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                            err.multipart_suggestion(
+                                &format!("if `{}` is a function, use the arguments directly", name),
+                                fields
+                                    .into_iter()
+                                    .map(|field| (field.span.until(field.expr.span), String::new()))
+                                    .collect(),
+                                Applicability::MaybeIncorrect,
+                            );
+                            err.emit();
+                        } else {
+                            err.emit();
+                        }
                         return Some(self.mk_expr_err(span));
                     }
                     Ok(_) => {}
