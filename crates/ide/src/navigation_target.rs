@@ -298,7 +298,6 @@ impl TryToNav for hir::Impl {
         let InFile { file_id, value } = self.source(db)?;
         let derive_attr = self.is_builtin_derive(db);
 
-        let range = |syntax: &_| InFile::new(file_id, syntax).original_file_range(db);
         let focus_range = if derive_attr.is_some() {
             None
         } else {
@@ -307,9 +306,10 @@ impl TryToNav for hir::Impl {
                 .and_then(|ty| InFile::new(file_id, ty.syntax()).original_file_range_opt(db))
                 .map(|it| it.range)
         };
+
         let FileRange { file_id, range: full_range } = match &derive_attr {
-            Some(InFile { value, .. }) => range(value.syntax()),
-            None => range(value.syntax()),
+            Some(attr) => attr.syntax().original_file_range(db),
+            None => InFile::new(file_id, value.syntax()).original_file_range(db),
         };
 
         Some(NavigationTarget::from_syntax(
