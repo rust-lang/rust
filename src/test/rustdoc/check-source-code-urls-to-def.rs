@@ -28,11 +28,11 @@ impl Foo {
 
 fn babar() {}
 
-// @has - '//a/@href' '/struct.String.html'
+// @has - '//a/@href' '/string.rs.html'
 // @has - '//a/@href' '/primitive.u32.html'
 // @has - '//a/@href' '/primitive.str.html'
 // @count - '//a[@href="../../src/foo/check-source-code-urls-to-def.rs.html#23"]' 5
-// @has - '//a[@href="../../source_code/struct.SourceCode.html"]' 'source_code::SourceCode'
+// @has - '//a[@href="../../src/source_code/source_code.rs.html#1"]' 'source_code::SourceCode'
 pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::SourceCode) {
     let x = 12;
     let y: Foo = Foo;

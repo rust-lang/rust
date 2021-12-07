@@ -7,11 +7,11 @@ size: (600, 800)
 // We check that the scroll is at the top first.
 assert-property: ("html", {"scrollTop": "0"})
 
-click: '//a[text() = "barbar"]'
+click: '//a[text() = "barbar" and @href="../../src/link_to_definition/lib.rs.html#4-6"]'
 assert-property: ("html", {"scrollTop": "125"})
-click: '//a[text() = "bar"]'
+click: '//a[text() = "bar" and @href="../../src/link_to_definition/lib.rs.html#27-35"]'
 assert-property: ("html", {"scrollTop": "166"})
-click: '//a[text() = "sub_fn"]'
+click: '//a[text() = "sub_fn" and @href="../../src/link_to_definition/lib.rs.html#1-3"]'
 assert-property: ("html", {"scrollTop": "53"})
 
 // We now check that clicking on lines doesn't change the scroll
