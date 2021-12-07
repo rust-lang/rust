@@ -461,10 +461,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                     if let Some(def_id) = def_id.as_local() {
                         let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                         let parent_def_id = self.infcx.defining_use_anchor;
-                        let def_scope_default = || {
-                            let opaque_parent_hir_id = tcx.hir().get_parent_item(opaque_hir_id);
-                            parent_def_id == tcx.hir().local_def_id(opaque_parent_hir_id)
-                        };
                         let (in_definition_scope, origin) = match tcx.hir().expect_item(def_id).kind
                         {
                             // Anonymous `impl Trait`
@@ -481,7 +477,14 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                             }) => {
                                 (may_define_opaque_type(tcx, parent_def_id, opaque_hir_id), origin)
                             }
-                            _ => (def_scope_default(), hir::OpaqueTyOrigin::TyAlias),
+                            ref itemkind => {
+                                span_bug!(
+                                    self.value_span,
+                                    "weird opaque type: {:#?}, {:#?}",
+                                    ty.kind(),
+                                    itemkind
+                                )
+                            }
                         };
                         if in_definition_scope {
                             let opaque_type_key =
