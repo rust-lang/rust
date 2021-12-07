@@ -112,7 +112,7 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
         if !is_result_ok(cx, let_expr); // Don't lint on Result::ok because a different lint does it already
         if let PatKind::TupleStruct(struct_qpath, [inner_pat], _) = &let_pat.kind;
         if is_lang_ctor(cx, struct_qpath, OptionSome);
-        if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
+        if let PatKind::Binding(bind_annotation, _, id, None) = &inner_pat.kind;
         if let Some(some_captures) = can_move_expr_to_closure(cx, if_then);
         if let Some(none_captures) = can_move_expr_to_closure(cx, if_else);
         if some_captures
