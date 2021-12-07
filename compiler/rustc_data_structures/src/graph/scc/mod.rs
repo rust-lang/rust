@@ -9,6 +9,7 @@ use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
 use crate::graph::{DirectedGraph, GraphSuccessors, WithNumEdges, WithNumNodes, WithSuccessors};
 use rustc_index::vec::{Idx, IndexVec};
+use std::cmp::Ord;
 use std::ops::Range;
 
 #[cfg(test)]
@@ -38,7 +39,7 @@ struct SccData<S: Idx> {
     all_successors: Vec<S>,
 }
 
-impl<N: Idx, S: Idx> Sccs<N, S> {
+impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
     pub fn new(graph: &(impl DirectedGraph<Node = N> + WithNumNodes + WithSuccessors)) -> Self {
         SccsConstruction::construct(graph)
     }
@@ -85,7 +86,7 @@ impl<N: Idx, S: Idx> DirectedGraph for Sccs<N, S> {
     type Node = S;
 }
 
-impl<N: Idx, S: Idx> WithNumNodes for Sccs<N, S> {
+impl<N: Idx, S: Idx + Ord> WithNumNodes for Sccs<N, S> {
     fn num_nodes(&self) -> usize {
         self.num_sccs()
     }
@@ -103,7 +104,7 @@ impl<'graph, N: Idx, S: Idx> GraphSuccessors<'graph> for Sccs<N, S> {
     type Iter = std::iter::Cloned<std::slice::Iter<'graph, S>>;
 }
 
-impl<N: Idx, S: Idx> WithSuccessors for Sccs<N, S> {
+impl<N: Idx, S: Idx + Ord> WithSuccessors for Sccs<N, S> {
     fn successors(&self, node: S) -> <Self as GraphSuccessors<'_>>::Iter {
         self.successors(node).iter().cloned()
     }
