@@ -65,6 +65,7 @@ use hir_expand::{
     hygiene::Hygiene,
     AstId, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
+use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
 use path::ModPath;
@@ -153,7 +154,7 @@ impl<N: ItemTreeNode> Hash for ItemLoc<N> {
 
 #[derive(Debug)]
 pub struct AssocItemLoc<N: ItemTreeNode> {
-    pub container: AssocContainerId,
+    pub container: ItemContainerId,
     pub id: ItemTreeId<N>,
 }
 
@@ -244,7 +245,7 @@ impl_intern!(ConstId, ConstLoc, intern_const, lookup_intern_const);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StaticId(salsa::InternId);
-pub type StaticLoc = ItemLoc<Static>;
+pub type StaticLoc = AssocItemLoc<Static>;
 impl_intern!(StaticId, StaticLoc, intern_static, lookup_intern_static);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -261,6 +262,11 @@ impl_intern!(TypeAliasId, TypeAliasLoc, intern_type_alias, lookup_intern_type_al
 pub struct ImplId(salsa::InternId);
 type ImplLoc = ItemLoc<Impl>;
 impl_intern!(ImplId, ImplLoc, intern_impl, lookup_intern_impl);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct ExternBlockId(salsa::InternId);
+type ExternBlockLoc = ItemLoc<ExternBlock>;
+impl_intern!(ExternBlockId, ExternBlockLoc, intern_extern_block, lookup_intern_extern_block);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct BlockId(salsa::InternId);
@@ -295,12 +301,13 @@ pub struct ConstParamId {
 pub type LocalConstParamId = Idx<generics::ConstParamData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum AssocContainerId {
+pub enum ItemContainerId {
+    ExternBlockId(ExternBlockId),
     ModuleId(ModuleId),
     ImplId(ImplId),
     TraitId(TraitId),
 }
-impl_from!(ModuleId for AssocContainerId);
+impl_from!(ModuleId for ItemContainerId);
 
 /// A Data Type
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -427,6 +434,7 @@ pub enum AttrDefId {
     MacroDefId(MacroDefId),
     ImplId(ImplId),
     GenericParamId(GenericParamId),
+    ExternBlockId(ExternBlockId),
 }
 
 impl_from!(
@@ -445,12 +453,13 @@ impl_from!(
     for AttrDefId
 );
 
-impl From<AssocContainerId> for AttrDefId {
-    fn from(acid: AssocContainerId) -> Self {
+impl From<ItemContainerId> for AttrDefId {
+    fn from(acid: ItemContainerId) -> Self {
         match acid {
-            AssocContainerId::ModuleId(mid) => AttrDefId::ModuleId(mid),
-            AssocContainerId::ImplId(iid) => AttrDefId::ImplId(iid),
-            AssocContainerId::TraitId(tid) => AttrDefId::TraitId(tid),
+            ItemContainerId::ModuleId(mid) => AttrDefId::ModuleId(mid),
+            ItemContainerId::ImplId(iid) => AttrDefId::ImplId(iid),
+            ItemContainerId::TraitId(tid) => AttrDefId::TraitId(tid),
+            ItemContainerId::ExternBlockId(id) => AttrDefId::ExternBlockId(id),
         }
     }
 }
@@ -505,12 +514,13 @@ pub trait HasModule {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId;
 }
 
-impl HasModule for AssocContainerId {
+impl HasModule for ItemContainerId {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match *self {
-            AssocContainerId::ModuleId(it) => it,
-            AssocContainerId::ImplId(it) => it.lookup(db).container,
-            AssocContainerId::TraitId(it) => it.lookup(db).container,
+            ItemContainerId::ModuleId(it) => it,
+            ItemContainerId::ImplId(it) => it.lookup(db).container,
+            ItemContainerId::TraitId(it) => it.lookup(db).container,
+            ItemContainerId::ExternBlockId(it) => it.lookup(db).container,
         }
     }
 }
@@ -587,12 +597,6 @@ impl HasModule for TraitId {
     }
 }
 
-impl HasModule for StaticLoc {
-    fn module(&self, _db: &dyn db::DefDatabase) -> ModuleId {
-        self.container
-    }
-}
-
 impl ModuleDefId {
     /// Returns the module containing `self` (or `self`, if `self` is itself a module).
     ///
@@ -604,7 +608,7 @@ impl ModuleDefId {
             ModuleDefId::AdtId(id) => id.module(db),
             ModuleDefId::EnumVariantId(id) => id.parent.lookup(db).container,
             ModuleDefId::ConstId(id) => id.lookup(db).container.module(db),
-            ModuleDefId::StaticId(id) => id.lookup(db).container,
+            ModuleDefId::StaticId(id) => id.lookup(db).module(db),
             ModuleDefId::TraitId(id) => id.lookup(db).container,
             ModuleDefId::TypeAliasId(id) => id.lookup(db).module(db),
             ModuleDefId::BuiltinType(_) => return None,
@@ -625,6 +629,7 @@ impl AttrDefId {
             AttrDefId::TraitId(it) => it.lookup(db).container.krate,
             AttrDefId::TypeAliasId(it) => it.lookup(db).module(db).krate,
             AttrDefId::ImplId(it) => it.lookup(db).container.krate,
+            AttrDefId::ExternBlockId(it) => it.lookup(db).container.krate,
             AttrDefId::GenericParamId(it) => {
                 match it {
                     GenericParamId::TypeParamId(it) => it.parent,

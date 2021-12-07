@@ -328,8 +328,7 @@ impl<'a> Printer<'a> {
                 wln!(self, " = _;");
             }
             ModItem::Static(it) => {
-                let Static { name, visibility, mutable, is_extern, type_ref, ast_id: _ } =
-                    &self.tree[it];
+                let Static { name, visibility, mutable, type_ref, ast_id: _ } = &self.tree[it];
                 self.print_visibility(*visibility);
                 w!(self, "static ");
                 if *mutable {
@@ -338,9 +337,6 @@ impl<'a> Printer<'a> {
                 w!(self, "{}: ", name);
                 self.print_type_ref(type_ref);
                 w!(self, " = _;");
-                if *is_extern {
-                    w!(self, "  // extern");
-                }
                 wln!(self);
             }
             ModItem::Trait(it) => {
@@ -393,15 +389,8 @@ impl<'a> Printer<'a> {
                 wln!(self, "}}");
             }
             ModItem::TypeAlias(it) => {
-                let TypeAlias {
-                    name,
-                    visibility,
-                    bounds,
-                    type_ref,
-                    is_extern,
-                    generic_params,
-                    ast_id: _,
-                } = &self.tree[it];
+                let TypeAlias { name, visibility, bounds, type_ref, generic_params, ast_id: _ } =
+                    &self.tree[it];
                 self.print_visibility(*visibility);
                 w!(self, "type {}", name);
                 self.print_generic_params(generic_params);
@@ -415,9 +404,6 @@ impl<'a> Printer<'a> {
                 }
                 self.print_where_clause(generic_params);
                 w!(self, ";");
-                if *is_extern {
-                    w!(self, "  // extern");
-                }
                 wln!(self);
             }
             ModItem::Mod(it) => {

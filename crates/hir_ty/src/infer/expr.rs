@@ -14,7 +14,7 @@ use hir_def::{
     },
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
-    AssocContainerId, FieldId, FunctionId, Lookup,
+    FieldId, FunctionId, ItemContainerId, Lookup,
 };
 use hir_expand::name::{name, Name};
 use stdx::always;
@@ -1167,8 +1167,7 @@ impl<'a> InferenceContext<'a> {
             // add obligation for trait implementation, if this is a trait method
             match def {
                 CallableDefId::FunctionId(f) => {
-                    if let AssocContainerId::TraitId(trait_) = f.lookup(self.db.upcast()).container
-                    {
+                    if let ItemContainerId::TraitId(trait_) = f.lookup(self.db.upcast()).container {
                         // construct a TraitRef
                         let substs = crate::subst_prefix(
                             &*parameters,

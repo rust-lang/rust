@@ -13,8 +13,8 @@ use crate::{
     item_tree::{self, AssocItem, FnFlags, ItemTreeId, ModItem, Param},
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
-    AssocContainerId, AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
-    Intern, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
+    AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId, Intern,
+    ItemContainerId, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,6 +52,10 @@ impl FunctionData {
         let mut flags = func.flags;
         if is_varargs {
             flags.bits |= FnFlags::IS_VARARGS;
+        }
+
+        if matches!(loc.container, ItemContainerId::ExternBlockId(_)) {
+            flags.bits |= FnFlags::IS_IN_EXTERN_BLOCK;
         }
 
         Arc::new(FunctionData {
@@ -130,7 +134,7 @@ impl TypeAliasData {
             name: typ.name.clone(),
             type_ref: typ.type_ref.clone(),
             visibility: item_tree[typ.visibility].clone(),
-            is_extern: typ.is_extern,
+            is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
             bounds: typ.bounds.to_vec(),
         })
     }
@@ -162,7 +166,7 @@ impl TraitData {
         let is_auto = tr_def.is_auto;
         let is_unsafe = tr_def.is_unsafe;
         let module_id = tr_loc.container;
-        let container = AssocContainerId::TraitId(tr);
+        let container = ItemContainerId::TraitId(tr);
         let visibility = item_tree[tr_def.visibility].clone();
         let mut expander = Expander::new(db, tr_loc.id.file_id(), module_id);
         let skip_array_during_method_dispatch = item_tree
@@ -231,7 +235,7 @@ impl ImplData {
         let self_ty = impl_def.self_ty.clone();
         let is_negative = impl_def.is_negative;
         let module_id = impl_loc.container;
-        let container = AssocContainerId::ImplId(id);
+        let container = ItemContainerId::ImplId(id);
         let mut expander = Expander::new(db, impl_loc.id.file_id(), module_id);
 
         let items = collect_items(
@@ -282,16 +286,16 @@ pub struct StaticData {
 
 impl StaticData {
     pub(crate) fn static_data_query(db: &dyn DefDatabase, konst: StaticId) -> Arc<StaticData> {
-        let node = konst.lookup(db);
-        let item_tree = node.id.item_tree(db);
-        let statik = &item_tree[node.id.value];
+        let loc = konst.lookup(db);
+        let item_tree = loc.id.item_tree(db);
+        let statik = &item_tree[loc.id.value];
 
         Arc::new(StaticData {
             name: statik.name.clone(),
             type_ref: statik.type_ref.clone(),
             visibility: item_tree[statik.visibility].clone(),
             mutable: statik.mutable,
-            is_extern: statik.is_extern,
+            is_extern: matches!(loc.container, ItemContainerId::ExternBlockId(_)),
         })
     }
 }
@@ -302,7 +306,7 @@ fn collect_items(
     expander: &mut Expander,
     assoc_items: impl Iterator<Item = AssocItem>,
     tree_id: item_tree::TreeId,
-    container: AssocContainerId,
+    container: ItemContainerId,
     limit: usize,
 ) -> Vec<(Name, AssocItemId)> {
     if limit == 0 {

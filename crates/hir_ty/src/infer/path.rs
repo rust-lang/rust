@@ -6,7 +6,7 @@ use chalk_ir::cast::Cast;
 use hir_def::{
     path::{Path, PathSegment},
     resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
-    AdtId, AssocContainerId, AssocItemId, EnumVariantId, Lookup,
+    AdtId, AssocItemId, EnumVariantId, ItemContainerId, Lookup,
 };
 use hir_expand::name::Name;
 
@@ -241,7 +241,7 @@ impl<'a> InferenceContext<'a> {
                     AssocItemId::TypeAliasId(_) => unreachable!(),
                 };
                 let substs = match container {
-                    AssocContainerId::ImplId(impl_id) => {
+                    ItemContainerId::ImplId(impl_id) => {
                         let impl_substs = TyBuilder::subst_for_def(self.db, impl_id)
                             .fill(iter::repeat_with(|| self.table.new_type_var()))
                             .build();
@@ -250,7 +250,7 @@ impl<'a> InferenceContext<'a> {
                         self.unify(&impl_self_ty, &ty);
                         Some(impl_substs)
                     }
-                    AssocContainerId::TraitId(trait_) => {
+                    ItemContainerId::TraitId(trait_) => {
                         // we're picking this method
                         let trait_ref = TyBuilder::trait_ref(self.db, trait_)
                             .push(ty.clone())
@@ -259,7 +259,7 @@ impl<'a> InferenceContext<'a> {
                         self.push_obligation(trait_ref.clone().cast(&Interner));
                         Some(trait_ref.substitution)
                     }
-                    AssocContainerId::ModuleId(_) => None,
+                    ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
                 };
 
                 self.write_assoc_resolution(id, item);

@@ -36,8 +36,8 @@ use either::Either;
 use fst::{self, Streamer};
 use hir::{
     db::{DefDatabase, HirDatabase},
-    AdtId, AssocContainerId, AssocItemId, AssocItemLoc, DefHasSource, DefWithBodyId, HasSource,
-    HirFileId, ImplId, InFile, ItemLoc, ItemTreeNode, Lookup, MacroDef, Module, ModuleDefId,
+    AdtId, AssocItemId, AssocItemLoc, DefHasSource, DefWithBodyId, HasSource, HirFileId, ImplId,
+    InFile, ItemContainerId, ItemLoc, ItemTreeNode, Lookup, MacroDef, Module, ModuleDefId,
     ModuleId, Semantics, TraitId,
 };
 use rayon::prelude::*;
@@ -508,7 +508,7 @@ impl<'a> SymbolCollector<'a> {
                     self.collect_from_body(id);
                 }
                 ModuleDefId::StaticId(id) => {
-                    self.push_decl(id, FileSymbolKind::Static);
+                    self.push_decl_assoc(id, FileSymbolKind::Static);
                     self.collect_from_body(id);
                 }
                 ModuleDefId::TraitId(id) => {
@@ -610,17 +610,17 @@ impl<'a> SymbolCollector<'a> {
         T: ItemTreeNode,
         <T as ItemTreeNode>::Source: HasName,
     {
-        fn container_name(db: &dyn HirDatabase, container: AssocContainerId) -> Option<SmolStr> {
+        fn container_name(db: &dyn HirDatabase, container: ItemContainerId) -> Option<SmolStr> {
             match container {
-                AssocContainerId::ModuleId(module_id) => {
+                ItemContainerId::ModuleId(module_id) => {
                     let module = Module::from(module_id);
                     module.name(db).and_then(|name| name.as_text())
                 }
-                AssocContainerId::TraitId(trait_id) => {
+                ItemContainerId::TraitId(trait_id) => {
                     let trait_data = db.trait_data(trait_id);
                     trait_data.name.as_text()
                 }
-                AssocContainerId::ImplId(_) => None,
+                ItemContainerId::ImplId(_) | ItemContainerId::ExternBlockId(_) => None,
             }
         }
 

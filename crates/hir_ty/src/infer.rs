@@ -521,7 +521,7 @@ impl<'a> InferenceContext<'a> {
         match assoc_ty {
             Some(res_assoc_ty) => {
                 let trait_ = match res_assoc_ty.lookup(self.db.upcast()).container {
-                    hir_def::AssocContainerId::TraitId(trait_) => trait_,
+                    hir_def::ItemContainerId::TraitId(trait_) => trait_,
                     _ => panic!("resolve_associated_type called with non-associated type"),
                 };
                 let ty = self.table.new_type_var();

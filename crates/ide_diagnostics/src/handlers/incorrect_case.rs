@@ -398,6 +398,24 @@ extern {
     }
 
     #[test]
+    fn ignores_extern_items_from_macro() {
+        check_diagnostics(
+            r#"
+macro_rules! m {
+    () => {
+        fn NonSnakeCaseName(SOME_VAR: u8) -> u8;
+        pub static SomeStatic: u8 = 10;
+    }
+}
+
+extern {
+    m!();
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn bug_traits_arent_checked() {
         // FIXME: Traits and functions in traits aren't currently checked by
         // r-a, even though rustc will complain about them.

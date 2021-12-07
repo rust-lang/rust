@@ -660,8 +660,6 @@ pub struct Static {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub mutable: bool,
-    /// Whether the static is in an `extern` block.
-    pub is_extern: bool,
     pub type_ref: Interned<TypeRef>,
     pub ast_id: FileAstId<ast::Static>,
 }
@@ -695,7 +693,6 @@ pub struct TypeAlias {
     pub bounds: Box<[Interned<TypeBound>]>,
     pub generic_params: Interned<GenericParams>,
     pub type_ref: Option<Interned<TypeRef>>,
-    pub is_extern: bool,
     pub ast_id: FileAstId<ast::TypeAlias>,
 }
 

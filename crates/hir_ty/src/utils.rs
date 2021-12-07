@@ -14,7 +14,7 @@ use hir_def::{
     path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
-    AssocContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId,
+    GenericDefId, ItemContainerId, Lookup, TraitId, TypeAliasId, TypeParamId,
 };
 use hir_expand::name::{name, Name};
 use rustc_hash::FxHashSet;
@@ -296,8 +296,8 @@ fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<Generic
     };
 
     match container {
-        AssocContainerId::ImplId(it) => Some(it.into()),
-        AssocContainerId::TraitId(it) => Some(it.into()),
-        AssocContainerId::ModuleId(_) => None,
+        ItemContainerId::ImplId(it) => Some(it.into()),
+        ItemContainerId::TraitId(it) => Some(it.into()),
+        ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
     }
 }
