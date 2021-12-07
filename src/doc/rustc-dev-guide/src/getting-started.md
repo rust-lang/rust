@@ -398,7 +398,7 @@ When you open a PR on the `rust-lang/rust` repo, a bot called `@rust-highfive` w
 automatically assign a reviewer to the PR based on which files you changed.
 The reviewer is the person that will approve the PR to be tested and merged.
 If you want a specific reviewer (e.g. a team member you've been working with),
-you can specifically request them by writing `r? @user` (e.g. `r? @eddyb`) in
+you can specifically request them by writing `r? @user` (e.g. `r? @jyn514`) in
 either the original post or a followup comment
 (you can see [this comment][r?] for example).
 
