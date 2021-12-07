@@ -19,8 +19,8 @@ use hir_def::{
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef},
-    AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
-    GenericDefId, HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
+    AdtId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId,
+    HasModule, ImplId, ItemContainerId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
     TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::Name, ExpandResult};
@@ -1125,7 +1125,7 @@ pub(crate) fn trait_environment_query(
         }
     }
 
-    let container: Option<AssocContainerId> = match def {
+    let container: Option<ItemContainerId> = match def {
         // FIXME: is there a function for this?
         GenericDefId::FunctionId(f) => Some(f.lookup(db.upcast()).container),
         GenericDefId::AdtId(_) => None,
@@ -1135,7 +1135,7 @@ pub(crate) fn trait_environment_query(
         GenericDefId::EnumVariantId(_) => None,
         GenericDefId::ConstId(c) => Some(c.lookup(db.upcast()).container),
     };
-    if let Some(AssocContainerId::TraitId(trait_id)) = container {
+    if let Some(ItemContainerId::TraitId(trait_id)) = container {
         // add `Self: Trait<T1, T2, ...>` to the environment in trait
         // function default implementations (and speculative code
         // inside consts or type aliases)

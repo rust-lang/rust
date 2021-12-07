@@ -4,7 +4,7 @@ use chalk_ir::{FloatTy, IntTy, Mutability, Scalar, UintTy};
 use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType, BuiltinUint},
     type_ref::Rawness,
-    AssocContainerId, FunctionId, GenericDefId, HasModule, Lookup, TraitId,
+    FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
 };
 
 use crate::{
@@ -268,7 +268,7 @@ impl TyExt for Ty {
         match self.kind(&Interner) {
             TyKind::AssociatedType(id, ..) => {
                 match from_assoc_type_id(*id).lookup(db.upcast()).container {
-                    AssocContainerId::TraitId(trait_id) => Some(trait_id),
+                    ItemContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
                 }
             }
@@ -277,7 +277,7 @@ impl TyExt for Ty {
                     .lookup(db.upcast())
                     .container
                 {
-                    AssocContainerId::TraitId(trait_id) => Some(trait_id),
+                    ItemContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
                 }
             }
@@ -331,7 +331,7 @@ impl ProjectionTyExt for ProjectionTy {
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
         match from_assoc_type_id(self.associated_ty_id).lookup(db.upcast()).container {
-            AssocContainerId::TraitId(it) => it,
+            ItemContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }
     }

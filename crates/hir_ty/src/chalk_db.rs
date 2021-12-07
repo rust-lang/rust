@@ -11,7 +11,7 @@ use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 use base_db::CrateId;
 use hir_def::{
     lang_item::{lang_attr, LangItemTarget},
-    AssocContainerId, AssocItemId, GenericDefId, HasModule, Lookup, ModuleId, TypeAliasId,
+    AssocItemId, GenericDefId, HasModule, ItemContainerId, Lookup, ModuleId, TypeAliasId,
 };
 use hir_expand::name::name;
 
@@ -396,7 +396,7 @@ pub(crate) fn associated_ty_data_query(
     debug!("associated_ty_data {:?}", id);
     let type_alias: TypeAliasId = from_assoc_type_id(id);
     let trait_ = match type_alias.lookup(db.upcast()).container {
-        AssocContainerId::TraitId(t) => t,
+        ItemContainerId::TraitId(t) => t,
         _ => panic!("associated type not in trait"),
     };
 
@@ -634,7 +634,7 @@ fn type_alias_associated_ty_value(
 ) -> Arc<AssociatedTyValue> {
     let type_alias_data = db.type_alias_data(type_alias);
     let impl_id = match type_alias.lookup(db.upcast()).container {
-        AssocContainerId::ImplId(it) => it,
+        ItemContainerId::ImplId(it) => it,
         _ => panic!("assoc ty value should be in impl"),
     };
 

@@ -16,7 +16,7 @@ use hir_def::{
     path::{Path, PathKind},
     type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    AssocContainerId, HasModule, Lookup, ModuleId, TraitId,
+    HasModule, ItemContainerId, Lookup, ModuleId, TraitId,
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
 use itertools::Itertools;
@@ -576,7 +576,7 @@ impl HirDisplay for Ty {
             TyKind::AssociatedType(assoc_type_id, parameters) => {
                 let type_alias = from_assoc_type_id(*assoc_type_id);
                 let trait_ = match type_alias.lookup(f.db.upcast()).container {
-                    AssocContainerId::TraitId(it) => it,
+                    ItemContainerId::TraitId(it) => it,
                     _ => panic!("not an associated type"),
                 };
                 let trait_ = f.db.trait_data(trait_);

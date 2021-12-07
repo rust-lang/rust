@@ -114,11 +114,11 @@ pub use {
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
         AdtId,
-        AssocContainerId,
         AssocItemId,
         AssocItemLoc,
         DefWithBodyId,
         ImplId,
+        ItemContainerId,
         ItemLoc,
         Lookup,
         ModuleDefId,
@@ -1550,7 +1550,7 @@ impl Static {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let data = db.static_data(self.id);
         let resolver = self.id.resolver(db.upcast());
-        let krate = self.id.lookup(db.upcast()).container.krate();
+        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let ty = ctx.lower_ty(&data.type_ref);
         Type::new_with_resolver_inner(db, krate, &resolver, ty)
@@ -1820,8 +1820,8 @@ where
     AST: ItemTreeNode,
 {
     match id.lookup(db.upcast()).container {
-        AssocContainerId::TraitId(_) | AssocContainerId::ImplId(_) => Some(ctor(DEF::from(id))),
-        AssocContainerId::ModuleId(_) => None,
+        ItemContainerId::TraitId(_) | ItemContainerId::ImplId(_) => Some(ctor(DEF::from(id))),
+        ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
     }
 }
 
@@ -1847,9 +1847,11 @@ impl AssocItem {
             AssocItem::TypeAlias(it) => it.id.lookup(db.upcast()).container,
         };
         match container {
-            AssocContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
-            AssocContainerId::ImplId(id) => AssocItemContainer::Impl(id.into()),
-            AssocContainerId::ModuleId(_) => panic!("invalid AssocItem"),
+            ItemContainerId::TraitId(id) => AssocItemContainer::Trait(id.into()),
+            ItemContainerId::ImplId(id) => AssocItemContainer::Impl(id.into()),
+            ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
+                panic!("invalid AssocItem")
+            }
         }
     }
 

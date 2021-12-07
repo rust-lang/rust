@@ -360,7 +360,6 @@ impl<'a> Ctx<'a> {
             generic_params,
             type_ref,
             ast_id,
-            is_extern: false,
         };
         Some(id(self.data().type_aliases.alloc(res)))
     }
@@ -371,7 +370,7 @@ impl<'a> Ctx<'a> {
         let visibility = self.lower_visibility(static_);
         let mutable = static_.mut_token().is_some();
         let ast_id = self.source_ast_id_map.ast_id(static_);
-        let res = Static { name, visibility, mutable, type_ref, ast_id, is_extern: false };
+        let res = Static { name, visibility, mutable, type_ref, ast_id };
         Some(id(self.data().statics.alloc(res)))
     }
 
@@ -525,27 +524,23 @@ impl<'a> Ctx<'a> {
         let children: Box<[_]> = block.extern_item_list().map_or(Box::new([]), |list| {
             list.extern_items()
                 .filter_map(|item| {
+                    // Note: All items in an `extern` block need to be lowered as if they're outside of one
+                    // (in other words, the knowledge that they're in an extern block must not be used).
+                    // This is because an extern block can contain macros whose ItemTree's top-level items
+                    // should be considered to be in an extern block too.
                     let attrs = RawAttrs::new(self.db, &item, &self.hygiene);
                     let id: ModItem = match item {
                         ast::ExternItem::Fn(ast) => {
                             let func_id = self.lower_function(&ast)?;
                             let func = &mut self.data().functions[func_id.index];
                             if is_intrinsic_fn_unsafe(&func.name) {
+                                // FIXME: this breaks in macros
                                 func.flags.bits |= FnFlags::IS_UNSAFE;
                             }
-                            func.flags.bits |= FnFlags::IS_IN_EXTERN_BLOCK;
                             func_id.into()
                         }
-                        ast::ExternItem::Static(ast) => {
-                            let statik = self.lower_static(&ast)?;
-                            self.data().statics[statik.index].is_extern = true;
-                            statik.into()
-                        }
-                        ast::ExternItem::TypeAlias(ty) => {
-                            let foreign_ty = self.lower_type_alias(&ty)?;
-                            self.data().type_aliases[foreign_ty.index].is_extern = true;
-                            foreign_ty.into()
-                        }
+                        ast::ExternItem::Static(ast) => self.lower_static(&ast)?.into(),
+                        ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(&ty)?.into(),
                         ast::ExternItem::MacroCall(call) => {
                             // FIXME: we need some way of tracking that the macro call is in an
                             // extern block

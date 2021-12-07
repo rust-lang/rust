@@ -468,7 +468,7 @@ mod tests {
     use base_db::{fixture::WithFixture, SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
 
-    use crate::{test_db::TestDB, AssocContainerId, Lookup};
+    use crate::{test_db::TestDB, ItemContainerId, Lookup};
 
     use super::*;
 
@@ -563,7 +563,7 @@ mod tests {
         };
 
         match container {
-            AssocContainerId::TraitId(it) => Some(ItemInNs::Types(it.into())),
+            ItemContainerId::TraitId(it) => Some(ItemInNs::Types(it.into())),
             _ => None,
         }
     }

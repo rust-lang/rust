@@ -8,8 +8,8 @@ use arrayvec::ArrayVec;
 use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
-    lang_item::LangItemTarget, nameres::DefMap, AssocContainerId, AssocItemId, BlockId, FunctionId,
-    GenericDefId, HasModule, ImplId, Lookup, ModuleId, TraitId,
+    lang_item::LangItemTarget, nameres::DefMap, AssocItemId, BlockId, FunctionId, GenericDefId,
+    HasModule, ImplId, ItemContainerId, Lookup, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -979,18 +979,19 @@ fn transform_receiver_ty(
     self_ty: &Canonical<Ty>,
 ) -> Option<Ty> {
     let substs = match function_id.lookup(db.upcast()).container {
-        AssocContainerId::TraitId(_) => TyBuilder::subst_for_def(db, function_id)
+        ItemContainerId::TraitId(_) => TyBuilder::subst_for_def(db, function_id)
             .push(self_ty.value.clone())
             .fill_with_unknown()
             .build(),
-        AssocContainerId::ImplId(impl_id) => {
+        ItemContainerId::ImplId(impl_id) => {
             let impl_substs = inherent_impl_substs(db, env, impl_id, self_ty)?;
             TyBuilder::subst_for_def(db, function_id)
                 .use_parent_substs(&impl_substs)
                 .fill_with_unknown()
                 .build()
         }
-        AssocContainerId::ModuleId(_) => unreachable!(),
+        // No receiver
+        ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => unreachable!(),
     };
     let sig = db.callable_item_signature(function_id.into());
     Some(sig.map(|s| s.params()[0].clone()).substitute(&Interner, &substs))

@@ -7,7 +7,7 @@ use crate::{
     chalk_db, db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, mapping::from_chalk,
     CallableDefId, Interner,
 };
-use hir_def::{AdtId, AssocContainerId, Lookup, TypeAliasId};
+use hir_def::{AdtId, ItemContainerId, Lookup, TypeAliasId};
 
 pub(crate) use unsafe_tls::{set_current_program, with_current_program};
 
@@ -45,7 +45,7 @@ impl DebugContext<'_> {
         let type_alias: TypeAliasId = from_assoc_type_id(id);
         let type_alias_data = self.0.type_alias_data(type_alias);
         let trait_ = match type_alias.lookup(self.0.upcast()).container {
-            AssocContainerId::TraitId(t) => t,
+            ItemContainerId::TraitId(t) => t,
             _ => panic!("associated type not in trait"),
         };
         let trait_data = self.0.trait_data(trait_);
@@ -60,7 +60,7 @@ impl DebugContext<'_> {
         let type_alias = from_assoc_type_id(projection_ty.associated_ty_id);
         let type_alias_data = self.0.type_alias_data(type_alias);
         let trait_ = match type_alias.lookup(self.0.upcast()).container {
-            AssocContainerId::TraitId(t) => t,
+            ItemContainerId::TraitId(t) => t,
             _ => panic!("associated type not in trait"),
         };
         let trait_data = self.0.trait_data(trait_);

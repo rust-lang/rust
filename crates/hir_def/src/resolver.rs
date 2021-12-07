@@ -22,8 +22,8 @@ use crate::{
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId,
-    EnumVariantId, FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, LifetimeParamId,
+    AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
+    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
     TypeParamId, VariantId,
 };
@@ -802,6 +802,13 @@ impl HasResolver for ImplId {
     }
 }
 
+impl HasResolver for ExternBlockId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        // Same as parent's
+        self.lookup(db).container.resolver(db)
+    }
+}
+
 impl HasResolver for DefWithBodyId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         match self {
@@ -812,12 +819,13 @@ impl HasResolver for DefWithBodyId {
     }
 }
 
-impl HasResolver for AssocContainerId {
+impl HasResolver for ItemContainerId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         match self {
-            AssocContainerId::ModuleId(it) => it.resolver(db),
-            AssocContainerId::TraitId(it) => it.resolver(db),
-            AssocContainerId::ImplId(it) => it.resolver(db),
+            ItemContainerId::ModuleId(it) => it.resolver(db),
+            ItemContainerId::TraitId(it) => it.resolver(db),
+            ItemContainerId::ImplId(it) => it.resolver(db),
+            ItemContainerId::ExternBlockId(it) => it.resolver(db),
         }
     }
 }
