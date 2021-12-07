@@ -425,7 +425,7 @@ Otherwise, have a great day =^.^=
                     </h2>
                 </header>
 
-                <div class="list-group lint-docs" ng-class="{collapse: true, in: open[lint.id]}">
+                <ul class="list-group lint-docs" ng-if="open[lint.id]" ng-class="{collapse: true, in: open[lint.id]}">
                     <div class="list-group-item lint-doc-md" ng-bind-html="lint.docs | markdown"></div>
                     <div class="lint-additional-info-container">
                         <!-- Applicability -->
