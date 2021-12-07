@@ -24,7 +24,7 @@ struct JitState {
 }
 
 thread_local! {
-    static LAZY_JIT_STATE: RefCell<Option<JitState>> = RefCell::new(None);
+    static LAZY_JIT_STATE: RefCell<Option<JitState>> = const { RefCell::new(None) };
 }
 
 /// The Sender owned by the rustc thread
