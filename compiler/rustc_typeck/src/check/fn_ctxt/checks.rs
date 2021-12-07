@@ -54,13 +54,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
-                TupleArguments => vec![self.tcx.intern_tup(&err_inputs[..])],
+                TupleArguments => vec![self.tcx.intern_tup(&err_inputs)],
             };
 
             self.check_argument_types(
                 sp,
                 expr,
-                &err_inputs[..],
+                &err_inputs,
                 &[],
                 args_no_rcvr,
                 false,
@@ -324,7 +324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.point_at_type_arg_instead_of_call_if_possible(errors, expr);
                     self.point_at_arg_instead_of_call_if_possible(
                         errors,
-                        &final_arg_types[..],
+                        &final_arg_types,
                         expr,
                         sp,
                         &args,

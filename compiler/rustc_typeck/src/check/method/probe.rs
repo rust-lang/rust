@@ -1372,7 +1372,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if applicable_candidates.len() > 1 {
             if let Some(pick) =
-                self.collapse_candidates_to_trait_pick(self_ty, &applicable_candidates[..])
+                self.collapse_candidates_to_trait_pick(self_ty, &applicable_candidates)
             {
                 return Some(Ok(pick));
             }

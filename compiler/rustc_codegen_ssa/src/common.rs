@@ -122,8 +122,8 @@ pub fn langcall(tcx: TyCtxt<'_>, span: Option<Span>, msg: &str, li: LangItem) ->
     tcx.lang_items().require(li).unwrap_or_else(|s| {
         let msg = format!("{} {}", msg, s);
         match span {
-            Some(span) => tcx.sess.span_fatal(span, &msg[..]),
-            None => tcx.sess.fatal(&msg[..]),
+            Some(span) => tcx.sess.span_fatal(span, &msg),
+            None => tcx.sess.fatal(&msg),
         }
     })
 }

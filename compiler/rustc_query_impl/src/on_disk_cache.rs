@@ -158,7 +158,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
 
         // Wrap in a scope so we can borrow `data`.
         let footer: Footer = {
-            let mut decoder = opaque::Decoder::new(&data[..], start_pos);
+            let mut decoder = opaque::Decoder::new(&data, start_pos);
 
             // Decode the *position* of the footer, which can be found in the
             // last 8 bytes of the file.

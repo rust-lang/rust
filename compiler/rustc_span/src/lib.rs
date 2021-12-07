@@ -1383,7 +1383,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                     // Encode the first element.
                     lines[0].encode(s)?;
 
-                    let diff_iter = lines[..].array_windows().map(|&[fst, snd]| snd - fst);
+                    let diff_iter = lines.array_windows().map(|&[fst, snd]| snd - fst);
 
                     match bytes_per_diff {
                         1 => {
@@ -1506,7 +1506,7 @@ impl SourceFile {
         assert!(end_pos <= u32::MAX as usize);
 
         let (lines, multibyte_chars, non_narrow_chars) =
-            analyze_source_file::analyze_source_file(&src[..], start_pos);
+            analyze_source_file::analyze_source_file(&src, start_pos);
 
         SourceFile {
             name,
