@@ -29,7 +29,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// - We bail out if the function has a `where` clause where lifetimes
-    /// are mentioned due to potenial false positives.
+    /// are mentioned due to potential false positives.
     /// - Lifetime bounds such as `impl Foo + 'a` and `T: 'a` must be elided with the
     /// placeholder notation `'_` because the fully elided notation leaves the type bound to `'static`.
     ///
