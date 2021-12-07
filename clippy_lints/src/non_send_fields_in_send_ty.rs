@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// contains fields that are not safe to be sent across threads.
     /// It tries to detect fields that can cause a soundness issue
     /// when sent to another thread (e.g., `Rc`) while allowing `!Send` fields
-    /// that are expected to exist in a `Send` type such as raw pointers.
+    /// that are expected to exist in a `Send` type, such as raw pointers.
     ///
     /// ### Why is this bad?
     /// Sending the struct to another thread effectively sends all of its fields,
@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                         NON_SEND_FIELDS_IN_SEND_TY,
                         item.span,
                         &format!(
-                            "there are some fields in `{}` are not safe to be sent to another thread",
+                            "some fields in `{}` are not safe to be sent to another thread",
                             snippet(cx, hir_impl.self_ty.span, "Unknown")
                         ),
                         |diag| {

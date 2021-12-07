@@ -1,4 +1,4 @@
-error: there are some fields in `RingBuffer<T>` are not safe to be sent to another thread
+error: some fields in `RingBuffer<T>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:16:1
    |
 LL | unsafe impl<T> Send for RingBuffer<T> {}
@@ -12,7 +12,7 @@ LL |     data: Vec<UnsafeCell<T>>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    = help: add bounds on type parameter `T` that satisfy `Vec<UnsafeCell<T>>: Send`
 
-error: there are some fields in `MvccRwLock<T>` are not safe to be sent to another thread
+error: some fields in `MvccRwLock<T>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:24:1
    |
 LL | unsafe impl<T> Send for MvccRwLock<T> {}
@@ -25,7 +25,7 @@ LL |     lock: Mutex<Box<T>>,
    |     ^^^^^^^^^^^^^^^^^^^
    = help: add bounds on type parameter `T` that satisfy `Mutex<Box<T>>: Send`
 
-error: there are some fields in `ArcGuard<RC, T>` are not safe to be sent to another thread
+error: some fields in `ArcGuard<RC, T>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:32:1
    |
 LL | unsafe impl<RC, T: Send> Send for ArcGuard<RC, T> {}
@@ -38,7 +38,7 @@ LL |     head: Arc<RC>,
    |     ^^^^^^^^^^^^^
    = help: add bounds on type parameter `RC` that satisfy `Arc<RC>: Send`
 
-error: there are some fields in `DeviceHandle<T>` are not safe to be sent to another thread
+error: some fields in `DeviceHandle<T>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:48:1
    |
 LL | unsafe impl<T: UsbContext> Send for DeviceHandle<T> {}
@@ -51,7 +51,7 @@ LL |     context: T,
    |     ^^^^^^^^^^
    = help: add `T: Send` bound in `Send` impl
 
-error: there are some fields in `NoGeneric` are not safe to be sent to another thread
+error: some fields in `NoGeneric` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:55:1
    |
 LL | unsafe impl Send for NoGeneric {}
@@ -64,7 +64,7 @@ LL |     rc_is_not_send: Rc<String>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
 
-error: there are some fields in `MultiField<T>` are not safe to be sent to another thread
+error: some fields in `MultiField<T>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:63:1
    |
 LL | unsafe impl<T> Send for MultiField<T> {}
@@ -89,7 +89,7 @@ LL |     field3: T,
    |     ^^^^^^^^^
    = help: add `T: Send` bound in `Send` impl
 
-error: there are some fields in `MyOption<T>` are not safe to be sent to another thread
+error: some fields in `MyOption<T>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:70:1
    |
 LL | unsafe impl<T> Send for MyOption<T> {}
@@ -102,7 +102,7 @@ LL |     MySome(T),
    |            ^
    = help: add `T: Send` bound in `Send` impl
 
-error: there are some fields in `MultiParam<A, B>` are not safe to be sent to another thread
+error: some fields in `MultiParam<A, B>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:82:1
    |
 LL | unsafe impl<A, B> Send for MultiParam<A, B> {}
@@ -115,7 +115,7 @@ LL |     vec: Vec<(A, B)>,
    |     ^^^^^^^^^^^^^^^^
    = help: add bounds on type parameters `A, B` that satisfy `Vec<(A, B)>: Send`
 
-error: there are some fields in `HeuristicTest` are not safe to be sent to another thread
+error: some fields in `HeuristicTest` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:100:1
    |
 LL | unsafe impl Send for HeuristicTest {}
@@ -128,7 +128,7 @@ LL |     field4: (*const NonSend, Rc<u8>),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
 
-error: there are some fields in `AttrTest3<T>` are not safe to be sent to another thread
+error: some fields in `AttrTest3<T>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:119:1
    |
 LL | unsafe impl<T> Send for AttrTest3<T> {}
@@ -141,7 +141,7 @@ LL |     Enum2(T),
    |           ^
    = help: add `T: Send` bound in `Send` impl
 
-error: there are some fields in `Complex<P, u32>` are not safe to be sent to another thread
+error: some fields in `Complex<P, u32>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:127:1
    |
 LL | unsafe impl<P> Send for Complex<P, u32> {}
@@ -154,7 +154,7 @@ LL |     field1: A,
    |     ^^^^^^^^^
    = help: add `P: Send` bound in `Send` impl
 
-error: there are some fields in `Complex<Q, MutexGuard<'static, bool>>` are not safe to be sent to another thread
+error: some fields in `Complex<Q, MutexGuard<'static, bool>>` are not safe to be sent to another thread
   --> $DIR/non_send_fields_in_send_ty.rs:130:1
    |
 LL | unsafe impl<Q: Send> Send for Complex<Q, MutexGuard<'static, bool>> {}
