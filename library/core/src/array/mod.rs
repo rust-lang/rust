@@ -122,9 +122,70 @@ where
 /// );
 /// ```
 #[inline]
-#[unstable(feature = "array_repeat", issue = "88888888")]
+#[unstable(feature = "array_repeat", issue = "91613")]
 pub fn repeat<T: Clone, const N: usize>(value: T) -> [T; N] {
     SpecArrayFill::repeat(value)
+}
+
+/// Creates an array by repeatedly calling a closure.
+///
+/// The elements will appear in the array in the order returned.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(array_repeat)]
+///
+/// let array: [Vec<i32>; 4] = std::array::repeat_with(Vec::new);
+/// assert_eq!(array, [vec![], vec![], vec![], vec![]]);
+///
+/// let mut p = 1;
+/// let array: [_; 4] = std::array::repeat_with(|| { p *= 2; p });
+/// assert_eq!(array, [2, 4, 8, 16]);
+/// ```
+#[inline]
+#[unstable(feature = "array_repeat", issue = "91613")]
+pub fn repeat_with<T, const N: usize>(f: impl FnMut() -> T) -> [T; N] {
+    // SAFETY: `iter::repeat_with` is infinite, so is clearly long enough.
+    unsafe { collect_into_array_unchecked(&mut crate::iter::repeat_with(f)) }
+}
+
+/// Creates an array by repeatedly calling a fallibly closure.
+///
+/// If all invocations succeed, then this will return an array of those values.
+/// Otherwise it will immediately return the first error encountered.
+///
+/// The elements will appear in the array in the order returned.
+///
+/// The return type of this function depends on the return type of the closure.
+/// If the closure returns `Result<T, E>`, then this function will return
+/// `Result<[T; N], E>`. If the closure returns `Option<T>`, then this function
+/// will return `Option<[T; N]>`.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(array_repeat)]
+///
+/// let mut p = 1_u8;
+/// let mut f = || -> Option<u8> { p = p.checked_mul(2)?; Some(p) };
+/// let array: Option<[_; 4]> = std::array::try_repeat_with(&mut f);
+/// assert_eq!(array, Some([2, 4, 8, 16]));
+/// let array: Option<[_; 2]> = std::array::try_repeat_with(&mut f);
+/// assert_eq!(array, Some([32, 64]));
+/// let array: Option<[_; 4]> = std::array::try_repeat_with(&mut f);
+/// assert_eq!(array, None);
+/// ```
+#[inline]
+#[unstable(feature = "array_repeat", issue = "91613")]
+pub fn try_repeat_with<R: Try, const N: usize>(
+    f: impl FnMut() -> R,
+) -> ChangeOutputType<R, [R::Output; N]>
+where
+    R::Residual: Residual<[R::Output; N]>,
+{
+    // SAFETY: `iter::repeat_with` is infinite, so is clearly long enough.
+    unsafe { try_collect_into_array_unchecked(&mut crate::iter::repeat_with(f)) }
 }
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
@@ -533,7 +594,7 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(pixel, 0xA83C0900);
     /// ```
     #[must_use = "Unlike `Vec::resize`, this returns a new array"]
-    #[unstable(feature = "array_resize", issue = "88888888")]
+    #[unstable(feature = "array_resize", issue = "91615")]
     pub fn resize<const NEW_LEN: usize>(self, value: T) -> [T; NEW_LEN]
     where
         T: Clone,
@@ -570,7 +631,7 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(array, [7, 2, 4, 8, 16]);
     /// ```
     #[must_use = "Unlike `Vec::resize_with`, this returns a new array"]
-    #[unstable(feature = "array_resize", issue = "88888888")]
+    #[unstable(feature = "array_resize", issue = "91615")]
     pub fn resize_with<const NEW_LEN: usize>(self, mut f: impl FnMut() -> T) -> [T; NEW_LEN] {
         if NEW_LEN <= N {
             self.truncate()
