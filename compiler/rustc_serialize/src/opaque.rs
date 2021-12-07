@@ -55,6 +55,13 @@ macro_rules! write_leb128 {
     }};
 }
 
+/// A byte that [cannot occur in UTF8 sequences][utf8]. Used to mark the end of a string.
+/// This way we can skip validation and still be relatively sure that deserialization
+/// did not desynchronize.
+///
+/// [utf8]: https://en.wikipedia.org/w/index.php?title=UTF-8&oldid=1058865525#Codepage_layout
+const STR_SENTINEL: u8 = 0xC1;
+
 impl serialize::Encoder for Encoder {
     type Error = !;
 
@@ -150,7 +157,8 @@ impl serialize::Encoder for Encoder {
     #[inline]
     fn emit_str(&mut self, v: &str) -> EncodeResult {
         self.emit_usize(v.len())?;
-        self.emit_raw_bytes(v.as_bytes())
+        self.emit_raw_bytes(v.as_bytes())?;
+        self.emit_u8(STR_SENTINEL)
     }
 
     #[inline]
@@ -502,7 +510,8 @@ impl serialize::Encoder for FileEncoder {
     #[inline]
     fn emit_str(&mut self, v: &str) -> FileEncodeResult {
         self.emit_usize(v.len())?;
-        self.emit_raw_bytes(v.as_bytes())
+        self.emit_raw_bytes(v.as_bytes())?;
+        self.emit_u8(STR_SENTINEL)
     }
 
     #[inline]
@@ -656,8 +665,12 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     #[inline]
     fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error> {
         let len = self.read_usize()?;
-        let s = std::str::from_utf8(&self.data[self.position..self.position + len]).unwrap();
-        self.position += len;
+        let sentinel = self.data[self.position + len];
+        assert!(sentinel == STR_SENTINEL);
+        let s = unsafe {
+            std::str::from_utf8_unchecked(&self.data[self.position..self.position + len])
+        };
+        self.position += len + 1;
         Ok(Cow::Borrowed(s))
     }
 
