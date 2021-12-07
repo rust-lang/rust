@@ -30,6 +30,7 @@ declare_clippy_lint! {
     /// let x: u8 = 1;
     /// (x as u32) > 300;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INVALID_UPCAST_COMPARISONS,
     pedantic,
     "a comparison involving an upcast which is always true or false"

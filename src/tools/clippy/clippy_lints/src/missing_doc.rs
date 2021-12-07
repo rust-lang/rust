@@ -26,6 +26,7 @@ declare_clippy_lint! {
     /// allowed-by-default lint for
     /// public members, but has no way to enforce documentation of private items.
     /// This lint fixes that.
+    #[clippy::version = "pre 1.29.0"]
     pub MISSING_DOCS_IN_PRIVATE_ITEMS,
     restriction,
     "detects missing documentation for public and private members"

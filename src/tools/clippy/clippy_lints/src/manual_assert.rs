@@ -26,6 +26,7 @@ declare_clippy_lint! {
     /// let sad_people: Vec<&str> = vec![];
     /// assert!(sad_people.is_empty(), "there are sad people: {:?}", sad_people);
     /// ```
+    #[clippy::version = "1.57.0"]
     pub MANUAL_ASSERT,
     pedantic,
     "`panic!` and only a `panic!` in `if`-then statement"

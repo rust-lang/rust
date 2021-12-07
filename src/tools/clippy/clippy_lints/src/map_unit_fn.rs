@@ -47,6 +47,7 @@ declare_clippy_lint! {
     ///     log_err_msg(format_msg(msg));
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub OPTION_MAP_UNIT_FN,
     complexity,
     "using `option.map(f)`, where `f` is a function or closure that returns `()`"
@@ -87,6 +88,7 @@ declare_clippy_lint! {
     ///     log_err_msg(format_msg(msg));
     /// };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub RESULT_MAP_UNIT_FN,
     complexity,
     "using `result.map(f)`, where `f` is a function or closure that returns `()`"
@@ -188,7 +190,7 @@ fn unit_closure<'tcx>(
 /// Anything else will return `a`.
 fn let_binding_name(cx: &LateContext<'_>, var_arg: &hir::Expr<'_>) -> String {
     match &var_arg.kind {
-        hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
+        hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace('.', "_"),
         hir::ExprKind::Path(_) => format!("_{}", snippet(cx, var_arg.span, "")),
         _ => "a".to_string(),
     }

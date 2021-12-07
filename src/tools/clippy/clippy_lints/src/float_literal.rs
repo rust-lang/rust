@@ -27,6 +27,7 @@ declare_clippy_lint! {
     /// let v: f64 = 0.123_456_789_9;
     /// println!("{}", v); //  0.123_456_789_9
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EXCESSIVE_PRECISION,
     style,
     "excessive precision for float literal"
@@ -50,6 +51,7 @@ declare_clippy_lint! {
     /// let _: f32 = 16_777_216.0;
     /// let _: f64 = 16_777_217.0;
     /// ```
+    #[clippy::version = "1.43.0"]
     pub LOSSY_FLOAT_LITERAL,
     restriction,
     "lossy whole number float literals"

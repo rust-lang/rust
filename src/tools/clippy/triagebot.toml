@@ -5,3 +5,8 @@ allow-unauthenticated = [
 ]
 
 [assign]
+
+# Allows shortcuts like `@rustbot ready`
+#
+# See https://github.com/rust-lang/triagebot/wiki/Shortcuts
+[shortcut]

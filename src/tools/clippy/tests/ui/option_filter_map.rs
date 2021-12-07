@@ -1,8 +1,6 @@
-#![warn(clippy::option_filter_map)]
 // run-rustfix
-fn odds_out(x: i32) -> Option<i32> {
-    if x % 2 == 0 { Some(x) } else { None }
-}
+#![warn(clippy::option_filter_map)]
+#![allow(clippy::map_flatten)]
 
 fn main() {
     let _ = Some(Some(1)).filter(Option::is_some).map(Option::unwrap);
@@ -22,4 +20,8 @@ fn main() {
         .map(odds_out)
         .filter(|o| o.is_some())
         .map(|o| o.unwrap());
+}
+
+fn odds_out(x: i32) -> Option<i32> {
+    if x % 2 == 0 { Some(x) } else { None }
 }

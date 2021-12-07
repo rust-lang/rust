@@ -137,6 +137,14 @@ fn unnest_or_patterns() {
     if let TS(0, x) | TS(1, x) = TS(0, 0) {}
 }
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
+fn deprecated_cfg_attr() {}
+
+#[warn(clippy::cast_lossless)]
+fn int_from_bool() -> u8 {
+    true as u8
+}
+
 fn main() {
     filter_map_next();
     checked_conversion();
@@ -153,6 +161,19 @@ fn main() {
     map_unwrap_or();
     missing_const_for_fn();
     unnest_or_patterns();
+    int_from_bool();
+}
+
+mod just_under_msrv {
+    #![feature(custom_inner_attributes)]
+    #![clippy::msrv = "1.44.0"]
+
+    fn main() {
+        let s = "hello, world!";
+        if s.starts_with("hello, ") {
+            assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
+        }
+    }
 }
 
 mod meets_msrv {
@@ -167,21 +188,9 @@ mod meets_msrv {
     }
 }
 
-mod just_under_msrv {
-    #![feature(custom_inner_attributes)]
-    #![clippy::msrv = "1.46.0"]
-
-    fn main() {
-        let s = "hello, world!";
-        if s.starts_with("hello, ") {
-            assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
-        }
-    }
-}
-
 mod just_above_msrv {
     #![feature(custom_inner_attributes)]
-    #![clippy::msrv = "1.44.0"]
+    #![clippy::msrv = "1.46.0"]
 
     fn main() {
         let s = "hello, world!";

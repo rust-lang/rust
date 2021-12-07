@@ -1,12 +1,12 @@
 if_chain! {
-    if let StmtKind::Local(ref local) = stmt.kind;
-    if let Some(ref init) = local.init;
-    if let ExprKind::Call(ref func, ref args) = init.kind;
-    if let ExprKind::Path(ref path) = func.kind;
-    if match_qpath(path, &["std", "mem", "transmute"]);
+    if let StmtKind::Local(local) = stmt.kind;
+    if let Some(init) = local.init;
+    if let ExprKind::Call(func, args) = init.kind;
+    if let ExprKind::Path(ref qpath) = func.kind;
+    if match_qpath(qpath, &["std", "mem", "transmute"]);
     if args.len() == 1;
-    if let ExprKind::Path(ref path1) = args[0].kind;
-    if match_qpath(path1, &["ZPTR"]);
+    if let ExprKind::Path(ref qpath1) = args[0].kind;
+    if match_qpath(qpath1, &["ZPTR"]);
     if let PatKind::Wild = local.pat.kind;
     then {
         // report your lint here

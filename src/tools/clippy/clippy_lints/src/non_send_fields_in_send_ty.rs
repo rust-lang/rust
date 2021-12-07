@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_lint_allowed;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
+use clippy_utils::{is_lint_allowed, match_def_path, paths};
 use rustc_ast::ImplPolarity;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{FieldDef, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
@@ -43,6 +44,7 @@ declare_clippy_lint! {
     /// ```
     /// Use thread-safe types like [`std::sync::Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
     /// or specify correct bounds on generic type parameters (`T: Send`).
+    #[clippy::version = "1.57.0"]
     pub NON_SEND_FIELDS_IN_SEND_TY,
     suspicious,
     "there is field that does not implement `Send` in a `Send` struct"
@@ -76,6 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
         // single `AdtDef` may have multiple `Send` impls due to generic
         // parameters, and the lint is much easier to implement in this way.
         if_chain! {
+            if !in_external_macro(cx.tcx.sess, item.span);
             if let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send);
             if let ItemKind::Impl(hir_impl) = &item.kind;
             if let Some(trait_ref) = &hir_impl.of_trait;
@@ -180,7 +183,7 @@ fn ty_allowed_without_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty
         return true;
     }
 
-    if is_copy(cx, ty) && !contains_raw_pointer(cx, ty) {
+    if is_copy(cx, ty) && !contains_pointer_like(cx, ty) {
         return true;
     }
 
@@ -200,7 +203,7 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
             .all(|ty| ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)),
         ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
         ty::Adt(_, substs) => {
-            if contains_raw_pointer(cx, ty) {
+            if contains_pointer_like(cx, ty) {
                 // descends only if ADT contains any raw pointers
                 substs.iter().all(|generic_arg| match generic_arg.unpack() {
                     GenericArgKind::Type(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
@@ -217,14 +220,20 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
     }
 }
 
-/// Checks if the type contains any raw pointers in substs (including nested ones).
-fn contains_raw_pointer<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> bool {
+/// Checks if the type contains any pointer-like types in substs (including nested ones)
+fn contains_pointer_like<'tcx>(cx: &LateContext<'tcx>, target_ty: Ty<'tcx>) -> bool {
     for ty_node in target_ty.walk(cx.tcx) {
-        if_chain! {
-            if let GenericArgKind::Type(inner_ty) = ty_node.unpack();
-            if let ty::RawPtr(_) = inner_ty.kind();
-            then {
-                return true;
+        if let GenericArgKind::Type(inner_ty) = ty_node.unpack() {
+            match inner_ty.kind() {
+                ty::RawPtr(_) => {
+                    return true;
+                },
+                ty::Adt(adt_def, _) => {
+                    if match_def_path(cx, adt_def.did, &paths::PTR_NON_NULL) {
+                        return true;
+                    }
+                },
+                _ => (),
             }
         }
     }

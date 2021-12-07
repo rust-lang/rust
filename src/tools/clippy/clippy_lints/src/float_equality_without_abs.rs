@@ -37,6 +37,7 @@ declare_clippy_lint! {
     ///     (a - b).abs() < f32::EPSILON
     /// }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub FLOAT_EQUALITY_WITHOUT_ABS,
     suspicious,
     "float equality check without `.abs()`"

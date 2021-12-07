@@ -36,6 +36,9 @@ fn main() {
     // check that we don't lint if `find()` is called with
     // `Pattern` that is not a string
     let _ = "hello world".find(|c: char| c == 'o' || c == 'l').is_some();
+
+    let some_closure = |x: &u32| *x == 0;
+    let _ = (0..1).find(some_closure).is_some();
 }
 
 #[rustfmt::skip]
@@ -70,4 +73,7 @@ fn is_none() {
     // check that we don't lint if `find()` is called with
     // `Pattern` that is not a string
     let _ = "hello world".find(|c: char| c == 'o' || c == 'l').is_none();
+
+    let some_closure = |x: &u32| *x == 0;
+    let _ = (0..1).find(some_closure).is_none();
 }

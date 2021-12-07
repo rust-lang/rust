@@ -40,6 +40,7 @@ declare_clippy_lint! {
     ///     B(Box<[i32; 8000]>),
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub LARGE_ENUM_VARIANT,
     perf,
     "large size difference between variants on an enum"

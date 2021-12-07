@@ -35,6 +35,7 @@ declare_clippy_lint! {
     /// let foo: Option<i32> = None;
     /// foo.unwrap_or(1);
     /// ```
+    #[clippy::version = "1.49.0"]
     pub MANUAL_UNWRAP_OR,
     complexity,
     "finds patterns that can be encoded more concisely with `Option::unwrap_or` or `Result::unwrap_or`"

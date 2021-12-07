@@ -73,6 +73,7 @@ declare_clippy_lint! {
     ///     *a += b;
     /// }
     /// ```
+    #[clippy::version = "1.47.0"]
     pub PATTERN_TYPE_MISMATCH,
     restriction,
     "type of pattern does not match the expression type"

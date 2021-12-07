@@ -69,6 +69,11 @@ pub enum MyOption<T> {
 
 unsafe impl<T> Send for MyOption<T> {}
 
+// Test types that contain `NonNull` instead of raw pointers (#8045)
+pub struct WrappedNonNull(UnsafeCell<NonNull<()>>);
+
+unsafe impl Send for WrappedNonNull {}
+
 // Multiple type parameters
 pub struct MultiParam<A, B> {
     vec: Vec<(A, B)>,

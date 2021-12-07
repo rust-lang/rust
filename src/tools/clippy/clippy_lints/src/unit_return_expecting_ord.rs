@@ -30,6 +30,7 @@ declare_clippy_lint! {
     /// let mut twins = vec!((1, 1), (2, 2));
     /// twins.sort_by_key(|x| { x.1; });
     /// ```
+    #[clippy::version = "1.47.0"]
     pub UNIT_RETURN_EXPECTING_ORD,
     correctness,
     "fn arguments of type Fn(...) -> Ord returning the unit type ()."

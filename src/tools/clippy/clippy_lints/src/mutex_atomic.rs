@@ -36,6 +36,7 @@ declare_clippy_lint! {
     /// # use std::sync::atomic::AtomicBool;
     /// let x = AtomicBool::new(y);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MUTEX_ATOMIC,
     perf,
     "using a mutex where an atomic value could be used instead"
@@ -64,6 +65,7 @@ declare_clippy_lint! {
     /// # use std::sync::atomic::AtomicUsize;
     /// let x = AtomicUsize::new(0usize);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MUTEX_INTEGER,
     nursery,
     "using a mutex for an integer type"

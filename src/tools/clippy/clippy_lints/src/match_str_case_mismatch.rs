@@ -39,6 +39,7 @@ declare_clippy_lint! {
     ///     _ => {},
     /// }
     /// ```
+    #[clippy::version = "1.58.0"]
     pub MATCH_STR_CASE_MISMATCH,
     correctness,
     "creation of a case altering match expression with non-compliant arms"

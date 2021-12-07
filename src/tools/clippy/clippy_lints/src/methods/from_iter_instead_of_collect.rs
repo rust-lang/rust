@@ -69,7 +69,7 @@ fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -
                         // i.e.: 2 wildcards in `std::collections::BTreeMap<&i32, &char>`
                         let ty_str = ty.to_string();
                         let start = ty_str.find('<').unwrap_or(0);
-                        let end = ty_str.find('>').unwrap_or_else(|| ty_str.len());
+                        let end = ty_str.find('>').unwrap_or(ty_str.len());
                         let nb_wildcard = ty_str[start..end].split(',').count();
                         let wildcards = format!("_{}", ", _".repeat(nb_wildcard - 1));
                         format!("{}<{}>", elements.join("::"), wildcards)

@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// It lints if a struct has two method with same time:
+    /// It lints if a struct has two methods with the same name:
     /// one from a trait, another not from trait.
     ///
     /// ### Why is this bad?
@@ -33,6 +33,7 @@ declare_clippy_lint! {
     ///     fn foo(&self) {}
     /// }
     /// ```
+    #[clippy::version = "1.57.0"]
     pub SAME_NAME_METHOD,
     restriction,
     "two method with same name"
@@ -99,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                         cx,
                                         SAME_NAME_METHOD,
                                         *impl_span,
-                                        "method's name is same to an existing method in a trait",
+                                        "method's name is the same as an existing method in a trait",
                                         |diag| {
                                             diag.span_note(
                                                 trait_method_span,
@@ -138,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                         cx,
                                         SAME_NAME_METHOD,
                                         impl_span,
-                                        "method's name is same to an existing method in a trait",
+                                        "method's name is the same as an existing method in a trait",
                                         |diag| {
                                             // TODO should we `span_note` on every trait?
                                             // iterate on trait_spans?

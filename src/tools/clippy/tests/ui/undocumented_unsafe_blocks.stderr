@@ -155,5 +155,17 @@ LL ~     // Safety: ...
 LL ~     unsafe {};
    |
 
-error: aborting due to 13 previous errors
+error: unsafe block missing a safety comment
+  --> $DIR/undocumented_unsafe_blocks.rs:288:20
+   |
+LL |     println!("{}", unsafe { String::from_utf8_unchecked(vec![]) });
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider adding a safety comment
+   |
+LL ~     println!("{}", // Safety: ...
+LL ~     unsafe { String::from_utf8_unchecked(vec![]) });
+   |
+
+error: aborting due to 14 previous errors
 

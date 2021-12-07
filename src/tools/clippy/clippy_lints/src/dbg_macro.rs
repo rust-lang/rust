@@ -15,6 +15,14 @@ declare_clippy_lint! {
     /// `dbg!` macro is intended as a debugging tool. It
     /// should not be in version control.
     ///
+    /// ### Known problems
+    /// * The lint level is unaffected by crate attributes. The level can still
+    ///   be set for functions, modules and other items. To change the level for
+    ///   the entire crate, please use command line flags. More information and a
+    ///   configuration example can be found in [clippy#6610].
+    ///
+    /// [clippy#6610]: https://github.com/rust-lang/rust-clippy/issues/6610#issuecomment-977120558
+    ///
     /// ### Example
     /// ```rust,ignore
     /// // Bad
@@ -23,6 +31,7 @@ declare_clippy_lint! {
     /// // Good
     /// true
     /// ```
+    #[clippy::version = "1.34.0"]
     pub DBG_MACRO,
     restriction,
     "`dbg!` macro is intended as a debugging tool"

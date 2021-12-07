@@ -1,5 +1,5 @@
 error: multiply and add expressions can be calculated more efficiently and accurately
-  --> $DIR/floating_point_mul_add.rs:10:13
+  --> $DIR/floating_point_mul_add.rs:21:13
    |
 LL |     let _ = a * b + c;
    |             ^^^^^^^^^ help: consider using: `a.mul_add(b, c)`
@@ -7,55 +7,55 @@ LL |     let _ = a * b + c;
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
-  --> $DIR/floating_point_mul_add.rs:11:13
+  --> $DIR/floating_point_mul_add.rs:22:13
    |
 LL |     let _ = c + a * b;
    |             ^^^^^^^^^ help: consider using: `a.mul_add(b, c)`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
-  --> $DIR/floating_point_mul_add.rs:12:13
+  --> $DIR/floating_point_mul_add.rs:23:13
    |
 LL |     let _ = a + 2.0 * 4.0;
    |             ^^^^^^^^^^^^^ help: consider using: `2.0f64.mul_add(4.0, a)`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
-  --> $DIR/floating_point_mul_add.rs:13:13
+  --> $DIR/floating_point_mul_add.rs:24:13
    |
 LL |     let _ = a + 2. * 4.;
    |             ^^^^^^^^^^^ help: consider using: `2.0f64.mul_add(4., a)`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
-  --> $DIR/floating_point_mul_add.rs:15:13
+  --> $DIR/floating_point_mul_add.rs:26:13
    |
 LL |     let _ = (a * b) + c;
    |             ^^^^^^^^^^^ help: consider using: `a.mul_add(b, c)`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
-  --> $DIR/floating_point_mul_add.rs:16:13
+  --> $DIR/floating_point_mul_add.rs:27:13
    |
 LL |     let _ = c + (a * b);
    |             ^^^^^^^^^^^ help: consider using: `a.mul_add(b, c)`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
-  --> $DIR/floating_point_mul_add.rs:17:13
+  --> $DIR/floating_point_mul_add.rs:28:13
    |
 LL |     let _ = a * b * c + d;
    |             ^^^^^^^^^^^^^ help: consider using: `(a * b).mul_add(c, d)`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
-  --> $DIR/floating_point_mul_add.rs:19:13
+  --> $DIR/floating_point_mul_add.rs:30:13
    |
 LL |     let _ = a.mul_add(b, c) * a.mul_add(b, c) + a.mul_add(b, c) + c;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `a.mul_add(b, c).mul_add(a.mul_add(b, c), a.mul_add(b, c))`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
-  --> $DIR/floating_point_mul_add.rs:20:13
+  --> $DIR/floating_point_mul_add.rs:31:13
    |
 LL |     let _ = 1234.567_f64 * 45.67834_f64 + 0.0004_f64;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `1234.567_f64.mul_add(45.67834_f64, 0.0004_f64)`
 
 error: multiply and add expressions can be calculated more efficiently and accurately
-  --> $DIR/floating_point_mul_add.rs:22:13
+  --> $DIR/floating_point_mul_add.rs:33:13
    |
 LL |     let _ = (a * a + b).sqrt();
    |             ^^^^^^^^^^^ help: consider using: `a.mul_add(a, b)`

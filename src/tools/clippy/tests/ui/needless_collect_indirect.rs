@@ -76,6 +76,37 @@ mod issue7110 {
     }
 }
 
+mod issue7975 {
+    use super::*;
+
+    fn direct_mapping_with_used_mutable_reference() -> Vec<()> {
+        let test_vec: Vec<()> = vec![];
+        let mut vec_2: Vec<()> = vec![];
+        let mut_ref = &mut vec_2;
+        let collected_vec: Vec<_> = test_vec.into_iter().map(|_| mut_ref.push(())).collect();
+        collected_vec.into_iter().map(|_| mut_ref.push(())).collect()
+    }
+
+    fn indirectly_mapping_with_used_mutable_reference() -> Vec<()> {
+        let test_vec: Vec<()> = vec![];
+        let mut vec_2: Vec<()> = vec![];
+        let mut_ref = &mut vec_2;
+        let collected_vec: Vec<_> = test_vec.into_iter().map(|_| mut_ref.push(())).collect();
+        let iter = collected_vec.into_iter();
+        iter.map(|_| mut_ref.push(())).collect()
+    }
+
+    fn indirect_collect_after_indirect_mapping_with_used_mutable_reference() -> Vec<()> {
+        let test_vec: Vec<()> = vec![];
+        let mut vec_2: Vec<()> = vec![];
+        let mut_ref = &mut vec_2;
+        let collected_vec: Vec<_> = test_vec.into_iter().map(|_| mut_ref.push(())).collect();
+        let iter = collected_vec.into_iter();
+        let mapped_iter = iter.map(|_| mut_ref.push(()));
+        mapped_iter.collect()
+    }
+}
+
 fn allow_test() {
     #[allow(clippy::needless_collect)]
     let v = [1].iter().collect::<Vec<_>>();

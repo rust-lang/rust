@@ -19,6 +19,7 @@ declare_clippy_lint! {
     /// # use std::rc::Rc;
     /// mem::forget(Rc::new(55))
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MEM_FORGET,
     restriction,
     "`mem::forget` usage on `Drop` types, likely to cause memory leaks"

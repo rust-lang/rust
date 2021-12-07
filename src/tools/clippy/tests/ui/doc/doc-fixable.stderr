@@ -2,183 +2,332 @@ error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:9:9
    |
 LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
-   |         ^^^^^^^ help: try: ``foo_bar``
+   |         ^^^^^^^
    |
    = note: `-D clippy::doc-markdown` implied by `-D warnings`
+help: try
+   |
+LL | /// The `foo_bar` function does _nothing_. See also foo::bar. (note the dot there)
+   |         ~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:9:51
    |
 LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
-   |                                                   ^^^^^^^^ help: try: ``foo::bar``
+   |                                                   ^^^^^^^^
+   |
+help: try
+   |
+LL | /// The foo_bar function does _nothing_. See also `foo::bar`. (note the dot there)
+   |                                                   ~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:10:83
    |
 LL | /// Markdown is _weird_. I mean _really weird_. This /_ is ok. So is `_`. But not Foo::some_fun
-   |                                                                                   ^^^^^^^^^^^^^ help: try: ``Foo::some_fun``
+   |                                                                                   ^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// Markdown is _weird_. I mean _really weird_. This /_ is ok. So is `_`. But not `Foo::some_fun`
+   |                                                                                   ~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:12:13
    |
 LL | /// Here be ::a::global:path, and _::another::global::path_.  :: is not a path though.
-   |             ^^^^^^^^^^^^^^^^ help: try: ``::a::global:path``
+   |             ^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// Here be `::a::global:path`, and _::another::global::path_.  :: is not a path though.
+   |             ~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:12:36
    |
 LL | /// Here be ::a::global:path, and _::another::global::path_.  :: is not a path though.
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``::another::global::path``
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// Here be ::a::global:path, and _`::another::global::path`_.  :: is not a path though.
+   |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:13:25
    |
 LL | /// Import an item from ::awesome::global::blob:: (Intended postfix)
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``::awesome::global::blob::``
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// Import an item from `::awesome::global::blob::` (Intended postfix)
+   |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:14:31
    |
 LL | /// These are the options for ::Cat: (Intended trailing single colon, shouldn't be linted)
-   |                               ^^^^^ help: try: ``::Cat``
+   |                               ^^^^^
+   |
+help: try
+   |
+LL | /// These are the options for `::Cat`: (Intended trailing single colon, shouldn't be linted)
+   |                               ~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:15:22
    |
 LL | /// That's not code ~NotInCodeBlock~.
-   |                      ^^^^^^^^^^^^^^ help: try: ``NotInCodeBlock``
+   |                      ^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// That's not code ~`NotInCodeBlock`~.
+   |                      ~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:16:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// `be_sure_we_got_to_the_end_of_it`
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:30:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// `be_sure_we_got_to_the_end_of_it`
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:37:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// `be_sure_we_got_to_the_end_of_it`
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:51:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// `be_sure_we_got_to_the_end_of_it`
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:74:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// `be_sure_we_got_to_the_end_of_it`
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:78:22
    |
 LL | /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
-   |                      ^^^^^^^^^^^^^^^^^^^^^ help: try: ``link_with_underscores``
+   |                      ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// This test has [a `link_with_underscores`][chunked-example] inside it. See #823.
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:81:21
    |
 LL | /// It can also be [inline_link2].
-   |                     ^^^^^^^^^^^^ help: try: ``inline_link2``
+   |                     ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// It can also be [`inline_link2`].
+   |                     ~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:91:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// `be_sure_we_got_to_the_end_of_it`
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:99:8
    |
 LL | /// ## CamelCaseThing
-   |        ^^^^^^^^^^^^^^ help: try: ``CamelCaseThing``
+   |        ^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// ## `CamelCaseThing`
+   |        ~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:102:7
    |
 LL | /// # CamelCaseThing
-   |       ^^^^^^^^^^^^^^ help: try: ``CamelCaseThing``
+   |       ^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// # `CamelCaseThing`
+   |       ~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:104:22
    |
 LL | /// Not a title #897 CamelCaseThing
-   |                      ^^^^^^^^^^^^^^ help: try: ``CamelCaseThing``
+   |                      ^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// Not a title #897 `CamelCaseThing`
+   |                      ~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:105:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// `be_sure_we_got_to_the_end_of_it`
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:112:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// `be_sure_we_got_to_the_end_of_it`
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:125:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// `be_sure_we_got_to_the_end_of_it`
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:136:43
    |
 LL | /** E.g., serialization of an empty list: FooBar
-   |                                           ^^^^^^ help: try: ``FooBar``
+   |                                           ^^^^^^
+   |
+help: try
+   |
+LL | /** E.g., serialization of an empty list: `FooBar`
+   |                                           ~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:141:5
    |
 LL | And BarQuz too.
-   |     ^^^^^^ help: try: ``BarQuz``
+   |     ^^^^^^
+   |
+help: try
+   |
+LL | And `BarQuz` too.
+   |     ~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:142:1
    |
 LL | be_sure_we_got_to_the_end_of_it
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:147:43
    |
 LL | /** E.g., serialization of an empty list: FooBar
-   |                                           ^^^^^^ help: try: ``FooBar``
+   |                                           ^^^^^^
+   |
+help: try
+   |
+LL | /** E.g., serialization of an empty list: `FooBar`
+   |                                           ~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:152:5
    |
 LL | And BarQuz too.
-   |     ^^^^^^ help: try: ``BarQuz``
+   |     ^^^^^^
+   |
+help: try
+   |
+LL | And `BarQuz` too.
+   |     ~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:153:1
    |
 LL | be_sure_we_got_to_the_end_of_it
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:164:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: ``be_sure_we_got_to_the_end_of_it``
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// `be_sure_we_got_to_the_end_of_it`
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: item in documentation is missing backticks
   --> $DIR/doc-fixable.rs:183:22
    |
 LL | /// An iterator over mycrate::Collection's values.
-   |                      ^^^^^^^^^^^^^^^^^^^ help: try: ``mycrate::Collection``
+   |                      ^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// An iterator over `mycrate::Collection`'s values.
+   |                      ~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 30 previous errors
 
