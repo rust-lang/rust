@@ -159,7 +159,7 @@ impl QuestionMark {
     fn expression_returns_unmodified_err(cx: &LateContext<'_>, expr: &Expr<'_>, cond_expr: &Expr<'_>) -> bool {
         match peel_blocks_with_stmt(expr).kind {
             ExprKind::Ret(Some(ret_expr)) => Self::expression_returns_unmodified_err(cx, ret_expr, cond_expr),
-            ExprKind::Path(_) => path_to_local(expr) == path_to_local(cond_expr),
+            ExprKind::Path(_) => path_to_local(expr).is_some() && path_to_local(expr) == path_to_local(cond_expr),
             _ => false,
         }
     }
