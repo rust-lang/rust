@@ -367,6 +367,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Destroying an uninit pthread_mutexattr is UB, so check to make sure it's not uninit.
         mutexattr_get_kind(this, attr_op)?.check_init()?;
 
+        // This is technically not right and might lead to false positives. For example, the below
+        // code is *likely* sound, even assuming uninit numbers are UB, but miri with
+        // -Zmiri-check-number-validity complains
+        //
+        // let mut x: MaybeUninit<libc::pthread_mutexattr_t> = MaybeUninit::zeroed();
+        // libc::pthread_mutexattr_init(x.as_mut_ptr());
+        // libc::pthread_mutexattr_destroy(x.as_mut_ptr());
+        // x.assume_init();
+        //
+        // This can always be revisited to have some external state to catch double-destroys
+        // but not complain about the above code. See https://github.com/rust-lang/miri/pull/1933
+
         mutexattr_set_kind(this, attr_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
@@ -509,6 +521,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         mutex_get_kind(this, mutex_op)?.check_init()?;
         mutex_get_id(this, mutex_op)?.check_init()?;
 
+        // This might lead to false positives, see comment in pthread_mutexattr_destroy
         mutex_set_kind(this, mutex_op, ScalarMaybeUninit::Uninit)?;
         mutex_set_id(this, mutex_op, ScalarMaybeUninit::Uninit)?;
         // FIXME: delete interpreter state associated with this mutex.
@@ -613,6 +626,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Destroying an uninit pthread_rwlock is UB, so check to make sure it's not uninit.
         rwlock_get_id(this, rwlock_op)?.check_init()?;
 
+        // This might lead to false positives, see comment in pthread_mutexattr_destroy
         rwlock_set_id(this, rwlock_op, ScalarMaybeUninit::Uninit)?;
         // FIXME: delete interpreter state associated with this rwlock.
 
@@ -670,6 +684,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Destroying an uninit pthread_condattr is UB, so check to make sure it's not uninit.
         condattr_get_clock_id(this, attr_op)?.check_init()?;
 
+        // This might lead to false positives, see comment in pthread_mutexattr_destroy
         condattr_set_clock_id(this, attr_op, ScalarMaybeUninit::Uninit)?;
 
         Ok(0)
@@ -812,6 +827,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         cond_get_id(this, cond_op)?.check_init()?;
         cond_get_clock_id(this, cond_op)?.check_init()?;
 
+        // This might lead to false positives, see comment in pthread_mutexattr_destroy
         cond_set_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
         cond_set_clock_id(this, cond_op, ScalarMaybeUninit::Uninit)?;
         // FIXME: delete interpreter state associated with this condvar.
