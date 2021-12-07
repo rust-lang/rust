@@ -1,3 +1,5 @@
+use rustc_middle::ty;
+
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
 use crate::traits::{
@@ -64,10 +66,28 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         let mut _orig_values = OriginalQueryValues::default();
-        let c_pred = self.canonicalize_query_keep_static(
-            obligation.param_env.and(obligation.predicate),
-            &mut _orig_values,
-        );
+
+        let (param_env, predicate) = match obligation.predicate.kind().skip_binder() {
+            ty::PredicateKind::Trait(mut pred) => {
+                let orig_pred_constness = pred.constness;
+                let env_constness = pred.constness.and(obligation.param_env.constness());
+
+                let predicate = if orig_pred_constness != pred.constness {
+                    self.tcx.mk_predicate(
+                        obligation.predicate.kind().rebind(ty::PredicateKind::Trait(pred)),
+                    )
+                } else {
+                    obligation.predicate
+                };
+
+                (obligation.param_env.with_constness(env_constness), predicate)
+            }
+            // constness has no effect on the given predicate.
+            _ => (obligation.param_env.without_const(), obligation.predicate),
+        };
+
+        let c_pred =
+            self.canonicalize_query_keep_static(param_env.and(predicate), &mut _orig_values);
         // Run canonical query. If overflow occurs, rerun from scratch but this time
         // in standard trait query mode so that overflow is handled appropriately
         // within `SelectionContext`.
