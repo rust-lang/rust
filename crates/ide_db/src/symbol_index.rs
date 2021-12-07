@@ -44,7 +44,7 @@ use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use syntax::{ast::HasName, AstNode, SmolStr, SyntaxNode, SyntaxNodePtr};
 
-use crate::RootDatabase;
+use crate::{RootDatabase, SymbolKind};
 
 #[derive(Debug)]
 pub struct Query {
@@ -427,6 +427,23 @@ impl FileSymbolKind {
                 | FileSymbolKind::TypeAlias
                 | FileSymbolKind::Union
         )
+    }
+}
+
+impl From<FileSymbolKind> for SymbolKind {
+    fn from(it: FileSymbolKind) -> Self {
+        match it {
+            FileSymbolKind::Const => SymbolKind::Const,
+            FileSymbolKind::Enum => SymbolKind::Enum,
+            FileSymbolKind::Function => SymbolKind::Function,
+            FileSymbolKind::Macro => SymbolKind::Macro,
+            FileSymbolKind::Module => SymbolKind::Module,
+            FileSymbolKind::Static => SymbolKind::Static,
+            FileSymbolKind::Struct => SymbolKind::Struct,
+            FileSymbolKind::Trait => SymbolKind::Trait,
+            FileSymbolKind::TypeAlias => SymbolKind::TypeAlias,
+            FileSymbolKind::Union => SymbolKind::Union,
+        }
     }
 }
 

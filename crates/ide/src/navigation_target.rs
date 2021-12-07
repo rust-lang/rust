@@ -9,7 +9,6 @@ use hir::{
 };
 use ide_db::{
     base_db::{FileId, FileRange},
-    symbol_index::FileSymbolKind,
     SymbolKind,
 };
 use ide_db::{defs::Definition, RootDatabase};
@@ -174,18 +173,7 @@ impl TryToNav for FileSymbol {
         Some(NavigationTarget {
             file_id: full_range.file_id,
             name: self.name.clone(),
-            kind: Some(match self.kind {
-                FileSymbolKind::Function => SymbolKind::Function,
-                FileSymbolKind::Struct => SymbolKind::Struct,
-                FileSymbolKind::Enum => SymbolKind::Enum,
-                FileSymbolKind::Trait => SymbolKind::Trait,
-                FileSymbolKind::Module => SymbolKind::Module,
-                FileSymbolKind::TypeAlias => SymbolKind::TypeAlias,
-                FileSymbolKind::Const => SymbolKind::Const,
-                FileSymbolKind::Static => SymbolKind::Static,
-                FileSymbolKind::Macro => SymbolKind::Macro,
-                FileSymbolKind::Union => SymbolKind::Union,
-            }),
+            kind: Some(self.kind.into()),
             full_range: full_range.range,
             focus_range: Some(name_range.range),
             container_name: self.container_name.clone(),
@@ -367,13 +355,7 @@ impl TryToNav for hir::MacroDef {
         let mut res = NavigationTarget::from_named(
             db,
             src.as_ref().with_value(name_owner),
-            match self.kind() {
-                hir::MacroKind::Declarative
-                | hir::MacroKind::BuiltIn
-                | hir::MacroKind::ProcMacro => SymbolKind::Macro,
-                hir::MacroKind::Derive => SymbolKind::Derive,
-                hir::MacroKind::Attr => SymbolKind::Attribute,
-            },
+            self.kind().into(),
         );
         res.docs = self.docs(db);
         Some(res)

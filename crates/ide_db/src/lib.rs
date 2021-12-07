@@ -171,6 +171,18 @@ pub enum SymbolKind {
     Variant,
 }
 
+impl From<hir::MacroKind> for SymbolKind {
+    fn from(it: hir::MacroKind) -> Self {
+        match it {
+            hir::MacroKind::Declarative | hir::MacroKind::BuiltIn | hir::MacroKind::ProcMacro => {
+                SymbolKind::Macro
+            }
+            hir::MacroKind::Derive => SymbolKind::Derive,
+            hir::MacroKind::Attr => SymbolKind::Attribute,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     mod sourcegen_lints;
