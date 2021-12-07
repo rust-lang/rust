@@ -492,7 +492,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool /* did we suggest to call a function because of missing parentheses? */ {
         err.span_label(span, ty.to_string());
         if let FnDef(def_id, _) = *ty.kind() {
-            let source_map = self.tcx.sess.source_map();
             if !self.tcx.has_typeck_results(def_id) {
                 return false;
             }
@@ -517,20 +516,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .lookup_op_method(fn_sig.output(), &[other_ty], Op::Binary(op, is_assign))
                 .is_ok()
             {
-                if let Ok(snippet) = source_map.span_to_snippet(span) {
-                    let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
-                        (format!("{}( /* arguments */ )", snippet), Applicability::HasPlaceholders)
-                    } else {
-                        (format!("{}()", snippet), Applicability::MaybeIncorrect)
-                    };
+                let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
+                    ("( /* arguments */ )".to_string(), Applicability::HasPlaceholders)
+                } else {
+                    ("()".to_string(), Applicability::MaybeIncorrect)
+                };
 
-                    err.span_suggestion(
-                        span,
-                        "you might have forgotten to call this function",
-                        variable_snippet,
-                        applicability,
-                    );
-                }
+                err.span_suggestion_verbose(
+                    span.shrink_to_hi(),
+                    "you might have forgotten to call this function",
+                    variable_snippet,
+                    applicability,
+                );
                 return true;
             }
         }
