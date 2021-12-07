@@ -2077,7 +2077,6 @@ impl<'a> State<'a> {
             ast::ExprKind::Async(capture_clause, _, ref blk) => {
                 self.word_nbsp("async");
                 self.print_capture_clause(capture_clause);
-                self.s.space();
                 // cbox/ibox in analogy to the `ExprKind::Block` arm above
                 self.cbox(INDENT_UNIT);
                 self.ibox(0);
