@@ -1,0 +1,37 @@
+error: overly complex generic constant
+  --> $DIR/issue-90318.rs:14:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          borrowing is not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-90318.rs:14:10
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: overly complex generic constant
+  --> $DIR/issue-90318.rs:22:8
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |        ^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          borrowing is not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-90318.rs:22:10
+   |
+LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0015`.
