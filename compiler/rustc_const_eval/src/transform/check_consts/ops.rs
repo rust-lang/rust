@@ -1,12 +1,14 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir;
+use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
+use rustc_middle::{mir, ty::AssocKind};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{symbol::Ident, Span, Symbol};
+use rustc_span::{BytePos, Pos};
 
 use super::ConstCx;
 
@@ -72,17 +74,71 @@ impl NonConstOp for FnCallIndirect {
 
 /// A function call where the callee is not marked as `const`.
 #[derive(Debug)]
-pub struct FnCallNonConst;
-impl NonConstOp for FnCallNonConst {
+pub struct FnCallNonConst<'tcx>(pub Option<(DefId, SubstsRef<'tcx>)>);
+impl<'a> NonConstOp for FnCallNonConst<'a> {
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        struct_span_err!(
+        let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
             E0015,
             "calls in {}s are limited to constant functions, \
              tuple structs and tuple variants",
             ccx.const_kind(),
-        )
+        );
+
+        if let FnCallNonConst(Some((callee, substs))) = *self {
+            if let Some(trait_def_id) = ccx.tcx.lang_items().eq_trait() {
+                if let Some(eq_item) = ccx.tcx.associated_items(trait_def_id).find_by_name_and_kind(
+                    ccx.tcx,
+                    Ident::with_dummy_span(sym::eq),
+                    AssocKind::Fn,
+                    trait_def_id,
+                ) {
+                    if callee == eq_item.def_id && substs.len() == 2 {
+                        match (substs[0].unpack(), substs[1].unpack()) {
+                            (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
+                                if self_ty == rhs_ty
+                                    && self_ty.is_ref()
+                                    && self_ty.peel_refs().is_primitive() =>
+                            {
+                                let mut num_refs = 0;
+                                let mut tmp_ty = self_ty;
+                                while let rustc_middle::ty::Ref(_, inner_ty, _) = tmp_ty.kind() {
+                                    num_refs += 1;
+                                    tmp_ty = inner_ty;
+                                }
+                                let deref = "*".repeat(num_refs);
+
+                                if let Ok(call_str) =
+                                    ccx.tcx.sess.source_map().span_to_snippet(span)
+                                {
+                                    if let Some(eq_idx) = call_str.find("==") {
+                                        if let Some(rhs_idx) = call_str[(eq_idx + 2)..]
+                                            .find(|c: char| !c.is_whitespace())
+                                        {
+                                            let rhs_pos = span.lo()
+                                                + BytePos::from_usize(eq_idx + 2 + rhs_idx);
+                                            let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
+                                            err.multipart_suggestion(
+                                                "consider dereferencing here",
+                                                vec![
+                                                    (span.shrink_to_lo(), deref.clone()),
+                                                    (rhs_span, deref),
+                                                ],
+                                                Applicability::MachineApplicable,
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        err
     }
 }
 
