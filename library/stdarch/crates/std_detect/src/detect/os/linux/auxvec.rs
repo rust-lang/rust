@@ -63,7 +63,13 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
         // Try to call a dynamically-linked getauxval function.
         if let Ok(hwcap) = getauxval(AT_HWCAP) {
             // Targets with only AT_HWCAP:
-            #[cfg(any(target_arch = "aarch64", target_arch = "mips", target_arch = "mips64"))]
+            #[cfg(any(
+                target_arch = "aarch64",
+                target_arch = "riscv32",
+                target_arch = "riscv64",
+                target_arch = "mips",
+                target_arch = "mips64"
+            ))]
             {
                 if hwcap != 0 {
                     return Ok(AuxVec { hwcap });
@@ -90,7 +96,13 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
     #[cfg(not(feature = "std_detect_dlsym_getauxval"))]
     {
         // Targets with only AT_HWCAP:
-        #[cfg(any(target_arch = "aarch64", target_arch = "mips", target_arch = "mips64"))]
+        #[cfg(any(
+            target_arch = "aarch64",
+            target_arch = "riscv32",
+            target_arch = "riscv64",
+            target_arch = "mips",
+            target_arch = "mips64"
+        ))]
         {
             let hwcap = unsafe { libc::getauxval(AT_HWCAP as libc::c_ulong) as usize };
             if hwcap != 0 {
@@ -168,7 +180,13 @@ fn auxv_from_file(file: &str) -> Result<AuxVec, ()> {
 #[cfg(feature = "std_detect_file_io")]
 fn auxv_from_buf(buf: &[usize; 64]) -> Result<AuxVec, ()> {
     // Targets with only AT_HWCAP:
-    #[cfg(any(target_arch = "aarch64", target_arch = "mips", target_arch = "mips64"))]
+    #[cfg(any(
+        target_arch = "aarch64",
+        target_arch = "riscv32",
+        target_arch = "riscv64",
+        target_arch = "mips",
+        target_arch = "mips64",
+    ))]
     {
         for el in buf.chunks(2) {
             match el[0] {

@@ -6,6 +6,7 @@
 //! * `x86` and `x86_64`: [`is_x86_feature_detected`]
 //! * `arm`: [`is_arm_feature_detected`]
 //! * `aarch64`: [`is_aarch64_feature_detected`]
+//! * `riscv`: [`is_riscv_feature_detected`]
 //! * `mips`: [`is_mips_feature_detected`]
 //! * `mips64`: [`is_mips64_feature_detected`]
 //! * `powerpc`: [`is_powerpc_feature_detected`]

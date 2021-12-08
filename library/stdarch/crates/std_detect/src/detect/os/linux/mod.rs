@@ -45,7 +45,10 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_arch = "arm")] {
         mod arm;
         pub(crate) use self::arm::detect_features;
-    } else  if #[cfg(any(target_arch = "mips", target_arch = "mips64"))] {
+    } else if #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))] {
+        mod riscv;
+        pub(crate) use self::riscv::detect_features;
+    } else if #[cfg(any(target_arch = "mips", target_arch = "mips64"))] {
         mod mips;
         pub(crate) use self::mips::detect_features;
     } else if #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))] {

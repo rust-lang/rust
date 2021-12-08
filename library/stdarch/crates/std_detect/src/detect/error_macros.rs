@@ -65,6 +65,27 @@ macro_rules! is_aarch64_feature_detected {
     };
 }
 
+/// Prevents compilation if `is_riscv_feature_detected` is used somewhere else
+/// than `riscv32` or `riscv64` targets.
+#[cfg(not(any(target_arch = "riscv32", target_arch = "riscv64")))]
+#[macro_export]
+#[unstable(feature = "stdsimd", issue = "27731")]
+macro_rules! is_riscv_feature_detected {
+    ($t: tt) => {
+        compile_error!(
+            r#"
+        is_riscv_feature_detected can only be used on RISC-V targets.
+        You can prevent it from being used in other architectures by
+        guarding it behind a cfg(target_arch) as follows:
+
+            #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))] {
+                if is_riscv_feature_detected(...) { ... }
+            }
+        "#
+        )
+    };
+}
+
 /// Prevents compilation if `is_powerpc_feature_detected` is used somewhere else
 /// than `PowerPC` targets.
 #[cfg(not(target_arch = "powerpc"))]

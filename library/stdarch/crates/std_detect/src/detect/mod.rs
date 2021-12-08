@@ -38,6 +38,10 @@ cfg_if! {
         #[path = "arch/aarch64.rs"]
         #[macro_use]
         mod arch;
+    } else if #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))] {
+        #[path = "arch/riscv.rs"]
+        #[macro_use]
+        mod arch;
     } else if #[cfg(target_arch = "powerpc")] {
         #[path = "arch/powerpc.rs"]
         #[macro_use]
@@ -134,12 +138,15 @@ pub fn features() -> impl Iterator<Item = (&'static str, bool)> {
             target_arch = "x86_64",
             target_arch = "arm",
             target_arch = "aarch64",
+            target_arch = "riscv32",
+            target_arch = "riscv64",
             target_arch = "powerpc",
             target_arch = "powerpc64",
             target_arch = "mips",
             target_arch = "mips64",
         ))] {
             (0_u8..Feature::_last as u8).map(|discriminant: u8| {
+                #[allow(bindings_with_variant_name)] // RISC-V has Feature::f
                 let f: Feature = unsafe { core::mem::transmute(discriminant) };
                 let name: &'static str = f.to_str();
                 let enabled: bool = check_for(f);

@@ -212,6 +212,38 @@ CPU revision	: 1";
         assert!(cpuinfo.field("Features").has("asimd"));
     }
 
+    const RISCV_RV64GC: &str = r"processor       : 0
+hart            : 3
+isa             : rv64imafdc
+mmu             : sv39
+uarch           : sifive,u74-mc
+
+processor       : 1
+hart            : 1
+isa             : rv64imafdc
+mmu             : sv39
+uarch           : sifive,u74-mc
+
+processor       : 2
+hart            : 2
+isa             : rv64imafdc
+mmu             : sv39
+uarch           : sifive,u74-mc
+
+processor       : 3
+hart            : 4
+isa             : rv64imafdc
+mmu             : sv39
+uarch           : sifive,u74-mc";
+
+    #[test]
+    fn riscv_rv64gc() {
+        let cpuinfo = CpuInfo::from_str(RISCV_RV64GC).unwrap();
+        assert_eq!(cpuinfo.field("isa"), "rv64imafdc");
+        assert_eq!(cpuinfo.field("mmu"), "sv39");
+        assert_eq!(cpuinfo.field("uarch"), "sifive,u74-mc");
+    }
+
     const POWER8E_POWERKVM: &str = r"processor       : 0
 cpu             : POWER8E (raw), altivec supported
 clock           : 3425.000000MHz
