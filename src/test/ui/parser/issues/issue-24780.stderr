@@ -1,8 +1,8 @@
-error: expected one of `!`, `+`, `::`, `;`, `where`, or `{`, found `>`
+error: expected one of `!`, `+`, `::`, `where`, or `{`, found `>`
   --> $DIR/issue-24780.rs:5:23
    |
 LL | fn foo() -> Vec<usize>> {
-   |                       ^ expected one of `!`, `+`, `::`, `;`, `where`, or `{`
+   |                       ^ expected one of `!`, `+`, `::`, `where`, or `{`
 
 error: aborting due to previous error
 

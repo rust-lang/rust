@@ -148,7 +148,7 @@ struct OptimizationFinder<'a, 'tcx> {
     body: &'a Body<'tcx>,
 }
 
-impl<'a, 'tcx> OptimizationFinder<'a, 'tcx> {
+impl<'tcx> OptimizationFinder<'_, 'tcx> {
     fn find_optimizations(&self) -> Vec<OptimizationInfo<'tcx>> {
         self.body
             .basic_blocks()

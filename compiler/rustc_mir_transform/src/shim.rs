@@ -64,7 +64,19 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
 
             build_call_shim(tcx, instance, Some(Adjustment::RefMut), CallKind::Direct(call_mut))
         }
-        ty::InstanceDef::DropGlue(def_id, ty) => build_drop_shim(tcx, def_id, ty),
+
+        ty::InstanceDef::DropGlue(def_id, ty) => {
+            // FIXME(#91576): Drop shims for generators aren't subject to the MIR passes at the end
+            // of this function. Is this intentional?
+            if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(ty::TyS::kind) {
+                let body = tcx.optimized_mir(*gen_def_id).generator_drop().unwrap();
+                let body = body.clone().subst(tcx, substs);
+                debug!("make_shim({:?}) = {:?}", instance, body);
+                return body;
+            }
+
+            build_drop_shim(tcx, def_id, ty)
+        }
         ty::InstanceDef::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceDef::Virtual(..) => {
             bug!("InstanceDef::Virtual ({:?}) is for direct calls only", instance)
@@ -74,14 +86,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         }
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
-
-    // In some of the above cases, we seem to be invoking the passes for non-shim MIR bodies.
-    // If that happens, there's no need to run them again.
-    //
-    // FIXME: Is this intentional?
-    if result.phase >= MirPhase::Const {
-        return result;
-    }
 
     pm::run_passes(
         tcx,
@@ -140,11 +144,7 @@ fn local_decls_for_sig<'tcx>(
 fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>) -> Body<'tcx> {
     debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
 
-    // Check if this is a generator, if so, return the drop glue for it
-    if let Some(&ty::Generator(gen_def_id, substs, _)) = ty.map(|ty| ty.kind()) {
-        let body = tcx.optimized_mir(gen_def_id).generator_drop().unwrap();
-        return body.clone().subst(tcx, substs);
-    }
+    assert!(!matches!(ty, Some(ty) if ty.is_generator()));
 
     let substs = if let Some(ty) = ty {
         tcx.intern_substs(&[ty.into()])
@@ -247,7 +247,7 @@ pub struct DropShimElaborator<'a, 'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'a, 'tcx> fmt::Debug for DropShimElaborator<'a, 'tcx> {
+impl fmt::Debug for DropShimElaborator<'_, '_> {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         Ok(())
     }
@@ -337,7 +337,7 @@ struct CloneShimBuilder<'tcx> {
     sig: ty::FnSig<'tcx>,
 }
 
-impl CloneShimBuilder<'tcx> {
+impl<'tcx> CloneShimBuilder<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Self {
         // we must subst the self_ty because it's
         // otherwise going to be TySelf and we can't index

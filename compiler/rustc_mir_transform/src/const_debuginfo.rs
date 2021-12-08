@@ -89,7 +89,7 @@ fn find_optimization_oportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Consta
     eligable_locals
 }
 
-impl<'tcx> Visitor<'tcx> for LocalUseVisitor {
+impl Visitor<'_> for LocalUseVisitor {
     fn visit_local(&mut self, local: &Local, context: PlaceContext, location: Location) {
         if context.is_mutating_use() {
             self.local_mutating_uses[*local] = self.local_mutating_uses[*local].saturating_add(1);

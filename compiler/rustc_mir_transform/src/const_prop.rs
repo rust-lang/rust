@@ -171,7 +171,7 @@ struct ConstPropMachine<'mir, 'tcx> {
     can_const_prop: IndexVec<Local, ConstPropMode>,
 }
 
-impl<'mir, 'tcx> ConstPropMachine<'mir, 'tcx> {
+impl ConstPropMachine<'_, '_> {
     fn new(
         only_propagate_inside_block_locals: BitSet<Local>,
         can_const_prop: IndexVec<Local, ConstPropMode>,
@@ -308,14 +308,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn stack(
+    fn stack<'a>(
         ecx: &'a InterpCx<'mir, 'tcx, Self>,
     ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
         &ecx.machine.stack
     }
 
     #[inline(always)]
-    fn stack_mut(
+    fn stack_mut<'a>(
         ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
     ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
         &mut ecx.machine.stack
@@ -336,7 +336,7 @@ struct ConstPropagator<'mir, 'tcx> {
     source_info: Option<SourceInfo>,
 }
 
-impl<'mir, 'tcx> LayoutOfHelpers<'tcx> for ConstPropagator<'mir, 'tcx> {
+impl<'tcx> LayoutOfHelpers<'tcx> for ConstPropagator<'_, 'tcx> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     #[inline]
@@ -345,21 +345,21 @@ impl<'mir, 'tcx> LayoutOfHelpers<'tcx> for ConstPropagator<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> HasDataLayout for ConstPropagator<'mir, 'tcx> {
+impl HasDataLayout for ConstPropagator<'_, '_> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'mir, 'tcx> ty::layout::HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
+impl<'tcx> ty::layout::HasTyCtxt<'tcx> for ConstPropagator<'_, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl<'mir, 'tcx> ty::layout::HasParamEnv<'tcx> for ConstPropagator<'mir, 'tcx> {
+impl<'tcx> ty::layout::HasParamEnv<'tcx> for ConstPropagator<'_, 'tcx> {
     #[inline]
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
@@ -971,7 +971,7 @@ struct CanConstProp {
 
 impl CanConstProp {
     /// Returns true if `local` can be propagated
-    fn check(
+    fn check<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         body: &Body<'tcx>,
@@ -1019,7 +1019,7 @@ impl CanConstProp {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for CanConstProp {
+impl Visitor<'_> for CanConstProp {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
         use rustc_middle::mir::visit::PlaceContext::*;
         match context {
@@ -1079,7 +1079,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
     }
 }
 
-impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
+impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

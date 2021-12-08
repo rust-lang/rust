@@ -629,7 +629,7 @@ impl UsedExpressions {
 }
 
 /// Generates the MIR pass `CoverageSpan`-specific spanview dump file.
-pub(super) fn dump_coverage_spanview(
+pub(super) fn dump_coverage_spanview<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     basic_coverage_blocks: &CoverageGraph,
@@ -651,7 +651,7 @@ pub(super) fn dump_coverage_spanview(
 }
 
 /// Converts the computed `BasicCoverageBlockData`s into `SpanViewable`s.
-fn span_viewables(
+fn span_viewables<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     basic_coverage_blocks: &CoverageGraph,
@@ -670,7 +670,7 @@ fn span_viewables(
 }
 
 /// Generates the MIR pass coverage-specific graphviz dump file.
-pub(super) fn dump_coverage_graphviz(
+pub(super) fn dump_coverage_graphviz<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     pass_name: &str,
@@ -750,7 +750,7 @@ pub(super) fn dump_coverage_graphviz(
         .expect("Unexpected error writing BasicCoverageBlock graphviz DOT file");
 }
 
-fn bcb_to_string_sections(
+fn bcb_to_string_sections<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     debug_counters: &DebugCounters,
@@ -817,7 +817,7 @@ fn bcb_to_string_sections(
 
 /// Returns a simple string representation of a `TerminatorKind` variant, independent of any
 /// values it might hold.
-pub(super) fn term_type(kind: &TerminatorKind<'tcx>) -> &'static str {
+pub(super) fn term_type(kind: &TerminatorKind<'_>) -> &'static str {
     match kind {
         TerminatorKind::Goto { .. } => "Goto",
         TerminatorKind::SwitchInt { .. } => "SwitchInt",

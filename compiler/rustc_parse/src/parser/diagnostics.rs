@@ -1129,7 +1129,8 @@ impl<'a> Parser<'a> {
     }
 
     pub fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {
-        if self.eat(&token::Semi) {
+        if self.token.kind == TokenKind::Semi {
+            self.bump();
             let mut err = self.struct_span_err(self.prev_token.span, "expected item, found `;`");
             err.span_suggestion_short(
                 self.prev_token.span,

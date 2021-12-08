@@ -54,7 +54,7 @@ impl<'tcx> MirPass<'tcx> for ConstGoto {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         let _: Option<_> = try {
             let target = terminator.kind.as_goto()?;
