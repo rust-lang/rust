@@ -185,7 +185,10 @@ fn operation_summary(
 
 fn error_cause(stack: &Stack, tag: SbTagExtra) -> &'static str {
     if let SbTagExtra::Concrete(tag) = tag {
-        if stack.borrows.iter().any(|item| item.tag == tag && item.perm != Permission::Disabled) {
+        if (0..stack.len())
+            .map(|i| stack.get(i).unwrap())
+            .any(|item| item.tag == tag && item.perm != Permission::Disabled)
+        {
             ", but that tag only grants SharedReadOnly permission for this location"
         } else {
             ", but that tag does not exist in the borrow stack for this location"

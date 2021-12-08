@@ -50,3 +50,8 @@ rustc_private = true
 [[test]]
 name = "compiletest"
 harness = false
+
+[features]
+default = ["stack-cache"]
+expensive-debug-assertions = []
+stack-cache = []

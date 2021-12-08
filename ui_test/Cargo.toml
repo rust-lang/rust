@@ -14,3 +14,7 @@ crossbeam = "0.8.1"
 lazy_static = "1.4.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+[features]
+# Doesn't do anything, but the miri script wants to pass the same flags to ui_test and miri itself
+expensive-debug-assertions = []
