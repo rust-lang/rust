@@ -1,3 +1,4 @@
+use crate::back::metadata::create_compressed_metadata_file;
 use crate::back::write::{
     compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
     submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
@@ -8,7 +9,7 @@ use crate::mir;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
-use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
+use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
@@ -20,13 +21,14 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_session::config::{self, EntryFnType};
+use rustc_session::config::{self, EntryFnType, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_target::abi::{Align, VariantIdx};
@@ -491,7 +493,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, 1);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None, 1);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -517,8 +519,41 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen =
-        start_async_codegen(backend.clone(), tcx, target_cpu, metadata, codegen_units.len());
+    let metadata_module = if need_metadata_module {
+        // Emit compressed metadata object.
+        let metadata_cgu_name =
+            cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
+        tcx.sess.time("write_compressed_metadata", || {
+            let file_name =
+                tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+            let data = create_compressed_metadata_file(
+                tcx.sess,
+                &metadata,
+                &exported_symbols::metadata_symbol_name(tcx),
+            );
+            if let Err(err) = std::fs::write(&file_name, data) {
+                tcx.sess.fatal(&format!("error writing metadata object file: {}", err));
+            }
+            Some(CompiledModule {
+                name: metadata_cgu_name,
+                kind: ModuleKind::Metadata,
+                object: Some(file_name),
+                dwarf_object: None,
+                bytecode: None,
+            })
+        })
+    } else {
+        None
+    };
+
+    let ongoing_codegen = start_async_codegen(
+        backend.clone(),
+        tcx,
+        target_cpu,
+        metadata,
+        metadata_module,
+        codegen_units.len(),
+    );
     let ongoing_codegen = AbortCodegenOnDrop::<B>(Some(ongoing_codegen));
 
     // Codegen an allocator shim, if necessary.
@@ -556,27 +591,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     if let Some(allocator_module) = allocator_module {
         ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, allocator_module);
-    }
-
-    if need_metadata_module {
-        // Codegen the encoded metadata.
-        let metadata_cgu_name =
-            cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
-        let mut metadata_llvm_module = backend.new_metadata(tcx, &metadata_cgu_name);
-        tcx.sess.time("write_compressed_metadata", || {
-            backend.write_compressed_metadata(
-                tcx,
-                &ongoing_codegen.metadata,
-                &mut metadata_llvm_module,
-            );
-        });
-
-        let metadata_module = ModuleCodegen {
-            name: metadata_cgu_name,
-            module_llvm: metadata_llvm_module,
-            kind: ModuleKind::Metadata,
-        };
-        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
     }
 
     // For better throughput during parallel processing by LLVM, we used to sort

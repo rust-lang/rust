@@ -9,13 +9,12 @@
 //!   int)` and `rec(x=int, y=int, z=int)` will have the same [`llvm::Type`].
 //!
 //! [`Ty`]: rustc_middle::ty::Ty
-//! [`val_ty`]: common::val_ty
+//! [`val_ty`]: crate::common::val_ty
 
 use super::ModuleLlvm;
 
 use crate::attributes;
 use crate::builder::Builder;
-use crate::common;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::value::Value;
@@ -25,65 +24,15 @@ use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::middle::exported_symbols;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::SanitizerSet;
 
-use std::ffi::CString;
 use std::time::Instant;
-
-pub fn write_compressed_metadata<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    metadata: &EncodedMetadata,
-    llvm_module: &mut ModuleLlvm,
-) {
-    use snap::write::FrameEncoder;
-    use std::io::Write;
-
-    // Historical note:
-    //
-    // When using link.exe it was seen that the section name `.note.rustc`
-    // was getting shortened to `.note.ru`, and according to the PE and COFF
-    // specification:
-    //
-    // > Executable images do not use a string table and do not support
-    // > section names longer than 8 characters
-    //
-    // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format
-    //
-    // As a result, we choose a slightly shorter name! As to why
-    // `.note.rustc` works on MinGW, see
-    // https://github.com/llvm/llvm-project/blob/llvmorg-12.0.0/lld/COFF/Writer.cpp#L1190-L1197
-    let section_name = if tcx.sess.target.is_like_osx { "__DATA,.rustc" } else { ".rustc" };
-
-    let (metadata_llcx, metadata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
-    let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
-    FrameEncoder::new(&mut compressed).write_all(metadata.raw_data()).unwrap();
-
-    let llmeta = common::bytes_in_context(metadata_llcx, &compressed);
-    let llconst = common::struct_in_context(metadata_llcx, &[llmeta], false);
-    let name = exported_symbols::metadata_symbol_name(tcx);
-    let buf = CString::new(name).unwrap();
-    let llglobal =
-        unsafe { llvm::LLVMAddGlobal(metadata_llmod, common::val_ty(llconst), buf.as_ptr()) };
-    unsafe {
-        llvm::LLVMSetInitializer(llglobal, llconst);
-        let name = SmallCStr::new(section_name);
-        llvm::LLVMSetSection(llglobal, name.as_ptr());
-
-        // Also generate a .section directive to force no
-        // flags, at least for ELF outputs, so that the
-        // metadata doesn't get loaded into memory.
-        let directive = format!(".section {}", section_name);
-        llvm::LLVMSetModuleInlineAsm2(metadata_llmod, directive.as_ptr().cast(), directive.len())
-    }
-}
 
 pub struct ValueIter<'ll> {
     cur: Option<&'ll Value>,

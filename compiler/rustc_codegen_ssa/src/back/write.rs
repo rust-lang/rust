@@ -397,7 +397,6 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 
 pub struct CompiledModules {
     pub modules: Vec<CompiledModule>,
-    pub metadata_module: Option<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
 }
 
@@ -425,6 +424,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     tcx: TyCtxt<'_>,
     target_cpu: String,
     metadata: EncodedMetadata,
+    metadata_module: Option<CompiledModule>,
     total_cgus: usize,
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
@@ -464,6 +464,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     OngoingCodegen {
         backend,
         metadata,
+        metadata_module,
         crate_info,
 
         coordinator_send,
@@ -640,12 +641,6 @@ fn produce_final_output_artifacts(
         }
 
         if !user_wants_bitcode {
-            if let Some(ref metadata_module) = compiled_modules.metadata_module {
-                if let Some(ref path) = metadata_module.bytecode {
-                    ensure_removed(sess.diagnostic(), &path);
-                }
-            }
-
             if let Some(ref allocator_module) = compiled_modules.allocator_module {
                 if let Some(ref path) = allocator_module.bytecode {
                     ensure_removed(sess.diagnostic(), path);
@@ -1216,7 +1211,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // This is where we collect codegen units that have gone all the way
         // through codegen and LLVM.
         let mut compiled_modules = vec![];
-        let mut compiled_metadata_module = None;
         let mut compiled_allocator_module = None;
         let mut needs_link = Vec::new();
         let mut needs_fat_lto = Vec::new();
@@ -1475,14 +1469,11 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         ModuleKind::Regular => {
                             compiled_modules.push(compiled_module);
                         }
-                        ModuleKind::Metadata => {
-                            assert!(compiled_metadata_module.is_none());
-                            compiled_metadata_module = Some(compiled_module);
-                        }
                         ModuleKind::Allocator => {
                             assert!(compiled_allocator_module.is_none());
                             compiled_allocator_module = Some(compiled_module);
                         }
+                        ModuleKind::Metadata => bug!("Should be handled separately"),
                     }
                 }
                 Message::NeedsLink { module, worker_id } => {
@@ -1539,7 +1530,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
         Ok(CompiledModules {
             modules: compiled_modules,
-            metadata_module: compiled_metadata_module,
             allocator_module: compiled_allocator_module,
         })
     });
@@ -1800,6 +1790,7 @@ impl SharedEmitterMain {
 pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub backend: B,
     pub metadata: EncodedMetadata,
+    pub metadata_module: Option<CompiledModule>,
     pub crate_info: CrateInfo,
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
     pub codegen_worker_receive: Receiver<Message<B>>,
@@ -1846,7 +1837,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
                 modules: compiled_modules.modules,
                 allocator_module: compiled_modules.allocator_module,
-                metadata_module: compiled_modules.metadata_module,
+                metadata_module: self.metadata_module,
             },
             work_products,
         )

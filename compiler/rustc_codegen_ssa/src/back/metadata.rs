@@ -1,14 +1,25 @@
 //! Reading of the rustc metadata for rlibs and dylibs
 
 use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 
-use object::{Object, ObjectSection};
+use object::write::{self, StandardSegment, Symbol, SymbolSection};
+use object::{
+    elf, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection, SectionFlags,
+    SectionKind, SymbolFlags, SymbolKind, SymbolScope,
+};
+
+use snap::write::FrameEncoder;
+
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::rustc_erase_owner;
 use rustc_data_structures::sync::MetadataRef;
+use rustc_metadata::EncodedMetadata;
 use rustc_session::cstore::MetadataLoader;
+use rustc_session::Session;
+use rustc_target::abi::Endian;
 use rustc_target::spec::Target;
 
 use crate::METADATA_FILENAME;
@@ -82,4 +93,188 @@ fn search_for_metadata<'a>(
         .ok_or_else(|| format!("no `{}` section in '{}'", section, path.display()))?
         .data()
         .map_err(|e| format!("failed to read {} section in '{}': {}", section, path.display(), e))
+}
+
+fn create_object_file(sess: &Session) -> Option<write::Object> {
+    let endianness = match sess.target.options.endian {
+        Endian::Little => Endianness::Little,
+        Endian::Big => Endianness::Big,
+    };
+    let architecture = match &sess.target.arch[..] {
+        "arm" => Architecture::Arm,
+        "aarch64" => Architecture::Aarch64,
+        "x86" => Architecture::I386,
+        "s390x" => Architecture::S390x,
+        "mips" => Architecture::Mips,
+        "mips64" => Architecture::Mips64,
+        "x86_64" => {
+            if sess.target.pointer_width == 32 {
+                Architecture::X86_64_X32
+            } else {
+                Architecture::X86_64
+            }
+        }
+        "powerpc" => Architecture::PowerPc,
+        "powerpc64" => Architecture::PowerPc64,
+        "riscv32" => Architecture::Riscv32,
+        "riscv64" => Architecture::Riscv64,
+        "sparc64" => Architecture::Sparc64,
+        // Unsupported architecture.
+        _ => return None,
+    };
+    let binary_format = if sess.target.is_like_osx {
+        BinaryFormat::MachO
+    } else if sess.target.is_like_windows {
+        BinaryFormat::Coff
+    } else {
+        BinaryFormat::Elf
+    };
+
+    let mut file = write::Object::new(binary_format, architecture, endianness);
+    match architecture {
+        Architecture::Mips => {
+            // copied from `mipsel-linux-gnu-gcc foo.c -c` and
+            // inspecting the resulting `e_flags` field.
+            let e_flags = elf::EF_MIPS_ARCH_32R2 | elf::EF_MIPS_CPIC | elf::EF_MIPS_PIC;
+            file.flags = FileFlags::Elf { e_flags };
+        }
+        Architecture::Mips64 => {
+            // copied from `mips64el-linux-gnuabi64-gcc foo.c -c`
+            let e_flags = elf::EF_MIPS_ARCH_64R2 | elf::EF_MIPS_CPIC | elf::EF_MIPS_PIC;
+            file.flags = FileFlags::Elf { e_flags };
+        }
+        Architecture::Riscv64 if sess.target.options.features.contains("+d") => {
+            // copied from `riscv64-linux-gnu-gcc foo.c -c`, note though
+            // that the `+d` target feature represents whether the double
+            // float abi is enabled.
+            let e_flags = elf::EF_RISCV_RVC | elf::EF_RISCV_FLOAT_ABI_DOUBLE;
+            file.flags = FileFlags::Elf { e_flags };
+        }
+        _ => {}
+    };
+    Some(file)
+}
+
+// For rlibs we "pack" rustc metadata into a dummy object file. When rustc
+// creates a dylib crate type it will pass `--whole-archive` (or the
+// platform equivalent) to include all object files from an rlib into the
+// final dylib itself. This causes linkers to iterate and try to include all
+// files located in an archive, so if metadata is stored in an archive then
+// it needs to be of a form that the linker will be able to process.
+//
+// Note, though, that we don't actually want this metadata to show up in any
+// final output of the compiler. Instead this is purely for rustc's own
+// metadata tracking purposes.
+//
+// With the above in mind, each "flavor" of object format gets special
+// handling here depending on the target:
+//
+// * MachO - macos-like targets will insert the metadata into a section that
+//   is sort of fake dwarf debug info. Inspecting the source of the macos
+//   linker this causes these sections to be skipped automatically because
+//   it's not in an allowlist of otherwise well known dwarf section names to
+//   go into the final artifact.
+//
+// * WebAssembly - we actually don't have any container format for this
+//   target. WebAssembly doesn't support the `dylib` crate type anyway so
+//   there's no need for us to support this at this time. Consequently the
+//   metadata bytes are simply stored as-is into an rlib.
+//
+// * COFF - Windows-like targets create an object with a section that has
+//   the `IMAGE_SCN_LNK_REMOVE` flag set which ensures that if the linker
+//   ever sees the section it doesn't process it and it's removed.
+//
+// * ELF - All other targets are similar to Windows in that there's a
+//   `SHF_EXCLUDE` flag we can set on sections in an object file to get
+//   automatically removed from the final output.
+pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> Vec<u8> {
+    let mut file = if let Some(file) = create_object_file(sess) {
+        file
+    } else {
+        // This is used to handle all "other" targets. This includes targets
+        // in two categories:
+        //
+        // * Some targets don't have support in the `object` crate just yet
+        //   to write an object file. These targets are likely to get filled
+        //   out over time.
+        //
+        // * Targets like WebAssembly don't support dylibs, so the purpose
+        //   of putting metadata in object files, to support linking rlibs
+        //   into dylibs, is moot.
+        //
+        // In both of these cases it means that linking into dylibs will
+        // not be supported by rustc. This doesn't matter for targets like
+        // WebAssembly and for targets not supported by the `object` crate
+        // yet it means that work will need to be done in the `object` crate
+        // to add a case above.
+        return metadata.to_vec();
+    };
+    let section = file.add_section(
+        file.segment_name(StandardSegment::Debug).to_vec(),
+        b".rmeta".to_vec(),
+        SectionKind::Debug,
+    );
+    match file.format() {
+        BinaryFormat::Coff => {
+            const IMAGE_SCN_LNK_REMOVE: u32 = 0;
+            file.section_mut(section).flags =
+                SectionFlags::Coff { characteristics: IMAGE_SCN_LNK_REMOVE };
+        }
+        BinaryFormat::Elf => {
+            const SHF_EXCLUDE: u64 = 0x80000000;
+            file.section_mut(section).flags = SectionFlags::Elf { sh_flags: SHF_EXCLUDE };
+        }
+        _ => {}
+    };
+    file.append_section_data(section, metadata, 1);
+    file.write().unwrap()
+}
+
+// Historical note:
+//
+// When using link.exe it was seen that the section name `.note.rustc`
+// was getting shortened to `.note.ru`, and according to the PE and COFF
+// specification:
+//
+// > Executable images do not use a string table and do not support
+// > section names longer than 8 characters
+//
+// https://docs.microsoft.com/en-us/windows/win32/debug/pe-format
+//
+// As a result, we choose a slightly shorter name! As to why
+// `.note.rustc` works on MinGW, see
+// https://github.com/llvm/llvm-project/blob/llvmorg-12.0.0/lld/COFF/Writer.cpp#L1190-L1197
+pub fn create_compressed_metadata_file(
+    sess: &Session,
+    metadata: &EncodedMetadata,
+    symbol_name: &str,
+) -> Vec<u8> {
+    let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
+    FrameEncoder::new(&mut compressed).write_all(metadata.raw_data()).unwrap();
+    let mut file = if let Some(file) = create_object_file(sess) {
+        file
+    } else {
+        return compressed.to_vec();
+    };
+    let section = file.add_section(
+        file.segment_name(StandardSegment::Data).to_vec(),
+        b".rustc".to_vec(),
+        SectionKind::Data,
+    );
+    let offset = file.append_section_data(section, &compressed, 1);
+
+    // For MachO and probably PE this is necessary to prevent the linker from throwing away the
+    // .rustc section. For ELF this isn't necessary, but it also doesn't harm.
+    file.add_symbol(Symbol {
+        name: symbol_name.as_bytes().to_vec(),
+        value: offset,
+        size: compressed.len() as u64,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Dynamic,
+        weak: false,
+        section: SymbolSection::Section(section),
+        flags: SymbolFlags::None,
+    });
+
+    file.write().unwrap()
 }
