@@ -188,7 +188,7 @@ pre, .rustdoc.source .example-wrap {
 	color: #39AFD7;
 }
 .content span.type, .content a.type {
-	color: #e6e1cf;
+	color: #39AFD7;
 }
 .content span.fn, .content a.fn, .content span.method,
 .content a.method, .content span.tymethod,

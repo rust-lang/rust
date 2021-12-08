@@ -126,7 +126,7 @@ a.result-union:focus { background-color: #194e9f; }
 a.result-fn:focus,
 a.result-method:focus,
 a.result-tymethod:focus { background-color: #4950ed; }
-a.result-type:focus { background-color: #eee; }
+a.result-type:focus { background-color: #884719; }
 a.result-foreigntype:focus { background-color: #194e9f; }
 a.result-attr:focus,
 a.result-derive:focus,
@@ -140,7 +140,7 @@ a.result-keyword:focus { background-color: #884719; }
 
 .content span.enum, .content a.enum, .block a.current.enum { color: #2dbfb8; }
 .content span.struct, .content a.struct, .block a.current.struct { color: #2dbfb8; }
-.content span.type, .content a.type, .block a.current.type { color: #ddd; }
+.content span.type, .content a.type, .block a.current.type { color: #D2991D; }
 .content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #2dbfb8; }
 .content span.attr, .content a.attr, .block a.current.attr,
 .content span.derive, .content a.derive, .block a.current.derive,
