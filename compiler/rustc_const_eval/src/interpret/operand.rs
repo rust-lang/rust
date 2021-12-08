@@ -512,7 +512,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.param_env,
             self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
                 place.ty(&self.frame().body.local_decls, *self.tcx).ty
-            ))?,
+            )?)?,
             op.layout,
         ));
         Ok(op)
@@ -534,7 +534,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Constant(ref constant) => {
                 let val =
-                    self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal);
+                    self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal)?;
                 // This can still fail:
                 // * During ConstProp, with `TooGeneric` or since the `requried_consts` were not all
                 //   checked yet.

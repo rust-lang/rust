@@ -20,7 +20,7 @@ error[E0080]: evaluation of constant value failed
 LL |     let x: &'static i32 = &X;
    |                            ^ referenced constant has errors
 query stack during panic:
-#0 [normalize_mir_const_after_erasing_regions] normalizing `main::promoted[1]`
+#0 [try_normalize_mir_const_after_erasing_regions] normalizing `main::promoted[1]`
 #1 [optimized_mir] optimizing MIR for `main`
 #2 [collect_and_partition_mono_items] collect_and_partition_mono_items
 end of query stack
