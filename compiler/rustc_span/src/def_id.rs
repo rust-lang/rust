@@ -7,6 +7,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::borrow::Borrow;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
 rustc_index::newtype_index! {
     pub struct CrateNum {
@@ -146,9 +147,6 @@ impl StableCrateId {
     /// Computes the stable ID for a crate with the given name and
     /// `-Cmetadata` arguments.
     pub fn new(crate_name: &str, is_exe: bool, mut metadata: Vec<String>) -> StableCrateId {
-        use std::hash::Hash;
-        use std::hash::Hasher;
-
         let mut hasher = StableHasher::new();
         crate_name.hash(&mut hasher);
 
@@ -205,10 +203,38 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 /// index and a def index.
 ///
 /// You can create a `DefId` from a `LocalDefId` using `local_def_id.to_def_id()`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Copy)]
+// On below-64 bit systems we can simply use the derived `Hash` impl
+#[cfg_attr(not(target_pointer_width = "64"), derive(Hash))]
+// Note that the order is essential here, see below why
 pub struct DefId {
-    pub krate: CrateNum,
     pub index: DefIndex,
+    pub krate: CrateNum,
+}
+
+// On 64-bit systems, we can hash the whole `DefId` as one `u64` instead of two `u32`s. This
+// improves performance without impairing `FxHash` quality. So the below code gets compiled to a
+// noop on little endian systems because the memory layout of `DefId` is as follows:
+//
+// ```
+//     +-1--------------31-+-32-------------63-+
+//     ! index             ! krate             !
+//     +-------------------+-------------------+
+// ```
+//
+// The order here has direct impact on `FxHash` quality because we have far more `DefIndex` per
+// crate than we have `Crate`s within one compilation. Or in other words, this arrangement puts
+// more entropy in the low bits than the high bits. The reason this matters is that `FxHash`, which
+// is used throughout rustc, has problems distributing the entropy from the high bits, so reversing
+// the order would lead to a large number of collisions and thus far worse performance.
+//
+// On 64-bit big-endian systems, this compiles to a 64-bit rotation by 32 bits, which is still
+// faster than another `FxHash` round.
+#[cfg(target_pointer_width = "64")]
+impl Hash for DefId {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        (((self.krate.as_u32() as u64) << 32) | (self.index.as_u32() as u64)).hash(h)
+    }
 }
 
 impl DefId {
