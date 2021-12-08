@@ -1,6 +1,6 @@
 // ignore-windows: No libc on Windows
 // ignore-macos: pthread_condattr_setclock is not supported on MacOS.
-// compile-flags: -Zmiri-disable-isolation
+// compile-flags: -Zmiri-disable-isolation -Zmiri-check-number-validity
 
 #![feature(rustc_private)]
 
@@ -8,23 +8,24 @@
 /// monotonic and system clocks.
 extern crate libc;
 
-use std::mem;
+use std::mem::MaybeUninit;
 use std::time::Instant;
 
 fn test_timed_wait_timeout(clock_id: i32) {
     unsafe {
-        let mut attr: libc::pthread_condattr_t = mem::zeroed();
-        assert_eq!(libc::pthread_condattr_init(&mut attr as *mut _), 0);
-        assert_eq!(libc::pthread_condattr_setclock(&mut attr as *mut _, clock_id), 0);
+        let mut attr: MaybeUninit<libc::pthread_condattr_t> = MaybeUninit::uninit();
+        assert_eq!(libc::pthread_condattr_init(attr.as_mut_ptr()), 0);
+        assert_eq!(libc::pthread_condattr_setclock(attr.as_mut_ptr(), clock_id), 0);
 
-        let mut cond: libc::pthread_cond_t = mem::zeroed();
-        assert_eq!(libc::pthread_cond_init(&mut cond as *mut _, &attr as *const _), 0);
-        assert_eq!(libc::pthread_condattr_destroy(&mut attr as *mut _), 0);
+        let mut cond: MaybeUninit<libc::pthread_cond_t> = MaybeUninit::uninit();
+        assert_eq!(libc::pthread_cond_init(cond.as_mut_ptr(), attr.as_ptr()), 0);
+        assert_eq!(libc::pthread_condattr_destroy(attr.as_mut_ptr()), 0);
 
-        let mut mutex: libc::pthread_mutex_t = mem::zeroed();
+        let mut mutex: libc::pthread_mutex_t = libc::PTHREAD_MUTEX_INITIALIZER;
 
-        let mut now: libc::timespec = mem::zeroed();
-        assert_eq!(libc::clock_gettime(clock_id, &mut now), 0);
+        let mut now_mu: MaybeUninit<libc::timespec> = MaybeUninit::uninit();
+        assert_eq!(libc::clock_gettime(clock_id, now_mu.as_mut_ptr()), 0);
+        let now = now_mu.assume_init();
         // Waiting for a second... mostly because waiting less requires mich more tricky arithmetic.
         // FIXME: wait less.
         let timeout = libc::timespec { tv_sec: now.tv_sec + 1, tv_nsec: now.tv_nsec };
@@ -32,7 +33,7 @@ fn test_timed_wait_timeout(clock_id: i32) {
         assert_eq!(libc::pthread_mutex_lock(&mut mutex as *mut _), 0);
         let current_time = Instant::now();
         assert_eq!(
-            libc::pthread_cond_timedwait(&mut cond as *mut _, &mut mutex as *mut _, &timeout),
+            libc::pthread_cond_timedwait(cond.as_mut_ptr(), &mut mutex as *mut _, &timeout),
             libc::ETIMEDOUT
         );
         let elapsed_time = current_time.elapsed().as_millis();
@@ -40,7 +41,7 @@ fn test_timed_wait_timeout(clock_id: i32) {
 
         // Test calling `pthread_cond_timedwait` again with an already elapsed timeout.
         assert_eq!(
-            libc::pthread_cond_timedwait(&mut cond as *mut _, &mut mutex as *mut _, &timeout),
+            libc::pthread_cond_timedwait(cond.as_mut_ptr(), &mut mutex as *mut _, &timeout),
             libc::ETIMEDOUT
         );
 
@@ -49,7 +50,7 @@ fn test_timed_wait_timeout(clock_id: i32) {
         let invalid_timeout_1 = libc::timespec { tv_sec: now.tv_sec + 1, tv_nsec: 1_000_000_000 };
         assert_eq!(
             libc::pthread_cond_timedwait(
-                &mut cond as *mut _,
+                cond.as_mut_ptr(),
                 &mut mutex as *mut _,
                 &invalid_timeout_1
             ),
@@ -58,7 +59,7 @@ fn test_timed_wait_timeout(clock_id: i32) {
         let invalid_timeout_2 = libc::timespec { tv_sec: now.tv_sec + 1, tv_nsec: -1 };
         assert_eq!(
             libc::pthread_cond_timedwait(
-                &mut cond as *mut _,
+                cond.as_mut_ptr(),
                 &mut mutex as *mut _,
                 &invalid_timeout_2
             ),
@@ -68,7 +69,7 @@ fn test_timed_wait_timeout(clock_id: i32) {
         let invalid_timeout_3 = libc::timespec { tv_sec: -1, tv_nsec: 0 };
         assert_eq!(
             libc::pthread_cond_timedwait(
-                &mut cond as *mut _,
+                cond.as_mut_ptr(),
                 &mut mutex as *mut _,
                 &invalid_timeout_3
             ),
@@ -77,7 +78,7 @@ fn test_timed_wait_timeout(clock_id: i32) {
 
         assert_eq!(libc::pthread_mutex_unlock(&mut mutex as *mut _), 0);
         assert_eq!(libc::pthread_mutex_destroy(&mut mutex as *mut _), 0);
-        assert_eq!(libc::pthread_cond_destroy(&mut cond as *mut _), 0);
+        assert_eq!(libc::pthread_cond_destroy(cond.as_mut_ptr()), 0);
     }
 }
 

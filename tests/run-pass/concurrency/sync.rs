@@ -1,5 +1,5 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
-// compile-flags: -Zmiri-disable-isolation
+// compile-flags: -Zmiri-disable-isolation -Zmiri-check-number-validity
 
 use std::sync::mpsc::{channel, sync_channel};
 use std::sync::{Arc, Barrier, Condvar, Mutex, Once, RwLock};
@@ -340,6 +340,10 @@ fn park_unpark() {
     assert!((200..1000).contains(&start.elapsed().as_millis()));
 }
 
+fn check_condvar() {
+    let _ = std::sync::Condvar::new();
+}
+
 fn main() {
     check_barriers();
     check_conditional_variables_notify_one();
@@ -357,4 +361,5 @@ fn main() {
     check_rwlock_unlock_bug2();
     park_timeout();
     park_unpark();
+    check_condvar();
 }
