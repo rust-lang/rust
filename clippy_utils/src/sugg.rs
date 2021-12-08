@@ -294,6 +294,7 @@ impl<'a> Sugg<'a> {
     /// Adds parentheses to any expression that might need them. Suitable to the
     /// `self` argument of a method call
     /// (e.g., to build `bar.foo()` or `(1 + 2).foo()`).
+    #[must_use]
     pub fn maybe_par(self) -> Self {
         match self {
             Sugg::NonParen(..) => self,

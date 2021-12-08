@@ -422,6 +422,7 @@ store.register_lints(&[
     regex::INVALID_REGEX,
     regex::TRIVIAL_REGEX,
     repeat_once::REPEAT_ONCE,
+    return_self_not_must_use::RETURN_SELF_NOT_MUST_USE,
     returns::LET_AND_RETURN,
     returns::NEEDLESS_RETURN,
     same_name_method::SAME_NAME_METHOD,

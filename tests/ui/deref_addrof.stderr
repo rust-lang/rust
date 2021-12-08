@@ -1,5 +1,5 @@
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:18:13
+  --> $DIR/deref_addrof.rs:19:13
    |
 LL |     let b = *&a;
    |             ^^^ help: try this: `a`
@@ -7,49 +7,49 @@ LL |     let b = *&a;
    = note: `-D clippy::deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:20:13
+  --> $DIR/deref_addrof.rs:21:13
    |
 LL |     let b = *&get_number();
    |             ^^^^^^^^^^^^^^ help: try this: `get_number()`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:25:13
+  --> $DIR/deref_addrof.rs:26:13
    |
 LL |     let b = *&bytes[1..2][0];
    |             ^^^^^^^^^^^^^^^^ help: try this: `bytes[1..2][0]`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:29:13
+  --> $DIR/deref_addrof.rs:30:13
    |
 LL |     let b = *&(a);
    |             ^^^^^ help: try this: `(a)`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:31:13
+  --> $DIR/deref_addrof.rs:32:13
    |
 LL |     let b = *(&a);
    |             ^^^^^ help: try this: `a`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:34:13
+  --> $DIR/deref_addrof.rs:35:13
    |
 LL |     let b = *((&a));
    |             ^^^^^^^ help: try this: `a`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:36:13
+  --> $DIR/deref_addrof.rs:37:13
    |
 LL |     let b = *&&a;
    |             ^^^^ help: try this: `&a`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:38:14
+  --> $DIR/deref_addrof.rs:39:14
    |
 LL |     let b = **&aref;
    |              ^^^^^^ help: try this: `aref`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:44:9
+  --> $DIR/deref_addrof.rs:45:9
    |
 LL |         *& $visitor
    |         ^^^^^^^^^^^ help: try this: `$visitor`
@@ -60,7 +60,7 @@ LL |         m!(self)
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:51:9
+  --> $DIR/deref_addrof.rs:52:9
    |
 LL |         *& mut $visitor
    |         ^^^^^^^^^^^^^^^ help: try this: `$visitor`

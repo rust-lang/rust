@@ -16,6 +16,7 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(methods::SUSPICIOUS_MAP),
     LintId::of(mut_key::MUTABLE_KEY_TYPE),
     LintId::of(octal_escapes::OCTAL_ESCAPES),
+    LintId::of(return_self_not_must_use::RETURN_SELF_NOT_MUST_USE),
     LintId::of(suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL),
     LintId::of(suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
 ])
