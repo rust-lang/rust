@@ -595,6 +595,9 @@ fn cargo_to_crate_graph(
 
         // Set deps to the core, std and to the lib target of the current package
         for (from, kind) in pkg_crates.get(&pkg).into_iter().flatten() {
+            // Add sysroot deps first so that a lib target named `core` etc. can overwrite them.
+            public_deps.add(*from, &mut crate_graph);
+
             if let Some((to, name)) = lib_tgt.clone() {
                 if to != *from && *kind != TargetKind::BuildScript {
                     // (build script can not depend on its library target)
@@ -606,7 +609,6 @@ fn cargo_to_crate_graph(
                     add_dep(&mut crate_graph, *from, name, to);
                 }
             }
-            public_deps.add(*from, &mut crate_graph);
         }
     }
 
