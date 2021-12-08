@@ -480,8 +480,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,
             //
-            // FIXME: The old pass manager ran this only at mir-opt-level >= 1, but
-            // const-prop runs unconditionally. Should this run unconditionally as well?
+            // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
             &o1(simplify_branches::SimplifyConstCondition::new("after-const-prop")),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
