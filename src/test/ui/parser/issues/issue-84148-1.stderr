@@ -13,11 +13,11 @@ LL | fn f(t:for<>t?)
    |              expected one of `(`, `)`, `+`, `,`, `::`, or `<`
    |              help: missing `,`
 
-error: expected one of `->`, `;`, `where`, or `{`, found `<eof>`
+error: expected one of `->`, `where`, or `{`, found `<eof>`
   --> $DIR/issue-84148-1.rs:1:15
    |
 LL | fn f(t:for<>t?)
-   |               ^ expected one of `->`, `;`, `where`, or `{`
+   |               ^ expected one of `->`, `where`, or `{`
 
 error: aborting due to 3 previous errors
 

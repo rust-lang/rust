@@ -1,11 +1,13 @@
-error: expected `;`, found `}`
-  --> $DIR/issue-87635.rs:4:17
+error: expected one of `->`, `where`, or `{`, found `}`
+  --> $DIR/issue-87635.rs:6:1
    |
 LL |     pub fn bar()
-   |                 ^ help: add `;` here
-...
+   |            ---  - expected one of `->`, `where`, or `{`
+   |            |
+   |            while parsing this `fn`
+LL |
 LL | }
-   | - unexpected token
+   | ^ unexpected token
 
 error: associated function in `impl` without body
   --> $DIR/issue-87635.rs:4:5

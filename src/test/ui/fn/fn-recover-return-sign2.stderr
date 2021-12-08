@@ -4,11 +4,11 @@ error: return types are denoted using `->`
 LL | fn foo() => impl Fn() => bool {
    |          ^^ help: use `->` instead
 
-error: expected one of `+`, `->`, `::`, `;`, `where`, or `{`, found `=>`
+error: expected one of `+`, `->`, `::`, `where`, or `{`, found `=>`
   --> $DIR/fn-recover-return-sign2.rs:4:23
    |
 LL | fn foo() => impl Fn() => bool {
-   |                       ^^ expected one of `+`, `->`, `::`, `;`, `where`, or `{`
+   |                       ^^ expected one of `+`, `->`, `::`, `where`, or `{`
 
 error: aborting due to 2 previous errors
 

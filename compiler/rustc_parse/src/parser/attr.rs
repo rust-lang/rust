@@ -1,4 +1,4 @@
-use super::{AttrWrapper, Capturing, ForceCollect, Parser, PathStyle};
+use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Nonterminal};
@@ -177,7 +177,7 @@ impl<'a> Parser<'a> {
             AttrWrapper::empty(),
             true,
             false,
-            |_| true,
+            FnParseMode { req_name: |_| true, req_body: true },
             ForceCollect::No,
         ) {
             Ok(Some(item)) => {
