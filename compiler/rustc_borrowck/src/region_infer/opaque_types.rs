@@ -173,7 +173,7 @@ fn check_opaque_type_parameter_valid(
         // fn foo<l0..'ln>() -> foo::<'static..'static>::Foo<'l0..'lm>.
         //
         // which would error here on all of the `'static` args.
-        OpaqueTyOrigin::FnReturn | OpaqueTyOrigin::AsyncFn => return true,
+        OpaqueTyOrigin::FnReturn(..) | OpaqueTyOrigin::AsyncFn(..) => return true,
         // Check these
         OpaqueTyOrigin::TyAlias => {}
     }

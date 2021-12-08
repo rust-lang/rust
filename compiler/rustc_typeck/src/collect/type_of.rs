@@ -394,13 +394,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
                     tcx.mk_adt(def, substs)
                 }
-                ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }) => {
+                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
                     find_opaque_ty_constraints(tcx, def_id)
                 }
                 // Opaque types desugared from `impl Trait`.
-                ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: Some(owner), .. }) => {
+                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner), .. }) => {
                     let concrete_ty = tcx
-                        .mir_borrowck(owner.expect_local())
+                        .mir_borrowck(owner)
                         .concrete_opaque_types
                         .get_value_matching(|(key, _)| key.def_id == def_id.to_def_id())
                         .copied()
@@ -413,7 +413,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 ),
                             );
                             if let Some(ErrorReported) =
-                                tcx.typeck(owner.expect_local()).tainted_by_errors
+                                tcx.typeck(owner).tainted_by_errors
                             {
                                 // Some error in the
                                 // owner fn prevented us from populating

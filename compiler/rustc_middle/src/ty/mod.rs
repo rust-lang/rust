@@ -2055,13 +2055,17 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-/// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition.
-pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
-    if let Some(def_id) = def_id.as_local() {
-        if let Node::Item(item) = tcx.hir().get(tcx.hir().local_def_id_to_hir_id(def_id)) {
-            if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.kind {
-                return opaque_ty.impl_trait_fn;
-            }
+/// Yields the parent function's `LocalDefId` if `def_id` is an `impl Trait` definition.
+pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<LocalDefId> {
+    let def_id = def_id.as_local()?;
+    if let Node::Item(item) = tcx.hir().get(tcx.hir().local_def_id_to_hir_id(def_id)) {
+        if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.kind {
+            return match opaque_ty.origin {
+                hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent) => {
+                    Some(parent)
+                }
+                hir::OpaqueTyOrigin::TyAlias => None,
+            };
         }
     }
     None
