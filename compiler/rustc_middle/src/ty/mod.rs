@@ -1339,21 +1339,25 @@ impl<'tcx> ParamEnv<'tcx> {
         self
     }
 
+    #[inline]
     pub fn with_constness(mut self, constness: hir::Constness) -> Self {
         self.packed.set_tag(ParamTag { constness, ..self.packed.tag() });
         self
     }
 
+    #[inline]
     pub fn with_const(mut self) -> Self {
         self.packed.set_tag(ParamTag { constness: hir::Constness::Const, ..self.packed.tag() });
         self
     }
 
+    #[inline]
     pub fn without_const(mut self) -> Self {
         self.packed.set_tag(ParamTag { constness: hir::Constness::NotConst, ..self.packed.tag() });
         self
     }
 
+    #[inline]
     pub fn remap_constness_with(&mut self, mut constness: ty::BoundConstness) {
         *self = self.with_constness(constness.and(self.constness()))
     }
