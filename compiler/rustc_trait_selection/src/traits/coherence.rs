@@ -498,9 +498,7 @@ fn orphan_check_trait_ref<'tcx>(
             return Err(OrphanCheckErr::UncoveredTy(input_ty, local_type));
         }
 
-        for input_ty in non_local_tys {
-            non_local_spans.push((input_ty, i == 0));
-        }
+        non_local_spans.extend(non_local_tys.into_iter().map(|input_ty| (input_ty, i == 0)));
     }
     // If we exit above loop, never found a local type.
     debug!("orphan_check_trait_ref: no local type");
