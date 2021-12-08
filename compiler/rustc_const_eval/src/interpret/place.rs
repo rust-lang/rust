@@ -643,7 +643,7 @@ where
             self.param_env,
             self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
                 place.ty(&self.frame().body.local_decls, *self.tcx).ty
-            ))?,
+            )?)?,
             place_ty.layout,
         ));
         Ok(place_ty)
