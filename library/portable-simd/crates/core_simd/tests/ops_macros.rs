@@ -38,33 +38,9 @@ macro_rules! impl_binary_op_test {
                     );
                 }
 
-                fn scalar_rhs<const LANES: usize>() {
-                    test_helpers::test_binary_scalar_rhs_elementwise(
-                        &<Simd<$scalar, LANES> as core::ops::$trait<$scalar>>::$fn,
-                        &$scalar_fn,
-                        &|_, _| true,
-                    );
-                }
-
-                fn scalar_lhs<const LANES: usize>() {
-                    test_helpers::test_binary_scalar_lhs_elementwise(
-                        &<$scalar as core::ops::$trait<Simd<$scalar, LANES>>>::$fn,
-                        &$scalar_fn,
-                        &|_, _| true,
-                    );
-                }
-
                 fn assign<const LANES: usize>() {
                     test_helpers::test_binary_elementwise(
                         &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
-                        &$scalar_fn,
-                        &|_, _| true,
-                    );
-                }
-
-                fn assign_scalar_rhs<const LANES: usize>() {
-                    test_helpers::test_binary_scalar_rhs_elementwise(
-                        &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign<$scalar>>::$fn_assign(&mut a, b); a },
                         &$scalar_fn,
                         &|_, _| true,
                     );
@@ -99,35 +75,11 @@ macro_rules! impl_binary_checked_op_test {
                     );
                 }
 
-                fn scalar_rhs<const LANES: usize>() {
-                    test_helpers::test_binary_scalar_rhs_elementwise(
-                        &<Simd<$scalar, LANES> as core::ops::$trait<$scalar>>::$fn,
-                        &$scalar_fn,
-                        &|x, y| x.iter().all(|x| $check_fn(*x, y)),
-                    );
-                }
-
-                fn scalar_lhs<const LANES: usize>() {
-                    test_helpers::test_binary_scalar_lhs_elementwise(
-                        &<$scalar as core::ops::$trait<Simd<$scalar, LANES>>>::$fn,
-                        &$scalar_fn,
-                        &|x, y| y.iter().all(|y| $check_fn(x, *y)),
-                    );
-                }
-
                 fn assign<const LANES: usize>() {
                     test_helpers::test_binary_elementwise(
                         &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
                         &$scalar_fn,
                         &|x, y| x.iter().zip(y.iter()).all(|(x, y)| $check_fn(*x, *y)),
-                    )
-                }
-
-                fn assign_scalar_rhs<const LANES: usize>() {
-                    test_helpers::test_binary_scalar_rhs_elementwise(
-                        &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign<$scalar>>::$fn_assign(&mut a, b); a },
-                        &$scalar_fn,
-                        &|x, y| x.iter().all(|x| $check_fn(*x, y)),
                     )
                 }
             }

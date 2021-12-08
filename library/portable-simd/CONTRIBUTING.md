@@ -15,7 +15,7 @@ SIMD can be quite complex, and even a "simple" issue can be huge. If an issue is
 
 ## CI
 
-We currently have 2 CI matrices through Travis CI and GitHub Actions that will automatically build and test your change in order to verify that `std::simd`'s portable API is, in fact, portable. If your change builds locally, but does not build on either, this is likely due to a platform-specific concern that your code has not addressed. Please consult the build logs and address the error, or ask for help if you need it.
+We currently use GitHub Actions which will automatically build and test your change in order to verify that `std::simd`'s portable API is, in fact, portable. If your change builds locally, but does not build in CI, this is likely due to a platform-specific concern that your code has not addressed. Please consult the build logs and address the error, or ask for help if you need it.
 
 ## Beyond stdsimd
 
