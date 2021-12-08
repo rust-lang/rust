@@ -6,7 +6,6 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::fmt;
 use std::num::NonZeroU64;
-use std::rc::Rc;
 use std::time::Instant;
 
 use rand::rngs::StdRng;
@@ -278,7 +277,7 @@ pub struct Evaluator<'mir, 'tcx> {
     pub(crate) backtrace_style: BacktraceStyle,
 
     /// Crates which are considered local for the purposes of error reporting.
-    pub(crate) local_crates: Rc<[CrateNum]>,
+    pub(crate) local_crates: Vec<CrateNum>,
 
     /// Mapping extern static names to their base pointer.
     extern_statics: FxHashMap<Symbol, Pointer<Tag>>,
@@ -584,8 +583,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 alloc.size(),
                 stacked_borrows,
                 kind,
-                &ecx.machine.threads,
-                ecx.machine.local_crates.clone(),
+                ecx.machine.current_span(),
             ))
         } else {
             None
@@ -667,7 +665,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 tag,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
-                &machine.threads,
+                machine.current_span(),
             )
         } else {
             Ok(())
@@ -691,7 +689,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 tag,
                 range,
                 machine.stacked_borrows.as_ref().unwrap(),
-                &machine.threads,
+                machine.current_span(),
             )
         } else {
             Ok(())
