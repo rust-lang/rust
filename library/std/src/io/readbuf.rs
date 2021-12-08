@@ -136,7 +136,7 @@ impl<'a> ReadBuf<'a> {
         assert!(self.remaining() >= n);
 
         let extra_init = self.initialized - self.filled;
-        // If we dont have enough initialized, do zeroing
+        // If we don't have enough initialized, do zeroing
         if n > extra_init {
             let uninit = n - extra_init;
             let unfilled = &mut self.uninitialized_mut()[0..uninit];
