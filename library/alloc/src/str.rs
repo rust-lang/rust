@@ -178,12 +178,20 @@ where
 
     unsafe {
         let pos = result.len();
-        let target = result.get_unchecked_mut(pos..reserved_len);
+        let target = result.spare_capacity_mut().get_unchecked_mut(..reserved_len - pos);
+
+        // Convert the separator and slices to slices of MaybeUninit
+        // to simplify implementation in specialize_for_lengths
+        let sep_uninit = core::slice::from_raw_parts(sep.as_ptr().cast(), sep.len());
+        let iter_uninit = iter.map(|it| {
+            let it = it.borrow().as_ref();
+            core::slice::from_raw_parts(it.as_ptr().cast(), it.len())
+        });
 
         // copy separator and slices over without bounds checks
         // generate loops with hardcoded offsets for small separators
         // massive improvements possible (~ x2)
-        let remain = specialize_for_lengths!(sep, target, iter; 0, 1, 2, 3, 4);
+        let remain = specialize_for_lengths!(sep_uninit, target, iter_uninit; 0, 1, 2, 3, 4);
 
         // A weird borrow implementation may return different
         // slices for the length calculation and the actual copy.
