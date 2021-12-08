@@ -32,13 +32,13 @@ fn poll_n(val: usize, num: usize) -> PollN {
 #[test]
 fn test_join() {
     block_on(async move {
-        let x = join!(async { 0 });
+        let x = join!(async { 0 }).await;
         assert_eq!(x, 0);
 
-        let x = join!(async { 0 }, async { 1 });
+        let x = join!(async { 0 }, async { 1 }).await;
         assert_eq!(x, (0, 1));
 
-        let x = join!(async { 0 }, async { 1 }, async { 2 });
+        let x = join!(async { 0 }, async { 1 }, async { 2 }).await;
         assert_eq!(x, (0, 1, 2));
 
         let x = join!(
@@ -50,8 +50,17 @@ fn test_join() {
             poll_n(5, 3),
             poll_n(6, 4),
             poll_n(7, 1)
-        );
+        )
+        .await;
         assert_eq!(x, (0, 1, 2, 3, 4, 5, 6, 7));
+
+        let y = String::new();
+        let x = join!(async {
+            println!("{}", &y);
+            1
+        })
+        .await;
+        assert_eq!(x, 1);
     });
 }
 

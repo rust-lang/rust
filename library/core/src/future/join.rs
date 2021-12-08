@@ -22,7 +22,7 @@ use crate::task::Poll;
 /// async fn two() -> usize { 2 }
 ///
 /// # let _ =  async {
-/// let x = join!(one(), two());
+/// let x = join!(one(), two()).await;
 /// assert_eq!(x, (1, 2));
 /// # };
 /// ```
@@ -39,7 +39,7 @@ use crate::task::Poll;
 /// async fn three() -> usize { 3 }
 ///
 /// # let _ = async {
-/// let x = join!(one(), two(), three());
+/// let x = join!(one(), two(), three()).await;
 /// assert_eq!(x, (1, 2, 3));
 /// # };
 /// ```
@@ -71,61 +71,63 @@ pub macro join {
         },
         @rest: ()
     ) => {{
-        // The futures and whether they have completed
-        let mut state = ( $( UnsafeCell::new(($fut, false)), )* );
+        async move {
+            // The futures and whether they have completed
+            let mut state = ( $( UnsafeCell::new(($fut, false)), )* );
 
-        // Make sure the futures don't panic
-        // if polled after completion, and
-        // store their output separately
-        let mut futures = ($(
-            ({
-                let ( $($pos,)* state, .. ) = &state;
+            // Make sure the futures don't panic
+            // if polled after completion, and
+            // store their output separately
+            let mut futures = ($(
+                ({
+                    let ( $($pos,)* state, .. ) = &state;
 
-                poll_fn(move |cx| {
-                    // SAFETY: each future borrows a distinct element
-                    // of the tuple
-                    let (fut, done) = unsafe { &mut *state.get() };
+                    poll_fn(move |cx| {
+                        // SAFETY: each future borrows a distinct element
+                        // of the tuple
+                        let (fut, done) = unsafe { &mut *state.get() };
 
-                    if *done {
-                        return Poll::Ready(None)
-                    }
+                        if *done {
+                            return Poll::Ready(None)
+                        }
+
+                        // SAFETY: The futures are never moved
+                        match unsafe { Pin::new_unchecked(fut).poll(cx) } {
+                            Poll::Ready(val) => {
+                                *done = true;
+                                Poll::Ready(Some(val))
+                            }
+                            Poll::Pending => Poll::Pending
+                        }
+                    })
+                }, None),
+            )*);
+
+            poll_fn(move |cx| {
+                let mut done = true;
+
+                $(
+                    let ( $($pos,)* (fut, out), .. ) = &mut futures;
 
                     // SAFETY: The futures are never moved
                     match unsafe { Pin::new_unchecked(fut).poll(cx) } {
-                        Poll::Ready(val) => {
-                            *done = true;
-                            Poll::Ready(Some(val))
-                        }
-                        Poll::Pending => Poll::Pending
+                        Poll::Ready(Some(val)) => *out = Some(val),
+                        // the future was already done
+                        Poll::Ready(None) => {},
+                        Poll::Pending => done = false,
                     }
-                })
-            }, None),
-        )*);
+                )*
 
-        poll_fn(move |cx| {
-            let mut done = true;
-
-            $(
-                let ( $($pos,)* (fut, out), .. ) = &mut futures;
-
-                // SAFETY: The futures are never moved
-                match unsafe { Pin::new_unchecked(fut).poll(cx) } {
-                    Poll::Ready(Some(val)) => *out = Some(val),
-                    // the future was already done
-                    Poll::Ready(None) => {},
-                    Poll::Pending => done = false,
+                if done {
+                    // Extract all the outputs
+                    Poll::Ready(($({
+                        let ( $($pos,)* (_, val), .. ) = &mut futures;
+                        val.unwrap()
+                    }),*))
+                } else {
+                    Poll::Pending
                 }
-            )*
-
-            if done {
-                // Extract all the outputs
-                Poll::Ready(($({
-                    let ( $($pos,)* (_, val), .. ) = &mut futures;
-                    val.unwrap()
-                }),*))
-            } else {
-                Poll::Pending
-            }
-        }).await
+            }).await
+        }
     }}
 }
