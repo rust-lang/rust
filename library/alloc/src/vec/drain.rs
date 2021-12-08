@@ -1,7 +1,7 @@
 use crate::alloc::{Allocator, Global};
 use core::fmt;
 use core::iter::{FusedIterator, TrustedLen};
-use core::mem::{self, MaybeUninit};
+use core::mem;
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 
@@ -160,12 +160,10 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
             // a pointer with mutable provenance is necessary. Therefore we must reconstruct
             // it from the original vec but also avoid creating a &mut to the front since that could
             // invalidate raw pointers to it which some unsafe code might rely on.
-            let vec = vec.as_mut();
-            let spare_capacity = vec.spare_capacity_mut();
-            let drop_offset = drop_ptr.offset_from(spare_capacity.as_ptr() as *const _) as usize;
-            let drop_range = drop_offset..(drop_offset + drop_len);
-            let to_drop = &mut spare_capacity[drop_range];
-            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(to_drop));
+            let vec_ptr = vec.as_mut().as_mut_ptr();
+            let drop_offset = drop_ptr.offset_from(vec_ptr) as usize;
+            let to_drop = ptr::slice_from_raw_parts_mut(vec_ptr.add(drop_offset), drop_len);
+            ptr::drop_in_place(to_drop);
         }
     }
 }
