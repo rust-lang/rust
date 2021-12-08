@@ -20,7 +20,7 @@
           id="mainThemeStyle"> {#- -#}
     {%- for theme in themes -%}
         <link rel="stylesheet" type="text/css" {# -#}
-            href="{{static_root_path | safe}}{{theme}}{{page.resource_suffix}}.css" {#- -#}
+            href="{{static_root_path | safe}}{{theme}}{{page.resource_suffix}}.css" {# -#}
         {%- if theme == "light" -%}
             id="themeStyle"
         {%- else -%}
