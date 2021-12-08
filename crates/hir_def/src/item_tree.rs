@@ -648,7 +648,7 @@ pub struct Enum {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Const {
-    /// const _: () = ();
+    /// `None` for `const _: () = ();`
     pub name: Option<Name>,
     pub visibility: RawVisibilityId,
     pub type_ref: Interned<TypeRef>,
