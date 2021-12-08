@@ -38,7 +38,7 @@ struct InstCombineContext<'tcx, 'a> {
     local_decls: &'a LocalDecls<'tcx>,
 }
 
-impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
+impl<'tcx> InstCombineContext<'tcx, '_> {
     fn should_combine(&self, source_info: &SourceInfo, rvalue: &Rvalue<'tcx>) -> bool {
         self.tcx.consider_optimizing(|| {
             format!("InstCombine - Rvalue: {:?} SourceInfo: {:?}", rvalue, source_info)

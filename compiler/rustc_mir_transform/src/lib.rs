@@ -1,7 +1,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
-#![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(let_else)]
 #![feature(map_try_insert)]
@@ -150,7 +149,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
         tcx: TyCtxt<'tcx>,
         set: &'a mut FxHashSet<LocalDefId>,
     }
-    impl<'a, 'tcx> Visitor<'tcx> for GatherCtors<'a, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for GatherCtors<'_, 'tcx> {
         fn visit_variant_data(
             &mut self,
             v: &'tcx hir::VariantData<'tcx>,
@@ -243,7 +242,7 @@ fn mir_const<'tcx>(
 }
 
 /// Compute the main MIR body and the list of MIR bodies of the promoteds.
-fn mir_promoted(
+fn mir_promoted<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {

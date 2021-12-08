@@ -57,7 +57,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
     }
 }
 
-fn inline(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
+fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let def_id = body.source.def_id();
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
 
@@ -95,7 +95,7 @@ struct Inliner<'tcx> {
     changed: bool,
 }
 
-impl Inliner<'tcx> {
+impl<'tcx> Inliner<'tcx> {
     fn process_blocks(&mut self, caller_body: &mut Body<'tcx>, blocks: Range<BasicBlock>) {
         for bb in blocks {
             let bb_data = &caller_body[bb];
@@ -786,7 +786,7 @@ struct Integrator<'a, 'tcx> {
     always_live_locals: BitSet<Local>,
 }
 
-impl<'a, 'tcx> Integrator<'a, 'tcx> {
+impl Integrator<'_, '_> {
     fn map_local(&self, local: Local) -> Local {
         let new = if local == RETURN_PLACE {
             self.destination.local
@@ -815,7 +815,7 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
+impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

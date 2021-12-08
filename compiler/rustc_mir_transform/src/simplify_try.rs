@@ -102,7 +102,7 @@ fn get_arm_identity_info<'a, 'tcx>(
 
     type StmtIter<'a, 'tcx> = Peekable<Enumerate<Iter<'a, Statement<'tcx>>>>;
 
-    fn is_storage_stmt<'tcx>(stmt: &Statement<'tcx>) -> bool {
+    fn is_storage_stmt(stmt: &Statement<'_>) -> bool {
         matches!(stmt.kind, StatementKind::StorageLive(_) | StatementKind::StorageDead(_))
     }
 
@@ -122,8 +122,8 @@ fn get_arm_identity_info<'a, 'tcx>(
 
     /// Eats consecutive `StorageLive` and `StorageDead` Statements.
     /// The iterator `stmt_iter` is not advanced if none were found.
-    fn try_eat_storage_stmts<'a, 'tcx>(
-        stmt_iter: &mut StmtIter<'a, 'tcx>,
+    fn try_eat_storage_stmts(
+        stmt_iter: &mut StmtIter<'_, '_>,
         storage_live_stmts: &mut Vec<(usize, Local)>,
         storage_dead_stmts: &mut Vec<(usize, Local)>,
     ) {
@@ -136,7 +136,7 @@ fn get_arm_identity_info<'a, 'tcx>(
         })
     }
 
-    fn is_tmp_storage_stmt<'tcx>(stmt: &Statement<'tcx>) -> bool {
+    fn is_tmp_storage_stmt(stmt: &Statement<'_>) -> bool {
         use rustc_middle::mir::StatementKind::Assign;
         if let Assign(box (place, Rvalue::Use(Operand::Copy(p) | Operand::Move(p)))) = &stmt.kind {
             place.as_local().is_some() && p.as_local().is_some()
@@ -147,8 +147,8 @@ fn get_arm_identity_info<'a, 'tcx>(
 
     /// Eats consecutive `Assign` Statements.
     // The iterator `stmt_iter` is not advanced if none were found.
-    fn try_eat_assign_tmp_stmts<'a, 'tcx>(
-        stmt_iter: &mut StmtIter<'a, 'tcx>,
+    fn try_eat_assign_tmp_stmts(
+        stmt_iter: &mut StmtIter<'_, '_>,
         tmp_assigns: &mut Vec<(Local, Local)>,
         nop_stmts: &mut Vec<usize>,
     ) {
@@ -163,9 +163,9 @@ fn get_arm_identity_info<'a, 'tcx>(
         })
     }
 
-    fn find_storage_live_dead_stmts_for_local<'tcx>(
+    fn find_storage_live_dead_stmts_for_local(
         local: Local,
-        stmts: &[Statement<'tcx>],
+        stmts: &[Statement<'_>],
     ) -> Option<(usize, usize)> {
         trace!("looking for {:?}", local);
         let mut storage_live_stmt = None;
@@ -452,14 +452,14 @@ struct LocalUseCounter {
 }
 
 impl LocalUseCounter {
-    fn get_local_uses<'tcx>(body: &Body<'tcx>) -> IndexVec<Local, usize> {
+    fn get_local_uses(body: &Body<'_>) -> IndexVec<Local, usize> {
         let mut counter = LocalUseCounter { local_uses: IndexVec::from_elem(0, &body.local_decls) };
         counter.visit_body(body);
         counter.local_uses
     }
 }
 
-impl<'tcx> Visitor<'tcx> for LocalUseCounter {
+impl Visitor<'_> for LocalUseCounter {
     fn visit_local(&mut self, local: &Local, context: PlaceContext, _location: Location) {
         if context.is_storage_marker()
             || context == PlaceContext::NonUse(NonUseContext::VarDebugInfo)
@@ -510,7 +510,7 @@ fn match_set_variant_field<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, Local
 /// ```rust
 /// discriminant(_LOCAL_TO_SET) = VAR_IDX;
 /// ```
-fn match_set_discr<'tcx>(stmt: &Statement<'tcx>) -> Option<(Local, VariantIdx)> {
+fn match_set_discr(stmt: &Statement<'_>) -> Option<(Local, VariantIdx)> {
     match &stmt.kind {
         StatementKind::SetDiscriminant { place, variant_index } => {
             Some((place.as_local()?, *variant_index))
@@ -588,7 +588,7 @@ struct SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
+impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
     fn find(&self) -> Vec<SimplifyBranchSameOptimization> {
         self.body
             .basic_blocks()

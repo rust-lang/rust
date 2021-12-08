@@ -149,13 +149,13 @@ struct Elaborator<'a, 'b, 'tcx> {
     ctxt: &'a mut ElaborateDropsCtxt<'b, 'tcx>,
 }
 
-impl<'a, 'b, 'tcx> fmt::Debug for Elaborator<'a, 'b, 'tcx> {
+impl fmt::Debug for Elaborator<'_, '_, '_> {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Ok(())
     }
 }
 
-impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
+impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
     type Path = MovePathIndex;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx> {
