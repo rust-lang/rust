@@ -550,24 +550,6 @@ impl Analysis {
             .unwrap_or_default())
     }
 
-    /// Computes assists (aka code actions aka intentions) for the given
-    /// position. If `resolve == false`, computes enough info to show the
-    /// lightbulb list in the editor, but doesn't compute actual edits, to
-    /// improve performance.
-    pub fn assists(
-        &self,
-        config: &AssistConfig,
-        resolve: AssistResolveStrategy,
-        frange: FileRange,
-    ) -> Cancellable<Vec<Assist>> {
-        self.with_db(|db| {
-            let ssr_assists = ssr::ssr_assists(db, &resolve, frange);
-            let mut acc = ide_assists::assists(db, config, resolve, frange);
-            acc.extend(ssr_assists.into_iter());
-            acc
-        })
-    }
-
     /// Computes the set of diagnostics for the given file.
     pub fn diagnostics(
         &self,
