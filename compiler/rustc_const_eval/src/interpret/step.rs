@@ -276,7 +276,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             NullaryOp(null_op, ty) => {
-                let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty);
+                let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty)?;
                 let layout = self.layout_of(ty)?;
                 if layout.is_unsized() {
                     // FIXME: This should be a span_bug (#80742)
@@ -302,7 +302,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Cast(cast_kind, ref operand, cast_ty) => {
                 let src = self.eval_operand(operand, None)?;
-                let cast_ty = self.subst_from_current_frame_and_normalize_erasing_regions(cast_ty);
+                let cast_ty =
+                    self.subst_from_current_frame_and_normalize_erasing_regions(cast_ty)?;
                 self.cast(&src, cast_kind, cast_ty, &dest)?;
             }
 
