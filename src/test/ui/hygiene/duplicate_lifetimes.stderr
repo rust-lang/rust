@@ -2,12 +2,12 @@ error[E0263]: lifetime name `'a` declared twice in the same scope
   --> $DIR/duplicate_lifetimes.rs:8:14
    |
 LL |     fn g<$a, 'a>() {}
-   |              ^^ declared twice
+   |              ^^ lifetime `'a` already in scope
 ...
 LL | m!('a);
    | ------
    | |  |
-   | |  previous declaration here
+   | |  first declared here
    | in this macro invocation
    |
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -16,12 +16,12 @@ error[E0263]: lifetime name `'a` declared twice in the same scope
   --> $DIR/duplicate_lifetimes.rs:13:14
    |
 LL |     fn h<$a, 'a>() {}
-   |              ^^ declared twice
+   |              ^^ lifetime `'a` already in scope
 ...
 LL | n!('a);
    | ------
    | |  |
-   | |  previous declaration here
+   | |  first declared here
    | in this macro invocation
    |
    = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)

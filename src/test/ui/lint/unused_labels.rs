@@ -61,6 +61,7 @@ fn main() {
         //~^ WARN unused label
         'many_used_shadowed: for _ in 0..10 {
             //~^ WARN label name `'many_used_shadowed` shadows a label name that is already in scope
+            //~| WARN label name `'many_used_shadowed` shadows a label name that is already in scope
             if 1 % 2 == 0 {
                 break 'many_used_shadowed;
             } else {
