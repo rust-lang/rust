@@ -307,6 +307,7 @@ fn predicate_references_self<'tcx>(
         | ty::PredicateKind::Coerce(..)
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
+        | ty::PredicateKind::OpaqueType(..)
         | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
     }
 }
@@ -341,6 +342,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             | ty::PredicateKind::TypeOutlives(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::OpaqueType(..)
             | ty::PredicateKind::TypeWellFormedFromEnv(..) => false,
         }
     })

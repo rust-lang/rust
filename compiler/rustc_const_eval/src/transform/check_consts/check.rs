@@ -396,6 +396,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     | ty::PredicateKind::Projection(_)
                     | ty::PredicateKind::ConstEvaluatable(..)
                     | ty::PredicateKind::ConstEquate(..)
+                    | ty::PredicateKind::OpaqueType(..)
                     | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
                     ty::PredicateKind::ObjectSafe(_) => {
                         bug!("object safe predicate on function: {:#?}", predicate)

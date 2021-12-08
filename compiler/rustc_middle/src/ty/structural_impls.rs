@@ -197,6 +197,9 @@ impl fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 write!(f, "TypeWellFormedFromEnv({:?})", ty)
             }
+            ty::PredicateKind::OpaqueType(a, b, a_is_expected) => {
+                write!(f, "OpaqueType({:?}, {:?}, {:?})", a.kind(), b.kind(), a_is_expected)
+            }
         }
     }
 }
@@ -459,6 +462,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
             }
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 tcx.lift(ty).map(ty::PredicateKind::TypeWellFormedFromEnv)
+            }
+            ty::PredicateKind::OpaqueType(opaque, ty, a_is_expected) => {
+                Some(ty::PredicateKind::OpaqueType(tcx.lift(opaque)?, tcx.lift(ty)?, a_is_expected))
             }
         }
     }

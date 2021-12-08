@@ -649,6 +649,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }
+                ty::PredicateKind::OpaqueType(..) => {
+                    todo!("{:#?}", obligation)
+                }
             }
         });
 

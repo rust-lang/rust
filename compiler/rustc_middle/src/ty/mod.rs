@@ -605,6 +605,14 @@ pub enum PredicateKind<'tcx> {
     ///
     /// Only used for Chalk.
     TypeWellFormedFromEnv(Ty<'tcx>),
+
+    /// Represents a hidden type assignment for an opaque type.
+    /// Such obligations get processed by checking whether the item currently being
+    /// type-checked may acually define it.
+    /// The arguments may be in any order, but one of them must be an opaque type.
+    /// The order and the boolean is used for resolving which opaque type defines
+    /// the other if both are opaque types and for diagnostics.
+    OpaqueType(Ty<'tcx>, Ty<'tcx>, bool),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -898,6 +906,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::TypeOutlives(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::OpaqueType(..)
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }
@@ -916,6 +925,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::OpaqueType(..)
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }

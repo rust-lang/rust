@@ -1,10 +1,11 @@
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits;
+use crate::traits::{self, PredicateObligation};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitor};
@@ -327,6 +328,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 )
             },
         });
+    }
+
+    pub fn opaque_ty_obligation(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        a_is_expected: bool,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: ObligationCause<'tcx>,
+    ) -> PredicateObligation<'tcx> {
+        PredicateObligation::new(
+            cause,
+            param_env,
+            self.tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::OpaqueType(
+                a,
+                b,
+                a_is_expected,
+            ))),
+        )
     }
 }
 

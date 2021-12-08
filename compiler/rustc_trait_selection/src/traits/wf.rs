@@ -145,6 +145,10 @@ pub fn predicate_obligations<'a, 'tcx>(
             wf.compute(c1.into());
             wf.compute(c2.into());
         }
+        ty::PredicateKind::OpaqueType(opaque, ty, _) => {
+            wf.compute(opaque.into());
+            wf.compute(ty.into());
+        }
         ty::PredicateKind::TypeWellFormedFromEnv(..) => {
             bug!("TypeWellFormedFromEnv is only used for Chalk")
         }

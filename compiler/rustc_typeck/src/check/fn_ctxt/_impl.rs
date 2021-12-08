@@ -716,6 +716,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // inference variable.
                     ty::PredicateKind::ClosureKind(..) => None,
                     ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+                    ty::PredicateKind::OpaqueType(..) => None,
                 }
             })
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))

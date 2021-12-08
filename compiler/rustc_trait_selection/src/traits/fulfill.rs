@@ -394,6 +394,9 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
+                ty::PredicateKind::OpaqueType(..) => {
+                    todo!("{:#?}", obligation);
+                }
             },
             Some(pred) => match pred {
                 ty::PredicateKind::Trait(data) => {
@@ -638,6 +641,9 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
+                }
+                ty::PredicateKind::OpaqueType(..) => {
+                    todo!("{:#?}", obligation);
                 }
             },
         }

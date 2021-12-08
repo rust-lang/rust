@@ -167,6 +167,9 @@ impl Elaborator<'tcx> {
                 // Currently, we do not elaborate WF predicates,
                 // although we easily could.
             }
+            ty::PredicateKind::OpaqueType(..) => {
+                todo!("{:#?}", obligation)
+            }
             ty::PredicateKind::ObjectSafe(..) => {
                 // Currently, we do not elaborate object-safe
                 // predicates.
