@@ -4,7 +4,7 @@ error[E0282]: type annotations needed for `[usize; _]`
 LL |     let _ = foo("foo"); //<- Do not suggest `foo::<N>("foo");`!
    |         -   ^^^ cannot infer the value of const parameter `N` declared on the function `foo`
    |         |
-   |         consider giving this pattern the explicit type `[usize; _]`, where the type parameter `N` is specified
+   |         consider giving this pattern the explicit type `[_; N]`, where the const parameter `N` is specified
 
 error: aborting due to previous error
 
