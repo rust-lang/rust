@@ -4,6 +4,7 @@ use crate::cell::UnsafeCell;
 use crate::future::{poll_fn, Future};
 use crate::pin::Pin;
 use crate::task::Poll;
+
 /// Polls multiple futures simultaneously, returning a tuple
 /// of all results once complete.
 ///
@@ -53,95 +54,78 @@ pub macro join {
         @count: ($($count:tt)*),
         // Futures and their positions in the tuple: "{ a => (_), b => (_ _)) }"
         @futures: { $($fut:tt)* },
-        // The future currently being expanded, and the rest
+        // Take a future from @rest to expand
         @rest: ($current:expr, $($rest:tt)*)
     ) => {
         join! {
-            @count: ($($count)* _), // Add to the count
-            @futures: { $($fut)* $current => ($($count)*), }, // Add the future from @rest with it's position
-            @rest: ($($rest)*) // And leave the rest
+            @count: ($($count)* _),
+            @futures: { $($fut)* $current => ($($count)*), },
+            @rest: ($($rest)*)
         }
     },
     // Now generate the output future
     (
         @count: ($($count:tt)*),
         @futures: {
-            $( $fut:expr => ( $($pos:tt)* ), )*
+            $( $(@$f:tt)? $fut:expr => ( $($pos:tt)* ), )*
         },
         @rest: ()
     ) => {{
-        let mut futures = ( $( MaybeDone::Future($fut), )* );
+        // The futures and whether they have completed
+        let mut state = ( $( UnsafeCell::new(($fut, false)), )* );
+
+        // Make sure the futures don't panic
+        // if polled after completion, and
+        // store their output separately
+        let mut futures = ($(
+            ({
+                let ( $($pos,)* state, .. ) = &state;
+
+                poll_fn(move |cx| {
+                    // SAFETY: each future borrows a distinct element
+                    // of the tuple
+                    let (fut, done) = unsafe { &mut *state.get() };
+
+                    if *done {
+                        return Poll::Ready(None)
+                    }
+
+                    // SAFETY: The futures are never moved
+                    match unsafe { Pin::new_unchecked(fut).poll(cx) } {
+                        Poll::Ready(val) => {
+                            *done = true;
+                            Poll::Ready(Some(val))
+                        }
+                        Poll::Pending => Poll::Pending
+                    }
+                })
+            }, None),
+        )*);
 
         poll_fn(move |cx| {
             let mut done = true;
 
             $(
-                // Extract the future from the tuple
-                let ( $($pos,)* fut, .. ) = &mut futures;
+                let ( $($pos,)* (fut, out), .. ) = &mut futures;
 
-                // SAFETY: the futures are never moved
-                done &= unsafe { Pin::new_unchecked(fut).poll(cx).is_ready() };
+                // SAFETY: The futures are never moved
+                match unsafe { Pin::new_unchecked(fut).poll(cx) } {
+                    Poll::Ready(Some(val)) => *out = Some(val),
+                    // the future was already done
+                    Poll::Ready(None) => {},
+                    Poll::Pending => done = false,
+                }
             )*
 
             if done {
+                // Extract all the outputs
                 Poll::Ready(($({
-                    let ( $($pos,)* fut, .. ) = &mut futures;
-
-                    // SAFETY: the futures are never moved
-                    unsafe { Pin::new_unchecked(fut).take_output().unwrap() }
+                    let ( $($pos,)* (_, val), .. ) = &mut futures;
+                    val.unwrap()
                 }),*))
             } else {
                 Poll::Pending
             }
         }).await
     }}
-}
-
-/// Future used by `join!` that stores it's output to
-/// be later taken and doesn't panic when polled after ready.
-#[allow(dead_code)]
-#[unstable(feature = "future_join", issue = "none")]
-enum MaybeDone<F: Future> {
-    Future(F),
-    Done(F::Output),
-    Took,
-}
-
-#[unstable(feature = "future_join", issue = "none")]
-impl<F: Future + Unpin> Unpin for MaybeDone<F> {}
-
-#[unstable(feature = "future_join", issue = "none")]
-impl<F: Future> MaybeDone<F> {
-    #[allow(dead_code)]
-    fn take_output(self: Pin<&mut Self>) -> Option<F::Output> {
-        unsafe {
-            match &*self {
-                MaybeDone::Done(_) => match mem::replace(self.get_unchecked_mut(), Self::Took) {
-                    MaybeDone::Done(val) => Some(val),
-                    _ => unreachable!(),
-                },
-                _ => None,
-            }
-        }
-    }
-}
-
-#[unstable(feature = "future_join", issue = "none")]
-impl<F: Future> Future for MaybeDone<F> {
-    type Output = ();
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        unsafe {
-            match self.as_mut().get_unchecked_mut() {
-                MaybeDone::Future(f) => match Pin::new_unchecked(f).poll(cx) {
-                    Poll::Ready(val) => self.set(Self::Done(val)),
-                    Poll::Pending => return Poll::Pending,
-                },
-                MaybeDone::Done(_) => {}
-                MaybeDone::Took => unreachable!(),
-            }
-        }
-
-        Poll::Ready(())
-    }
 }
