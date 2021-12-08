@@ -3067,6 +3067,7 @@ declare_lint_pass! {
         DEREF_INTO_DYN_SUPERTRAIT,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DUPLICATE_MACRO_ATTRIBUTES,
+        NOT_CENUM_CAST,
     ]
 }
 
@@ -3632,4 +3633,44 @@ declare_lint! {
     pub DUPLICATE_MACRO_ATTRIBUTES,
     Warn,
     "duplicated attribute"
+}
+
+declare_lint! {
+    /// The `not_cenum_cast` lint detects an `as` cast of a field-less
+    /// `enum` that is not C-like.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// enum E {
+    ///     A(),
+    ///     B{},
+    ///     C,
+    /// }
+    ///
+    /// fn main() {
+    ///     let i = E::A() as u32;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Historically we permit casting of enums if none of the variants have
+    /// fields. The intended behaviour is that only C-like (all variants are
+    /// unit variants) enums can be casted this way.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error
+    /// in the future. See [issue #88621] for more details.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    /// [issue #88621]: https://github.com/rust-lang/rust/issues/88621
+    pub NOT_CENUM_CAST,
+    Warn,
+    "an enum that is not C-like is cast",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #88611 <https://github.com/rust-lang/rust/issues/88621>",
+    };
 }

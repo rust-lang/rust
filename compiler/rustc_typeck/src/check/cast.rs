@@ -767,6 +767,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             // prim -> prim
             (Int(CEnum), Int(_)) => {
                 self.cenum_impl_drop_lint(fcx);
+                self.not_cenum_lint(fcx);
                 Ok(CastKind::EnumCast)
             }
             (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
@@ -911,6 +912,25 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     |err| {
                         err.build(&format!(
                             "cannot cast enum `{}` into integer `{}` because it implements `Drop`",
+                            self.expr_ty, self.cast_ty
+                        ))
+                        .emit();
+                    },
+                );
+            }
+        }
+    }
+
+    fn not_cenum_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
+        if let ty::Adt(d, _) = self.expr_ty.kind() {
+            if !d.is_c_like_enum() {
+                fcx.tcx.struct_span_lint_hir(
+                    lint::builtin::NOT_CENUM_CAST,
+                    self.expr.hir_id,
+                    self.span,
+                    |err| {
+                        err.build(&format!(
+                            "cannot cast enum `{}` into integer `{}` because it is not C-like",
                             self.expr_ty, self.cast_ty
                         ))
                         .emit();

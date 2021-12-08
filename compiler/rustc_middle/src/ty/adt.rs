@@ -354,6 +354,20 @@ impl<'tcx> AdtDef {
         self.variants.iter().all(|v| v.fields.is_empty())
     }
 
+    /// Whether all variants have only constant constructors
+    /// (i.e. there are no tuple or struct variants).
+    /// This is distinct from `is_payloadfree` specifically for the case of
+    /// empty tuple constructors, e.g. for:
+    /// ```
+    /// enum Number {
+    ///   Zero(),
+    /// }
+    /// ```
+    /// this function returns false, where `is_payloadfree` returns true.
+    pub fn is_c_like_enum(&self) -> bool {
+        self.is_enum() && self.variants.iter().all(|v| v.ctor_kind == CtorKind::Const)
+    }
+
     /// Return a `VariantDef` given a variant id.
     pub fn variant_with_id(&self, vid: DefId) -> &VariantDef {
         self.variants.iter().find(|v| v.def_id == vid).expect("variant_with_id: unknown variant")
