@@ -11,6 +11,7 @@ use crate::{
 
 mod future;
 mod into_future;
+mod lazy;
 mod pending;
 mod poll_fn;
 mod ready;
@@ -28,6 +29,9 @@ pub use ready::{ready, Ready};
 
 #[unstable(feature = "future_poll_fn", issue = "72302")]
 pub use poll_fn::{poll_fn, PollFn};
+
+#[unstable(feature = "future_lazy", issue = "91647")]
+pub use self::lazy::{lazy, Lazy};
 
 /// This type is needed because:
 ///
