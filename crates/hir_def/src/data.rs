@@ -255,7 +255,7 @@ impl ImplData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConstData {
-    /// const _: () = ();
+    /// `None` for `const _: () = ();`
     pub name: Option<Name>,
     pub type_ref: Interned<TypeRef>,
     pub visibility: RawVisibility,

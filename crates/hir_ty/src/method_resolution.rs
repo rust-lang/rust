@@ -8,8 +8,9 @@ use arrayvec::ArrayVec;
 use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
-    lang_item::LangItemTarget, nameres::DefMap, AssocItemId, BlockId, FunctionId, GenericDefId,
-    HasModule, ImplId, ItemContainerId, Lookup, ModuleId, TraitId,
+    item_scope::ItemScope, lang_item::LangItemTarget, nameres::DefMap, AssocItemId, BlockId,
+    ConstId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId,
+    ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -177,7 +178,7 @@ impl TraitImpls {
 
             // To better support custom derives, collect impls in all unnamed const items.
             // const _: () = { ... };
-            for konst in module_data.scope.unnamed_consts() {
+            for konst in collect_unnamed_consts(db, &module_data.scope) {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db.upcast()) {
                     self.collect_def_map(db, &block_def_map);
@@ -297,7 +298,7 @@ impl InherentImpls {
 
             // To better support custom derives, collect impls in all unnamed const items.
             // const _: () = { ... };
-            for konst in module_data.scope.unnamed_consts() {
+            for konst in collect_unnamed_consts(db, &module_data.scope) {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db.upcast()) {
                     self.collect_def_map(db, &block_def_map);
@@ -316,6 +317,34 @@ impl InherentImpls {
     pub fn all_impls(&self) -> impl Iterator<Item = ImplId> + '_ {
         self.map.values().flat_map(|v| v.iter().copied())
     }
+}
+
+fn collect_unnamed_consts<'a>(
+    db: &'a dyn HirDatabase,
+    scope: &'a ItemScope,
+) -> impl Iterator<Item = ConstId> + 'a {
+    let unnamed_consts = scope.unnamed_consts();
+
+    // FIXME: Also treat consts named `_DERIVE_*` as unnamed, since synstructure generates those.
+    // Should be removed once synstructure stops doing that.
+    let synstructure_hack_consts = scope.values().filter_map(|(item, _)| match item {
+        ModuleDefId::ConstId(id) => {
+            let loc = id.lookup(db.upcast());
+            let item_tree = loc.id.item_tree(db.upcast());
+            if item_tree[loc.id.value]
+                .name
+                .as_ref()
+                .map_or(false, |n| n.to_smol_str().starts_with("_DERIVE_"))
+            {
+                Some(id)
+            } else {
+                None
+            }
+        }
+        _ => None,
+    });
+
+    unnamed_consts.chain(synstructure_hack_consts)
 }
 
 pub fn def_crates(
