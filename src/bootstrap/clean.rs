@@ -76,9 +76,7 @@ fn rm_rf(path: &Path) {
                 fs::remove_dir(p).or_else(|e| {
                     // Check for dir not empty on Windows
                     #[cfg(windows)]
-                    if matches!(e.kind(), std::io::ErrorKind::Other)
-                        && e.raw_os_error() == Some(145)
-                    {
+                    if e.raw_os_error() == Some(145) {
                         return Ok(());
                     }
 
