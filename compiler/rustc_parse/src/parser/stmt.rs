@@ -4,7 +4,9 @@ use super::expr::LhsExpr;
 use super::pat::RecoverComma;
 use super::path::PathStyle;
 use super::TrailingToken;
-use super::{AttrWrapper, BlockMode, ForceCollect, Parser, Restrictions, SemiColonMode};
+use super::{
+    AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
+};
 use crate::maybe_whole;
 
 use rustc_ast as ast;
@@ -79,9 +81,13 @@ impl<'a> Parser<'a> {
             } else {
                 self.parse_stmt_path_start(lo, attrs)
             }?
-        } else if let Some(item) =
-            self.parse_item_common(attrs.clone(), false, true, |_| true, force_collect)?
-        {
+        } else if let Some(item) = self.parse_item_common(
+            attrs.clone(),
+            false,
+            true,
+            FnParseMode { req_name: |_| true, req_body: true },
+            force_collect,
+        )? {
             // FIXME: Bad copy of attrs
             self.mk_stmt(lo.to(item.span), StmtKind::Item(P(item)))
         } else if self.eat(&token::Semi) {
