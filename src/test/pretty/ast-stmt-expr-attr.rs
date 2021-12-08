@@ -110,8 +110,8 @@ fn syntax() {
     let _ = #[attr] &mut 0;
     let _ = #[attr] &#[attr] 0;
     let _ = #[attr] &mut #[attr] 0;
-    let _ = #[attr] break ;
-    let _ = #[attr] continue ;
+    let _ = #[attr] break;
+    let _ = #[attr] continue;
     let _ = #[attr] return;
     let _ = #[attr] foo!();
     let _ = #[attr] foo!(#! [attr]);
