@@ -1,5 +1,6 @@
 // compile-flags: -O
 // only-x86_64
+// ignore-test will need to be rewritten if pull accepted
 
 #![crate_type = "lib"]
 
