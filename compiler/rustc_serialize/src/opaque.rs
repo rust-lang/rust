@@ -666,7 +666,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error> {
         let len = self.read_usize()?;
         let sentinel = self.data[self.position + len];
-        assert!(sentinel == STR_SENTINEL);
+        assert_eq!(sentinel, STR_SENTINEL);
         let s = unsafe {
             std::str::from_utf8_unchecked(&self.data[self.position..self.position + len])
         };
