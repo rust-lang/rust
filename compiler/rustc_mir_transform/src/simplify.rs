@@ -47,7 +47,7 @@ impl SimplifyCfg {
     }
 }
 
-pub fn simplify_cfg(tcx: TyCtxt<'tcx>, body: &mut Body<'_>) {
+pub fn simplify_cfg<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     CfgSimplifier::new(body).simplify();
     remove_dead_blocks(tcx, body);
 
@@ -262,7 +262,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 }
 
-pub fn remove_dead_blocks(tcx: TyCtxt<'tcx>, body: &mut Body<'_>) {
+pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let reachable = traversal::reachable_as_bitset(body);
     let num_blocks = body.basic_blocks().len();
     if num_blocks == reachable.count() {
@@ -454,7 +454,7 @@ impl UsedLocals {
     }
 
     /// Updates the use counts to reflect the removal of given statement.
-    fn statement_removed(&mut self, statement: &Statement<'tcx>) {
+    fn statement_removed(&mut self, statement: &Statement<'_>) {
         self.increment = false;
 
         // The location of the statement is irrelevant.
@@ -463,7 +463,7 @@ impl UsedLocals {
     }
 
     /// Visits a left-hand side of an assignment.
-    fn visit_lhs(&mut self, place: &Place<'tcx>, location: Location) {
+    fn visit_lhs(&mut self, place: &Place<'_>, location: Location) {
         if place.is_indirect() {
             // A use, not a definition.
             self.visit_place(place, PlaceContext::MutatingUse(MutatingUseContext::Store), location);
@@ -480,7 +480,7 @@ impl UsedLocals {
     }
 }
 
-impl Visitor<'_> for UsedLocals {
+impl<'tcx> Visitor<'tcx> for UsedLocals {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::LlvmInlineAsm(..)
@@ -518,7 +518,7 @@ impl Visitor<'_> for UsedLocals {
 }
 
 /// Removes unused definitions. Updates the used locals to reflect the changes made.
-fn remove_unused_definitions<'a, 'tcx>(used_locals: &'a mut UsedLocals, body: &mut Body<'tcx>) {
+fn remove_unused_definitions(used_locals: &mut UsedLocals, body: &mut Body<'_>) {
     // The use counts are updated as we remove the statements. A local might become unused
     // during the retain operation, leading to a temporary inconsistency (storage statements or
     // definitions referencing the local might remain). For correctness it is crucial that this

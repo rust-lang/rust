@@ -66,7 +66,7 @@ fn builtin_derive_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for PackedRefChecker<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         // Make sure we know where in the MIR we are.
         self.source_info = terminator.source_info;

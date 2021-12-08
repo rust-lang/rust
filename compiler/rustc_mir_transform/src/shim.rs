@@ -247,7 +247,7 @@ pub struct DropShimElaborator<'a, 'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
-impl<'a, 'tcx> fmt::Debug for DropShimElaborator<'a, 'tcx> {
+impl fmt::Debug for DropShimElaborator<'_, '_> {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         Ok(())
     }
@@ -337,7 +337,7 @@ struct CloneShimBuilder<'tcx> {
     sig: ty::FnSig<'tcx>,
 }
 
-impl CloneShimBuilder<'tcx> {
+impl<'tcx> CloneShimBuilder<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Self {
         // we must subst the self_ty because it's
         // otherwise going to be TySelf and we can't index

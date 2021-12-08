@@ -233,7 +233,7 @@ struct TransformVisitor<'tcx> {
     new_ret_local: Local,
 }
 
-impl TransformVisitor<'tcx> {
+impl<'tcx> TransformVisitor<'tcx> {
     // Make a GeneratorState variant assignment. `core::ops::GeneratorState` only has single
     // element tuple variants, so we can just write to the downcasted first field and then set the
     // discriminant to the appropriate variant.
@@ -295,7 +295,7 @@ impl TransformVisitor<'tcx> {
     }
 }
 
-impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
+impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -446,7 +446,7 @@ struct LivenessInfo {
     storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
 }
 
-fn locals_live_across_suspend_points(
+fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     always_live_locals: &storage::AlwaysLiveLocals,
@@ -613,7 +613,7 @@ impl ops::Deref for GeneratorSavedLocals {
 /// time. Generates a bitset for every local of all the other locals that may be
 /// StorageLive simultaneously with that local. This is used in the layout
 /// computation; see `GeneratorLayout` for more.
-fn compute_storage_conflicts(
+fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &GeneratorSavedLocals,
     always_live_locals: storage::AlwaysLiveLocals,
@@ -672,7 +672,9 @@ struct StorageConflictVisitor<'mir, 'tcx, 's> {
     local_conflicts: BitMatrix<Local, Local>,
 }
 
-impl rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'mir, 'tcx, '_> {
+impl<'mir, 'tcx> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx>
+    for StorageConflictVisitor<'mir, 'tcx, '_>
+{
     type FlowState = BitSet<Local>;
 
     fn visit_statement_before_primary_effect(
@@ -694,7 +696,7 @@ impl rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'
     }
 }
 
-impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
+impl StorageConflictVisitor<'_, '_, '_> {
     fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
         if self.body.basic_blocks()[loc.block].terminator().kind == TerminatorKind::Unreachable {
@@ -1398,7 +1400,7 @@ impl EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
         self.saved_locals.get(place.local)
     }
 
-    fn check_assigned_place(&mut self, place: Place<'tcx>, f: impl FnOnce(&mut Self)) {
+    fn check_assigned_place(&mut self, place: Place<'_>, f: impl FnOnce(&mut Self)) {
         if let Some(assigned_local) = self.saved_local_for_direct_place(place) {
             assert!(self.assigned_local.is_none(), "`check_assigned_place` must not recurse");
 
@@ -1409,7 +1411,7 @@ impl EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
     }
 }
 
-impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
+impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
         let lhs = match self.assigned_local {
             Some(l) => l,

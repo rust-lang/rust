@@ -23,7 +23,7 @@ struct ConstMutationChecker<'a, 'tcx> {
     target_local: Option<Local>,
 }
 
-impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
+impl<'tcx> ConstMutationChecker<'_, 'tcx> {
     fn is_const_item(&self, local: Local) -> Option<DefId> {
         if let Some(box LocalInfo::ConstRef { def_id }) = self.body.local_decls[local].local_info {
             Some(def_id)
@@ -95,7 +95,7 @@ impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
     fn visit_statement(&mut self, stmt: &Statement<'tcx>, loc: Location) {
         if let StatementKind::Assign(box (lhs, _)) = &stmt.kind {
             // Check for assignment to fields of a constant

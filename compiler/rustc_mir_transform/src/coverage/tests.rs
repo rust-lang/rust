@@ -180,7 +180,7 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 }
 
-fn debug_basic_blocks(mir_body: &Body<'tcx>) -> String {
+fn debug_basic_blocks<'tcx>(mir_body: &Body<'tcx>) -> String {
     format!(
         "{:?}",
         mir_body
@@ -273,7 +273,7 @@ fn print_coverage_graphviz(
 }
 
 /// Create a mock `Body` with a simple flow.
-fn goto_switchint() -> Body<'a> {
+fn goto_switchint<'a>() -> Body<'a> {
     let mut blocks = MockBlocks::new();
     let start = blocks.call(None);
     let goto = blocks.goto(Some(start));
@@ -363,7 +363,7 @@ fn test_covgraph_goto_switchint() {
 }
 
 /// Create a mock `Body` with a loop.
-fn switchint_then_loop_else_return() -> Body<'a> {
+fn switchint_then_loop_else_return<'a>() -> Body<'a> {
     let mut blocks = MockBlocks::new();
     let start = blocks.call(None);
     let switchint = blocks.switchint(Some(start));
@@ -449,7 +449,7 @@ fn test_covgraph_switchint_then_loop_else_return() {
 }
 
 /// Create a mock `Body` with nested loops.
-fn switchint_loop_then_inner_loop_else_break() -> Body<'a> {
+fn switchint_loop_then_inner_loop_else_break<'a>() -> Body<'a> {
     let mut blocks = MockBlocks::new();
     let start = blocks.call(None);
     let switchint = blocks.switchint(Some(start));

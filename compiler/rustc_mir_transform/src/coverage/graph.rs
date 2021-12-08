@@ -27,7 +27,7 @@ pub(super) struct CoverageGraph {
 }
 
 impl CoverageGraph {
-    pub fn from_mir(mir_body: &mir::Body<'tcx>) -> Self {
+    pub fn from_mir(mir_body: &mir::Body<'_>) -> Self {
         let (bcbs, bb_to_bcb) = Self::compute_basic_coverage_blocks(mir_body);
 
         // Pre-transform MIR `BasicBlock` successors and predecessors into the BasicCoverageBlock
@@ -74,7 +74,7 @@ impl CoverageGraph {
     }
 
     fn compute_basic_coverage_blocks(
-        mir_body: &mir::Body<'tcx>,
+        mir_body: &mir::Body<'_>,
     ) -> (
         IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
         IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
@@ -267,7 +267,7 @@ impl graph::WithSuccessors for CoverageGraph {
     }
 }
 
-impl graph::GraphPredecessors<'graph> for CoverageGraph {
+impl<'graph> graph::GraphPredecessors<'graph> for CoverageGraph {
     type Item = BasicCoverageBlock;
     type Iter = std::iter::Copied<std::slice::Iter<'graph, BasicCoverageBlock>>;
 }
