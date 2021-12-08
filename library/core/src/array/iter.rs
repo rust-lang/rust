@@ -1,7 +1,7 @@
 //! Defines the `IntoIter` owned iterator for arrays.
 
 use crate::{
-    fmt,
+    cmp, fmt,
     iter::{self, ExactSizeIterator, FusedIterator, TrustedLen},
     mem::{self, MaybeUninit},
     ops::Range,
@@ -281,6 +281,27 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
     fn last(mut self) -> Option<Self::Item> {
         self.next_back()
     }
+
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let len = self.len();
+
+        // The number of elements to drop.  Always in-bounds by construction.
+        let delta = cmp::min(n, len);
+
+        let range_to_drop = self.alive.start..(self.alive.start + delta);
+
+        // Moving the start marks them as conceptually "dropped", so if anything
+        // goes bad then our drop impl won't double-free them.
+        self.alive.start += delta;
+
+        // SAFETY: These elements are currently initialized, so it's fine to drop them.
+        unsafe {
+            let slice = self.data.get_unchecked_mut(range_to_drop);
+            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
+        }
+
+        if n > len { Err(len) } else { Ok(()) }
+    }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
@@ -300,6 +321,27 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
             // all invariants.
             unsafe { self.data.get_unchecked(idx).assume_init_read() }
         })
+    }
+
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let len = self.len();
+
+        // The number of elements to drop.  Always in-bounds by construction.
+        let delta = cmp::min(n, len);
+
+        let range_to_drop = (self.alive.end - delta)..self.alive.end;
+
+        // Moving the end marks them as conceptually "dropped", so if anything
+        // goes bad then our drop impl won't double-free them.
+        self.alive.end -= delta;
+
+        // SAFETY: These elements are currently initialized, so it's fine to drop them.
+        unsafe {
+            let slice = self.data.get_unchecked_mut(range_to_drop);
+            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
+        }
+
+        if n > len { Err(len) } else { Ok(()) }
     }
 }
 
