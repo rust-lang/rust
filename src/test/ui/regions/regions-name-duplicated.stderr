@@ -2,10 +2,19 @@ error[E0263]: lifetime name `'a` declared twice in the same scope
   --> $DIR/regions-name-duplicated.rs:1:16
    |
 LL | struct Foo<'a, 'a> {
-   |            --  ^^ declared twice
+   |            --  ^^ lifetime `'a` already in scope
    |            |
-   |            previous declaration here
+   |            first declared here
 
-error: aborting due to previous error
+error[E0392]: parameter `'a` is never used
+  --> $DIR/regions-name-duplicated.rs:1:12
+   |
+LL | struct Foo<'a, 'a> {
+   |            ^^ unused parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
 
-For more information about this error, try `rustc --explain E0263`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0263, E0392.
+For more information about an error, try `rustc --explain E0263`.

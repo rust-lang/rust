@@ -1,3 +1,21 @@
+warning: label name `'many_used_shadowed` shadows a label name that is already in scope
+  --> $DIR/unused_labels.rs:62:9
+   |
+LL |     'many_used_shadowed: for _ in 0..10 {
+   |     ------------------- first declared here
+LL |
+LL |         'many_used_shadowed: for _ in 0..10 {
+   |         ^^^^^^^^^^^^^^^^^^^ label `'many_used_shadowed` already in scope
+
+warning: label name `'many_used_shadowed` shadows a label name that is already in scope
+  --> $DIR/unused_labels.rs:62:9
+   |
+LL |     'many_used_shadowed: for _ in 0..10 {
+   |     ------------------- first declared here
+LL |
+LL |         'many_used_shadowed: for _ in 0..10 {
+   |         ^^^^^^^^^^^^^^^^^^^ label `'many_used_shadowed` already in scope
+
 warning: unused label
   --> $DIR/unused_labels.rs:11:5
    |
@@ -41,25 +59,16 @@ LL |     'many_used_shadowed: for _ in 0..10 {
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_labels.rs:72:5
+  --> $DIR/unused_labels.rs:73:5
    |
 LL |     'unused_loop_label: loop {
    |     ^^^^^^^^^^^^^^^^^^
 
 warning: unused label
-  --> $DIR/unused_labels.rs:78:5
+  --> $DIR/unused_labels.rs:79:5
    |
 LL |     'unused_block_label: {
    |     ^^^^^^^^^^^^^^^^^^^
 
-warning: label name `'many_used_shadowed` shadows a label name that is already in scope
-  --> $DIR/unused_labels.rs:62:9
-   |
-LL |     'many_used_shadowed: for _ in 0..10 {
-   |     ------------------- first declared here
-LL |
-LL |         'many_used_shadowed: for _ in 0..10 {
-   |         ^^^^^^^^^^^^^^^^^^^ label `'many_used_shadowed` already in scope
-
-warning: 9 warnings emitted
+warning: 10 warnings emitted
 
