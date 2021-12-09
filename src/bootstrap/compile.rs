@@ -28,6 +28,7 @@ use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
 use crate::util::{exe, is_debug_info, is_dylib, symlink_dir};
+use crate::LLVM_TOOLS;
 use crate::{Compiler, DependencyType, GitRepo, Mode};
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1164,6 +1165,16 @@ impl Step for Assemble {
                 let llvm_bin_dir = output(Command::new(llvm_config_bin).arg("--bindir"));
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
                 builder.copy(&llvm_bin_dir.join(&src_exe), &libdir_bin.join(&dst_exe));
+
+                // Since we've already built the LLVM tools, install them to the sysroot.
+                // This is the equivalent of installing the `llvm-tools-preview` component via
+                // rustup, and lets developers use a locally built toolchain to
+                // build projects that expect llvm tools to be present in the sysroot
+                // (e.g. the `bootimage` crate).
+                for tool in LLVM_TOOLS {
+                    let tool_exe = exe(tool, target_compiler.host);
+                    builder.copy(&llvm_bin_dir.join(&tool_exe), &libdir_bin.join(&tool_exe));
+                }
             }
         }
 
