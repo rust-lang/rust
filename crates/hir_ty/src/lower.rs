@@ -96,9 +96,9 @@ impl<'a> TyLoweringContext<'a> {
         debruijn: DebruijnIndex,
         f: impl FnOnce(&TyLoweringContext) -> T,
     ) -> T {
-        let opaque_ty_data_vec = self.opaque_type_data.replace(Vec::new());
-        let expander = self.expander.replace(None);
-        let unsized_types = self.unsized_types.replace(Default::default());
+        let opaque_ty_data_vec = self.opaque_type_data.take();
+        let expander = self.expander.take();
+        let unsized_types = self.unsized_types.take();
         let new_ctx = Self {
             in_binders: debruijn,
             impl_trait_counter: Cell::new(self.impl_trait_counter.get()),
@@ -615,7 +615,7 @@ impl<'a> TyLoweringContext<'a> {
                 // `Option::None::<T>` are both allowed (though the former is
                 // preferred). See also `def_ids_for_path_segments` in rustc.
                 let len = path.segments().len();
-                let penultimate = if len >= 2 { path.segments().get(len - 2) } else { None };
+                let penultimate = len.checked_sub(2).and_then(|idx| path.segments().get(idx));
                 let segment = match penultimate {
                     Some(segment) if segment.args_and_bindings.is_some() => segment,
                     _ => last,
@@ -841,8 +841,8 @@ impl<'a> TyLoweringContext<'a> {
         };
         last_segment
             .into_iter()
-            .flat_map(|segment| segment.args_and_bindings.into_iter())
-            .flat_map(|args_and_bindings| args_and_bindings.bindings.iter())
+            .filter_map(|segment| segment.args_and_bindings)
+            .flat_map(|args_and_bindings| &args_and_bindings.bindings)
             .flat_map(move |binding| {
                 let found = associated_type_by_name_including_super_traits(
                     self.db,
@@ -850,14 +850,14 @@ impl<'a> TyLoweringContext<'a> {
                     &binding.name,
                 );
                 let (super_trait_ref, associated_ty) = match found {
-                    None => return SmallVec::<[QuantifiedWhereClause; 1]>::new(),
+                    None => return SmallVec::new(),
                     Some(t) => t,
                 };
                 let projection_ty = ProjectionTy {
                     associated_ty_id: to_assoc_type_id(associated_ty),
                     substitution: super_trait_ref.substitution,
                 };
-                let mut preds = SmallVec::with_capacity(
+                let mut preds: SmallVec<[_; 1]> = SmallVec::with_capacity(
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
                 );
                 if let Some(type_ref) = &binding.type_ref {
