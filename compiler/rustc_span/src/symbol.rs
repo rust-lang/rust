@@ -630,6 +630,7 @@ symbols! {
         fdiv_fast,
         feature,
         fence,
+        ferris: "🦀",
         fetch_update,
         ffi,
         ffi_const,
