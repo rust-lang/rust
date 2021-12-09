@@ -142,6 +142,7 @@ impl TraitImpls {
 
         let crate_def_map = db.crate_def_map(krate);
         impls.collect_def_map(db, &crate_def_map);
+        impls.shrink_to_fit();
 
         Arc::new(impls)
     }
@@ -155,8 +156,30 @@ impl TraitImpls {
 
         let block_def_map = db.block_def_map(block)?;
         impls.collect_def_map(db, &block_def_map);
+        impls.shrink_to_fit();
 
         Some(Arc::new(impls))
+    }
+
+    pub(crate) fn trait_impls_in_deps_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
+        let _p = profile::span("trait_impls_in_deps_query");
+        let crate_graph = db.crate_graph();
+        let mut res = Self { map: FxHashMap::default() };
+
+        for krate in crate_graph.transitive_deps(krate) {
+            res.merge(&db.trait_impls_in_crate(krate));
+        }
+        res.shrink_to_fit();
+
+        Arc::new(res)
+    }
+
+    fn shrink_to_fit(&mut self) {
+        self.map.shrink_to_fit();
+        self.map.values_mut().for_each(|map| {
+            map.shrink_to_fit();
+            map.values_mut().for_each(Vec::shrink_to_fit);
+        });
     }
 
     fn collect_def_map(&mut self, db: &dyn HirDatabase, def_map: &DefMap) {
@@ -185,18 +208,6 @@ impl TraitImpls {
                 }
             }
         }
-    }
-
-    pub(crate) fn trait_impls_in_deps_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let _p = profile::span("trait_impls_in_deps_query");
-        let crate_graph = db.crate_graph();
-        let mut res = Self { map: FxHashMap::default() };
-
-        for krate in crate_graph.transitive_deps(krate) {
-            res.merge(&db.trait_impls_in_crate(krate));
-        }
-
-        Arc::new(res)
     }
 
     fn merge(&mut self, other: &Self) {
@@ -264,6 +275,7 @@ impl InherentImpls {
 
         let crate_def_map = db.crate_def_map(krate);
         impls.collect_def_map(db, &crate_def_map);
+        impls.shrink_to_fit();
 
         return Arc::new(impls);
     }
@@ -275,9 +287,15 @@ impl InherentImpls {
         let mut impls = Self { map: FxHashMap::default() };
         if let Some(block_def_map) = db.block_def_map(block) {
             impls.collect_def_map(db, &block_def_map);
+            impls.shrink_to_fit();
             return Some(Arc::new(impls));
         }
         return None;
+    }
+
+    fn shrink_to_fit(&mut self) {
+        self.map.values_mut().for_each(Vec::shrink_to_fit);
+        self.map.shrink_to_fit();
     }
 
     fn collect_def_map(&mut self, db: &dyn HirDatabase, def_map: &DefMap) {
