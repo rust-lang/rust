@@ -1058,7 +1058,6 @@ symbols! {
         reg_nonzero,
         reg_pair,
         reg_ptr,
-        reg_thumb,
         reg_upper,
         register_attr,
         register_tool,

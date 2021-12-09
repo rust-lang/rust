@@ -163,36 +163,6 @@ check!(reg_f32 f32 reg "mov");
 // CHECK: @NO_APP
 check!(reg_ptr ptr reg "mov");
 
-// CHECK-LABEL: reg_thumb_i8:
-// CHECK: @APP
-// CHECK: mov {{[a-z0-9]+}}, {{[a-z0-9]+}}
-// CHECK: @NO_APP
-check!(reg_thumb_i8 i8 reg_thumb "mov");
-
-// CHECK-LABEL: reg_thumb_i16:
-// CHECK: @APP
-// CHECK: mov {{[a-z0-9]+}}, {{[a-z0-9]+}}
-// CHECK: @NO_APP
-check!(reg_thumb_i16 i16 reg_thumb "mov");
-
-// CHECK-LABEL: reg_thumb_i32:
-// CHECK: @APP
-// CHECK: mov {{[a-z0-9]+}}, {{[a-z0-9]+}}
-// CHECK: @NO_APP
-check!(reg_thumb_i32 i32 reg_thumb "mov");
-
-// CHECK-LABEL: reg_thumb_f32:
-// CHECK: @APP
-// CHECK: mov {{[a-z0-9]+}}, {{[a-z0-9]+}}
-// CHECK: @NO_APP
-check!(reg_thumb_f32 f32 reg_thumb "mov");
-
-// CHECK-LABEL: reg_thumb_ptr:
-// CHECK: @APP
-// CHECK: mov {{[a-z0-9]+}}, {{[a-z0-9]+}}
-// CHECK: @NO_APP
-check!(reg_thumb_ptr ptr reg_thumb "mov");
-
 // CHECK-LABEL: sreg_i32:
 // CHECK: @APP
 // CHECK: vmov.f32 s{{[0-9]+}}, s{{[0-9]+}}
