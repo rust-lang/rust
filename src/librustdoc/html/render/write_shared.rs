@@ -181,18 +181,26 @@ pub(super) fn write_shared(
         cx.write_shared(SharedResource::InvocationSpecific { basename: p }, content, &options.emit)
     };
 
-    // Given "foo.svg", return e.g. "url(\"foo1.58.0.svg\")"
-    fn ver_url(cx: &Context<'_>, basename: &'static str) -> String {
-        format!(
-            "url(\"{}\")",
-            SharedResource::ToolchainSpecific { basename }
-                .path(cx)
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-        )
-    }
+    // Given "foo.svg", either include it directly in the CSS as a data URL,
+    // or link to it, depending on the options.
+    let css_icon_url = |basename: &'static str, icon: &[u8]| -> String {
+        if basename.ends_with(".svg") && options.enable_minification {
+            use percent_encoding::{utf8_percent_encode, AsciiSet, CONTROLS};
+            const DATA_URI: &AsciiSet = &CONTROLS.add(b'\'').add(b'#').add(b'?');
+            let icn = utf8_percent_encode(std::str::from_utf8(icon).unwrap(), DATA_URI);
+            format!("url('data:image/svg+xml,{}')", icn,)
+        } else {
+            format!(
+                "url(\"{}\")",
+                SharedResource::ToolchainSpecific { basename }
+                    .path(cx)
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+            )
+        }
+    };
 
     // We use the AUTOREPLACE mechanism to inject into our static JS and CSS certain
     // values that are only known at doc build time. Since this mechanism is somewhat
@@ -202,10 +210,16 @@ pub(super) fn write_shared(
         static_files::RUSTDOC_CSS
             .replace(
                 "/* AUTOREPLACE: */url(\"toggle-minus.svg\")",
-                &ver_url(cx, "toggle-minus.svg"),
+                &css_icon_url("toggle-minus.svg", static_files::TOGGLE_MINUS_SVG),
             )
-            .replace("/* AUTOREPLACE: */url(\"toggle-plus.svg\")", &ver_url(cx, "toggle-plus.svg"))
-            .replace("/* AUTOREPLACE: */url(\"down-arrow.svg\")", &ver_url(cx, "down-arrow.svg")),
+            .replace(
+                "/* AUTOREPLACE: */url(\"toggle-plus.svg\")",
+                &css_icon_url("toggle-plus.svg", static_files::TOGGLE_PLUS_SVG),
+            )
+            .replace(
+                "/* AUTOREPLACE: */url(\"down-arrow.svg\")",
+                &css_icon_url("down-arrow.svg", static_files::DOWN_ARROW_SVG),
+            ),
         cx,
         options,
     )?;
@@ -250,9 +264,14 @@ pub(super) fn write_shared(
     write_toolchain("brush.svg", static_files::BRUSH_SVG)?;
     write_toolchain("wheel.svg", static_files::WHEEL_SVG)?;
     write_toolchain("clipboard.svg", static_files::CLIPBOARD_SVG)?;
-    write_toolchain("down-arrow.svg", static_files::DOWN_ARROW_SVG)?;
-    write_toolchain("toggle-minus.svg", static_files::TOGGLE_MINUS_PNG)?;
-    write_toolchain("toggle-plus.svg", static_files::TOGGLE_PLUS_PNG)?;
+
+    // The following icons are embeded in the CSS file,
+    // unless we're in tweak-the-theme-mode.
+    if !options.enable_minification {
+        write_toolchain("down-arrow.svg", static_files::DOWN_ARROW_SVG)?;
+        write_toolchain("toggle-minus.svg", static_files::TOGGLE_MINUS_SVG)?;
+        write_toolchain("toggle-plus.svg", static_files::TOGGLE_PLUS_SVG)?;
+    }
 
     let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();

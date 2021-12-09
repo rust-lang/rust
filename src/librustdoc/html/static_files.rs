@@ -52,10 +52,10 @@ crate static CLIPBOARD_SVG: &[u8] = include_bytes!("static/images/clipboard.svg"
 crate static DOWN_ARROW_SVG: &[u8] = include_bytes!("static/images/down-arrow.svg");
 
 /// The file contents of `toggle-minus.svg`, the icon used for opened toggles.
-crate static TOGGLE_MINUS_PNG: &[u8] = include_bytes!("static/images/toggle-minus.svg");
+crate static TOGGLE_MINUS_SVG: &[u8] = include_bytes!("static/images/toggle-minus.svg");
 
 /// The file contents of `toggle-plus.svg`, the icon used for closed toggles.
-crate static TOGGLE_PLUS_PNG: &[u8] = include_bytes!("static/images/toggle-plus.svg");
+crate static TOGGLE_PLUS_SVG: &[u8] = include_bytes!("static/images/toggle-plus.svg");
 
 /// The contents of `COPYRIGHT.txt`, the license listing for files distributed with documentation
 /// output.
