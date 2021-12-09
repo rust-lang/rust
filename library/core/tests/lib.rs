@@ -49,6 +49,7 @@
 #![feature(str_internals)]
 #![feature(test)]
 #![feature(trusted_len)]
+#![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
