@@ -587,18 +587,18 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match &self {
             ImplSource::UserDefined(i) => &i.nested[..],
-            ImplSource::Param(n, _) => &n[..],
-            ImplSource::Builtin(i) => &i.nested[..],
-            ImplSource::AutoImpl(d) => &d.nested[..],
-            ImplSource::Closure(c) => &c.nested[..],
-            ImplSource::Generator(c) => &c.nested[..],
-            ImplSource::Object(d) => &d.nested[..],
-            ImplSource::FnPointer(d) => &d.nested[..],
+            ImplSource::Param(n, _) => &n,
+            ImplSource::Builtin(i) => &i.nested,
+            ImplSource::AutoImpl(d) => &d.nested,
+            ImplSource::Closure(c) => &c.nested,
+            ImplSource::Generator(c) => &c.nested,
+            ImplSource::Object(d) => &d.nested,
+            ImplSource::FnPointer(d) => &d.nested,
             ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
             | ImplSource::Pointee(ImplSourcePointeeData)
             | ImplSource::ConstDrop(ImplSourceConstDropData) => &[],
-            ImplSource::TraitAlias(d) => &d.nested[..],
-            ImplSource::TraitUpcasting(d) => &d.nested[..],
+            ImplSource::TraitAlias(d) => &d.nested,
+            ImplSource::TraitUpcasting(d) => &d.nested,
         }
     }
 

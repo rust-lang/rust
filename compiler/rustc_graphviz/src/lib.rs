@@ -659,7 +659,7 @@ where
         }
 
         writeln!(text, ";").unwrap();
-        w.write_all(&text[..])?;
+        w.write_all(&text)?;
 
         text.clear();
     }
@@ -684,7 +684,7 @@ where
         }
 
         writeln!(text, ";").unwrap();
-        w.write_all(&text[..])?;
+        w.write_all(&text)?;
 
         text.clear();
     }

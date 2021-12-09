@@ -1436,7 +1436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             <dyn AstConv<'_>>::create_substs_for_generic_args(
                 tcx,
                 def_id,
-                &[][..],
+                &[],
                 has_self,
                 self_ty,
                 &arg_count,

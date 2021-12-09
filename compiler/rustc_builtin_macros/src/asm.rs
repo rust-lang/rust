@@ -712,7 +712,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                             Some(&idx) => Some(idx),
                             None => {
                                 let msg = format!("there is no argument named `{}`", name);
-                                ecx.struct_span_err(span, &msg[..]).emit();
+                                ecx.struct_span_err(span, &msg).emit();
                                 None
                             }
                         },

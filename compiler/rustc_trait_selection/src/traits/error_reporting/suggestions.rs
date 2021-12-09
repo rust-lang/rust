@@ -804,7 +804,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         } else if let ObligationCauseCode::BindingObligation(_, _)
         | ObligationCauseCode::ItemObligation(_) = &*code
         {
-            try_borrowing(*poly_trait_ref, &never_suggest_borrow[..])
+            try_borrowing(*poly_trait_ref, &never_suggest_borrow)
         } else {
             false
         }
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             <https://doc.rust-lang.org/book/ch17-02-trait-objects.html\
             #using-trait-objects-that-allow-for-values-of-different-types>";
         let has_dyn = snippet.split_whitespace().next().map_or(false, |s| s == "dyn");
-        let trait_obj = if has_dyn { &snippet[4..] } else { &snippet[..] };
+        let trait_obj = if has_dyn { &snippet[4..] } else { &snippet };
         if only_never_return {
             // No return paths, probably using `panic!()` or similar.
             // Suggest `-> T`, `-> impl Trait`, and if `Trait` is object safe, `-> Box<dyn Trait>`.

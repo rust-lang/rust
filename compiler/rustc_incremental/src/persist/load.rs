@@ -151,7 +151,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                                     compilation session directory: {}",
                         e
                     );
-                    sess.fatal(&msg[..])
+                    sess.fatal(&msg)
                 });
 
             for swp in work_products {
