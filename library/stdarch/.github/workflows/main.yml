@@ -168,6 +168,8 @@ jobs:
           os: ubuntu-latest
         - target: thumbv7em-none-eabihf
           os: ubuntu-latest
+        - target: riscv64gc-unknown-linux-gnu
+          os: ubuntu-latest
 
     steps:
     - uses: actions/checkout@master

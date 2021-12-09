@@ -31,5 +31,5 @@ use stdarch_test::assert_instr;
 #[rustc_legacy_const_generics(0)]
 pub unsafe fn __breakpoint<const VAL: i32>() {
     static_assert_imm8!(VAL);
-    asm!("bkpt #{}", const VAL);
+    crate::arch::asm!("bkpt #{}", const VAL);
 }

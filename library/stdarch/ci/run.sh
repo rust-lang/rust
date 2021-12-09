@@ -44,6 +44,11 @@ case ${TARGET} in
         export RUSTFLAGS="${RUSTFLAGS} -Ctarget-feature=+neon"
         export TARGET_CFLAGS="-mfpu=vfpv3-d16"
         ;;
+    # Some of our test dependencies use the deprecated `gcc` crates which
+    # doesn't detect RISC-V compilers automatically, so do it manually here.
+    riscv64*)
+        export TARGET_CC="riscv64-linux-gnu-gcc"
+        ;;
 esac
 
 echo "RUSTFLAGS=${RUSTFLAGS}"

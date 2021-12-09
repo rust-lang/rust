@@ -1,3 +1,4 @@
+use crate::arch::asm;
 #[cfg(test)]
 use stdarch_test::assert_instr;
 

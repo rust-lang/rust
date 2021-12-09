@@ -1,6 +1,8 @@
 // Reference: ARM11 MPCore Processor Technical Reference Manual (ARM DDI 0360E) Section 3.5 "Summary
 // of CP15 instructions"
 
+use crate::arch::asm;
+
 /// Full system is the required shareability domain, reads and writes are the
 /// required access types
 pub struct SY;

@@ -1,5 +1,7 @@
 //! `i386` intrinsics
 
+use crate::arch::asm;
+
 /// Reads EFLAGS.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__readeflags)

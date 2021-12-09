@@ -77,7 +77,7 @@ pub unsafe fn __yield() {
 /// will increase execution time.
 #[inline(always)]
 pub unsafe fn __nop() {
-    asm!("nop", options(nomem, nostack, preserves_flags));
+    crate::arch::asm!("nop", options(nomem, nostack, preserves_flags));
 }
 
 extern "unadjusted" {

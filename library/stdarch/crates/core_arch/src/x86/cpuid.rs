@@ -1,6 +1,7 @@
 //! `cpuid` intrinsics
 #![allow(clippy::module_name_repetitions)]
 
+use crate::arch::asm;
 #[cfg(test)]
 use stdarch_test::assert_instr;
 

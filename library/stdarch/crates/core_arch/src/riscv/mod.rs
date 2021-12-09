@@ -6,5 +6,5 @@
 /// should be temporarily reduced or paused. The duration of its effect must be bounded and may be zero.
 #[inline]
 pub fn pause() {
-    unsafe { asm!(".word 0x0100000F", options(nomem, nostack)) }
+    unsafe { crate::arch::asm!(".word 0x0100000F", options(nomem, nostack)) }
 }
