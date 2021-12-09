@@ -48,9 +48,9 @@ use crate::task::{Context, Poll};
 pub macro join( $($fut:expr),+ $(,)? ) {
     // Funnel through an internal macro not to leak implementation details.
     join_internal! {
-        current_position[]
-        futures_and_positions[]
-        munching[ $($fut)+ ]
+        current_position: []
+        futures_and_positions: []
+        munching: [ $($fut)+ ]
     }
 }
 
@@ -64,29 +64,29 @@ macro join_internal {
     // Recursion step: map each future with its "position" (underscore count).
     (
         // Accumulate a token for each future that has been expanded: "_ _ _".
-        current_position[
+        current_position: [
             $($underscores:tt)*
         ]
         // Accumulate Futures and their positions in the tuple: `_0th ()   _1st ( _ ) …`.
-        futures_and_positions[
+        futures_and_positions: [
             $($acc:tt)*
         ]
         // Munch one future.
-        munching[
+        munching: [
             $current:tt
             $($rest:tt)*
         ]
     ) => (
         join_internal! {
-            current_position[
+            current_position: [
                 $($underscores)*
                 _
             ]
-            futures_and_positions[
+            futures_and_positions: [
                 $($acc)*
                 $current ( $($underscores)* )
             ]
-            munching[
+            munching: [
                 $($rest)*
             ]
         }
@@ -94,14 +94,14 @@ macro join_internal {
 
     // End of recursion: generate the output future.
     (
-        current_position $_:tt
-        futures_and_positions[
+        current_position: $_:tt
+        futures_and_positions: [
             $(
                 $fut_expr:tt ( $($pos:tt)* )
             )*
         ]
         // Nothing left to munch.
-        munching[]
+        munching: []
     ) => (
         match ( $( MaybeDone::Future($fut_expr), )* ) { futures => async {
             let mut futures = futures;
