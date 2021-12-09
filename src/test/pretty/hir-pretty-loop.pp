@@ -6,4 +6,4 @@ extern crate std;
 // pretty-mode:hir
 // pp-exact:hir-pretty-loop.pp
 
-pub fn foo() { loop { break ; } }
+pub fn foo() { loop { break; } }
