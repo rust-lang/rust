@@ -42,19 +42,6 @@ fn parse_args<'a>(
             ecx.struct_span_err(sp, "the legacy LLVM-style asm! syntax is no longer supported");
         err.note("consider migrating to the new asm! syntax specified in RFC 2873");
         err.note("alternatively, switch to llvm_asm! to keep your code working as it is");
-
-        // Find the span of the "asm!" so that we can offer an automatic suggestion
-        let asm_span = sp.from_inner(InnerSpan::new(0, 4));
-        if let Ok(s) = ecx.source_map().span_to_snippet(asm_span) {
-            if s == "asm!" {
-                err.span_suggestion(
-                    asm_span,
-                    "replace with",
-                    "llvm_asm!".into(),
-                    Applicability::MachineApplicable,
-                );
-            }
-        }
         return Err(err);
     }
 
