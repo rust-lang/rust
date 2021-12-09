@@ -1,3 +1,5 @@
+// compile-flags: -O
+
 #![crate_type = "lib"]
 
 // This test checks that we annotate alignment loads from vtables with nonzero range metadata,
