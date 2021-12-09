@@ -1,4 +1,4 @@
-#![allow(unused_imports)] // items are used by the macro
+#![allow(unused_imports, unused_macros)] // items are used by the macro
 
 use crate::cell::UnsafeCell;
 use crate::future::{poll_fn, Future};
@@ -54,6 +54,8 @@ pub macro join( $($fut:expr),+ $(,)? ) {
     }
 }
 
+// FIXME(danielhenrymantilla): a private macro should need no stability guarantee.
+#[unstable(feature = "future_join", issue = "91642")]
 /// To be able to *name* the i-th future in the tuple (say we want the .4-th),
 /// the following trick will be used: `let (_, _, _, _, it, ..) = tuple;`
 /// In order to do that, we need to generate a `i`-long repetition of `_`,
