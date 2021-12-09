@@ -38,7 +38,6 @@ Otherwise, have a great day =^.^=
         .dropdown-menu .checkbox {
             width: 100%;
             display: block;
-            padding: 3px 20px;
             clear: both;
             font-weight: 400;
             line-height: 1.42857143;
@@ -47,8 +46,8 @@ Otherwise, have a great day =^.^=
          }
 
          .dropdown-menu .checkbox label {
-             padding-left: 0;
-             width: 100%;
+            padding: 3px 20px;
+            width: 100%;
          }
 
          .dropdown-menu .checkbox input {
@@ -209,13 +208,17 @@ Otherwise, have a great day =^.^=
             --inline-code-bg: #191f26;
         }
 
+        .theme-dropdown {
+            position: absolute;
+            margin: 0.7em;
+            z-index: 10;
+        }
+
         /* Applying the mdBook theme */
         .theme-icon {
-            position: absolute;
             text-align: center;
             width: 2em;
             height: 2em;
-            margin: 0.7em;
             line-height: 2em;
             border: solid 1px var(--icons);
             border-radius: 5px;
@@ -226,24 +229,28 @@ Otherwise, have a great day =^.^=
             background: var(--theme-hover);
         }
         .theme-choice {
-            position: absolute;
-            margin-top: calc(2em + 0.7em);
-            margin-left: 0.7em;
+            display: none;
             list-style: none;
             border: 1px solid var(--theme-popup-border);
             border-radius: 5px;
             color: var(--fg);
             background: var(--theme-popup-bg);
             padding: 0 0;
-            z-index: 10;
+            overflow: hidden;
         }
-        .theme-choice > li {
+
+        .theme-dropdown.open .theme-choice {
+            display: block;
+        }
+
+        .theme-choice>li {
             padding: 5px 10px;
             font-size: 0.8em;
             user-select: none;
             cursor: pointer;
         }
-        .theme-choice > li:hover {
+
+        .theme-choice>li:hover {
             background: var(--theme-hover);
         }
 
@@ -307,15 +314,13 @@ Otherwise, have a great day =^.^=
 
     </style>
 </head>
-<body ng-app="clippy" ng-controller="lintList" ng-click="toggleDropdown(undefined, $event)">
-    <div id="theme-icon" class="theme-icon">&#128396;</div>
-    <ul id="theme-menu" class="theme-choice" style="display: none;">
-        <li id="light">Light</li>
-        <li id="rust">Rust</li>
-        <li id="coal">Coal</li>
-        <li id="navy">Navy</li>
-        <li id="ayu">Ayu</li>
-    </ul>
+<body ng-app="clippy" ng-controller="lintList">
+    <div theme-dropdown class="theme-dropdown">
+        <div id="theme-icon" class="theme-icon">&#128396;</div>
+        <ul id="theme-menu" class="theme-choice">
+            <li id="{{id}}" ng-repeat="(id, name) in themes" ng-click="selectTheme(id)">{{name}}</li>
+        </ul>
+    </div>
 
     <div class="container">
         <div class="page-header">
@@ -340,8 +345,7 @@ Otherwise, have a great day =^.^=
             <div class="panel panel-default" ng-show="data">
                 <div class="panel-body row">
                     <div class="col-12 col-md-4">
-                        <div class="btn-group" ng-class="{ open: selectedDropdown == 'levels' }"
-                            ng-click="toggleDropdown('levels', $event)">
+                        <div class="btn-group" filter-dropdown>
                             <button type="button" class="btn btn-default dropdown-toggle">
                                 Lint levels <span class="badge">{{selectedValuesCount(levels)}}</span> <span class="caret"></span>
                             </button>
@@ -365,8 +369,7 @@ Otherwise, have a great day =^.^=
                                 </li>
                             </ul>
                         </div>
-                        <div class="btn-group" ng-class="{ open: selectedDropdown == 'groups' }"
-                            ng-click="toggleDropdown('groups', $event)">
+                        <div class="btn-group" filter-dropdown>
                             <button type="button" class="btn btn-default dropdown-toggle">
                                 Lint groups <span class="badge">{{selectedValuesCount(groups)}}</span> <span class="caret"></span>
                             </button>
@@ -518,6 +521,46 @@ Otherwise, have a great day =^.^=
                 );
             };
         })
+                .directive('themeDropdown', function ($document) {
+                    return {
+                        restrict: 'A',
+                        link: function ($scope, $element, $attr) {
+                            $element.bind('click', function () {
+                                $element.toggleClass('open');
+                                $element.addClass('open-recent');
+                            });
+
+                            $document.bind('click', function () {
+                                if (!$element.hasClass('open-recent')) {
+                                    $element.removeClass('open');
+                                }
+                                $element.removeClass('open-recent');
+                            })
+                        }
+                    }
+                })
+                .directive('filterDropdown', function ($document) {
+                    return {
+                        restrict: 'A',
+                        link: function ($scope, $element, $attr) {
+                            $element.bind('click', function (event) {
+                                if (event.target.closest('button')) {
+                                    $element.toggleClass('open');
+                                } else {
+                                    $element.addClass('open');
+                                }
+                                $element.addClass('open-recent');
+                            });
+
+                            $document.bind('click', function () {
+                                if (!$element.hasClass('open-recent')) {
+                                    $element.removeClass('open');
+                                }
+                                $element.removeClass('open-recent');
+                            })
+                        }
+                    }
+                })
         .directive('onFinishRender', function ($timeout) {
             return {
                 restrict: 'A',
@@ -551,15 +594,19 @@ Otherwise, have a great day =^.^=
                 suspicious: true,
             };
             $scope.groups = GROUPS_FILTER_DEFAULT;
-            $scope.toggleDropdown = function (name, $event) {
-                const target = $event.target;
-                if (name === $scope.selectedDropdown && target.closest('button')) {
-                    $scope.selectedDropdown = undefined;
-                } else {
-                    $scope.selectedDropdown = name;
-                }
-                $event.stopPropagation();
+            const THEMES_DEFAULT = {
+                light: "Light",
+                rust: "Rust",
+                coal: "Coal",
+                navy: "Navy",
+                ayu: "Ayu"
+            };
+            $scope.themes = THEMES_DEFAULT;
+
+            $scope.selectTheme = function (theme) {
+                setTheme(theme, true);
             }
+
             $scope.toggleLevels = function (value) {
                 const levels = $scope.levels;
                 for (const key in levels) {
@@ -669,28 +716,6 @@ Otherwise, have a great day =^.^=
             }
         }
     }
-
-    function setupListeners() {
-        let themeIcon = document.getElementById("theme-icon");
-        let themeMenu = document.getElementById("theme-menu");
-        themeIcon.addEventListener("click", function(e) {
-            if (themeMenu.style.display == "none") {
-                themeMenu.style.display = "block";
-            } else {
-                themeMenu.style.display = "none";
-            }
-        });
-
-        let children = themeMenu.children;
-        for (let index = 0; index < children.length; index++) {
-            let child = children[index];
-            child.addEventListener("click", function(e) {
-                setTheme(child.id, true);
-            });
-        }
-    }
-
-    setupListeners();
 
     function setTheme(theme, store) {
         let enableHighlight = false;
