@@ -1,0 +1,31 @@
+Available passes for running rustdoc:
+check_doc_test_visibility - run various visibility-related lints on doctests
+        strip-hidden - strips all `#[doc(hidden)]` items from the output
+   unindent-comments - removes excess indentation on comments in order for markdown to like it
+       strip-private - strips all private items from a crate which cannot be seen externally, implies strip-priv-imports
+  strip-priv-imports - strips all private import statements (`use`, `extern crate`) from a crate
+   propagate-doc-cfg - propagates `#[doc(cfg(...))]` to child items
+collect-intra-doc-links - resolves intra-doc links
+check-code-block-syntax - validates syntax inside Rust code blocks
+ collect-trait-impls - retrieves trait impls for items in the crate
+calculate-doc-coverage - counts the number of items with and without documentation
+check-invalid-html-tags - detects invalid HTML tags in doc comments
+     check-bare-urls - detects URLs that are not hyperlinks
+
+Default passes for rustdoc:
+ collect-trait-impls
+   unindent-comments
+check_doc_test_visibility
+        strip-hidden  (when not --document-hidden-items)
+       strip-private  (when not --document-private-items)
+  strip-priv-imports  (when --document-private-items)
+collect-intra-doc-links
+check-code-block-syntax
+check-invalid-html-tags
+   propagate-doc-cfg
+     check-bare-urls
+
+Passes run with `--show-coverage`:
+        strip-hidden  (when not --document-hidden-items)
+       strip-private  (when not --document-private-items)
+calculate-doc-coverage
