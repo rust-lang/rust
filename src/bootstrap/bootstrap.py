@@ -726,6 +726,9 @@ class RustBuild(object):
         status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler, library])
         if status != 0:
             if download_rustc == "if-unchanged":
+                if self.verbose:
+                    print("warning: saw changes to compiler/ or library/ since {}; " \
+                          "ignoring `download-rustc`".format(commit))
                 return None
             print("warning: `download-rustc` is enabled, but there are changes to " \
                   "compiler/ or library/")
