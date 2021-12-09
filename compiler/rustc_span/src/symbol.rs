@@ -439,6 +439,7 @@ symbols! {
         compiler_builtins,
         compiler_fence,
         concat,
+        concat_bytes,
         concat_idents,
         conservative_impl_trait,
         console,
