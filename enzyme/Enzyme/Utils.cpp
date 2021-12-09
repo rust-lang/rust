@@ -538,7 +538,6 @@ Function *getOrInsertExponentialAllocator(Module &M, bool ZeroInit) {
   std::string name = "__enzyme_exponentialallocation";
   if (ZeroInit)
     name += "zero";
-  assert(!ZeroInit && "Zero initialization within reallocation not handled");
   FunctionType *FT =
       FunctionType::get(Type::getInt8PtrTy(M.getContext()), types, false);
 
@@ -596,6 +595,22 @@ Function *getOrInsertExponentialAllocator(Module &M, bool ZeroInit) {
   Value *args[] = {B.CreatePointerCast(ptr, BPTy), next};
   Value *gVal =
       B.CreatePointerCast(B.CreateCall(reallocF, args), ptr->getType());
+  if (ZeroInit) {
+    Value *prevSize = B.CreateSelect(
+        B.CreateICmpEQ(size, ConstantInt::get(size->getType(), 1)),
+        ConstantInt::get(next->getType(), 0),
+        B.CreateLShr(next, ConstantInt::get(next->getType(), 1)));
+
+    Value *zeroSize = B.CreateSub(next, prevSize);
+
+    Value *margs[] = {
+        B.CreateGEP(gVal, prevSize),
+        ConstantInt::get(Type::getInt8Ty(args[0]->getContext()), 0), zeroSize,
+        ConstantInt::getFalse(args[0]->getContext())};
+    Type *tys[] = {margs[0]->getType(), margs[2]->getType()};
+    auto memsetF = Intrinsic::getDeclaration(&M, Intrinsic::memset, tys);
+    B.CreateCall(memsetF, margs);
+  }
 
   B.CreateBr(ok);
   B.SetInsertPoint(ok);
