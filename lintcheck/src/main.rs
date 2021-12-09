@@ -12,7 +12,7 @@ use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{collections::HashMap, io::ErrorKind};
 use std::{
-    env, fmt,
+    env,
     fs::write,
     path::{Path, PathBuf},
     thread,
@@ -101,13 +101,28 @@ struct ClippyWarning {
     is_ice: bool,
 }
 
-impl std::fmt::Display for ClippyWarning {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            r#"target/lintcheck/sources/{}-{}/{}:{}:{} {} "{}""#,
-            &self.crate_name, &self.crate_version, &self.file, &self.line, &self.column, &self.linttype, &self.message
-        )
+#[allow(unused)]
+impl ClippyWarning {
+    fn to_output(&self, markdown: bool) -> String {
+        let file = format!("{}-{}/{}", &self.crate_name, &self.crate_version, &self.file);
+        let file_with_pos = format!("{}:{}:{}", &file, &self.line, &self.column);
+        if markdown {
+            let lint = format!("`{}`", self.linttype);
+
+            let mut output = String::from("| ");
+            output.push_str(&format!(
+                "[`{}`](../target/lintcheck/sources/{}#L{})",
+                file_with_pos, file, self.line
+            ));
+            output.push_str(&format!(r#" | {:<50} | "{}" |"#, lint, self.message));
+            output.push('\n');
+            output
+        } else {
+            format!(
+                "target/lintcheck/sources/{} {} \"{}\"\n",
+                file_with_pos, self.linttype, self.message
+            )
+        }
     }
 }
 
@@ -378,6 +393,8 @@ struct LintcheckConfig {
     fix: bool,
     /// A list of lint that this lintcheck run shound focus on
     lint_filter: Vec<String>,
+    /// Indicate if the output should support markdown syntax
+    markdown: bool,
 }
 
 impl LintcheckConfig {
@@ -393,12 +410,17 @@ impl LintcheckConfig {
                 .to_string()
         });
 
+        let markdown = clap_config.is_present("markdown");
         let sources_toml_path = PathBuf::from(sources_toml);
 
         // for the path where we save the lint results, get the filename without extension (so for
         // wasd.toml, use "wasd"...)
         let filename: PathBuf = sources_toml_path.file_stem().unwrap().into();
-        let lintcheck_results_path = PathBuf::from(format!("lintcheck-logs/{}_logs.txt", filename.display()));
+        let lintcheck_results_path = PathBuf::from(format!(
+            "lintcheck-logs/{}_logs.{}",
+            filename.display(),
+            if markdown { "md" } else { "txt" }
+        ));
 
         // look at the --threads arg, if 0 is passed, ask rayon rayon how many threads it would spawn and
         // use half of that for the physical core count
@@ -440,6 +462,7 @@ impl LintcheckConfig {
             lintcheck_results_path,
             fix,
             lint_filter,
+            markdown,
         }
     }
 }
@@ -601,10 +624,15 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, 
     // to not have a lint with 200 and 2 warnings take the same spot
     stats.sort_by_key(|(lint, count)| format!("{:0>4}, {}", count, lint));
 
+    let mut header = String::from("| lint                                               | count |\n");
+    header.push_str("| -------------------------------------------------- | ----- |\n");
     let stats_string = stats
         .iter()
-        .map(|(lint, count)| format!("{} {}\n", lint, count))
-        .collect::<String>();
+        .map(|(lint, count)| format!("| {:<50} |  {:>4} |\n", lint, count))
+        .fold(header, |mut table, line| {
+            table.push_str(&line);
+            table
+        });
 
     (stats_string, counter)
 }
@@ -802,15 +830,23 @@ pub fn main() {
         .map(|w| (&w.crate_name, &w.message))
         .collect();
 
-    let mut all_msgs: Vec<String> = clippy_warnings.iter().map(ToString::to_string).collect();
+    let mut all_msgs: Vec<String> = clippy_warnings
+        .iter()
+        .map(|warn| warn.to_output(config.markdown))
+        .collect();
     all_msgs.sort();
-    all_msgs.push("\n\n\n\nStats:\n".into());
+    all_msgs.push("\n\n### Stats:\n\n".into());
     all_msgs.push(stats_formatted);
 
     // save the text into lintcheck-logs/logs.txt
     let mut text = clippy_ver; // clippy version number on top
-    text.push_str(&format!("\n{}", all_msgs.join("")));
-    text.push_str("ICEs:\n");
+    text.push_str("\n### Reports\n\n");
+    if config.markdown {
+        text.push_str("| file | lint | message |\n");
+        text.push_str("| --- | --- | --- |\n");
+    }
+    text.push_str(&format!("{}", all_msgs.join("")));
+    text.push_str("\n\n### ICEs:\n");
     ices.iter()
         .for_each(|(cratename, msg)| text.push_str(&format!("{}: '{}'", cratename, msg)));
 
@@ -832,20 +868,21 @@ fn read_stats_from_file(file_path: &Path) -> HashMap<String, usize> {
 
     let lines: Vec<String> = file_content.lines().map(ToString::to_string).collect();
 
-    // search for the beginning "Stats:" and the end "ICEs:" of the section we want
-    let start = lines.iter().position(|line| line == "Stats:").unwrap();
-    let end = lines.iter().position(|line| line == "ICEs:").unwrap();
-
-    let stats_lines = &lines[start + 1..end];
-
-    stats_lines
+    lines
         .iter()
-        .map(|line| {
-            let mut spl = line.split(' ');
-            (
-                spl.next().unwrap().to_string(),
-                spl.next().unwrap().parse::<usize>().unwrap(),
-            )
+        .skip_while(|line| line.as_str() != "### Stats:")
+        // Skipping the table header and the `Stats:` label
+        .skip(4)
+        .take_while(|line| line.starts_with("| "))
+        .filter_map(|line| {
+            let mut spl = line.split('|');
+            // Skip the first `|` symbol
+            spl.next();
+            if let (Some(lint), Some(count)) = (spl.next(), spl.next()) {
+                Some((lint.trim().to_string(), count.trim().parse::<usize>().unwrap()))
+            } else {
+                None
+            }
         })
         .collect::<HashMap<String, usize>>()
 }
@@ -956,6 +993,11 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .multiple(true)
                 .value_name("clippy_lint_name")
                 .help("apply a filter to only collect specified lints, this also overrides `allow` attributes"),
+        )
+        .arg(
+            Arg::with_name("markdown")
+                .long("--markdown")
+                .help("change the reports table to use markdown links"),
         )
         .get_matches()
 }
