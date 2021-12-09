@@ -32,6 +32,29 @@ where
     }
 }
 
+macro_rules! unsafe_base_op {
+    ($(impl<const LANES: usize> $op:ident for Simd<$scalar:ty, LANES> {
+        fn $call:ident(self, rhs: Self) -> Self::Output {
+            unsafe{ $simd_call:ident }
+        }
+    })*) => {
+        $(impl<const LANES: usize> $op for Simd<$scalar, LANES>
+            where
+                $scalar: SimdElement,
+                LaneCount<LANES>: SupportedLaneCount,
+            {
+                type Output = Self;
+
+                #[inline]
+                #[must_use = "operator returns a new vector without mutating the inputs"]
+                fn $call(self, rhs: Self) -> Self::Output {
+                    unsafe { $crate::intrinsics::$simd_call(self, rhs) }
+                }
+            }
+        )*
+    }
+}
+
 /// SAFETY: This macro should not be used for anything except Shl or Shr, and passed the appropriate shift intrinsic.
 /// It handles performing a bitand in addition to calling the shift operator, so that the result
 /// is well-defined: LLVM can return a poison value if you shl, lshr, or ashr if rhs >= <Int>::BITS
@@ -41,13 +64,13 @@ where
 ///
 // FIXME: Consider implementing this in cg_llvm instead?
 // cg_clif defaults to this, and scalar MIR shifts also default to wrapping
-macro_rules! wrap_bitshift_inner {
-    (impl<const LANES: usize> $op:ident for Simd<$int:ty, LANES> {
+macro_rules! wrap_bitshift {
+    ($(impl<const LANES: usize> $op:ident for Simd<$int:ty, LANES> {
         fn $call:ident(self, rhs: Self) -> Self::Output {
             unsafe { $simd_call:ident }
         }
-    }) => {
-        impl<const LANES: usize> $op for Simd<$int, LANES>
+    })*) => {
+        $(impl<const LANES: usize> $op for Simd<$int, LANES>
         where
             $int: SimdElement,
             LaneCount<LANES>: SupportedLaneCount,
@@ -61,24 +84,45 @@ macro_rules! wrap_bitshift_inner {
                     $crate::intrinsics::$simd_call(self, rhs.bitand(Simd::splat(<$int>::BITS as $int - 1)))
                 }
             }
-        }
+        })*
     };
 }
 
-macro_rules! wrap_bitshifts {
-    ($(impl<const LANES: usize> ShiftOps for Simd<$int:ty, LANES> {
+macro_rules! bitops {
+    ($(impl<const LANES: usize> BitOps for Simd<$int:ty, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
      })*) => {
         $(
-            wrap_bitshift_inner! {
+            unsafe_base_op!{
+                impl<const LANES: usize> BitAnd for Simd<$int, LANES> {
+                    fn bitand(self, rhs: Self) -> Self::Output {
+                        unsafe { simd_and }
+                    }
+                }
+
+                impl<const LANES: usize> BitOr for Simd<$int, LANES> {
+                    fn bitor(self, rhs: Self) -> Self::Output {
+                        unsafe { simd_or }
+                    }
+                }
+
+                impl<const LANES: usize> BitXor for Simd<$int, LANES> {
+                    fn bitxor(self, rhs: Self) -> Self::Output {
+                        unsafe { simd_xor }
+                    }
+                }
+            }
+            wrap_bitshift! {
                 impl<const LANES: usize> Shl for Simd<$int, LANES> {
                     fn shl(self, rhs: Self) -> Self::Output {
                         unsafe { simd_shl }
                     }
                 }
-            }
-            wrap_bitshift_inner! {
+
                 impl<const LANES: usize> Shr for Simd<$int, LANES> {
                     fn shr(self, rhs: Self) -> Self::Output {
                         // This automatically monomorphizes to lshr or ashr, depending,
@@ -91,53 +135,86 @@ macro_rules! wrap_bitshifts {
     };
 }
 
-wrap_bitshifts! {
-    impl<const LANES: usize> ShiftOps for Simd<i8, LANES> {
+// Integers can always accept bitand, bitor, and bitxor.
+// The only question is how to handle shifts >= <Int>::BITS?
+// Our current solution uses wrapping logic.
+bitops! {
+    impl<const LANES: usize> BitOps for Simd<i8, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
     }
 
-    impl<const LANES: usize> ShiftOps for Simd<i16, LANES> {
+    impl<const LANES: usize> BitOps for Simd<i16, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
     }
 
-    impl<const LANES: usize> ShiftOps for Simd<i32, LANES> {
+    impl<const LANES: usize> BitOps for Simd<i32, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
     }
 
-    impl<const LANES: usize> ShiftOps for Simd<i64, LANES> {
+    impl<const LANES: usize> BitOps for Simd<i64, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
     }
 
-    impl<const LANES: usize> ShiftOps for Simd<isize, LANES> {
+    impl<const LANES: usize> BitOps for Simd<isize, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
     }
 
-    impl<const LANES: usize> ShiftOps for Simd<u8, LANES> {
+    impl<const LANES: usize> BitOps for Simd<u8, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
     }
 
-    impl<const LANES: usize> ShiftOps for Simd<u16, LANES> {
+    impl<const LANES: usize> BitOps for Simd<u16, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
     }
 
-    impl<const LANES: usize> ShiftOps for Simd<u32, LANES> {
+    impl<const LANES: usize> BitOps for Simd<u32, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
     }
 
-    impl<const LANES: usize> ShiftOps for Simd<u64, LANES> {
+    impl<const LANES: usize> BitOps for Simd<u64, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
     }
 
-    impl<const LANES: usize> ShiftOps for Simd<usize, LANES> {
+    impl<const LANES: usize> BitOps for Simd<usize, LANES> {
+        fn bitand(self, rhs: Self) -> Self::Output;
+        fn bitor(self, rhs: Self) -> Self::Output;
+        fn bitxor(self, rhs: Self) -> Self::Output;
         fn shl(self, rhs: Self) -> Self::Output;
         fn shr(self, rhs: Self) -> Self::Output;
     }
@@ -186,15 +263,6 @@ macro_rules! impl_op {
     { impl Rem for $scalar:ty } => {
         impl_op! { @binary $scalar, Rem::rem, simd_rem }
     };
-    { impl BitAnd for $scalar:ty } => {
-        impl_op! { @binary $scalar, BitAnd::bitand, simd_and }
-    };
-    { impl BitOr for $scalar:ty } => {
-        impl_op! { @binary $scalar, BitOr::bitor, simd_or }
-    };
-    { impl BitXor for $scalar:ty } => {
-        impl_op! { @binary $scalar, BitXor::bitxor, simd_xor }
-    };
 
     // generic binary op with assignment when output is `Self`
     { @binary $scalar:ty, $trait:ident :: $trait_fn:ident, $intrinsic:ident } => {
@@ -236,9 +304,6 @@ macro_rules! impl_unsigned_int_ops {
             impl_op! { impl Add for $scalar }
             impl_op! { impl Sub for $scalar }
             impl_op! { impl Mul for $scalar }
-            impl_op! { impl BitAnd for $scalar }
-            impl_op! { impl BitOr  for $scalar }
-            impl_op! { impl BitXor for $scalar }
 
             // Integers panic on divide by 0
             impl_ref_ops! {
