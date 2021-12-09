@@ -17,7 +17,7 @@ use core::intrinsics;
 #[naked]
 #[no_mangle]
 pub unsafe extern "C" fn ___chkstk_ms() {
-    asm!(
+    core::arch::asm!(
         "push   %rcx",
         "push   %rax",
         "cmp    $0x1000,%rax",
@@ -48,7 +48,7 @@ pub unsafe extern "C" fn ___chkstk_ms() {
 #[naked]
 #[no_mangle]
 pub unsafe extern "C" fn __alloca() {
-    asm!(
+    core::arch::asm!(
         "mov    %rcx,%rax", // x64 _alloca is a normal function with parameter in rcx
         "jmp    ___chkstk", // Jump to ___chkstk since fallthrough may be unreliable"
         options(noreturn, att_syntax)
@@ -64,7 +64,7 @@ pub unsafe extern "C" fn __alloca() {
 #[naked]
 #[no_mangle]
 pub unsafe extern "C" fn ___chkstk() {
-    asm!(
+    core::arch::asm!(
         "push   %rcx",
         "cmp    $0x1000,%rax",
         "lea    16(%rsp),%rcx", // rsp before calling this routine -> rcx

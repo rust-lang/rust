@@ -48,8 +48,6 @@
 #![cfg(not(feature = "no-asm"))]
 // We only define stack probing for these architectures today.
 #![cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-// We need to add .att_syntax for bootstraping the new global_asm!
-#![allow(unknown_lints, bad_asm_style)]
 
 extern "C" {
     pub fn __rust_probestack();
@@ -65,7 +63,6 @@ macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
             "
-            .att_syntax
             .pushsection .text.__rust_probestack
             .globl __rust_probestack
             .type  __rust_probestack, @function
@@ -86,7 +83,6 @@ macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
             "
-            .att_syntax
             .globl __rust_probestack
         __rust_probestack:
             ",
@@ -102,7 +98,6 @@ macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
             "
-            .att_syntax
             .globl ___rust_probestack
         ___rust_probestack:
             ",
@@ -117,7 +112,6 @@ macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
             "
-            .att_syntax
             .globl ___rust_probestack
         ___rust_probestack:
             ",
@@ -137,8 +131,9 @@ macro_rules! define_rust_probestack {
     target_arch = "x86_64",
     not(all(target_env = "sgx", target_vendor = "fortanix"))
 ))]
-global_asm!(define_rust_probestack!(
-    "
+core::arch::global_asm!(
+    define_rust_probestack!(
+        "
     .cfi_startproc
     pushq  %rbp
     .cfi_adjust_cfa_offset 8
@@ -188,7 +183,9 @@ global_asm!(define_rust_probestack!(
     ret
     .cfi_endproc
     "
-));
+    ),
+    options(att_syntax)
+);
 
 // This function is the same as above, except that some instructions are
 // [manually patched for LVI].
@@ -198,8 +195,9 @@ global_asm!(define_rust_probestack!(
     target_arch = "x86_64",
     all(target_env = "sgx", target_vendor = "fortanix")
 ))]
-global_asm!(define_rust_probestack!(
-    "
+core::arch::global_asm!(
+    define_rust_probestack!(
+        "
     .cfi_startproc
     pushq  %rbp
     .cfi_adjust_cfa_offset 8
@@ -251,7 +249,9 @@ global_asm!(define_rust_probestack!(
     jmp *%r11
     .cfi_endproc
     "
-));
+    ),
+    options(att_syntax)
+);
 
 #[cfg(all(target_arch = "x86", not(target_os = "uefi")))]
 // This is the same as x86_64 above, only translated for 32-bit sizes. Note
@@ -259,8 +259,9 @@ global_asm!(define_rust_probestack!(
 // function basically can't tamper with anything.
 //
 // The ABI here is the same as x86_64, except everything is 32-bits large.
-global_asm!(define_rust_probestack!(
-    "
+core::arch::global_asm!(
+    define_rust_probestack!(
+        "
     .cfi_startproc
     push   %ebp
     .cfi_adjust_cfa_offset 4
@@ -291,7 +292,9 @@ global_asm!(define_rust_probestack!(
     ret
     .cfi_endproc
     "
-));
+    ),
+    options(att_syntax)
+);
 
 #[cfg(all(target_arch = "x86", target_os = "uefi"))]
 // UEFI target is windows like target. LLVM will do _chkstk things like windows.
@@ -304,8 +307,9 @@ global_asm!(define_rust_probestack!(
 //   MSVC x32's _chkstk and cygwin/mingw's _alloca adjust %esp themselves.
 //   MSVC x64's __chkstk and cygwin/mingw's ___chkstk_ms do not adjust %rsp
 //   themselves.
-global_asm!(define_rust_probestack!(
-    "
+core::arch::global_asm!(
+    define_rust_probestack!(
+        "
     .cfi_startproc
     push   %ebp
     .cfi_adjust_cfa_offset 4
@@ -341,4 +345,6 @@ global_asm!(define_rust_probestack!(
     ret
     .cfi_endproc
     "
-));
+    ),
+    options(att_syntax)
+);

@@ -18,6 +18,8 @@
 #![allow(improper_ctypes, improper_ctypes_definitions)]
 // `mem::swap` cannot be used because it may generate references to memcpy in unoptimized code.
 #![allow(clippy::manual_swap)]
+// Support compiling on both stage0 and stage1 which may differ in supported stable features.
+#![allow(stable_features)]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.

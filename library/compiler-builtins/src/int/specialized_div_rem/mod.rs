@@ -184,7 +184,7 @@ unsafe fn u128_by_u64_div_rem(duo: u128, div: u64) -> (u64, u64) {
         // divides the combined registers rdx:rax (`duo` is split into two 64 bit parts to do this)
         // by `div`. The quotient is stored in rax and the remainder in rdx.
         // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
-        asm!(
+        core::arch::asm!(
             "div {0}",
             in(reg) div,
             inlateout("rax") duo_lo => quo,
@@ -271,7 +271,7 @@ unsafe fn u64_by_u32_div_rem(duo: u64, div: u32) -> (u32, u32) {
         // divides the combined registers rdx:rax (`duo` is split into two 32 bit parts to do this)
         // by `div`. The quotient is stored in rax and the remainder in rdx.
         // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
-        asm!(
+        core::arch::asm!(
             "div {0}",
             in(reg) div,
             inlateout("rax") duo_lo => quo,

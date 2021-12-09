@@ -560,7 +560,8 @@ mod c {
                         file,
                         "#include \"{}\"",
                         outlined_atomics_file.canonicalize().unwrap().display()
-                    );
+                    )
+                    .unwrap();
                     drop(file);
                     cfg.file(path);
 

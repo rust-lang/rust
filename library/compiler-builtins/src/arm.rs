@@ -11,7 +11,7 @@ use core::intrinsics;
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn __aeabi_uidivmod() {
-    asm!(
+    core::arch::asm!(
         "push {{lr}}",
         "sub sp, sp, #4",
         "mov r2, sp",
@@ -27,7 +27,7 @@ pub unsafe extern "C" fn __aeabi_uidivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn __aeabi_uidivmod() {
-    asm!(
+    core::arch::asm!(
         "push {{lr}}",
         "sub sp, sp, #4",
         "mov r2, sp",
@@ -43,7 +43,7 @@ pub unsafe extern "C" fn __aeabi_uidivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn __aeabi_uldivmod() {
-    asm!(
+    core::arch::asm!(
         "push {{r4, lr}}",
         "sub sp, sp, #16",
         "add r4, sp, #8",
@@ -61,7 +61,7 @@ pub unsafe extern "C" fn __aeabi_uldivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn __aeabi_uldivmod() {
-    asm!(
+    core::arch::asm!(
         "push {{r4, lr}}",
         "sub sp, sp, #16",
         "add r4, sp, #8",
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn __aeabi_uldivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn __aeabi_idivmod() {
-    asm!(
+    core::arch::asm!(
         "push {{r0, r1, r4, lr}}",
         "bl __aeabi_idiv",
         "pop {{r1, r2}}",
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn __aeabi_idivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn __aeabi_idivmod() {
-    asm!(
+    core::arch::asm!(
         "push {{r0, r1, r4, lr}}",
         "bl ___aeabi_idiv",
         "pop {{r1, r2}}",
@@ -109,7 +109,7 @@ pub unsafe extern "C" fn __aeabi_idivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn __aeabi_ldivmod() {
-    asm!(
+    core::arch::asm!(
         "push {{r4, lr}}",
         "sub sp, sp, #16",
         "add r4, sp, #8",
@@ -127,7 +127,7 @@ pub unsafe extern "C" fn __aeabi_ldivmod() {
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe extern "C" fn __aeabi_ldivmod() {
-    asm!(
+    core::arch::asm!(
         "push {{r4, lr}}",
         "sub sp, sp, #16",
         "add r4, sp, #8",
