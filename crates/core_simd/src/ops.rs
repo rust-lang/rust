@@ -1,5 +1,4 @@
-use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
 use core::ops::{Add, Mul};
 use core::ops::{BitAnd, BitOr, BitXor};
 use core::ops::{Div, Rem, Sub};
@@ -284,145 +283,169 @@ float_arith! {
     }
 }
 
-/// Automatically implements operators over references in addition to the provided operator.
-macro_rules! impl_ref_ops {
-    // binary op
-    {
-        impl<const $lanes:ident: usize> core::ops::$trait:ident<$rhs:ty> for $type:ty
-        where
-            LaneCount<$lanes2:ident>: SupportedLaneCount,
-        {
-            type Output = $output:ty;
-
-            $(#[$attrs:meta])*
-            fn $fn:ident($self_tok:ident, $rhs_arg:ident: $rhs_arg_ty:ty) -> Self::Output $body:tt
+// Division by zero is poison, according to LLVM.
+// So is dividing the MIN value of a signed integer by -1,
+// since that would return MAX + 1.
+// FIXME: Rust allows <SInt>::MIN / -1,
+// so we should probably figure out how to make that safe.
+macro_rules! int_divrem_guard {
+    ($(impl<const LANES: usize> $op:ident for Simd<$sint:ty, LANES> {
+        const PANIC_ZERO: &'static str = $zero:literal;
+        const PANIC_OVERFLOW: &'static str = $overflow:literal;
+        fn $call:ident {
+            unsafe { $simd_call:ident }
         }
-    } => {
-        impl<const $lanes: usize> core::ops::$trait<$rhs> for $type
+    })*) => {
+        $(impl<const LANES: usize> $op for Simd<$sint, LANES>
         where
-            LaneCount<$lanes2>: SupportedLaneCount,
+            $sint: SimdElement,
+            LaneCount<LANES>: SupportedLaneCount,
         {
-            type Output = $output;
-
-            $(#[$attrs])*
-            fn $fn($self_tok, $rhs_arg: $rhs_arg_ty) -> Self::Output $body
-        }
+            type Output = Self;
+            #[inline]
+            #[must_use = "operator returns a new vector without mutating the inputs"]
+            fn $call(self, rhs: Self) -> Self::Output {
+                if rhs.lanes_eq(Simd::splat(0)).any() {
+                    panic!("attempt to calculate the remainder with a divisor of zero");
+                } else if <$sint>::MIN != 0 && self.lanes_eq(Simd::splat(<$sint>::MIN)) & rhs.lanes_eq(Simd::splat(-1 as _))
+                    != Mask::splat(false)
+                 {
+                    panic!("attempt to calculate the remainder with overflow");
+                } else {
+                    unsafe { $crate::intrinsics::$simd_call(self, rhs) }
+                 }
+             }
+        })*
     };
 }
 
-/// Automatically implements operators over vectors and scalars for a particular vector.
-macro_rules! impl_op {
-    { impl Add for $scalar:ty } => {
-        impl_op! { @binary $scalar, Add::add, simd_add }
-    };
-    { impl Sub for $scalar:ty } => {
-        impl_op! { @binary $scalar, Sub::sub, simd_sub }
-    };
-    { impl Mul for $scalar:ty } => {
-        impl_op! { @binary $scalar, Mul::mul, simd_mul }
-    };
-    { impl Div for $scalar:ty } => {
-        impl_op! { @binary $scalar, Div::div, simd_div }
-    };
-    { impl Rem for $scalar:ty } => {
-        impl_op! { @binary $scalar, Rem::rem, simd_rem }
-    };
-
-    // generic binary op with assignment when output is `Self`
-    { @binary $scalar:ty, $trait:ident :: $trait_fn:ident, $intrinsic:ident } => {
-        impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$trait<Self> for Simd<$scalar, LANES>
-            where
-                LaneCount<LANES>: SupportedLaneCount,
-            {
-                type Output = Self;
-
-                #[inline]
-                fn $trait_fn(self, rhs: Self) -> Self::Output {
-                    unsafe {
-                        intrinsics::$intrinsic(self, rhs)
-                    }
-                }
-            }
-        }
-    };
-}
-
-/// Implements unsigned integer operators for the provided types.
-macro_rules! impl_unsigned_int_ops {
-    { $($scalar:ty),* } => {
+macro_rules! int_arith {
+    ($(impl<const LANES: usize> IntArith for Simd<$sint:ty, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    })*) => {
         $(
-            impl_op! { impl Add for $scalar }
-            impl_op! { impl Sub for $scalar }
-            impl_op! { impl Mul for $scalar }
-
-            // Integers panic on divide by 0
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Div<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
-
-                    #[inline]
-                    fn div(self, rhs: Self) -> Self::Output {
-                        if rhs.as_array()
-                            .iter()
-                            .any(|x| *x == 0)
-                        {
-                            panic!("attempt to divide by zero");
-                        }
-
-                        // Guards for div(MIN, -1),
-                        // this check only applies to signed ints
-                        if <$scalar>::MIN != 0 && self.as_array().iter()
-                                .zip(rhs.as_array().iter())
-                                .any(|(x,y)| *x == <$scalar>::MIN && *y == -1 as _) {
-                            panic!("attempt to divide with overflow");
-                        }
-                        unsafe { intrinsics::simd_div(self, rhs) }
-                    }
+        unsafe_base_op!{
+            impl<const LANES: usize> Add for Simd<$sint, LANES> {
+                fn add(self, rhs: Self) -> Self::Output {
+                    unsafe { simd_add }
                 }
             }
 
-            // remainder panics on zero divisor
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Rem<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
-
-                    #[inline]
-                    fn rem(self, rhs: Self) -> Self::Output {
-                        if rhs.as_array()
-                            .iter()
-                            .any(|x| *x == 0)
-                        {
-                            panic!("attempt to calculate the remainder with a divisor of zero");
-                        }
-
-                        // Guards for rem(MIN, -1)
-                        // this branch applies the check only to signed ints
-                        if <$scalar>::MIN != 0 && self.as_array().iter()
-                                .zip(rhs.as_array().iter())
-                                .any(|(x,y)| *x == <$scalar>::MIN && *y == -1 as _) {
-                            panic!("attempt to calculate the remainder with overflow");
-                        }
-                        unsafe { intrinsics::simd_rem(self, rhs) }
-                    }
+            impl<const LANES: usize> Mul for Simd<$sint, LANES> {
+                fn mul(self, rhs: Self) -> Self::Output {
+                    unsafe { simd_mul }
                 }
             }
-        )*
-    };
+
+            impl<const LANES: usize> Sub for Simd<$sint, LANES> {
+                fn sub(self, rhs: Self) -> Self::Output {
+                    unsafe { simd_sub }
+                }
+            }
+        }
+
+        int_divrem_guard!{
+            impl<const LANES: usize> Div for Simd<$sint, LANES> {
+                const PANIC_ZERO: &'static str = "attempt to divide by zero";
+                const PANIC_OVERFLOW: &'static str = "attempt to divide with overflow";
+                fn div {
+                    unsafe { simd_div }
+                }
+            }
+
+            impl<const LANES: usize> Rem for Simd<$sint, LANES> {
+                const PANIC_ZERO: &'static str = "attempt to calculate the remainder with a divisor of zero";
+                const PANIC_OVERFLOW: &'static str = "attempt to calculate the remainder with overflow";
+                fn rem {
+                    unsafe { simd_rem }
+                }
+            }
+        })*
+    }
 }
 
-/// Implements unsigned integer operators for the provided types.
-macro_rules! impl_signed_int_ops {
-    { $($scalar:ty),* } => {
-        impl_unsigned_int_ops! { $($scalar),* }
-    };
-}
+int_arith! {
+    impl<const LANES: usize> IntArith for Simd<i8, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
 
-impl_unsigned_int_ops! { u8, u16, u32, u64, usize }
-impl_signed_int_ops! { i8, i16, i32, i64, isize }
+    impl<const LANES: usize> IntArith for Simd<i16, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> IntArith for Simd<i32, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> IntArith for Simd<i64, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> IntArith for Simd<isize, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> IntArith for Simd<u8, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> IntArith for Simd<u16, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> IntArith for Simd<u32, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> IntArith for Simd<u64, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> IntArith for Simd<usize, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+}
