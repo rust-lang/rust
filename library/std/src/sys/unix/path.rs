@@ -1,7 +1,6 @@
 use crate::env;
 use crate::ffi::OsStr;
 use crate::io;
-use crate::os::unix::ffi::OsStrExt;
 use crate::path::{Path, PathBuf, Prefix};
 
 #[inline]
@@ -30,7 +29,7 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
     // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
 
     let mut components = path.components();
-    let path_os = path.as_os_str().as_bytes();
+    let path_os = path.as_os_str().bytes();
 
     let mut normalized = if path.is_absolute() {
         // "If a pathname begins with two successive <slash> characters, the

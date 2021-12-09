@@ -1,4 +1,5 @@
 use crate::ffi::OsStr;
+use crate::io;
 use crate::path::{Path, PathBuf, Prefix};
 use crate::sys::unsupported;
 

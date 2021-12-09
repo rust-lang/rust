@@ -3199,7 +3199,7 @@ impl Error for StripPrefixError {
 /// # fn main() {}
 /// ```
 ///
-/// The paths is resolved using [POSIX semantics][posix-semantics] except that
+/// The path is resolved using [POSIX semantics][posix-semantics] except that
 /// it stops short of resolving symlinks. This means it will keep `..`
 /// components and trailing slashes.
 ///
@@ -3231,7 +3231,7 @@ impl Error for StripPrefixError {
 ///
 /// [posix-semantics]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#tag_04_13
 /// [windows-path]: https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfullpathnamew
-#[unstable(feature = "absolute_path", issue = "none")]
+#[unstable(feature = "absolute_path", issue = "92750")]
 pub fn absolute<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     let path = path.as_ref();
     if path.as_os_str().is_empty() {
