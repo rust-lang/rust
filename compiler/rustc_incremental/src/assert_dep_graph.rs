@@ -52,6 +52,7 @@ use std::env;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 
+#[allow(missing_docs)]
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.debugging_opts.dump_dep_graph {
@@ -262,6 +263,7 @@ fn dump_graph(query: &DepGraphQuery) {
     }
 }
 
+#[allow(missing_docs)]
 pub struct GraphvizDepGraph<'q>(FxHashSet<&'q DepNode>, Vec<(&'q DepNode, &'q DepNode)>);
 
 impl<'a, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
