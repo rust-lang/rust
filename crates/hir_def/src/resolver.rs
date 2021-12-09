@@ -8,7 +8,7 @@ use hir_expand::{
 };
 use indexmap::IndexMap;
 use rustc_hash::FxHashSet;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use crate::{
     body::scope::{ExprScopes, ScopeId},
@@ -567,6 +567,8 @@ pub fn resolver_for_scope(
     let mut r = owner.resolver(db);
     let scopes = db.expr_scopes(owner);
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
+    r.scopes.reserve(scope_chain.len());
+
     for scope in scope_chain.into_iter().rev() {
         if let Some(block) = scopes.block(scope) {
             if let Some(def_map) = db.block_def_map(block) {
@@ -739,12 +741,13 @@ pub trait HasResolver: Copy {
 impl HasResolver for ModuleId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         let mut def_map = self.def_map(db);
-        let mut modules = vec![(def_map.clone(), self.local_id)];
+        let mut modules: SmallVec<[_; 2]> = smallvec![(def_map.clone(), self.local_id)];
         while let Some(parent) = def_map.parent() {
             def_map = parent.def_map(db);
             modules.push((def_map.clone(), parent.local_id));
         }
         let mut resolver = Resolver::default();
+        resolver.scopes.reserve(modules.len());
         for (def_map, module) in modules.into_iter().rev() {
             resolver = resolver.push_module_scope(def_map, module);
         }
