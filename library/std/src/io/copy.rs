@@ -1,4 +1,4 @@
-use super::{BufWriter, ErrorKind, Read, Result, Write, DEFAULT_BUF_SIZE};
+use super::{BufWriter, ErrorKind, Read, ReadBuf, Result, Write, DEFAULT_BUF_SIZE};
 use crate::mem::MaybeUninit;
 
 /// Copies the entire contents of a reader into a writer.
@@ -82,33 +82,30 @@ impl<I: Write> BufferedCopySpec for BufWriter<I> {
             return stack_buffer_copy(reader, writer);
         }
 
-        // FIXME: #42788
-        //
-        //   - This creates a (mut) reference to a slice of
-        //     _uninitialized_ integers, which is **undefined behavior**
-        //
-        //   - Only the standard library gets to soundly "ignore" this,
-        //     based on its privileged knowledge of unstable rustc
-        //     internals;
-        unsafe {
-            let spare_cap = writer.buffer_mut().spare_capacity_mut();
-            reader.initializer().initialize(MaybeUninit::slice_assume_init_mut(spare_cap));
-        }
-
         let mut len = 0;
+        let mut init = 0;
 
         loop {
             let buf = writer.buffer_mut();
-            let spare_cap = buf.spare_capacity_mut();
+            let mut read_buf = ReadBuf::uninit(buf.spare_capacity_mut());
 
-            if spare_cap.len() >= DEFAULT_BUF_SIZE {
-                match reader.read(unsafe { MaybeUninit::slice_assume_init_mut(spare_cap) }) {
-                    Ok(0) => return Ok(len), // EOF reached
-                    Ok(bytes_read) => {
-                        assert!(bytes_read <= spare_cap.len());
-                        // SAFETY: The initializer contract guarantees that either it or `read`
-                        // will have initialized these bytes. And we just checked that the number
-                        // of bytes is within the buffer capacity.
+            // SAFETY: init is either 0 or the initialized_len of the previous iteration
+            unsafe {
+                read_buf.assume_init(init);
+            }
+
+            if read_buf.capacity() >= DEFAULT_BUF_SIZE {
+                match reader.read_buf(&mut read_buf) {
+                    Ok(()) => {
+                        let bytes_read = read_buf.filled_len();
+
+                        if bytes_read == 0 {
+                            return Ok(len);
+                        }
+
+                        init = read_buf.initialized_len() - bytes_read;
+
+                        // SAFETY: ReadBuf guarantees all of its filled bytes are init
                         unsafe { buf.set_len(buf.len() + bytes_read) };
                         len += bytes_read as u64;
                         // Read again if the buffer still has enough capacity, as BufWriter itself would do
@@ -129,28 +126,26 @@ fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     reader: &mut R,
     writer: &mut W,
 ) -> Result<u64> {
-    let mut buf = MaybeUninit::<[u8; DEFAULT_BUF_SIZE]>::uninit();
-    // FIXME: #42788
-    //
-    //   - This creates a (mut) reference to a slice of
-    //     _uninitialized_ integers, which is **undefined behavior**
-    //
-    //   - Only the standard library gets to soundly "ignore" this,
-    //     based on its privileged knowledge of unstable rustc
-    //     internals;
-    unsafe {
-        reader.initializer().initialize(buf.assume_init_mut());
-    }
+    let mut buf = [MaybeUninit::uninit(); DEFAULT_BUF_SIZE];
+    let mut buf = ReadBuf::uninit(&mut buf);
 
-    let mut written = 0;
+    let mut len = 0;
+
     loop {
-        let len = match reader.read(unsafe { buf.assume_init_mut() }) {
-            Ok(0) => return Ok(written),
-            Ok(len) => len,
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+        match reader.read_buf(&mut buf) {
+            Ok(()) => {}
+            Err(e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         };
-        writer.write_all(unsafe { &buf.assume_init_ref()[..len] })?;
-        written += len as u64;
+
+        if buf.filled().is_empty() {
+            break;
+        }
+
+        len += buf.filled().len() as u64;
+        writer.write_all(buf.filled())?;
+        buf.clear();
     }
+
+    Ok(len)
 }

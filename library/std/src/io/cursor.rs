@@ -4,7 +4,7 @@ mod tests;
 use crate::io::prelude::*;
 
 use crate::cmp;
-use crate::io::{self, Error, ErrorKind, Initializer, IoSlice, IoSliceMut, SeekFrom};
+use crate::io::{self, Error, ErrorKind, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
 
 use core::convert::TryInto;
 
@@ -324,6 +324,16 @@ where
         Ok(n)
     }
 
+    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        let prev_filled = buf.filled_len();
+
+        Read::read_buf(&mut self.fill_buf()?, buf)?;
+
+        self.pos += (buf.filled_len() - prev_filled) as u64;
+
+        Ok(())
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let mut nread = 0;
         for buf in bufs {
@@ -345,11 +355,6 @@ where
         Read::read_exact(&mut self.remaining_slice(), buf)?;
         self.pos += n as u64;
         Ok(())
-    }
-
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
     }
 }
 

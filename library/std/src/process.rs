@@ -110,7 +110,7 @@ use crate::convert::Infallible;
 use crate::ffi::OsStr;
 use crate::fmt;
 use crate::fs;
-use crate::io::{self, Initializer, IoSlice, IoSliceMut};
+use crate::io::{self, IoSlice, IoSliceMut};
 use crate::num::NonZeroI32;
 use crate::path::Path;
 use crate::str;
@@ -362,12 +362,6 @@ impl Read for ChildStdout {
     fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
     }
-
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        // SAFETY: Read is guaranteed to work on uninitialized memory
-        unsafe { Initializer::nop() }
-    }
 }
 
 impl AsInner<AnonPipe> for ChildStdout {
@@ -428,12 +422,6 @@ impl Read for ChildStderr {
     #[inline]
     fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
-    }
-
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        // SAFETY: Read is guaranteed to work on uninitialized memory
-        unsafe { Initializer::nop() }
     }
 }
 

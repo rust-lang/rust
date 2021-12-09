@@ -1,5 +1,6 @@
 use crate::io::prelude::*;
-use crate::io::{self, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, SeekFrom};
+use crate::io::{self, BufReader, BufWriter, ErrorKind, IoSlice, LineWriter, ReadBuf, SeekFrom};
+use crate::mem::MaybeUninit;
 use crate::panic;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::thread;
@@ -53,6 +54,55 @@ fn test_buffered_reader() {
     assert_eq!(reader.buffer(), []);
 
     assert_eq!(reader.read(&mut buf).unwrap(), 0);
+}
+
+#[test]
+fn test_buffered_reader_read_buf() {
+    let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
+    let mut reader = BufReader::with_capacity(2, inner);
+
+    let mut buf = [MaybeUninit::uninit(); 3];
+    let mut buf = ReadBuf::uninit(&mut buf);
+
+    reader.read_buf(&mut buf).unwrap();
+
+    assert_eq!(buf.filled(), [5, 6, 7]);
+    assert_eq!(reader.buffer(), []);
+
+    let mut buf = [MaybeUninit::uninit(); 2];
+    let mut buf = ReadBuf::uninit(&mut buf);
+
+    reader.read_buf(&mut buf).unwrap();
+
+    assert_eq!(buf.filled(), [0, 1]);
+    assert_eq!(reader.buffer(), []);
+
+    let mut buf = [MaybeUninit::uninit(); 1];
+    let mut buf = ReadBuf::uninit(&mut buf);
+
+    reader.read_buf(&mut buf).unwrap();
+
+    assert_eq!(buf.filled(), [2]);
+    assert_eq!(reader.buffer(), [3]);
+
+    let mut buf = [MaybeUninit::uninit(); 3];
+    let mut buf = ReadBuf::uninit(&mut buf);
+
+    reader.read_buf(&mut buf).unwrap();
+
+    assert_eq!(buf.filled(), [3]);
+    assert_eq!(reader.buffer(), []);
+
+    reader.read_buf(&mut buf).unwrap();
+
+    assert_eq!(buf.filled(), [3, 4]);
+    assert_eq!(reader.buffer(), []);
+
+    buf.clear();
+
+    reader.read_buf(&mut buf).unwrap();
+
+    assert_eq!(buf.filled_len(), 0);
 }
 
 #[test]
