@@ -35,6 +35,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // since it should be enabled per-function using #[instruction_set], not
     // #[target_feature].
     ("thumb-mode", Some(sym::arm_target_feature)),
+    ("thumb2", Some(sym::arm_target_feature)),
 ];
 
 const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[

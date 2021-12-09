@@ -250,6 +250,7 @@
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
+#![cfg_attr(not(bootstrap), feature(concat_bytes))]
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
 #![feature(const_fn_floating_point_arithmetic)]
@@ -575,6 +576,14 @@ pub use core::{
     env, file, format_args, format_args_nl, include, include_bytes, include_str, line, llvm_asm,
     log_syntax, module_path, option_env, stringify, trace_macros,
 };
+
+#[unstable(
+    feature = "concat_bytes",
+    issue = "87555",
+    reason = "`concat_bytes` is not stable enough for use and is subject to change"
+)]
+#[cfg(not(bootstrap))]
+pub use core::concat_bytes;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;

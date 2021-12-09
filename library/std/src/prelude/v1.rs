@@ -46,6 +46,15 @@ pub use core::prelude::v1::{
 };
 
 #[unstable(
+    feature = "concat_bytes",
+    issue = "87555",
+    reason = "`concat_bytes` is not stable enough for use and is subject to change"
+)]
+#[cfg(not(bootstrap))]
+#[doc(no_inline)]
+pub use core::prelude::v1::concat_bytes;
+
+#[unstable(
     feature = "asm",
     issue = "72016",
     reason = "inline assembly is not stable enough for use and is subject to change"
