@@ -3471,8 +3471,6 @@ version = "0.0.0"
 dependencies = [
  "rustc_codegen_ssa",
  "rustc_driver",
- "tikv-jemalloc-sys",
- "tikv-jemallocator",
 ]
 
 [[package]]
@@ -3833,6 +3831,8 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_typeck",
+ "tikv-jemalloc-sys",
+ "tikv-jemallocator",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",

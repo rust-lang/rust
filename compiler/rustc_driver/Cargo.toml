@@ -34,10 +34,13 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_typeck = { path = "../rustc_typeck" }
+tikv-jemalloc-sys = { version = '0.4.0', optional = true, features = ['unprefixed_malloc_on_supported_platforms'] }
+tikv-jemallocator = { version = '0.4.0', optional = true }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] }
 
 [features]
+jemalloc = ['tikv-jemalloc-sys', 'tikv-jemallocator']
 llvm = ['rustc_interface/llvm']
 max_level_info = ['tracing/max_level_info']
