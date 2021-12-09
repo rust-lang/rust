@@ -264,6 +264,7 @@ impl Crate {
         thread_limit: usize,
         total_crates_to_lint: usize,
         fix: bool,
+        lint_filter: &Vec<String>,
     ) -> Vec<ClippyWarning> {
         // advance the atomic index by one
         let index = target_dir_index.fetch_add(1, Ordering::SeqCst);
@@ -288,9 +289,9 @@ impl Crate {
         let shared_target_dir = clippy_project_root().join("target/lintcheck/shared_target_dir");
 
         let mut args = if fix {
-            vec!["--fix", "--allow-no-vcs", "--", "--cap-lints=warn"]
+            vec!["--fix", "--allow-no-vcs", "--"]
         } else {
-            vec!["--", "--message-format=json", "--", "--cap-lints=warn"]
+            vec!["--", "--message-format=json", "--"]
         };
 
         if let Some(options) = &self.options {
@@ -299,6 +300,13 @@ impl Crate {
             }
         } else {
             args.extend(&["-Wclippy::pedantic", "-Wclippy::cargo"])
+        }
+
+        if lint_filter.is_empty() {
+            args.push("--cap-lints=warn");
+        } else {
+            args.push("--cap-lints=allow");
+            args.extend(lint_filter.iter().map(|filter| filter.as_str()))
         }
 
         let all_output = std::process::Command::new(&cargo_clippy_path)
@@ -360,14 +368,16 @@ impl Crate {
 
 #[derive(Debug)]
 struct LintcheckConfig {
-    // max number of jobs to spawn (default 1)
+    /// max number of jobs to spawn (default 1)
     max_jobs: usize,
-    // we read the sources to check from here
+    /// we read the sources to check from here
     sources_toml_path: PathBuf,
-    // we save the clippy lint results here
+    /// we save the clippy lint results here
     lintcheck_results_path: PathBuf,
-    // whether to just run --fix and not collect all the warnings
+    /// whether to just run --fix and not collect all the warnings
     fix: bool,
+    /// A list of lint that this lintcheck run shound focus on
+    lint_filter: Vec<String>,
 }
 
 impl LintcheckConfig {
@@ -410,12 +420,26 @@ impl LintcheckConfig {
             None => 1,
         };
         let fix: bool = clap_config.is_present("fix");
+        let lint_filter: Vec<String> = clap_config
+            .values_of("filter")
+            .map(|iter| {
+                iter.map(|lint_name| {
+                    let mut filter = lint_name.replace('_', "-");
+                    if !filter.starts_with("clippy::") {
+                        filter.insert_str(0, "clippy::");
+                    }
+                    filter
+                })
+                .collect()
+            })
+            .unwrap_or_default();
 
         LintcheckConfig {
             max_jobs,
             sources_toml_path,
             lintcheck_results_path,
             fix,
+            lint_filter,
         }
     }
 }
@@ -682,6 +706,15 @@ pub fn main() {
     let old_stats = read_stats_from_file(&config.lintcheck_results_path);
 
     let counter = AtomicUsize::new(1);
+    let lint_filter: Vec<String> = config
+        .lint_filter
+        .iter()
+        .map(|filter| {
+            let mut filter = filter.clone();
+            filter.insert_str(0, "--force-warn=");
+            filter
+        })
+        .collect();
 
     let clippy_warnings: Vec<ClippyWarning> = if let Some(only_one_crate) = clap_config.value_of("only") {
         // if we don't have the specified crate in the .toml, throw an error
@@ -705,7 +738,9 @@ pub fn main() {
             .into_iter()
             .map(|krate| krate.download_and_extract())
             .filter(|krate| krate.name == only_one_crate)
-            .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, 1, config.fix))
+            .flat_map(|krate| {
+                krate.run_clippy_lints(&cargo_clippy_path, &AtomicUsize::new(0), 1, 1, config.fix, &lint_filter)
+            })
             .collect()
     } else {
         if config.max_jobs > 1 {
@@ -729,7 +764,14 @@ pub fn main() {
                 .into_par_iter()
                 .map(|krate| krate.download_and_extract())
                 .flat_map(|krate| {
-                    krate.run_clippy_lints(&cargo_clippy_path, &counter, num_cpus, num_crates, config.fix)
+                    krate.run_clippy_lints(
+                        &cargo_clippy_path,
+                        &counter,
+                        num_cpus,
+                        num_crates,
+                        config.fix,
+                        &lint_filter,
+                    )
                 })
                 .collect()
         } else {
@@ -738,7 +780,9 @@ pub fn main() {
             crates
                 .into_iter()
                 .map(|krate| krate.download_and_extract())
-                .flat_map(|krate| krate.run_clippy_lints(&cargo_clippy_path, &counter, 1, num_crates, config.fix))
+                .flat_map(|krate| {
+                    krate.run_clippy_lints(&cargo_clippy_path, &counter, 1, num_crates, config.fix, &lint_filter)
+                })
                 .collect()
         }
     };
@@ -771,9 +815,10 @@ pub fn main() {
         .for_each(|(cratename, msg)| text.push_str(&format!("{}: '{}'", cratename, msg)));
 
     println!("Writing logs to {}", config.lintcheck_results_path.display());
+    std::fs::create_dir_all(config.lintcheck_results_path.parent().unwrap()).unwrap();
     write(&config.lintcheck_results_path, text).unwrap();
 
-    print_stats(old_stats, new_stats);
+    print_stats(old_stats, new_stats, &config.lint_filter);
 }
 
 /// read the previous stats from the lintcheck-log file
@@ -806,7 +851,7 @@ fn read_stats_from_file(file_path: &Path) -> HashMap<String, usize> {
 }
 
 /// print how lint counts changed between runs
-fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, usize>) {
+fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, usize>, lint_filter: &Vec<String>) {
     let same_in_both_hashmaps = old_stats
         .iter()
         .filter(|(old_key, old_val)| new_stats.get::<&String>(&old_key) == Some(old_val))
@@ -845,6 +890,7 @@ fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, us
     old_stats_deduped
         .iter()
         .filter(|(old_key, _)| new_stats_deduped.get::<&String>(&old_key).is_none())
+        .filter(|(old_key, _)| lint_filter.is_empty() || lint_filter.contains(old_key))
         .for_each(|(old_key, old_value)| {
             println!("{} {} => 0", old_key, old_value);
         });
@@ -902,6 +948,14 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
             Arg::with_name("fix")
                 .long("--fix")
                 .help("runs cargo clippy --fix and checks if all suggestions apply"),
+        )
+        .arg(
+            Arg::with_name("filter")
+                .long("--filter")
+                .takes_value(true)
+                .multiple(true)
+                .value_name("clippy_lint_name")
+                .help("apply a filter to only collect specified lints, this also overrides `allow` attributes"),
         )
         .get_matches()
 }
