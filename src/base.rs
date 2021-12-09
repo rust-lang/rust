@@ -293,9 +293,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                     AssertKind::BoundsCheck { ref len, ref index } => {
                         let len = codegen_operand(fx, len).load_scalar(fx);
                         let index = codegen_operand(fx, index).load_scalar(fx);
-                        let location = fx
-                            .get_caller_location(source_info.span)
-                            .load_scalar(fx);
+                        let location = fx.get_caller_location(source_info.span).load_scalar(fx);
 
                         codegen_panic_inner(
                             fx,
