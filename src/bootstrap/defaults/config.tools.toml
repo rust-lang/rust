@@ -11,6 +11,10 @@ incremental = true
 # This cuts compile times by almost 60x, but means you can't modify the compiler.
 download-rustc = "if-unchanged"
 
+[build]
+# Document with the in-tree rustdoc by default, since `download-rustc` makes it quick to compile.
+doc-stage = 2
+
 [llvm]
 # Will download LLVM from CI if available on your platform.
 download-ci-llvm = "if-available"
