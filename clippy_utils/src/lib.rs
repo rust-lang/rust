@@ -70,16 +70,16 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind, FnDecl,
-    ForeignItem, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local,
-    MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem,
-    TraitItemKind, TraitRef, TyKind, UnOp,
+    def, lang_items, Arm, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind,
+    FnDecl, ForeignItem, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local,
+    MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Target,
+    TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -525,18 +525,34 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
             .iter()
             .find(|item| item.ident.name.as_str() == name)
     }
+    fn find_primitive(tcx: TyCtxt<'_>, name: &str) -> Option<DefId> {
+        if let Some(&(index, Target::Impl)) = lang_items::ITEM_REFS.get(&Symbol::intern(name)) {
+            tcx.lang_items().items()[index]
+        } else {
+            None
+        }
+    }
+    fn find_crate(tcx: TyCtxt<'_>, name: &str) -> Option<DefId> {
+        tcx.crates(())
+            .iter()
+            .find(|&&num| tcx.crate_name(num).as_str() == name)
+            .map(CrateNum::as_def_id)
+    }
 
-    let (krate, first, path) = match *path {
-        [krate, first, ref path @ ..] => (krate, first, path),
+    let (base, first, path) = match *path {
+        [base, first, ref path @ ..] => (base, first, path),
         [primitive] => {
             return PrimTy::from_name(Symbol::intern(primitive)).map_or(Res::Err, Res::PrimTy);
         },
         _ => return Res::Err,
     };
     let tcx = cx.tcx;
-    let crates = tcx.crates(());
-    let krate = try_res!(crates.iter().find(|&&num| tcx.crate_name(num).as_str() == krate));
-    let first = try_res!(item_child_by_name(tcx, krate.as_def_id(), first));
+    let first = try_res!(
+        find_primitive(tcx, base)
+            .or_else(|| find_crate(tcx, base))
+            .and_then(|id| item_child_by_name(tcx, id, first))
+    );
+
     let last = path
         .iter()
         .copied()
