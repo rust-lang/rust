@@ -819,7 +819,7 @@ mod tests {
 
         for i in 0..NUM_TEST_ENTRIES {
             left[i] = (i % 256) as u8;
-            right[i] = left[i] * 101;
+            right[i] = left[i].wrapping_mul(101);
             result[i] = mulbyte(left[i], right[i]);
         }
 
