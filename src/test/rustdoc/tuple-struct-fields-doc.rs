@@ -24,6 +24,9 @@ pub struct Foo(
 // @has - '//*[@id="variant.BarVariant.field.0"]' '0: String'
 // @has - '//*[@id="variant.BarVariant.fields"]//*[@class="docblock"]' 'Hello docs'
 // @matches - '//*[@id="variant.FooVariant.fields"]/h4' '^Fields$'
+// @has - '//*[@id="variant.BazVariant.fields"]//*[@class="docblock"]' 'dox'
+// @has - '//*[@id="variant.OtherVariant.fields"]//*[@class="docblock"]' 'dox'
+// @!matches - '//*[@id="variant.QuuxVariant.fields"]/h4' '^Tuple Fields$'
 pub enum Bar {
     BarVariant(
         /// Hello docs
@@ -33,4 +36,15 @@ pub enum Bar {
        /// hello
        x: u32,
     },
+    BazVariant(
+        String,
+        /// dox
+        u32,
+    ),
+    OtherVariant(
+        /// dox
+        String,
+        u32,
+    ),
+    QuuxVariant(String),
 }

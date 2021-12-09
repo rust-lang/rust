@@ -18,17 +18,18 @@ pub enum FooEnum {
     // @has - '//*[@id="variant.MixedHiddenFirst"]//code' 'MixedHiddenFirst(_, S)'
     // @count - '//*[@id="variant.MixedHiddenFirst.field.0"]' 0
     // @has - '//*[@id="variant.MixedHiddenFirst.field.1"]' '1: S'
-    MixedHiddenFirst(#[doc(hidden)] H, S),
+    MixedHiddenFirst(#[doc(hidden)] H, /** dox */ S),
     // @has - '//*[@id="variant.MixedHiddenLast"]//code' 'MixedHiddenLast(S, _)'
     // @has - '//*[@id="variant.MixedHiddenLast.field.0"]' '0: S'
     // @count - '//*[@id="variant.MixedHiddenLast.field.1"]' 0
-    MixedHiddenLast(S, #[doc(hidden)] H),
+    MixedHiddenLast(/** dox */ S, #[doc(hidden)] H),
     // @has - '//*[@id="variant.HiddenStruct"]//code' 'HiddenStruct'
     // @count - '//*[@id="variant.HiddenStruct.field.h"]' 0
     // @has - '//*[@id="variant.HiddenStruct.field.s"]' 's: S'
     HiddenStruct {
         #[doc(hidden)]
         h: H,
+        /// dox
         s: S,
     },
 }
