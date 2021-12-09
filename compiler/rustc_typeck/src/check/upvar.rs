@@ -904,10 +904,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> MigrationWarningReason {
         let mut reasons = MigrationWarningReason::default();
 
-        for auto_trait in auto_trait_reasons {
-            reasons.auto_traits.push(auto_trait);
-        }
-
+        reasons.auto_traits.extend(auto_trait_reasons);
         reasons.drop_order = drop_order;
 
         reasons
