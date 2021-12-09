@@ -1,20 +1,26 @@
-error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `invalid` in constants
   --> $DIR/issue-32829-2.rs:10:9
    |
 LL |         invalid();
    |         ^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `invalid` in statics
   --> $DIR/issue-32829-2.rs:32:9
    |
 LL |         invalid();
    |         ^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `invalid` in statics
   --> $DIR/issue-32829-2.rs:54:9
    |
 LL |         invalid();
    |         ^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 3 previous errors
 
