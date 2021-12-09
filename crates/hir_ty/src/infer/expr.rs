@@ -1276,41 +1276,43 @@ impl<'a> InferenceContext<'a> {
         let (name, lang_item) = match op {
             BinaryOp::LogicOp(_) => return None,
             BinaryOp::ArithOp(aop) => match aop {
-                ArithOp::Add => (name!(add), "add"),
-                ArithOp::Mul => (name!(mul), "mul"),
-                ArithOp::Sub => (name!(sub), "sub"),
-                ArithOp::Div => (name!(div), "div"),
-                ArithOp::Rem => (name!(rem), "rem"),
-                ArithOp::Shl => (name!(shl), "shl"),
-                ArithOp::Shr => (name!(shr), "shr"),
-                ArithOp::BitXor => (name!(bitxor), "bitxor"),
-                ArithOp::BitOr => (name!(bitor), "bitor"),
-                ArithOp::BitAnd => (name!(bitand), "bitand"),
+                ArithOp::Add => (name!(add), name!(add)),
+                ArithOp::Mul => (name!(mul), name!(mul)),
+                ArithOp::Sub => (name!(sub), name!(sub)),
+                ArithOp::Div => (name!(div), name!(div)),
+                ArithOp::Rem => (name!(rem), name!(rem)),
+                ArithOp::Shl => (name!(shl), name!(shl)),
+                ArithOp::Shr => (name!(shr), name!(shr)),
+                ArithOp::BitXor => (name!(bitxor), name!(bitxor)),
+                ArithOp::BitOr => (name!(bitor), name!(bitor)),
+                ArithOp::BitAnd => (name!(bitand), name!(bitand)),
             },
             BinaryOp::Assignment { op: Some(aop) } => match aop {
-                ArithOp::Add => (name!(add_assign), "add_assign"),
-                ArithOp::Mul => (name!(mul_assign), "mul_assign"),
-                ArithOp::Sub => (name!(sub_assign), "sub_assign"),
-                ArithOp::Div => (name!(div_assign), "div_assign"),
-                ArithOp::Rem => (name!(rem_assign), "rem_assign"),
-                ArithOp::Shl => (name!(shl_assign), "shl_assign"),
-                ArithOp::Shr => (name!(shr_assign), "shr_assign"),
-                ArithOp::BitXor => (name!(bitxor_assign), "bitxor_assign"),
-                ArithOp::BitOr => (name!(bitor_assign), "bitor_assign"),
-                ArithOp::BitAnd => (name!(bitand_assign), "bitand_assign"),
+                ArithOp::Add => (name!(add_assign), name!(add_assign)),
+                ArithOp::Mul => (name!(mul_assign), name!(mul_assign)),
+                ArithOp::Sub => (name!(sub_assign), name!(sub_assign)),
+                ArithOp::Div => (name!(div_assign), name!(div_assign)),
+                ArithOp::Rem => (name!(rem_assign), name!(rem_assign)),
+                ArithOp::Shl => (name!(shl_assign), name!(shl_assign)),
+                ArithOp::Shr => (name!(shr_assign), name!(shr_assign)),
+                ArithOp::BitXor => (name!(bitxor_assign), name!(bitxor_assign)),
+                ArithOp::BitOr => (name!(bitor_assign), name!(bitor_assign)),
+                ArithOp::BitAnd => (name!(bitand_assign), name!(bitand_assign)),
             },
             BinaryOp::CmpOp(cop) => match cop {
-                CmpOp::Eq { negated: false } => (name!(eq), "eq"),
-                CmpOp::Eq { negated: true } => (name!(ne), "eq"),
+                CmpOp::Eq { negated: false } => (name!(eq), name!(eq)),
+                CmpOp::Eq { negated: true } => (name!(ne), name!(eq)),
                 CmpOp::Ord { ordering: Ordering::Less, strict: false } => {
-                    (name!(le), "partial_ord")
+                    (name!(le), name!(partial_ord))
                 }
-                CmpOp::Ord { ordering: Ordering::Less, strict: true } => (name!(lt), "partial_ord"),
+                CmpOp::Ord { ordering: Ordering::Less, strict: true } => {
+                    (name!(lt), name!(partial_ord))
+                }
                 CmpOp::Ord { ordering: Ordering::Greater, strict: false } => {
-                    (name!(ge), "partial_ord")
+                    (name!(ge), name!(partial_ord))
                 }
                 CmpOp::Ord { ordering: Ordering::Greater, strict: true } => {
-                    (name!(gt), "partial_ord")
+                    (name!(gt), name!(partial_ord))
                 }
             },
             BinaryOp::Assignment { op: None } => return None,

@@ -334,6 +334,13 @@ pub mod known {
         gt,
         le,
         lt,
+        // lang items
+        not,
+        neg,
+        future_trait,
+        owned_box,
+        index,
+        partial_ord
     );
 
     // self/Self cannot be used as an identifier

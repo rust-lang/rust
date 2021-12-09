@@ -28,11 +28,10 @@ use hir_def::{
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule, Lookup,
     TraitId, TypeAliasId, VariantId,
 };
-use hir_expand::name::name;
+use hir_expand::name::{name, Name};
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
 use stdx::impl_from;
-use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, fold_tys, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
@@ -719,10 +718,9 @@ impl<'a> InferenceContext<'a> {
         self.infer_expr_coerce(self.body.body_expr, &Expectation::has_type(self.return_ty.clone()));
     }
 
-    fn resolve_lang_item(&self, name: &str) -> Option<LangItemTarget> {
+    fn resolve_lang_item(&self, name: Name) -> Option<LangItemTarget> {
         let krate = self.resolver.krate()?;
-        let name = SmolStr::new_inline(name);
-        self.db.lang_item(krate, name)
+        self.db.lang_item(krate, name.to_smol_str())
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
@@ -743,22 +741,22 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item("neg")?.as_trait()?;
+        let trait_ = self.resolve_lang_item(name![neg])?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_ops_not_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item("not")?.as_trait()?;
+        let trait_ = self.resolve_lang_item(name![not])?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
-        let trait_ = self.resolve_lang_item("future_trait")?.as_trait()?;
+        let trait_ = self.resolve_lang_item(name![future_trait])?.as_trait()?;
         self.db.trait_data(trait_).associated_type_by_name(&name![Output])
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item("owned_box")?.as_struct()?;
+        let struct_ = self.resolve_lang_item(name![owned_box])?.as_struct()?;
         Some(struct_.into())
     }
 
@@ -799,7 +797,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_ops_index(&self) -> Option<TraitId> {
-        self.resolve_lang_item("index")?.as_trait()
+        self.resolve_lang_item(name![index])?.as_trait()
     }
 
     fn resolve_ops_index_output(&self) -> Option<TypeAliasId> {
