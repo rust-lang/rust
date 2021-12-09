@@ -14,11 +14,13 @@ LL | static foo: &Y::X = &*Y::foo(Y::x as *const Y::X);
    |
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
-error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `Y::foo` in statics
   --> $DIR/issue-16538.rs:15:23
    |
 LL | static foo: &Y::X = &*Y::foo(Y::x as *const Y::X);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 3 previous errors
 

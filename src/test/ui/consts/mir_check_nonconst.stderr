@@ -1,8 +1,10 @@
-error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `bar` in statics
   --> $DIR/mir_check_nonconst.rs:8:19
    |
 LL | static foo: Foo = bar();
    |                   ^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to previous error
 

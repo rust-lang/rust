@@ -15,11 +15,13 @@ error[E0010]: allocations are not allowed in statics
 LL | static STATIC11: Box<MyOwned> = box MyOwned;
    |                                 ^^^^^^^^^^^ allocation not allowed in statics
 
-error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/check-static-values-constraints.rs:89:32
+error[E0015]: cannot call non-const fn `<str as ToString>::to_string` in statics
+  --> $DIR/check-static-values-constraints.rs:89:38
    |
 LL |     field2: SafeEnum::Variant4("str".to_string())
-   |                                ^^^^^^^^^^^^^^^^^
+   |                                      ^^^^^^^^^^^
+   |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:94:5

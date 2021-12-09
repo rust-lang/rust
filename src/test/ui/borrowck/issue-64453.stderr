@@ -7,12 +7,13 @@ LL | static settings_dir: String = format!("");
    = help: add `#![feature(const_fmt_arguments_new)]` to the crate attributes to enable
    = note: this error originates in the macro `$crate::__export::format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `format` in statics
   --> $DIR/issue-64453.rs:4:31
    |
 LL | static settings_dir: String = format!("");
    |                               ^^^^^^^^^^^
    |
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0507]: cannot move out of static item `settings_dir`

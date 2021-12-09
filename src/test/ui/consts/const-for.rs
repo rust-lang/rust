@@ -3,8 +3,8 @@
 
 const _: () = {
     for _ in 0..5 {}
-    //~^ error: calls in constants are limited to
-    //~| error: calls in constants are limited to
+    //~^ error: cannot convert
+    //~| error: cannot call non-const fn
 };
 
 fn main() {}

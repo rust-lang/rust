@@ -1,14 +1,18 @@
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `regular_in_block` in constant functions
   --> $DIR/const-extern-fn-call-extern-fn.rs:9:9
    |
 LL |         regular_in_block();
    |         ^^^^^^^^^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `regular` in constant functions
   --> $DIR/const-extern-fn-call-extern-fn.rs:18:9
    |
 LL |         regular();
    |         ^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 2 previous errors
 

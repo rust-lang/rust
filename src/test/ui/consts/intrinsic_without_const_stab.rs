@@ -11,7 +11,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     }
 
     unsafe { copy(src, dst, count) }
-    //~^ ERROR calls in constant functions are limited to constant functions
+    //~^ ERROR cannot call non-const fn
 }
 
 fn main() {}

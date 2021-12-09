@@ -1,8 +1,21 @@
-error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot perform deref coercion on `A` in statics
   --> $DIR/issue-25901.rs:4:24
    |
 LL | static S: &'static B = &A;
    |                        ^^
+   |
+   = note: attempting to deref into `B`
+note: deref defined here
+  --> $DIR/issue-25901.rs:10:5
+   |
+LL |     type Target = B;
+   |     ^^^^^^^^^^^^^^^^
+note: impl defined here, but it is not `const`
+  --> $DIR/issue-25901.rs:9:1
+   |
+LL | impl Deref for A {
+   | ^^^^^^^^^^^^^^^^
+   = note: calls in statics are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to previous error
 

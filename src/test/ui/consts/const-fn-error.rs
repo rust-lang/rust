@@ -4,8 +4,8 @@ const fn f(x: usize) -> usize {
     let mut sum = 0;
     for i in 0..x {
         //~^ ERROR mutable references
-        //~| ERROR calls in constant functions
-        //~| ERROR calls in constant functions
+        //~| ERROR cannot convert
+        //~| ERROR cannot call non-const fn
         //~| ERROR E0080
         //~| ERROR `for` is not allowed in a `const fn`
         sum += i;
