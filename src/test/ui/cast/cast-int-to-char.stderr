@@ -1,0 +1,53 @@
+error[E0308]: mismatched types
+  --> $DIR/cast-int-to-char.rs:4:16
+   |
+LL |     foo::<u32>('0');
+   |                ^^^ expected `u32`, found `char`
+   |
+help: you can cast a `char` to a `u32`, since a `char` always occupies 4 bytes
+   |
+LL |     foo::<u32>('0' as u32);
+   |                    ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/cast-int-to-char.rs:5:16
+   |
+LL |     foo::<i32>('0');
+   |                ^^^ expected `i32`, found `char`
+   |
+help: you can cast a `char` to an `i32`, since a `char` always occupies 4 bytes
+   |
+LL |     foo::<i32>('0' as i32);
+   |                    ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/cast-int-to-char.rs:6:16
+   |
+LL |     foo::<u64>('0');
+   |                ^^^ expected `u64`, found `char`
+   |
+help: you can cast a `char` to a `u64`, since a `char` always occupies 4 bytes
+   |
+LL |     foo::<u64>('0' as u64);
+   |                    ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/cast-int-to-char.rs:7:16
+   |
+LL |     foo::<i64>('0');
+   |                ^^^ expected `i64`, found `char`
+   |
+help: you can cast a `char` to an `i64`, since a `char` always occupies 4 bytes
+   |
+LL |     foo::<i64>('0' as i64);
+   |                    ++++++
+
+error[E0308]: mismatched types
+  --> $DIR/cast-int-to-char.rs:8:17
+   |
+LL |     foo::<char>(0u32);
+   |                 ^^^^ expected `char`, found `u32`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

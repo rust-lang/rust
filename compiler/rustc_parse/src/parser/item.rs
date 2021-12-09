@@ -15,6 +15,7 @@ use rustc_ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
+use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 
@@ -410,10 +411,30 @@ impl<'a> Parser<'a> {
     fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, MacCall> {
         let path = self.parse_path(PathStyle::Mod)?; // `foo::bar`
         self.expect(&token::Not)?; // `!`
-        let args = self.parse_mac_args()?; // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
-        self.eat_semi_for_macro_if_needed(&args);
-        self.complain_if_pub_macro(vis, false);
-        Ok(MacCall { path, args, prior_type_ascription: self.last_type_ascription })
+        match self.parse_mac_args() {
+            // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
+            Ok(args) => {
+                self.eat_semi_for_macro_if_needed(&args);
+                self.complain_if_pub_macro(vis, false);
+                Ok(MacCall { path, args, prior_type_ascription: self.last_type_ascription })
+            }
+
+            Err(mut err) => {
+                // Maybe the user misspelled `macro_rules` (issue #91227)
+                if self.token.is_ident()
+                    && path.segments.len() == 1
+                    && lev_distance("macro_rules", &path.segments[0].ident.to_string()) <= 3
+                {
+                    err.span_suggestion(
+                        path.span,
+                        "perhaps you meant to define a macro",
+                        "macro_rules".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+                Err(err)
+            }
+        }
     }
 
     /// Recover if we parsed attributes and expected an item but there was none.
