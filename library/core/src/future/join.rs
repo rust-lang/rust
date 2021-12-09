@@ -106,7 +106,7 @@ macro join_internal {
         match ( $( MaybeDone::Future($fut_expr), )* ) { futures => async {
             let mut futures = futures;
             // SAFETY: this is `pin_mut!`.
-            let futures = unsafe { Pin::new_unchecked(&mut futures) };
+            let mut futures = unsafe { Pin::new_unchecked(&mut futures) };
             poll_fn(move |cx| {
                 let mut done = true;
                 // For each `fut`, pin-project to it, and poll it.
