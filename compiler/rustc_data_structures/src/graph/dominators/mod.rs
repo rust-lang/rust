@@ -25,6 +25,7 @@ rustc_index::newtype_index! {
     struct PreorderIndex { .. }
 }
 
+/// Finds the dominators in a control-flow graph.
 pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
     // compute the post order index (rank) for each node
     let mut post_order_rank = IndexVec::from_elem_n(0, graph.num_nodes());
@@ -251,6 +252,7 @@ fn compress(
     }
 }
 
+/// A [dominator] https://en.wikipedia.org/wiki/Dominator_(graph_theory).
 #[derive(Clone, Debug)]
 pub struct Dominators<N: Idx> {
     post_order_rank: IndexVec<N, usize>,
@@ -258,24 +260,29 @@ pub struct Dominators<N: Idx> {
 }
 
 impl<Node: Idx> Dominators<Node> {
+    // TODO
     pub fn dummy() -> Self {
         Self { post_order_rank: IndexVec::new(), immediate_dominators: IndexVec::new() }
     }
 
+    // TODO
     pub fn is_reachable(&self, node: Node) -> bool {
         self.immediate_dominators[node].is_some()
     }
 
+    // TODO
     pub fn immediate_dominator(&self, node: Node) -> Node {
         assert!(self.is_reachable(node), "node {:?} is not reachable", node);
         self.immediate_dominators[node].unwrap()
     }
 
+    /// Returns an iterator of a node's dominators.
     pub fn dominators(&self, node: Node) -> Iter<'_, Node> {
         assert!(self.is_reachable(node), "node {:?} is not reachable", node);
         Iter { dominators: self, node: Some(node) }
     }
 
+    // TODO
     pub fn is_dominated_by(&self, node: Node, dom: Node) -> bool {
         // FIXME -- could be optimized by using post-order-rank
         self.dominators(node).any(|n| n == dom)
@@ -290,6 +297,7 @@ impl<Node: Idx> Dominators<Node> {
     }
 }
 
+/// An iterator for dominators.
 pub struct Iter<'dom, Node: Idx> {
     dominators: &'dom Dominators<Node>,
     node: Option<Node>,

@@ -6,6 +6,7 @@ use std::ops::ControlFlow;
 #[cfg(test)]
 mod tests;
 
+// TODO
 pub fn post_order_from<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     graph: &G,
     start_node: G::Node,
@@ -13,6 +14,7 @@ pub fn post_order_from<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     post_order_from_to(graph, start_node, None)
 }
 
+// TODO
 pub fn post_order_from_to<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     graph: &G,
     start_node: G::Node,
@@ -60,6 +62,7 @@ fn post_order_walk<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     }
 }
 
+// TODO
 pub fn reverse_post_order<G: DirectedGraph + WithSuccessors + WithNumNodes>(
     graph: &G,
     start_node: G::Node,
@@ -83,6 +86,7 @@ impl<'graph, G> DepthFirstSearch<'graph, G>
 where
     G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
 {
+    /// Creates a new graph for a search.
     pub fn new(graph: &'graph G) -> Self {
         Self { graph, stack: vec![], visited: BitSet::new_empty(graph.num_nodes()) }
     }
@@ -213,6 +217,7 @@ impl<'graph, G> TriColorDepthFirstSearch<'graph, G>
 where
     G: ?Sized + DirectedGraph + WithNumNodes + WithSuccessors,
 {
+    /// Creates a new graph.
     pub fn new(graph: &'graph G) -> Self {
         TriColorDepthFirstSearch {
             graph,

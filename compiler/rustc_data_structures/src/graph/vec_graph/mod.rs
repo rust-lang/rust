@@ -6,6 +6,7 @@ use rustc_index::vec::{Idx, IndexVec};
 #[cfg(test)]
 mod tests;
 
+// TODO
 pub struct VecGraph<N: Idx> {
     /// Maps from a given node to an index where the set of successors
     /// for that node starts. The index indexes into the `edges`
@@ -20,6 +21,7 @@ pub struct VecGraph<N: Idx> {
 }
 
 impl<N: Idx + Ord> VecGraph<N> {
+    /// Creates a new [`VecGraph`].
     pub fn new(num_nodes: usize, mut edge_pairs: Vec<(N, N)>) -> Self {
         // Sort the edges by the source -- this is important.
         edge_pairs.sort();
