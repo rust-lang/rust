@@ -123,7 +123,11 @@
 //! ```
 
 mod from_iter;
+mod pending;
 mod stream;
 
 pub use from_iter::{from_iter, FromIter};
 pub use stream::Stream;
+
+#[unstable(feature = "stream_pending", issue = "91683")]
+pub use pending::{pending, Pending};
