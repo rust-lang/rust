@@ -1,0 +1,4 @@
+warning: the `passes` flag is deprecated
+   |
+   = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
+
