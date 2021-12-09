@@ -220,6 +220,70 @@ bitops! {
     }
 }
 
+macro_rules! float_arith {
+    ($(impl<const LANES: usize> FloatArith for Simd<$float:ty, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+     })*) => {
+        $(
+            unsafe_base_op!{
+                impl<const LANES: usize> Add for Simd<$float, LANES> {
+                    fn add(self, rhs: Self) -> Self::Output {
+                        unsafe { simd_add }
+                    }
+                }
+
+                impl<const LANES: usize> Mul for Simd<$float, LANES> {
+                    fn mul(self, rhs: Self) -> Self::Output {
+                        unsafe { simd_mul }
+                    }
+                }
+
+                impl<const LANES: usize> Sub for Simd<$float, LANES> {
+                    fn sub(self, rhs: Self) -> Self::Output {
+                        unsafe { simd_sub }
+                    }
+                }
+
+                impl<const LANES: usize> Div for Simd<$float, LANES> {
+                    fn div(self, rhs: Self) -> Self::Output {
+                        unsafe { simd_div }
+                    }
+                }
+
+                impl<const LANES: usize> Rem for Simd<$float, LANES> {
+                    fn rem(self, rhs: Self) -> Self::Output {
+                        unsafe { simd_rem }
+                    }
+                }
+            }
+        )*
+    };
+}
+
+// We don't need any special precautions here:
+// Floats always accept arithmetic ops, but may become NaN.
+float_arith! {
+    impl<const LANES: usize> FloatArith for Simd<f32, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> FloatArith for Simd<f64, LANES> {
+        fn add(self, rhs: Self) -> Self::Output;
+        fn mul(self, rhs: Self) -> Self::Output;
+        fn sub(self, rhs: Self) -> Self::Output;
+        fn div(self, rhs: Self) -> Self::Output;
+        fn rem(self, rhs: Self) -> Self::Output;
+    }
+}
+
 /// Automatically implements operators over references in addition to the provided operator.
 macro_rules! impl_ref_ops {
     // binary op
@@ -281,19 +345,6 @@ macro_rules! impl_op {
                 }
             }
         }
-    };
-}
-
-/// Implements floating-point operators for the provided types.
-macro_rules! impl_float_ops {
-    { $($scalar:ty),* } => {
-        $(
-            impl_op! { impl Add for $scalar }
-            impl_op! { impl Sub for $scalar }
-            impl_op! { impl Mul for $scalar }
-            impl_op! { impl Div for $scalar }
-            impl_op! { impl Rem for $scalar }
-        )*
     };
 }
 
@@ -375,4 +426,3 @@ macro_rules! impl_signed_int_ops {
 
 impl_unsigned_int_ops! { u8, u16, u32, u64, usize }
 impl_signed_int_ops! { i8, i16, i32, i64, isize }
-impl_float_ops! { f32, f64 }
