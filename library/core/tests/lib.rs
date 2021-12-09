@@ -29,6 +29,8 @@
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
 #![feature(float_minimum_maximum)]
+#![feature(future_join)]
+#![feature(future_poll_fn)]
 #![feature(array_from_fn)]
 #![feature(hashmap_internals)]
 #![feature(try_find)]
@@ -94,6 +96,7 @@ mod clone;
 mod cmp;
 mod const_ptr;
 mod fmt;
+mod future;
 mod hash;
 mod intrinsics;
 mod iter;

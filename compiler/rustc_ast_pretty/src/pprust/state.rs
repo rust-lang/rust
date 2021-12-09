@@ -2135,22 +2135,20 @@ impl<'a> State<'a> {
             ast::ExprKind::Path(Some(ref qself), ref path) => self.print_qpath(path, qself, true),
             ast::ExprKind::Break(opt_label, ref opt_expr) => {
                 self.word("break");
-                self.space();
                 if let Some(label) = opt_label {
-                    self.print_ident(label.ident);
                     self.space();
+                    self.print_ident(label.ident);
                 }
                 if let Some(ref expr) = *opt_expr {
-                    self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                     self.space();
+                    self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
             }
             ast::ExprKind::Continue(opt_label) => {
                 self.word("continue");
-                self.space();
                 if let Some(label) = opt_label {
+                    self.space();
                     self.print_ident(label.ident);
-                    self.space()
                 }
             }
             ast::ExprKind::Ret(ref result) => {

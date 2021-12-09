@@ -229,9 +229,8 @@ fn _11() {
     let _ = #[rustc_dummy] &mut 0;
     let _ = #[rustc_dummy] &#[rustc_dummy] 0;
     let _ = #[rustc_dummy] &mut #[rustc_dummy] 0;
-    // FIXME: pp bug, extra space after keyword?
-    while false { let _ = #[rustc_dummy] continue ; }
-    while true { let _ = #[rustc_dummy] break ; }
+    while false { let _ = #[rustc_dummy] continue; }
+    while true { let _ = #[rustc_dummy] break; }
     || #[rustc_dummy] return;
     let _ = #[rustc_dummy] expr_mac!();
     let _ = #[rustc_dummy] expr_mac![];
