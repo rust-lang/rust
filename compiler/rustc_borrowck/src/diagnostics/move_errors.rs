@@ -1,3 +1,4 @@
+use rustc_const_eval::util::CallDesugaringKind;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
@@ -8,7 +9,7 @@ use rustc_mir_dataflow::move_paths::{
 use rustc_span::{sym, Span, DUMMY_SP};
 use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
 
-use crate::diagnostics::{FnSelfUseKind, UseSpans};
+use crate::diagnostics::{CallKind, UseSpans};
 use crate::prefixes::PrefixSet;
 use crate::MirBorrowckCtxt;
 
@@ -410,7 +411,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         } else if let Some(UseSpans::FnSelfUse {
-            kind: FnSelfUseKind::Normal { implicit_into_iter: true, .. },
+            kind:
+                CallKind::Normal { desugaring: Some((CallDesugaringKind::ForLoopIntoIter, _)), .. },
             ..
         }) = use_spans
         {
