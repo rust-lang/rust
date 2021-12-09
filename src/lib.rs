@@ -61,7 +61,6 @@ mod inline_asm;
 mod intrinsics;
 mod linkage;
 mod main_shim;
-mod metadata;
 mod num;
 mod optimize;
 mod pointer;
