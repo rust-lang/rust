@@ -32,14 +32,115 @@ where
     }
 }
 
-/// Checks if the right-hand side argument of a left- or right-shift would cause overflow.
-fn invalid_shift_rhs<T>(rhs: T) -> bool
-where
-    T: Default + PartialOrd + core::convert::TryFrom<usize>,
-    <T as core::convert::TryFrom<usize>>::Error: core::fmt::Debug,
-{
-    let bits_in_type = T::try_from(8 * core::mem::size_of::<T>()).unwrap();
-    rhs < T::default() || rhs >= bits_in_type
+/// SAFETY: This macro should not be used for anything except Shl or Shr, and passed the appropriate shift intrinsic.
+/// It handles performing a bitand in addition to calling the shift operator, so that the result
+/// is well-defined: LLVM can return a poison value if you shl, lshr, or ashr if rhs >= <Int>::BITS
+/// At worst, this will maybe add another instruction and cycle,
+/// at best, it may open up more optimization opportunities,
+/// or simply be elided entirely, especially for SIMD ISAs which default to this.
+///
+// FIXME: Consider implementing this in cg_llvm instead?
+// cg_clif defaults to this, and scalar MIR shifts also default to wrapping
+macro_rules! wrap_bitshift_inner {
+    (impl<const LANES: usize> $op:ident for Simd<$int:ty, LANES> {
+        fn $call:ident(self, rhs: Self) -> Self::Output {
+            unsafe { $simd_call:ident }
+        }
+    }) => {
+        impl<const LANES: usize> $op for Simd<$int, LANES>
+        where
+            $int: SimdElement,
+            LaneCount<LANES>: SupportedLaneCount,
+        {
+            type Output = Self;
+
+            #[inline]
+            #[must_use = "operator returns a new vector without mutating the inputs"]
+            fn $call(self, rhs: Self) -> Self::Output {
+                unsafe {
+                    $crate::intrinsics::$simd_call(self, rhs.bitand(Simd::splat(<$int>::BITS as $int - 1)))
+                }
+            }
+        }
+    };
+}
+
+macro_rules! wrap_bitshifts {
+    ($(impl<const LANES: usize> ShiftOps for Simd<$int:ty, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+     })*) => {
+        $(
+            wrap_bitshift_inner! {
+                impl<const LANES: usize> Shl for Simd<$int, LANES> {
+                    fn shl(self, rhs: Self) -> Self::Output {
+                        unsafe { simd_shl }
+                    }
+                }
+            }
+            wrap_bitshift_inner! {
+                impl<const LANES: usize> Shr for Simd<$int, LANES> {
+                    fn shr(self, rhs: Self) -> Self::Output {
+                        // This automatically monomorphizes to lshr or ashr, depending,
+                        // so it's fine to use it for both UInts and SInts.
+                        unsafe { simd_shr }
+                    }
+                }
+            }
+        )*
+    };
+}
+
+wrap_bitshifts! {
+    impl<const LANES: usize> ShiftOps for Simd<i8, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> ShiftOps for Simd<i16, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> ShiftOps for Simd<i32, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> ShiftOps for Simd<i64, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> ShiftOps for Simd<isize, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> ShiftOps for Simd<u8, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> ShiftOps for Simd<u16, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> ShiftOps for Simd<u32, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> ShiftOps for Simd<u64, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+    }
+
+    impl<const LANES: usize> ShiftOps for Simd<usize, LANES> {
+        fn shl(self, rhs: Self) -> Self::Output;
+        fn shr(self, rhs: Self) -> Self::Output;
+    }
 }
 
 /// Automatically implements operators over references in addition to the provided operator.
@@ -84,12 +185,6 @@ macro_rules! impl_op {
     };
     { impl Rem for $scalar:ty } => {
         impl_op! { @binary $scalar, Rem::rem, simd_rem }
-    };
-    { impl Shl for $scalar:ty } => {
-        impl_op! { @binary $scalar, Shl::shl, simd_shl }
-    };
-    { impl Shr for $scalar:ty } => {
-        impl_op! { @binary $scalar, Shr::shr, simd_shr }
     };
     { impl BitAnd for $scalar:ty } => {
         impl_op! { @binary $scalar, BitAnd::bitand, simd_and }
@@ -199,51 +294,6 @@ macro_rules! impl_unsigned_int_ops {
                             panic!("attempt to calculate the remainder with overflow");
                         }
                         unsafe { intrinsics::simd_rem(self, rhs) }
-                    }
-                }
-            }
-
-            // shifts panic on overflow
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Shl<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
-
-                    #[inline]
-                    fn shl(self, rhs: Self) -> Self::Output {
-                        // TODO there is probably a better way of doing this
-                        if rhs.as_array()
-                            .iter()
-                            .copied()
-                            .any(invalid_shift_rhs)
-                        {
-                            panic!("attempt to shift left with overflow");
-                        }
-                        unsafe { intrinsics::simd_shl(self, rhs) }
-                    }
-                }
-            }
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Shr<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
-
-                    #[inline]
-                    fn shr(self, rhs: Self) -> Self::Output {
-                        // TODO there is probably a better way of doing this
-                        if rhs.as_array()
-                            .iter()
-                            .copied()
-                            .any(invalid_shift_rhs)
-                        {
-                            panic!("attempt to shift with overflow");
-                        }
-                        unsafe { intrinsics::simd_shr(self, rhs) }
                     }
                 }
             }
