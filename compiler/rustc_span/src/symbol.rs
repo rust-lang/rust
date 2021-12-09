@@ -184,6 +184,7 @@ symbols! {
         Formatter,
         From,
         FromIterator,
+        FromResidual,
         Future,
         FxHashMap,
         FxHashSet,
