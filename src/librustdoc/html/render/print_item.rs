@@ -1133,18 +1133,27 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             w.write_str("</h3>");
 
             use crate::clean::Variant;
-            if let Some((extra, fields)) = match *variant.kind {
-                clean::VariantItem(Variant::Struct(ref s)) => Some(("", &s.fields)),
-                clean::VariantItem(Variant::Tuple(ref fields)) => Some(("Tuple ", fields)),
+
+            let heading_and_fields = match &*variant.kind {
+                clean::VariantItem(Variant::Struct(s)) => Some(("Fields", &s.fields)),
+                // Documentation on tuple variant fields is rare, so to reduce noise we only emit
+                // the section if at least one field is documented.
+                clean::VariantItem(Variant::Tuple(fields))
+                    if fields.iter().any(|f| f.doc_value().is_some()) =>
+                {
+                    Some(("Tuple Fields", fields))
+                }
                 _ => None,
-            } {
+            };
+
+            if let Some((heading, fields)) = heading_and_fields {
                 let variant_id = cx.derive_id(format!(
                     "{}.{}.fields",
                     ItemType::Variant,
                     variant.name.as_ref().unwrap()
                 ));
                 write!(w, "<div class=\"sub-variant\" id=\"{id}\">", id = variant_id);
-                write!(w, "<h4>{extra}Fields</h4>", extra = extra,);
+                write!(w, "<h4>{heading}</h4>", heading = heading);
                 document_non_exhaustive(w, variant);
                 for field in fields {
                     match *field.kind {
