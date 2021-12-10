@@ -6,22 +6,22 @@ LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    |
    = note: `-D clippy::future-not-send` implied by `-D warnings`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:8:5
+  --> $DIR/future_not_send.rs:8:19
    |
 LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    |                         -- has type `std::rc::Rc<[u8]>` which is not `Send`
 LL |     async { true }.await
-   |     ^^^^^^^^^^^^^^^^^^^^ await occurs here, with `rc` maybe used later
+   |                   ^^^^^^ await occurs here, with `rc` maybe used later
 LL | }
    | - `rc` is later dropped here
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:8:5
+  --> $DIR/future_not_send.rs:8:19
    |
 LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
    |                                       ---- has type `&std::cell::Cell<usize>` which is not `Send`
 LL |     async { true }.await
-   |     ^^^^^^^^^^^^^^^^^^^^ await occurs here, with `cell` maybe used later
+   |                   ^^^^^^ await occurs here, with `cell` maybe used later
 LL | }
    | - `cell` is later dropped here
    = note: `std::cell::Cell<usize>` doesn't implement `std::marker::Sync`
@@ -33,12 +33,12 @@ LL | pub async fn public_future(rc: Rc<[u8]>) {
    |                                          ^ future returned by `public_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:12:5
+  --> $DIR/future_not_send.rs:12:19
    |
 LL | pub async fn public_future(rc: Rc<[u8]>) {
    |                            -- has type `std::rc::Rc<[u8]>` which is not `Send`
 LL |     async { true }.await;
-   |     ^^^^^^^^^^^^^^^^^^^^ await occurs here, with `rc` maybe used later
+   |                   ^^^^^^ await occurs here, with `rc` maybe used later
 LL | }
    | - `rc` is later dropped here
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
@@ -82,12 +82,12 @@ LL |     async fn private_future(&self) -> usize {
    |                                       ^^^^^ future returned by `private_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:35:9
+  --> $DIR/future_not_send.rs:35:23
    |
 LL |     async fn private_future(&self) -> usize {
    |                             ----- has type `&Dummy` which is not `Send`
 LL |         async { true }.await;
-   |         ^^^^^^^^^^^^^^^^^^^^ await occurs here, with `&self` maybe used later
+   |                       ^^^^^^ await occurs here, with `&self` maybe used later
 LL |         self.rc.len()
 LL |     }
    |     - `&self` is later dropped here
@@ -100,12 +100,12 @@ LL |     pub async fn public_future(&self) {
    |                                       ^ future returned by `public_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:40:9
+  --> $DIR/future_not_send.rs:40:30
    |
 LL |     pub async fn public_future(&self) {
    |                                ----- has type `&Dummy` which is not `Send`
 LL |         self.private_future().await;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ await occurs here, with `&self` maybe used later
+   |                              ^^^^^^ await occurs here, with `&self` maybe used later
 LL |     }
    |     - `&self` is later dropped here
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Sync`
@@ -117,12 +117,12 @@ LL | async fn generic_future<T>(t: T) -> T
    |                                     ^ future returned by `generic_future` is not `Send`
    |
 note: future is not `Send` as this value is used across an await
-  --> $DIR/future_not_send.rs:54:5
+  --> $DIR/future_not_send.rs:54:19
    |
 LL |     let rt = &t;
    |         -- has type `&T` which is not `Send`
 LL |     async { true }.await;
-   |     ^^^^^^^^^^^^^^^^^^^^ await occurs here, with `rt` maybe used later
+   |                   ^^^^^^ await occurs here, with `rt` maybe used later
 LL |     t
 LL | }
    | - `rt` is later dropped here
