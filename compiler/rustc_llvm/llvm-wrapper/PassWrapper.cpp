@@ -1,3 +1,6 @@
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#endif
 #include <stdio.h>
 
 #include <vector>
