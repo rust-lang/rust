@@ -386,7 +386,18 @@ fn concat_expand(
 ) -> ExpandResult<Option<ExpandedEager>> {
     let mut err = None;
     let mut text = String::new();
-    for (i, t) in tt.token_trees.iter().enumerate() {
+    for (i, mut t) in tt.token_trees.iter().enumerate() {
+        // FIXME: hack on top of a hack: `$e:expr` captures get surrounded in parentheses
+        // to ensure the right parsing order, so skip the parentheses here. Ideally we'd
+        // implement rustc's model. cc https://github.com/rust-analyzer/rust-analyzer/pull/10623
+        if let tt::TokenTree::Subtree(tt::Subtree { delimiter: Some(delim), token_trees }) = t {
+            if let [tt] = &**token_trees {
+                if delim.kind == tt::DelimiterKind::Parenthesis {
+                    t = tt;
+                }
+            }
+        }
+
         match t {
             tt::TokenTree::Leaf(tt::Leaf::Literal(it)) if i % 2 == 0 => {
                 // concat works with string and char literals, so remove any quotes.
