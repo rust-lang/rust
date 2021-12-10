@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 // ignore-wasm32-bare compiled with panic=abort by default
 // compile-flags: -C debug_assertions=yes
 
