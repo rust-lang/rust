@@ -243,7 +243,7 @@ fn name_of_type(ty: &hir::Type, db: &RootDatabase) -> Option<String> {
     } else if let Some(trait_) = ty.as_dyn_trait() {
         trait_name(&trait_, db)?
     } else if let Some(traits) = ty.as_impl_traits(db) {
-        let mut iter = traits.into_iter().filter_map(|t| trait_name(&t, db));
+        let mut iter = traits.filter_map(|t| trait_name(&t, db));
         let name = iter.next()?;
         if iter.next().is_some() {
             return None;

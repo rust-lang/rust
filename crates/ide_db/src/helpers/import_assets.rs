@@ -454,8 +454,10 @@ fn trait_applicable_items(
 
     let db = sema.db;
 
-    let related_dyn_traits =
-        trait_candidate.receiver_ty.applicable_inherent_traits(db).collect::<FxHashSet<_>>();
+    let inherent_traits = trait_candidate.receiver_ty.applicable_inherent_traits(db);
+    let env_traits = trait_candidate.receiver_ty.env_traits(db);
+    let related_traits = inherent_traits.chain(env_traits).collect::<FxHashSet<_>>();
+
     let mut required_assoc_items = FxHashSet::default();
     let trait_candidates = items_locator::items_with_name(
         sema,
@@ -467,7 +469,7 @@ fn trait_applicable_items(
     .filter_map(|input| item_as_assoc(db, input))
     .filter_map(|assoc| {
         let assoc_item_trait = assoc.containing_trait(db)?;
-        if related_dyn_traits.contains(&assoc_item_trait) {
+        if related_traits.contains(&assoc_item_trait) {
             None
         } else {
             required_assoc_items.insert(assoc);

@@ -719,7 +719,7 @@ fn iterate_trait_method_candidates(
     let env_traits = match self_ty.value.kind(&Interner) {
         TyKind::Placeholder(_) => {
             // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
-            env.traits_in_scope_from_clauses(&self_ty.value)
+            env.traits_in_scope_from_clauses(self_ty.value.clone())
                 .flat_map(|t| all_super_traits(db.upcast(), t))
                 .collect()
         }

@@ -924,6 +924,44 @@ mod bar {
             "#,
         expect![[r#""#]],
     );
+    check(
+        r#"
+mod baz {
+    pub trait DefDatabase {
+        fn method1(&self);
+    }
+    pub trait HirDatabase: DefDatabase {
+        fn method2(&self);
+    }
+}
+
+mod bar {
+    fn test(db: &impl crate::baz::HirDatabase) {
+        db.metho$0
+    }
+}
+"#,
+        expect![[r#""#]],
+    );
+    check(
+        r#"
+mod baz {
+    pub trait DefDatabase {
+        fn method1(&self);
+    }
+    pub trait HirDatabase: DefDatabase {
+        fn method2(&self);
+    }
+}
+
+mod bar {
+    fn test<T: crate::baz::HirDatabase>(db: T) {
+        db.metho$0
+    }
+}
+"#,
+        expect![[r#""#]],
+    );
 }
 
 #[test]
