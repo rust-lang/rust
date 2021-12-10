@@ -1,4 +1,4 @@
-use hir::{HasVisibility, ModuleDef, Visibility};
+use hir::{AsAssocItem, HasVisibility, ModuleDef, Visibility};
 use ide_db::assists::{AssistId, AssistKind};
 use stdx::to_lower_snake_case;
 use syntax::{
@@ -42,7 +42,7 @@ pub(crate) fn generate_documentation_template(
 ) -> Option<()> {
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let ast_func = name.syntax().parent().and_then(ast::Fn::cast)?;
-    if is_in_trait_impl(&ast_func)
+    if is_in_trait_impl(&ast_func, ctx)
         || !is_public(&ast_func, ctx)?
         || ast_func.doc_comments().next().is_some()
     {
@@ -94,7 +94,7 @@ fn introduction_builder(ast_func: &ast::Fn) -> String {
 
 /// Builds an `# Examples` section. An option is returned to be able to manage an error in the AST.
 fn examples_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Vec<String>> {
-    let (no_panic_ex, panic_ex) = if is_in_trait_def(ast_func) {
+    let (no_panic_ex, panic_ex) = if is_in_trait_def(ast_func, ctx) {
         let message = "// Example template not implemented for trait functions";
         (Some(vec![message.into()]), Some(vec![message.into()]))
     } else {
@@ -275,18 +275,21 @@ fn self_partial_type(ast_func: &ast::Fn) -> Option<String> {
 }
 
 /// Helper function to determine if the function is in a trait implementation
-fn is_in_trait_impl(ast_func: &ast::Fn) -> bool {
-    ast_func
-        .syntax()
-        .ancestors()
-        .find_map(ast::Impl::cast)
-        .and_then(|impl_| impl_.trait_())
+fn is_in_trait_impl(ast_func: &ast::Fn, ctx: &AssistContext) -> bool {
+    ctx.sema
+        .to_def(ast_func)
+        .and_then(|hir_func| hir_func.as_assoc_item(ctx.db()))
+        .and_then(|assoc_item| assoc_item.containing_trait_impl(ctx.db()))
         .is_some()
 }
 
 /// Helper function to determine if the function definition is in a trait definition
-fn is_in_trait_def(ast_func: &ast::Fn) -> bool {
-    ast_func.syntax().ancestors().find_map(ast::Trait::cast).is_some()
+fn is_in_trait_def(ast_func: &ast::Fn, ctx: &AssistContext) -> bool {
+    ctx.sema
+        .to_def(ast_func)
+        .and_then(|hir_func| hir_func.as_assoc_item(ctx.db()))
+        .and_then(|assoc_item| assoc_item.containing_trait(ctx.db()))
+        .is_some()
 }
 
 /// Returns `None` if no `self` at all, `Some(true)` if there is `&mut self` else `Some(false)`
