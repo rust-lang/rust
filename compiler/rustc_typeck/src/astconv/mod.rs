@@ -1350,7 +1350,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     tcx,
                     span,
                     item.trait_ref().def_id(),
-                    &object_safety_violations[..],
+                    &object_safety_violations,
                 )
                 .emit();
                 return tcx.ty_error();

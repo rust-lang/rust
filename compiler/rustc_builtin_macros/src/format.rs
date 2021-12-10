@@ -549,7 +549,7 @@ impl<'a, 'b> Context<'a, 'b> {
                             } else {
                                 self.fmtsp
                             };
-                            let mut err = self.ecx.struct_span_err(sp, &msg[..]);
+                            let mut err = self.ecx.struct_span_err(sp, &msg);
 
                             err.note(&format!(
                                 "did you intend to capture a variable `{}` from \

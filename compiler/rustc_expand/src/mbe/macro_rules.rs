@@ -253,7 +253,7 @@ fn generic_extension<'cx>(
     for (i, lhs) in lhses.iter().enumerate() {
         // try each arm's matchers
         let lhs_tt = match *lhs {
-            mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
+            mbe::TokenTree::Delimited(_, ref delim) => &delim.tts,
             _ => cx.span_bug(sp, "malformed macro lhs"),
         };
 
@@ -353,7 +353,7 @@ fn generic_extension<'cx>(
         for lhs in lhses {
             // try each arm's matchers
             let lhs_tt = match *lhs {
-                mbe::TokenTree::Delimited(_, ref delim) => &delim.tts[..],
+                mbe::TokenTree::Delimited(_, ref delim) => &delim.tts,
                 _ => continue,
             };
             if let Success(_) =
@@ -677,11 +677,11 @@ impl FirstSets {
                         first.replace_with(tt.clone());
                     }
                     TokenTree::Delimited(span, ref delimited) => {
-                        build_recur(sets, &delimited.tts[..]);
+                        build_recur(sets, &delimited.tts);
                         first.replace_with(delimited.open_tt(span));
                     }
                     TokenTree::Sequence(sp, ref seq_rep) => {
-                        let subfirst = build_recur(sets, &seq_rep.tts[..]);
+                        let subfirst = build_recur(sets, &seq_rep.tts);
 
                         match sets.first.entry(sp.entire()) {
                             Entry::Vacant(vac) => {
@@ -748,7 +748,7 @@ impl FirstSets {
                     let subfirst = match self.first.get(&sp.entire()) {
                         Some(&Some(ref subfirst)) => subfirst,
                         Some(&None) => {
-                            subfirst_owned = self.first(&seq_rep.tts[..]);
+                            subfirst_owned = self.first(&seq_rep.tts);
                             &subfirst_owned
                         }
                         None => {

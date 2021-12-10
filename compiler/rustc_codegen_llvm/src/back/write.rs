@@ -510,7 +510,7 @@ pub(crate) unsafe fn optimize(
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> Result<(), FatalError> {
-    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &module.name[..]);
+    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
 
     let llmod = module.module_llvm.llmod();
     let llcx = &*module.module_llvm.llcx;
@@ -663,14 +663,14 @@ pub(crate) unsafe fn optimize(
         {
             let _timer = cgcx.prof.extra_verbose_generic_activity(
                 "LLVM_module_optimize_function_passes",
-                &module.name[..],
+                &*module.name,
             );
             llvm::LLVMRustRunFunctionPassManager(fpm, llmod);
         }
         {
             let _timer = cgcx.prof.extra_verbose_generic_activity(
                 "LLVM_module_optimize_module_passes",
-                &module.name[..],
+                &*module.name,
             );
             llvm::LLVMRunPassManager(mpm, llmod);
         }
@@ -733,7 +733,7 @@ pub(crate) unsafe fn codegen(
     module: ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> Result<CompiledModule, FatalError> {
-    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &module.name[..]);
+    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
     {
         let llmod = module.module_llvm.llmod();
         let llcx = &*module.module_llvm.llcx;
@@ -782,7 +782,7 @@ pub(crate) unsafe fn codegen(
         if config.bitcode_needed() {
             let _timer = cgcx
                 .prof
-                .generic_activity_with_arg("LLVM_module_codegen_make_bitcode", &module.name[..]);
+                .generic_activity_with_arg("LLVM_module_codegen_make_bitcode", &*module.name);
             let thin = ThinBuffer::new(llmod);
             let data = thin.data();
 
@@ -795,10 +795,9 @@ pub(crate) unsafe fn codegen(
             }
 
             if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
-                let _timer = cgcx.prof.generic_activity_with_arg(
-                    "LLVM_module_codegen_emit_bitcode",
-                    &module.name[..],
-                );
+                let _timer = cgcx
+                    .prof
+                    .generic_activity_with_arg("LLVM_module_codegen_emit_bitcode", &*module.name);
                 if let Err(e) = fs::write(&bc_out, data) {
                     let msg = format!("failed to write bytecode to {}: {}", bc_out.display(), e);
                     diag_handler.err(&msg);
@@ -806,18 +805,16 @@ pub(crate) unsafe fn codegen(
             }
 
             if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
-                let _timer = cgcx.prof.generic_activity_with_arg(
-                    "LLVM_module_codegen_embed_bitcode",
-                    &module.name[..],
-                );
+                let _timer = cgcx
+                    .prof
+                    .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
                 embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
             }
         }
 
         if config.emit_ir {
-            let _timer = cgcx
-                .prof
-                .generic_activity_with_arg("LLVM_module_codegen_emit_ir", &module.name[..]);
+            let _timer =
+                cgcx.prof.generic_activity_with_arg("LLVM_module_codegen_emit_ir", &*module.name);
             let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
             let out_c = path_to_c_string(&out);
 
@@ -866,9 +863,8 @@ pub(crate) unsafe fn codegen(
         }
 
         if config.emit_asm {
-            let _timer = cgcx
-                .prof
-                .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &module.name[..]);
+            let _timer =
+                cgcx.prof.generic_activity_with_arg("LLVM_module_codegen_emit_asm", &*module.name);
             let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
 
             // We can't use the same module for asm and object code output,
@@ -898,7 +894,7 @@ pub(crate) unsafe fn codegen(
             EmitObj::ObjectCode(_) => {
                 let _timer = cgcx
                     .prof
-                    .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
+                    .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &*module.name);
 
                 let dwo_out = cgcx.output_filenames.temp_path_dwo(module_name);
                 let dwo_out = match cgcx.split_debuginfo {

@@ -175,12 +175,12 @@ pub(super) fn transcribe<'a>(
                         ));
                     }
 
-                    LockstepIterSize::Contradiction(ref msg) => {
+                    LockstepIterSize::Contradiction(msg) => {
                         // FIXME: this really ought to be caught at macro definition time... It
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        return Err(cx.struct_span_err(seq.span(), &msg[..]));
+                        return Err(cx.struct_span_err(seq.span(), &msg));
                     }
 
                     LockstepIterSize::Constraint(len, _) => {

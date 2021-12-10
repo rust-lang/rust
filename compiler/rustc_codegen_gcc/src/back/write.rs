@@ -32,7 +32,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, _diag_han
         if config.emit_asm {
             let _timer = cgcx
                 .prof
-                .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &module.name[..]);
+                .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &*module.name);
             let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
             context.compile_to_file(OutputKind::Assembler, path.to_str().expect("path to str"));
         }
@@ -41,7 +41,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, _diag_han
             EmitObj::ObjectCode(_) => {
                 let _timer = cgcx
                     .prof
-                    .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
+                    .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &*module.name);
                 match &*module.name {
                     "std_example.7rcbfp3g-cgu.15" => {
                         println!("Dumping reproducer {}", module.name);

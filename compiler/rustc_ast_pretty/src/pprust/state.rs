@@ -499,7 +499,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             ast::MetaItemKind::List(ref items) => {
                 self.print_path(&item.path, false, 0);
                 self.popen();
-                self.commasep(Consistent, &items[..], |s, i| s.print_meta_list_item(i));
+                self.commasep(Consistent, &items, |s, i| s.print_meta_list_item(i));
                 self.pclose();
             }
         }
@@ -997,7 +997,7 @@ impl<'a> State<'a> {
             }
             ast::TyKind::Tup(ref elts) => {
                 self.popen();
-                self.commasep(Inconsistent, &elts[..], |s, ty| s.print_type(ty));
+                self.commasep(Inconsistent, &elts, |s, ty| s.print_type(ty));
                 if elts.len() == 1 {
                     self.word(",");
                 }
@@ -1017,10 +1017,10 @@ impl<'a> State<'a> {
             ast::TyKind::Path(Some(ref qself), ref path) => self.print_qpath(path, qself, false),
             ast::TyKind::TraitObject(ref bounds, syntax) => {
                 let prefix = if syntax == ast::TraitObjectSyntax::Dyn { "dyn" } else { "" };
-                self.print_type_bounds(prefix, &bounds[..]);
+                self.print_type_bounds(prefix, &bounds);
             }
             ast::TyKind::ImplTrait(_, ref bounds) => {
-                self.print_type_bounds("impl", &bounds[..]);
+                self.print_type_bounds("impl", &bounds);
             }
             ast::TyKind::Array(ref ty, ref length) => {
                 self.word("[");
@@ -1339,7 +1339,7 @@ impl<'a> State<'a> {
                         real_bounds.push(b.clone());
                     }
                 }
-                self.print_type_bounds(":", &real_bounds[..]);
+                self.print_type_bounds(":", &real_bounds);
                 self.print_where_clause(&generics.where_clause);
                 self.word(" ");
                 self.bopen();
@@ -1368,7 +1368,7 @@ impl<'a> State<'a> {
                     }
                 }
                 self.nbsp();
-                self.print_type_bounds("=", &real_bounds[..]);
+                self.print_type_bounds("=", &real_bounds);
                 self.print_where_clause(&generics.where_clause);
                 self.word(";");
             }
@@ -1960,10 +1960,10 @@ impl<'a> State<'a> {
                 self.print_expr_tup(exprs);
             }
             ast::ExprKind::Call(ref func, ref args) => {
-                self.print_expr_call(func, &args[..]);
+                self.print_expr_call(func, &args);
             }
             ast::ExprKind::MethodCall(ref segment, ref args, _) => {
-                self.print_expr_method_call(segment, &args[..]);
+                self.print_expr_method_call(segment, &args);
             }
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
                 self.print_expr_binary(op, lhs, rhs);
@@ -2440,11 +2440,11 @@ impl<'a> State<'a> {
                     self.print_path(path, true, 0);
                 }
                 self.popen();
-                self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
+                self.commasep(Inconsistent, &elts, |s, p| s.print_pat(p));
                 self.pclose();
             }
             PatKind::Or(ref pats) => {
-                self.strsep("|", true, Inconsistent, &pats[..], |s, p| s.print_pat(p));
+                self.strsep("|", true, Inconsistent, &pats, |s, p| s.print_pat(p));
             }
             PatKind::Path(None, ref path) => {
                 self.print_path(path, true, 0);
@@ -2462,7 +2462,7 @@ impl<'a> State<'a> {
                 self.word_space("{");
                 self.commasep_cmnt(
                     Consistent,
-                    &fields[..],
+                    &fields,
                     |s, f| {
                         s.cbox(INDENT_UNIT);
                         if !f.is_shorthand {
@@ -2485,7 +2485,7 @@ impl<'a> State<'a> {
             }
             PatKind::Tuple(ref elts) => {
                 self.popen();
-                self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
+                self.commasep(Inconsistent, &elts, |s, p| s.print_pat(p));
                 if elts.len() == 1 {
                     self.word(",");
                 }
@@ -2527,7 +2527,7 @@ impl<'a> State<'a> {
             }
             PatKind::Slice(ref elts) => {
                 self.word("[");
-                self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
+                self.commasep(Inconsistent, &elts, |s, p| s.print_pat(p));
                 self.word("]");
             }
             PatKind::Rest => self.word(".."),
@@ -2836,7 +2836,7 @@ impl<'a> State<'a> {
                     self.print_path(&tree.prefix, false, 0);
                     self.word("::{");
                 }
-                self.commasep(Inconsistent, &items[..], |this, &(ref tree, _)| {
+                self.commasep(Inconsistent, &items, |this, &(ref tree, _)| {
                     this.print_use_tree(tree)
                 });
                 self.word("}");
