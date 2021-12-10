@@ -794,13 +794,11 @@ fn compute_layout<'tcx>(
     // (RETURNED, POISONED) of the function.
     const RESERVED_VARIANTS: usize = 3;
     let body_span = body.source_scopes[OUTERMOST_SOURCE_SCOPE].span;
-    let mut variant_source_info: IndexVec<VariantIdx, SourceInfo> = [
+    let mut variant_source_info: IndexVec<VariantIdx, SourceInfo> = std::array::IntoIter::new([
         SourceInfo::outermost(body_span.shrink_to_lo()),
         SourceInfo::outermost(body_span.shrink_to_hi()),
         SourceInfo::outermost(body_span.shrink_to_hi()),
-    ]
-    .iter()
-    .copied()
+    ])
     .collect();
 
     // Build the generator variant field list.
@@ -1258,7 +1256,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             ty::Generator(_, substs, movability) => {
                 let substs = substs.as_generator();
                 (
-                    substs.upvar_tys().collect(),
+                    substs.upvar_tys().collect::<Vec<_>>(),
                     substs.witness(),
                     substs.discr_ty(tcx),
                     movability == hir::Movability::Movable,
@@ -1291,8 +1289,21 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // When first entering the generator, move the resume argument into its new local.
         let source_info = SourceInfo::outermost(body.span);
-        let stmts = &mut body.basic_blocks_mut()[BasicBlock::new(0)].statements;
-        stmts.insert(
+
+        let mut upvar_collector = ExtractGeneratorUpvarLocals::default();
+        for (block, data) in body.basic_blocks().iter_enumerated() {
+            upvar_collector.visit_basic_block_data(block, data);
+        }
+        let upvar_locals = upvar_collector.finish();
+        tracing::info!("Upvar locals: {:?}", upvar_locals);
+        tracing::info!("Upvar count: {:?}", upvars.len());
+        if upvar_locals.len() != upvars.len() {
+            eprintln!("{:#?}", body);
+            assert_eq!(upvar_locals.len(), upvars.len());
+        }
+
+        let first_block = &mut body.basic_blocks_mut()[BasicBlock::new(0)];
+        first_block.statements.insert(
             0,
             Statement {
                 source_info,
@@ -1372,6 +1383,53 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // Create the Generator::resume function
         create_generator_resume_function(tcx, transform, body, can_return);
+    }
+}
+
+/// Finds locals that are assigned from generator upvars.
+#[derive(Default)]
+struct ExtractGeneratorUpvarLocals {
+    upvar_locals: FxHashMap<Field, Vec<Local>>,
+}
+
+impl ExtractGeneratorUpvarLocals {
+    fn finish(self) -> FxHashMap<Field, Vec<Local>> {
+        self.upvar_locals
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for ExtractGeneratorUpvarLocals {
+    fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+        let mut visitor = FindGeneratorFieldAccess { field_index: None };
+        visitor.visit_rvalue(rvalue, location);
+
+        if let Some(field_index) = visitor.field_index {
+            self.upvar_locals.entry(field_index).or_insert_with(|| vec![]).push(place.local);
+        }
+    }
+}
+
+struct FindGeneratorFieldAccess {
+    field_index: Option<Field>,
+}
+
+impl<'tcx> Visitor<'tcx> for FindGeneratorFieldAccess {
+    fn visit_projection(
+        &mut self,
+        place_ref: PlaceRef<'tcx>,
+        _context: PlaceContext,
+        _location: Location,
+    ) {
+        tracing::info!("visit_projection, place_ref={:#?}", place_ref);
+
+        if place_ref.local.as_usize() == 1 {
+            if !place_ref.projection.is_empty() {
+                if let Some(ProjectionElem::Field(field, _)) = place_ref.projection.get(0) {
+                    assert!(self.field_index.is_none());
+                    self.field_index = Some(*field);
+                }
+            }
+        }
     }
 }
 
