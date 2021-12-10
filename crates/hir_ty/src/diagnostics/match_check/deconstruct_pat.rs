@@ -50,6 +50,7 @@ use std::{
 use hir_def::{EnumVariantId, HasModule, LocalFieldId, VariantId};
 use smallvec::{smallvec, SmallVec};
 use stdx::never;
+use syntax::SmolStr;
 
 use crate::{AdtId, Interner, Scalar, Ty, TyExt, TyKind};
 
@@ -905,7 +906,7 @@ fn is_field_list_non_exhaustive(variant_id: VariantId, cx: &MatchCheckCtx<'_>) -
 
 fn adt_is_box(adt: hir_def::AdtId, cx: &MatchCheckCtx<'_>) -> bool {
     use hir_def::lang_item::LangItemTarget;
-    match cx.db.lang_item(cx.module.krate(), "owned_box".into()) {
+    match cx.db.lang_item(cx.module.krate(), SmolStr::new_inline("owned_box")) {
         Some(LangItemTarget::StructId(box_id)) => adt == box_id.into(),
         _ => false,
     }

@@ -20,6 +20,7 @@ use hir_def::{
 };
 use hir_expand::{hygiene::Hygiene, name::Name};
 use itertools::Itertools;
+use syntax::SmolStr;
 
 use crate::{
     const_from_placeholder_idx,
@@ -774,8 +775,9 @@ impl SizedByDefault {
         match self {
             Self::NotSized => false,
             Self::Sized { anchor } => {
-                let sized_trait =
-                    db.lang_item(anchor, "sized".into()).and_then(|lang_item| lang_item.as_trait());
+                let sized_trait = db
+                    .lang_item(anchor, SmolStr::new_inline("sized"))
+                    .and_then(|lang_item| lang_item.as_trait());
                 Some(trait_) == sized_trait
             }
         }

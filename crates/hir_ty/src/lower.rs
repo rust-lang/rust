@@ -28,7 +28,7 @@ use la_arena::ArenaMap;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use stdx::impl_from;
-use syntax::ast;
+use syntax::{ast, SmolStr};
 
 use crate::all_super_traits;
 use crate::{
@@ -797,7 +797,7 @@ impl<'a> TyLoweringContext<'a> {
                 let sized_trait = self
                     .resolver
                     .krate()
-                    .and_then(|krate| self.db.lang_item(krate, "sized".into()))
+                    .and_then(|krate| self.db.lang_item(krate, SmolStr::new_inline("sized")))
                     .and_then(|lang_item| lang_item.as_trait());
                 // Don't lower associated type bindings as the only possible relaxed trait bound
                 // `?Sized` has no of them.
@@ -895,7 +895,7 @@ impl<'a> TyLoweringContext<'a> {
                 let krate = func.lookup(ctx.db.upcast()).module(ctx.db.upcast()).krate();
                 let sized_trait = ctx
                     .db
-                    .lang_item(krate, "sized".into())
+                    .lang_item(krate, SmolStr::new_inline("sized"))
                     .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
                 let sized_clause = sized_trait.map(|trait_id| {
                     let clause = WhereClause::Implemented(TraitRef {
@@ -1200,7 +1200,7 @@ fn implicitly_sized_clauses<'a>(
     let generic_args = &substitution.as_slice(&Interner)[is_trait_def as usize..];
     let sized_trait = resolver
         .krate()
-        .and_then(|krate| db.lang_item(krate, "sized".into()))
+        .and_then(|krate| db.lang_item(krate, SmolStr::new_inline("sized")))
         .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
 
     sized_trait.into_iter().flat_map(move |sized_trait| {

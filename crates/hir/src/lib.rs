@@ -2427,7 +2427,7 @@ impl Type {
         let krate = self.krate;
 
         let std_future_trait =
-            db.lang_item(krate, "future_trait".into()).and_then(|it| it.as_trait());
+            db.lang_item(krate, SmolStr::new_inline("future_trait")).and_then(|it| it.as_trait());
         let std_future_trait = match std_future_trait {
             Some(it) => it,
             None => return false,
@@ -2516,7 +2516,7 @@ impl Type {
     }
 
     pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {
-        let lang_item = db.lang_item(self.krate, SmolStr::new("copy"));
+        let lang_item = db.lang_item(self.krate, SmolStr::new_inline("copy"));
         let copy_trait = match lang_item {
             Some(LangItemTarget::TraitId(it)) => it,
             _ => return false,
