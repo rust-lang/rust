@@ -133,21 +133,26 @@ const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 // case-sensitive (as opposed to base64, for example).
 const INT_ENCODE_BASE: usize = base_n::CASE_INSENSITIVE;
 
+/// Returns the path to a session's dependency graph.
 pub fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
 }
+/// Returns the path to a session's staging dependency graph.
+///
+/// On the difference between dep-graph and staging dep-graph,
+/// see `build_dep_graph`.
 pub fn staging_dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, STAGING_DEP_GRAPH_FILENAME)
 }
-
 pub fn work_products_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, WORK_PRODUCTS_FILENAME)
 }
-
+/// Returns the path to a session's query cache.
 pub fn query_cache_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, QUERY_CACHE_FILENAME)
 }
 
+/// Locks a given session directory.
 pub fn lock_file_path(session_dir: &Path) -> PathBuf {
     let crate_dir = session_dir.parent().unwrap();
 
@@ -166,23 +171,35 @@ pub fn lock_file_path(session_dir: &Path) -> PathBuf {
     crate_dir.join(&directory_name[0..dash_indices[2]]).with_extension(&LOCK_FILE_EXT[1..])
 }
 
+/// Returns the path for a given filename within the incremental compilation directory
+/// in the current session.
 pub fn in_incr_comp_dir_sess(sess: &Session, file_name: &str) -> PathBuf {
     in_incr_comp_dir(&sess.incr_comp_session_dir(), file_name)
 }
 
+/// Returns the path for a given filename within the incremental compilation directory,
+/// not necessarily from the current session.
+///
+/// To ensure the file is part of the current session, use [`in_incr_comp_dir_sess`].
 pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBuf {
     incr_comp_session_dir.join(file_name)
 }
 
-/// Allocates the private session directory. The boolean in the Ok() result
-/// indicates whether we should try loading a dep graph from the successfully
-/// initialized directory, or not.
-/// The post-condition of this fn is that we have a valid incremental
-/// compilation session directory, if the result is `Ok`. A valid session
+/// Allocates the private session directory.
+///
+/// If the result of this function is `Ok`, we have a valid incremental
+/// compilation session directory. A valid session
 /// directory is one that contains a locked lock file. It may or may not contain
 /// a dep-graph and work products from a previous session.
-/// If the call fails, the fn may leave behind an invalid session directory.
+///
+/// This always attempts to load a dep-graph from the directory.
+/// If loading fails for some reason, we fallback to a disabled `DepGraph`.
+/// See [`rustc_interface::queries::dep_graph`].
+///
+/// If this function returns an error, it may leave behind an invalid session directory.
 /// The garbage collection will take care of it.
+///
+/// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
 pub fn prepare_session_directory(
     sess: &Session,
     crate_name: &str,
@@ -661,6 +678,7 @@ fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
     timestamp < SystemTime::now() - Duration::from_secs(10)
 }
 
+/// Runs garbage collection for the current session.
 pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     debug!("garbage_collect_session_directories() - begin");
 
