@@ -2018,9 +2018,15 @@ impl Rewrite for ast::Param {
                 {
                     result.push_str(&ty_str);
                 } else {
+                    let prev_str = if param_attrs_result.is_empty() {
+                        param_attrs_result
+                    } else {
+                        param_attrs_result + &shape.to_string_with_newline(context.config)
+                    };
+
                     result = combine_strs_with_missing_comments(
                         context,
-                        &(param_attrs_result + &shape.to_string_with_newline(context.config)),
+                        &prev_str,
                         param_name,
                         span,
                         shape,
