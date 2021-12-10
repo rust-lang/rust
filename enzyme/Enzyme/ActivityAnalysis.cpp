@@ -1147,6 +1147,11 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         goto activeLoadAndStore;
       if (notForAnalysis.count(&BB))
         continue;
+      auto IVal = dyn_cast<Instruction>(Val);
+      if (IVal && IVal->getParent() != &BB &&
+          TR.analyzer.DT->dominates(&BB, IVal->getParent())) {
+        continue;
+      }
       for (Instruction &I : BB) {
         if (potentialStore && potentiallyActiveLoad)
           goto activeLoadAndStore;
@@ -1315,10 +1320,27 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
                     Intrinsic::nvvm_ldg_global_f))) {
             // If the ref'ing value is a load check if the loaded value is
             // active
-            potentiallyActiveLoad = !Hypothesis->isConstantValue(TR, &I);
+            if (!Hypothesis->isConstantValue(TR, &I)) {
+              potentiallyActiveLoad = true;
+              if (TR.query(&I)[{-1}].isPossiblePointer()) {
+                if (EnzymePrintActivity)
+                  llvm::errs()
+                      << "potential active store via pointer in load: " << I
+                      << " of " << *Val << "\n";
+                potentialStore = true;
+              }
+            }
           } else if (auto MTI = dyn_cast<MemTransferInst>(&I)) {
-            potentiallyActiveLoad =
-                !Hypothesis->isConstantValue(TR, MTI->getArgOperand(0));
+            if (!Hypothesis->isConstantValue(TR, MTI->getArgOperand(0))) {
+              potentiallyActiveLoad = true;
+              if (TR.query(Val)[{-1, -1}].isPossiblePointer()) {
+                if (EnzymePrintActivity)
+                  llvm::errs()
+                      << "potential active store via pointer in memcpy: " << I
+                      << " of " << *Val << "\n";
+                potentialStore = true;
+              }
+            }
           } else {
             // Otherwise fallback and check any part of the instruction is
             // active
@@ -1327,36 +1349,57 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             // Notably need both to check the result and instruction since
             // A load that has as result an active pointer is not an active
             // instruction, but does have an active value
-            potentiallyActiveLoad =
-                !Hypothesis->isConstantInstruction(TR, &I) ||
-                !Hypothesis->isConstantValue(TR, &I);
+            if (!Hypothesis->isConstantInstruction(TR, &I) ||
+                !Hypothesis->isConstantValue(TR, &I)) {
+              potentiallyActiveLoad = true;
+              // If this a potential pointer of pointer AND
+              if (TR.query(Val)[{-1, -1}].isPossiblePointer()) {
+                // If this instruction either can store into the inner pointer,
+                // or could return an active loaded pointer(thus into a
+                // potential pointer of pointer
+                if (I.mayWriteToMemory() ||
+                    (!Hypothesis->isConstantValue(TR, &I) &&
+                     TR.query(&I)[{-1}].isPossiblePointer())) {
+                  if (EnzymePrintActivity)
+                    llvm::errs() << "potential active store via pointer in "
+                                    "unknown inst: "
+                                 << I << " of " << *Val << "\n";
+                  potentialStore = true;
+                }
+              }
+            }
           }
         }
         if (!potentialStore && isModSet(AARes)) {
           if (EnzymePrintActivity)
-            llvm::errs() << "potential active store: " << I << "\n";
+            llvm::errs() << "potential active store: " << I << " Val=" << *Val
+                         << "\n";
           if (auto SI = dyn_cast<StoreInst>(&I)) {
-            potentialStore =
-                !Hypothesis->isConstantValue(TR, SI->getValueOperand());
+            bool cop = !Hypothesis->isConstantValue(TR, SI->getValueOperand());
+            if (EnzymePrintActivity)
+              llvm::errs() << " -- store potential activity: " << (int)cop
+                           << " - " << *SI << " of "
+                           << " Val=" << *Val << "\n";
+            potentialStore |= cop;
           } else if (auto MTI = dyn_cast<MemTransferInst>(&I)) {
-            potentialStore =
+            potentialStore |=
                 !Hypothesis->isConstantValue(TR, MTI->getArgOperand(1));
           } else {
             // Otherwise fallback and check if the instruction is active
             // TODO: note that this can be optimized (especially for function
             // calls)
-            potentialStore = !Hypothesis->isConstantInstruction(TR, &I);
+            potentialStore |= !Hypothesis->isConstantInstruction(TR, &I);
           }
         }
       }
     }
 
+  activeLoadAndStore:;
     if (EnzymePrintActivity)
       llvm::errs() << " </MEMSEARCH" << (int)directions << ">" << *Val
                    << " potentiallyActiveLoad=" << potentiallyActiveLoad
                    << " potentialStore=" << potentialStore << "\n";
     if (potentiallyActiveLoad && potentialStore) {
-    activeLoadAndStore:;
       insertAllFrom(TR, *Hypothesis, Val);
       // TODO have insertall dependence on this
       if (TmpOrig != Val)
@@ -1364,8 +1407,8 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
       return false;
     } else {
       // We now know that there isn't a matching active load/store pair in this
-      // function Now the only way that this memory can facilitate a transfer of
-      // active information is if it is done outside of the function
+      // function. Now the only way that this memory can facilitate a transfer
+      // of active information is if it is done outside of the function
 
       // This can happen if either:
       // a) the memory had an active load or store before this function was
@@ -1610,7 +1653,8 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     if (isConstantValue(TR, SI->getValueOperand()) ||
         isConstantValue(TR, SI->getPointerOperand())) {
       if (EnzymePrintActivity)
-        llvm::errs() << " constant instruction as memset " << *inst << "\n";
+        llvm::errs() << " constant instruction as store operand is inactive "
+                     << *inst << "\n";
       return true;
     }
   }
@@ -2011,14 +2055,18 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
   if (!outside)
     assert(directions == DOWN);
 
-  if (StoredOrReturnedCache.find(val) != StoredOrReturnedCache.end()) {
-    return StoredOrReturnedCache[val];
+  bool ignoreStoresInto = true;
+  auto key = std::make_pair(ignoreStoresInto, val);
+  if (StoredOrReturnedCache.find(key) != StoredOrReturnedCache.end()) {
+    return StoredOrReturnedCache[key];
   }
 
   if (EnzymePrintActivity)
-    llvm::errs() << " <ASOR" << (int)directions << ">" << *val << "\n";
+    llvm::errs() << " <ASOR" << (int)directions
+                 << " ignoreStoresinto=" << ignoreStoresInto << ">" << *val
+                 << "\n";
 
-  StoredOrReturnedCache[val] = false;
+  StoredOrReturnedCache[key] = false;
 
   for (const auto a : val->users()) {
     if (isa<AllocaInst>(a)) {
@@ -2034,9 +2082,10 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
         continue;
 
       if (EnzymePrintActivity)
-        llvm::errs() << " </ASOR" << (int)directions << " active from-ret>"
-                     << *val << "\n";
-      StoredOrReturnedCache[val] = true;
+        llvm::errs() << " </ASOR" << (int)directions
+                     << " ignoreStoresInto=" << ignoreStoresInto << ">"
+                     << " active from-ret>" << *val << "\n";
+      StoredOrReturnedCache[key] = true;
       return true;
     }
 
@@ -2054,15 +2103,31 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
       // If we are being stored into, not storing this value
       // this case can be skipped
       if (SI->getValueOperand() != val) {
+        if (!ignoreStoresInto) {
+          // Storing into active value, return true
+          if (!isConstantValue(TR, SI->getValueOperand())) {
+            StoredOrReturnedCache[key] = true;
+            if (EnzymePrintActivity)
+              llvm::errs() << " </ASOR" << (int)directions
+                           << " ignoreStoresInto=" << ignoreStoresInto
+                           << " active from-store>" << *val
+                           << " store into=" << *SI << "\n";
+            return true;
+          }
+        }
         continue;
-      }
-      // Storing into active memory, return true
-      if (!isConstantValue(TR, SI->getPointerOperand())) {
-        StoredOrReturnedCache[val] = true;
-        if (EnzymePrintActivity)
-          llvm::errs() << " </ASOR" << (int)directions << " active from-store>"
-                       << *val << " store=" << *SI << "\n";
-        return true;
+      } else {
+        // Storing into active memory, return true
+        if (!isConstantValue(TR, SI->getPointerOperand())) {
+          StoredOrReturnedCache[key] = true;
+          if (EnzymePrintActivity)
+            llvm::errs() << " </ASOR" << (int)directions
+                         << " ignoreStoresInto=" << ignoreStoresInto
+                         << " active from-store>" << *val << " store=" << *SI
+                         << "\n";
+          return true;
+        }
+        continue;
       }
     }
 
@@ -2107,14 +2172,17 @@ bool ActivityAnalyzer::isValueActivelyStoredOrReturned(TypeResults &TR,
     // TODO handle more memory instructions above to be less conservative
 
     if (EnzymePrintActivity)
-      llvm::errs() << " </ASOR" << (int)directions << " active from-unknown>"
-                   << *val << " - use=" << *a << "\n";
-    return StoredOrReturnedCache[val] = true;
+      llvm::errs() << " </ASOR" << (int)directions
+                   << " ignoreStoresInto=" << ignoreStoresInto
+                   << " active from-unknown>" << *val << " - use=" << *a
+                   << "\n";
+    return StoredOrReturnedCache[key] = true;
   }
 
   if (EnzymePrintActivity)
-    llvm::errs() << " </ASOR" << (int)directions << " inactive>" << *val
-                 << "\n";
+    llvm::errs() << " </ASOR" << (int)directions
+                 << " ignoreStoresInto=" << ignoreStoresInto << " inactive>"
+                 << *val << "\n";
   return false;
 }
 

@@ -68,19 +68,10 @@ attributes #4 = { nounwind }
 ; CHECK: pop - {} |{}:{}
 ; CHECK-NEXT: i64 %arr.coerce0: {[-1]:Float@double}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %arr = alloca i64{{(, align 8)?}}: {[-1]:Pointer, [-1,0]:Float@double}
+; CHECK-NEXT:   %arr = alloca i64{{(, align 8)?}}: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT:   store i64 %arr.coerce0, i64* %arr{{(, align 4)?}}, !tbaa !2: {}
-; CHECK-NEXT:   %call.i = call i64* @cast(i64* nonnull %arr): {[-1]:Pointer, [-1,0]:Float@double}
+; CHECK-NEXT:   %call.i = call i64* @cast(i64* nonnull %arr): {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT:   %a2 = load i64, i64* %call.i{{(, align 4)?}}: {[-1]:Float@double}
 ; CHECK-NEXT:   %call2 = call i64 @mul(i64 %a2): {[-1]:Float@double}
 ; CHECK-NEXT:   ret i64 %call2: {}
 
-; CHECK: cast - {[-1]:Pointer} |{[-1]:Pointer, [-1,0]:Float@double}:{}
-; CHECK-NEXT: i64* %a: {[-1]:Pointer, [-1,0]:Float@double}
-; CHECK-NEXT: entry
-; CHECK-NEXT:   ret i64* %a: {}
-
-; CHECK: mul - {} |{[-1]:Float@double}:{}
-; CHECK-NEXT: i64 %a: {[-1]:Float@double}
-; CHECK-NEXT: entry
-; CHECK-NEXT:   ret i64 %a: {}

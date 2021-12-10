@@ -66,9 +66,9 @@ attributes #4 = { nounwind }
 ; CHECK: pop - {} |{}:{}
 ; CHECK-NEXT: i64 %arr.coerce0: {[-1]:Integer}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %arr = alloca i64{{(, align 8)?}}: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
+; CHECK-NEXT:   %arr = alloca i64{{(, align 8)?}}: {[-1]:Pointer, [-1,-1]:Integer}
 ; CHECK-NEXT:   store i64 %arr.coerce0, i64* %arr{{(, align 4)?}}: {}
-; CHECK-NEXT:   %call.i = call i64* @cast(i64* nonnull %arr): {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
+; CHECK-NEXT:   %call.i = call i64* @cast(i64* nonnull %arr): {[-1]:Pointer, [-1,-1]:Integer}
 ; CHECK-NEXT:   %a2 = load i64, i64* %call.i{{(, align 4)?}}, !tbaa !2: {[-1]:Integer}
 ; CHECK-NEXT:   %call2 = call i64 @mul(i64 %a2): {[-1]:Integer}
 ; CHECK-NEXT:   ret i64 %call2: {}

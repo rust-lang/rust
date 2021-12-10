@@ -1128,7 +1128,17 @@ void TypeAnalyzer::visitCmpInst(CmpInst &cmp) {
 void TypeAnalyzer::visitAllocaInst(AllocaInst &I) {
   // No directionality check needed as always true
   updateAnalysis(I.getArraySize(), TypeTree(BaseType::Integer).Only(-1), &I);
-  updateAnalysis(&I, TypeTree(BaseType::Pointer).Only(-1), &I);
+
+  auto ptr = TypeTree(BaseType::Pointer);
+
+  if (auto CI = dyn_cast<ConstantInt>(I.getArraySize())) {
+    auto &DL = I.getParent()->getParent()->getParent()->getDataLayout();
+    auto LoadSize = CI->getZExtValue() *
+                    (DL.getTypeSizeInBits(I.getAllocatedType()) + 7) / 8;
+    // Only propagate mappings in range that aren't "Anything" into the pointer
+    ptr |= getAnalysis(&I).Lookup(LoadSize, DL);
+  }
+  updateAnalysis(&I, ptr.Only(-1), &I);
 }
 
 void TypeAnalyzer::visitLoadInst(LoadInst &I) {

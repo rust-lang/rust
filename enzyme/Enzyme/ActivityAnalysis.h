@@ -204,7 +204,7 @@ public:
 private:
   /// StoredOrReturnedCache acts as an inductive cache of results for
   /// isValueActivelyStoredOrReturned
-  std::map<llvm::Value *, bool> StoredOrReturnedCache;
+  std::map<std::pair<bool, llvm::Value *>, bool> StoredOrReturnedCache;
 };
 
 #endif

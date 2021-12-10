@@ -13,7 +13,7 @@ entry:
 ; CHECK-NEXT: <4 x i1> %arg: {[-1]:Integer}
 ; CHECK-NEXT: i64 %idx: {[-1]:Integer}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %ai = alloca <4 x i1>, align 4: {[-1]:Pointer, [-1,0]:Integer}
+; CHECK-NEXT:   %ai = alloca <4 x i1>, align 4: {[-1]:Pointer, [-1,-1]:Integer}
 ; CHECK-NEXT:   %r = shufflevector <4 x i1> %arg, <4 x i1> undef, <4 x i32> zeroinitializer: {[-1]:Integer}
 ; CHECK-NEXT:   %lai = load <4 x i1>, <4 x i1>* %ai, align 4: {[-1]:Integer}
 ; CHECK-NEXT:   %m = insertelement <4 x i1> %lai, i1 true, i64 %idx: {[-1]:Integer}

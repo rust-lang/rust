@@ -1,6 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -adce -correlated-propagation -simplifycfg -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -dce -correlated-propagation -simplifycfg -S | FileCheck %s
 
-; XFAIL: *
 ; a function returning a ptr with no arguments is mistakenly marked as constant in spite of accessing a global
 
 @global = external dso_local local_unnamed_addr global double*, align 8, !enzyme_shadow !{double** @dglobal}
@@ -39,8 +38,8 @@ attributes #2 = { nounwind }
 ; CHECK: define internal { double } @diffemulglobal(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call_augmented = call { double*, double*, double* } @augmented_myglobal()
-; CHECK-NEXT:   %call = extractvalue { double*, double*, double* } %call_augmented, 1
-; CHECK-NEXT:   %"call'ac" = extractvalue { double*, double*, double* } %call_augmented, 2
+; CHECK:   %call = extractvalue { double*, double*, double* } %call_augmented, 1
+; CHECK:   %"call'ac" = extractvalue { double*, double*, double* } %call_augmented, 2
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds double, double* %"call'ac", i64 2
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %call, i64 2
 ; CHECK-NEXT:   %0 = load double, double* %arrayidx, align 8
@@ -49,7 +48,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %1 = load double, double* %"arrayidx'ipg", align 8
 ; CHECK-NEXT:   %2 = fadd fast double %1, %m0diffe
 ; CHECK-NEXT:   store double %2, double* %"arrayidx'ipg", align 8
-; CHECK-NEXT:   %3 = insertvalue { double } undef, double %m1diffex, 0
+; CHECK:   %3 = insertvalue { double } undef, double %m1diffex, 0
 ; CHECK-NEXT:   ret { double } %3
 ; CHECK-NEXT: }
 
