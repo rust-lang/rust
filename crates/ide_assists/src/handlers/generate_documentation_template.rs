@@ -1,8 +1,8 @@
-use hir::ModuleDef;
+use hir::{HasVisibility, ModuleDef, Visibility};
 use ide_db::assists::{AssistId, AssistKind};
 use stdx::to_lower_snake_case;
 use syntax::{
-    ast::{self, edit::IndentLevel, HasDocComments, HasName, HasVisibility},
+    ast::{self, edit::IndentLevel, HasDocComments, HasName},
     AstNode,
 };
 
@@ -43,7 +43,7 @@ pub(crate) fn generate_documentation_template(
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let ast_func = name.syntax().parent().and_then(ast::Fn::cast)?;
     if is_in_trait_impl(&ast_func)
-        || !is_public(&ast_func)
+        || !is_public(&ast_func, ctx)?
         || ast_func.doc_comments().next().is_some()
     {
         return None;
@@ -187,7 +187,7 @@ struct ExHelper {
     self_name: Option<String>,
 }
 
-/// Build the start of the example and transmit the useful intermediary results.
+/// Builds the start of the example and transmit the useful intermediary results.
 /// `None` if the function has a `self` parameter but is not in an `impl`.
 fn gen_ex_start_helper(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<(Vec<String>, ExHelper)> {
     let mut lines = Vec::new();
@@ -209,31 +209,41 @@ fn gen_ex_start_helper(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<(Vec<S
     Some((lines, ex_helper))
 }
 
-/// Check if the function and all its parent modules are exactly `pub`
-fn is_public(ast_func: &ast::Fn) -> bool {
-    has_pub(ast_func)
-        && ast_func
-            .syntax()
-            .ancestors()
-            .filter_map(ast::Module::cast)
-            .all(|module| has_pub(&module))
+/// Checks if the function is public / exported
+fn is_public(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<bool> {
+    let hir_func = ctx.sema.to_def(ast_func)?;
+    Some(
+        hir_func.visibility(ctx.db()) == Visibility::Public
+            && all_parent_mods_public(&hir_func, ctx),
+    )
 }
 
-/// Get the name of the current crate
+/// Checks that all parent modules of the function are public / exported
+fn all_parent_mods_public(hir_func: &hir::Function, ctx: &AssistContext) -> bool {
+    let mut module = hir_func.module(ctx.db());
+    loop {
+        if let Some(parent) = module.parent(ctx.db()) {
+            match ModuleDef::from(module).visibility(ctx.db()) {
+                Visibility::Public => module = parent,
+                _ => break false,
+            }
+        } else {
+            break true;
+        }
+    }
+}
+
+/// Returns the name of the current crate
 fn crate_name(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<String> {
     let krate = ctx.sema.scope(&ast_func.syntax()).module()?.krate();
     Some(krate.display_name(ctx.db())?.to_string())
-}
-
-/// Check if visibility is exactly `pub` (not `pub(crate)` for instance)
-fn has_pub<T: HasVisibility>(item: &T) -> bool {
-    item.visibility().map(|v| v.path().is_none()).unwrap_or(false)
 }
 
 /// `None` if function without a body; some bool to guess if function can panic
 fn can_panic(ast_func: &ast::Fn) -> Option<bool> {
     let body = ast_func.body()?.to_string();
     let can_panic = body.contains("panic!(")
+        // FIXME it would be better to not match `debug_assert*!` macro invocations
         || body.contains("assert!(")
         || body.contains(".unwrap()")
         || body.contains(".expect(");
@@ -387,8 +397,8 @@ fn build_path(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<String> {
     let leaf = self_partial_type(ast_func)
         .or_else(|| ast_func.name().map(|n| n.to_string()))
         .unwrap_or_else(|| "*".into());
-    let func_module_def: ModuleDef = ctx.sema.to_def(ast_func)?.module(ctx.db()).into();
-    match func_module_def.canonical_path(ctx.db()) {
+    let module_def: ModuleDef = ctx.sema.to_def(ast_func)?.module(ctx.db()).into();
+    match module_def.canonical_path(ctx.db()) {
         Some(path) => Some(format!("{}::{}::{}", crate_name, path, leaf)),
         None => Some(format!("{}::{}", crate_name, leaf)),
     }
