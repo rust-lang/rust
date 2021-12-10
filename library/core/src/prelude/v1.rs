@@ -69,22 +69,6 @@ pub use crate::{
 #[doc(no_inline)]
 pub use crate::concat_bytes;
 
-#[unstable(
-    feature = "asm",
-    issue = "72016",
-    reason = "inline assembly is not stable enough for use and is subject to change"
-)]
-#[doc(no_inline)]
-pub use crate::arch::asm;
-
-#[unstable(
-    feature = "global_asm",
-    issue = "35119",
-    reason = "`global_asm!` is not stable enough for use and is subject to change"
-)]
-#[doc(no_inline)]
-pub use crate::arch::global_asm;
-
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated, deprecated_in_future)]
 #[doc(no_inline)]

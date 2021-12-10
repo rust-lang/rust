@@ -3,8 +3,9 @@
 // run-pass
 // needs-asm-support
 
-#![feature(asm, asm_sym, asm_unwind)]
+#![feature(asm_sym, asm_unwind)]
 
+use std::arch::asm;
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
 struct Foo<'a>(&'a mut bool);

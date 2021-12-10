@@ -1,5 +1,5 @@
 error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:13:1
+  --> $DIR/naked-invalid-attr.rs:14:1
    |
 LL |   #[naked]
    |   ^^^^^^^^
@@ -11,13 +11,13 @@ LL | | }
    | |_- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:50:5
+  --> $DIR/naked-invalid-attr.rs:51:5
    |
 LL |     #[naked] || {};
    |     ^^^^^^^^ ----- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:21:5
+  --> $DIR/naked-invalid-attr.rs:22:5
    |
 LL |     #[naked]
    |     ^^^^^^^^
@@ -25,7 +25,7 @@ LL |     extern "C" fn invoke(&self);
    |     ---------------------------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:9:5
+  --> $DIR/naked-invalid-attr.rs:10:5
    |
 LL |     #[naked]
    |     ^^^^^^^^
@@ -33,7 +33,7 @@ LL |     fn f();
    |     ------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:6:1
+  --> $DIR/naked-invalid-attr.rs:5:1
    |
 LL | #![naked]
    | ^^^^^^^^^

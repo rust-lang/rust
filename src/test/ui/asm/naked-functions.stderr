@@ -1,35 +1,35 @@
 error: asm with the `pure` option must have at least one output
-  --> $DIR/naked-functions.rs:135:14
+  --> $DIR/naked-functions.rs:136:14
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
 
 error: patterns not allowed in naked function parameters
-  --> $DIR/naked-functions.rs:22:5
+  --> $DIR/naked-functions.rs:23:5
    |
 LL |     mut a: u32,
    |     ^^^^^
 
 error: patterns not allowed in naked function parameters
-  --> $DIR/naked-functions.rs:24:5
+  --> $DIR/naked-functions.rs:25:5
    |
 LL |     &b: &i32,
    |     ^^
 
 error: patterns not allowed in naked function parameters
-  --> $DIR/naked-functions.rs:26:6
+  --> $DIR/naked-functions.rs:27:6
    |
 LL |     (None | Some(_)): Option<std::ptr::NonNull<u8>>,
    |      ^^^^^^^^^^^^^^
 
 error: patterns not allowed in naked function parameters
-  --> $DIR/naked-functions.rs:28:5
+  --> $DIR/naked-functions.rs:29:5
    |
 LL |     P { x, y }: P,
    |     ^^^^^^^^^^
 
 error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:38:5
+  --> $DIR/naked-functions.rs:39:5
    |
 LL |     a + 1
    |     ^
@@ -37,7 +37,7 @@ LL |     a + 1
    = help: follow the calling convention in asm block to use parameters
 
 warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:35:1
+  --> $DIR/naked-functions.rs:36:1
    |
 LL | / pub unsafe extern "C" fn inc(a: u32) -> u32 {
 LL | |
@@ -53,7 +53,7 @@ LL | | }
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:44:31
+  --> $DIR/naked-functions.rs:45:31
    |
 LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
    |                               ^
@@ -61,7 +61,7 @@ LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
    = help: follow the calling convention in asm block to use parameters
 
 warning: only `const` and `sym` operands are supported in naked functions
-  --> $DIR/naked-functions.rs:44:23
+  --> $DIR/naked-functions.rs:45:23
    |
 LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
    |                       ^^^^^^^^^
@@ -70,7 +70,7 @@ LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:51:1
+  --> $DIR/naked-functions.rs:52:1
    |
 LL | / pub unsafe extern "C" fn inc_closure(a: u32) -> u32 {
 LL | |
@@ -84,7 +84,7 @@ LL | | }
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: only `const` and `sym` operands are supported in naked functions
-  --> $DIR/naked-functions.rs:71:10
+  --> $DIR/naked-functions.rs:72:10
    |
 LL |          in(reg) a,
    |          ^^^^^^^^^
@@ -102,7 +102,7 @@ LL |          out(reg) e,
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:68:5
+  --> $DIR/naked-functions.rs:69:5
    |
 LL | /     asm!("/* {0} {1} {2} {3} {4} {5} {6} */",
 LL | |
@@ -117,7 +117,7 @@ LL | |     );
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:58:1
+  --> $DIR/naked-functions.rs:59:1
    |
 LL | / pub unsafe extern "C" fn unsupported_operands() {
 LL | |
@@ -141,7 +141,7 @@ LL | | }
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:84:1
+  --> $DIR/naked-functions.rs:85:1
    |
 LL | / pub extern "C" fn missing_assembly() {
 LL | |
@@ -153,7 +153,7 @@ LL | | }
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:93:5
+  --> $DIR/naked-functions.rs:94:5
    |
 LL |     asm!("");
    |     ^^^^^^^^
@@ -162,7 +162,7 @@ LL |     asm!("");
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:96:5
+  --> $DIR/naked-functions.rs:97:5
    |
 LL |     asm!("");
    |     ^^^^^^^^
@@ -171,7 +171,7 @@ LL |     asm!("");
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:99:5
+  --> $DIR/naked-functions.rs:100:5
    |
 LL |     asm!("");
    |     ^^^^^^^^
@@ -180,7 +180,7 @@ LL |     asm!("");
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:90:1
+  --> $DIR/naked-functions.rs:91:1
    |
 LL | / pub extern "C" fn too_many_asm_blocks() {
 LL | |
@@ -202,7 +202,7 @@ LL | | }
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:110:11
+  --> $DIR/naked-functions.rs:111:11
    |
 LL |         *&y
    |           ^
@@ -210,7 +210,7 @@ LL |         *&y
    = help: follow the calling convention in asm block to use parameters
 
 warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:107:5
+  --> $DIR/naked-functions.rs:108:5
    |
 LL | /     pub extern "C" fn inner(y: usize) -> usize {
 LL | |
@@ -225,7 +225,7 @@ LL | |     }
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: the LLVM-style inline assembly is unsupported in naked functions
-  --> $DIR/naked-functions.rs:120:5
+  --> $DIR/naked-functions.rs:121:5
    |
 LL |     llvm_asm!("");
    |     ^^^^^^^^^^^^^
@@ -236,7 +236,7 @@ LL |     llvm_asm!("");
    = note: this warning originates in the macro `llvm_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:117:1
+  --> $DIR/naked-functions.rs:118:1
    |
 LL | / unsafe extern "C" fn llvm() -> ! {
 LL | |
@@ -252,7 +252,7 @@ LL | | }
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: asm options unsupported in naked functions: `nomem`, `preserves_flags`
-  --> $DIR/naked-functions.rs:128:5
+  --> $DIR/naked-functions.rs:129:5
    |
 LL |     asm!("", options(nomem, preserves_flags, noreturn));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -261,7 +261,7 @@ LL |     asm!("", options(nomem, preserves_flags, noreturn));
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: asm options unsupported in naked functions: `nostack`, `pure`, `readonly`
-  --> $DIR/naked-functions.rs:135:5
+  --> $DIR/naked-functions.rs:136:5
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -270,7 +270,7 @@ LL |     asm!("", options(readonly, nostack), options(pure));
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:135:5
+  --> $DIR/naked-functions.rs:136:5
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -279,7 +279,7 @@ LL |     asm!("", options(readonly, nostack), options(pure));
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:144:15
+  --> $DIR/naked-functions.rs:145:15
    |
 LL | pub unsafe fn default_abi() {
    |               ^^^^^^^^^^^
@@ -287,13 +287,13 @@ LL | pub unsafe fn default_abi() {
    = note: `#[warn(undefined_naked_function_abi)]` on by default
 
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:150:15
+  --> $DIR/naked-functions.rs:151:15
    |
 LL | pub unsafe fn rust_abi() {
    |               ^^^^^^^^
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:190:1
+  --> $DIR/naked-functions.rs:191:1
    |
 LL | #[inline]
    | ^^^^^^^^^
@@ -302,7 +302,7 @@ LL | #[inline]
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:198:1
+  --> $DIR/naked-functions.rs:199:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
@@ -311,7 +311,7 @@ LL | #[inline(always)]
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:206:1
+  --> $DIR/naked-functions.rs:207:1
    |
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^
@@ -320,7 +320,7 @@ LL | #[inline(never)]
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:214:1
+  --> $DIR/naked-functions.rs:215:1
    |
 LL | #[inline]
    | ^^^^^^^^^
@@ -329,7 +329,7 @@ LL | #[inline]
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:217:1
+  --> $DIR/naked-functions.rs:218:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
@@ -338,7 +338,7 @@ LL | #[inline(always)]
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:220:1
+  --> $DIR/naked-functions.rs:221:1
    |
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^

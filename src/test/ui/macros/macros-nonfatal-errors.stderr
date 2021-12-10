@@ -126,12 +126,6 @@ LL |     Foo,
    |
    = help: consider a manual implementation of `Default`
 
-error: asm template must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:99:10
-   |
-LL |     asm!(invalid);
-   |          ^^^^^^^
-
 error: inline assembly must be a string literal
   --> $DIR/macros-nonfatal-errors.rs:100:15
    |
@@ -220,6 +214,15 @@ error: trace_macros! accepts only `true` or `false`
    |
 LL |     trace_macros!(invalid);
    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find macro `asm` in this scope
+  --> $DIR/macros-nonfatal-errors.rs:99:5
+   |
+LL |     asm!(invalid);
+   |     ^^^
+   |
+   = note: consider importing this macro:
+           std::arch::asm
 
 error: aborting due to 27 previous errors
 

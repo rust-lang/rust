@@ -1,6 +1,7 @@
 #![cfg_attr(test, allow(unused))] // RT initialization logic is not compiled for test
 
 use crate::io::Write;
+use core::arch::global_asm;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 // runtime features

@@ -1,17 +1,17 @@
 error: invalid register class `vreg`: unknown register class
-  --> $DIR/issue-82869.rs:9:32
+  --> $DIR/issue-82869.rs:10:32
    |
 LL |     asm!("add {:d}, {:d}, d0", out(vreg) c, in(vreg) a, in("d0") {
    |                                ^^^^^^^^^^^
 
 error: invalid register class `vreg`: unknown register class
-  --> $DIR/issue-82869.rs:9:45
+  --> $DIR/issue-82869.rs:10:45
    |
 LL |     asm!("add {:d}, {:d}, d0", out(vreg) c, in(vreg) a, in("d0") {
    |                                             ^^^^^^^^^^
 
 error: invalid register `d0`: unknown register
-  --> $DIR/issue-82869.rs:9:57
+  --> $DIR/issue-82869.rs:10:57
    |
 LL |       asm!("add {:d}, {:d}, d0", out(vreg) c, in(vreg) a, in("d0") {
    |  _________________________________________________________^

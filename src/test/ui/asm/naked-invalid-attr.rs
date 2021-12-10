@@ -1,9 +1,10 @@
 // Checks that #[naked] attribute can be placed on function definitions only.
 //
 // needs-asm-support
-#![feature(asm)]
 #![feature(naked_functions)]
 #![naked] //~ ERROR should be applied to a function definition
+
+use std::arch::asm;
 
 extern "C" {
     #[naked] //~ ERROR should be applied to a function definition

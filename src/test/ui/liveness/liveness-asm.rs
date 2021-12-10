@@ -3,10 +3,11 @@
 // only-x86_64
 // check-pass
 
-#![feature(asm)]
 #![allow(dead_code)]
 #![warn(unused_assignments)]
 #![warn(unused_variables)]
+
+use std::arch::asm;
 
 // Test the single inout case
 unsafe fn f1(mut src: *const u8) {

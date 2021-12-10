@@ -1,8 +1,6 @@
 // only-aarch64
 // run-rustfix
 
-#![feature(asm, global_asm)]
-
 fn main() {
     unsafe {
         asm!("", options(nomem, ));

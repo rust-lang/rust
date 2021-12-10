@@ -1,6 +1,8 @@
 // only-aarch64
 
-#![feature(asm, repr_simd, never_type, asm_sym)]
+#![feature(repr_simd, never_type, asm_sym)]
+
+use std::arch::asm;
 
 #[repr(simd)]
 #[derive(Clone, Copy)]

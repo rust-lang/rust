@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(global_asm)]
+use std::arch::global_asm;
 
 #[cfg(target_arch = "x86")]
 global_asm!("");

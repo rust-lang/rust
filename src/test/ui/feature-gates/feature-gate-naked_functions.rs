@@ -1,5 +1,6 @@
 // needs-asm-support
-#![feature(asm)]
+
+use std::arch::asm;
 
 #[naked]
 //~^ the `#[naked]` attribute is an experimental feature

@@ -1,7 +1,7 @@
 // only-aarch64
 // run-rustfix
 
-#![feature(asm, global_asm)]
+use std::arch::asm;
 
 fn main() {
     unsafe {
@@ -19,8 +19,8 @@ fn main() {
             "",
             options(nomem, noreturn),
             options(preserves_flags, noreturn), //~ ERROR the `noreturn` option was already provided
-            options(nomem, nostack), //~ ERROR the `nomem` option was already provided
-            options(noreturn), //~ ERROR the `noreturn` option was already provided
+            options(nomem, nostack),            //~ ERROR the `nomem` option was already provided
+            options(noreturn),                  //~ ERROR the `noreturn` option was already provided
         );
     }
 }

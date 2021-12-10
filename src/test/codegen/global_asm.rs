@@ -39,18 +39,21 @@
 // ignore-emscripten
 // compile-flags: -C no-prepopulate-passes
 
-#![feature(global_asm)]
 #![crate_type = "lib"]
+
+use std::arch::global_asm;
 
 // CHECK-LABEL: foo
 // CHECK: module asm
 // this regex will capture the correct unconditional branch inst.
 // CHECK: module asm "{{[[:space:]]+}}jmp baz"
-global_asm!(r#"
+global_asm!(
+    r#"
     .global foo
 foo:
     jmp baz
-"#);
+"#
+);
 
 extern "C" {
     fn foo();

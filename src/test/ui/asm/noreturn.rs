@@ -1,8 +1,10 @@
 // needs-asm-support
 // check-pass
 
-#![feature(asm, never_type)]
+#![feature(never_type)]
 #![crate_type = "rlib"]
+
+use std::arch::asm;
 
 pub unsafe fn asm1() {
     let _: () = asm!("");
