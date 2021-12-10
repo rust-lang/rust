@@ -17,7 +17,7 @@ use core::intrinsics;
 #[naked]
 #[no_mangle]
 pub unsafe extern "C" fn ___chkstk_ms() {
-    asm!(
+    core::arch::asm!(
         "push   %ecx",
         "push   %eax",
         "cmp    $0x1000,%eax",
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn ___chkstk_ms() {
 #[naked]
 #[no_mangle]
 pub unsafe extern "C" fn __alloca() {
-    asm!(
+    core::arch::asm!(
         "jmp ___chkstk", // Jump to ___chkstk since fallthrough may be unreliable"
         options(noreturn, att_syntax)
     );
@@ -64,7 +64,7 @@ pub unsafe extern "C" fn __alloca() {
 #[naked]
 #[no_mangle]
 pub unsafe extern "C" fn ___chkstk() {
-    asm!(
+    core::arch::asm!(
         "push   %ecx",
         "cmp    $0x1000,%eax",
         "lea    8(%esp),%ecx", // esp before calling this routine -> ecx

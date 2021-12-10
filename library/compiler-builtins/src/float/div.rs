@@ -132,8 +132,9 @@ where
     // This doubles the number of correct binary digits in the approximation
     // with each iteration, so after three iterations, we have about 28 binary
     // digits of accuracy.
-    let mut correction: u32;
-    correction = negate_u32(((reciprocal as u64).wrapping_mul(q31b as u64) >> 32) as u32);
+
+    let mut correction: u32 =
+        negate_u32(((reciprocal as u64).wrapping_mul(q31b as u64) >> 32) as u32);
     reciprocal = ((reciprocal as u64).wrapping_mul(correction as u64) as u64 >> 31) as u32;
     correction = negate_u32(((reciprocal as u64).wrapping_mul(q31b as u64) >> 32) as u32);
     reciprocal = ((reciprocal as u64).wrapping_mul(correction as u64) as u64 >> 31) as u32;
@@ -342,8 +343,9 @@ where
     // This doubles the number of correct binary digits in the approximation
     // with each iteration, so after three iterations, we have about 28 binary
     // digits of accuracy.
-    let mut correction32: u32;
-    correction32 = negate_u32(((recip32 as u64).wrapping_mul(q31b as u64) >> 32) as u32);
+
+    let mut correction32: u32 =
+        negate_u32(((recip32 as u64).wrapping_mul(q31b as u64) >> 32) as u32);
     recip32 = ((recip32 as u64).wrapping_mul(correction32 as u64) >> 31) as u32;
     correction32 = negate_u32(((recip32 as u64).wrapping_mul(q31b as u64) >> 32) as u32);
     recip32 = ((recip32 as u64).wrapping_mul(correction32 as u64) >> 31) as u32;
@@ -359,16 +361,15 @@ where
     // We need to perform one more iteration to get us to 56 binary digits;
     // The last iteration needs to happen with extra precision.
     let q63blo = CastInto::<u32>::cast(b_significand << 11.cast());
-    let correction: u64;
-    let mut reciprocal: u64;
-    correction = negate_u64(
+
+    let correction: u64 = negate_u64(
         (recip32 as u64)
             .wrapping_mul(q31b as u64)
             .wrapping_add((recip32 as u64).wrapping_mul(q63blo as u64) >> 32),
     );
     let c_hi = (correction >> 32) as u32;
     let c_lo = correction as u32;
-    reciprocal = (recip32 as u64)
+    let mut reciprocal: u64 = (recip32 as u64)
         .wrapping_mul(c_hi as u64)
         .wrapping_add((recip32 as u64).wrapping_mul(c_lo as u64) >> 32);
 

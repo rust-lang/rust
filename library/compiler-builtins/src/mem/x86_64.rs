@@ -20,7 +20,7 @@
 #[cfg(target_feature = "ermsb")]
 pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
     // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
-    asm!(
+    core::arch::asm!(
         "repe movsb (%rsi), (%rdi)",
         inout("rcx") count => _,
         inout("rdi") dest => _,
@@ -35,7 +35,7 @@ pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
     // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
-    asm!(
+    core::arch::asm!(
         "repe movsq (%rsi), (%rdi)",
         "mov {byte_count:e}, %ecx",
         "repe movsb (%rsi), (%rdi)",
@@ -52,7 +52,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
     // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
-    asm!(
+    core::arch::asm!(
         "std",
         "repe movsq (%rsi), (%rdi)",
         "movl {byte_count:e}, %ecx",
@@ -72,7 +72,7 @@ pub unsafe fn copy_backward(dest: *mut u8, src: *const u8, count: usize) {
 #[cfg(target_feature = "ermsb")]
 pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
     // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
-    asm!(
+    core::arch::asm!(
         "repe stosb %al, (%rdi)",
         inout("rcx") count => _,
         inout("rdi") dest => _,
@@ -87,7 +87,7 @@ pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
     let qword_count = count >> 3;
     let byte_count = count & 0b111;
     // FIXME: Use the Intel syntax once we drop LLVM 9 support on rust-lang/rust.
-    asm!(
+    core::arch::asm!(
         "repe stosq %rax, (%rdi)",
         "mov {byte_count:e}, %ecx",
         "repe stosb %al, (%rdi)",

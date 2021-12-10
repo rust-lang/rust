@@ -5,6 +5,7 @@
 
 public_test_dep! {
 /// Returns the number of leading binary zeros in `x`.
+#[allow(dead_code)]
 pub(crate) fn usize_leading_zeros_default(x: usize) -> usize {
     // The basic idea is to test if the higher bits of `x` are zero and bisect the number
     // of leading zeros. It is possible for all branches of the bisection to use the same
@@ -78,6 +79,7 @@ pub(crate) fn usize_leading_zeros_default(x: usize) -> usize {
 
 public_test_dep! {
 /// Returns the number of leading binary zeros in `x`.
+#[allow(dead_code)]
 pub(crate) fn usize_leading_zeros_riscv(x: usize) -> usize {
     let mut x = x;
     // the number of potential leading zeros
