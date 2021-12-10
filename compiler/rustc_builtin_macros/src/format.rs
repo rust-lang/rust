@@ -995,8 +995,9 @@ pub fn expand_preparsed_format_args(
             e.note(&note);
         }
         if let Some((label, span)) = err.secondary_label {
-            let sp = fmt_span.from_inner(span);
-            e.span_label(sp, label);
+            if efmt_kind_is_lit {
+                e.span_label(fmt_span.from_inner(span), label);
+            }
         }
         e.emit();
         return DummyResult::raw_expr(sp, true);
