@@ -394,7 +394,34 @@ impl Neg for Sugg<'_> {
 impl Not for Sugg<'_> {
     type Output = Sugg<'static>;
     fn not(self) -> Sugg<'static> {
-        make_unop("!", self)
+        use AssocOp::{Equal, Greater, GreaterEqual, Less, LessEqual, NotEqual};
+
+        /// Convert ```AssocOp``` to a string of operators.
+        fn op_as_str(op: AssocOp) -> &'static str {
+            op.to_ast_binop().unwrap().to_string()
+        }
+
+        /// Replace the operator in the Snippet.
+        fn replace_op(from_op: AssocOp, to_op: AssocOp, snip: Cow<'_, str>) -> Sugg<'static> {
+            let from = op_as_str(from_op);
+            let to = op_as_str(to_op);
+            let snip = snip.into_owned().replace(from, to);
+            Sugg::BinOp(to_op, Cow::Owned(snip))
+        }
+
+        if let Sugg::BinOp(op, snip) = self {
+            match op {
+                Equal => replace_op(op, NotEqual, snip),
+                NotEqual => replace_op(op, Equal, snip),
+                Less => replace_op(op, GreaterEqual, snip),
+                GreaterEqual => replace_op(op, Less, snip),
+                Greater => replace_op(op, LessEqual, snip),
+                LessEqual => replace_op(op, Greater, snip),
+                _ => make_unop("!", Sugg::BinOp(op, snip)),
+            }
+        } else {
+            make_unop("!", self)
+        }
     }
 }
 
