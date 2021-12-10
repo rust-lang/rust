@@ -513,7 +513,7 @@ fn test_recovery() {
 }
 
 #[allow(dead_code)]
-fn test_variance() {
+fn assert_covariance() {
     fn set<'new>(v: BTreeSet<&'static str>) -> BTreeSet<&'new str> {
         v
     }
@@ -530,7 +530,7 @@ fn test_variance() {
 }
 
 #[allow(dead_code)]
-fn test_sync() {
+fn assert_sync() {
     fn set<T: Sync>(v: &BTreeSet<T>) -> impl Sync + '_ {
         v
     }
@@ -569,7 +569,7 @@ fn test_sync() {
 }
 
 #[allow(dead_code)]
-fn test_send() {
+fn assert_send() {
     fn set<T: Send>(v: BTreeSet<T>) -> impl Send {
         v
     }
