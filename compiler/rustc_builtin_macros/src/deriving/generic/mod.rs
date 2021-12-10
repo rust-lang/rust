@@ -766,8 +766,8 @@ impl<'a> TraitDef<'a> {
                         self,
                         struct_def,
                         type_ident,
-                        &self_args[..],
-                        &nonself_args[..],
+                        &self_args,
+                        &nonself_args,
                     )
                 } else {
                     method_def.expand_struct_method_body(
@@ -775,8 +775,8 @@ impl<'a> TraitDef<'a> {
                         self,
                         struct_def,
                         type_ident,
-                        &self_args[..],
-                        &nonself_args[..],
+                        &self_args,
+                        &nonself_args,
                         use_temporaries,
                     )
                 };
@@ -815,8 +815,8 @@ impl<'a> TraitDef<'a> {
                         self,
                         enum_def,
                         type_ident,
-                        &self_args[..],
-                        &nonself_args[..],
+                        &self_args,
+                        &nonself_args,
                     )
                 } else {
                     method_def.expand_enum_method_body(
@@ -825,7 +825,7 @@ impl<'a> TraitDef<'a> {
                         enum_def,
                         type_ident,
                         self_args,
-                        &nonself_args[..],
+                        &nonself_args,
                     )
                 };
 
@@ -1217,7 +1217,7 @@ impl<'a> MethodDef<'a> {
         let vi_idents = self_arg_names
             .iter()
             .map(|name| {
-                let vi_suffix = format!("{}_vi", &name[..]);
+                let vi_suffix = format!("{}_vi", name);
                 Ident::from_str_and_span(&vi_suffix, span)
             })
             .collect::<Vec<Ident>>();
@@ -1226,7 +1226,7 @@ impl<'a> MethodDef<'a> {
         // delegated expression that handles the catch-all case,
         // using `__variants_tuple` to drive logic if necessary.
         let catch_all_substructure =
-            EnumNonMatchingCollapsed(self_arg_idents, &variants[..], &vi_idents[..]);
+            EnumNonMatchingCollapsed(self_arg_idents, &variants, &vi_idents);
 
         let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
 
@@ -1261,7 +1261,7 @@ impl<'a> MethodDef<'a> {
                     idents
                 };
                 for self_arg_name in &self_arg_names[1..] {
-                    let (p, idents) = mk_self_pat(cx, &self_arg_name[..]);
+                    let (p, idents) = mk_self_pat(cx, &self_arg_name);
                     subpats.push(p);
                     self_pats_idents.push(idents);
                 }

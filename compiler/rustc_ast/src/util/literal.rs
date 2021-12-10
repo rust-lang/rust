@@ -57,7 +57,7 @@ impl LitKind {
                 // string in the token.
                 let s = symbol.as_str();
                 let symbol =
-                    if s.contains(&['\\', '\r'][..]) {
+                    if s.contains(&['\\', '\r']) {
                         let mut buf = String::with_capacity(s.len());
                         let mut error = Ok(());
                         unescape_literal(&s, Mode::Str, &mut |_, unescaped_char| {

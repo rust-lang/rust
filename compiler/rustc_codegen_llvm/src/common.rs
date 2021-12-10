@@ -120,7 +120,7 @@ impl CodegenCx<'ll, 'tcx> {
                 !null_terminated as Bool,
             );
             let sym = self.generate_local_symbol_name("str");
-            let g = self.define_global(&sym[..], self.val_ty(sc)).unwrap_or_else(|| {
+            let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
                 bug!("symbol `{}` is already defined", sym);
             });
             llvm::LLVMSetInitializer(g, sc);

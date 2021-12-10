@@ -207,7 +207,7 @@ fn check_panic_str<'tcx>(
     arg: &'tcx hir::Expr<'tcx>,
     fmt: &str,
 ) {
-    if !fmt.contains(&['{', '}'][..]) {
+    if !fmt.contains(&['{', '}']) {
         // No brace, no problem.
         return;
     }
