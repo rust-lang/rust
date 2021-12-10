@@ -189,11 +189,11 @@ def default_build_triple(verbose):
         host = next(x for x in version.split('\n') if x.startswith("host: "))
         triple = host.split("host: ")[1]
         if verbose:
-            print("detected default triple {}".format(triple))
+            print("detected default triple {} from pre-installed rustc".format(triple))
         return triple
     except Exception as e:
         if verbose:
-            print("rustup not detected: {}".format(e))
+            print("pre-installed rustc not detected: {}".format(e))
             print("falling back to auto-detect")
 
     required = sys.platform != 'win32'
@@ -726,12 +726,15 @@ class RustBuild(object):
         status = subprocess.call(["git", "diff-index", "--quiet", commit, "--", compiler, library])
         if status != 0:
             if download_rustc == "if-unchanged":
+                if self.verbose:
+                    print("warning: saw changes to compiler/ or library/ since {}; " \
+                          "ignoring `download-rustc`".format(commit))
                 return None
-            print("warning: `download-rustc` is enabled, but there are changes to \
-                   compiler/ or library/")
+            print("warning: `download-rustc` is enabled, but there are changes to " \
+                  "compiler/ or library/")
 
         if self.verbose:
-            print("using downloaded stage1 artifacts from CI (commit {})".format(commit))
+            print("using downloaded stage2 artifacts from CI (commit {})".format(commit))
         self.rustc_commit = commit
         # FIXME: support downloading artifacts from the beta channel
         self.download_toolchain(False, "nightly")
