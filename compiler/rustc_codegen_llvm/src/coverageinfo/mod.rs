@@ -212,8 +212,8 @@ fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx
         ),
     );
 
-    llvm::set_linkage(llfn, llvm::Linkage::WeakAnyLinkage);
-    llvm::set_visibility(llfn, llvm::Visibility::Hidden);
+    llvm::set_linkage(llfn, llvm::Linkage::PrivateLinkage);
+    llvm::set_visibility(llfn, llvm::Visibility::Default);
 
     assert!(cx.instances.borrow_mut().insert(instance, llfn).is_none());
 

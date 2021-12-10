@@ -2119,7 +2119,7 @@ impl EncodedMetadata {
 
     #[inline]
     pub fn raw_data(&self) -> &[u8] {
-        &self.raw_data[..]
+        &self.raw_data
     }
 }
 

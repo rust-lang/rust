@@ -149,8 +149,8 @@ const fn debug_check_data_len<T>(data: *const T, len: usize) {
     // it is not required for safety (the safety must be guatanteed by
     // the `from_raw_parts[_mut]` caller).
     //
-    // Since the checks are not required, we ignore them in CTFE as they can't
-    // be done there (alignment does not make much sense there).
+    // As per our safety precondition, we may assume that assertion above never fails.
+    // Therefore, noop and rt_check are observably equivalent.
     unsafe {
         crate::intrinsics::const_eval_select((data,), noop, rt_check);
     }

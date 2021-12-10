@@ -89,7 +89,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     });
 
     let filenames_size = filenames_buffer.len();
-    let filenames_val = cx.const_bytes(&filenames_buffer[..]);
+    let filenames_val = cx.const_bytes(&filenames_buffer);
     let filenames_ref = coverageinfo::hash_bytes(filenames_buffer);
 
     // Generate the LLVM IR representation of the coverage map and store it in a well-known global
@@ -238,7 +238,7 @@ fn save_function_record(
 ) {
     // Concatenate the encoded coverage mappings
     let coverage_mapping_size = coverage_mapping_buffer.len();
-    let coverage_mapping_val = cx.const_bytes(&coverage_mapping_buffer[..]);
+    let coverage_mapping_val = cx.const_bytes(&coverage_mapping_buffer);
 
     let func_name_hash = coverageinfo::hash_str(&mangled_function_name);
     let func_name_hash_val = cx.const_u64(func_name_hash);

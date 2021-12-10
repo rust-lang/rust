@@ -13,9 +13,13 @@ use super::file_format;
 use super::fs::*;
 use super::work_product;
 
-/// Save and dump the DepGraph.
+/// Saves and writes the [`DepGraph`] to the file system.
 ///
-/// No query must be invoked after this function.
+/// This function saves both the dep-graph and the query result cache,
+/// and drops the result cache.
+///
+/// This function should only run after all queries have completed.
+/// Trying to execute a query afterwards would attempt to read the result cache we just dropped.
 pub fn save_dep_graph(tcx: TyCtxt<'_>) {
     debug!("save_dep_graph()");
     tcx.dep_graph.with_ignore(|| {
@@ -75,6 +79,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
     })
 }
 
+/// Saves the work product index.
 pub fn save_work_product_index(
     sess: &Session,
     dep_graph: &DepGraph,
@@ -139,6 +144,12 @@ fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeR
     tcx.sess.time("incr_comp_serialize_result_cache", || tcx.serialize_query_result_cache(encoder))
 }
 
+/// Builds the dependency graph.
+///
+/// This function breates the *staging dep-graph*. When the dep-graph is modified by a query
+/// execution, the new dependency information is not kept in memory but directly
+/// output to this file. `save_dep_graph` then finalizes the staging dep-graph
+/// and moves it to the permanent dep-graph path
 pub fn build_dep_graph(
     sess: &Session,
     prev_graph: SerializedDepGraph,

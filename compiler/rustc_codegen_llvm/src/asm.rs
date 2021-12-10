@@ -477,7 +477,7 @@ pub(crate) fn inline_asm_call(
         .collect::<Vec<_>>();
 
     debug!("Asm Output Type: {:?}", output);
-    let fty = bx.cx.type_func(&argtys[..], output);
+    let fty = bx.cx.type_func(&argtys, output);
     unsafe {
         // Ask LLVM to verify that the constraints are well-formed.
         let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr().cast(), cons.len());
