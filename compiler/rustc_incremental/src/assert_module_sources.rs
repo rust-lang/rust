@@ -29,6 +29,7 @@ use rustc_session::cgu_reuse_tracker::*;
 use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeSet;
 
+#[allow(missing_docs)]
 pub fn assert_module_sources(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.incremental.is_none() {
