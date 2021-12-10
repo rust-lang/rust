@@ -671,15 +671,45 @@ impl<K: DepKind> DepGraph<K> {
         let prev_index = data.previous.node_to_index_opt(dep_node)?;
 
         match data.colors.get(prev_index) {
-            Some(DepNodeColor::Green(dep_node_index)) => Some((prev_index, dep_node_index)),
-            Some(DepNodeColor::Red) => None,
-            None => {
-                // This DepNode and the corresponding query invocation existed
-                // in the previous compilation session too, so we can try to
-                // mark it as green by recursively marking all of its
-                // dependencies green.
-                self.try_mark_previous_green(qcx, data, prev_index, &dep_node)
-                    .map(|dep_node_index| (prev_index, dep_node_index))
+            Some(DepNodeColor::Green(dep_node_index)) => return Some((prev_index, dep_node_index)),
+            Some(DepNodeColor::Red) => return None,
+            None => {}
+        }
+
+        let mut stack =
+            MarkingStack { stack: vec![prev_index], sess: qcx.dep_context().sess(), graph: data };
+
+        // This DepNode and the corresponding query invocation existed
+        // in the previous compilation session too, so we can try to
+        // mark it as green by recursively marking all of its
+        // dependencies green.
+        return self
+            .try_mark_previous_green(qcx, data, prev_index, &dep_node, &mut stack.stack)
+            .map(|dep_node_index| (prev_index, dep_node_index));
+
+        /// Remember the stack of queries we are forcing in the event of an incr. comp. panic.
+        struct MarkingStack<'a, K: DepKind> {
+            stack: Vec<SerializedDepNodeIndex>,
+            sess: &'a rustc_session::Session,
+            graph: &'a DepGraphData<K>,
+        }
+
+        impl<'a, K: DepKind> Drop for MarkingStack<'a, K> {
+            /// Print the forcing backtrace.
+            fn drop(&mut self) {
+                for &frame in self.stack.iter().skip(1).rev() {
+                    let node = self.graph.previous.index_to_node(frame);
+                    // Do not try to rely on DepNode's Debug implementation,
+                    // since it may panic.
+                    let diag = rustc_errors::Diagnostic::new(
+                        rustc_errors::Level::FailureNote,
+                        &format!(
+                            "encountered while trying to mark dependency green: {:?}({})",
+                            node.kind, node.hash
+                        ),
+                    );
+                    self.sess.diagnostic().force_print_diagnostic(diag);
+                }
             }
         }
     }
@@ -691,6 +721,7 @@ impl<K: DepKind> DepGraph<K> {
         data: &DepGraphData<K>,
         parent_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
+        stack: &mut Vec<SerializedDepNodeIndex>,
     ) -> Option<()> {
         let dep_dep_node_color = data.colors.get(parent_dep_node_index);
         let dep_dep_node = &data.previous.index_to_node(parent_dep_node_index);
@@ -723,7 +754,7 @@ impl<K: DepKind> DepGraph<K> {
             );
 
             let node_index =
-                self.try_mark_previous_green(qcx, data, parent_dep_node_index, dep_dep_node);
+                self.try_mark_previous_green(qcx, data, parent_dep_node_index, dep_dep_node, stack);
 
             if node_index.is_some() {
                 debug!("managed to MARK dependency {dep_dep_node:?} as green",);
@@ -779,6 +810,7 @@ impl<K: DepKind> DepGraph<K> {
         data: &DepGraphData<K>,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
+        stack: &mut Vec<SerializedDepNodeIndex>,
     ) -> Option<DepNodeIndex> {
         #[cfg(not(parallel_compiler))]
         {
@@ -794,7 +826,9 @@ impl<K: DepKind> DepGraph<K> {
         let prev_deps = data.previous.edge_targets_from(prev_dep_node_index);
 
         for &dep_dep_node_index in prev_deps {
-            self.try_mark_parent_green(qcx, data, dep_dep_node_index, dep_node)?
+            stack.push(dep_dep_node_index);
+            self.try_mark_parent_green(qcx, data, dep_dep_node_index, dep_node, stack)?;
+            stack.pop();
         }
 
         // If we got here without hitting a `return` that means that all
