@@ -87,6 +87,7 @@ mod simplify_comparison_integral;
 mod simplify_try;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
+mod value_numbering;
 
 use rustc_const_eval::transform::check_consts::{self, ConstCx};
 use rustc_const_eval::transform::promote_consts;
@@ -480,9 +481,11 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &separate_const_switch::SeparateConstSwitch,
             //
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
-            &const_prop::ConstProp,
             //
             // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
+            &const_prop::ConstProp,
+            // Experimental: only runs if `-Z number-values` is on.
+            &value_numbering::ValueNumbering,
             &o1(simplify_branches::SimplifyConstCondition::new("after-const-prop")),
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,

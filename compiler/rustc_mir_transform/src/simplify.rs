@@ -372,11 +372,20 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         trace!("running SimplifyLocals on {:?}", body.source);
-        simplify_locals(body, tcx);
+        // FIXME(pcwalton): Maybe we should call `promote_mutable_locals_to_immutable()` here.
+        // Right now, the only pass that really benefits from this is ValueNumbering, which calls it
+        // itself.
+        remove_unused_locals(body, tcx);
     }
 }
 
-pub fn simplify_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
+pub fn promote_mutable_locals_to_immutable<'tcx>(body: &mut Body<'tcx>, _: TyCtxt<'tcx>) {
+    let mut mutable_locals = PromoteMutableLocals::new(body);
+    mutable_locals.visit_body(body);
+    mutable_locals.update_locals(body);
+}
+
+pub fn remove_unused_locals<'tcx>(body: &mut Body<'tcx>, tcx: TyCtxt<'tcx>) {
     // First, we're going to get a count of *actual* uses for every `Local`.
     let mut used_locals = UsedLocals::new(body);
 
@@ -422,6 +431,39 @@ fn make_local_map<V>(
     }
     local_decls.truncate(used.index());
     map
+}
+
+/// Promotes mutable locals to immutable.
+struct PromoteMutableLocals {
+    mutating_use_count: IndexVec<Local, u32>,
+}
+
+impl PromoteMutableLocals {
+    fn new<'tcx>(body: &Body<'tcx>) -> PromoteMutableLocals {
+        PromoteMutableLocals { mutating_use_count: IndexVec::from_elem(0, &body.local_decls) }
+    }
+
+    fn update_locals<'tcx>(&self, body: &mut Body<'tcx>) {
+        for (local, local_decl) in body.local_decls.iter_mut().enumerate() {
+            let local = Local::from_usize(local);
+            if local.as_usize() == 0 {
+                // Return value must always be mutable.
+                continue;
+            }
+            if local_decl.mutability == Mutability::Mut && self.mutating_use_count[local] <= 1 {
+                local_decl.mutability = Mutability::Not;
+            }
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for PromoteMutableLocals {
+    fn visit_local(&mut self, local: &Local, place_context: PlaceContext, _: Location) {
+        match place_context {
+            PlaceContext::MutatingUse(_) => self.mutating_use_count[*local] += 1,
+            PlaceContext::NonMutatingUse(_) | PlaceContext::NonUse(_) => {}
+        }
+    }
 }
 
 /// Keeps track of used & unused locals.

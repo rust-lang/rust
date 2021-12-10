@@ -1351,6 +1351,8 @@ options! {
         "prevent automatic injection of the profiler_builtins crate"),
     normalize_docs: bool = (false, parse_bool, [TRACKED],
         "normalize associated items in rustdoc when generating documentation"),
+    number_values: bool = (false, parse_bool, [TRACKED],
+        "enable the MIR value numbering optimization pass"),
     oom: OomStrategy = (OomStrategy::Abort, parse_oom_strategy, [TRACKED],
         "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],

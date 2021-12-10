@@ -22,7 +22,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{mir::visit::Visitor, ty::ParamEnv};
 
-use super::simplify::{simplify_cfg, simplify_locals};
+use super::simplify::{remove_unused_locals, simplify_cfg};
 
 pub struct ConstGoto;
 
@@ -51,7 +51,7 @@ impl<'tcx> MirPass<'tcx> for ConstGoto {
         // make it easier for further passes
         if should_simplify {
             simplify_cfg(tcx, body);
-            simplify_locals(body, tcx);
+            remove_unused_locals(body, tcx);
         }
     }
 }
