@@ -96,7 +96,11 @@ fn introduction_builder(ast_func: &ast::Fn) -> String {
 fn examples_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Vec<String>> {
     let (no_panic_ex, panic_ex) = if is_in_trait_def(ast_func, ctx) {
         let message = "// Example template not implemented for trait functions";
-        (Some(vec![message.into()]), Some(vec![message.into()]))
+        let panic_ex = match can_panic(ast_func) {
+            Some(true) => Some(vec![message.into()]),
+            _ => None,
+        };
+        (Some(vec![message.into()]), panic_ex)
     } else {
         let panic_ex = match can_panic(ast_func) {
             Some(true) => gen_panic_ex_template(ast_func, ctx),
@@ -907,6 +911,122 @@ impl MyStruct {
     /// MyStruct::noop();
     /// ```
     pub fn noop() {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn supports_fn_in_trait() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub trait MyTrait {
+    fn fun$0ction_trait();
+}
+"#,
+            r#"
+pub trait MyTrait {
+    /// .
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Example template not implemented for trait functions
+    /// ```
+    fn function_trait();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn supports_unsafe_fn_in_trait() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub trait MyTrait {
+    unsafe fn unsafe_funct$0ion_trait();
+}
+"#,
+            r#"
+pub trait MyTrait {
+    /// .
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Example template not implemented for trait functions
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// .
+    unsafe fn unsafe_function_trait();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn supports_fn_in_trait_with_default_panicking() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub trait MyTrait {
+    fn function_trait_with_$0default_panicking() {
+        panic!()
+    }
+}
+"#,
+            r#"
+pub trait MyTrait {
+    /// .
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Example template not implemented for trait functions
+    /// ```
+    ///
+    /// ```should_panic
+    /// // Example template not implemented for trait functions
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if .
+    fn function_trait_with_default_panicking() {
+        panic!()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn supports_fn_in_trait_returning_result() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+pub trait MyTrait {
+    fn function_tr$0ait_returning_result() -> Result<(), std::io::Error>;
+}
+"#,
+            r#"
+pub trait MyTrait {
+    /// .
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Example template not implemented for trait functions
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if .
+    fn function_trait_returning_result() -> Result<(), std::io::Error>;
 }
 "#,
         );
