@@ -23,6 +23,7 @@
 #![feature(once_cell)]
 #![feature(test)]
 #![feature(thread_id_value)]
+#![feature(vec_into_raw_parts)]
 #![allow(rustc::default_hash_types)]
 #![deny(unaligned_references)]
 
