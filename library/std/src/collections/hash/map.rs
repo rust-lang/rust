@@ -334,10 +334,11 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
+    /// let map = HashMap::from([
+    ///     ("a", 1),
+    ///     ("b", 2),
+    ///     ("c", 3),
+    /// ]);
     ///
     /// for key in map.keys() {
     ///     println!("{}", key);
@@ -356,10 +357,11 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
+    /// let map = HashMap::from([
+    ///     ("a", 1),
+    ///     ("b", 2),
+    ///     ("c", 3),
+    /// ]);
     ///
     /// for val in map.values() {
     ///     println!("{}", val);
@@ -378,11 +380,11 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map = HashMap::new();
-    ///
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
+    /// let mut map = HashMap::from([
+    ///     ("a", 1),
+    ///     ("b", 2),
+    ///     ("c", 3),
+    /// ]);
     ///
     /// for val in map.values_mut() {
     ///     *val = *val + 10;
@@ -405,10 +407,11 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
+    /// let map = HashMap::from([
+    ///     ("a", 1),
+    ///     ("b", 2),
+    ///     ("c", 3),
+    /// ]);
     ///
     /// for (key, val) in map.iter() {
     ///     println!("key: {} val: {}", key, val);
@@ -428,10 +431,11 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
+    /// let mut map = HashMap::from([
+    ///     ("a", 1),
+    ///     ("b", 2),
+    ///     ("c", 3),
+    /// ]);
     ///
     /// // Update all values
     /// for (_, val) in map.iter_mut() {
@@ -966,10 +970,11 @@ where
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
+    /// let map = HashMap::from([
+    ///     ("a", 1),
+    ///     ("b", 2),
+    ///     ("c", 3),
+    /// ]);
     ///
     /// let mut vec: Vec<&str> = map.into_keys().collect();
     /// // The `IntoKeys` iterator produces keys in arbitrary order, so the
@@ -992,10 +997,11 @@ where
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
+    /// let map = HashMap::from([
+    ///     ("a", 1),
+    ///     ("b", 2),
+    ///     ("c", 3),
+    /// ]);
     ///
     /// let mut vec: Vec<i32> = map.into_values().collect();
     /// // The `IntoValues` iterator produces values in arbitrary order, so
@@ -1202,8 +1208,9 @@ where
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::new();
-/// map.insert("a", 1);
+/// let map = HashMap::from([
+///     ("a", 1),
+/// ]);
 /// let iter = map.iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1239,8 +1246,9 @@ impl<K: Debug, V: Debug> fmt::Debug for Iter<'_, K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::new();
-/// map.insert("a", 1);
+/// let mut map = HashMap::from([
+///     ("a", 1),
+/// ]);
 /// let iter = map.iter_mut();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1269,8 +1277,9 @@ impl<'a, K, V> IterMut<'a, K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::new();
-/// map.insert("a", 1);
+/// let map = HashMap::from([
+///     ("a", 1),
+/// ]);
 /// let iter = map.into_iter();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1298,8 +1307,9 @@ impl<K, V> IntoIter<K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::new();
-/// map.insert("a", 1);
+/// let map = HashMap::from([
+///     ("a", 1),
+/// ]);
 /// let iter_keys = map.keys();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1335,8 +1345,9 @@ impl<K: Debug, V> fmt::Debug for Keys<'_, K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::new();
-/// map.insert("a", 1);
+/// let map = HashMap::from([
+///     ("a", 1),
+/// ]);
 /// let iter_values = map.values();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1372,8 +1383,9 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::new();
-/// map.insert("a", 1);
+/// let mut map = HashMap::from([
+///     ("a", 1),
+/// ]);
 /// let iter = map.drain();
 /// ```
 #[stable(feature = "drain", since = "1.6.0")]
@@ -1402,8 +1414,9 @@ impl<'a, K, V> Drain<'a, K, V> {
 ///
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::new();
-/// map.insert("a", 1);
+/// let mut map = HashMap::from([
+///     ("a", 1),
+/// ]);
 /// let iter = map.drain_filter(|_k, v| *v % 2 == 0);
 /// ```
 #[unstable(feature = "hash_drain_filter", issue = "59618")]
@@ -1426,8 +1439,9 @@ where
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::new();
-/// map.insert("a", 1);
+/// let mut map = HashMap::from([
+///     ("a", 1),
+/// ]);
 /// let iter_values = map.values_mut();
 /// ```
 #[stable(feature = "map_values_mut", since = "1.10.0")]
@@ -1447,8 +1461,9 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::new();
-/// map.insert("a", 1);
+/// let map = HashMap::from([
+///     ("a", 1),
+/// ]);
 /// let iter_keys = map.into_keys();
 /// ```
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
@@ -1468,8 +1483,9 @@ pub struct IntoKeys<K, V> {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// let mut map = HashMap::new();
-/// map.insert("a", 1);
+/// let map = HashMap::from([
+///     ("a", 1),
+/// ]);
 /// let iter_keys = map.into_values();
 /// ```
 #[stable(feature = "map_into_keys_values", since = "1.54.0")]
@@ -2004,10 +2020,11 @@ impl<K, V, S> IntoIterator for HashMap<K, V, S> {
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map = HashMap::new();
-    /// map.insert("a", 1);
-    /// map.insert("b", 2);
-    /// map.insert("c", 3);
+    /// let map = HashMap::from([
+    ///     ("a", 1),
+    ///     ("b", 2),
+    ///     ("c", 3),
+    /// ]);
     ///
     /// // Not possible with .iter()
     /// let vec: Vec<(&str, i32)> = map.into_iter().collect();
