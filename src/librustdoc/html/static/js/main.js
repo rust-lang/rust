@@ -296,7 +296,7 @@ function hideThemeButtonState() {
             }
         },
         addCrateDropdown: function(crates) {
-            var elem = document.getElementById("crate-search");
+            var elem = document.getElementById("crate-search").children[0];
 
             if (!elem) {
                 return;
@@ -847,9 +847,8 @@ function hideThemeButtonState() {
 
     (function() {
         // To avoid checking on "rustdoc-line-numbers" value on every loop...
-        var lineNumbersFunc = function() {};
         if (getSettingValue("line-numbers") === "true") {
-            lineNumbersFunc = function(x) {
+            onEachLazy(document.getElementsByClassName("rust-example-rendered"), function(x) {
                 var count = x.textContent.split("\n").length;
                 var elems = [];
                 for (var i = 0; i < count; ++i) {
@@ -859,26 +858,8 @@ function hideThemeButtonState() {
                 addClass(node, "line-number");
                 node.innerHTML = elems.join("\n");
                 x.parentNode.insertBefore(node, x);
-            };
+            });
         }
-        onEachLazy(document.getElementsByClassName("rust-example-rendered"), function(e) {
-            if (hasClass(e, "compile_fail")) {
-                e.addEventListener("mouseover", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
-                });
-                e.addEventListener("mouseout", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "";
-                });
-            } else if (hasClass(e, "ignore")) {
-                e.addEventListener("mouseover", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "#ff9200";
-                });
-                e.addEventListener("mouseout", function() {
-                    this.parentElement.previousElementSibling.childNodes[0].style.color = "";
-                });
-            }
-            lineNumbersFunc(e);
-        });
     }());
 
     function handleClick(id, f) {

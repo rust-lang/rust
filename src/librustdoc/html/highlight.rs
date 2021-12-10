@@ -48,22 +48,10 @@ crate fn render_with_highlighting(
     decoration_info: Option<DecorationInfo>,
 ) {
     debug!("highlighting: ================\n{}\n==============", src);
-    if let Some((edition_info, class)) = tooltip {
-        write!(
-            out,
-            "<div class='information'><div class='tooltip {}'{}>ⓘ</div></div>",
-            class,
-            if let Some(edition_info) = edition_info {
-                format!(" data-edition=\"{}\"", edition_info)
-            } else {
-                String::new()
-            },
-        );
-    }
 
     write_header(out, class, extra_content);
     write_code(out, src, edition, context_info, decoration_info);
-    write_footer(out, playground_button);
+    write_footer(out, tooltip, playground_button);
 }
 
 fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buffer>) {
@@ -114,8 +102,25 @@ fn write_code(
     });
 }
 
-fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
-    writeln!(out, "</code></pre>{}</div>", playground_button.unwrap_or_default());
+fn write_footer(
+    out: &mut Buffer,
+    tooltip: Option<(Option<Edition>, &str)>,
+    playground_button: Option<&str>,
+) {
+    writeln!(out, "</code></pre>");
+    if let Some((edition_info, class)) = tooltip {
+        write!(
+            out,
+            "<div class='information'><div class='tooltip {}'{}><span class='icon'>ⓘ</span></div></div>",
+            class,
+            if let Some(edition_info) = edition_info {
+                format!(" data-edition=\"{}\"", edition_info)
+            } else {
+                String::new()
+            },
+        );
+    }
+    writeln!(out, "{}</div>", playground_button.unwrap_or_default());
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.

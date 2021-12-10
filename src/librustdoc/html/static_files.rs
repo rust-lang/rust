@@ -39,24 +39,6 @@ crate static STORAGE_JS: &str = include_str!("static/js/storage.js");
 /// --scrape-examples flag that inserts automatically-found examples of usages of items.
 crate static SCRAPE_EXAMPLES_JS: &str = include_str!("static/js/scrape-examples.js");
 
-/// The file contents of `brush.svg`, the icon used for the theme-switch button.
-crate static BRUSH_SVG: &[u8] = include_bytes!("static/images/brush.svg");
-
-/// The file contents of `wheel.svg`, the icon used for the settings button.
-crate static WHEEL_SVG: &[u8] = include_bytes!("static/images/wheel.svg");
-
-/// The file contents of `clipboard.svg`, the icon used for the "copy path" button.
-crate static CLIPBOARD_SVG: &[u8] = include_bytes!("static/images/clipboard.svg");
-
-/// The file contents of `down-arrow.svg`, the icon used for the crate choice combobox.
-crate static DOWN_ARROW_SVG: &[u8] = include_bytes!("static/images/down-arrow.svg");
-
-/// The file contents of `toggle-minus.svg`, the icon used for opened toggles.
-crate static TOGGLE_MINUS_PNG: &[u8] = include_bytes!("static/images/toggle-minus.svg");
-
-/// The file contents of `toggle-plus.svg`, the icon used for closed toggles.
-crate static TOGGLE_PLUS_PNG: &[u8] = include_bytes!("static/images/toggle-plus.svg");
-
 /// The contents of `COPYRIGHT.txt`, the license listing for files distributed with documentation
 /// output.
 crate static COPYRIGHT: &[u8] = include_bytes!("static/COPYRIGHT.txt");
@@ -73,6 +55,13 @@ crate static RUST_LOGO: &[u8] = include_bytes!("static/images/rust-logo.png");
 crate static RUST_FAVICON_SVG: &[u8] = include_bytes!("static/images/favicon.svg");
 crate static RUST_FAVICON_PNG_16: &[u8] = include_bytes!("static/images/favicon-16x16.png");
 crate static RUST_FAVICON_PNG_32: &[u8] = include_bytes!("static/images/favicon-32x32.png");
+
+/// Files related to the icon font.
+crate mod icons {
+    crate static WOFF: &[u8] = include_bytes!("static/fonts/icons.woff");
+    crate static WOFF2: &[u8] = include_bytes!("static/fonts/icons.woff2");
+    crate static LICENSE: &[u8] = include_bytes!("static/fonts/icons-FontAwesome-LICENSE.txt");
+}
 
 /// The built-in themes given to every documentation site.
 crate mod themes {

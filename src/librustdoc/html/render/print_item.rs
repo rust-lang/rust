@@ -380,7 +380,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
                         if func.header.unsafety == hir::Unsafety::Unsafe =>
                     {
-                        "<a title=\"unsafe function\" href=\"#\"><sup>⚠</sup></a>"
+                        "<a title=\"unsafe function\" href=\"#\"><sup class=\"icon\">⚠</sup></a>"
                     }
                     _ => "",
                 };

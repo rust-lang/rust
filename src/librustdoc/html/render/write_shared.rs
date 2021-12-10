@@ -200,12 +200,12 @@ pub(super) fn write_shared(
     write_minify(
         "rustdoc.css",
         static_files::RUSTDOC_CSS
+            .replace("/* AUTOREPLACE: */url('icons.woff2')", &ver_url(cx, "icons.woff2"))
+            .replace("/* AUTOREPLACE: */url('icons.woff')", &ver_url(cx, "icons.woff"))
             .replace(
-                "/* AUTOREPLACE: */url(\"toggle-minus.svg\")",
-                &ver_url(cx, "toggle-minus.svg"),
-            )
-            .replace("/* AUTOREPLACE: */url(\"toggle-plus.svg\")", &ver_url(cx, "toggle-plus.svg"))
-            .replace("/* AUTOREPLACE: */url(\"down-arrow.svg\")", &ver_url(cx, "down-arrow.svg")),
+                "AUTOREPLACE: icons-FontAwesome-LICENSE.txt",
+                &ver_url(cx, "icons-FontAwesome-LICENSE.txt"),
+            ),
         cx,
         options,
     )?;
@@ -247,12 +247,10 @@ pub(super) fn write_shared(
         write_toolchain("favicon-16x16.png", static_files::RUST_FAVICON_PNG_16)?;
         write_toolchain("favicon-32x32.png", static_files::RUST_FAVICON_PNG_32)?;
     }
-    write_toolchain("brush.svg", static_files::BRUSH_SVG)?;
-    write_toolchain("wheel.svg", static_files::WHEEL_SVG)?;
-    write_toolchain("clipboard.svg", static_files::CLIPBOARD_SVG)?;
-    write_toolchain("down-arrow.svg", static_files::DOWN_ARROW_SVG)?;
-    write_toolchain("toggle-minus.svg", static_files::TOGGLE_MINUS_PNG)?;
-    write_toolchain("toggle-plus.svg", static_files::TOGGLE_PLUS_PNG)?;
+
+    write_toolchain("icons.woff", static_files::icons::WOFF)?;
+    write_toolchain("icons.woff2", static_files::icons::WOFF2)?;
+    write_toolchain("icons-FontAwesome-LICENSE.txt", static_files::icons::LICENSE)?;
 
     let mut themes: Vec<&String> = themes.iter().collect();
     themes.sort();

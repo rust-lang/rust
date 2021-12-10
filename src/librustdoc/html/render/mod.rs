@@ -361,7 +361,7 @@ enum Setting {
 }
 
 impl Setting {
-    fn display(&self, root_path: &str, suffix: &str) -> String {
+    fn display(&self) -> String {
         match *self {
             Setting::Section { description, ref sub_settings } => format!(
                 "<div class=\"setting-line\">\
@@ -369,7 +369,7 @@ impl Setting {
                      <div class=\"sub-settings\">{}</div>
                  </div>",
                 description,
-                sub_settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>()
+                sub_settings.iter().map(|s| s.display()).collect::<String>()
             ),
             Setting::Toggle { js_data_name, description, default_value } => format!(
                 "<div class=\"setting-line\">\
@@ -388,7 +388,7 @@ impl Setting {
                      <div>{}</div>\
                      <label class=\"select-wrapper\">\
                          <select id=\"{}\" autocomplete=\"off\">{}</select>\
-                         <img src=\"{}down-arrow{}.svg\" alt=\"Select item\">\
+                         <span class=\"icon\">⏷</span>\
                      </label>\
                  </div>",
                 description,
@@ -401,8 +401,6 @@ impl Setting {
                         name = opt,
                     ))
                     .collect::<String>(),
-                root_path,
-                suffix,
             ),
         }
     }
@@ -462,7 +460,7 @@ fn settings(root_path: &str, suffix: &str, theme_names: Vec<String>) -> Result<S
         <div class=\"settings\">{}</div>\
         <link rel=\"stylesheet\" href=\"{root_path}settings{suffix}.css\">\
         <script src=\"{root_path}settings{suffix}.js\"></script>",
-        settings.iter().map(|s| s.display(root_path, suffix)).collect::<String>(),
+        settings.iter().map(|s| s.display()).collect::<String>(),
         root_path = root_path,
         suffix = suffix
     ))
@@ -667,8 +665,7 @@ fn short_item_info(
             message.push_str(&format!(": {}", html.into_string()));
         }
         extra_info.push(format!(
-            "<div class=\"stab deprecated\"><span class=\"emoji\">👎</span> {}</div>",
-            message,
+            "<div class=\"stab deprecated\"><span class=\"icon\">👎</span> {message}</div>"
         ));
     }
 
@@ -680,9 +677,6 @@ fn short_item_info(
         .filter(|stab| stab.feature != sym::rustc_private)
         .map(|stab| (stab.level, stab.feature))
     {
-        let mut message =
-            "<span class=\"emoji\">🔬</span> This is a nightly-only experimental API.".to_owned();
-
         let mut feature = format!("<code>{}</code>", Escape(&feature.as_str()));
         if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue) {
             feature.push_str(&format!(
@@ -692,9 +686,9 @@ fn short_item_info(
             ));
         }
 
-        message.push_str(&format!(" ({})", feature));
-
-        extra_info.push(format!("<div class=\"stab unstable\">{}</div>", message));
+        extra_info.push(format!(
+            "<div class=\"stab unstable\"><span class=\"icon\">🔬</span> This is a nightly-only experimental API. ({feature})</div>"
+        ));
     }
 
     if let Some(portability) = portability(item, parent) {
@@ -1292,7 +1286,7 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
     if !out.is_empty() {
         out.insert_str(
             0,
-            "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\">ⓘ\
+            "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\"><span class=\"icon\">ⓘ</span>\
             <div class=\"notable-traits-tooltiptext\"><span class=\"docblock\">",
         );
         out.push_str("</code></span></div></span></span>");

@@ -199,6 +199,13 @@ details.undocumented > summary::before {
 	color: #999;
 }
 
+details.rustdoc-toggle > summary:focus::before,
+details.rustdoc-toggle > summary:hover::before,
+details.undocumented > summary:focus::before,
+details.undocumented > summary:hover::before {
+	color: #000;
+}
+
 #crate-search {
 	color: #555;
 	background-color: white;
@@ -291,48 +298,42 @@ a.test-arrow:hover{
 pre.compile_fail {
 	border-left: 2px solid rgba(255,0,0,.5);
 }
+.tooltip.compile_fail {
+	color: rgba(255,0,0,.5);
+}
 
-pre.compile_fail:hover, .information:hover + pre.compile_fail {
+.example-wrap:hover pre.compile_fail {
 	border-left: 2px solid #f00;
+}
+.example-wrap:hover .tooltip.compile_fail {
+	color: #f00;
 }
 
 pre.should_panic {
 	border-left: 2px solid rgba(255,0,0,.5);
 }
+.tooltip.should_panic {
+	color: rgba(255,0,0,.5);
+}
 
-pre.should_panic:hover, .information:hover + pre.should_panic {
+.example-wrap:hover pre.should_panic {
 	border-left: 2px solid #f00;
+}
+.example-wrap:hover .tooltip.should_panic {
+	color: #f00;
 }
 
 pre.ignore {
 	border-left: 2px solid rgba(255,142,0,.6);
 }
-
-pre.ignore:hover, .information:hover + pre.ignore {
-	border-left: 2px solid #ff9200;
-}
-
-.tooltip.compile_fail {
-	color: rgba(255,0,0,.5);
-}
-
-.information > .compile_fail:hover {
-	color: #f00;
-}
-
-.tooltip.should_panic {
-	color: rgba(255,0,0,.5);
-}
-
-.information > .should_panic:hover {
-	color: #f00;
-}
-
 .tooltip.ignore {
 	color: rgba(255,142,0,.6);
 }
 
-.information > .ignore:hover {
+.example-wrap:hover pre.ignore {
+	border-left: 2px solid #ff9200;
+}
+.example-wrap:hover .tooltip.ignore {
 	color: #ff9200;
 }
 
@@ -401,6 +402,7 @@ kbd {
 #theme-picker, #settings-menu, #help-button {
 	border-color: #e0e0e0;
 	background-color: #fff;
+	color: #000;
 }
 
 #theme-picker:hover, #theme-picker:focus,
@@ -410,13 +412,10 @@ kbd {
 }
 
 #copy-path {
-	color: #999;
+	color: #7f7f7f;
 }
-#copy-path > img {
-	filter: invert(50%);
-}
-#copy-path:hover > img {
-	filter: invert(35%);
+#copy-path:hover {
+	color: #595959;
 }
 
 #theme-choices {

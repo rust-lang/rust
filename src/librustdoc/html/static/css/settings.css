@@ -47,15 +47,17 @@
 	width: 100%;
 }
 
-.select-wrapper img {
+.select-wrapper .icon {
 	pointer-events: none;
 	position: absolute;
 	right: 0;
-	bottom: 0;
+	top: 0;
 	background: #ccc;
 	height: 100%;
-	width: 28px;
-	padding: 0px 4px;
+	padding: 2px 4px;
+	color: #000;
+	font-size: 26px;
+	line-height: 1;
 }
 
 .select-wrapper select option {

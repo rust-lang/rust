@@ -84,6 +84,17 @@
 	unicode-range: U+AC00-D7AF, U+1100-11FF, U+3130-318F, U+A960-A97F, U+D7B0-D7FF;
 }
 
+/* Icon font generated from hand-picked SVGs */
+/* See AUTOREPLACE: icons-FontAwesome-LICENSE.txt for the Font awesome license. */
+@font-face {
+	font-family: 'icons';
+	src: /* AUTOREPLACE: */url('icons.woff2') format('woff2'),
+		/* AUTOREPLACE: */url('icons.woff') format('woff');
+	font-weight: normal;
+	font-style: normal;
+	font-display: swap;
+}
+
 * {
 	-webkit-box-sizing: border-box;
 	-moz-box-sizing: border-box;
@@ -115,6 +126,10 @@ body {
 	-webkit-font-feature-settings: "kern", "liga";
 	-moz-font-feature-settings: "kern", "liga";
 	font-feature-settings: "kern", "liga";
+}
+
+.icon {
+	font-family: 'icons';
 }
 
 h1 {
@@ -197,7 +212,6 @@ h1, h2, h3, h4, h5, h6,
 .item-left > a,
 div.item-list .out-of-band, span.since,
 #source-sidebar, #sidebar-toggle,
-details.rustdoc-toggle > summary::before,
 div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate, a.srclink,
 /* This selector is for the items listed in the "all items" page. */
@@ -508,6 +522,12 @@ nav.sub {
 .rustdoc .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
+}
+
+.rustdoc .docblock > .example-wrap {
+	/* Override `.docblock > *` style since internal `pre` has `overflow-x: auto` anyways.
+		 Allows us to put `.information` within `.example-wrap` for pure CSS hover. */
+	overflow-x: visible;
 }
 
 .example-wrap {
@@ -864,14 +884,17 @@ h2.small-section-header > .anchor {
 	width: calc(100% - 63px);
 }
 #crate-search {
-	min-width: 115px;
+	flex: none;
 	margin-top: 5px;
+	display: flex;
+	border-radius: 4px 0 0 4px;
+}
+#crate-search > select {
+	min-width: 115px;
 	padding: 6px;
 	padding-right: 19px;
-	flex: none;
 	border: 0;
 	border-right: 0;
-	border-radius: 4px 0 0 4px;
 	outline: none;
 	cursor: pointer;
 	border-right: 1px solid;
@@ -880,11 +903,14 @@ h2.small-section-header > .anchor {
 	/* Removes default arrow from firefox */
 	text-indent: 0.01px;
 	text-overflow: "";
-	background-repeat: no-repeat;
 	background-color: transparent;
-	background-size: 20px;
-	background-position: calc(100% - 1px) 56%;
-	background-image: /* AUTOREPLACE: */url("down-arrow.svg");
+}
+#crate-search > .icon {
+	font-size: 20px;
+	margin: 5px;
+	margin-left: -19px;
+	padding-top: 3px;
+	pointer-events: none;
 }
 .search-container > .top-button {
 	position: absolute;
@@ -1038,17 +1064,8 @@ body.blur > :not(#help) {
 	display: inline;
 }
 
-.stab .emoji {
+.stab .icon {
 	font-size: 1.2em;
-}
-
-/* Black one-pixel outline around emoji shapes */
-.emoji {
-	text-shadow:
-		1px 0 0 black,
-		-1px 0 0 black,
-		0  1px 0 black,
-		0 -1px 0 black;
 }
 
 .module-item .stab,
@@ -1212,7 +1229,7 @@ h3.variant {
 .information {
 	position: absolute;
 	left: -25px;
-	margin-top: 7px;
+	top: 7px;
 	z-index: 1;
 }
 
@@ -1427,19 +1444,19 @@ pre.rust {
 
 #theme-picker, #settings-menu, #help-button, #copy-path {
 	padding: 4px;
+	padding-top: 2px;
 	width: 27px;
 	height: 29px;
 	border: 1px solid;
 	border-radius: 3px;
 	cursor: pointer;
+	text-align: center;
+	font-size: 17px;
 }
 
 #help-button {
 	right: 30px;
 	font-family: "Fira Sans", Arial, sans-serif;
-	text-align: center;
-	font-size: 17px;
-	padding-top: 2px;
 }
 
 #copy-path {
@@ -1588,18 +1605,6 @@ details.rustdoc-toggle > summary.hideme > span {
 	margin-left: 9px;
 }
 
-details.rustdoc-toggle > summary::before {
-	content: "";
-	cursor: pointer;
-	width: 17px;
-	height: max(17px, 1.1em);
-	background-repeat: no-repeat;
-	background-position: top left;
-	display: inline-block;
-	vertical-align: middle;
-	opacity: .5;
-}
-
 /* Screen readers see the text version at the end the line.
 	Visual readers see the icon at the start of the line, but small and transparent. */
 details.rustdoc-toggle > summary::after {
@@ -1615,15 +1620,8 @@ details.rustdoc-toggle > summary.hideme::after {
 	content: "";
 }
 
-details.rustdoc-toggle > summary:focus::before,
-details.rustdoc-toggle > summary:hover::before {
-	opacity: 1;
-}
-
 details.rustdoc-toggle.top-doc > summary,
-details.rustdoc-toggle.top-doc > summary::before,
-details.rustdoc-toggle.non-exhaustive > summary,
-details.rustdoc-toggle.non-exhaustive > summary::before {
+details.rustdoc-toggle.non-exhaustive > summary {
 	font-family: 'Fira Sans';
 	font-size: 16px;
 }
@@ -1664,24 +1662,17 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 	display: none;
 }
 
+details.undocumented > summary::before,
+details.rustdoc-toggle > summary::before {
+	font-family: 'icons';
+	font-size: 13px;
+	cursor: pointer;
+	content: "⊞";
+}
+
 details.undocumented[open] > summary::before,
-details.rustdoc-toggle[open] > summary::before,
-details.rustdoc-toggle[open] > summary.hideme::before {
-	background-image: /* AUTOREPLACE: */url("toggle-minus.svg");
-}
-
-details.undocumented > summary::before, details.rustdoc-toggle > summary::before {
-	background-image: /* AUTOREPLACE: */url("toggle-plus.svg");
-}
-
-details.rustdoc-toggle[open] > summary::before,
-details.rustdoc-toggle[open] > summary.hideme::before {
-	width: 17px;
-	height: max(17px, 1.1em);
-	background-repeat: no-repeat;
-	background-position: top left;
-	display: inline-block;
-	content: "";
+details.rustdoc-toggle[open] > summary::before {
+	content: "⊟";
 }
 
 details.rustdoc-toggle[open] > summary::after,
@@ -1696,7 +1687,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
 	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.docblock > .information:first-child > .tooltip {
+	.docblock > .example-wrap:first-child > .information {
 		margin-top: 16px;
 	}
 
@@ -2035,6 +2026,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	#theme-picker, #settings-menu {
 		padding: 5px;
+		padding-top: 3px;
 		width: 31px;
 		height: 31px;
 	}

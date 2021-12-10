@@ -1249,7 +1249,7 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function getFilterCrates() {
-        var elem = document.getElementById("crate-search");
+        var elem = document.getElementById("crate-search").children[0];
 
         if (elem && elem.value !== "All crates" &&
             hasOwnPropertyRustdoc(rawSearchIndex, elem.value))
@@ -1489,7 +1489,7 @@ window.initSearch = function(rawSearchIndex) {
         });
 
 
-        var selectCrate = document.getElementById("crate-search");
+        var selectCrate = document.getElementById("crate-search").children[0];
         if (selectCrate) {
             selectCrate.onchange = function() {
                 updateLocalStorage("rustdoc-saved-filter-crate", selectCrate.value);
