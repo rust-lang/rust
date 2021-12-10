@@ -507,9 +507,11 @@ impl CrateStore for CStore {
         self.get_crate_data(def.krate).def_path_hash(def.index)
     }
 
-    fn def_path_hash_to_def_id(&self, cnum: CrateNum, hash: DefPathHash) -> DefId {
-        let def_index = self.get_crate_data(cnum).def_path_hash_to_def_index(hash);
-        DefId { krate: cnum, index: def_index }
+    // FIXME(cjgillot) Stop returning an Option.
+    fn def_path_hash_to_def_id(&self, hash: DefPathHash) -> Option<DefId> {
+        let cnum = self.stable_crate_id_to_crate_num(hash.stable_crate_id());
+        let def_index = self.get_crate_data(cnum).def_path_hash_to_def_index(hash)?;
+        Some(DefId { krate: cnum, index: def_index })
     }
 
     fn expn_hash_to_expn_id(

@@ -442,14 +442,14 @@ impl Definitions {
         self.def_id_to_hir_id.iter_enumerated().map(|(k, _)| k)
     }
 
+    // FIXME(cjgillot) Stop returning an Option.
     #[inline(always)]
-    pub fn local_def_path_hash_to_def_id(&self, hash: DefPathHash) -> LocalDefId {
-        debug_assert!(hash.stable_crate_id() == self.stable_crate_id);
+    pub fn local_def_path_hash_to_def_id(&self, hash: DefPathHash) -> Option<LocalDefId> {
+        debug_assert_eq!(hash.stable_crate_id(), self.stable_crate_id);
         self.table
             .def_path_hash_to_index
             .get(&hash)
             .map(|local_def_index| LocalDefId { local_def_index })
-            .unwrap()
     }
 
     pub fn def_path_hash_to_def_index_map(&self) -> &DefPathHashMap {

@@ -1305,7 +1305,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Converts a `DefPathHash` to its corresponding `DefId` in the current compilation
     /// session, if it still exists. This is used during incremental compilation to
     /// turn a deserialized `DefPathHash` into its current `DefId`.
-    pub fn def_path_hash_to_def_id(self, hash: DefPathHash) -> DefId {
+    // FIXME(cjgillot) Stop returning an Option.
+    pub fn def_path_hash_to_def_id(self, hash: DefPathHash) -> Option<DefId> {
         debug!("def_path_hash_to_def_id({:?})", hash);
 
         let stable_crate_id = hash.stable_crate_id();
@@ -1313,13 +1314,14 @@ impl<'tcx> TyCtxt<'tcx> {
         // If this is a DefPathHash from the local crate, we can look up the
         // DefId in the tcx's `Definitions`.
         if stable_crate_id == self.sess.local_stable_crate_id() {
-            self.untracked_resolutions.definitions.local_def_path_hash_to_def_id(hash).to_def_id()
+            self.untracked_resolutions
+                .definitions
+                .local_def_path_hash_to_def_id(hash)
+                .map(LocalDefId::to_def_id)
         } else {
             // If this is a DefPathHash from an upstream crate, let the CrateStore map
             // it to a DefId.
-            let cstore = &self.untracked_resolutions.cstore;
-            let cnum = cstore.stable_crate_id_to_crate_num(stable_crate_id);
-            cstore.def_path_hash_to_def_id(cnum, hash)
+            self.untracked_resolutions.cstore.def_path_hash_to_def_id(hash)
         }
     }
 
