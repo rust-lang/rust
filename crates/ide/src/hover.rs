@@ -337,7 +337,7 @@ fn walk_and_push_ty(
         } else if let Some(trait_) = t.as_dyn_trait() {
             push_new_def(trait_.into());
         } else if let Some(traits) = t.as_impl_traits(db) {
-            traits.into_iter().for_each(|it| push_new_def(it.into()));
+            traits.for_each(|it| push_new_def(it.into()));
         } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
             push_new_def(trait_.into());
         }

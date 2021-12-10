@@ -2623,13 +2623,15 @@ impl Type {
     }
 
     pub fn autoderef<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Type> + 'a {
+        self.autoderef_(db).map(move |ty| self.derived(ty))
+    }
+
+    pub fn autoderef_<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Ty> + 'a {
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
         let environment = self.env.env.clone();
         let ty = InEnvironment { goal: canonical, environment };
-        autoderef(db, Some(self.krate), ty)
-            .map(|canonical| canonical.value)
-            .map(move |ty| self.derived(ty))
+        autoderef(db, Some(self.krate), ty).map(|canonical| canonical.value)
     }
 
     // This would be nicer if it just returned an iterator, but that runs into
@@ -2808,22 +2810,32 @@ impl Type {
         db: &'a dyn HirDatabase,
     ) -> impl Iterator<Item = Trait> + 'a {
         let _p = profile::span("applicable_inherent_traits");
-        self.autoderef(db)
-            .filter_map(|derefed_type| derefed_type.ty.dyn_trait())
+        self.autoderef_(db)
+            .filter_map(|ty| ty.dyn_trait())
             .flat_map(move |dyn_trait_id| hir_ty::all_super_traits(db.upcast(), dyn_trait_id))
             .map(Trait::from)
     }
 
-    pub fn as_impl_traits(&self, db: &dyn HirDatabase) -> Option<Vec<Trait>> {
+    pub fn env_traits<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Trait> + 'a {
+        let _p = profile::span("env_traits");
+        self.autoderef_(db)
+            .filter(|ty| matches!(ty.kind(&Interner), TyKind::Placeholder(_)))
+            .flat_map(|ty| {
+                self.env
+                    .traits_in_scope_from_clauses(ty)
+                    .flat_map(|t| hir_ty::all_super_traits(db.upcast(), t))
+            })
+            .map(Trait::from)
+    }
+
+    pub fn as_impl_traits(&self, db: &dyn HirDatabase) -> Option<impl Iterator<Item = Trait>> {
         self.ty.impl_trait_bounds(db).map(|it| {
-            it.into_iter()
-                .filter_map(|pred| match pred.skip_binders() {
-                    hir_ty::WhereClause::Implemented(trait_ref) => {
-                        Some(Trait::from(trait_ref.hir_trait_id()))
-                    }
-                    _ => None,
-                })
-                .collect()
+            it.into_iter().filter_map(|pred| match pred.skip_binders() {
+                hir_ty::WhereClause::Implemented(trait_ref) => {
+                    Some(Trait::from(trait_ref.hir_trait_id()))
+                }
+                _ => None,
+            })
         })
     }
 

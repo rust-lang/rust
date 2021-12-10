@@ -75,7 +75,7 @@ pub(crate) fn goto_type_definition(
                 } else if let Some(trait_) = t.as_dyn_trait() {
                     push(trait_.into());
                 } else if let Some(traits) = t.as_impl_traits(db) {
-                    traits.into_iter().for_each(|it| push(it.into()));
+                    traits.for_each(|it| push(it.into()));
                 } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
                     push(trait_.into());
                 }
