@@ -27,35 +27,40 @@ where
     }
 }
 
-#[inline(never)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
 fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
     panic!("range start index {} out of range for slice of length {}", index, len);
 }
 
-#[inline(never)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
 fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
     panic!("range end index {} out of range for slice of length {}", index, len);
 }
 
-#[inline(never)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
 fn slice_index_order_fail(index: usize, end: usize) -> ! {
     panic!("slice index starts at {} but ends at {}", index, end);
 }
 
-#[inline(never)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
 fn slice_start_index_overflow_fail() -> ! {
     panic!("attempted to index slice from after maximum usize");
 }
 
-#[inline(never)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
 fn slice_end_index_overflow_fail() -> ! {
