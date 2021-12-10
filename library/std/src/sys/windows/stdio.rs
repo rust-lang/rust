@@ -15,7 +15,9 @@ use core::str::utf8_char_width;
 // the value over time (such as if a process calls `SetStdHandle` while it's running). See #40490.
 pub struct Stdin {
     surrogate: u16,
+    incomplete_utf8: IncompleteUtf8,
 }
+
 pub struct Stdout {
     incomplete_utf8: IncompleteUtf8,
 }
@@ -27,6 +29,25 @@ pub struct Stderr {
 struct IncompleteUtf8 {
     bytes: [u8; 4],
     len: u8,
+}
+
+impl IncompleteUtf8 {
+    // Implemented for use in Stdin::read.
+    fn read(&mut self, buf: &mut [u8]) -> usize {
+        // Write to buffer until the buffer is full or we run out of bytes.
+        let to_write = cmp::min(buf.len(), self.len as usize);
+        buf[..to_write].copy_from_slice(&self.bytes[..to_write]);
+
+        // Rotate the remaining bytes if not enough remaining space in buffer.
+        if usize::from(self.len) > buf.len() {
+            self.bytes.copy_within(to_write.., 0);
+            self.len -= to_write as u8;
+        } else {
+            self.len = 0;
+        }
+
+        to_write
+    }
 }
 
 // Apparently Windows doesn't handle large reads on stdin or writes to stdout/stderr well (see
@@ -205,7 +226,7 @@ fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
 
 impl Stdin {
     pub const fn new() -> Stdin {
-        Stdin { surrogate: 0 }
+        Stdin { surrogate: 0, incomplete_utf8: IncompleteUtf8::new() }
     }
 }
 
@@ -221,24 +242,39 @@ impl io::Read for Stdin {
             }
         }
 
-        if buf.len() == 0 {
-            return Ok(0);
-        } else if buf.len() < 4 {
-            return Err(io::Error::new_const(
-                io::ErrorKind::InvalidInput,
-                &"Windows stdin in console mode does not support a buffer too small to \
-                 guarantee holding one arbitrary UTF-8 character (4 bytes)",
-            ));
+        // If there are bytes in the incomplete utf-8, start with those.
+        // (No-op if there is nothing in the buffer.)
+        let mut bytes_copied = self.incomplete_utf8.read(buf);
+
+        if bytes_copied == buf.len() {
+            return Ok(bytes_copied);
+        } else if buf.len() - bytes_copied < 4 {
+            // Not enough space to get a UTF-8 byte. We will use the incomplete UTF8.
+            let mut utf16_buf = [0u16; 1];
+            // Read one u16 character.
+            let read = read_u16s_fixup_surrogates(handle, &mut utf16_buf, 1, &mut self.surrogate)?;
+            // Read bytes, using the (now-empty) self.incomplete_utf8 as extra space.
+            let read_bytes = utf16_to_utf8(&utf16_buf[..read], &mut self.incomplete_utf8.bytes)?;
+
+            // Read in the bytes from incomplete_utf8 until the buffer is full.
+            self.incomplete_utf8.len = read_bytes as u8;
+            // No-op if no bytes.
+            bytes_copied += self.incomplete_utf8.read(&mut buf[bytes_copied..]);
+            Ok(bytes_copied)
+        } else {
+            let mut utf16_buf = [0u16; MAX_BUFFER_SIZE / 2];
+            // In the worst case, a UTF-8 string can take 3 bytes for every `u16` of a UTF-16. So
+            // we can read at most a third of `buf.len()` chars and uphold the guarantee no data gets
+            // lost.
+            let amount = cmp::min(buf.len() / 3, utf16_buf.len());
+            let read =
+                read_u16s_fixup_surrogates(handle, &mut utf16_buf, amount, &mut self.surrogate)?;
+
+            match utf16_to_utf8(&utf16_buf[..read], buf) {
+                Ok(value) => return Ok(bytes_copied + value),
+                Err(e) => return Err(e),
+            }
         }
-
-        let mut utf16_buf = [0u16; MAX_BUFFER_SIZE / 2];
-        // In the worst case, a UTF-8 string can take 3 bytes for every `u16` of a UTF-16. So
-        // we can read at most a third of `buf.len()` chars and uphold the guarantee no data gets
-        // lost.
-        let amount = cmp::min(buf.len() / 3, utf16_buf.len());
-        let read = read_u16s_fixup_surrogates(handle, &mut utf16_buf, amount, &mut self.surrogate)?;
-
-        utf16_to_utf8(&utf16_buf[..read], buf)
     }
 }
 
