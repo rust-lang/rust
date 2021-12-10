@@ -126,22 +126,23 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             lifetime,
         );
 
-        let (mention_influencer, influencer_point) = if sup_origin.span().overlaps(param.param_ty_span) {
-            // Account for `async fn` like in `async-await/issues/issue-62097.rs`.
-            // The desugaring of `async `fn`s causes `sup_origin` and `param` to point at the same
-            // place (but with different `ctxt`, hence `overlaps` instead of `==` above).
-            //
-            // This avoids the following:
-            //
-            // LL |     pub async fn run_dummy_fn(&self) {
-            //    |                               ^^^^^
-            //    |                               |
-            //    |                               this data with an anonymous lifetime `'_`...
-            //    |                               ...is captured here...
-            (false, sup_origin.span())
-        } else {
-            (!sup_origin.span().overlaps(return_sp), param.param_ty_span)
-        };
+        let (mention_influencer, influencer_point) =
+            if sup_origin.span().overlaps(param.param_ty_span) {
+                // Account for `async fn` like in `async-await/issues/issue-62097.rs`.
+                // The desugaring of `async `fn`s causes `sup_origin` and `param` to point at the same
+                // place (but with different `ctxt`, hence `overlaps` instead of `==` above).
+                //
+                // This avoids the following:
+                //
+                // LL |     pub async fn run_dummy_fn(&self) {
+                //    |                               ^^^^^
+                //    |                               |
+                //    |                               this data with an anonymous lifetime `'_`...
+                //    |                               ...is captured here...
+                (false, sup_origin.span())
+            } else {
+                (!sup_origin.span().overlaps(return_sp), param.param_ty_span)
+            };
         err.span_label(influencer_point, &format!("this data with {}...", lifetime));
 
         debug!("try_report_static_impl_trait: param_info={:?}", param);
