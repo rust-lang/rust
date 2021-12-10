@@ -46,7 +46,7 @@ impl SmallCStr {
 
     #[inline]
     pub fn as_c_str(&self) -> &ffi::CStr {
-        unsafe { ffi::CStr::from_bytes_with_nul_unchecked(&self.data[..]) }
+        unsafe { ffi::CStr::from_bytes_with_nul_unchecked(&self.data) }
     }
 
     #[inline]

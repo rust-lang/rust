@@ -142,7 +142,7 @@ impl_stable_hash_via_hash!(Fingerprint);
 impl<E: rustc_serialize::Encoder> Encodable<E> for Fingerprint {
     #[inline]
     fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        s.emit_raw_bytes(&self.to_le_bytes()[..])?;
+        s.emit_raw_bytes(&self.to_le_bytes())?;
         Ok(())
     }
 }
@@ -151,7 +151,7 @@ impl<D: rustc_serialize::Decoder> Decodable<D> for Fingerprint {
     #[inline]
     fn decode(d: &mut D) -> Result<Self, D::Error> {
         let mut bytes = [0u8; 16];
-        d.read_raw_bytes_into(&mut bytes[..])?;
+        d.read_raw_bytes_into(&mut bytes)?;
         Ok(Fingerprint::from_le_bytes(bytes))
     }
 }

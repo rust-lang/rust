@@ -677,11 +677,11 @@ impl<B: WriteBackendMethods> WorkItem<B> {
     fn start_profiling<'a>(&self, cgcx: &'a CodegenContext<B>) -> TimingGuard<'a> {
         match *self {
             WorkItem::Optimize(ref m) => {
-                cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &m.name[..])
+                cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &*m.name)
             }
             WorkItem::CopyPostLtoArtifacts(ref m) => cgcx
                 .prof
-                .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &m.name[..]),
+                .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &*m.name),
             WorkItem::LTO(ref m) => {
                 cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name())
             }

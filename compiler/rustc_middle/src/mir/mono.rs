@@ -530,6 +530,6 @@ impl CodegenUnitNameBuilder<'tcx> {
             write!(cgu_name, ".{}", special_suffix).unwrap();
         }
 
-        Symbol::intern(&cgu_name[..])
+        Symbol::intern(&cgu_name)
     }
 }
