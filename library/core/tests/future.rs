@@ -78,7 +78,7 @@ mod test_join_function_like_value_arg_semantics {
     fn _join_does_not_unnecessarily_move_mentioned_bindings() {
         let not_copy = vec![()];
         let _ = join!(async_fn(&not_copy)); // should not move `not_copy`
-        let _ = not_copy; // OK
+        let _ = &not_copy; // OK
     }
 
     #[test]
