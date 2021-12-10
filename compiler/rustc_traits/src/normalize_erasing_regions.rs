@@ -8,29 +8,13 @@ use std::sync::atomic::Ordering;
 
 crate fn provide(p: &mut Providers) {
     *p = Providers {
-        normalize_generic_arg_after_erasing_regions: |tcx, goal| {
-            debug!("normalize_generic_arg_after_erasing_regions(goal={:#?})", goal);
+        try_normalize_generic_arg_after_erasing_regions: |tcx, goal| {
+            debug!("try_normalize_generic_arg_after_erasing_regions(goal={:#?}", goal);
 
             tcx.sess
                 .perf_stats
                 .normalize_generic_arg_after_erasing_regions
                 .fetch_add(1, Ordering::Relaxed);
-
-            let (param_env, goal) = goal.into_parts();
-            tcx.try_normalize_erasing_regions(param_env, goal).unwrap_or_else(|_| bug!(
-                "Failed to normalize {:?}, maybe try to call `try_normalize_erasing_regions` instead",
-                goal
-            ))
-        },
-        normalize_mir_const_after_erasing_regions: |tcx, goal| {
-            let (param_env, goal) = goal.into_parts();
-            tcx.try_normalize_erasing_regions(param_env, goal).unwrap_or_else(|_| bug!(
-                "Failed to normalize {:?}, maybe try to call `try_normalize_erasing_regions` instead",
-                goal
-            ))
-        },
-        try_normalize_generic_arg_after_erasing_regions: |tcx, goal| {
-            debug!("try_normalize_generic_arg_after_erasing_regions(goal={:#?}", goal);
 
             try_normalize_after_erasing_regions(tcx, goal)
         },

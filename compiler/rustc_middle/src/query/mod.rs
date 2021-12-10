@@ -1658,27 +1658,6 @@ rustc_queries! {
         remap_env_constness
     }
 
-    // FIXME: Implement `normalize_generic_arg_after_erasing_regions` and
-    // `normalize_mir_const_after_erasing_regions` in terms of
-    // `try_normalize_generic_arg_after_erasing_regions` and
-    // `try_normalize_mir_const_after_erasing_regions`, respectively.
-
-    /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
-    query normalize_generic_arg_after_erasing_regions(
-        goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
-    ) -> GenericArg<'tcx> {
-        desc { "normalizing `{}`", goal.value }
-        remap_env_constness
-    }
-
-    /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
-    query normalize_mir_const_after_erasing_regions(
-        goal: ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
-    ) -> mir::ConstantKind<'tcx> {
-        desc { "normalizing `{}`", goal.value }
-        remap_env_constness
-    }
-
     /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
     query try_normalize_generic_arg_after_erasing_regions(
         goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
