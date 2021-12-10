@@ -896,7 +896,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     // it is from the local crate.
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_hi().with_hi(span.hi()),
-                        "do not `.await` the expression",
+                        "remove the `.await`",
                         String::new(),
                         Applicability::MachineApplicable,
                     );
