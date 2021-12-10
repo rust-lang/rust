@@ -9,6 +9,7 @@ use chalk_solve::{logging_db::LoggingRustIrDatabase, Solver};
 use base_db::CrateId;
 use hir_def::{lang_item::LangItemTarget, TraitId};
 use stdx::panic_context;
+use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, AliasEq, AliasTy, Canonical, DomainGoal, Goal, Guidance, InEnvironment,
@@ -169,7 +170,7 @@ pub enum FnTrait {
 }
 
 impl FnTrait {
-    fn lang_item_name(self) -> &'static str {
+    const fn lang_item_name(self) -> &'static str {
         match self {
             FnTrait::FnOnce => "fn_once",
             FnTrait::FnMut => "fn_mut",
@@ -178,7 +179,7 @@ impl FnTrait {
     }
 
     pub fn get_id(&self, db: &dyn HirDatabase, krate: CrateId) -> Option<TraitId> {
-        let target = db.lang_item(krate, self.lang_item_name().into())?;
+        let target = db.lang_item(krate, SmolStr::new_inline(self.lang_item_name()))?;
         match target {
             LangItemTarget::TraitId(t) => Some(t),
             _ => None,

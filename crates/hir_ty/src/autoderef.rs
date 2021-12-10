@@ -10,6 +10,7 @@ use chalk_ir::{cast::Cast, fold::Fold, interner::HasInterner, VariableKind};
 use hir_def::lang_item::LangItemTarget;
 use hir_expand::name::name;
 use limit::Limit;
+use syntax::SmolStr;
 use tracing::{info, warn};
 
 use crate::{
@@ -71,7 +72,10 @@ impl Iterator for Autoderef<'_> {
         }
 
         let (kind, new_ty) = if let Some(derefed) = builtin_deref(&self.ty.value) {
-            (AutoderefKind::Builtin, Canonical { value: derefed, binders: self.ty.binders.clone() })
+            (
+                AutoderefKind::Builtin,
+                Canonical { value: derefed.clone(), binders: self.ty.binders.clone() },
+            )
         } else {
             (
                 AutoderefKind::Overloaded,
@@ -110,15 +114,17 @@ pub(crate) fn deref(
 ) -> Option<Canonical<Ty>> {
     let _p = profile::span("deref");
     match builtin_deref(&ty.goal.value) {
-        Some(derefed) => Some(Canonical { value: derefed, binders: ty.goal.binders.clone() }),
+        Some(derefed) => {
+            Some(Canonical { value: derefed.clone(), binders: ty.goal.binders.clone() })
+        }
         None => deref_by_trait(db, krate, ty),
     }
 }
 
-fn builtin_deref(ty: &Ty) -> Option<Ty> {
+fn builtin_deref(ty: &Ty) -> Option<&Ty> {
     match ty.kind(&Interner) {
-        TyKind::Ref(.., ty) => Some(ty.clone()),
-        TyKind::Raw(.., ty) => Some(ty.clone()),
+        TyKind::Ref(.., ty) => Some(ty),
+        TyKind::Raw(.., ty) => Some(ty),
         _ => None,
     }
 }
@@ -129,7 +135,7 @@ fn deref_by_trait(
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
     let _p = profile::span("deref_by_trait");
-    let deref_trait = match db.lang_item(krate, "deref".into())? {
+    let deref_trait = match db.lang_item(krate, SmolStr::new_inline("deref"))? {
         LangItemTarget::TraitId(it) => it,
         _ => return None,
     };

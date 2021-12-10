@@ -10,6 +10,7 @@ use std::iter;
 use chalk_ir::{cast::Cast, Goal, Mutability, TyVariableKind};
 use hir_def::{expr::ExprId, lang_item::LangItemTarget};
 use stdx::always;
+use syntax::SmolStr;
 
 use crate::{
     autoderef::{Autoderef, AutoderefKind},
@@ -536,10 +537,11 @@ impl<'a> InferenceContext<'a> {
             reborrow.as_ref().map_or_else(|| from_ty.clone(), |(_, adj)| adj.target.clone());
 
         let krate = self.resolver.krate().unwrap();
-        let coerce_unsized_trait = match self.db.lang_item(krate, "coerce_unsized".into()) {
-            Some(LangItemTarget::TraitId(trait_)) => trait_,
-            _ => return Err(TypeError),
-        };
+        let coerce_unsized_trait =
+            match self.db.lang_item(krate, SmolStr::new_inline("coerce_unsized")) {
+                Some(LangItemTarget::TraitId(trait_)) => trait_,
+                _ => return Err(TypeError),
+            };
 
         let coerce_unsized_tref = {
             let b = TyBuilder::trait_ref(self.db, coerce_unsized_trait);

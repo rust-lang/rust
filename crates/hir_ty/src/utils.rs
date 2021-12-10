@@ -18,6 +18,8 @@ use hir_def::{
 };
 use hir_expand::name::{name, Name};
 use rustc_hash::FxHashSet;
+use smallvec::{smallvec, SmallVec};
+use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, TyKind,
@@ -26,16 +28,16 @@ use crate::{
 
 pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: CrateId) -> impl Iterator<Item = TraitId> {
     [
-        db.lang_item(krate, "fn".into()),
-        db.lang_item(krate, "fn_mut".into()),
-        db.lang_item(krate, "fn_once".into()),
+        db.lang_item(krate, SmolStr::new_inline("fn")),
+        db.lang_item(krate, SmolStr::new_inline("fn_mut")),
+        db.lang_item(krate, SmolStr::new_inline("fn_once")),
     ]
     .into_iter()
     .flatten()
     .flat_map(|it| it.as_trait())
 }
 
-fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
+fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
     let resolver = trait_.resolver(db);
     // returning the iterator directly doesn't easily work because of
     // lifetime problems, but since there usually shouldn't be more than a
@@ -100,13 +102,13 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
 
 /// Returns an iterator over the whole super trait hierarchy (including the
 /// trait itself).
-pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
+pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
     // we need to take care a bit here to avoid infinite loops in case of cycles
     // (i.e. if we have `trait A: B; trait B: A;`)
-    let mut result = vec![trait_];
+
+    let mut result = smallvec![trait_];
     let mut i = 0;
-    while i < result.len() {
-        let t = result[i];
+    while let Some(&t) = result.get(i) {
         // yeah this is quadratic, but trait hierarchies should be flat
         // enough that this doesn't matter
         for tt in direct_super_traits(db, t) {

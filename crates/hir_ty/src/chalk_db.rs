@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use cov_mark::hit;
+use syntax::SmolStr;
 use tracing::debug;
 
 use chalk_ir::{cast::Cast, fold::shift::Shift, CanonicalVarKinds};
@@ -213,7 +214,7 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
                 if let Some((future_trait, future_output)) = self
                     .db
-                    .lang_item(self.krate, "future_trait".into())
+                    .lang_item(self.krate, SmolStr::new_inline("future_trait"))
                     .and_then(|item| item.as_trait())
                     .and_then(|trait_| {
                         let alias =
@@ -419,7 +420,7 @@ pub(crate) fn associated_ty_data_query(
     if !ctx.unsized_types.borrow().contains(&self_ty) {
         let sized_trait = resolver
             .krate()
-            .and_then(|krate| db.lang_item(krate, "sized".into()))
+            .and_then(|krate| db.lang_item(krate, SmolStr::new_inline("sized")))
             .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
         let sized_bound = sized_trait.into_iter().map(|sized_trait| {
             let trait_bound =

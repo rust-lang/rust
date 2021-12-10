@@ -6,6 +6,7 @@ use hir_def::{
     type_ref::Rawness,
     FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
 };
+use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
@@ -187,7 +188,7 @@ impl TyExt for Ty {
                     ImplTraitId::AsyncBlockTypeImplTrait(def, _expr) => {
                         let krate = def.module(db.upcast()).krate();
                         if let Some(future_trait) = db
-                            .lang_item(krate, "future_trait".into())
+                            .lang_item(krate, SmolStr::new_inline("future_trait"))
                             .and_then(|item| item.as_trait())
                         {
                             // This is only used by type walking.

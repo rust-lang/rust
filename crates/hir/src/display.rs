@@ -12,7 +12,10 @@ use hir_ty::{
     },
     Interner, TraitRefExt, WhereClause,
 };
-use syntax::ast::{self, HasName};
+use syntax::{
+    ast::{self, HasName},
+    SmolStr,
+};
 
 use crate::{
     Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasCrate, HasVisibility,
@@ -247,7 +250,8 @@ impl HirDisplay for TypeParam {
             bounds.iter().cloned().map(|b| b.substitute(&Interner, &substs)).collect();
         let krate = self.id.parent.krate(f.db).id;
         let sized_trait =
-            f.db.lang_item(krate, "sized".into()).and_then(|lang_item| lang_item.as_trait());
+            f.db.lang_item(krate, SmolStr::new_inline("sized"))
+                .and_then(|lang_item| lang_item.as_trait());
         let has_only_sized_bound = predicates.iter().all(move |pred| match pred.skip_binders() {
             WhereClause::Implemented(it) => Some(it.hir_trait_id()) == sized_trait,
             _ => false,

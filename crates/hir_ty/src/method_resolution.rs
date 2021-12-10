@@ -541,9 +541,10 @@ pub fn iterate_method_candidates_dyn(
             // types*.
 
             let deref_chain = autoderef_method_receiver(db, krate, ty);
-            for i in 0..deref_chain.len() {
+            let mut deref_chains = stdx::slice_tails(&deref_chain);
+            deref_chains.try_for_each(|deref_chain| {
                 iterate_method_candidates_with_autoref(
-                    &deref_chain[i..],
+                    deref_chain,
                     db,
                     env.clone(),
                     krate,
@@ -551,9 +552,8 @@ pub fn iterate_method_candidates_dyn(
                     visible_from_module,
                     name,
                     callback,
-                )?;
-            }
-            ControlFlow::Continue(())
+                )
+            })
         }
         LookupMode::Path => {
             // No autoderef for path lookups
@@ -716,15 +716,14 @@ fn iterate_trait_method_candidates(
     // if ty is `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait =
         self_ty.value.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
-    let env_traits = match self_ty.value.kind(&Interner) {
-        TyKind::Placeholder(_) => {
-            // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
+    let env_traits = matches!(self_ty.value.kind(&Interner), TyKind::Placeholder(_))
+        // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
+        .then(|| {
             env.traits_in_scope_from_clauses(self_ty.value.clone())
                 .flat_map(|t| all_super_traits(db.upcast(), t))
-                .collect()
-        }
-        _ => Vec::new(),
-    };
+        })
+        .into_iter()
+        .flatten();
     let traits = inherent_trait.chain(env_traits).chain(traits_in_scope.iter().copied());
 
     'traits: for t in traits {
@@ -747,10 +746,10 @@ fn iterate_trait_method_candidates(
         // trait, but if we find out it doesn't, we'll skip the rest of the
         // iteration
         let mut known_implemented = false;
-        for (_name, item) in data.items.iter() {
+        for &(_, item) in data.items.iter() {
             // Don't pass a `visible_from_module` down to `is_valid_candidate`,
             // since only inherent methods should be included into visibility checking.
-            if !is_valid_candidate(db, env.clone(), name, receiver_ty, *item, self_ty, None) {
+            if !is_valid_candidate(db, env.clone(), name, receiver_ty, item, self_ty, None) {
                 continue;
             }
             if !known_implemented {
@@ -761,7 +760,7 @@ fn iterate_trait_method_candidates(
             }
             known_implemented = true;
             // FIXME: we shouldn't be ignoring the binders here
-            callback(self_ty, *item)?
+            callback(self_ty, item)?
         }
     }
     ControlFlow::Continue(())
@@ -774,18 +773,14 @@ fn filter_inherent_impls_for_self_ty<'i>(
     // inherent methods on arrays are fingerprinted as [T; {unknown}], so we must also consider them when
     // resolving a method call on an array with a known len
     let array_impls = {
-        if let TyKind::Array(parameters, array_len) = self_ty.kind(&Interner) {
-            if !array_len.is_unknown() {
+        match self_ty.kind(&Interner) {
+            TyKind::Array(parameters, array_len) if !array_len.is_unknown() => {
                 let unknown_array_len_ty =
-                    TyKind::Array(parameters.clone(), consteval::usize_const(None))
-                        .intern(&Interner);
+                    TyKind::Array(parameters.clone(), consteval::usize_const(None));
 
-                Some(impls.for_self_ty(&unknown_array_len_ty))
-            } else {
-                None
+                Some(impls.for_self_ty(&unknown_array_len_ty.intern(&Interner)))
             }
-        } else {
-            None
+            _ => None,
         }
     }
     .into_iter()
