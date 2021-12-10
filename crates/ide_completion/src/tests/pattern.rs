@@ -130,18 +130,24 @@ fn foo() {
 fn irrefutable() {
     check(
         r#"
+enum SingleVariantEnum {
+    Variant
+}
+use SingleVariantEnum::Variant;
 fn foo() {
    let a$0
 }
 "#,
         expect![[r##"
             kw mut
-            bn Record    Record { field$1 }$0
+            bn Record            Record { field$1 }$0
             st Record
-            bn Tuple     Tuple($1)$0
+            bn Tuple             Tuple($1)$0
             st Tuple
+            ev Variant
+            en SingleVariantEnum
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…)         #[macro_export] macro_rules! makro
         "##]],
     );
 }
