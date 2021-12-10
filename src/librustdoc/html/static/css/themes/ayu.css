@@ -190,6 +190,12 @@ pre, .rustdoc.source .example-wrap {
 .content span.type, .content a.type {
 	color: #39AFD7;
 }
+.content span.type,
+.content a.type,
+.block a.current.type { color: #39AFD7; }
+.content span.associatedtype,
+.content a.associatedtype,
+.block a.current.associatedtype { color: #39AFD7; }
 .content span.fn, .content a.fn, .content span.method,
 .content a.method, .content span.tymethod,
 .content a.tymethod, .content .fnname {
@@ -454,11 +460,12 @@ above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 .block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
 .content span.struct,.content a.struct,.block a.current.struct {}
 #titles>button:hover,#titles>button.selected {}
-.content span.type,.content a.type,.block a.current.type {}
+.content span.typedef,.content a.typedef,.block a.current.typedef {}
 .content span.union,.content a.union,.block a.current.union {}
 pre.rust .lifetime {}
 .stab.unstable {}
-h2,h3:not(.impl):not(.method):not(.type):not(.tymethod),h4:not(.method):not(.type):not(.tymethod) {}
+h2,
+h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {}
 .content span.enum,.content a.enum,.block a.current.enum {}
 .content span.constant,.content a.constant,.block a.current.constant,.content span.static,
 .content a.static, .block a.current.static {}
@@ -495,6 +502,7 @@ a.result-fn:focus,
 a.result-method:focus,
 a.result-tymethod:focus {}
 a.result-type:focus {}
+a.result-associatedtype:focus {}
 a.result-foreigntype:focus {}
 a.result-attr:focus,
 a.result-derive:focus,
