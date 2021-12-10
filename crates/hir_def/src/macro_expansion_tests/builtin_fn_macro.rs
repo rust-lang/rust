@@ -314,6 +314,40 @@ fn main() { "foor0bar\nfalse"; }
 }
 
 #[test]
+fn test_concat_with_captured_expr() {
+    check(
+        r##"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+macro_rules! surprise {
+    () => { "s" };
+}
+
+macro_rules! stuff {
+    ($string:expr) => { concat!($string) };
+}
+
+fn main() { concat!(surprise!()); }
+"##,
+        expect![[r##"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+macro_rules! surprise {
+    () => { "s" };
+}
+
+macro_rules! stuff {
+    ($string:expr) => { concat!($string) };
+}
+
+fn main() { "s"; }
+"##]],
+    );
+}
+
+#[test]
 fn test_concat_idents_expand() {
     check(
         r##"
