@@ -15,16 +15,18 @@ use rustc_span::symbol::sym;
 use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 
+use crate::borrow_set::TwoPhaseActivation;
 use crate::borrowck_errors;
 
+use crate::diagnostics::find_all_local_uses;
 use crate::{
     borrow_set::BorrowData, diagnostics::Instance, prefixes::IsPrefixOf,
     InitializationRequiringAction, MirBorrowckCtxt, PrefixSet, WriteKind,
 };
 
 use super::{
-    explain_borrow::BorrowExplanation, FnSelfUseKind, IncludingDowncast, RegionName,
-    RegionNameSource, UseSpans,
+    explain_borrow::{BorrowExplanation, LaterUseKind},
+    FnSelfUseKind, IncludingDowncast, RegionName, RegionNameSource, UseSpans,
 };
 
 #[derive(Debug)]
@@ -768,7 +770,90 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Some((issued_span, span)),
         );
 
+        self.suggest_using_local_if_applicable(
+            &mut err,
+            location,
+            (place, span),
+            gen_borrow_kind,
+            issued_borrow,
+            explanation,
+        );
+
         err
+    }
+
+    #[instrument(level = "debug", skip(self, err))]
+    fn suggest_using_local_if_applicable(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        location: Location,
+        (place, span): (Place<'tcx>, Span),
+        gen_borrow_kind: BorrowKind,
+        issued_borrow: &BorrowData<'tcx>,
+        explanation: BorrowExplanation,
+    ) {
+        let used_in_call =
+            matches!(explanation, BorrowExplanation::UsedLater(LaterUseKind::Call, _call_span, _));
+        if !used_in_call {
+            debug!("not later used in call");
+            return;
+        }
+
+        let outer_call_loc =
+            if let TwoPhaseActivation::ActivatedAt(loc) = issued_borrow.activation_location {
+                loc
+            } else {
+                issued_borrow.reserve_location
+            };
+        let outer_call_stmt = self.body.stmt_at(outer_call_loc);
+
+        let inner_param_location = location;
+        let Some(inner_param_stmt) = self.body.stmt_at(inner_param_location).left() else {
+            debug!("`inner_param_location` {:?} is not for a statement", inner_param_location);
+            return;
+        };
+        let Some(&inner_param) = inner_param_stmt.kind.as_assign().map(|(p, _)| p) else {
+            debug!(
+                "`inner_param_location` {:?} is not for an assignment: {:?}",
+                inner_param_location, inner_param_stmt
+            );
+            return;
+        };
+        let inner_param_uses = find_all_local_uses::find(self.body, inner_param.local);
+        let Some((inner_call_loc,inner_call_term)) = inner_param_uses.into_iter().find_map(|loc| {
+            let Either::Right(term) = self.body.stmt_at(loc) else {
+                debug!("{:?} is a statement, so it can't be a call", loc);
+                return None;
+            };
+            let TerminatorKind::Call { args, .. } = &term.kind else {
+                debug!("not a call: {:?}", term);
+                return None;
+            };
+            debug!("checking call args for uses of inner_param: {:?}", args);
+            if args.contains(&Operand::Move(inner_param)) {
+                Some((loc,term))
+            } else {
+                None
+            }
+        }) else {
+            debug!("no uses of inner_param found as a by-move call arg");
+            return;
+        };
+        debug!("===> outer_call_loc = {:?}, inner_call_loc = {:?}", outer_call_loc, inner_call_loc);
+
+        let inner_call_span = inner_call_term.source_info.span;
+        let outer_call_span = outer_call_stmt.either(|s| s.source_info, |t| t.source_info).span;
+        if outer_call_span == inner_call_span || !outer_call_span.contains(inner_call_span) {
+            // FIXME: This stops the suggestion in some cases where it should be emitted.
+            //        Fix the spans for those cases so it's emitted correctly.
+            debug!(
+                "outer span {:?} does not strictly contain inner span {:?}",
+                outer_call_span, inner_call_span
+            );
+            return;
+        }
+        err.span_help(inner_call_span, "try adding a local storing this argument...");
+        err.span_help(outer_call_span, "...and then using that local as the argument to this call");
     }
 
     fn suggest_split_at_mut_if_applicable(
