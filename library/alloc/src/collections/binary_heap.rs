@@ -974,7 +974,7 @@ impl<T> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(try_reserve_binary_heap)]
+    /// #![feature(try_reserve_2)]
     /// use std::collections::BinaryHeap;
     /// use std::collections::TryReserveError;
     ///
@@ -991,7 +991,7 @@ impl<T> BinaryHeap<T> {
     /// }
     /// # find_max_slow(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve_binary_heap", issue = "none")]
+    #[unstable(feature = "try_reserve_2", issue = "91789")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.data.try_reserve_exact(additional)
     }
@@ -1010,7 +1010,7 @@ impl<T> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(try_reserve_binary_heap)]
+    /// #![feature(try_reserve_2)]
     /// use std::collections::BinaryHeap;
     /// use std::collections::TryReserveError;
     ///
@@ -1027,7 +1027,7 @@ impl<T> BinaryHeap<T> {
     /// }
     /// # find_max_slow(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve_binary_heap", issue = "none")]
+    #[unstable(feature = "try_reserve_2", issue = "91789")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.data.try_reserve(additional)
     }
