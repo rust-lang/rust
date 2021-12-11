@@ -99,6 +99,22 @@ fn not_thumb1(
     }
 }
 
+fn reserved_r9(
+    arch: InlineAsmArch,
+    mut has_feature: impl FnMut(&str) -> bool,
+    target: &Target,
+) -> Result<(), &'static str> {
+    not_thumb1(arch, &mut has_feature, target)?;
+
+    // We detect this using the reserved-r9 feature instead of using the target
+    // because the relocation model can be changed with compiler options.
+    if has_feature("reserved-r9") {
+        Err("the RWPI static base register (r9) cannot be used as an operand for inline asm")
+    } else {
+        Ok(())
+    }
+}
+
 def_regs! {
     Arm ArmInlineAsmReg ArmInlineAsmRegClass {
         r0: reg = ["r0", "a1"],
@@ -109,6 +125,7 @@ def_regs! {
         r5: reg = ["r5", "v2"],
         r7: reg = ["r7", "v4"] % frame_pointer_r7,
         r8: reg = ["r8", "v5"] % not_thumb1,
+        r9: reg = ["r9", "v6", "rfp"] % reserved_r9,
         r10: reg = ["r10", "sl"] % not_thumb1,
         r11: reg = ["r11", "fp"] % frame_pointer_r11,
         r12: reg = ["r12", "ip"] % not_thumb1,
@@ -195,8 +212,6 @@ def_regs! {
         q15: qreg = ["q15"],
         #error = ["r6", "v3"] =>
             "r6 is used internally by LLVM and cannot be used as an operand for inline asm",
-        #error = ["r9", "v6", "rfp"] =>
-            "r9 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["r13", "sp"] =>
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["r15", "pc"] =>
