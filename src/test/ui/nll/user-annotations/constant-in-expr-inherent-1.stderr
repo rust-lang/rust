@@ -4,7 +4,7 @@ error[E0759]: `fn` parameter has lifetime `'a` but it needs to satisfy a `'stati
 LL | fn foo<'a>(_: &'a u32) -> &'static u32 {
    |               ------- this data with lifetime `'a`...
 LL |     <Foo<'a>>::C
-   |     ^^^^^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |     ^^^^^^^^^^^^ ...is used and required to live as long as `'static` here
 
 error: aborting due to previous error
 

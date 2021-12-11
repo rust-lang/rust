@@ -29,4 +29,22 @@ fn test_wrong3<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
     y.get_b() // ERROR
 }
 
+fn test_wrong4<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+    <_ as Bar>::get_b(x) // ERROR
+    //~^ ERROR `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+}
+
+fn test_wrong5<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+    <_ as Bar<'_, '_>>::get_b(x) // ERROR
+    //~^ ERROR `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+}
+
+fn test_wrong6<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
+    let y = x as &dyn Bar<'_, '_>;
+    //~^ ERROR `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime requirement
+    y.get_b(); // ERROR
+    let z = y;
+    z.get_b() // ERROR
+}
+
 fn main() {}

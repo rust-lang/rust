@@ -4,7 +4,7 @@ error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'sta
 LL | fn foo(x: &u32) -> &'static u32 {
    |           ---- this data with an anonymous lifetime `'_`...
 LL |     &*x
-   |     ^^^ ...is captured and required to live as long as `'static` here
+   |     ^^^ ...is used and required to live as long as `'static` here
 
 error: aborting due to previous error
 

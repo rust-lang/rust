@@ -22,7 +22,7 @@ error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an impli
 LL |     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32> + 'a>) -> &'a () {
    |                        -------------------------------------- this data with lifetime `'a`...
 LL |         val.use_self()
-   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |             ^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:60:30
