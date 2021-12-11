@@ -2244,13 +2244,29 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// assert_eq!(*v, 42);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline]
-pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
+pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     extern "rust-intrinsic" {
+        #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
         fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
 
-    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
+    #[cfg(debug_assertions)]
+    fn runtime_check<T>(ptr: *mut T) {
+        debug_assert!(
+            is_aligned_and_not_null(ptr),
+            "attempt to write to unaligned or null pointer"
+        );
+    }
+    #[cfg(debug_assertions)]
+    const fn compiletime_check<T>(_ptr: *mut T) {}
+    #[cfg(debug_assertions)]
+    // SAFETY: runtime debug-assertions are a best-effort basis; it's fine to
+    // not do them during compile time
+    unsafe {
+        const_eval_select((dst,), compiletime_check, runtime_check);
+    }
 
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe { write_bytes(dst, val, count) }

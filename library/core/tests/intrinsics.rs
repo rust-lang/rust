@@ -35,3 +35,33 @@ fn test_assume_can_be_in_const_contexts() {
     let rs = unsafe { foo(42, 97) };
     assert_eq!(rs, 0);
 }
+
+#[test]
+#[cfg(not(bootstrap))]
+const fn test_write_bytes_in_const_contexts() {
+    use core::intrinsics::write_bytes;
+
+    const TEST: [u32; 3] = {
+        let mut arr = [1u32, 2, 3];
+        unsafe {
+            write_bytes(arr.as_mut_ptr(), 0, 2);
+        }
+        arr
+    };
+
+    assert!(TEST[0] == 0);
+    assert!(TEST[1] == 0);
+    assert!(TEST[2] == 3);
+
+    const TEST2: [u32; 3] = {
+        let mut arr = [1u32, 2, 3];
+        unsafe {
+            write_bytes(arr.as_mut_ptr(), 1, 2);
+        }
+        arr
+    };
+
+    assert!(TEST2[0] == 16843009);
+    assert!(TEST2[1] == 16843009);
+    assert!(TEST2[2] == 3);
+}
