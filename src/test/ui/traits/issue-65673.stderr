@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
-  --> $DIR/issue-65673.rs:9:5
+  --> $DIR/issue-65673.rs:9:16
    |
 LL |     type Ctx = dyn Alias<T>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                ^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Trait + 'static)`
 note: required by a bound in `WithType::Ctx`

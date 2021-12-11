@@ -2,7 +2,7 @@
 // `Sized` bound is already in a `where` clause.
 fn foo<T>(_: &T) where T: Sized {}
 fn bar() { foo(""); }
-//~^ERROR the size for values of type
+//~^ ERROR the size for values of type
 
 pub fn main() {
 }

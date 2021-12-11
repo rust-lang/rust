@@ -71,11 +71,6 @@ note: required because it appears within the type `Bar<A>`
    |
 LL | struct Bar<T: ?Sized> {
    |        ^^^
-note: required because it appears within the type `Bar<Bar<A>>`
-  --> $DIR/extern-types-unsized.rs:14:8
-   |
-LL | struct Bar<T: ?Sized> {
-   |        ^^^
 note: required by a bound in `assert_sized`
   --> $DIR/extern-types-unsized.rs:19:17
    |

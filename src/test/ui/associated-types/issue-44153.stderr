@@ -2,8 +2,13 @@ error[E0271]: type mismatch resolving `<() as Array>::Element == &()`
   --> $DIR/issue-44153.rs:18:5
    |
 LL |     <() as Visit>::visit();
-   |     ^^^^^^^^^^^^^^^^^^^^ expected `&()`, found `()`
+   |     ^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Array>::Element == &()`
    |
+note: expected this to be `&()`
+  --> $DIR/issue-44153.rs:10:20
+   |
+LL |     type Element = ();
+   |                    ^^
 note: required because of the requirements on the impl of `Visit` for `()`
   --> $DIR/issue-44153.rs:13:10
    |

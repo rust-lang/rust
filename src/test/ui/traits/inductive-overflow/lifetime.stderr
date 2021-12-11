@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `X<C<'_>>: NotAuto`
-  --> $DIR/lifetime.rs:27:5
+  --> $DIR/lifetime.rs:28:5
    |
 LL |     is_send::<X<C<'static>>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

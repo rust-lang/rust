@@ -4,8 +4,13 @@ error[E0271]: type mismatch resolving `<() as Bar>::Foo == ()`
 LL | pub type FooImpl = impl Foo;
    |                    -------- the found opaque type
 LL | pub type BarImpl = impl Bar<Foo = FooImpl>;
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found opaque type
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Bar>::Foo == ()`
    |
+note: expected this to be `()`
+  --> $DIR/issue-63355.rs:24:16
+   |
+LL |     type Foo = FooImpl;
+   |                ^^^^^^^
    = note: expected unit type `()`
             found opaque type `impl Foo`
 

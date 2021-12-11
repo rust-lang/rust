@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `u16: Bar<N>` is not satisfied
-  --> $DIR/associated-type-bound-fail.rs:9:5
+  --> $DIR/associated-type-bound-fail.rs:9:18
    |
 LL |     type Assoc = u16;
-   |     ^^^^^^^^^^^^^^^^^ the trait `Bar<N>` is not implemented for `u16`
+   |                  ^^^ the trait `Bar<N>` is not implemented for `u16`
    |
    = help: the following implementations were found:
              <u16 as Bar<3_usize>>

@@ -638,7 +638,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         self.expr_ty = fcx.structurally_resolved_type(self.expr.span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolved_type(self.cast_span, self.cast_ty);
 
-        if !fcx.type_is_known_to_be_sized_modulo_regions(self.cast_ty, self.span) {
+        debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
+
+        if !fcx.type_is_known_to_be_sized_modulo_regions(self.cast_ty, self.span)
+            && !self.cast_ty.has_infer_types()
+        {
             self.report_cast_to_unsized_type(fcx);
         } else if self.expr_ty.references_error() || self.cast_ty.references_error() {
             // No sense in giving duplicate error messages

@@ -379,6 +379,7 @@ fn compare_predicate_entailment<'tcx>(
                     found: impl_fty,
                 })),
                 &terr,
+                false,
             );
             diag.emit();
             return Err(ErrorReported);
@@ -734,8 +735,7 @@ fn compare_number_of_method_arguments<'tcx>(
             tcx.sess,
             impl_span,
             E0050,
-            "method `{}` has {} but the declaration in \
-                                        trait `{}` has {}",
+            "method `{}` has {} but the declaration in trait `{}` has {}",
             trait_m.ident,
             potentially_plural_count(impl_number_args, "parameter"),
             tcx.def_path_str(trait_m.def_id),
@@ -1069,6 +1069,7 @@ crate fn compare_const_impl<'tcx>(
                     found: impl_ty,
                 })),
                 &terr,
+                false,
             );
             diag.emit();
         }
@@ -1099,7 +1100,8 @@ crate fn compare_ty_impl<'tcx>(
     let _: Result<(), ErrorReported> = (|| {
         compare_number_of_generics(tcx, impl_ty, impl_ty_span, trait_ty, trait_item_span)?;
 
-        compare_type_predicate_entailment(tcx, impl_ty, impl_ty_span, trait_ty, impl_trait_ref)?;
+        let sp = tcx.def_span(impl_ty.def_id);
+        compare_type_predicate_entailment(tcx, impl_ty, sp, trait_ty, impl_trait_ref)?;
 
         check_type_bounds(tcx, trait_ty, impl_ty, impl_ty_span, impl_trait_ref)
     })();

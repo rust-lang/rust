@@ -1,8 +1,8 @@
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/issue-88595.rs:19:5
+  --> $DIR/issue-88595.rs:19:18
    |
 LL |     type B<'b> = impl Clone;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/issue-88595.rs:18:6

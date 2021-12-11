@@ -1430,6 +1430,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// Extend a type error with extra labels pointing at "non-trivial" types, like closures and
+    /// the return type of `async fn`s.
+    ///
+    /// `secondary_span` gives the caller the opportunity to expand `diag` with a `span_label`.
+    ///
+    /// `swap_secondary_and_primary` is used to make projection errors in particular nicer by using
+    /// the message in `secondary_span` as the primary label, and apply the message that would
+    /// otherwise be used for the primary label on the `secondary_span` `Span`. This applies on
+    /// E0271, like `src/test/ui/issues/issue-39970.stderr`.
     pub fn note_type_err(
         &self,
         diag: &mut DiagnosticBuilder<'tcx>,
@@ -1437,6 +1446,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         secondary_span: Option<(Span, String)>,
         mut values: Option<ValuePairs<'tcx>>,
         terr: &TypeError<'tcx>,
+        swap_secondary_and_primary: bool,
     ) {
         let span = cause.span(self.tcx);
         debug!("note_type_err cause={:?} values={:?}, terr={:?}", cause, values, terr);
@@ -1613,9 +1623,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match terr {
             TypeError::ObjectUnsafeCoercion(_) => {}
             _ => {
-                diag.span_label(span, terr.to_string());
+                let mut label_or_note = |span: Span, msg: &str| {
+                    if &[span] == diag.span.primary_spans() {
+                        diag.span_label(span, msg);
+                    } else {
+                        diag.span_note(span, msg);
+                    }
+                };
                 if let Some((sp, msg)) = secondary_span {
-                    diag.span_label(sp, msg);
+                    if swap_secondary_and_primary {
+                        let terr = if let Some(infer::ValuePairs::Types(infer::ExpectedFound {
+                            expected,
+                            ..
+                        })) = values
+                        {
+                            format!("expected this to be `{}`", expected)
+                        } else {
+                            terr.to_string()
+                        };
+                        label_or_note(sp, &terr);
+                        label_or_note(span, &msg);
+                    } else {
+                        label_or_note(span, &terr.to_string());
+                        label_or_note(sp, &msg);
+                    }
+                } else {
+                    label_or_note(span, &terr.to_string());
                 }
             }
         };
@@ -2049,7 +2082,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 struct_span_err!(self.tcx.sess, span, E0644, "{}", failure_str)
             }
         };
-        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr);
+        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false);
         diag
     }
 

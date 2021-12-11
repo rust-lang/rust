@@ -2,8 +2,13 @@ error[E0271]: type mismatch resolving `<{integer} as Fun>::F<'_> == [u8]`
   --> $DIR/issue-74684-2.rs:23:5
    |
 LL |     bug(Box::new(x));
-   |     ^^^ expected slice `[u8]`, found `i32`
+   |     ^^^ type mismatch resolving `<{integer} as Fun>::F<'_> == [u8]`
    |
+note: expected this to be `[u8]`
+  --> $DIR/issue-74684-2.rs:10:18
+   |
+LL |     type F<'a> = i32;
+   |                  ^^^
 note: required by a bound in `bug`
   --> $DIR/issue-74684-2.rs:13:28
    |

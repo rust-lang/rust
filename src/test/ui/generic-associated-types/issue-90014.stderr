@@ -1,8 +1,8 @@
 error[E0477]: the type `&mut ()` does not fulfill the required lifetime
-  --> $DIR/issue-90014.rs:14:5
+  --> $DIR/issue-90014.rs:14:20
    |
 LL |     type Fut<'a> = impl Future<Output = ()>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: type must outlive the lifetime `'a` as defined here
   --> $DIR/issue-90014.rs:14:14

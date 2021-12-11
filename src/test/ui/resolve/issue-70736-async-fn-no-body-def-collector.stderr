@@ -48,15 +48,17 @@ error[E0053]: method `associated` has an incompatible type for trait
   --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:15:26
    |
 LL |     async fn associated();
-   |                          - type in trait
-...
-LL |     async fn associated();
    |                          ^
    |                          |
    |                          checked the `Output` of this `async fn`, found opaque type
    |                          expected `()`, found opaque type
    |
    = note: while checking the return type of the `async fn`
+note: type in trait
+  --> $DIR/issue-70736-async-fn-no-body-def-collector.rs:11:26
+   |
+LL |     async fn associated();
+   |                          ^
    = note: expected fn pointer `fn()`
               found fn pointer `fn() -> impl Future<Output = ()>`
 

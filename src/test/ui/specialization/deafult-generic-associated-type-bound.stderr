@@ -9,10 +9,10 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
 
 error[E0277]: can't compare `T` with `T`
-  --> $DIR/deafult-generic-associated-type-bound.rs:18:5
+  --> $DIR/deafult-generic-associated-type-bound.rs:18:26
    |
 LL |     default type U<'a> = &'a T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `T == T`
+   |                          ^^^^^ no implementation for `T == T`
    |
    = note: required because of the requirements on the impl of `PartialEq` for `&'a T`
 note: required by a bound in `X::U`
