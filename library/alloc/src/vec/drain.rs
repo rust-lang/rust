@@ -128,10 +128,6 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
 
         let iter = mem::replace(&mut self.iter, (&mut []).iter());
         let drop_len = iter.len();
-        let drop_ptr = iter.as_slice().as_ptr();
-
-        // forget iter so there's no aliasing reference
-        drop(iter);
 
         let mut vec = self.vec;
 
@@ -154,6 +150,12 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
         if drop_len == 0 {
             return;
         }
+
+        // as_slice() must only be called when iter.len() is > 0 because
+        // vec::Splice modifies vec::Drain fields and may grow the vec which would invalidate
+        // the iterator's internal pointers. Creating a reference to deallocated memory
+        // is invalid even when it is zero-length
+        let drop_ptr = iter.as_slice().as_ptr();
 
         unsafe {
             // drop_ptr comes from a slice::Iter which only gives us a &[T] but for drop_in_place
