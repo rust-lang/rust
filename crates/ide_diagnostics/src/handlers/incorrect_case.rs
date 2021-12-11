@@ -332,6 +332,15 @@ fn main() {
         check_diagnostics(
             r#"
 #![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
+
+struct S {
+    fooBar: bool,
+}
+
+enum E {
+    fooBar,
+}
 
 mod F {
     fn CheckItWorksWithCrateAttr(BAD_NAME_HI: u8) {}
