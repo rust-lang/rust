@@ -64,7 +64,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut clobber_abis = FxHashMap::default();
         if let Some(asm_arch) = asm_arch {
             for (abi_name, abi_span) in &asm.clobber_abis {
-                match asm::InlineAsmClobberAbi::parse(asm_arch, &self.sess.target, *abi_name) {
+                match asm::InlineAsmClobberAbi::parse(
+                    asm_arch,
+                    |feature| self.sess.target_features.contains(&Symbol::intern(feature)),
+                    &self.sess.target,
+                    *abi_name,
+                ) {
                     Ok(abi) => {
                         // If the abi was already in the list, emit an error
                         match clobber_abis.get(&abi) {
