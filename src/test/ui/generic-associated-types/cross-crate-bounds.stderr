@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `(): AsRef<()>` is not satisfied
-  --> $DIR/cross-crate-bounds.rs:15:5
+  --> $DIR/cross-crate-bounds.rs:15:16
    |
 LL |     type Bar = ();
-   |     ^^^^^^^^^^^^^^ the trait `AsRef<()>` is not implemented for `()`
+   |                ^^ the trait `AsRef<()>` is not implemented for `()`
    |
 note: required by a bound in `foo_defn::Foo::Bar`
   --> $DIR/auxiliary/foo_defn.rs:6:15

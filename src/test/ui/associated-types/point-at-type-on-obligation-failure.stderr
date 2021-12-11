@@ -1,9 +1,14 @@
 error[E0271]: type mismatch resolving `<Foo2 as Bar2>::Ok == ()`
-  --> $DIR/point-at-type-on-obligation-failure.rs:14:5
+  --> $DIR/point-at-type-on-obligation-failure.rs:14:20
    |
 LL |     type Sibling = Foo2;
-   |     ^^^^^^^^^^^^^^^^^^^^ expected `()`, found `u32`
+   |                    ^^^^ type mismatch resolving `<Foo2 as Bar2>::Ok == ()`
    |
+note: expected this to be `()`
+  --> $DIR/point-at-type-on-obligation-failure.rs:18:15
+   |
+LL |     type Ok = u32;
+   |               ^^^
 note: required by a bound in `Bar::Sibling`
   --> $DIR/point-at-type-on-obligation-failure.rs:3:24
    |

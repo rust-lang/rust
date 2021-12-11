@@ -9,10 +9,10 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
 
 error[E0277]: can't compare `&'static B` with `B`
-  --> $DIR/deafult-associated-type-bound-2.rs:16:5
+  --> $DIR/deafult-associated-type-bound-2.rs:16:22
    |
 LL |     default type U = &'static B;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `&'static B == B`
+   |                      ^^^^^^^^^^ no implementation for `&'static B == B`
    |
    = help: the trait `PartialEq<B>` is not implemented for `&'static B`
 note: required by a bound in `X::U`

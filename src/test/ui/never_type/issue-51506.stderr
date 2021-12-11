@@ -1,8 +1,8 @@
 error[E0277]: `!` is not an iterator
-  --> $DIR/issue-51506.rs:13:5
+  --> $DIR/issue-51506.rs:13:24
    |
 LL |     default type Out = !;
-   |     ^^^^^^^^^^^^^^^^^^^^^ `!` is not an iterator
+   |                        ^ `!` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `!`
 note: required by a bound in `Trait::Out`

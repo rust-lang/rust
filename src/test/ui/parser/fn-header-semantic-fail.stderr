@@ -183,9 +183,6 @@ LL |         const async unsafe extern "C" fn fe5();
 error[E0053]: method `ft1` has an incompatible type for trait
   --> $DIR/fn-header-semantic-fail.rs:28:24
    |
-LL |         async fn ft1();
-   |                       - type in trait
-...
 LL |         async fn ft1() {}
    |                        ^
    |                        |
@@ -193,15 +190,17 @@ LL |         async fn ft1() {}
    |                        expected `()`, found opaque type
    |
    = note: while checking the return type of the `async fn`
+note: type in trait
+  --> $DIR/fn-header-semantic-fail.rs:16:23
+   |
+LL |         async fn ft1();
+   |                       ^
    = note: expected fn pointer `fn()`
               found fn pointer `fn() -> impl Future<Output = ()>`
 
 error[E0053]: method `ft5` has an incompatible type for trait
   --> $DIR/fn-header-semantic-fail.rs:33:48
    |
-LL |         const async unsafe extern "C" fn ft5();
-   |                                               - type in trait
-...
 LL |         const async unsafe extern "C" fn ft5() {}
    |                                                ^
    |                                                |
@@ -209,6 +208,11 @@ LL |         const async unsafe extern "C" fn ft5() {}
    |                                                expected `()`, found opaque type
    |
    = note: while checking the return type of the `async fn`
+note: type in trait
+  --> $DIR/fn-header-semantic-fail.rs:20:47
+   |
+LL |         const async unsafe extern "C" fn ft5();
+   |                                               ^
    = note: expected fn pointer `unsafe extern "C" fn()`
               found fn pointer `unsafe extern "C" fn() -> impl Future<Output = ()>`
 

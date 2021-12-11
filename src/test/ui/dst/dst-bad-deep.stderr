@@ -10,11 +10,6 @@ note: required because it appears within the type `Fat<[isize]>`
    |
 LL | struct Fat<T: ?Sized> {
    |        ^^^
-note: required because it appears within the type `Fat<Fat<[isize]>>`
-  --> $DIR/dst-bad-deep.rs:6:8
-   |
-LL | struct Fat<T: ?Sized> {
-   |        ^^^
    = note: structs must have a statically known size to be initialized
 
 error: aborting due to previous error

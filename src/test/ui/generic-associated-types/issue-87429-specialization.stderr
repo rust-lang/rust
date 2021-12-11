@@ -9,10 +9,10 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
 
 error[E0277]: can't compare `Foo` with `Foo`
-  --> $DIR/issue-87429-specialization.rs:21:5
+  --> $DIR/issue-87429-specialization.rs:21:31
    |
 LL |     default type Member<'a> = Foo;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `Foo == Foo`
+   |                               ^^^ no implementation for `Foo == Foo`
    |
    = help: the trait `PartialEq` is not implemented for `Foo`
 note: required by a bound in `Family::Member`
