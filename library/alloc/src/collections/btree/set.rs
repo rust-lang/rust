@@ -491,7 +491,7 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let set = BTreeSet::from([1, 2, 3]);
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
@@ -515,7 +515,7 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let set = BTreeSet::from([1, 2, 3]);
     /// assert_eq!(set.get(&2), Some(&2));
     /// assert_eq!(set.get(&4), None);
     /// ```
@@ -536,7 +536,7 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let a: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let a = BTreeSet::from([1, 2, 3]);
     /// let mut b = BTreeSet::new();
     ///
     /// assert_eq!(a.is_disjoint(&b), true);
@@ -562,7 +562,7 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let sup: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let sup = BTreeSet::from([1, 2, 3]);
     /// let mut set = BTreeSet::new();
     ///
     /// assert_eq!(set.is_subset(&sup), true);
@@ -639,7 +639,7 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let sub: BTreeSet<_> = [1, 2].iter().cloned().collect();
+    /// let sub = BTreeSet::from([1, 2]);
     /// let mut set = BTreeSet::new();
     ///
     /// assert_eq!(set.is_superset(&sub), false);
@@ -853,7 +853,7 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let mut set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let mut set = BTreeSet::from([1, 2, 3]);
     /// assert_eq!(set.take(&2), Some(2));
     /// assert_eq!(set.take(&2), None);
     /// ```
@@ -876,8 +876,7 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let xs = [1, 2, 3, 4, 5, 6];
-    /// let mut set: BTreeSet<i32> = xs.iter().cloned().collect();
+    /// let mut set = BTreeSet::from([1, 2, 3, 4, 5, 6]);
     /// // Keep only the even numbers.
     /// set.retain(|&k| k % 2 == 0);
     /// assert!(set.iter().eq([2, 4, 6].iter()));
@@ -1009,7 +1008,7 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<usize> = [1, 2, 3].iter().cloned().collect();
+    /// let set = BTreeSet::from([1, 2, 3]);
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), Some(&1));
     /// assert_eq!(set_iter.next(), Some(&2));
@@ -1022,7 +1021,7 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<usize> = [3, 1, 2].iter().cloned().collect();
+    /// let set = BTreeSet::from([3, 1, 2]);
     /// let mut set_iter = set.iter();
     /// assert_eq!(set_iter.next(), Some(&1));
     /// assert_eq!(set_iter.next(), Some(&2));
@@ -1124,7 +1123,7 @@ impl<T> IntoIterator for BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
+    /// let set = BTreeSet::from([1, 2, 3, 4]);
     ///
     /// let v: Vec<_> = set.into_iter().collect();
     /// assert_eq!(v, [1, 2, 3, 4]);
@@ -1243,8 +1242,8 @@ impl<T: Ord + Clone> Sub<&BTreeSet<T>> for &BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let a: BTreeSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: BTreeSet<_> = vec![3, 4, 5].into_iter().collect();
+    /// let a = BTreeSet::from([1, 2, 3]);
+    /// let b = BTreeSet::from([3, 4, 5]);
     ///
     /// let result = &a - &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
@@ -1266,8 +1265,8 @@ impl<T: Ord + Clone> BitXor<&BTreeSet<T>> for &BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let a: BTreeSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: BTreeSet<_> = vec![2, 3, 4].into_iter().collect();
+    /// let a = BTreeSet::from([1, 2, 3]);
+    /// let b = BTreeSet::from([2, 3, 4]);
     ///
     /// let result = &a ^ &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
@@ -1289,8 +1288,8 @@ impl<T: Ord + Clone> BitAnd<&BTreeSet<T>> for &BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let a: BTreeSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: BTreeSet<_> = vec![2, 3, 4].into_iter().collect();
+    /// let a = BTreeSet::from([1, 2, 3]);
+    /// let b = BTreeSet::from([2, 3, 4]);
     ///
     /// let result = &a & &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
@@ -1312,8 +1311,8 @@ impl<T: Ord + Clone> BitOr<&BTreeSet<T>> for &BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let a: BTreeSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: BTreeSet<_> = vec![3, 4, 5].into_iter().collect();
+    /// let a = BTreeSet::from([1, 2, 3]);
+    /// let b = BTreeSet::from([3, 4, 5]);
     ///
     /// let result = &a | &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();

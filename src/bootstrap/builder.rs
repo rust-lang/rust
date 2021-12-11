@@ -1578,11 +1578,11 @@ impl<'a> Builder<'a> {
                 panic!("{}", out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.verbose(&format!("{}c {:?}", "  ".repeat(stack.len()), step));
+                self.verbose_than(1, &format!("{}c {:?}", "  ".repeat(stack.len()), step));
 
                 return out;
             }
-            self.verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
+            self.verbose_than(1, &format!("{}> {:?}", "  ".repeat(stack.len()), step));
             stack.push(Box::new(step.clone()));
         }
 
@@ -1605,7 +1605,7 @@ impl<'a> Builder<'a> {
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.verbose(&format!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
+        self.verbose_than(1, &format!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
         out
     }

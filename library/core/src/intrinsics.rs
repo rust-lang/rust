@@ -1919,7 +1919,7 @@ extern "rust-intrinsic" {
 
     /// Determines whether the raw bytes of the two values are equal.
     ///
-    /// The is particularly handy for arrays, since it allows things like just
+    /// This is particularly handy for arrays, since it allows things like just
     /// comparing `i96`s instead of forcing `alloca`s for `[6 x i16]`.
     ///
     /// Above some backend-decided threshold this will emit calls to `memcmp`,
