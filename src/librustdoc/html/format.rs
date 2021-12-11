@@ -819,18 +819,14 @@ fn fmt_type<'cx>(
             }
         }
         clean::Slice(ref t) => {
-            primitive_link(f, PrimitiveType::Slice, "[", cx)?;
+            write!(f, "[")?;
             fmt::Display::fmt(&t.print(cx), f)?;
-            primitive_link(f, PrimitiveType::Slice, "]", cx)
+            write!(f, "]")
         }
         clean::Array(ref t, ref n) => {
-            primitive_link(f, PrimitiveType::Array, "[", cx)?;
+            write!(f, "[")?;
             fmt::Display::fmt(&t.print(cx), f)?;
-            if f.alternate() {
-                primitive_link(f, PrimitiveType::Array, &format!("; {}]", n), cx)
-            } else {
-                primitive_link(f, PrimitiveType::Array, &format!("; {}]", Escape(n)), cx)
-            }
+            if f.alternate() { write!(f, "; {}]", n) } else { write!(f, "; {}]", Escape(n)) }
         }
         clean::RawPointer(m, ref t) => {
             let m = match m {
@@ -863,34 +859,19 @@ fn fmt_type<'cx>(
                     match **bt {
                         clean::Generic(_) => {
                             if f.alternate() {
-                                primitive_link(
-                                    f,
-                                    PrimitiveType::Slice,
-                                    &format!("{}{}{}[{:#}]", amp, lt, m, bt.print(cx)),
-                                    cx,
-                                )
+                                write!(f, "{}{}{}[{:#}]", amp, lt, m, bt.print(cx))
                             } else {
-                                primitive_link(
-                                    f,
-                                    PrimitiveType::Slice,
-                                    &format!("{}{}{}[{}]", amp, lt, m, bt.print(cx)),
-                                    cx,
-                                )
+                                write!(f, "{}{}{}[{}]", amp, lt, m, bt.print(cx))
                             }
                         }
                         _ => {
-                            primitive_link(
-                                f,
-                                PrimitiveType::Slice,
-                                &format!("{}{}{}[", amp, lt, m),
-                                cx,
-                            )?;
+                            write!(f, "{}{}{}[", amp, lt, m)?;
                             if f.alternate() {
                                 write!(f, "{:#}", bt.print(cx))?;
                             } else {
                                 write!(f, "{}", bt.print(cx))?;
                             }
-                            primitive_link(f, PrimitiveType::Slice, "]", cx)
+                            write!(f, "]")
                         }
                     }
                 }
