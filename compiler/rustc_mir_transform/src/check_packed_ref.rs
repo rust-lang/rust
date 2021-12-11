@@ -105,6 +105,11 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
                                     a misaligned reference is undefined behavior (even if that \
                                     reference is never dereferenced)",
                                 )
+                                .help(
+                                    "copy the field contents to a local variable, or replace the \
+                                    reference with a raw pointer and use `read_unaligned`/`write_unaligned` \
+                                    (loads and stores via `*p` must be properly aligned even when using raw pointers)"
+                                )
                                 .emit()
                         },
                     );
