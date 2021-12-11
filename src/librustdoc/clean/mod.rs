@@ -1855,7 +1855,7 @@ fn clean_maybe_renamed_item(
             ItemKind::Fn(ref sig, ref generics, body_id) => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
-            ItemKind::Macro(ref macro_def) => {
+            ItemKind::Macro(ref macro_def, _) => {
                 let ty_vis = cx.tcx.visibility(def_id).clean(cx);
                 MacroItem(Macro {
                     source: display_macro_source(cx, name, macro_def, def_id, ty_vis),

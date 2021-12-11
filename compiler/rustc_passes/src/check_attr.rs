@@ -1951,7 +1951,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // Historically we've run more checks on non-exported than exported macros,
         // so this lets us continue to run them while maintaining backwards compatibility.
         // In the long run, the checks should be harmonized.
-        if let ItemKind::Macro(ref macro_def) = item.kind {
+        if let ItemKind::Macro(ref macro_def, _) = item.kind {
             let def_id = item.def_id.to_def_id();
             if macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
