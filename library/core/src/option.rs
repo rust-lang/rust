@@ -1523,8 +1523,15 @@ impl<T: Clone> Option<&T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn cloned(self) -> Option<T> {
-        self.map(|t| t.clone())
+    #[rustc_const_unstable(feature = "const_option_cloned", issue = "91582")]
+    pub const fn cloned(self) -> Option<T>
+    where
+        T: ~const Clone,
+    {
+        match self {
+            Some(t) => Some(t.clone()),
+            None => None,
+        }
     }
 }
 
@@ -1541,9 +1548,17 @@ impl<T: Clone> Option<&mut T> {
     /// let cloned = opt_x.cloned();
     /// assert_eq!(cloned, Some(12));
     /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(since = "1.26.0", feature = "option_ref_mut_cloned")]
-    pub fn cloned(self) -> Option<T> {
-        self.map(|t| t.clone())
+    #[rustc_const_unstable(feature = "const_option_cloned", issue = "91582")]
+    pub const fn cloned(self) -> Option<T>
+    where
+        T: ~const Clone,
+    {
+        match self {
+            Some(t) => Some(t.clone()),
+            None => None,
+        }
     }
 }
 
