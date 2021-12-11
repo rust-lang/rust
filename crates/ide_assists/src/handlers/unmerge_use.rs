@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use syntax::{
     ast::{self, make, HasVisibility},
     ted::{self, Position},
@@ -70,7 +69,7 @@ fn resolve_full_path(tree: &ast::UseTree) -> Option<ast::Path> {
         .filter_map(ast::UseTree::cast)
         .filter_map(|t| t.path());
 
-    let final_path = paths.fold1(|prev, next| make::path_concat(next, prev))?;
+    let final_path = paths.reduce(|prev, next| make::path_concat(next, prev))?;
     if final_path.segment().map_or(false, |it| it.self_token().is_some()) {
         final_path.qualifier()
     } else {

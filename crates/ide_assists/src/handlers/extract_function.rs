@@ -480,7 +480,7 @@ impl FunctionBody {
             .statements()
             .map(|stmt| stmt.syntax().text_range())
             .filter(|&stmt| selected.intersect(stmt).filter(|it| !it.is_empty()).is_some())
-            .fold1(|acc, stmt| acc.cover(stmt));
+            .reduce(|acc, stmt| acc.cover(stmt));
         if let Some(tail_range) = parent
             .tail_expr()
             .map(|it| it.syntax().text_range())

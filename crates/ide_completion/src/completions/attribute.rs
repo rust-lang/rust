@@ -30,16 +30,12 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
         None => None,
     };
     match (name_ref, attribute.token_tree()) {
-        (Some(path), Some(token_tree)) => match path.text().as_str() {
-            "repr" => repr::complete_repr(acc, ctx, token_tree),
-            "derive" => {
-                derive::complete_derive(acc, ctx, &parse_tt_as_comma_sep_paths(token_tree)?)
-            }
-            "feature" => {
-                lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(token_tree)?, FEATURES)
-            }
+        (Some(path), Some(tt)) if tt.l_paren_token().is_some() => match path.text().as_str() {
+            "repr" => repr::complete_repr(acc, ctx, tt),
+            "derive" => derive::complete_derive(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?),
+            "feature" => lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?, FEATURES),
             "allow" | "warn" | "deny" | "forbid" => {
-                let existing_lints = parse_tt_as_comma_sep_paths(token_tree)?;
+                let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
                 lint::complete_lint(acc, ctx, &existing_lints, DEFAULT_LINTS);
                 lint::complete_lint(acc, ctx, &existing_lints, CLIPPY_LINTS);
                 lint::complete_lint(acc, ctx, &existing_lints, RUSTDOC_LINTS);
@@ -49,8 +45,8 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             }
             _ => (),
         },
-        (None, Some(_)) => (),
-        _ => complete_new_attribute(acc, ctx, attribute),
+        (_, Some(_)) => (),
+        (_, None) => complete_new_attribute(acc, ctx, attribute),
     }
     Some(())
 }
