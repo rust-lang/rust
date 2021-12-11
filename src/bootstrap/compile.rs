@@ -1173,7 +1173,12 @@ impl Step for Assemble {
                 // (e.g. the `bootimage` crate).
                 for tool in LLVM_TOOLS {
                     let tool_exe = exe(tool, target_compiler.host);
-                    builder.copy(&llvm_bin_dir.join(&tool_exe), &libdir_bin.join(&tool_exe));
+                    let src_path = llvm_bin_dir.join(&tool_exe);
+                    // When using `donwload-ci-llvm`, some of the tools
+                    // may not exist, so skip trying to copy them.
+                    if src_path.exists() {
+                        builder.copy(&src_path, &libdir_bin.join(&tool_exe));
+                    }
                 }
             }
         }
