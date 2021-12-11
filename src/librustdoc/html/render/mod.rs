@@ -762,7 +762,7 @@ fn assoc_const(
     w: &mut Buffer,
     it: &clean::Item,
     ty: &clean::Type,
-    _default: Option<&String>,
+    _default: Option<&clean::ConstantKind>,
     link: AssocItemLink<'_>,
     extra: &str,
     cx: &Context<'_>,

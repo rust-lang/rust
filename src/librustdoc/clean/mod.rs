@@ -912,7 +912,9 @@ impl Clean<Item> for hir::TraitItem<'_> {
         cx.with_param_env(local_did, |cx| {
             let inner = match self.kind {
                 hir::TraitItemKind::Const(ref ty, default) => {
-                    AssocConstItem(ty.clean(cx), default.map(|e| print_const_expr(cx.tcx, e)))
+                    let default =
+                        default.map(|e| ConstantKind::Local { def_id: local_did, body: e });
+                    AssocConstItem(ty.clean(cx), default)
                 }
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                     let mut m = clean_function(cx, sig, &self.generics, body);
@@ -959,7 +961,8 @@ impl Clean<Item> for hir::ImplItem<'_> {
         cx.with_param_env(local_did, |cx| {
             let inner = match self.kind {
                 hir::ImplItemKind::Const(ref ty, expr) => {
-                    AssocConstItem(ty.clean(cx), Some(print_const_expr(cx.tcx, expr)))
+                    let default = Some(ConstantKind::Local { def_id: local_did, body: expr });
+                    AssocConstItem(ty.clean(cx), default)
                 }
                 hir::ImplItemKind::Fn(ref sig, body) => {
                     let mut m = clean_function(cx, sig, &self.generics, body);
@@ -1009,7 +1012,7 @@ impl Clean<Item> for ty::AssocItem {
             ty::AssocKind::Const => {
                 let ty = tcx.type_of(self.def_id);
                 let default = if self.defaultness.has_value() {
-                    Some(inline::print_inlined_const(tcx, self.def_id))
+                    Some(ConstantKind::Extern { def_id: self.def_id })
                 } else {
                     None
                 };
