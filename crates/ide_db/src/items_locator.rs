@@ -50,16 +50,18 @@ pub fn items_with_name<'a>(
     });
 
     let (mut local_query, mut external_query) = match name {
-        NameToImport::Exact(exact_name) => {
+        NameToImport::Exact(exact_name, case_sensitive) => {
             let mut local_query = symbol_index::Query::new(exact_name.clone());
             local_query.exact();
 
             let external_query = import_map::Query::new(exact_name)
                 .name_only()
-                .search_mode(import_map::SearchMode::Equals)
-                .case_sensitive();
+                .search_mode(import_map::SearchMode::Equals);
 
-            (local_query, external_query)
+            (
+                local_query,
+                if case_sensitive { external_query.case_sensitive() } else { external_query },
+            )
         }
         NameToImport::Fuzzy(fuzzy_search_string) => {
             let mut local_query = symbol_index::Query::new(fuzzy_search_string.clone());

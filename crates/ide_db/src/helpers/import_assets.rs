@@ -68,17 +68,23 @@ pub struct FirstSegmentUnresolved {
 /// A name that will be used during item lookups.
 #[derive(Debug, Clone)]
 pub enum NameToImport {
-    /// Requires items with names that exactly match the given string, case-sensitive.
-    Exact(String),
+    /// Requires items with names that exactly match the given string, bool indicatse case-sensitivity.
+    Exact(String, bool),
     /// Requires items with names that case-insensitively contain all letters from the string,
     /// in the same order, but not necessary adjacent.
     Fuzzy(String),
 }
 
 impl NameToImport {
+    pub fn exact_case_sensitive(s: String) -> NameToImport {
+        NameToImport::Exact(s, true)
+    }
+}
+
+impl NameToImport {
     pub fn text(&self) -> &str {
         match self {
-            NameToImport::Exact(text) => text.as_str(),
+            NameToImport::Exact(text, _) => text.as_str(),
             NameToImport::Fuzzy(text) => text.as_str(),
         }
     }
@@ -140,7 +146,7 @@ impl ImportAssets {
         if let Some(_) = path.qualifier() {
             return None;
         }
-        let name = NameToImport::Exact(path.segment()?.name_ref()?.to_string());
+        let name = NameToImport::exact_case_sensitive(path.segment()?.name_ref()?.to_string());
         let candidate_node = attr.syntax().clone();
         Some(Self {
             import_candidate: ImportCandidate::Path(PathImportCandidate { qualifier: None, name }),
@@ -228,6 +234,18 @@ impl ImportAssets {
     pub fn search_for_relative_paths(&self, sema: &Semantics<RootDatabase>) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_relative_paths");
         self.search_for(sema, None)
+    }
+
+    pub fn path_fuzzy_name_to_exact(&mut self, case_sensitive: bool) {
+        if let ImportCandidate::Path(PathImportCandidate { name: to_import, .. }) =
+            &mut self.import_candidate
+        {
+            let name = match to_import {
+                NameToImport::Fuzzy(name) => std::mem::take(name),
+                _ => return,
+            };
+            *to_import = NameToImport::Exact(name, case_sensitive);
+        }
     }
 
     fn search_for(
@@ -563,7 +581,9 @@ impl ImportCandidate {
             Some(_) => None,
             None => Some(Self::TraitMethod(TraitImportCandidate {
                 receiver_ty: sema.type_of_expr(&method_call.receiver()?)?.adjusted(),
-                assoc_item_name: NameToImport::Exact(method_call.name_ref()?.to_string()),
+                assoc_item_name: NameToImport::exact_case_sensitive(
+                    method_call.name_ref()?.to_string(),
+                ),
             })),
         }
     }
@@ -575,7 +595,7 @@ impl ImportCandidate {
         path_import_candidate(
             sema,
             path.qualifier(),
-            NameToImport::Exact(path.segment()?.name_ref()?.to_string()),
+            NameToImport::exact_case_sensitive(path.segment()?.name_ref()?.to_string()),
         )
     }
 
@@ -589,7 +609,7 @@ impl ImportCandidate {
         }
         Some(ImportCandidate::Path(PathImportCandidate {
             qualifier: None,
-            name: NameToImport::Exact(name.to_string()),
+            name: NameToImport::exact_case_sensitive(name.to_string()),
         }))
     }
 

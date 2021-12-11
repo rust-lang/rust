@@ -65,7 +65,7 @@ pub(crate) fn replace_derive_with_manual_impl(
     let found_traits = items_locator::items_with_name(
         &ctx.sema,
         current_crate,
-        NameToImport::Exact(trait_path.segments().last()?.to_string()),
+        NameToImport::exact_case_sensitive(trait_path.segments().last()?.to_string()),
         items_locator::AssocItemSearch::Exclude,
         Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT.inner()),
     )

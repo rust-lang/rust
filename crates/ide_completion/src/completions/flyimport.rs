@@ -227,22 +227,18 @@ fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAs
         )
     } else {
         let fuzzy_name_length = fuzzy_name.len();
-        let assets_for_path = ImportAssets::for_fuzzy_path(
+        let mut assets_for_path = ImportAssets::for_fuzzy_path(
             current_module,
             ctx.path_qual().cloned(),
             fuzzy_name,
             &ctx.sema,
             ctx.token.parent()?,
         )?;
-
-        if matches!(assets_for_path.import_candidate(), ImportCandidate::Path(_))
-            && fuzzy_name_length < 2
-        {
-            cov_mark::hit!(ignore_short_input_for_path);
-            None
-        } else {
-            Some(assets_for_path)
+        if fuzzy_name_length < 3 {
+            cov_mark::hit!(flyimport_exact_on_short_path);
+            assets_for_path.path_fuzzy_name_to_exact(false);
         }
+        Some(assets_for_path)
     }
 }
 

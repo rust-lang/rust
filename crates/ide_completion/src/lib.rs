@@ -195,7 +195,7 @@ pub fn resolve_completion_edits(
         let items_with_name = items_locator::items_with_name(
             &ctx.sema,
             current_crate,
-            NameToImport::Exact(imported_name),
+            NameToImport::exact_case_sensitive(imported_name),
             items_locator::AssocItemSearch::Include,
             Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT.inner()),
         );
