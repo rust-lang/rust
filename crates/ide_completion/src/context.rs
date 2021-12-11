@@ -561,11 +561,21 @@ impl<'a> CompletionContext<'a> {
                         })().unwrap_or((None, None))
                     },
                     ast::RecordExprField(it) => {
-                        cov_mark::hit!(expected_type_struct_field_with_leading_char);
-                        (
-                            it.expr().as_ref().and_then(|e| self.sema.type_of_expr(e)).map(TypeInfo::original),
-                            it.field_name().map(NameOrNameRef::NameRef),
-                        )
+                        if let Some(expr) = it.expr() {
+                            cov_mark::hit!(expected_type_struct_field_with_leading_char);
+                            (
+                                self.sema.type_of_expr(&expr).map(TypeInfo::original),
+                                it.field_name().map(NameOrNameRef::NameRef),
+                            )
+                        } else {
+                            cov_mark::hit!(expected_type_struct_field_followed_by_comma);
+                            let ty = self.sema.resolve_record_field(&it)
+                                .map(|(_, _, ty)| ty);
+                            (
+                                ty,
+                                it.field_name().map(NameOrNameRef::NameRef),
+                            )
+                        }
                     },
                     ast::MatchExpr(it) => {
                         cov_mark::hit!(expected_type_match_arm_without_leading_char);
@@ -1002,6 +1012,20 @@ fn bar(x: &u32) {}
 struct Foo { a: u32 }
 fn foo() {
     Foo { a: $0 };
+}
+"#,
+            expect![[r#"ty: u32, name: a"#]],
+        )
+    }
+
+    #[test]
+    fn expected_type_struct_field_followed_by_comma() {
+        cov_mark::check!(expected_type_struct_field_followed_by_comma);
+        check_expected_type_and_name(
+            r#"
+struct Foo { a: u32 }
+fn foo() {
+    Foo { a: $0, };
 }
 "#,
             expect![[r#"ty: u32, name: a"#]],
