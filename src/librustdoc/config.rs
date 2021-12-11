@@ -504,8 +504,18 @@ impl Options {
             return Err(1);
         }
 
-        let output =
-            matches.opt_str("o").map(|s| PathBuf::from(&s)).unwrap_or_else(|| PathBuf::from("doc"));
+        let out_dir = matches.opt_str("out-dir").map(|s| PathBuf::from(&s));
+        let output = matches.opt_str("output").map(|s| PathBuf::from(&s));
+        let output = match (out_dir, output) {
+            (Some(_), Some(_)) => {
+                diag.struct_err("cannot use both 'out-dir' and 'output' at once").emit();
+                return Err(1);
+            }
+            (Some(out_dir), None) => out_dir,
+            (None, Some(output)) => output,
+            (None, None) => PathBuf::from("doc"),
+        };
+
         let cfgs = matches.opt_strs("cfg");
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
