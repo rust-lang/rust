@@ -1,5 +1,6 @@
 use hir::{AsAssocItem, HasVisibility, ModuleDef, Visibility};
 use ide_db::assists::{AssistId, AssistKind};
+use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, edit::IndentLevel, HasDocComments, HasName},
@@ -354,7 +355,7 @@ fn arguments_from_params(param_list: &ast::ParamList) -> String {
         },
         _ => "_".to_string(),
     });
-    intersperse_string(args_iter, ", ")
+    Itertools::intersperse(args_iter, ", ".to_string()).collect()
 }
 
 /// Helper function to build a function call. `None` if expected `self_name` was not provided
@@ -428,19 +429,6 @@ fn returns_a_value(ast_func: &ast::Fn) -> bool {
         Some(ret_type) => !["()", "!"].contains(&ret_type.to_string().as_str()),
         None => false,
     }
-}
-
-/// Helper function to concatenate string with a separator between them
-fn intersperse_string(mut iter: impl Iterator<Item = String>, separator: &str) -> String {
-    let mut result = String::new();
-    if let Some(first) = iter.next() {
-        result.push_str(&first);
-    }
-    for string in iter {
-        result.push_str(separator);
-        result.push_str(&string);
-    }
-    result
 }
 
 #[cfg(test)]
