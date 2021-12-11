@@ -6,12 +6,12 @@ LL |     is_send(foo());
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `MutexGuard<'_, u32>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-64130-non-send-future-diags.rs:17:5
+  --> $DIR/issue-64130-non-send-future-diags.rs:17:10
    |
 LL |     let g = x.lock().unwrap();
    |         - has type `MutexGuard<'_, u32>` which is not `Send`
 LL |     baz().await;
-   |     ^^^^^^^^^^^ await occurs here, with `g` maybe used later
+   |          ^^^^^^ await occurs here, with `g` maybe used later
 LL | }
    | - `g` is later dropped here
 note: required by a bound in `is_send`

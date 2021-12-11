@@ -6,13 +6,13 @@ LL |     assert_send(local_dropped_before_await());
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/async-fn-nonsend.rs:24:5
+  --> $DIR/async-fn-nonsend.rs:24:10
    |
 LL |     let x = non_send();
    |         - has type `impl Debug` which is not `Send`
 LL |     drop(x);
 LL |     fut().await;
-   |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
+   |          ^^^^^^ await occurs here, with `x` maybe used later
 LL | }
    | - `x` is later dropped here
 note: required by a bound in `assert_send`
@@ -29,12 +29,12 @@ LL |     assert_send(non_send_temporary_in_match());
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/async-fn-nonsend.rs:33:20
+  --> $DIR/async-fn-nonsend.rs:33:25
    |
 LL |     match Some(non_send()) {
    |                ---------- has type `impl Debug` which is not `Send`
 LL |         Some(_) => fut().await,
-   |                    ^^^^^^^^^^^ await occurs here, with `non_send()` maybe used later
+   |                         ^^^^^^ await occurs here, with `non_send()` maybe used later
 ...
 LL | }
    | - `non_send()` is later dropped here
@@ -52,13 +52,13 @@ LL |     assert_send(non_sync_with_method_call());
    |
    = help: the trait `Send` is not implemented for `dyn std::fmt::Write`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/async-fn-nonsend.rs:42:9
+  --> $DIR/async-fn-nonsend.rs:42:14
    |
 LL |     let f: &mut std::fmt::Formatter = panic!();
    |         - has type `&mut Formatter<'_>` which is not `Send`
 LL |     if non_sync().fmt(f).unwrap() == () {
 LL |         fut().await;
-   |         ^^^^^^^^^^^ await occurs here, with `f` maybe used later
+   |              ^^^^^^ await occurs here, with `f` maybe used later
 LL |     }
 LL | }
    | - `f` is later dropped here

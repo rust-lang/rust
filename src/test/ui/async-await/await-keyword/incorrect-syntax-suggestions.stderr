@@ -162,68 +162,68 @@ LL |     let _ = (await bar())?;
    |              ^^^^^^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:71:13
+  --> $DIR/incorrect-syntax-suggestions.rs:71:18
    |
 LL | fn foo13() -> Result<(), ()> {
    |    ----- this is not `async`
 LL |     let _ = bar().await();
-   |             ^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |                  ^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:76:13
+  --> $DIR/incorrect-syntax-suggestions.rs:76:18
    |
 LL | fn foo14() -> Result<(), ()> {
    |    ----- this is not `async`
 LL |     let _ = bar().await()?;
-   |             ^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |                  ^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:81:13
+  --> $DIR/incorrect-syntax-suggestions.rs:81:18
    |
 LL | fn foo15() -> Result<(), ()> {
    |    ----- this is not `async`
 LL |     let _ = bar().await;
-   |             ^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |                  ^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:85:13
+  --> $DIR/incorrect-syntax-suggestions.rs:85:18
    |
 LL | fn foo16() -> Result<(), ()> {
    |    ----- this is not `async`
 LL |     let _ = bar().await?;
-   |             ^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |                  ^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:90:17
+  --> $DIR/incorrect-syntax-suggestions.rs:90:22
    |
 LL |     fn foo() -> Result<(), ()> {
    |        --- this is not `async`
 LL |         let _ = bar().await?;
-   |                 ^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |                      ^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:97:17
+  --> $DIR/incorrect-syntax-suggestions.rs:97:22
    |
 LL |     let foo = || {
    |               -- this is not `async`
 LL |         let _ = bar().await?;
-   |                 ^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |                      ^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:113:17
+  --> $DIR/incorrect-syntax-suggestions.rs:113:29
    |
 LL |     fn foo() -> Result<(), ()> {
    |        --- this is not `async`
 LL |         let _ = await!(bar())?;
-   |                 ^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |                             ^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/incorrect-syntax-suggestions.rs:121:17
+  --> $DIR/incorrect-syntax-suggestions.rs:121:29
    |
 LL |     let foo = || {
    |               -- this is not `async`
 LL |         let _ = await!(bar())?;
-   |                 ^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |                             ^ only allowed inside `async` functions and blocks
 
 error: aborting due to 33 previous errors
 
