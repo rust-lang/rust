@@ -4,7 +4,7 @@ error[E0759]: `x` has lifetime `'a` but it needs to satisfy a `'static` lifetime
 LL | fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
    |                  ------- this data with lifetime `'a`...
 LL |    bar(foo, x)
-   |    ----^^^---- ...is captured and required to live as long as `'static` here
+   |        ^^^  - ...is used and required to live as long as `'static` here
 
 error: aborting due to previous error
 
