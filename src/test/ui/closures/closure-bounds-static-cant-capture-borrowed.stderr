@@ -8,13 +8,18 @@ LL |       bar(|| {
 LL | |
 LL | |         let _ = x;
 LL | |     })
-   | |_____^ ...is captured here...
+   | |_____^ ...is used here...
    |
 note: ...and is required to live as long as `'static` here
   --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:5
    |
 LL |     bar(|| {
    |     ^^^
+note: `'static` lifetime requirement introduced by this bound
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:1:39
+   |
+LL | fn bar<F>(blk: F) where F: FnOnce() + 'static {
+   |                                       ^^^^^^^
 
 error: aborting due to previous error
 

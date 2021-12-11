@@ -384,6 +384,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         sub_r,
                         sup_origin,
                         sup_r,
+                        _,
                     ) => {
                         if sub_r.is_placeholder() {
                             self.report_placeholder_failure(sub_origin, sub_r, sup_r).emit();
@@ -464,7 +465,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         errors.sort_by_key(|u| match *u {
             RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
-            RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _) => rvo.span(),
+            RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _, _) => rvo.span(),
             RegionResolutionError::UpperBoundUniverseConflict(_, ref rvo, _, _, _) => rvo.span(),
         });
         errors

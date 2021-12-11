@@ -368,6 +368,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
                 error_region,
                 cause.clone(),
                 placeholder_region,
+                vec![],
             ),
         ),
         (Some(error_region), _) => NiceRegionError::new(

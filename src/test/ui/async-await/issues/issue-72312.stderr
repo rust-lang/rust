@@ -1,0 +1,23 @@
+error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/issue-72312.rs:10:24
+   |
+LL |     pub async fn start(&self) {
+   |                        ^^^^^ this data with an anonymous lifetime `'_`...
+...
+LL |             &self;
+   |             ----- ...is used here...
+   |
+note: ...and is required to live as long as `'static` here
+  --> $DIR/issue-72312.rs:13:9
+   |
+LL |         require_static(async move {
+   |         ^^^^^^^^^^^^^^
+note: `'static` lifetime requirement introduced by this bound
+  --> $DIR/issue-72312.rs:2:22
+   |
+LL | fn require_static<T: 'static>(val: T) -> T {
+   |                      ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0759`.

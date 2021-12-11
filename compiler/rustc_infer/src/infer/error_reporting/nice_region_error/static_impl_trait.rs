@@ -10,7 +10,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, ErasedMap, NestedVisitorMap, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
 use rustc_middle::ty::{
-    self, AssocItemContainer, RegionKind, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+    self, AssocItemContainer, RegionKind, StaticLifetimeVisitor, Ty, TyCtxt, TypeFoldable,
+    TypeVisitor,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{MultiSpan, Span};
@@ -23,7 +24,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     pub(super) fn try_report_static_impl_trait(&self) -> Option<ErrorReported> {
         debug!("try_report_static_impl_trait(error={:?})", self.error);
         let tcx = self.tcx();
-        let (var_origin, sub_origin, sub_r, sup_origin, sup_r) = match self.error.as_ref()? {
+        let (var_origin, sub_origin, sub_r, sup_origin, sup_r, spans) = match self.error.as_ref()? {
             RegionResolutionError::SubSupConflict(
                 _,
                 var_origin,
@@ -31,8 +32,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 sub_r,
                 sup_origin,
                 sup_r,
+                spans,
             ) if **sub_r == RegionKind::ReStatic => {
-                (var_origin, sub_origin, sub_r, sup_origin, sup_r)
+                (var_origin, sub_origin, sub_r, sup_origin, sup_r, spans)
             }
             RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(box TypeTrace { cause, .. }),
@@ -74,7 +76,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     err.span_label(
                         cause.span,
                         &format!(
-                            "...is captured and required to live as long as `'static` here \
+                            "...is used and required to live as long as `'static` here \
                              because of an implicit lifetime bound on the {}",
                             match ctxt.assoc_item.container {
                                 AssocItemContainer::TraitContainer(id) =>
@@ -123,56 +125,101 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             param_name,
             lifetime,
         );
-        err.span_label(param.param_ty_span, &format!("this data with {}...", lifetime));
+
+        let (mention_influencer, influencer_point) =
+            if sup_origin.span().overlaps(param.param_ty_span) {
+                // Account for `async fn` like in `async-await/issues/issue-62097.rs`.
+                // The desugaring of `async `fn`s causes `sup_origin` and `param` to point at the same
+                // place (but with different `ctxt`, hence `overlaps` instead of `==` above).
+                //
+                // This avoids the following:
+                //
+                // LL |     pub async fn run_dummy_fn(&self) {
+                //    |                               ^^^^^
+                //    |                               |
+                //    |                               this data with an anonymous lifetime `'_`...
+                //    |                               ...is captured here...
+                (false, sup_origin.span())
+            } else {
+                (!sup_origin.span().overlaps(return_sp), param.param_ty_span)
+            };
+        err.span_label(influencer_point, &format!("this data with {}...", lifetime));
+
         debug!("try_report_static_impl_trait: param_info={:?}", param);
 
-        // We try to make the output have fewer overlapping spans if possible.
-        if (sp == sup_origin.span() || !return_sp.overlaps(sup_origin.span()))
-            && sup_origin.span() != return_sp
-        {
-            // FIXME: account for `async fn` like in `async-await/issues/issue-62097.rs`
+        let mut spans = spans.clone();
 
-            // Customize the spans and labels depending on their relative order so
-            // that split sentences flow correctly.
-            if sup_origin.span().overlaps(return_sp) && sp == sup_origin.span() {
-                // Avoid the following:
-                //
-                // error: cannot infer an appropriate lifetime
-                //   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
-                //    |
-                // LL | fn foo(x: &i32) -> Box<dyn Debug> { Box::new(x) }
-                //    |           ----                      ---------^-
-                //
-                // and instead show:
-                //
-                // error: cannot infer an appropriate lifetime
-                //   --> $DIR/must_outlive_least_region_or_bound.rs:18:50
-                //    |
-                // LL | fn foo(x: &i32) -> Box<dyn Debug> { Box::new(x) }
-                //    |           ----                               ^
-                err.span_label(
-                    sup_origin.span(),
-                    "...is captured here, requiring it to live as long as `'static`",
-                );
-            } else {
-                err.span_label(sup_origin.span(), "...is captured here...");
-                if return_sp < sup_origin.span() {
-                    err.span_note(
-                        return_sp,
-                        "...and is required to live as long as `'static` here",
+        if mention_influencer {
+            spans.push(sup_origin.span());
+        }
+        // We dedup the spans *ignoring* expansion context.
+        spans.sort();
+        spans.dedup_by_key(|span| (span.lo(), span.hi()));
+
+        // We try to make the output have fewer overlapping spans if possible.
+        let require_msg = if spans.is_empty() {
+            "...is used and required to live as long as `'static` here"
+        } else {
+            "...and is required to live as long as `'static` here"
+        };
+        let require_span =
+            if sup_origin.span().overlaps(return_sp) { sup_origin.span() } else { return_sp };
+
+        for span in &spans {
+            err.span_label(*span, "...is used here...");
+        }
+
+        if spans.iter().any(|sp| sp.overlaps(return_sp) || *sp > return_sp) {
+            // If any of the "captured here" labels appears on the same line or after
+            // `require_span`, we put it on a note to ensure the text flows by appearing
+            // always at the end.
+            err.span_note(require_span, require_msg);
+        } else {
+            // We don't need a note, it's already at the end, it can be shown as a `span_label`.
+            err.span_label(require_span, require_msg);
+        }
+
+        if let SubregionOrigin::RelateParamBound(_, _, Some(bound)) = sub_origin {
+            err.span_note(*bound, "`'static` lifetime requirement introduced by this bound");
+        }
+        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = sub_origin {
+            if let ObligationCauseCode::ReturnValue(hir_id)
+            | ObligationCauseCode::BlockTailExpression(hir_id) = &cause.code
+            {
+                let parent_id = tcx.hir().get_parent_item(*hir_id);
+                if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(parent_id) {
+                    let mut span: MultiSpan = fn_decl.output.span().into();
+                    let mut add_label = true;
+                    if let hir::FnRetTy::Return(ty) = fn_decl.output {
+                        let mut v = StaticLifetimeVisitor(vec![], tcx.hir());
+                        v.visit_ty(ty);
+                        if !v.0.is_empty() {
+                            span = v.0.clone().into();
+                            for sp in v.0 {
+                                span.push_span_label(
+                                    sp,
+                                    "`'static` requirement introduced here".to_string(),
+                                );
+                            }
+                            add_label = false;
+                        }
+                    }
+                    if add_label {
+                        span.push_span_label(
+                            fn_decl.output.span(),
+                            "requirement introduced by this return type".to_string(),
+                        );
+                    }
+                    span.push_span_label(
+                        cause.span,
+                        "because of this returned expression".to_string(),
                     );
-                } else {
-                    err.span_label(
-                        return_sp,
-                        "...and is required to live as long as `'static` here",
+                    err.span_note(
+                        span,
+                        "`'static` lifetime requirement introduced by the return type",
                     );
                 }
             }
-        } else {
-            err.span_label(
-                return_sp,
-                "...is captured and required to live as long as `'static` here",
-            );
         }
 
         let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);

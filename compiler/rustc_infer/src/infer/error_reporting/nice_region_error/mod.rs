@@ -67,7 +67,7 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
     pub fn regions(&self) -> Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)> {
         match (&self.error, self.regions) {
             (Some(ConcreteFailure(origin, sub, sup)), None) => Some((origin.span(), sub, sup)),
-            (Some(SubSupConflict(_, _, origin, sub, _, sup)), None) => {
+            (Some(SubSupConflict(_, _, origin, sub, _, sup, _)), None) => {
                 Some((origin.span(), sub, sup))
             }
             (None, Some((span, sub, sup))) => Some((span, sub, sup)),
