@@ -624,3 +624,47 @@ fn array_intoiter_advance_back_by() {
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 }
+
+#[test]
+fn array_mixed_equality_integers() {
+    let array3: [i32; 3] = [1, 2, 3];
+    let array3b: [i32; 3] = [3, 2, 1];
+    let array4: [i32; 4] = [1, 2, 3, 4];
+
+    let slice3: &[i32] = &{ array3 };
+    let slice3b: &[i32] = &{ array3b };
+    let slice4: &[i32] = &{ array4 };
+    assert!(array3 == slice3);
+    assert!(array3 != slice3b);
+    assert!(array3 != slice4);
+    assert!(slice3 == array3);
+    assert!(slice3b != array3);
+    assert!(slice4 != array3);
+
+    let mut3: &mut [i32] = &mut { array3 };
+    let mut3b: &mut [i32] = &mut { array3b };
+    let mut4: &mut [i32] = &mut { array4 };
+    assert!(array3 == mut3);
+    assert!(array3 != mut3b);
+    assert!(array3 != mut4);
+    assert!(mut3 == array3);
+    assert!(mut3b != array3);
+    assert!(mut4 != array3);
+}
+
+#[test]
+fn array_mixed_equality_nans() {
+    let array3: [f32; 3] = [1.0, std::f32::NAN, 3.0];
+
+    let slice3: &[f32] = &{ array3 };
+    assert!(!(array3 == slice3));
+    assert!(array3 != slice3);
+    assert!(!(slice3 == array3));
+    assert!(slice3 != array3);
+
+    let mut3: &mut [f32] = &mut { array3 };
+    assert!(!(array3 == mut3));
+    assert!(array3 != mut3);
+    assert!(!(mut3 == array3));
+    assert!(mut3 != array3);
+}
