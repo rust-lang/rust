@@ -46,7 +46,9 @@ crate fn lit_to_const<'tcx>(
         (ast::LitKind::Int(n, _), ty::Uint(_)) | (ast::LitKind::Int(n, _), ty::Int(_)) => {
             trunc(if neg { (*n as i128).overflowing_neg().0 as u128 } else { *n })?
         }
-        (ast::LitKind::Float(n, _), ty::Float(fty)) => parse_float(*n, *fty, neg),
+        (ast::LitKind::Float(n, _), ty::Float(fty)) => {
+            parse_float(*n, *fty, neg).ok_or(LitToConstError::Reported)?
+        }
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
         (ast::LitKind::Err(_), _) => return Err(LitToConstError::Reported),
@@ -55,14 +57,15 @@ crate fn lit_to_const<'tcx>(
     Ok(ty::Const::from_value(tcx, lit, ty))
 }
 
-fn parse_float<'tcx>(num: Symbol, fty: ty::FloatTy, neg: bool) -> ConstValue<'tcx> {
+fn parse_float<'tcx>(num: Symbol, fty: ty::FloatTy, neg: bool) -> Option<ConstValue<'tcx>> {
     let num = num.as_str();
     use rustc_apfloat::ieee::{Double, Single};
     let scalar = match fty {
         ty::FloatTy::F32 => {
-            let rust_f = num
-                .parse::<f32>()
-                .unwrap_or_else(|e| panic!("f32 failed to parse `{}`: {:?}", num, e));
+            let rust_f = match num.parse::<f32>() {
+                Ok(f) => f,
+                Err(_) => return None,
+            };
             let mut f = num.parse::<Single>().unwrap_or_else(|e| {
                 panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
             });
@@ -82,9 +85,10 @@ fn parse_float<'tcx>(num: Symbol, fty: ty::FloatTy, neg: bool) -> ConstValue<'tc
             Scalar::from_f32(f)
         }
         ty::FloatTy::F64 => {
-            let rust_f = num
-                .parse::<f64>()
-                .unwrap_or_else(|e| panic!("f64 failed to parse `{}`: {:?}", num, e));
+            let rust_f = match num.parse::<f64>() {
+                Ok(f) => f,
+                Err(_) => return None,
+            };
             let mut f = num.parse::<Double>().unwrap_or_else(|e| {
                 panic!("apfloat::ieee::Double failed to parse `{}`: {:?}", num, e)
             });
@@ -105,5 +109,5 @@ fn parse_float<'tcx>(num: Symbol, fty: ty::FloatTy, neg: bool) -> ConstValue<'tc
         }
     };
 
-    ConstValue::Scalar(scalar)
+    Some(ConstValue::Scalar(scalar))
 }
