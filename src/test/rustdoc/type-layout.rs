@@ -50,6 +50,18 @@ pub struct GenericLifetimes<'a>(&'a str);
 // @has - '(unsized)'
 pub struct Unsized([u8]);
 
+// @has type_layout/type.TypeAlias.html 'Size: '
+// @has - ' bytes'
+pub type TypeAlias = X;
+
+// @has type_layout/type.GenericTypeAlias.html 'Size: '
+// @has - '8 bytes'
+pub type GenericTypeAlias = (Generic<(u32, ())>, Generic<u32>);
+
+// Regression test for the rustdoc equivalent of #85103.
+// @has type_layout/type.Edges.html 'Encountered an error during type layout; the type failed to be normalized.'
+pub type Edges<'a, E> = std::borrow::Cow<'a, [E]>;
+
 // @!has type_layout/trait.MyTrait.html 'Size: '
 pub trait MyTrait {}
 
