@@ -1,5 +1,5 @@
 //! A `MutVisitor` represents an AST modification; it accepts an AST piece and
-//! and mutates it in place. So, for instance, macro expansion is a `MutVisitor`
+//! mutates it in place. So, for instance, macro expansion is a `MutVisitor`
 //! that walks over an AST and modifies it.
 //!
 //! Note: using a `MutVisitor` (other than the `MacroExpander` `MutVisitor`) on
