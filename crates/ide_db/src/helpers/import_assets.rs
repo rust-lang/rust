@@ -280,7 +280,7 @@ impl ImportAssets {
         .into_iter()
         .filter(|import| import.import_path.len() > 1)
         .filter(|import| !scope_definitions.contains(&ScopeDef::from(import.item_to_import)))
-        .sorted_by_key(|import| import.import_path.clone())
+        .sorted_by(|a, b| a.import_path.cmp(&b.import_path))
         .collect()
     }
 
@@ -309,9 +309,9 @@ fn path_applicable_imports(
                 current_crate,
                 path_candidate.name.clone(),
                 // FIXME: we could look up assoc items by the input and propose those in completion,
-                // but that requries more preparation first:
+                // but that requires more preparation first:
                 // * store non-trait assoc items in import_map to fully enable this lookup
-                // * ensure that does not degrade the performance (bencmark it)
+                // * ensure that does not degrade the performance (benchmark it)
                 // * write more logic to check for corresponding trait presence requirement (we're unable to flyimport multiple item right now)
                 // * improve the associated completion item matching and/or scoring to ensure no noisy completions appear
                 //
