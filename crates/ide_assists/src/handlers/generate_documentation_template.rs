@@ -101,31 +101,14 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> String {
 
 /// Builds an `# Examples` section. An option is returned to be able to manage an error in the AST.
 fn examples_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Vec<String>> {
-    let (no_panic_ex, panic_ex) = if is_in_trait_def(ast_func, ctx) {
-        let message = "// Example template not implemented for trait functions";
-        let panic_ex = match can_panic(ast_func) {
-            Some(true) => Some(vec![message.into()]),
-            _ => None,
-        };
-        (Some(vec![message.into()]), panic_ex)
+    let mut lines = string_vec_from(&["# Examples", "", "```"]);
+    if is_in_trait_def(ast_func, ctx) {
+        lines.push("// Example template not implemented for trait functions".into());
     } else {
-        let panic_ex = match can_panic(ast_func) {
-            Some(true) => gen_panic_ex_template(ast_func, ctx),
-            _ => None,
-        };
-        let no_panic_ex = gen_ex_template(ast_func, ctx);
-        (no_panic_ex, panic_ex)
+        lines.append(&mut gen_ex_template(ast_func, ctx)?)
     };
 
-    let mut lines = string_vec_from(&["# Examples", "", "```"]);
-    lines.append(&mut no_panic_ex?);
     lines.push("```".into());
-    if let Some(mut ex) = panic_ex {
-        lines.push("".into());
-        lines.push("```should_panic".into());
-        lines.append(&mut ex);
-        lines.push("```".into());
-    }
     Some(lines)
 }
 
@@ -154,53 +137,8 @@ fn safety_builder(ast_func: &ast::Fn) -> Option<Vec<String>> {
     }
 }
 
-/// Generate an example template which should not panic
-/// `None` if the function has a `self` parameter but is not in an `impl`.
+/// Generates an example template
 fn gen_ex_template(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Vec<String>> {
-    let (mut lines, ex_helper) = gen_ex_start_helper(ast_func, ctx)?;
-    // Call the function, check result
-    if returns_a_value(ast_func, ctx) {
-        if count_parameters(&ex_helper.param_list) < 3 {
-            lines.push(format!("assert_eq!({}, );", ex_helper.function_call));
-        } else {
-            lines.push(format!("let result = {};", ex_helper.function_call));
-            lines.push("assert_eq!(result, );".into());
-        }
-    } else {
-        lines.push(format!("{};", ex_helper.function_call));
-    }
-    // Check the mutated values
-    if is_ref_mut_self(ast_func) == Some(true) {
-        lines.push(format!("assert_eq!({}, );", ex_helper.self_name?));
-    }
-    for param_name in &ex_helper.ref_mut_params {
-        lines.push(format!("assert_eq!({}, );", param_name));
-    }
-    Some(lines)
-}
-
-/// Generate an example template which should panic
-/// `None` if the function has a `self` parameter but is not in an `impl`.
-fn gen_panic_ex_template(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<Vec<String>> {
-    let (mut lines, ex_helper) = gen_ex_start_helper(ast_func, ctx)?;
-    match returns_a_value(ast_func, ctx) {
-        true => lines.push(format!("let _ = {}; // panics", ex_helper.function_call)),
-        false => lines.push(format!("{}; // panics", ex_helper.function_call)),
-    }
-    Some(lines)
-}
-
-/// Intermediary results of the start of example generation
-struct ExHelper {
-    function_call: String,
-    param_list: ast::ParamList,
-    ref_mut_params: Vec<String>,
-    self_name: Option<String>,
-}
-
-/// Builds the start of the example and transmit the useful intermediary results.
-/// `None` if the function has a `self` parameter but is not in an `impl`.
-fn gen_ex_start_helper(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<(Vec<String>, ExHelper)> {
     let mut lines = Vec::new();
     let is_unsafe = ast_func.unsafe_token().is_some();
     let param_list = ast_func.param_list()?;
@@ -215,9 +153,26 @@ fn gen_ex_start_helper(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<(Vec<S
     for param_name in &ref_mut_params {
         lines.push(format!("let mut {} = ;", param_name))
     }
+    // Call the function, check result
     let function_call = function_call(ast_func, &param_list, self_name.as_deref(), is_unsafe)?;
-    let ex_helper = ExHelper { function_call, param_list, ref_mut_params, self_name };
-    Some((lines, ex_helper))
+    if returns_a_value(ast_func, ctx) {
+        if count_parameters(&param_list) < 3 {
+            lines.push(format!("assert_eq!({}, );", function_call));
+        } else {
+            lines.push(format!("let result = {};", function_call));
+            lines.push("assert_eq!(result, );".into());
+        }
+    } else {
+        lines.push(format!("{};", function_call));
+    }
+    // Check the mutated values
+    if is_ref_mut_self(ast_func) == Some(true) {
+        lines.push(format!("assert_eq!({}, );", self_name?));
+    }
+    for param_name in &ref_mut_params {
+        lines.push(format!("assert_eq!({}, );", param_name));
+    }
+    Some(lines)
 }
 
 /// Checks if the function is public / exported
@@ -616,12 +571,6 @@ pub fn panic$0s_if(a: bool) {
 /// panics_if(a);
 /// ```
 ///
-/// ```should_panic
-/// use test::panics_if;
-///
-/// panics_if(a); // panics
-/// ```
-///
 /// # Panics
 ///
 /// Panics if .
@@ -654,12 +603,6 @@ pub fn $0panics_if_not(a: bool) {
 /// panics_if_not(a);
 /// ```
 ///
-/// ```should_panic
-/// use test::panics_if_not;
-///
-/// panics_if_not(a); // panics
-/// ```
-///
 /// # Panics
 ///
 /// Panics if .
@@ -690,12 +633,6 @@ pub fn $0panics_if_none(a: Option<()>) {
 /// panics_if_none(a);
 /// ```
 ///
-/// ```should_panic
-/// use test::panics_if_none;
-///
-/// panics_if_none(a); // panics
-/// ```
-///
 /// # Panics
 ///
 /// Panics if .
@@ -724,12 +661,6 @@ pub fn $0panics_if_none2(a: Option<()>) {
 /// use test::panics_if_none2;
 ///
 /// panics_if_none2(a);
-/// ```
-///
-/// ```should_panic
-/// use test::panics_if_none2;
-///
-/// panics_if_none2(a); // panics
 /// ```
 ///
 /// # Panics
@@ -981,10 +912,6 @@ pub trait MyTrait {
     /// # Examples
     ///
     /// ```
-    /// // Example template not implemented for trait functions
-    /// ```
-    ///
-    /// ```should_panic
     /// // Example template not implemented for trait functions
     /// ```
     ///
