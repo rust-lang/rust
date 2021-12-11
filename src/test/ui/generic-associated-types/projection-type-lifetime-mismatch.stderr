@@ -4,7 +4,9 @@ error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'sta
 LL | fn f(x: &impl for<'a> X<Y<'a> = &'a ()>) -> &'static () {
    |         ------------------------------- this data with an anonymous lifetime `'_`...
 LL |     x.m()
-   |     --^-- ...is captured and required to live as long as `'static` here
+   |     - ^
+   |     |
+   |     ...is used and required to live as long as `'static` here
 
 error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/projection-type-lifetime-mismatch.rs:22:7
@@ -12,7 +14,9 @@ error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'sta
 LL | fn g<T: for<'a> X<Y<'a> = &'a ()>>(x: &T) -> &'static () {
    |                                       -- this data with an anonymous lifetime `'_`...
 LL |     x.m()
-   |     --^-- ...is captured and required to live as long as `'static` here
+   |     - ^
+   |     |
+   |     ...is used and required to live as long as `'static` here
 
 error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/projection-type-lifetime-mismatch.rs:27:7
@@ -20,7 +24,9 @@ error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'sta
 LL | fn h(x: &()) -> &'static () {
    |         --- this data with an anonymous lifetime `'_`...
 LL |     x.m()
-   |     --^-- ...is captured and required to live as long as `'static` here
+   |     - ^
+   |     |
+   |     ...is used and required to live as long as `'static` here
 
 error: aborting due to 3 previous errors
 

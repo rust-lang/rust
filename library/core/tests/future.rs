@@ -64,6 +64,40 @@ fn test_join() {
     });
 }
 
+/// Tests that `join!(…)` behaves "like a function": evaluating its arguments
+/// before applying any of its own logic.
+///
+/// _e.g._, `join!(async_fn(&borrowed), …)` does not consume `borrowed`;
+/// and `join!(opt_fut?, …)` does let that `?` refer to the callsite scope.
+mod test_join_function_like_value_arg_semantics {
+    use super::*;
+
+    async fn async_fn(_: impl Sized) {}
+
+    // no need to _run_ this test, just to compile it.
+    fn _join_does_not_unnecessarily_move_mentioned_bindings() {
+        let not_copy = vec![()];
+        let _ = join!(async_fn(&not_copy)); // should not move `not_copy`
+        let _ = &not_copy; // OK
+    }
+
+    #[test]
+    fn join_lets_control_flow_effects_such_as_try_flow_through() {
+        let maybe_fut = None;
+        if false {
+            *&mut { maybe_fut } = Some(async {});
+            loop {}
+        }
+        assert!(Option::is_none(&try { join!(maybe_fut?, async { unreachable!() }) }));
+    }
+
+    #[test]
+    fn join_is_able_to_handle_temporaries() {
+        let _ = join!(async_fn(&String::from("temporary")));
+        let () = block_on(join!(async_fn(&String::from("temporary"))));
+    }
+}
+
 fn block_on(fut: impl Future) {
     struct Waker;
     impl Wake for Waker {

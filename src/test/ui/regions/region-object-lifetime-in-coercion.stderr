@@ -4,7 +4,7 @@ error[E0759]: `v` has an anonymous lifetime `'_` but it needs to satisfy a `'sta
 LL | fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
    |         ----- this data with an anonymous lifetime `'_`...
 LL |     let x: Box<dyn Foo + 'static> = Box::new(v);
-   |                                              ^ ...is captured here, requiring it to live as long as `'static`
+   |                                              ^ ...is used and required to live as long as `'static` here
    |
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
    |
@@ -21,8 +21,15 @@ error[E0759]: `v` has an anonymous lifetime `'_` but it needs to satisfy a `'sta
 LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
    |         ----- this data with an anonymous lifetime `'_`...
 LL |     Box::new(v)
-   |              ^ ...is captured here, requiring it to live as long as `'static`
+   |              ^ ...is used and required to live as long as `'static` here
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/region-object-lifetime-in-coercion.rs:12:33
+   |
+LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
+   |                                 ^^^^^^^ `'static` requirement introduced here
+LL |     Box::new(v)
+   |     ----------- because of this returned expression
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
    |
 LL | fn b(v: &[u8]) -> Box<dyn Foo + '_> {
@@ -39,8 +46,16 @@ LL | fn c(v: &[u8]) -> Box<dyn Foo> {
    |         ----- this data with an anonymous lifetime `'_`...
 ...
 LL |     Box::new(v)
-   |              ^ ...is captured here, requiring it to live as long as `'static`
+   |              ^ ...is used and required to live as long as `'static` here
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/region-object-lifetime-in-coercion.rs:16:23
+   |
+LL | fn c(v: &[u8]) -> Box<dyn Foo> {
+   |                       ^^^^^^^ `'static` requirement introduced here
+...
+LL |     Box::new(v)
+   |     ----------- because of this returned expression
 help: to declare that the trait object captures data from argument `v`, you can add an explicit `'_` lifetime bound
    |
 LL | fn c(v: &[u8]) -> Box<dyn Foo + '_> {

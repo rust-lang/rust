@@ -19,6 +19,7 @@ use rustc_target::abi::VariantIdx;
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
 
+mod find_all_local_uses;
 mod find_use;
 mod outlives_suggestion;
 mod region_name;

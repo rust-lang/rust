@@ -7,7 +7,7 @@ LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
 LL |             remaining: self.0.iter(),
    |                        ------ ^^^^
    |                        |
-   |                        ...is captured here...
+   |                        ...is used here...
    |
 note: ...and is required to live as long as `'static` here
   --> $DIR/trait-object-nested-in-impl-trait.rs:27:23
@@ -32,7 +32,7 @@ LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
 LL |             remaining: self.0.iter(),
    |                        ------ ^^^^
    |                        |
-   |                        ...is captured here...
+   |                        ...is used here...
    |
 note: ...and is required to live as long as `'static` here
   --> $DIR/trait-object-nested-in-impl-trait.rs:38:23
@@ -53,7 +53,7 @@ LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
 LL |             remaining: self.0.iter(),
    |                        ------ ^^^^
    |                        |
-   |                        ...is captured here...
+   |                        ...is used here...
    |
 note: ...and is required to live as long as `'static` here
   --> $DIR/trait-object-nested-in-impl-trait.rs:49:30
@@ -74,7 +74,7 @@ LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
 LL |             remaining: self.0.iter(),
    |                        ------ ^^^^
    |                        |
-   |                        ...is captured here...
+   |                        ...is used here...
    |
 note: ...and is required to live as long as `'static` here
   --> $DIR/trait-object-nested-in-impl-trait.rs:60:30

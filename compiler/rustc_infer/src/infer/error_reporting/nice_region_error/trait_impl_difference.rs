@@ -28,6 +28,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             _sub,
             sup_origin,
             _sup,
+            _,
         ) = error.clone()
         {
             if let (&Subtype(ref sup_trace), &Subtype(ref sub_trace)) = (&sup_origin, &sub_origin) {

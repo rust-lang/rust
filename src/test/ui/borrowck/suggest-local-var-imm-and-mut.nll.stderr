@@ -1,0 +1,33 @@
+error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable
+  --> $DIR/suggest-local-var-imm-and-mut.rs:12:22
+   |
+LL |             self.foo(self.bar());
+   |             ---------^^^^^^^^^^-
+   |             |    |   |
+   |             |    |   mutable borrow occurs here
+   |             |    immutable borrow later used by call
+   |             immutable borrow occurs here
+   |
+help: try adding a local storing this argument...
+  --> $DIR/suggest-local-var-imm-and-mut.rs:12:22
+   |
+LL |             self.foo(self.bar());
+   |                      ^^^^^^^^^^
+help: ...and then using that local as the argument to this call
+  --> $DIR/suggest-local-var-imm-and-mut.rs:12:13
+   |
+LL |             self.foo(self.bar());
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable
+  --> $DIR/suggest-local-var-imm-and-mut.rs:24:39
+   |
+LL |             Self::foo(self, Self::bar(self));
+   |             --------- ----            ^^^^ mutable borrow occurs here
+   |             |         |
+   |             |         immutable borrow occurs here
+   |             immutable borrow later used by call
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0502`.
