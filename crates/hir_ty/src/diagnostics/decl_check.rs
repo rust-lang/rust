@@ -181,8 +181,12 @@ impl<'a> DeclValidator<'a> {
                 AttrDefId::ExternBlockId(id) => Some(id.lookup(self.db.upcast()).container.into()),
                 // These warnings should not explore macro definitions at all
                 AttrDefId::MacroDefId(_) => None,
-                // Will never occur under an enum/struct/union/type alias
-                AttrDefId::AdtId(_) => None,
+                AttrDefId::AdtId(aid) => match aid {
+                    AdtId::StructId(sid) => Some(sid.lookup(self.db.upcast()).container.into()),
+                    AdtId::EnumId(eid) => Some(eid.lookup(self.db.upcast()).container.into()),
+                    // Unions aren't yet supported
+                    AdtId::UnionId(_) => None,
+                },
                 AttrDefId::FieldId(_) => None,
                 AttrDefId::EnumVariantId(_) => None,
                 AttrDefId::TypeAliasId(_) => None,
