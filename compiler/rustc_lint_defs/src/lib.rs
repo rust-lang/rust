@@ -289,7 +289,6 @@ pub enum BuiltinLintDiagnostics {
     AbsPathWithModule(Span),
     ProcMacroDeriveResolutionFallback(Span),
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
-    ElidedLifetimesInPaths(usize, Span, bool, Span, String),
     UnknownCrateTypes(Span, String, String),
     UnusedImports(String, Vec<(Span, String)>),
     RedundantImport(Vec<(Span, bool)>, Ident),
