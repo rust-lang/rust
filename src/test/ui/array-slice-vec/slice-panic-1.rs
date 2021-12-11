@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 
 // ignore-emscripten no threads support
 

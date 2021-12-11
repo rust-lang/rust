@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-wasm32-bare no unwinding panic

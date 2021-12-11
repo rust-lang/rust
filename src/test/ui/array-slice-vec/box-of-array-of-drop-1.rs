@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 #![allow(overflowing_literals)]
 
 // Test that we cleanup a fixed size Box<[D; k]> properly when D has a
