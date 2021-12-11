@@ -13,6 +13,23 @@ LL | |
 LL | |         0
 LL | |     });
    | |______- immutable borrow occurs here
+   |
+help: try adding a local storing this argument...
+  --> $DIR/two-phase-cannot-nest-mut-self-calls.rs:16:9
+   |
+LL |         vec.push(2);
+   |         ^^^^^^^^^^^
+help: ...and then using that local as the argument to this call
+  --> $DIR/two-phase-cannot-nest-mut-self-calls.rs:14:5
+   |
+LL | /     vec.get({
+LL | |
+LL | |         vec.push(2);
+LL | |
+LL | |
+LL | |         0
+LL | |     });
+   | |______^
 
 error: aborting due to previous error
 
