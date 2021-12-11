@@ -1058,7 +1058,7 @@ impl Metadata {
     /// }
     /// ```
     #[must_use]
-    #[stable(feature = "is_symlink", since = "1.57.0")]
+    #[stable(feature = "is_symlink", since = "1.58.0")]
     pub fn is_symlink(&self) -> bool {
         self.file_type().is_symlink()
     }
