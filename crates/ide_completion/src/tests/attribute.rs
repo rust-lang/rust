@@ -831,6 +831,20 @@ mod lint {
             r#"#[allow(rustdoc::bare_urls)] struct Test;"#,
         );
     }
+
+    #[test]
+    fn lint_unclosed() {
+        check_edit(
+            "deprecated",
+            r#"#[allow(dep$0 struct Test;"#,
+            r#"#[allow(deprecated struct Test;"#,
+        );
+        check_edit(
+            "bare_urls",
+            r#"#[allow(rustdoc::$0 struct Test;"#,
+            r#"#[allow(rustdoc::bare_urls struct Test;"#,
+        );
+    }
 }
 
 mod repr {
