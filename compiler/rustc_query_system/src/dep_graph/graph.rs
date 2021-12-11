@@ -676,28 +676,35 @@ impl<K: DepKind> DepGraph<K> {
             None => {}
         }
 
-        let mut stack =
-            MarkingStack { stack: vec![prev_index], sess: qcx.dep_context().sess(), graph: data };
+        let mut stack = smallvec![prev_index];
+        let _backtrace_print =
+            MarkingStack { stack: &mut stack, sess: qcx.dep_context().sess(), graph: data };
 
         // This DepNode and the corresponding query invocation existed
         // in the previous compilation session too, so we can try to
         // mark it as green by recursively marking all of its
         // dependencies green.
-        return self
-            .try_mark_previous_green(qcx, data, prev_index, &dep_node, &mut stack.stack)
+        let ret = self
+            .try_mark_previous_green(qcx, data, prev_index, &dep_node, _backtrace_print.stack)
             .map(|dep_node_index| (prev_index, dep_node_index));
 
+        // We succeeded, no backtrace.
+        std::mem::forget(_backtrace_print);
+        return ret;
+
         /// Remember the stack of queries we are forcing in the event of an incr. comp. panic.
-        struct MarkingStack<'a, K: DepKind> {
-            stack: Vec<SerializedDepNodeIndex>,
+        struct MarkingStack<'a, 'v, K: DepKind> {
+            stack: &'v mut SmallVec<[SerializedDepNodeIndex; 8]>,
             sess: &'a rustc_session::Session,
             graph: &'a DepGraphData<K>,
         }
 
-        impl<'a, K: DepKind> Drop for MarkingStack<'a, K> {
+        impl<'a, 'v, K: DepKind> Drop for MarkingStack<'a, 'v, K> {
             /// Print the forcing backtrace.
+            #[inline(never)]
+            #[cold]
             fn drop(&mut self) {
-                for &frame in self.stack.iter().skip(1).rev() {
+                for &frame in self.stack.iter().rev() {
                     let node = self.graph.previous.index_to_node(frame);
                     // Do not try to rely on DepNode's Debug implementation,
                     // since it may panic.
@@ -721,7 +728,7 @@ impl<K: DepKind> DepGraph<K> {
         data: &DepGraphData<K>,
         parent_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
-        stack: &mut Vec<SerializedDepNodeIndex>,
+        stack: &mut SmallVec<[SerializedDepNodeIndex; 8]>,
     ) -> Option<()> {
         let dep_dep_node_color = data.colors.get(parent_dep_node_index);
         let dep_dep_node = &data.previous.index_to_node(parent_dep_node_index);
@@ -810,7 +817,7 @@ impl<K: DepKind> DepGraph<K> {
         data: &DepGraphData<K>,
         prev_dep_node_index: SerializedDepNodeIndex,
         dep_node: &DepNode<K>,
-        stack: &mut Vec<SerializedDepNodeIndex>,
+        stack: &mut SmallVec<[SerializedDepNodeIndex; 8]>,
     ) -> Option<DepNodeIndex> {
         #[cfg(not(parallel_compiler))]
         {
