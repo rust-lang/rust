@@ -11,7 +11,7 @@ pub fn breakpoint_program_exited(tid: usize) {
             // SOLID_BP_PROGRAM_EXITED = 15
             #[cfg(target_arch = "arm")]
             () => core::arch::asm!("bkpt #15", in("r0") tid),
-            #[cfg(core::arch::asm = "aarch64")]
+            #[cfg(target_arch = "aarch64")]
             () => core::arch::asm!("hlt #15", in("x0") tid),
         }
     }

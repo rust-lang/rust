@@ -9,6 +9,8 @@
 #![feature(derive_default_enum)]
 #![allow(deprecated)] // llvm_asm!
 
+use std::arch::asm;
+
 #[derive(Default)]
 struct DefaultInnerAttrStruct {
     #[default] //~ ERROR the `#[default]` attribute may only be used on unit enum variants

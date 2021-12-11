@@ -29,9 +29,9 @@ pub extern "C" fn get(ptr: *const u64) -> u64 {
 pub extern "C" fn myret() {
     unsafe {
         asm!(
-            ".start_myret_inline_asm:
-            ret
-            .end_myret_inline_asm:"
+            ".start_myret_inline_asm:",
+            "ret",
+            ".end_myret_inline_asm:",
         );
     }
 }

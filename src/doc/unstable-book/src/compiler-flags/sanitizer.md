@@ -201,6 +201,7 @@ LLVM CFI can be enabled with -Zsanitizer=cfi and requires LTO (i.e., -Clto).
 ```text
 #![feature(naked_functions)]
 
+use std::arch::asm;
 use std::mem;
 
 fn add_one(x: i32) -> i32 {
