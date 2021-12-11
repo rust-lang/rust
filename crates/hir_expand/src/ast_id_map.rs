@@ -8,12 +8,13 @@
 use std::{
     any::type_name,
     fmt,
-    hash::{Hash, Hasher},
+    hash::{BuildHasher, BuildHasherDefault, Hash, Hasher},
     marker::PhantomData,
 };
 
 use la_arena::{Arena, Idx};
 use profile::Count;
+use rustc_hash::FxHasher;
 use syntax::{ast, match_ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
 /// `AstId` points to an AST node in a specific file.
@@ -60,11 +61,27 @@ impl<N: AstNode> FileAstId<N> {
 type ErasedFileAstId = Idx<SyntaxNodePtr>;
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.
-#[derive(Debug, PartialEq, Eq, Default)]
+#[derive(Default)]
 pub struct AstIdMap {
+    /// Maps stable id to unstable ptr.
     arena: Arena<SyntaxNodePtr>,
+    /// Reverse: map ptr to id.
+    map: hashbrown::HashMap<Idx<SyntaxNodePtr>, (), ()>,
     _c: Count<Self>,
 }
+
+impl fmt::Debug for AstIdMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AstIdMap").field("arena", &self.arena).finish()
+    }
+}
+
+impl PartialEq for AstIdMap {
+    fn eq(&self, other: &Self) -> bool {
+        self.arena == other.arena
+    }
+}
+impl Eq for AstIdMap {}
 
 impl AstIdMap {
     pub(crate) fn from_source(node: &SyntaxNode) -> AstIdMap {
@@ -89,6 +106,16 @@ impl AstIdMap {
                 }
             }
         });
+        res.map = hashbrown::HashMap::with_capacity_and_hasher(res.arena.len(), ());
+        for (idx, ptr) in res.arena.iter() {
+            let hash = hash_ptr(ptr);
+            match res.map.raw_entry_mut().from_hash(hash, |idx2| *idx2 == idx) {
+                hashbrown::hash_map::RawEntryMut::Occupied(_) => unreachable!(),
+                hashbrown::hash_map::RawEntryMut::Vacant(entry) => {
+                    entry.insert_with_hasher(hash, idx, (), |&idx| hash_ptr(&res.arena[idx]));
+                }
+            }
+        }
         res
     }
 
@@ -98,8 +125,9 @@ impl AstIdMap {
     }
     fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {
         let ptr = SyntaxNodePtr::new(item);
-        match self.arena.iter().find(|(_id, i)| **i == ptr) {
-            Some((it, _)) => it,
+        let hash = hash_ptr(&ptr);
+        match self.map.raw_entry().from_hash(hash, |&idx| self.arena[idx] == ptr) {
+            Some((&idx, &())) => idx,
             None => panic!(
                 "Can't find {:?} in AstIdMap:\n{:?}",
                 item,
@@ -115,6 +143,12 @@ impl AstIdMap {
     fn alloc(&mut self, item: &SyntaxNode) -> ErasedFileAstId {
         self.arena.alloc(SyntaxNodePtr::new(item))
     }
+}
+
+fn hash_ptr(ptr: &SyntaxNodePtr) -> u64 {
+    let mut hasher = BuildHasherDefault::<FxHasher>::default().build_hasher();
+    ptr.hash(&mut hasher);
+    hasher.finish()
 }
 
 /// Walks the subtree in bdfs order, calling `f` for each node. What is bdfs

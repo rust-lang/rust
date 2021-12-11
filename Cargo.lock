@@ -525,6 +525,7 @@ dependencies = [
  "cfg",
  "cov-mark",
  "either",
+ "hashbrown",
  "itertools",
  "la-arena",
  "limit",
