@@ -840,6 +840,36 @@ struct Point {
 }
 
 #[test]
+fn doctest_generate_documentation_template() {
+    check_doc_test(
+        "generate_documentation_template",
+        r#####"
+pub fn my_$0func(a: i32, b: i32) -> Result<(), std::io::Error> {
+    unimplemented!()
+}
+"#####,
+        r#####"
+/// .
+///
+/// # Examples
+///
+/// ```
+/// use test::my_func;
+///
+/// assert_eq!(my_func(a, b), );
+/// ```
+///
+/// # Errors
+///
+/// This function will return an error if .
+pub fn my_func(a: i32, b: i32) -> Result<(), std::io::Error> {
+    unimplemented!()
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_enum_as_method() {
     check_doc_test(
         "generate_enum_as_method",

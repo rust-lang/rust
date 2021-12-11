@@ -136,6 +136,7 @@ mod handlers {
     mod generate_default_from_new;
     mod generate_deref;
     mod generate_derive;
+    mod generate_documentation_template;
     mod generate_enum_is_method;
     mod generate_enum_projection_method;
     mod generate_from_impl_for_enum;
@@ -219,6 +220,7 @@ mod handlers {
             generate_delegate_methods::generate_delegate_methods,
             generate_deref::generate_deref,
             generate_derive::generate_derive,
+            generate_documentation_template::generate_documentation_template,
             generate_enum_is_method::generate_enum_is_method,
             generate_enum_projection_method::generate_enum_as_method,
             generate_enum_projection_method::generate_enum_try_into_method,
