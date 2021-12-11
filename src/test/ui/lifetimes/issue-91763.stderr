@@ -1,0 +1,14 @@
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/issue-91763.rs:8:20
+   |
+LL | fn f() -> Ptr<Thing>;
+   |                    ^ expected named lifetime parameter
+   |
+note: the lint level is defined here
+  --> $DIR/issue-91763.rs:3:9
+   |
+LL | #![deny(elided_lifetimes_in_paths)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
