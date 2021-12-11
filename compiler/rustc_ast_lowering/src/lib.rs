@@ -228,7 +228,7 @@ enum ImplTraitContext<'b, 'a> {
     ReturnPositionOpaqueTy {
         /// `DefId` for the parent function, used to look up necessary
         /// information later.
-        fn_def_id: DefId,
+        fn_def_id: LocalDefId,
         /// Origin: Either OpaqueTyOrigin::FnReturn or OpaqueTyOrigin::AsyncFn,
         origin: hir::OpaqueTyOrigin,
     },
@@ -646,31 +646,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// parameter while `f` is running (and restored afterwards).
     fn collect_in_band_defs<T>(
         &mut self,
-        parent_def_id: LocalDefId,
-        anonymous_lifetime_mode: AnonymousLifetimeMode,
-        f: impl FnOnce(&mut Self) -> (Vec<hir::GenericParam<'hir>>, T),
-    ) -> (Vec<hir::GenericParam<'hir>>, T) {
-        assert!(!self.is_collecting_in_band_lifetimes);
-        assert!(self.lifetimes_to_define.is_empty());
-        let old_anonymous_lifetime_mode = self.anonymous_lifetime_mode;
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> (Vec<(Span, ParamName)>, T) {
+        let was_collecting = std::mem::replace(&mut self.is_collecting_in_band_lifetimes, true);
+        let len = self.lifetimes_to_define.len();
 
-        self.anonymous_lifetime_mode = anonymous_lifetime_mode;
-        self.is_collecting_in_band_lifetimes = true;
+        let res = f(self);
 
-        let (in_band_ty_params, res) = f(self);
-
-        self.is_collecting_in_band_lifetimes = false;
-        self.anonymous_lifetime_mode = old_anonymous_lifetime_mode;
-
-        let lifetimes_to_define = self.lifetimes_to_define.split_off(0);
-
-        let params = lifetimes_to_define
-            .into_iter()
-            .map(|(span, hir_name)| self.lifetime_to_generic_param(span, hir_name, parent_def_id))
-            .chain(in_band_ty_params.into_iter())
-            .collect();
-
-        (params, res)
+        let lifetimes_to_define = self.lifetimes_to_define.split_off(len);
+        self.is_collecting_in_band_lifetimes = was_collecting;
+        (lifetimes_to_define, res)
     }
 
     /// Converts a lifetime into a new generic parameter.
@@ -785,27 +770,39 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         anonymous_lifetime_mode: AnonymousLifetimeMode,
         f: impl FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
     ) -> (hir::Generics<'hir>, T) {
-        let (in_band_defs, (mut lowered_generics, res)) =
-            self.with_in_scope_lifetime_defs(&generics.params, |this| {
-                this.collect_in_band_defs(parent_def_id, anonymous_lifetime_mode, |this| {
-                    let mut params = Vec::new();
-                    // Note: it is necessary to lower generics *before* calling `f`.
-                    // When lowering `async fn`, there's a final step when lowering
-                    // the return type that assumes that all in-scope lifetimes have
-                    // already been added to either `in_scope_lifetimes` or
-                    // `lifetimes_to_define`. If we swapped the order of these two,
-                    // in-band-lifetimes introduced by generics or where-clauses
-                    // wouldn't have been added yet.
-                    let generics = this.lower_generics_mut(
-                        generics,
-                        ImplTraitContext::Universal(&mut params, this.current_hir_id_owner),
-                    );
-                    let res = f(this, &mut params);
-                    (params, (generics, res))
+        let (lifetimes_to_define, (mut lowered_generics, impl_trait_defs, res)) = self
+            .collect_in_band_defs(|this| {
+                this.with_anonymous_lifetime_mode(anonymous_lifetime_mode, |this| {
+                    this.with_in_scope_lifetime_defs(&generics.params, |this| {
+                        let mut impl_trait_defs = Vec::new();
+                        // Note: it is necessary to lower generics *before* calling `f`.
+                        // When lowering `async fn`, there's a final step when lowering
+                        // the return type that assumes that all in-scope lifetimes have
+                        // already been added to either `in_scope_lifetimes` or
+                        // `lifetimes_to_define`. If we swapped the order of these two,
+                        // in-band-lifetimes introduced by generics or where-clauses
+                        // wouldn't have been added yet.
+                        let generics = this.lower_generics_mut(
+                            generics,
+                            ImplTraitContext::Universal(
+                                &mut impl_trait_defs,
+                                this.current_hir_id_owner,
+                            ),
+                        );
+                        let res = f(this, &mut impl_trait_defs);
+                        (generics, impl_trait_defs, res)
+                    })
                 })
             });
 
-        lowered_generics.params.extend(in_band_defs);
+        lowered_generics.params.extend(
+            lifetimes_to_define
+                .into_iter()
+                .map(|(span, hir_name)| {
+                    self.lifetime_to_generic_param(span, hir_name, parent_def_id)
+                })
+                .chain(impl_trait_defs),
+        );
 
         let lowered_generics = lowered_generics.into_generics(self.arena);
         (lowered_generics, res)
@@ -1380,7 +1377,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_opaque_impl_trait(
         &mut self,
         span: Span,
-        fn_def_id: Option<DefId>,
+        fn_def_id: Option<LocalDefId>,
         origin: hir::OpaqueTyOrigin,
         opaque_ty_node_id: NodeId,
         capturable_lifetimes: Option<&FxHashSet<hir::LifetimeName>>,
@@ -1452,7 +1449,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     span: lctx.lower_span(span),
                 },
                 bounds: hir_bounds,
-                impl_trait_fn: fn_def_id,
                 origin,
             };
 
@@ -1522,7 +1518,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_fn_decl(
         &mut self,
         decl: &FnDecl,
-        mut in_band_ty_params: Option<(DefId, &mut Vec<hir::GenericParam<'hir>>)>,
+        mut in_band_ty_params: Option<(LocalDefId, &mut Vec<hir::GenericParam<'hir>>)>,
         impl_trait_return_allow: bool,
         make_ret_async: Option<NodeId>,
     ) -> &'hir hir::FnDecl<'hir> {
@@ -1580,7 +1576,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         Some((def_id, _)) if impl_trait_return_allow => {
                             ImplTraitContext::ReturnPositionOpaqueTy {
                                 fn_def_id: def_id,
-                                origin: hir::OpaqueTyOrigin::FnReturn,
+                                origin: hir::OpaqueTyOrigin::FnReturn(def_id),
                             }
                         }
                         _ => ImplTraitContext::disallowed(),
@@ -1635,7 +1631,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_async_fn_ret_ty(
         &mut self,
         output: &FnRetTy,
-        fn_def_id: DefId,
+        fn_def_id: LocalDefId,
         opaque_ty_node_id: NodeId,
     ) -> hir::FnRetTy<'hir> {
         debug!(
@@ -1689,18 +1685,29 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // this is because the elided lifetimes from the return type
         // should be figured out using the ordinary elision rules, and
         // this desugaring achieves that.
-        //
-        // The variable `input_lifetimes_count` tracks the number of
-        // lifetime parameters to the opaque type *not counting* those
-        // lifetimes elided in the return type. This includes those
-        // that are explicitly declared (`in_scope_lifetimes`) and
-        // those elided lifetimes we found in the arguments (current
-        // content of `lifetimes_to_define`). Next, we will process
-        // the return type, which will cause `lifetimes_to_define` to
-        // grow.
-        let input_lifetimes_count = self.in_scope_lifetimes.len() + self.lifetimes_to_define.len();
 
-        let mut lifetime_params = Vec::new();
+        debug!("lower_async_fn_ret_ty: in_scope_lifetimes={:#?}", self.in_scope_lifetimes);
+        debug!("lower_async_fn_ret_ty: lifetimes_to_define={:#?}", self.lifetimes_to_define);
+
+        // Calculate all the lifetimes that should be captured
+        // by the opaque type. This should include all in-scope
+        // lifetime parameters, including those defined in-band.
+        //
+        // `lifetime_params` is a vector of tuple (span, parameter name, lifetime name).
+
+        // Input lifetime like `'a` or `'1`:
+        let mut lifetime_params: Vec<_> = self
+            .in_scope_lifetimes
+            .iter()
+            .cloned()
+            .map(|name| (name.ident().span, name, hir::LifetimeName::Param(name)))
+            .chain(
+                self.lifetimes_to_define
+                    .iter()
+                    .map(|&(span, name)| (span, name, hir::LifetimeName::Param(name))),
+            )
+            .collect();
+
         self.with_hir_id_owner(opaque_ty_node_id, |this| {
             // We have to be careful to get elision right here. The
             // idea is that we create a lifetime parameter for each
@@ -1710,34 +1717,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             //
             // Then, we will create `fn foo(..) -> Foo<'_, '_>`, and
             // hence the elision takes place at the fn site.
-            let future_bound = this
-                .with_anonymous_lifetime_mode(AnonymousLifetimeMode::CreateParameter, |this| {
-                    this.lower_async_fn_output_type_to_future_bound(output, fn_def_id, span)
+            let (lifetimes_to_define, future_bound) =
+                this.with_anonymous_lifetime_mode(AnonymousLifetimeMode::CreateParameter, |this| {
+                    this.collect_in_band_defs(|this| {
+                        this.lower_async_fn_output_type_to_future_bound(output, fn_def_id, span)
+                    })
                 });
-
             debug!("lower_async_fn_ret_ty: future_bound={:#?}", future_bound);
+            debug!("lower_async_fn_ret_ty: lifetimes_to_define={:#?}", lifetimes_to_define);
 
-            // Calculate all the lifetimes that should be captured
-            // by the opaque type. This should include all in-scope
-            // lifetime parameters, including those defined in-band.
-            //
-            // Note: this must be done after lowering the output type,
-            // as the output type may introduce new in-band lifetimes.
-            lifetime_params = this
-                .in_scope_lifetimes
-                .iter()
-                .cloned()
-                .map(|name| (name.ident().span, name))
-                .chain(this.lifetimes_to_define.iter().cloned())
-                .collect();
-
-            debug!("lower_async_fn_ret_ty: in_scope_lifetimes={:#?}", this.in_scope_lifetimes);
-            debug!("lower_async_fn_ret_ty: lifetimes_to_define={:#?}", this.lifetimes_to_define);
+            lifetime_params.extend(
+                // Output lifetime like `'_`:
+                lifetimes_to_define
+                    .into_iter()
+                    .map(|(span, name)| (span, name, hir::LifetimeName::Implicit(false))),
+            );
             debug!("lower_async_fn_ret_ty: lifetime_params={:#?}", lifetime_params);
 
             let generic_params =
-                this.arena.alloc_from_iter(lifetime_params.iter().map(|(span, hir_name)| {
-                    this.lifetime_to_generic_param(*span, *hir_name, opaque_ty_def_id)
+                this.arena.alloc_from_iter(lifetime_params.iter().map(|&(span, hir_name, _)| {
+                    this.lifetime_to_generic_param(span, hir_name, opaque_ty_def_id)
                 }));
 
             let opaque_ty_item = hir::OpaqueTy {
@@ -1747,8 +1746,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     span: this.lower_span(span),
                 },
                 bounds: arena_vec![this; future_bound],
-                impl_trait_fn: Some(fn_def_id),
-                origin: hir::OpaqueTyOrigin::AsyncFn,
+                origin: hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
             };
 
             trace!("exist ty from async fn def id: {:#?}", opaque_ty_def_id);
@@ -1771,25 +1769,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //
         // For the "output" lifetime parameters, we just want to
         // generate `'_`.
-        let mut generic_args = Vec::with_capacity(lifetime_params.len());
-        generic_args.extend(lifetime_params[..input_lifetimes_count].iter().map(
-            |&(span, hir_name)| {
-                // Input lifetime like `'a` or `'1`:
+        let generic_args =
+            self.arena.alloc_from_iter(lifetime_params.into_iter().map(|(span, _, name)| {
                 GenericArg::Lifetime(hir::Lifetime {
                     hir_id: self.next_id(),
                     span: self.lower_span(span),
-                    name: hir::LifetimeName::Param(hir_name),
+                    name,
                 })
-            },
-        ));
-        generic_args.extend(lifetime_params[input_lifetimes_count..].iter().map(|&(span, _)|
-            // Output lifetime like `'_`.
-            GenericArg::Lifetime(hir::Lifetime {
-                hir_id: self.next_id(),
-                span: self.lower_span(span),
-                name: hir::LifetimeName::Implicit(false),
-            })));
-        let generic_args = self.arena.alloc_from_iter(generic_args);
+            }));
 
         // Create the `Foo<...>` reference itself. Note that the `type
         // Foo = impl Trait` is, internally, created as a child of the
@@ -1805,7 +1792,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_async_fn_output_type_to_future_bound(
         &mut self,
         output: &FnRetTy,
-        fn_def_id: DefId,
+        fn_def_id: LocalDefId,
         span: Span,
     ) -> hir::GenericBound<'hir> {
         // Compute the `T` in `Future<Output = T>` from the return type.
@@ -1816,7 +1803,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // generates.
                 let context = ImplTraitContext::ReturnPositionOpaqueTy {
                     fn_def_id,
-                    origin: hir::OpaqueTyOrigin::FnReturn,
+                    origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
                 };
                 self.lower_ty(ty, context)
             }
@@ -2453,17 +2440,12 @@ impl<'hir> GenericArgsCtor<'hir> {
     }
 }
 
+#[tracing::instrument(level = "debug")]
 fn lifetimes_from_impl_trait_bounds(
     opaque_ty_id: NodeId,
     bounds: hir::GenericBounds<'_>,
     lifetimes_to_include: Option<&FxHashSet<hir::LifetimeName>>,
 ) -> Vec<(hir::LifetimeName, Span)> {
-    debug!(
-        "lifetimes_from_impl_trait_bounds(opaque_ty_id={:?}, \
-             bounds={:#?})",
-        opaque_ty_id, bounds,
-    );
-
     // This visitor walks over `impl Trait` bounds and creates defs for all lifetimes that
     // appear in the bounds, excluding lifetimes that are created within the bounds.
     // E.g., `'a`, `'b`, but not `'c` in `impl for<'c> SomeTrait<'a, 'b, 'c>`.

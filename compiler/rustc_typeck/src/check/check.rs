@@ -541,7 +541,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
     }
 
     if let ItemKind::OpaqueTy(hir::OpaqueTy {
-        origin: hir::OpaqueTyOrigin::AsyncFn | hir::OpaqueTyOrigin::FnReturn,
+        origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
         ..
     }) = item.kind
     {
@@ -567,7 +567,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
             visitor.visit_item(&item);
             let is_async = match item.kind {
                 ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
-                    matches!(origin, hir::OpaqueTyOrigin::AsyncFn)
+                    matches!(origin, hir::OpaqueTyOrigin::AsyncFn(..))
                 }
                 _ => unreachable!(),
             };
@@ -604,7 +604,7 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 ) -> Result<(), ErrorReported> {
     if tcx.try_expand_impl_trait_type(def_id.to_def_id(), substs).is_err() {
         match origin {
-            hir::OpaqueTyOrigin::AsyncFn => async_opaque_type_cycle_error(tcx, span),
+            hir::OpaqueTyOrigin::AsyncFn(..) => async_opaque_type_cycle_error(tcx, span),
             _ => opaque_type_cycle_error(tcx, def_id, span),
         }
         Err(ErrorReported)
@@ -635,7 +635,7 @@ fn check_opaque_meets_bounds<'tcx>(
 ) {
     match origin {
         // Checked when type checking the function containing them.
-        hir::OpaqueTyOrigin::FnReturn | hir::OpaqueTyOrigin::AsyncFn => return,
+        hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => return,
         // Can have different predicates to their defining use
         hir::OpaqueTyOrigin::TyAlias => {}
     }

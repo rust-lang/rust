@@ -248,7 +248,7 @@ fn trait_of_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
 fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // The param_env of an impl Trait type is its defining function's param_env
     if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
-        return param_env(tcx, parent);
+        return param_env(tcx, parent.to_def_id());
     }
     // Compute the bounds on Self and the type parameters.
 
@@ -313,7 +313,7 @@ fn well_formed_types_in_env<'tcx>(
 
     // The environment of an impl Trait type is its defining function's environment.
     if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
-        return well_formed_types_in_env(tcx, parent);
+        return well_formed_types_in_env(tcx, parent.to_def_id());
     }
 
     // Compute the bounds on `Self` and the type parameters.
