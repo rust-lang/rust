@@ -247,12 +247,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         AnonymousLifetimeMode::PassThrough,
                         |this, idty| {
                             let ret_id = asyncness.opt_return_id();
-                            this.lower_fn_decl(
-                                &decl,
-                                Some((fn_def_id.to_def_id(), idty)),
-                                true,
-                                ret_id,
-                            )
+                            this.lower_fn_decl(&decl, Some((fn_def_id, idty)), true, ret_id)
                         },
                     );
                     let sig = hir::FnSig {
@@ -1264,7 +1259,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             |this, idty| {
                 this.lower_fn_decl(
                     &sig.decl,
-                    Some((fn_def_id.to_def_id(), idty)),
+                    Some((fn_def_id, idty)),
                     impl_trait_return_allow,
                     is_async,
                 )
