@@ -1097,7 +1097,7 @@ impl InvocationCollectorNode for P<ast::Item> {
             ModKind::Unloaded => {
                 // We have an outline `mod foo;` so we need to parse the file.
                 let old_attrs_len = attrs.len();
-                let ParsedExternalMod { mut items, inner_span, file_path, dir_path, dir_ownership } =
+                let ParsedExternalMod { items, inner_span, file_path, dir_path, dir_ownership } =
                     parse_external_mod(
                         &ecx.sess,
                         ident,
@@ -1107,12 +1107,14 @@ impl InvocationCollectorNode for P<ast::Item> {
                         &mut attrs,
                     );
 
-                if let Some(extern_mod_loaded) = ecx.extern_mod_loaded {
-                    (attrs, items) = extern_mod_loaded(
+                if let Some(lint_store) = ecx.lint_store {
+                    lint_store.pre_expansion_lint(
+                        ecx.sess,
+                        ecx.resolver.registered_tools(),
                         ecx.current_expansion.lint_node_id,
-                        attrs,
-                        items,
-                        ident.name,
+                        &attrs,
+                        &items,
+                        ident.name.as_str(),
                     );
                 }
 

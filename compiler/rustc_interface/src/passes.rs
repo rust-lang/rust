@@ -11,7 +11,7 @@ use rustc_data_structures::parallel;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{Applicability, ErrorReported, PResult};
-use rustc_expand::base::{ExtCtxt, ResolverExpand};
+use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::Crate;
 use rustc_lint::{EarlyCheckNode, LintStore};
@@ -253,6 +253,23 @@ fn pre_expansion_lint<'a>(
     });
 }
 
+// Cannot implement directly for `LintStore` due to trait coherence.
+struct LintStoreExpandImpl<'a>(&'a LintStore);
+
+impl LintStoreExpand for LintStoreExpandImpl<'_> {
+    fn pre_expansion_lint(
+        &self,
+        sess: &Session,
+        registered_tools: &RegisteredTools,
+        node_id: ast::NodeId,
+        attrs: &[ast::Attribute],
+        items: &[rustc_ast::ptr::P<ast::Item>],
+        name: &str,
+    ) {
+        pre_expansion_lint(sess, self.0, registered_tools, (node_id, attrs, items), name);
+    }
+}
+
 /// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
@@ -321,18 +338,8 @@ pub fn configure_and_expand(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
-        let registered_tools = resolver.registered_tools().clone();
-        let extern_mod_loaded = |node_id, attrs: Vec<_>, items: Vec<_>, name: Symbol| {
-            pre_expansion_lint(
-                sess,
-                lint_store,
-                &registered_tools,
-                (node_id, &*attrs, &*items),
-                name.as_str(),
-            );
-            (attrs, items)
-        };
-        let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&extern_mod_loaded));
+        let lint_store = LintStoreExpandImpl(lint_store);
+        let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
 
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));

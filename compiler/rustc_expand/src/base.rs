@@ -925,6 +925,20 @@ pub trait ResolverExpand {
     fn registered_tools(&self) -> &FxHashSet<Ident>;
 }
 
+pub trait LintStoreExpand {
+    fn pre_expansion_lint(
+        &self,
+        sess: &Session,
+        registered_tools: &FxHashSet<Ident>,
+        node_id: NodeId,
+        attrs: &[Attribute],
+        items: &[P<Item>],
+        name: &str,
+    );
+}
+
+type LintStoreExpandDyn<'a> = Option<&'a (dyn LintStoreExpand + 'a)>;
+
 #[derive(Clone, Default)]
 pub struct ModuleData {
     /// Path to the module starting from the crate name, like `my_crate::foo::bar`.
@@ -959,10 +973,6 @@ pub struct ExpansionData {
     pub is_trailing_mac: bool,
 }
 
-type OnExternModLoaded<'a> = Option<
-    &'a dyn Fn(NodeId, Vec<Attribute>, Vec<P<Item>>, Symbol) -> (Vec<Attribute>, Vec<P<Item>>),
->;
-
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
 /// -> expn_data` of their expansion context stored into their span.
@@ -977,10 +987,8 @@ pub struct ExtCtxt<'a> {
     /// (or during eager expansion, but that's a hack).
     pub force_mode: bool,
     pub expansions: FxHashMap<Span, Vec<String>>,
-    /// Called directly after having parsed an external `mod foo;` in expansion.
-    ///
-    /// `Ident` is the module name.
-    pub(super) extern_mod_loaded: OnExternModLoaded<'a>,
+    /// Used for running pre-expansion lints on freshly loaded modules.
+    pub(super) lint_store: LintStoreExpandDyn<'a>,
     /// When we 'expand' an inert attribute, we leave it
     /// in the AST, but insert it here so that we know
     /// not to expand it again.
@@ -992,14 +1000,14 @@ impl<'a> ExtCtxt<'a> {
         sess: &'a Session,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn ResolverExpand,
-        extern_mod_loaded: OnExternModLoaded<'a>,
+        lint_store: LintStoreExpandDyn<'a>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
             sess,
             ecfg,
             reduced_recursion_limit: None,
             resolver,
-            extern_mod_loaded,
+            lint_store,
             root_path: PathBuf::new(),
             current_expansion: ExpansionData {
                 id: LocalExpnId::ROOT,
