@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 
 #![allow(non_camel_case_types)]
 // ignore-emscripten no threads support

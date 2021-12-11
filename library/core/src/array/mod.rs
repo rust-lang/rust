@@ -645,6 +645,84 @@ impl<T, const N: usize> [T; N] {
     pub fn split_array_mut<const M: usize>(&mut self) -> (&mut [T; M], &mut [T]) {
         (&mut self[..]).split_array_mut::<M>()
     }
+
+    /// Divides one array reference into two at an index from the end.
+    ///
+    /// The first will contain all indices from `[0, N - M)` (excluding
+    /// the index `N - M` itself) and the second will contain all
+    /// indices from `[N - M, N)` (excluding the index `N` itself).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `M > N`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_array)]
+    ///
+    /// let v = [1, 2, 3, 4, 5, 6];
+    ///
+    /// {
+    ///    let (left, right) = v.rsplit_array_ref::<0>();
+    ///    assert_eq!(left, &[1, 2, 3, 4, 5, 6]);
+    ///    assert_eq!(right, &[]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.rsplit_array_ref::<2>();
+    ///     assert_eq!(left, &[1, 2, 3, 4]);
+    ///     assert_eq!(right, &[5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.rsplit_array_ref::<6>();
+    ///     assert_eq!(left, &[]);
+    ///     assert_eq!(right, &[1, 2, 3, 4, 5, 6]);
+    /// }
+    /// ```
+    #[unstable(
+        feature = "split_array",
+        reason = "return type should have array as 2nd element",
+        issue = "90091"
+    )]
+    #[inline]
+    pub fn rsplit_array_ref<const M: usize>(&self) -> (&[T], &[T; M]) {
+        (&self[..]).rsplit_array_ref::<M>()
+    }
+
+    /// Divides one mutable array reference into two at an index from the end.
+    ///
+    /// The first will contain all indices from `[0, N - M)` (excluding
+    /// the index `N - M` itself) and the second will contain all
+    /// indices from `[N - M, N)` (excluding the index `N` itself).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `M > N`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_array)]
+    ///
+    /// let mut v = [1, 0, 3, 0, 5, 6];
+    /// let (left, right) = v.rsplit_array_mut::<4>();
+    /// assert_eq!(left, &mut [1, 0]);
+    /// assert_eq!(right, &mut [3, 0, 5, 6][..]);
+    /// left[1] = 2;
+    /// right[1] = 4;
+    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    #[unstable(
+        feature = "split_array",
+        reason = "return type should have array as 2nd element",
+        issue = "90091"
+    )]
+    #[inline]
+    pub fn rsplit_array_mut<const M: usize>(&mut self) -> (&mut [T], &mut [T; M]) {
+        (&mut self[..]).rsplit_array_mut::<M>()
+    }
 }
 
 /// Pulls `N` items from `iter` and returns them as an array. If the iterator
