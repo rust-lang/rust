@@ -140,7 +140,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             sym::min_align_of_val | sym::size_of_val => {
                 // Avoid `deref_operand` -- this is not a deref, the ptr does not have to be
-                // dereferencable!
+                // dereferenceable!
                 let place = self.ref_to_mplace(&self.read_immediate(&args[0])?)?;
                 let (size, align) = self
                     .size_and_align_of_mplace(&place)?

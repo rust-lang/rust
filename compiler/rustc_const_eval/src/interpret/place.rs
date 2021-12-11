@@ -327,7 +327,7 @@ where
         self.memory.get_mut(place.ptr, size, place.align)
     }
 
-    /// Check if this mplace is dereferencable and sufficiently aligned.
+    /// Check if this mplace is dereferenceable and sufficiently aligned.
     fn check_mplace_access(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
