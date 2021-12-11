@@ -60,7 +60,7 @@ pub(crate) fn generate_documentation_template(
         |builder| {
             let mut doc_lines = Vec::new();
             // Introduction / short function description before the sections
-            doc_lines.push(introduction_builder(&ast_func));
+            doc_lines.push(introduction_builder(&ast_func, ctx));
             // Then come the sections
             if let Some(mut lines) = examples_builder(&ast_func, ctx) {
                 doc_lines.push("".into());
@@ -78,18 +78,24 @@ pub(crate) fn generate_documentation_template(
 }
 
 /// Builds an introduction, trying to be smart if the function is `::new()`
-fn introduction_builder(ast_func: &ast::Fn) -> String {
-    let is_new = ast_func.name().map(|name| &name.to_string() == "new").unwrap_or(false);
-    if is_new {
-        let ret_type = return_type(ast_func).map(|ret_type| ret_type.to_string());
-        let self_type = self_type(ast_func);
-        if ret_type.as_deref() == Some("Self") || ret_type == self_type {
-            if let Some(self_type) = self_type {
-                return format!("Creates a new [`{}`].", self_type);
+fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> String {
+    || -> Option<String> {
+        let hir_func = ctx.sema.to_def(ast_func)?;
+        let container = hir_func.as_assoc_item(ctx.db())?.container(ctx.db());
+        if let hir::AssocItemContainer::Impl(implementation) = container {
+            let ret_ty = hir_func.ret_type(ctx.db());
+            let self_ty = implementation.self_ty(ctx.db());
+
+            let is_new = ast_func.name()?.to_string() == "new";
+            match is_new && ret_ty == self_ty {
+                true => Some(format!("Creates a new [`{}`].", self_type(ast_func)?)),
+                false => None,
             }
+        } else {
+            None
         }
-    }
-    ".".into()
+    }()
+    .unwrap_or_else(|| ".".into())
 }
 
 /// Builds an `# Examples` section. An option is returned to be able to manage an error in the AST.
