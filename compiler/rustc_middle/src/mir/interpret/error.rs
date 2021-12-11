@@ -141,9 +141,10 @@ pub enum InvalidProgramInfo<'tcx> {
     AlreadyReported(ErrorReported),
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
-    /// An error occurred during FnAbi computation.
-    /// (Not using `FnAbiError` as that contains a nested `LayoutError`.)
-    FnAbi(call::AdjustForForeignAbiError),
+    /// An error occurred during FnAbi computation: the passed --target lacks FFI support
+    /// (which unfortunately typeck does not reject).
+    /// Not using `FnAbiError` as that contains a nested `LayoutError`.
+    FnAbiAdjustForForeignAbi(call::AdjustForForeignAbiError),
     /// An invalid transmute happened.
     TransmuteSizeDiff(Ty<'tcx>, Ty<'tcx>),
     /// SizeOf of unsized type was requested.
@@ -160,7 +161,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
                 write!(f, "encountered constants with type errors, stopping evaluation")
             }
             Layout(ref err) => write!(f, "{}", err),
-            FnAbi(ref err) => write!(f, "{}", err),
+            FnAbiAdjustForForeignAbi(ref err) => write!(f, "{}", err),
             TransmuteSizeDiff(from_ty, to_ty) => write!(
                 f,
                 "transmuting `{}` to `{}` is not possible, because these types do not have the same size",

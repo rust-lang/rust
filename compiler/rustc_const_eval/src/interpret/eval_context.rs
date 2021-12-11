@@ -347,7 +347,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> FnAbiOfHelpers<'tcx> for InterpCx
     ) -> InterpErrorInfo<'tcx> {
         match err {
             FnAbiError::Layout(err) => err_inval!(Layout(err)).into(),
-            FnAbiError::AdjustForForeignAbi(err) => err_inval!(FnAbi(err)).into(),
+            FnAbiError::AdjustForForeignAbi(err) => {
+                err_inval!(FnAbiAdjustForForeignAbi(err)).into()
+            }
         }
     }
 }
