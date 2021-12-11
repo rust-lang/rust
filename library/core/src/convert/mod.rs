@@ -683,7 +683,8 @@ impl AsMut<str> for str {
 pub enum Infallible {}
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-impl Clone for Infallible {
+#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+impl const Clone for Infallible {
     fn clone(&self) -> Infallible {
         match *self {}
     }

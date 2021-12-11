@@ -1665,7 +1665,12 @@ fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, E: Clone> Clone for Result<T, E> {
+#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+impl<T, E> const Clone for Result<T, E>
+where
+    T: ~const Clone + ~const Drop,
+    E: ~const Clone + ~const Drop,
+{
     #[inline]
     fn clone(&self) -> Self {
         match self {

@@ -146,7 +146,8 @@ impl<T: ?Sized> Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: ?Sized> Clone for Unique<T> {
+#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+impl<T: ?Sized> const Clone for Unique<T> {
     #[inline]
     fn clone(&self) -> Self {
         *self
