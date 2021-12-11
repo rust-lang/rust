@@ -259,22 +259,9 @@ impl FileDesc {
         }
     }
 
+    #[inline]
     pub fn duplicate(&self) -> io::Result<FileDesc> {
-        // We want to atomically duplicate this file descriptor and set the
-        // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
-        // is a POSIX flag that was added to Linux in 2.6.24.
-        #[cfg(not(target_os = "espidf"))]
-        let cmd = libc::F_DUPFD_CLOEXEC;
-
-        // For ESP-IDF, F_DUPFD is used instead, because the CLOEXEC semantics
-        // will never be supported, as this is a bare metal framework with
-        // no capabilities for multi-process execution.  While F_DUPFD is also
-        // not supported yet, it might be (currently it returns ENOSYS).
-        #[cfg(target_os = "espidf")]
-        let cmd = libc::F_DUPFD;
-
-        let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 0) })?;
-        Ok(unsafe { FileDesc::from_raw_fd(fd) })
+        Ok(Self(self.0.try_clone()?))
     }
 }
 
