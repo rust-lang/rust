@@ -76,7 +76,7 @@ fn should_skip_module<T: FormatHandler>(
         return true;
     }
 
-    if !input_is_stdin && context.ignore_file(&path) {
+    if !input_is_stdin && context.ignore_file(path) {
         return true;
     }
 
