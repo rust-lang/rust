@@ -13,8 +13,8 @@
       let mut _8: isize;                   // in scope 0 at $DIR/early_otherwise_branch.rs:13:10: 13:17
       let _9: u32;                         // in scope 0 at $DIR/early_otherwise_branch.rs:13:15: 13:16
       let _10: u32;                        // in scope 0 at $DIR/early_otherwise_branch.rs:13:24: 13:25
-+     let mut _11: isize;                  // in scope 0 at $DIR/early_otherwise_branch.rs:14:16: 14:20
-+     let mut _12: bool;                   // in scope 0 at $DIR/early_otherwise_branch.rs:14:16: 14:20
++     let mut _11: isize;                  // in scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
++     let mut _12: bool;                   // in scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
       scope 1 {
           debug a => _9;                   // in scope 1 at $DIR/early_otherwise_branch.rs:13:15: 13:16
           debug b => _10;                  // in scope 1 at $DIR/early_otherwise_branch.rs:13:24: 13:25
@@ -35,7 +35,7 @@
 +         StorageLive(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         _11 = discriminant((_3.1: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         StorageLive(_12);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
-+         _12 = Ne(_11, _8);               // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
++         _12 = Ne(_8, move _11);          // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         StorageDead(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         switchInt(move _12) -> [false: bb5, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
       }
@@ -84,8 +84,8 @@
 +     }
 + 
 +     bb5: {
-+         StorageDead(_12);                // scope 0 at $DIR/early_otherwise_branch.rs:14:16: 14:20
-+         switchInt(_8) -> [0_isize: bb3, 1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:14:16: 14:20
++         StorageDead(_12);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
++         switchInt(_8) -> [0_isize: bb3, 1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
       }
   }
   
