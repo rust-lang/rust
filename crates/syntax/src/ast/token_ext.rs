@@ -613,6 +613,8 @@ impl HasFormatSpecifier for ast::String {
     }
 }
 
+struct IntNumberParts<'a>(&'a str, &'a str, &'a str);
+
 impl ast::IntNumber {
     pub fn radix(&self) -> Radix {
         match self.text().get(..2).unwrap_or_default() {
@@ -623,41 +625,46 @@ impl ast::IntNumber {
         }
     }
 
-    pub fn value(&self) -> Option<u128> {
-        let token = self.syntax();
-
-        let mut text = token.text();
-        if let Some(suffix) = self.suffix() {
-            text = &text[..text.len() - suffix.len()];
-        }
-
+    fn split_into_parts(&self) -> IntNumberParts {
         let radix = self.radix();
-        text = &text[radix.prefix_len()..];
+        let (prefix, mut text) = self.text().split_at(radix.prefix_len());
 
-        let buf;
-        if text.contains('_') {
-            buf = text.replace('_', "");
-            text = buf.as_str();
-        };
-
-        let value = u128::from_str_radix(text, radix as u32).ok()?;
-        Some(value)
-    }
-
-    pub fn suffix(&self) -> Option<&str> {
-        let text = self.text();
-        let radix = self.radix();
-        let mut indices = text.char_indices();
-        if radix != Radix::Decimal {
-            indices.next()?;
-            indices.next()?;
-        }
         let is_suffix_start: fn(&(usize, char)) -> bool = match radix {
             Radix::Hexadecimal => |(_, c)| matches!(c, 'g'..='z' | 'G'..='Z'),
             _ => |(_, c)| c.is_ascii_alphabetic(),
         };
-        let (suffix_start, _) = indices.find(is_suffix_start)?;
-        Some(&text[suffix_start..])
+
+        let mut suffix = "";
+        if let Some((suffix_start, _)) = text.char_indices().find(is_suffix_start) {
+            let (text2, suffix2) = text.split_at(suffix_start);
+            text = text2;
+            suffix = suffix2;
+        };
+
+        IntNumberParts(prefix, text, suffix)
+    }
+
+    pub fn prefix(&self) -> &str {
+        self.split_into_parts().0
+    }
+
+    pub fn str_value(&self) -> &str {
+        self.split_into_parts().1
+    }
+
+    pub fn value(&self) -> Option<u128> {
+        let text = self.str_value().replace("_", "");
+        let value = u128::from_str_radix(&text, self.radix() as u32).ok()?;
+        Some(value)
+    }
+
+    pub fn suffix(&self) -> Option<&str> {
+        let suffix = self.split_into_parts().2;
+        if suffix.is_empty() {
+            None
+        } else {
+            Some(suffix)
+        }
     }
 }
 

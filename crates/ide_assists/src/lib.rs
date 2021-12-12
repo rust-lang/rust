@@ -158,6 +158,7 @@ mod handlers {
     mod move_module_to_file;
     mod move_to_mod_rs;
     mod move_from_mod_rs;
+    mod number_representation;
     mod promote_local_to_const;
     mod pull_assignment_up;
     mod qualify_path;
@@ -241,6 +242,7 @@ mod handlers {
             move_module_to_file::move_module_to_file,
             move_to_mod_rs::move_to_mod_rs,
             move_from_mod_rs::move_from_mod_rs,
+            number_representation::reformat_number_literal,
             pull_assignment_up::pull_assignment_up,
             promote_local_to_const::promote_local_to_const,
             qualify_path::qualify_path,
