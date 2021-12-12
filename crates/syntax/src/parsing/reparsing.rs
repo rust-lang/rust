@@ -12,8 +12,8 @@ use text_edit::Indel;
 use crate::{
     parsing::{
         lexer::{lex_single_syntax_kind, tokenize, Token},
-        text_token_source::TextTokenSource,
         text_tree_sink::TextTreeSink,
+        to_parser_tokens,
     },
     syntax_node::{GreenNode, GreenToken, NodeOrToken, SyntaxElement, SyntaxNode},
     SyntaxError,
@@ -91,14 +91,14 @@ fn reparse_block(
     let (node, reparser) = find_reparsable_node(root, edit.delete)?;
     let text = get_text_after_edit(node.clone().into(), edit);
 
-    let (tokens, new_lexer_errors) = tokenize(&text);
-    if !is_balanced(&tokens) {
+    let (lexer_tokens, new_lexer_errors) = tokenize(&text);
+    if !is_balanced(&lexer_tokens) {
         return None;
     }
+    let parser_tokens = to_parser_tokens(&text, &lexer_tokens);
 
-    let mut token_source = TextTokenSource::new(&text, &tokens);
-    let mut tree_sink = TextTreeSink::new(&text, &tokens);
-    reparser.parse(&mut token_source, &mut tree_sink);
+    let mut tree_sink = TextTreeSink::new(&text, &lexer_tokens);
+    reparser.parse(&parser_tokens, &mut tree_sink);
 
     let (green, mut new_parser_errors) = tree_sink.finish();
     new_parser_errors.extend(new_lexer_errors);

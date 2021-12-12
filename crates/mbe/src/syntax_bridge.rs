@@ -12,7 +12,7 @@ use syntax::{
 use tt::buffer::{Cursor, TokenBuffer};
 
 use crate::{
-    subtree_source::SubtreeTokenSource, tt_iter::TtIter, ExpandError, ParserEntryPoint, TokenMap,
+    to_parser_tokens::to_parser_tokens, tt_iter::TtIter, ExpandError, ParserEntryPoint, TokenMap,
 };
 
 /// Convert the syntax node to a `TokenTree` (what macro
@@ -56,9 +56,9 @@ pub fn token_tree_to_syntax_node(
         }
         _ => TokenBuffer::from_subtree(tt),
     };
-    let mut token_source = SubtreeTokenSource::new(&buffer);
+    let parser_tokens = to_parser_tokens(&buffer);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
-    parser::parse(&mut token_source, &mut tree_sink, entry_point);
+    parser::parse(&parser_tokens, &mut tree_sink, entry_point);
     if tree_sink.roots.len() != 1 {
         return Err(ExpandError::ConversionError);
     }

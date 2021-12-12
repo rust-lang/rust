@@ -334,6 +334,18 @@ impl SyntaxKind {
         };
         Some(kw)
     }
+    pub fn from_contextual_keyword(ident: &str) -> Option<SyntaxKind> {
+        let kw = match ident {
+            "auto" => AUTO_KW,
+            "default" => DEFAULT_KW,
+            "existential" => EXISTENTIAL_KW,
+            "union" => UNION_KW,
+            "raw" => RAW_KW,
+            "macro_rules" => MACRO_RULES_KW,
+            _ => return None,
+        };
+        Some(kw)
+    }
     pub fn from_char(c: char) -> Option<SyntaxKind> {
         let tok = match c {
             ';' => SEMICOLON,

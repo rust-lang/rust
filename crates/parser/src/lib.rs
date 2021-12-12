@@ -1,8 +1,11 @@
 //! The Rust parser.
 //!
+//! NOTE: The crate is undergoing refactors, don't believe everything the docs
+//! say :-)
+//!
 //! The parser doesn't know about concrete representation of tokens and syntax
-//! trees. Abstract [`TokenSource`] and [`TreeSink`] traits are used instead.
-//! As a consequence, this crate does not contain a lexer.
+//! trees. Abstract [`TokenSource`] and [`TreeSink`] traits are used instead. As
+//! a consequence, this crate does not contain a lexer.
 //!
 //! The [`Parser`] struct from the [`parser`] module is a cursor into the
 //! sequence of tokens.  Parsing routines use [`Parser`] to inspect current
@@ -20,39 +23,14 @@ mod syntax_kind;
 mod event;
 mod parser;
 mod grammar;
+mod tokens;
 
 pub(crate) use token_set::TokenSet;
 
-pub use syntax_kind::SyntaxKind;
+pub use crate::{syntax_kind::SyntaxKind, tokens::Tokens};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseError(pub Box<String>);
-
-/// `TokenSource` abstracts the source of the tokens parser operates on.
-///
-/// Hopefully this will allow us to treat text and token trees in the same way!
-pub trait TokenSource {
-    fn current(&self) -> Token;
-
-    /// Lookahead n token
-    fn lookahead_nth(&self, n: usize) -> Token;
-
-    /// bump cursor to next token
-    fn bump(&mut self);
-
-    /// Is the current token a specified keyword?
-    fn is_keyword(&self, kw: &str) -> bool;
-}
-
-/// `Token` abstracts the cursor of `TokenSource` operates on.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Token {
-    /// What is the current token?
-    pub kind: SyntaxKind,
-
-    /// Is the current token joined to the next one (`> >` vs `>>`).
-    pub is_jointed_to_next: bool,
-}
 
 /// `TreeSink` abstracts details of a particular syntax tree implementation.
 pub trait TreeSink {
@@ -92,15 +70,11 @@ pub enum ParserEntryPoint {
 }
 
 /// Parse given tokens into the given sink as a rust file.
-pub fn parse_source_file(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse(token_source, tree_sink, ParserEntryPoint::SourceFile);
+pub fn parse_source_file(tokens: &Tokens, tree_sink: &mut dyn TreeSink) {
+    parse(tokens, tree_sink, ParserEntryPoint::SourceFile);
 }
 
-pub fn parse(
-    token_source: &mut dyn TokenSource,
-    tree_sink: &mut dyn TreeSink,
-    entry_point: ParserEntryPoint,
-) {
+pub fn parse(tokens: &Tokens, tree_sink: &mut dyn TreeSink, entry_point: ParserEntryPoint) {
     let entry_point: fn(&'_ mut parser::Parser) = match entry_point {
         ParserEntryPoint::SourceFile => grammar::entry_points::source_file,
         ParserEntryPoint::Path => grammar::entry_points::path,
@@ -118,7 +92,7 @@ pub fn parse(
         ParserEntryPoint::Attr => grammar::entry_points::attr,
     };
 
-    let mut p = parser::Parser::new(token_source);
+    let mut p = parser::Parser::new(tokens);
     entry_point(&mut p);
     let events = p.finish();
     event::process(tree_sink, events);
@@ -141,9 +115,9 @@ impl Reparser {
     ///
     /// Tokens must start with `{`, end with `}` and form a valid brace
     /// sequence.
-    pub fn parse(self, token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    pub fn parse(self, tokens: &Tokens, tree_sink: &mut dyn TreeSink) {
         let Reparser(r) = self;
-        let mut p = parser::Parser::new(token_source);
+        let mut p = parser::Parser::new(tokens);
         r(&mut p);
         let events = p.finish();
         event::process(tree_sink, events);
