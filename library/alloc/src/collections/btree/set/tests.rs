@@ -3,6 +3,7 @@ use super::super::testing::rng::DeterministicRng;
 use super::*;
 use crate::vec::Vec;
 use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
@@ -513,7 +514,7 @@ fn test_recovery() {
 }
 
 #[allow(dead_code)]
-fn test_variance() {
+fn assert_covariance() {
     fn set<'new>(v: BTreeSet<&'static str>) -> BTreeSet<&'new str> {
         v
     }
@@ -530,7 +531,7 @@ fn test_variance() {
 }
 
 #[allow(dead_code)]
-fn test_sync() {
+fn assert_sync() {
     fn set<T: Sync>(v: &BTreeSet<T>) -> impl Sync + '_ {
         v
     }
@@ -569,7 +570,7 @@ fn test_sync() {
 }
 
 #[allow(dead_code)]
-fn test_send() {
+fn assert_send() {
     fn set<T: Send>(v: BTreeSet<T>) -> impl Send {
         v
     }
@@ -604,6 +605,37 @@ fn test_send() {
 
     fn union<T: Send + Sync + Ord>(v: &BTreeSet<T>) -> impl Send + '_ {
         v.union(&v)
+    }
+}
+
+#[allow(dead_code)]
+// Check that the member-like functions conditionally provided by #[derive()]
+// are not overriden by genuine member functions with a different signature.
+fn assert_derives() {
+    fn hash<T: Hash, H: Hasher>(v: BTreeSet<T>, state: &mut H) {
+        v.hash(state);
+        // Tested much more thoroughly outside the crate in btree_set_hash.rs
+    }
+    fn eq<T: PartialEq>(v: BTreeSet<T>) {
+        let _ = v.eq(&v);
+    }
+    fn ne<T: PartialEq>(v: BTreeSet<T>) {
+        let _ = v.ne(&v);
+    }
+    fn cmp<T: Ord>(v: BTreeSet<T>) {
+        let _ = v.cmp(&v);
+    }
+    fn min<T: Ord>(v: BTreeSet<T>, w: BTreeSet<T>) {
+        let _ = v.min(w);
+    }
+    fn max<T: Ord>(v: BTreeSet<T>, w: BTreeSet<T>) {
+        let _ = v.max(w);
+    }
+    fn clamp<T: Ord>(v: BTreeSet<T>, w: BTreeSet<T>, x: BTreeSet<T>) {
+        let _ = v.clamp(w, x);
+    }
+    fn partial_cmp<T: PartialOrd>(v: &BTreeSet<T>) {
+        let _ = v.partial_cmp(&v);
     }
 }
 

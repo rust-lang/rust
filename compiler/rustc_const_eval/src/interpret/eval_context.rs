@@ -15,7 +15,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::storage::AlwaysLiveLocals;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Limit;
-use rustc_span::{Pos, Span, DUMMY_SP};
+use rustc_span::{Pos, Span};
 use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
@@ -525,7 +525,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .try_subst_mir_and_normalize_erasing_regions(*self.tcx, self.param_env, value)
             .or_else(|e| {
                 self.tcx.sess.delay_span_bug(
-                    DUMMY_SP,
+                    self.cur_span(),
                     format!("failed to normalize {}", e.get_type_for_failure()).as_str(),
                 );
 

@@ -1743,7 +1743,7 @@ impl<T: ?Sized> Weak<T> {
             // a valid payload address, as the payload is at least as aligned as ArcInner (usize).
             ptr as *const T
         } else {
-            // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
+            // SAFETY: if is_dangling returns false, then the pointer is dereferenceable.
             // The payload may be dropped at this point, and we have to maintain provenance,
             // so use raw pointer manipulation.
             unsafe { ptr::addr_of_mut!((*ptr).data) }

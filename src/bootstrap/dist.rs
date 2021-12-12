@@ -1564,7 +1564,9 @@ impl Step for Extended {
             builder.install(&etc.join("gfx/rust-logo.ico"), &exe, 0o644);
 
             // Generate msi installer
-            let wix = PathBuf::from(env::var_os("WIX").unwrap());
+            let wix_path = env::var_os("WIX")
+                .expect("`WIX` environment variable must be set for generating MSI installer(s).");
+            let wix = PathBuf::from(wix_path);
             let heat = wix.join("bin/heat.exe");
             let candle = wix.join("bin/candle.exe");
             let light = wix.join("bin/light.exe");
