@@ -75,18 +75,6 @@ pub fn lex_single_syntax_kind(text: &str) -> Option<(SyntaxKind, Option<SyntaxEr
     Some((first_token.kind, err))
 }
 
-/// The same as `lex_single_syntax_kind()` but returns only `SyntaxKind` and
-/// returns `None` if any tokenization error occurred.
-///
-/// Beware that unescape errors are not checked at tokenization time.
-pub fn lex_single_valid_syntax_kind(text: &str) -> Option<SyntaxKind> {
-    let (single_token, err) = lex_single_syntax_kind(text)?;
-    if err.is_some() {
-        return None;
-    }
-    Some(single_token)
-}
-
 /// Returns `SyntaxKind` and `Option<SyntaxError>` of the first token
 /// encountered at the beginning of the string.
 ///

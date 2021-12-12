@@ -48,7 +48,7 @@ use text_edit::Indel;
 
 pub use crate::{
     ast::{AstNode, AstToken},
-    parsing::lexer::{lex_single_syntax_kind, lex_single_valid_syntax_kind, tokenize, Token},
+    parsing::lexer::{lex_single_syntax_kind, tokenize, Token},
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::SyntaxError,
     syntax_node::{
