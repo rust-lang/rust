@@ -8,29 +8,71 @@ assert: (".stab.deprecated")
 assert: (".stab.portability")
 
 // make sure that deprecated and portability are different colours
-assert-css: (".item-table .item-left .stab.deprecated", { "background-color": "rgb(255, 196, 196)" })
-assert-css: (".item-table .item-left .stab.portability", { "background-color": "rgb(243, 223, 255)" })
+assert-css: (
+    ".item-table .item-left .stab.deprecated",
+    { "background-color": "rgb(255, 196, 196)" },
+)
+assert-css: (
+    ".item-table .item-left .stab.portability",
+    { "background-color": "rgb(243, 223, 255)" },
+)
 
 // table like view
 assert-css: (".item-right.docblock-short", { "padding-left": "0px" })
-compare-elements-position-near: ("//*[@class='item-left module-item']//a[text()='replaced_function']", ".item-left .stab.deprecated", {"y": 2})
-compare-elements-position: (".item-left .stab.deprecated", ".item-left .stab.portability", ("y"))
+compare-elements-position-near: (
+    "//*[@class='item-left module-item']//a[text()='replaced_function']",
+    ".item-left .stab.deprecated",
+    {"y": 2},
+)
+compare-elements-position: (
+    ".item-left .stab.deprecated",
+    ".item-left .stab.portability",
+    ("y"),
+)
 
 // Ensure no wrap
-compare-elements-position-near: ("//*[@class='item-left module-item']//a[text()='replaced_function']", "//*[@class='item-right docblock-short']//p[text()='a thing with a label']", {"y": 2})
+compare-elements-position-near: (
+    "//*[@class='item-left module-item']//a[text()='replaced_function']",
+    "//*[@class='item-right docblock-short']//p[text()='a thing with a label']",
+    {"y": 2},
+)
 // compare parent elements
-compare-elements-position: ("//*[@class='item-left module-item']//a[text()='replaced_function']/..", "//*[@class='item-right docblock-short']//p[text()='a thing with a label']/..", ("y"))
+compare-elements-position: (
+    "//*[@class='item-left module-item']//a[text()='replaced_function']/..",
+    "//*[@class='item-right docblock-short']//p[text()='a thing with a label']/..",
+    ("y"),
+)
 
 
 // Mobile view
 size: (600, 600)
 // staggered layout with 2em spacing
 assert-css: (".item-right.docblock-short", { "padding-left": "32px" })
-compare-elements-position-near: ("//*[@class='item-left module-item']//a[text()='replaced_function']", ".item-left .stab.deprecated", {"y": 1})
-compare-elements-position: (".item-left .stab.deprecated", ".item-left .stab.portability", ("y"))
+compare-elements-position-near: (
+    "//*[@class='item-left module-item']//a[text()='replaced_function']",
+    ".item-left .stab.deprecated",
+    {"y": 1},
+)
+compare-elements-position: (
+    ".item-left .stab.deprecated",
+    ".item-left .stab.portability",
+    ("y"),
+)
 
 // Ensure wrap
-compare-elements-position-near-false: ("//*[@class='item-left module-item']//a[text()='replaced_function']", "//*[@class='item-right docblock-short']//p[text()='a thing with a label']", {"y": 12})
+compare-elements-position-near-false: (
+    "//*[@class='item-left module-item']//a[text()='replaced_function']",
+    "//*[@class='item-right docblock-short']//p[text()='a thing with a label']",
+    {"y": 12},
+)
 // compare parent elements
-compare-elements-position-false: ("//*[@class='item-left module-item']//a[text()='replaced_function']/..", "//*[@class='item-right docblock-short']//p[text()='a thing with a label']/..", ("y"))
-compare-elements-position-false: (".item-left .stab.deprecated", "//*[@class='item-right docblock-short']//p[text()='a thing with a label']", ("y"))
+compare-elements-position-false: (
+    "//*[@class='item-left module-item']//a[text()='replaced_function']/..",
+    "//*[@class='item-right docblock-short']//p[text()='a thing with a label']/..",
+    ("y"),
+)
+compare-elements-position-false: (
+    ".item-left .stab.deprecated",
+    "//*[@class='item-right docblock-short']//p[text()='a thing with a label']",
+    ("y"),
+)
