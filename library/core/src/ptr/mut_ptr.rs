@@ -166,8 +166,9 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[inline]
-    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
+    pub const unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         // SAFETY: the caller must guarantee that `self` is valid for a
         // reference if it isn't null.
         if self.is_null() { None } else { unsafe { Some(&*self) } }
@@ -217,7 +218,8 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_ref<'a>(self) -> Option<&'a MaybeUninit<T>>
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    pub const unsafe fn as_uninit_ref<'a>(self) -> Option<&'a MaybeUninit<T>>
     where
         T: Sized,
     {
@@ -411,8 +413,9 @@ impl<T: ?Sized> *mut T {
     /// println!("{:?}", s); // It'll print: "[4, 2, 3]".
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[inline]
-    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
+    pub const unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         // SAFETY: the caller must guarantee that `self` is be valid for
         // a mutable reference if it isn't null.
         if self.is_null() { None } else { unsafe { Some(&mut *self) } }
@@ -446,7 +449,8 @@ impl<T: ?Sized> *mut T {
     /// [the module documentation]: crate::ptr#safety
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_mut<'a>(self) -> Option<&'a mut MaybeUninit<T>>
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    pub const unsafe fn as_uninit_mut<'a>(self) -> Option<&'a mut MaybeUninit<T>>
     where
         T: Sized,
     {
@@ -1334,7 +1338,8 @@ impl<T> *mut [T] {
     /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    pub const unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
         if self.is_null() {
             None
         } else {
@@ -1385,7 +1390,8 @@ impl<T> *mut [T] {
     /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_slice_mut<'a>(self) -> Option<&'a mut [MaybeUninit<T>]> {
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    pub const unsafe fn as_uninit_slice_mut<'a>(self) -> Option<&'a mut [MaybeUninit<T>]> {
         if self.is_null() {
             None
         } else {
