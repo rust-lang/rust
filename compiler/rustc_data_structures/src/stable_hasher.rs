@@ -42,6 +42,7 @@ impl StableHasher {
 }
 
 impl StableHasherResult for u128 {
+    #[inline]
     fn finish(hasher: StableHasher) -> Self {
         let (_0, _1) = hasher.finalize();
         u128::from(_0) | (u128::from(_1) << 64)
@@ -49,6 +50,7 @@ impl StableHasherResult for u128 {
 }
 
 impl StableHasherResult for u64 {
+    #[inline]
     fn finish(hasher: StableHasher) -> Self {
         hasher.finalize().0
     }
@@ -559,8 +561,16 @@ pub fn hash_stable_hashmap<HCX, K, V, R, SK, F>(
     SK: HashStable<HCX> + Ord,
     F: Fn(&K, &HCX) -> SK,
 {
-    let mut entries: SmallVec<[_; 3]> =
-        map.iter().map(|(k, v)| (to_stable_hash_key(k, hcx), v)).collect();
-    entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
-    entries.hash_stable(hcx, hasher);
+    let hash = map
+        .iter()
+        .map(|(key, value)| {
+            let key = to_stable_hash_key(key, hcx);
+            let mut hasher = StableHasher::new();
+            key.hash_stable(hcx, &mut hasher);
+            value.hash_stable(hcx, &mut hasher);
+            hasher.finish::<u128>()
+        })
+        .reduce(|accum, value| accum.wrapping_mul(value));
+    map.len().hash_stable(hcx, hasher);
+    hash.hash_stable(hcx, hasher);
 }
