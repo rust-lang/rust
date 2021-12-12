@@ -1066,7 +1066,9 @@ name = "parser"
 version = "0.0.0"
 dependencies = [
  "drop_bomb",
+ "expect-test",
  "limit",
+ "rustc-ap-rustc_lexer",
 ]
 
 [[package]]
