@@ -30,6 +30,7 @@ pub struct Tokens {
 }
 
 impl Tokens {
+    #[inline]
     pub fn push(&mut self, kind: SyntaxKind) {
         self.push_impl(kind, SyntaxKind::EOF)
     }
@@ -49,15 +50,18 @@ impl Tokens {
     /// token.push(curr);
     /// tokens.push(curr_joint)
     /// ```
+    #[inline]
     pub fn was_joint(&mut self, yes: bool) {
         let idx = self.len();
         if yes && idx > 0 {
             self.set_joint(idx - 1);
         }
     }
+    #[inline]
     pub fn push_ident(&mut self, contextual_kw: SyntaxKind) {
         self.push_impl(SyntaxKind::IDENT, contextual_kw)
     }
+    #[inline]
     fn push_impl(&mut self, kind: SyntaxKind, contextual_kw: SyntaxKind) {
         let idx = self.len();
         if idx % (bits::BITS as usize) == 0 {
@@ -80,7 +84,7 @@ impl Tokens {
         (idx, b_idx)
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.kind.len()
     }
     pub(crate) fn get(&self, idx: usize) -> Token {
