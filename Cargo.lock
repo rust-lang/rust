@@ -1927,6 +1927,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libloading"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0cf036d15402bea3c5d4de17b3fce76b3e4a56ebc1f577be0e7a72f7c607cf0"
+dependencies = [
+ "cfg-if 1.0.0",
+ "winapi",
+]
+
+[[package]]
 name = "libm"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3694,6 +3704,7 @@ dependencies = [
  "bitflags",
  "cstr",
  "libc",
+ "libloading",
  "measureme 10.0.0",
  "rustc-demangle",
  "rustc_arena",
@@ -3978,6 +3989,7 @@ name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
  "libc",
+ "libloading",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_ast",
@@ -4090,7 +4102,7 @@ dependencies = [
 name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
- "libc",
+ "libloading",
  "odht",
  "rustc_ast",
  "rustc_attr",
@@ -4110,7 +4122,6 @@ dependencies = [
  "smallvec",
  "snap",
  "tracing",
- "winapi",
 ]
 
 [[package]]
@@ -4283,6 +4294,7 @@ dependencies = [
 name = "rustc_plugin_impl"
 version = "0.0.0"
 dependencies = [
+ "libloading",
  "rustc_ast",
  "rustc_errors",
  "rustc_hir",
