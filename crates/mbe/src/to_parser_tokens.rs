@@ -62,7 +62,9 @@ pub(crate) fn to_parser_tokens(buffer: &TokenBuffer) -> parser::Tokens {
                         let kind = SyntaxKind::from_char(punct.char)
                             .unwrap_or_else(|| panic!("{:#?} is not a valid punct", punct));
                         res.push(kind);
-                        res.was_joint(punct.spacing == tt::Spacing::Joint);
+                        if punct.spacing == tt::Spacing::Joint {
+                            res.was_joint();
+                        }
                     }
                 }
                 cursor.bump()

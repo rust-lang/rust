@@ -58,18 +58,22 @@ pub(crate) fn parse_text_as<T: AstNode>(
 pub(crate) fn to_parser_tokens(text: &str, lexer_tokens: &[lexer::Token]) -> ::parser::Tokens {
     let mut off = 0;
     let mut res = parser::Tokens::default();
-    let mut was_joint = true;
+    let mut was_joint = false;
     for t in lexer_tokens {
         if t.kind.is_trivia() {
             was_joint = false;
-        } else if t.kind == SyntaxKind::IDENT {
-            let token_text = &text[off..][..usize::from(t.len)];
-            let contextual_kw =
-                SyntaxKind::from_contextual_keyword(token_text).unwrap_or(SyntaxKind::IDENT);
-            res.push_ident(contextual_kw);
         } else {
-            res.was_joint(was_joint);
-            res.push(t.kind);
+            if t.kind == SyntaxKind::IDENT {
+                let token_text = &text[off..][..usize::from(t.len)];
+                let contextual_kw =
+                    SyntaxKind::from_contextual_keyword(token_text).unwrap_or(SyntaxKind::IDENT);
+                res.push_ident(contextual_kw);
+            } else {
+                if was_joint {
+                    res.was_joint();
+                }
+                res.push(t.kind);
+            }
             was_joint = true;
         }
         off += usize::from(t.len);

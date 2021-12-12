@@ -51,11 +51,8 @@ impl Tokens {
     /// tokens.push(curr_joint)
     /// ```
     #[inline]
-    pub fn was_joint(&mut self, yes: bool) {
-        let idx = self.len();
-        if yes && idx > 0 {
-            self.set_joint(idx - 1);
-        }
+    pub fn was_joint(&mut self) {
+        self.set_joint(self.len() - 1);
     }
     #[inline]
     pub fn push_ident(&mut self, contextual_kw: SyntaxKind) {
