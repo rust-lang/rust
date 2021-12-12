@@ -58,6 +58,9 @@ enum QueryModifier {
 
     /// Use a separate query provider for local and extern crates
     SeparateProvideExtern(Ident),
+
+    /// Always remap the ParamEnv's constness before hashing and passing to the query provider
+    RemapEnvConstness(Ident),
 }
 
 impl Parse for QueryModifier {
@@ -123,6 +126,8 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::EvalAlways(modifier))
         } else if modifier == "separate_provide_extern" {
             Ok(QueryModifier::SeparateProvideExtern(modifier))
+        } else if modifier == "remap_env_constness" {
+            Ok(QueryModifier::RemapEnvConstness(modifier))
         } else {
             Err(Error::new(modifier.span(), "unknown query modifier"))
         }
@@ -222,6 +227,9 @@ struct QueryModifiers {
 
     /// Use a separate query provider for local and extern crates
     separate_provide_extern: Option<Ident>,
+
+    /// Always remap the ParamEnv's constness before hashing.
+    remap_env_constness: Option<Ident>,
 }
 
 /// Process query modifiers into a struct, erroring on duplicates
@@ -236,6 +244,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut anon = None;
     let mut eval_always = None;
     let mut separate_provide_extern = None;
+    let mut remap_env_constness = None;
     for modifier in query.modifiers.0.drain(..) {
         match modifier {
             QueryModifier::LoadCached(tcx, id, block) => {
@@ -335,6 +344,12 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 separate_provide_extern = Some(ident);
             }
+            QueryModifier::RemapEnvConstness(ident) => {
+                if remap_env_constness.is_some() {
+                    panic!("duplicate modifier `remap_env_constness` for query `{}`", query.name);
+                }
+                remap_env_constness = Some(ident)
+            }
         }
     }
     let desc = desc.unwrap_or_else(|| {
@@ -351,6 +366,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
         anon,
         eval_always,
         separate_provide_extern,
+        remap_env_constness,
     }
 }
 
@@ -484,6 +500,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
         // Pass on the separate_provide_extern modifier
         if let Some(separate_provide_extern) = &modifiers.separate_provide_extern {
             attributes.push(quote! { (#separate_provide_extern) });
+        }
+        // Pass on the remap_env_constness modifier
+        if let Some(remap_env_constness) = &modifiers.remap_env_constness {
+            attributes.push(quote! { (#remap_env_constness) });
         }
 
         // This uses the span of the query definition for the commas,

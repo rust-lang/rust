@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{ToPredicate, WithConstness};
+use rustc_middle::ty::ToPredicate;
 use rustc_span::DUMMY_SP;
 
 use super::*;
@@ -66,7 +66,8 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .into_iter()
                             .chain(Some(
                                 ty::Binder::dummy(trait_ref)
-                                    .without_const()
+                                    .to_poly_trait_predicate()
+                                    .map_bound(ty::PredicateKind::Trait)
                                     .to_predicate(infcx.tcx),
                             ));
                         for predicate in predicates {

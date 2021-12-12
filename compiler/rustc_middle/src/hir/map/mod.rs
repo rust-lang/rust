@@ -474,7 +474,8 @@ impl<'hir> Map<'hir> {
     /// Panics if `LocalDefId` does not have an associated body.
     ///
     /// This should only be used for determining the context of a body, a return
-    /// value of `Some` does not always suggest that the owner of the body is `const`.
+    /// value of `Some` does not always suggest that the owner of the body is `const`,
+    /// just that it has to be checked as if it were.
     pub fn body_const_context(&self, did: LocalDefId) -> Option<ConstContext> {
         let hir_id = self.local_def_id_to_hir_id(did);
         let ccx = match self.body_owner_kind(hir_id) {

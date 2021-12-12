@@ -3,7 +3,7 @@ use smallvec::smallvec;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_middle::ty::{self, ToPredicate, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, TyCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -328,8 +328,8 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
                 ));
                 for (super_predicate, _) in super_predicates.predicates {
                     let subst_predicate = super_predicate.subst_supertrait(tcx, &trait_ref);
-                    if let Some(binder) = subst_predicate.to_opt_poly_trait_ref() {
-                        stack.push(binder.value);
+                    if let Some(binder) = subst_predicate.to_opt_poly_trait_pred() {
+                        stack.push(binder.map_bound(|t| t.trait_ref));
                     }
                 }
 
@@ -362,8 +362,8 @@ impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToT
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(obligation) = self.base_iterator.next() {
-            if let Some(data) = obligation.predicate.to_opt_poly_trait_ref() {
-                return Some(data.value);
+            if let Some(data) = obligation.predicate.to_opt_poly_trait_pred() {
+                return Some(data.map_bound(|t| t.trait_ref));
             }
         }
         None

@@ -12,11 +12,11 @@
 #![feature(const_convert)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_assume_init)]
+#![feature(const_num_from_num)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]
-#![feature(const_num_from_num)]
 #![feature(core_intrinsics)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
@@ -96,6 +96,7 @@ mod char;
 mod clone;
 mod cmp;
 mod const_ptr;
+mod convert;
 mod fmt;
 mod future;
 mod hash;
