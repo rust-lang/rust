@@ -183,7 +183,7 @@ features = ["c"]
 - [x] subdf3.c
 - [x] subsf3.c
 - [ ] truncdfhf2.c
-- [ ] truncdfsf2.c
+- [x] truncdfsf2.c
 - [ ] truncsfhf2.c
 - [x] udivdi3.c
 - [x] udivmoddi4.c

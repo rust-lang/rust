@@ -10,6 +10,7 @@ pub mod extend;
 pub mod mul;
 pub mod pow;
 pub mod sub;
+pub mod trunc;
 
 public_test_dep! {
 /// Trait for some basic operations on floats

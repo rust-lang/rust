@@ -179,3 +179,28 @@ fn float_pow() {
         f64, 1e-12, __powidf2;
     );
 }
+
+macro_rules! trunc {
+    ($fX:ident, $fD:ident, $fn:ident) => {
+        fuzz_float(N, |x: $fX| {
+            let tmp0 = x as $fD;
+            let tmp1: $fD = $fn(x);
+            if !Float::eq_repr(tmp0, tmp1) {
+                panic!(
+                    "{}({}): std: {}, builtins: {}",
+                    stringify!($fn),
+                    x,
+                    tmp0,
+                    tmp1
+                );
+            }
+        });
+    };
+}
+
+#[test]
+fn float_trunc() {
+    use compiler_builtins::float::trunc::__truncdfsf2;
+
+    trunc!(f64, f32, __truncdfsf2);
+}
