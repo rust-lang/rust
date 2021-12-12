@@ -15,7 +15,7 @@ type bits = u64;
 pub struct Tokens {
     kind: Vec<SyntaxKind>,
     joint: Vec<bits>,
-    contextual_kw: Vec<SyntaxKind>,
+    contextual_kind: Vec<SyntaxKind>,
 }
 
 impl Tokens {
@@ -44,17 +44,17 @@ impl Tokens {
         self.set_joint(self.len() - 1);
     }
     #[inline]
-    pub fn push_ident(&mut self, contextual_kw: SyntaxKind) {
-        self.push_impl(SyntaxKind::IDENT, contextual_kw)
+    pub fn push_ident(&mut self, contextual_kind: SyntaxKind) {
+        self.push_impl(SyntaxKind::IDENT, contextual_kind)
     }
     #[inline]
-    fn push_impl(&mut self, kind: SyntaxKind, contextual_kw: SyntaxKind) {
+    fn push_impl(&mut self, kind: SyntaxKind, contextual_kind: SyntaxKind) {
         let idx = self.len();
         if idx % (bits::BITS as usize) == 0 {
             self.joint.push(0);
         }
         self.kind.push(kind);
-        self.contextual_kw.push(contextual_kw);
+        self.contextual_kind.push(contextual_kind);
     }
     fn set_joint(&mut self, n: usize) {
         let (idx, b_idx) = self.bit_index(n);
@@ -77,7 +77,7 @@ impl Tokens {
         self.kind.get(idx).copied().unwrap_or(SyntaxKind::EOF)
     }
     pub(crate) fn contextual_kind(&self, idx: usize) -> SyntaxKind {
-        self.contextual_kw.get(idx).copied().unwrap_or(SyntaxKind::EOF)
+        self.contextual_kind.get(idx).copied().unwrap_or(SyntaxKind::EOF)
     }
     pub(crate) fn is_joint(&self, n: usize) -> bool {
         let (idx, b_idx) = self.bit_index(n);
