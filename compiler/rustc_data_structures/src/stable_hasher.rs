@@ -503,7 +503,7 @@ impl_stable_hash_via_hash!(::std::path::PathBuf);
 
 impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
 where
-    K: ToStableHashKey<HCX> + Eq,
+    K: HashStable<HCX> + ToStableHashKey<HCX> + Eq,
     V: HashStable<HCX>,
     R: BuildHasher,
 {
@@ -555,7 +555,7 @@ pub fn hash_stable_hashmap<HCX, K, V, R, SK, F>(
     map: &::std::collections::HashMap<K, V, R>,
     to_stable_hash_key: F,
 ) where
-    K: Eq,
+    K: Eq + HashStable<HCX>,
     V: HashStable<HCX>,
     R: BuildHasher,
     SK: HashStable<HCX> + Ord,
@@ -570,7 +570,7 @@ pub fn hash_stable_hashmap<HCX, K, V, R, SK, F>(
             value.hash_stable(hcx, &mut hasher);
             hasher.finish::<u128>()
         })
-        .reduce(|accum, value| accum.wrapping_mul(value));
+        .reduce(|accum, value| accum.wrapping_add(value));
     map.len().hash_stable(hcx, hasher);
     hash.hash_stable(hcx, hasher);
 }
