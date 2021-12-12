@@ -1,5 +1,5 @@
 error: defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/default_function_param.rs:4:14
+  --> $DIR/default_function_param.rs:3:14
    |
 LL | fn foo<const SIZE: usize = 5usize>() {}
    |              ^^^^

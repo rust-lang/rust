@@ -1,4 +1,4 @@
-#![feature(adt_const_params, const_generics_defaults)]
+#![feature(adt_const_params)]
 #![allow(incomplete_features)]
 
 #[derive(PartialEq, Eq)]

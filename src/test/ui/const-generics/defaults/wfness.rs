@@ -1,5 +1,3 @@
-#![feature(const_generics_defaults)]
-
 struct Ooopsies<const N: u8 = { u8::MAX + 1 }>;
 //~^ error: evaluation of constant value failed
 

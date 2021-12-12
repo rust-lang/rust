@@ -1,5 +1,3 @@
-#![feature(const_generics_defaults)]
-
 pub struct Example<const N: usize=13>;
 pub struct Example2<T=u32, const N: usize=13>(T);
 pub struct Example3<const N: usize=13, T=u32>(T);

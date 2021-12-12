@@ -1,5 +1,5 @@
 error: generic parameters with a default must be trailing
-  --> $DIR/const_default_first.rs:5:19
+  --> $DIR/const_default_first.rs:4:19
    |
 LL | struct Both<const N: usize=3, T> {
    |                   ^

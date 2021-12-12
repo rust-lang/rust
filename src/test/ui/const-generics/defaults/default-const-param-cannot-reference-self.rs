@@ -1,5 +1,3 @@
-#![feature(const_generics_defaults)]
-
 struct Struct<const N: usize = { Self; 10 }>;
 //~^ ERROR generic parameters cannot use `Self` in their defaults [E0735]
 

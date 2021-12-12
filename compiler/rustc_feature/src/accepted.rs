@@ -90,6 +90,8 @@ declare_features! (
     (accepted, const_fn_union, "1.56.0", Some(51909), None),
     /// Allows unsizing coercions in `const fn`.
     (accepted, const_fn_unsize, "1.54.0", Some(64992), None),
+    /// Allows const generics to have default values (e.g. `struct Foo<const N: usize = 3>(...);`).
+    (accepted, const_generics_defaults, "1.59.0", Some(44580), None),
     /// Allows the use of `if` and `match` in constants.
     (accepted, const_if_match, "1.46.0", Some(49146), None),
     /// Allows indexing into constant arrays.

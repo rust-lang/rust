@@ -325,13 +325,11 @@ impl GenericArg<'_> {
         }
     }
 
-    pub fn to_ord(&self, feats: &rustc_feature::Features) -> ast::ParamKindOrd {
+    pub fn to_ord(&self) -> ast::ParamKindOrd {
         match self {
             GenericArg::Lifetime(_) => ast::ParamKindOrd::Lifetime,
             GenericArg::Type(_) => ast::ParamKindOrd::Type,
-            GenericArg::Const(_) => {
-                ast::ParamKindOrd::Const { unordered: feats.unordered_const_ty_params() }
-            }
+            GenericArg::Const(_) => ast::ParamKindOrd::Const,
             GenericArg::Infer(_) => ast::ParamKindOrd::Infer,
         }
     }

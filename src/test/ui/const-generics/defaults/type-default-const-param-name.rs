@@ -1,6 +1,4 @@
 // check-pass
-#![feature(const_generics_defaults)]
-
 struct N;
 
 struct Foo<const N: usize = 1, T = N>(T);
