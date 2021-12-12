@@ -2115,6 +2115,11 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     })
                     .map(|(formatter, span)| (*span, formatter(name)))
                     .collect();
+                if spans_suggs.is_empty() {
+                    // If all the spans come from macros, we cannot extract snippets and then
+                    // `formatters` only contains None and `spans_suggs` is empty.
+                    return;
+                }
                 err.multipart_suggestion_verbose(
                     &format!(
                         "consider using the `{}` lifetime",

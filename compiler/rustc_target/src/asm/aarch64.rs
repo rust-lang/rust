@@ -1,4 +1,5 @@
 use super::{InlineAsmArch, InlineAsmType};
+use crate::spec::Target;
 use rustc_macros::HashStable_Generic;
 use std::fmt;
 
@@ -70,6 +71,22 @@ impl AArch64InlineAsmRegClass {
     }
 }
 
+pub fn reserved_x18(
+    _arch: InlineAsmArch,
+    _has_feature: impl FnMut(&str) -> bool,
+    target: &Target,
+) -> Result<(), &'static str> {
+    if target.os == "android"
+        || target.is_like_fuchsia
+        || target.is_like_osx
+        || target.is_like_windows
+    {
+        Err("x18 is a reserved register on this target")
+    } else {
+        Ok(())
+    }
+}
+
 def_regs! {
     AArch64 AArch64InlineAsmReg AArch64InlineAsmRegClass {
         x0: reg = ["x0", "w0"],
@@ -90,6 +107,7 @@ def_regs! {
         x15: reg = ["x15", "w15"],
         x16: reg = ["x16", "w16"],
         x17: reg = ["x17", "w17"],
+        x18: reg = ["x18", "w18"] % reserved_x18,
         x20: reg = ["x20", "w20"],
         x21: reg = ["x21", "w21"],
         x22: reg = ["x22", "w22"],
@@ -149,8 +167,6 @@ def_regs! {
         p14: preg = ["p14"],
         p15: preg = ["p15"],
         ffr: preg = ["ffr"],
-        #error = ["x18", "w18"] =>
-            "x18 is used as a reserved register on some targets and cannot be used as an operand for inline asm",
         #error = ["x19", "w19"] =>
             "x19 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["x29", "w29", "fp", "wfp"] =>
