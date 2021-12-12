@@ -1556,7 +1556,7 @@ fn test_clone_from() {
 }
 
 #[allow(dead_code)]
-fn test_variance() {
+fn assert_covariance() {
     fn map_key<'new>(v: BTreeMap<&'static str, ()>) -> BTreeMap<&'new str, ()> {
         v
     }
@@ -1615,7 +1615,7 @@ fn test_variance() {
 }
 
 #[allow(dead_code)]
-fn test_sync() {
+fn assert_sync() {
     fn map<T: Sync>(v: &BTreeMap<T, T>) -> impl Sync + '_ {
         v
     }
@@ -1684,7 +1684,7 @@ fn test_sync() {
 }
 
 #[allow(dead_code)]
-fn test_send() {
+fn assert_send() {
     fn map<T: Send>(v: BTreeMap<T, T>) -> impl Send {
         v
     }
