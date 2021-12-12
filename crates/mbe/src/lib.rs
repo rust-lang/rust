@@ -10,7 +10,7 @@ mod parser;
 mod expander;
 mod syntax_bridge;
 mod tt_iter;
-mod subtree_source;
+mod to_parser_tokens;
 
 #[cfg(test)]
 mod benchmark;

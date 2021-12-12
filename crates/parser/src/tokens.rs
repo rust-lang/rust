@@ -1,3 +1,8 @@
+//! Input for the parser -- a sequence of tokens.
+//!
+//! As of now, parser doesn't have access to the *text* of the tokens, and makes
+//! decisions based solely on their classification.
+
 use crate::SyntaxKind;
 
 #[allow(non_camel_case_types)]
@@ -28,6 +33,22 @@ impl Tokens {
     pub fn push(&mut self, kind: SyntaxKind) {
         self.push_impl(kind, SyntaxKind::EOF)
     }
+    /// Sets jointness for the last token we've pushed.
+    ///
+    /// This is a separate API rather than an argument to the `push` to make it
+    /// convenient both for textual and mbe tokens. With text, you know whether
+    /// the *previous* token was joint, with mbe, you know whether the *current*
+    /// one is joint. This API allows for styles of usage:
+    ///
+    /// ```
+    /// // In text:
+    /// tokens.was_joint(prev_joint);
+    /// tokens.push(curr);
+    ///
+    /// // In MBE:
+    /// token.push(curr);
+    /// tokens.push(curr_joint)
+    /// ```
     pub fn was_joint(&mut self, yes: bool) {
         let idx = self.len();
         if yes && idx > 0 {
