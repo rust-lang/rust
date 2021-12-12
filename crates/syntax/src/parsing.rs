@@ -68,7 +68,8 @@ pub(crate) fn to_parser_tokens(text: &str, lexer_tokens: &[lexer::Token]) -> ::p
                 SyntaxKind::from_contextual_keyword(token_text).unwrap_or(SyntaxKind::IDENT);
             res.push_ident(contextual_kw);
         } else {
-            res.push(was_joint, t.kind);
+            res.was_joint(was_joint);
+            res.push(t.kind);
             was_joint = true;
         }
         off += usize::from(t.len);

@@ -25,19 +25,22 @@ pub struct Tokens {
 }
 
 impl Tokens {
-    pub fn push(&mut self, was_joint: bool, kind: SyntaxKind) {
-        self.push_impl(was_joint, kind, SyntaxKind::EOF)
+    pub fn push(&mut self, kind: SyntaxKind) {
+        self.push_impl(kind, SyntaxKind::EOF)
+    }
+    pub fn was_joint(&mut self, yes: bool) {
+        let idx = self.len();
+        if yes && idx > 0 {
+            self.set_joint(idx - 1);
+        }
     }
     pub fn push_ident(&mut self, contextual_kw: SyntaxKind) {
-        self.push_impl(false, SyntaxKind::IDENT, contextual_kw)
+        self.push_impl(SyntaxKind::IDENT, contextual_kw)
     }
-    fn push_impl(&mut self, was_joint: bool, kind: SyntaxKind, contextual_kw: SyntaxKind) {
+    fn push_impl(&mut self, kind: SyntaxKind, contextual_kw: SyntaxKind) {
         let idx = self.len();
         if idx % (bits::BITS as usize) == 0 {
             self.joint.push(0);
-        }
-        if was_joint && idx > 0 {
-            self.set_joint(idx - 1);
         }
         self.kind.push(kind);
         self.contextual_kw.push(contextual_kw);
