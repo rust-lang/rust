@@ -883,7 +883,20 @@ static __: () = {
     match &n { Next(E::Foo | E::Bar) => {} }
     match &n {      _ | Next(E::Bar) => {} }
 };",
+        );
+    }
 
+    #[test]
+    fn binding_mode_by_ref() {
+        check_diagnostics_no_bails(
+            r"
+enum E{ A, B }
+fn foo() {
+    match &E::A {
+        E::A => {}
+        x => {}
+    }
+}",
         );
     }
 

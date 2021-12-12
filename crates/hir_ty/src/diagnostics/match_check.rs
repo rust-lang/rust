@@ -11,8 +11,11 @@ pub(crate) mod deconstruct_pat;
 pub(crate) mod usefulness;
 
 use hir_def::{body::Body, expr::PatId, EnumVariantId, LocalFieldId, VariantId};
+use stdx::never;
 
-use crate::{db::HirDatabase, InferenceResult, Interner, Substitution, Ty, TyKind};
+use crate::{
+    db::HirDatabase, infer::BindingMode, InferenceResult, Interner, Substitution, Ty, TyKind,
+};
 
 use self::pat_util::EnumerateAndAdjustIterator;
 
@@ -21,6 +24,7 @@ pub(crate) use self::usefulness::MatchArm;
 #[derive(Clone, Debug)]
 pub(crate) enum PatternError {
     Unimplemented,
+    UnexpectedType,
     UnresolvedVariant,
     MissingField,
     ExtraFields,
@@ -129,9 +133,16 @@ impl<'a> PatCtxt<'a> {
                 PatKind::Leaf { subpatterns }
             }
 
-            hir_def::expr::Pat::Bind { subpat, .. } => {
-                if let TyKind::Ref(.., rty) = ty.kind(Interner) {
-                    ty = rty;
+            hir_def::expr::Pat::Bind { ref name, subpat, .. } => {
+                let bm = self.infer.pat_binding_modes[&pat];
+                match (bm, ty.kind(Interner)) {
+                    (BindingMode::Ref(_), TyKind::Ref(.., rty)) => ty = rty,
+                    (BindingMode::Ref(_), _) => {
+                        never!("`ref {}` has wrong type {:?}", name, ty);
+                        self.errors.push(PatternError::UnexpectedType);
+                        return Pat { ty: ty.clone(), kind: PatKind::Wild.into() };
+                    }
+                    _ => (),
                 }
                 PatKind::Binding { subpattern: self.lower_opt_pattern(subpat) }
             }
