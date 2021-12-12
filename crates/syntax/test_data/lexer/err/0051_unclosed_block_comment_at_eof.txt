@@ -1,2 +1,0 @@
-COMMENT 2 "/*"
-> error0..2 token("/*") msg(Missing trailing `*/` symbols to terminate the block comment)

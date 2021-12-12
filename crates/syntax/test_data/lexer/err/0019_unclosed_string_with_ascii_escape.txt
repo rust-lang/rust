@@ -1,2 +1,0 @@
-STRING 5 "\"\\x7f"
-> error0..5 token("\"\\x7f") msg(Missing trailing `"` symbol to terminate the string literal)

@@ -1,3 +1,0 @@
-IDENT 5 "hello"
-WHITESPACE 1 " "
-IDENT 5 "world"
