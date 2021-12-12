@@ -318,6 +318,7 @@
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
+#![feature(platform_intrinsics)]
 #![feature(pin_static_ref)]
 #![feature(portable_simd)]
 #![feature(prelude_import)]
@@ -472,8 +473,6 @@ pub use core::pin;
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
-#[unstable(feature = "portable_simd", issue = "86656")]
-pub use core::simd;
 #[unstable(feature = "async_stream", issue = "79024")]
 pub use core::stream;
 #[stable(feature = "i128", since = "1.26.0")]
@@ -514,6 +513,8 @@ pub mod os;
 pub mod panic;
 pub mod path;
 pub mod process;
+#[unstable(feature = "portable_simd", issue = "86656")]
+pub mod simd;
 pub mod sync;
 pub mod time;
 
