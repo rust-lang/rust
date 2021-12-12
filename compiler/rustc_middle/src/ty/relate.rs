@@ -218,19 +218,6 @@ impl<'tcx> Relate<'tcx> for ty::BoundConstness {
     }
 }
 
-impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for ty::ConstnessAnd<T> {
-    fn relate<R: TypeRelation<'tcx>>(
-        relation: &mut R,
-        a: ty::ConstnessAnd<T>,
-        b: ty::ConstnessAnd<T>,
-    ) -> RelateResult<'tcx, ty::ConstnessAnd<T>> {
-        Ok(ty::ConstnessAnd {
-            constness: relation.relate(a.constness, b.constness)?,
-            value: relation.relate(a.value, b.value)?,
-        })
-    }
-}
-
 impl<'tcx> Relate<'tcx> for ast::Unsafety {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,

@@ -3,7 +3,6 @@
 //! See the `Qualif` trait for more info.
 
 use rustc_errors::ErrorReported;
-use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
@@ -167,7 +166,7 @@ impl Qualif for NeedsNonConstDrop {
         );
 
         let implsrc = cx.tcx.infer_ctxt().enter(|infcx| {
-            let mut selcx = SelectionContext::with_constness(&infcx, hir::Constness::Const);
+            let mut selcx = SelectionContext::new(&infcx);
             selcx.select(&obligation)
         });
         !matches!(

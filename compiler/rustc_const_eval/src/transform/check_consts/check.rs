@@ -817,8 +817,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                     );
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {
-                        let mut selcx =
-                            SelectionContext::with_constness(&infcx, hir::Constness::Const);
+                        let mut selcx = SelectionContext::new(&infcx);
                         selcx.select(&obligation)
                     });
 

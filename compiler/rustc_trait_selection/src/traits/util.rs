@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 pub use rustc_infer::traits::{self, util::*};
@@ -126,8 +126,8 @@ impl<'tcx> TraitAliasExpander<'tcx> {
 
         let items = predicates.predicates.iter().rev().filter_map(|(pred, span)| {
             pred.subst_supertrait(tcx, &trait_ref)
-                .to_opt_poly_trait_ref()
-                .map(|trait_ref| item.clone_and_push(trait_ref.value, *span))
+                .to_opt_poly_trait_pred()
+                .map(|trait_ref| item.clone_and_push(trait_ref.map_bound(|t| t.trait_ref), *span))
         });
         debug!("expand_trait_aliases: items={:?}", items.clone());
 
@@ -183,8 +183,8 @@ impl Iterator for SupertraitDefIds<'tcx> {
             predicates
                 .predicates
                 .iter()
-                .filter_map(|(pred, _)| pred.to_opt_poly_trait_ref())
-                .map(|trait_ref| trait_ref.value.def_id())
+                .filter_map(|(pred, _)| pred.to_opt_poly_trait_pred())
+                .map(|trait_ref| trait_ref.def_id())
                 .filter(|&super_def_id| visited.insert(super_def_id)),
         );
         Some(def_id)
