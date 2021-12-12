@@ -1,5 +1,6 @@
 // run-pass
 
+#[allow(unused_imports)]
 use std::arch::global_asm;
 
 #[cfg(target_arch = "x86")]
