@@ -359,6 +359,10 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
     let full_keywords =
         full_keywords_values.iter().map(|kw| format_ident!("{}_KW", to_upper_snake_case(kw)));
 
+    let contextual_keywords_values = &grammar.contextual_keywords;
+    let contextual_keywords =
+        contextual_keywords_values.iter().map(|kw| format_ident!("{}_KW", to_upper_snake_case(kw)));
+
     let all_keywords_values =
         grammar.keywords.iter().chain(grammar.contextual_keywords.iter()).collect::<Vec<_>>();
     let all_keywords_idents = all_keywords_values.iter().map(|kw| format_ident!("{}", kw));
@@ -423,6 +427,14 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
             pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
                 let kw = match ident {
                     #(#full_keywords_values => #full_keywords,)*
+                    _ => return None,
+                };
+                Some(kw)
+            }
+
+            pub fn from_contextual_keyword(ident: &str) -> Option<SyntaxKind> {
+                let kw = match ident {
+                    #(#contextual_keywords_values => #contextual_keywords,)*
                     _ => return None,
                 };
                 Some(kw)

@@ -24,39 +24,10 @@ mod tokens;
 
 pub(crate) use token_set::TokenSet;
 
-pub use syntax_kind::SyntaxKind;
-
-use crate::tokens::Tokens;
+pub use crate::{syntax_kind::SyntaxKind, tokens::Tokens};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseError(pub Box<String>);
-
-/// `TokenSource` abstracts the source of the tokens parser operates on.
-///
-/// Hopefully this will allow us to treat text and token trees in the same way!
-pub trait TokenSource {
-    fn current(&self) -> Token;
-
-    /// Lookahead n token
-    fn lookahead_nth(&self, n: usize) -> Token;
-
-    /// bump cursor to next token
-    fn bump(&mut self);
-
-    /// Is the current token a specified keyword?
-    fn is_keyword(&self, kw: &str) -> bool;
-}
-
-/// `Token` abstracts the cursor of `TokenSource` operates on.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Token {
-    /// What is the current token?
-    pub kind: SyntaxKind,
-
-    /// Is the current token joined to the next one (`> >` vs `>>`).
-    pub is_jointed_to_next: bool,
-    pub contextual_kw: SyntaxKind,
-}
 
 /// `TreeSink` abstracts details of a particular syntax tree implementation.
 pub trait TreeSink {

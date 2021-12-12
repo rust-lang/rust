@@ -104,7 +104,7 @@ impl<'a> TextTreeSink<'a> {
         }
     }
 
-    pub(super) fn finish(mut self) -> (GreenNode, Vec<SyntaxError>) {
+    pub(super) fn finish_eof(mut self) -> (GreenNode, Vec<SyntaxError>, bool) {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingFinish => {
                 self.eat_trivias();
@@ -113,7 +113,15 @@ impl<'a> TextTreeSink<'a> {
             State::PendingStart | State::Normal => unreachable!(),
         }
 
-        self.inner.finish_raw()
+        let (node, errors) = self.inner.finish_raw();
+        let is_eof = self.token_pos == self.tokens.len();
+
+        (node, errors, is_eof)
+    }
+
+    pub(super) fn finish(self) -> (GreenNode, Vec<SyntaxError>) {
+        let (node, errors, _eof) = self.finish_eof();
+        (node, errors)
     }
 
     fn eat_trivias(&mut self) {

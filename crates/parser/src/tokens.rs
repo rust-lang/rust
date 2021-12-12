@@ -1,7 +1,18 @@
-use crate::{SyntaxKind, Token};
+use crate::SyntaxKind;
 
 #[allow(non_camel_case_types)]
 type bits = u64;
+
+/// `Token` abstracts the cursor of `TokenSource` operates on.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub(crate) struct Token {
+    /// What is the current token?
+    pub(crate) kind: SyntaxKind,
+
+    /// Is the current token joined to the next one (`> >` vs `>>`).
+    pub(crate) is_jointed_to_next: bool,
+    pub(crate) contextual_kw: SyntaxKind,
+}
 
 /// Main input to the parser.
 ///
@@ -49,13 +60,14 @@ impl Tokens {
         self.kind.len()
     }
     pub(crate) fn get(&self, idx: usize) -> Token {
-        if idx > self.len() {
-            return self.eof();
+        if idx < self.len() {
+            let kind = self.kind[idx];
+            let is_jointed_to_next = self.get_joint(idx);
+            let contextual_kw = self.contextual_kw[idx];
+            Token { kind, is_jointed_to_next, contextual_kw }
+        } else {
+            self.eof()
         }
-        let kind = self.kind[idx];
-        let is_jointed_to_next = self.get_joint(idx);
-        let contextual_kw = self.contextual_kw[idx];
-        Token { kind, is_jointed_to_next, contextual_kw }
     }
 
     #[cold]
