@@ -56,7 +56,7 @@ impl<'t> Parser<'t> {
         assert!(PARSER_STEP_LIMIT.check(steps as usize).is_ok(), "the parser seems stuck");
         self.steps.set(steps + 1);
 
-        self.tokens.get(self.pos + n).kind
+        self.tokens.kind(self.pos + n)
     }
 
     /// Checks if the current token is `kind`.
@@ -92,7 +92,7 @@ impl<'t> Parser<'t> {
             T![<<=] => self.at_composite3(n, T![<], T![<], T![=]),
             T![>>=] => self.at_composite3(n, T![>], T![>], T![=]),
 
-            _ => self.tokens.get(self.pos + n).kind == kind,
+            _ => self.tokens.kind(self.pos + n) == kind,
         }
     }
 
@@ -131,25 +131,17 @@ impl<'t> Parser<'t> {
     }
 
     fn at_composite2(&self, n: usize, k1: SyntaxKind, k2: SyntaxKind) -> bool {
-        let t1 = self.tokens.get(self.pos + n);
-        if t1.kind != k1 || !t1.is_jointed_to_next {
-            return false;
-        }
-        let t2 = self.tokens.get(self.pos + n + 1);
-        t2.kind == k2
+        self.tokens.kind(self.pos + n) == k1
+            && self.tokens.kind(self.pos + n + 1) == k2
+            && self.tokens.is_joint(self.pos + n)
     }
 
     fn at_composite3(&self, n: usize, k1: SyntaxKind, k2: SyntaxKind, k3: SyntaxKind) -> bool {
-        let t1 = self.tokens.get(self.pos + n);
-        if t1.kind != k1 || !t1.is_jointed_to_next {
-            return false;
-        }
-        let t2 = self.tokens.get(self.pos + n + 1);
-        if t2.kind != k2 || !t2.is_jointed_to_next {
-            return false;
-        }
-        let t3 = self.tokens.get(self.pos + n + 2);
-        t3.kind == k3
+        self.tokens.kind(self.pos + n) == k1
+            && self.tokens.kind(self.pos + n + 1) == k2
+            && self.tokens.kind(self.pos + n + 2) == k3
+            && self.tokens.is_joint(self.pos + n)
+            && self.tokens.is_joint(self.pos + n + 1)
     }
 
     /// Checks if the current token is in `kinds`.
@@ -159,7 +151,7 @@ impl<'t> Parser<'t> {
 
     /// Checks if the current token is contextual keyword with text `t`.
     pub(crate) fn at_contextual_kw(&self, kw: SyntaxKind) -> bool {
-        self.tokens.get(self.pos).contextual_kw == kw
+        self.tokens.contextual_kind(self.pos) == kw
     }
 
     /// Starts a new node in the syntax tree. All nodes and tokens
