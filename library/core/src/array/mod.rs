@@ -189,6 +189,18 @@ where
     }
 }
 
+#[stable(feature = "try_from_mut_slice_to_array", since = "1.59.0")]
+impl<T, const N: usize> TryFrom<&mut [T]> for [T; N]
+where
+    T: Copy,
+{
+    type Error = TryFromSliceError;
+
+    fn try_from(slice: &mut [T]) -> Result<[T; N], TryFromSliceError> {
+        <Self>::try_from(&*slice)
+    }
+}
+
 #[stable(feature = "try_from", since = "1.34.0")]
 impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     type Error = TryFromSliceError;
