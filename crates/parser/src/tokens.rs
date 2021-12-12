@@ -18,10 +18,15 @@ pub struct Tokens {
     contextual_kind: Vec<SyntaxKind>,
 }
 
+/// `pub` impl used by callers to create `Tokens`.
 impl Tokens {
     #[inline]
     pub fn push(&mut self, kind: SyntaxKind) {
         self.push_impl(kind, SyntaxKind::EOF)
+    }
+    #[inline]
+    pub fn push_ident(&mut self, contextual_kind: SyntaxKind) {
+        self.push_impl(SyntaxKind::IDENT, contextual_kind)
     }
     /// Sets jointness for the last token we've pushed.
     ///
@@ -41,11 +46,9 @@ impl Tokens {
     /// ```
     #[inline]
     pub fn was_joint(&mut self) {
-        self.set_joint(self.len() - 1);
-    }
-    #[inline]
-    pub fn push_ident(&mut self, contextual_kind: SyntaxKind) {
-        self.push_impl(SyntaxKind::IDENT, contextual_kind)
+        let n = self.len() - 1;
+        let (idx, b_idx) = self.bit_index(n);
+        self.joint[idx] |= 1 << b_idx;
     }
     #[inline]
     fn push_impl(&mut self, kind: SyntaxKind, contextual_kind: SyntaxKind) {
@@ -56,22 +59,9 @@ impl Tokens {
         self.kind.push(kind);
         self.contextual_kind.push(contextual_kind);
     }
-    fn set_joint(&mut self, n: usize) {
-        let (idx, b_idx) = self.bit_index(n);
-        self.joint[idx] |= 1 << b_idx;
-    }
-    fn bit_index(&self, n: usize) -> (usize, usize) {
-        let idx = n / (bits::BITS as usize);
-        let b_idx = n % (bits::BITS as usize);
-        (idx, b_idx)
-    }
-
-    fn len(&self) -> usize {
-        self.kind.len()
-    }
 }
 
-/// pub(crate) impl used by the parser.
+/// pub(crate) impl used by the parser to consume `Tokens`.
 impl Tokens {
     pub(crate) fn kind(&self, idx: usize) -> SyntaxKind {
         self.kind.get(idx).copied().unwrap_or(SyntaxKind::EOF)
@@ -82,5 +72,16 @@ impl Tokens {
     pub(crate) fn is_joint(&self, n: usize) -> bool {
         let (idx, b_idx) = self.bit_index(n);
         self.joint[idx] & 1 << b_idx != 0
+    }
+}
+
+impl Tokens {
+    fn bit_index(&self, n: usize) -> (usize, usize) {
+        let idx = n / (bits::BITS as usize);
+        let b_idx = n % (bits::BITS as usize);
+        (idx, b_idx)
+    }
+    fn len(&self) -> usize {
+        self.kind.len()
     }
 }
