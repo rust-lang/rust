@@ -251,6 +251,21 @@ fn test_set_memory() {
 }
 
 #[test]
+#[cfg(not(bootstrap))]
+fn test_set_memory_const() {
+    const XS: [u8; 20] = {
+        let mut xs = [0u8; 20];
+        let ptr = xs.as_mut_ptr();
+        unsafe {
+            ptr.write_bytes(5u8, xs.len());
+        }
+        xs
+    };
+
+    assert!(XS == [5u8; 20]);
+}
+
+#[test]
 fn test_unsized_nonnull() {
     let xs: &[i32] = &[1, 2, 3];
     let ptr = unsafe { NonNull::new_unchecked(xs as *const [i32] as *mut [i32]) };

@@ -155,7 +155,7 @@ enum DifferenceInner<'a, T: 'a> {
         self_iter: Iter<'a, T>,
         other_set: &'a BTreeSet<T>,
     },
-    Iterate(Iter<'a, T>), // simply produce all values in `self`
+    Iterate(Iter<'a, T>), // simply produce all elements in `self`
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -207,7 +207,7 @@ enum IntersectionInner<'a, T: 'a> {
         small_iter: Iter<'a, T>,
         large_set: &'a BTreeSet<T>,
     },
-    Answer(Option<&'a T>), // return a specific value or emptiness
+    Answer(Option<&'a T>), // return a specific element or emptiness
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -295,8 +295,8 @@ impl<T> BTreeSet<T> {
         Range { iter: self.map.range(range) }
     }
 
-    /// Visits the values representing the difference,
-    /// i.e., the values that are in `self` but not in `other`,
+    /// Visits the elements representing the difference,
+    /// i.e., the elements that are in `self` but not in `other`,
     /// in ascending order.
     ///
     /// # Examples
@@ -356,8 +356,8 @@ impl<T> BTreeSet<T> {
         }
     }
 
-    /// Visits the values representing the symmetric difference,
-    /// i.e., the values that are in `self` or in `other` but not in both,
+    /// Visits the elements representing the symmetric difference,
+    /// i.e., the elements that are in `self` or in `other` but not in both,
     /// in ascending order.
     ///
     /// # Examples
@@ -384,8 +384,8 @@ impl<T> BTreeSet<T> {
         SymmetricDifference(MergeIterInner::new(self.iter(), other.iter()))
     }
 
-    /// Visits the values representing the intersection,
-    /// i.e., the values that are both in `self` and `other`,
+    /// Visits the elements representing the intersection,
+    /// i.e., the elements that are both in `self` and `other`,
     /// in ascending order.
     ///
     /// # Examples
@@ -437,8 +437,8 @@ impl<T> BTreeSet<T> {
         }
     }
 
-    /// Visits the values representing the union,
-    /// i.e., all the values in `self` or `other`, without duplicates,
+    /// Visits the elements representing the union,
+    /// i.e., all the elements in `self` or `other`, without duplicates,
     /// in ascending order.
     ///
     /// # Examples
@@ -463,7 +463,7 @@ impl<T> BTreeSet<T> {
         Union(MergeIterInner::new(self.iter(), other.iter()))
     }
 
-    /// Clears the set, removing all values.
+    /// Clears the set, removing all elements.
     ///
     /// # Examples
     ///
@@ -480,11 +480,11 @@ impl<T> BTreeSet<T> {
         self.map.clear()
     }
 
-    /// Returns `true` if the set contains a value.
+    /// Returns `true` if the set contains an element equal to the value.
     ///
-    /// The value may be any borrowed form of the set's value type,
+    /// The value may be any borrowed form of the set's element type,
     /// but the ordering on the borrowed form *must* match the
-    /// ordering on the value type.
+    /// ordering on the element type.
     ///
     /// # Examples
     ///
@@ -504,11 +504,12 @@ impl<T> BTreeSet<T> {
         self.map.contains_key(value)
     }
 
-    /// Returns a reference to the value in the set, if any, that is equal to the given value.
+    /// Returns a reference to the element in the set, if any, that is equal to
+    /// the value.
     ///
-    /// The value may be any borrowed form of the set's value type,
+    /// The value may be any borrowed form of the set's element type,
     /// but the ordering on the borrowed form *must* match the
-    /// ordering on the value type.
+    /// ordering on the element type.
     ///
     /// # Examples
     ///
@@ -555,7 +556,7 @@ impl<T> BTreeSet<T> {
     }
 
     /// Returns `true` if the set is a subset of another,
-    /// i.e., `other` contains at least all the values in `self`.
+    /// i.e., `other` contains at least all the elements in `self`.
     ///
     /// # Examples
     ///
@@ -632,7 +633,7 @@ impl<T> BTreeSet<T> {
     }
 
     /// Returns `true` if the set is a superset of another,
-    /// i.e., `self` contains at least all the values in `other`.
+    /// i.e., `self` contains at least all the elements in `other`.
     ///
     /// # Examples
     ///
@@ -660,8 +661,8 @@ impl<T> BTreeSet<T> {
         other.is_subset(self)
     }
 
-    /// Returns a reference to the first value in the set, if any.
-    /// This value is always the minimum of all values in the set.
+    /// Returns a reference to the first element in the set, if any.
+    /// This element is always the minimum of all elements in the set.
     ///
     /// # Examples
     ///
@@ -687,8 +688,8 @@ impl<T> BTreeSet<T> {
         self.map.first_key_value().map(|(k, _)| k)
     }
 
-    /// Returns a reference to the last value in the set, if any.
-    /// This value is always the maximum of all values in the set.
+    /// Returns a reference to the last element in the set, if any.
+    /// This element is always the maximum of all elements in the set.
     ///
     /// # Examples
     ///
@@ -714,8 +715,8 @@ impl<T> BTreeSet<T> {
         self.map.last_key_value().map(|(k, _)| k)
     }
 
-    /// Removes the first value from the set and returns it, if any.
-    /// The first value is always the minimum value in the set.
+    /// Removes the first element from the set and returns it, if any.
+    /// The first element is always the minimum element in the set.
     ///
     /// # Examples
     ///
@@ -739,8 +740,8 @@ impl<T> BTreeSet<T> {
         self.map.pop_first().map(|kv| kv.0)
     }
 
-    /// Removes the last value from the set and returns it, if any.
-    /// The last value is always the maximum value in the set.
+    /// Removes the last element from the set and returns it, if any.
+    /// The last element is always the maximum element in the set.
     ///
     /// # Examples
     ///
@@ -766,10 +767,10 @@ impl<T> BTreeSet<T> {
 
     /// Adds a value to the set.
     ///
-    /// If the set did not have this value present, `true` is returned.
+    /// If the set did not have an equal element present, `true` is returned.
     ///
-    /// If the set did have this value present, `false` is returned, and the
-    /// entry is not updated. See the [module-level documentation] for more.
+    /// If the set did have an equal element present, `false` is returned, and
+    /// the entry is not updated. See the [module-level documentation] for more.
     ///
     /// [module-level documentation]: index.html#insert-and-complex-keys
     ///
@@ -792,8 +793,8 @@ impl<T> BTreeSet<T> {
         self.map.insert(value, ()).is_none()
     }
 
-    /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
-    /// one. Returns the replaced value.
+    /// Adds a value to the set, replacing the existing element, if any, that is
+    /// equal to the value. Returns the replaced element.
     ///
     /// # Examples
     ///
@@ -815,12 +816,12 @@ impl<T> BTreeSet<T> {
         Recover::replace(&mut self.map, value)
     }
 
-    /// Removes a value from the set. Returns whether the value was
-    /// present in the set.
+    /// If the set contains an element equal to the value, removes it from the
+    /// set and drops it. Returns whether such an element was present.
     ///
-    /// The value may be any borrowed form of the set's value type,
+    /// The value may be any borrowed form of the set's element type,
     /// but the ordering on the borrowed form *must* match the
-    /// ordering on the value type.
+    /// ordering on the element type.
     ///
     /// # Examples
     ///
@@ -842,11 +843,12 @@ impl<T> BTreeSet<T> {
         self.map.remove(value).is_some()
     }
 
-    /// Removes and returns the value in the set, if any, that is equal to the given one.
+    /// Removes and returns the element in the set, if any, that is equal to
+    /// the value.
     ///
-    /// The value may be any borrowed form of the set's value type,
+    /// The value may be any borrowed form of the set's element type,
     /// but the ordering on the borrowed form *must* match the
-    /// ordering on the value type.
+    /// ordering on the element type.
     ///
     /// # Examples
     ///
@@ -926,8 +928,8 @@ impl<T> BTreeSet<T> {
         self.map.append(&mut other.map);
     }
 
-    /// Splits the collection into two at the given value. Returns everything after the given value,
-    /// including the value.
+    /// Splits the collection into two at the value. Returns a new collection
+    /// with all elements greater than or equal to the value.
     ///
     /// # Examples
     ///
@@ -963,20 +965,20 @@ impl<T> BTreeSet<T> {
         BTreeSet { map: self.map.split_off(value) }
     }
 
-    /// Creates an iterator that visits all values in ascending order and uses a closure
-    /// to determine if a value should be removed.
+    /// Creates an iterator that visits all elements in ascending order and
+    /// uses a closure to determine if an element should be removed.
     ///
-    /// If the closure returns `true`, the value is removed from the set and yielded. If
-    /// the closure returns `false`, or panics, the value remains in the set and will
-    /// not be yielded.
+    /// If the closure returns `true`, the element is removed from the set and
+    /// yielded. If the closure returns `false`, or panics, the element remains
+    /// in the set and will not be yielded.
     ///
-    /// If the iterator is only partially consumed or not consumed at all, each of the
-    /// remaining values is still subjected to the closure and removed and dropped if it
-    /// returns `true`.
+    /// If the iterator is only partially consumed or not consumed at all, each
+    /// of the remaining elements is still subjected to the closure and removed
+    /// and dropped if it returns `true`.
     ///
-    /// It is unspecified how many more values will be subjected to the closure if a
-    /// panic occurs in the closure, or if a panic occurs while dropping a value, or if
-    /// the `DrainFilter` itself is leaked.
+    /// It is unspecified how many more elements will be subjected to the
+    /// closure if a panic occurs in the closure, or if a panic occurs while
+    /// dropping an element, or if the `DrainFilter` itself is leaked.
     ///
     /// # Examples
     ///
@@ -1001,7 +1003,8 @@ impl<T> BTreeSet<T> {
         DrainFilter { pred, inner: self.map.drain_filter_inner() }
     }
 
-    /// Gets an iterator that visits the values in the `BTreeSet` in ascending order.
+    /// Gets an iterator that visits the elements in the `BTreeSet` in ascending
+    /// order.
     ///
     /// # Examples
     ///
