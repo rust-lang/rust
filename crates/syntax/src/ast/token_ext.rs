@@ -613,8 +613,6 @@ impl HasFormatSpecifier for ast::String {
     }
 }
 
-struct IntNumberParts<'a>(&'a str, &'a str, &'a str);
-
 impl ast::IntNumber {
     pub fn radix(&self) -> Radix {
         match self.text().get(..2).unwrap_or_default() {
@@ -625,7 +623,7 @@ impl ast::IntNumber {
         }
     }
 
-    fn split_into_parts(&self) -> IntNumberParts {
+    pub fn split_into_parts(&self) -> (&str, &str, &str) {
         let radix = self.radix();
         let (prefix, mut text) = self.text().split_at(radix.prefix_len());
 
@@ -641,25 +639,17 @@ impl ast::IntNumber {
             suffix = suffix2;
         };
 
-        IntNumberParts(prefix, text, suffix)
-    }
-
-    pub fn prefix(&self) -> &str {
-        self.split_into_parts().0
-    }
-
-    pub fn str_value(&self) -> &str {
-        self.split_into_parts().1
+        (prefix, text, suffix)
     }
 
     pub fn value(&self) -> Option<u128> {
-        let text = self.str_value().replace("_", "");
-        let value = u128::from_str_radix(&text, self.radix() as u32).ok()?;
+        let (_, text, _) = self.split_into_parts();
+        let value = u128::from_str_radix(&text.replace("_", ""), self.radix() as u32).ok()?;
         Some(value)
     }
 
     pub fn suffix(&self) -> Option<&str> {
-        let suffix = self.split_into_parts().2;
+        let (_, _, suffix) = self.split_into_parts();
         if suffix.is_empty() {
             None
         } else {

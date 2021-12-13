@@ -27,17 +27,15 @@ pub(crate) fn reformat_number_literal(acc: &mut Assists, ctx: &AssistContext) ->
         return remove_separators(acc, literal);
     }
 
-    let value = literal.str_value();
+    let (prefix, value, suffix) = literal.split_into_parts();
     if value.len() < MIN_NUMBER_OF_DIGITS_TO_FORMAT {
         return None;
     }
 
     let radix = literal.radix();
-    let mut converted = literal.prefix().to_string();
-    converted.push_str(&add_group_separators(literal.str_value(), group_size(radix)));
-    if let Some(suffix) = literal.suffix() {
-        converted.push_str(suffix);
-    }
+    let mut converted = prefix.to_string();
+    converted.push_str(&add_group_separators(value, group_size(radix)));
+    converted.push_str(suffix);
 
     let group_id = GroupLabel("Reformat number literal".into());
     let label = format!("Convert {} to {}", literal, converted);
