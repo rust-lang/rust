@@ -637,9 +637,9 @@ fn escape_stdout_stderr_string(s: &[u8]) -> String {
 
 const LLVM_DWP_EXECUTABLE: &'static str = "rust-llvm-dwp";
 
-/// Invoke `llvm-dwp` (shipped alongside rustc) to link `dwo` files from Split DWARF into a `dwp`
+/// Invoke `llvm-dwp` (shipped alongside rustc) to link debuginfo in object files into a `dwp`
 /// file.
-fn link_dwarf_object<'a, I>(sess: &'a Session, executable_out_filename: &Path, dwo_files: I)
+fn link_dwarf_object<'a, I>(sess: &'a Session, executable_out_filename: &Path, object_files: I)
 where
     I: IntoIterator<Item: AsRef<OsStr>>,
 {
@@ -649,7 +649,7 @@ where
     let mut cmd = Command::new(LLVM_DWP_EXECUTABLE);
     cmd.arg("-o");
     cmd.arg(&dwp_out_filename);
-    cmd.args(dwo_files);
+    cmd.args(object_files);
 
     let mut new_path = sess.get_tools_search_paths(false);
     if let Some(path) = env::var_os("PATH") {
@@ -1033,13 +1033,13 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         SplitDebuginfo::Packed if sess.target.is_like_msvc => {}
 
         // ... and otherwise we're processing a `*.dwp` packed dwarf file.
-        // We cannot rely on the .dwo paths in the exectuable because they may have been
+        // We cannot rely on the .o paths in the exectuable because they may have been
         // remapped by --remap-path-prefix and therefore invalid. So we need to provide
-        // the .dwo paths explicitly
+        // the .o paths explicitly
         SplitDebuginfo::Packed => link_dwarf_object(
             sess,
             &out_filename,
-            codegen_results.modules.iter().filter_map(|m| m.dwarf_object.as_ref()),
+            codegen_results.modules.iter().filter_map(|m| m.object.as_ref()),
         ),
     }
 
