@@ -3029,7 +3029,7 @@ pub trait Iterator {
     /// Instead of stopping at [`None`], the iterator will instead start again,
     /// from the beginning. After iterating again, it will start at the
     /// beginning again. And again. And again. Forever. Note that in case the
-    /// original iterator is empty the resulting iterator will also be empty.
+    /// original iterator is empty, the resulting iterator will also be empty.
     ///
     /// # Examples
     ///
