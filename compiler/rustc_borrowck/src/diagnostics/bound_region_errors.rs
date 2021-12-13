@@ -31,7 +31,7 @@ enum UniverseInfoInner<'tcx> {
     Other,
 }
 
-impl UniverseInfo<'tcx> {
+impl<'tcx> UniverseInfo<'tcx> {
     crate fn other() -> UniverseInfo<'tcx> {
         UniverseInfo(UniverseInfoInner::Other)
     }
@@ -191,7 +191,7 @@ struct PredicateQuery<'tcx> {
     base_universe: ty::UniverseIndex,
 }
 
-impl TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
+impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let mut err = tcx.sess.struct_span_err(span, "higher-ranked lifetime error");
         err.note(&format!("could not prove {}", self.canonical_query.value.value.predicate));
@@ -231,7 +231,7 @@ struct NormalizeQuery<'tcx, T> {
     base_universe: ty::UniverseIndex,
 }
 
-impl<T> TypeOpInfo<'tcx> for NormalizeQuery<'tcx, T>
+impl<'tcx, T> TypeOpInfo<'tcx> for NormalizeQuery<'tcx, T>
 where
     T: Copy + fmt::Display + TypeFoldable<'tcx> + 'tcx,
 {
@@ -291,7 +291,7 @@ struct AscribeUserTypeQuery<'tcx> {
     base_universe: ty::UniverseIndex,
 }
 
-impl TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
+impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
         // and is only the fallback when the nice error fails. Consider improving this some more.

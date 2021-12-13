@@ -58,7 +58,7 @@ crate struct CreateResult<'tcx> {
     crate normalized_inputs_and_output: NormalizedInputsAndOutput<'tcx>,
 }
 
-crate fn create(
+crate fn create<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -81,7 +81,7 @@ crate fn create(
     .create()
 }
 
-impl UniversalRegionRelations<'tcx> {
+impl UniversalRegionRelations<'_> {
     /// Records in the `outlives_relation` (and
     /// `inverse_outlives_relation`) that `fr_a: fr_b`. Invoked by the
     /// builder below.
@@ -110,7 +110,7 @@ impl UniversalRegionRelations<'tcx> {
     /// outlives `fr` and (b) is not local.
     ///
     /// (*) If there are multiple competing choices, we return all of them.
-    crate fn non_local_upper_bounds(&'a self, fr: &'a RegionVid) -> Vec<&'a RegionVid> {
+    crate fn non_local_upper_bounds<'a>(&'a self, fr: &'a RegionVid) -> Vec<&'a RegionVid> {
         debug!("non_local_upper_bound(fr={:?})", fr);
         let res = self.non_local_bounds(&self.inverse_outlives, fr);
         assert!(!res.is_empty(), "can't find an upper bound!?");
@@ -232,7 +232,7 @@ struct UniversalRegionRelationsBuilder<'this, 'tcx> {
     region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
-impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
+impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     crate fn create(mut self) -> CreateResult<'tcx> {
         let unnormalized_input_output_tys = self
             .universal_regions
