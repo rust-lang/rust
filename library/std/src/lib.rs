@@ -252,7 +252,6 @@
 #![feature(char_internals)]
 #![cfg_attr(not(bootstrap), feature(concat_bytes))]
 #![feature(concat_idents)]
-#![feature(const_cstr_unchecked)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]
