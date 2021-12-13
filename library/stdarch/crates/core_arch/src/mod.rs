@@ -50,8 +50,9 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "aarch64", doc))]
     #[doc(cfg(target_arch = "aarch64"))]
-    #[unstable(feature = "stdsimd", issue = "27731")]
+    #[stable(feature = "neon_intrinsics", since = "1.59.0")]
     pub mod aarch64 {
+        #[stable(feature = "neon_intrinsics", since = "1.59.0")]
         pub use crate::core_arch::aarch64::*;
     }
 

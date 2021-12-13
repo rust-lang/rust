@@ -1064,9 +1064,9 @@ fn gen_aarch64(
     };
     let current_target = match target {
         Default => "neon",
-        ArmV7 => "v7",
-        Vfp4 => "vfp4",
-        FPArmV8 => "fp-armv8,v8",
+        ArmV7 => "neon",
+        Vfp4 => "neon",
+        FPArmV8 => "neon",
         AES => "neon,aes",
         FCMA => "neon,fcma",
         Dotprod => "neon,dotprod",
@@ -1367,12 +1367,18 @@ fn gen_aarch64(
             }
         }
     };
+    let stable = match target {
+        Default | ArmV7 | Vfp4 | FPArmV8 | AES => {
+            String::from("\n#[stable(feature = \"neon_intrinsics\", since = \"1.59.0\")]")
+        }
+        _ => String::new(),
+    };
     let function = format!(
         r#"
 {}
 #[inline]
 #[target_feature(enable = "{}")]
-#[cfg_attr(test, assert_instr({}{}))]{}
+#[cfg_attr(test, assert_instr({}{}))]{}{}
 {}{{
     {}
 }}
@@ -1382,6 +1388,7 @@ fn gen_aarch64(
         current_aarch64,
         const_assert,
         const_legacy,
+        stable,
         fn_decl,
         call_params
     );
@@ -2327,20 +2334,26 @@ fn gen_arm(
                 fn_decl, multi_calls, ext_c_aarch64, aarch64_params
             )
         };
+        let stable_aarch64 = match target {
+            Default | ArmV7 | Vfp4 | FPArmV8 | AES => {
+                String::from("\n#[stable(feature = \"neon_intrinsics\", since = \"1.59.0\")]")
+            }
+            _ => String::new(),
+        };
         format!(
             r#"
 {}
 #[inline]
 #[cfg(target_arch = "arm")]
 #[target_feature(enable = "neon,{}")]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr({}{}))]{}
+#[cfg_attr(test, assert_instr({}{}))]{}
 {}
 
 {}
 #[inline]
 #[cfg(target_arch = "aarch64")]
 #[target_feature(enable = "{}")]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({}{}))]{}
+#[cfg_attr(test, assert_instr({}{}))]{}{}
 {}
 "#,
             current_comment,
@@ -2354,6 +2367,7 @@ fn gen_arm(
             expand_intrinsic(&current_aarch64, in_t[1]),
             const_assert,
             const_legacy,
+            stable_aarch64,
             call_aarch64,
         )
     } else {
@@ -2389,6 +2403,10 @@ fn gen_arm(
                 String::new()
             }
         };
+        let stable_aarch64 = match target {
+            Default | ArmV7 | Vfp4 | FPArmV8 | AES => String::from("\n#[cfg_attr(target_arch = \"aarch64\", stable(feature = \"neon_intrinsics\", since = \"1.59.0\"))]"),
+            _ => String::new(),
+        };
         format!(
             r#"
 {}
@@ -2396,7 +2414,7 @@ fn gen_arm(
 #[target_feature(enable = "{}")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "{}"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr({}{}))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({}{}))]{}
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({}{}))]{}{}
 {}
 "#,
             current_comment,
@@ -2407,6 +2425,7 @@ fn gen_arm(
             expand_intrinsic(&current_aarch64, in_t[1]),
             const_assert,
             const_legacy,
+            stable_aarch64,
             call,
         )
     };
