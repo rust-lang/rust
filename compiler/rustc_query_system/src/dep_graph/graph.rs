@@ -158,7 +158,7 @@ impl<K: DepKind> DepGraph<K> {
 
     pub fn assert_ignored(&self) {
         if let Some(..) = self.data {
-            K::read_deps(|task_deps| {
+            K::uninlined_read_deps(|task_deps| {
                 assert!(task_deps.is_none(), "expected no task dependency tracking");
             })
         }
@@ -355,10 +355,10 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
-    #[inline]
-    pub fn read_index(&self, dep_node_index: DepNodeIndex) {
+    #[inline(always)]
+    pub fn inlined_read_index(&self, dep_node_index: DepNodeIndex) {
         if let Some(ref data) = self.data {
-            K::read_deps(|task_deps| {
+            K::inlined_read_deps(|task_deps| {
                 if let Some(task_deps) = task_deps {
                     let mut task_deps = task_deps.lock();
                     let task_deps = &mut *task_deps;
@@ -398,6 +398,11 @@ impl<K: DepKind> DepGraph<K> {
                 }
             })
         }
+    }
+
+    #[inline(never)]
+    pub fn uninlined_read_index(&self, dep_node_index: DepNodeIndex) {
+        self.inlined_read_index(dep_node_index);
     }
 
     #[inline]

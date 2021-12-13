@@ -94,8 +94,15 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder>
     where
         OP: FnOnce() -> R;
 
-    /// Access dependencies from current implicit context.
-    fn read_deps<OP>(op: OP)
+    /// Access dependencies from current implicit context (hot call sites).
+    /// Impls should be marked with `#[inline(always)]`.
+    fn inlined_read_deps<OP>(op: OP)
+    where
+        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>);
+
+    /// Access dependencies from current implicit context (cold call sites).
+    /// Impls should be marked with `#[inline(never)]`.
+    fn uninlined_read_deps<OP>(op: OP)
     where
         OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>);
 }

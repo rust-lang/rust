@@ -1076,7 +1076,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         let (result, dep_node) =
             self.tcx().dep_graph.with_anon_task(self.tcx(), DepKind::TraitSelect, || op(self));
-        self.tcx().dep_graph.read_index(dep_node);
+        self.tcx().dep_graph.inlined_read_index(dep_node);
         (result, dep_node)
     }
 

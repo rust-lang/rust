@@ -56,7 +56,8 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         })
     }
 
-    fn read_deps<OP>(op: OP)
+    #[inline(always)]
+    fn inlined_read_deps<OP>(op: OP)
     where
         OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps>>),
     {
@@ -64,6 +65,14 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
             let icx = if let Some(icx) = icx { icx } else { return };
             op(icx.task_deps)
         })
+    }
+
+    #[inline(never)]
+    fn uninlined_read_deps<OP>(op: OP)
+    where
+        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps>>),
+    {
+        Self::inlined_read_deps(op);
     }
 }
 

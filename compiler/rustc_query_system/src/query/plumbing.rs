@@ -369,7 +369,7 @@ where
         if unlikely!(tcx.profiler().enabled()) {
             tcx.profiler().query_cache_hit(index.into());
         }
-        tcx.dep_graph().read_index(index);
+        tcx.dep_graph().inlined_read_index(index);
         on_hit(value)
     })
 }
@@ -717,7 +717,7 @@ where
             (true, Some(dep_node))
         }
         Some((_, dep_node_index)) => {
-            dep_graph.read_index(dep_node_index);
+            dep_graph.uninlined_read_index(dep_node_index);
             tcx.dep_context().profiler().query_cache_hit(dep_node_index.into());
             (false, None)
         }
@@ -764,7 +764,7 @@ where
         &query,
     );
     if let Some(dep_node_index) = dep_node_index {
-        tcx.dep_context().dep_graph().read_index(dep_node_index)
+        tcx.dep_context().dep_graph().uninlined_read_index(dep_node_index)
     }
     Some(result)
 }

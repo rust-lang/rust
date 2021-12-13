@@ -47,7 +47,7 @@ impl<T: Clone> WithDepNode<T> {
     }
 
     pub fn get<CTX: DepContext>(&self, tcx: CTX) -> T {
-        tcx.dep_graph().read_index(self.dep_node);
+        tcx.dep_graph().uninlined_read_index(self.dep_node);
         self.cached_value.clone()
     }
 }
