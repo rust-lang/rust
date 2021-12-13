@@ -205,6 +205,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
+        _outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
         Ok(*ongoing_codegen
             .downcast::<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>)>()
