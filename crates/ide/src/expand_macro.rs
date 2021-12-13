@@ -1,9 +1,10 @@
-use std::iter;
-
 use hir::Semantics;
-use ide_db::{helpers::pick_best_token, RootDatabase};
+use ide_db::{
+    helpers::{insert_whitespace_into_node::insert_ws_into, pick_best_token},
+    RootDatabase,
+};
 use itertools::Itertools;
-use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, WalkEvent, T};
+use syntax::{ast, ted, AstNode, SyntaxKind, SyntaxNode};
 
 use crate::FilePosition;
 
@@ -49,7 +50,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             let expansions = sema.expand_derive_macro(&attr)?;
             Some(ExpandedMacro {
                 name: tt,
-                expansion: expansions.into_iter().map(insert_whitespaces).join(""),
+                expansion: expansions.into_iter().map(insert_ws_into).join(""),
             })
         } else {
             None
@@ -82,7 +83,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // FIXME:
     // macro expansion may lose all white space information
     // But we hope someday we can use ra_fmt for that
-    let expansion = insert_whitespaces(expanded?);
+    let expansion = insert_ws_into(expanded?).to_string();
     Some(ExpandedMacro { name: name.unwrap_or_else(|| "???".to_owned()), expansion })
 }
 
@@ -120,84 +121,6 @@ fn expand<T: AstNode>(
 
     replacements.into_iter().rev().for_each(|(old, new)| ted::replace(old.syntax(), new));
     Some(expanded)
-}
-
-// FIXME: It would also be cool to share logic here and in the mbe tests,
-// which are pretty unreadable at the moment.
-fn insert_whitespaces(syn: SyntaxNode) -> String {
-    use SyntaxKind::*;
-    let mut res = String::new();
-
-    let mut indent = 0;
-    let mut last: Option<SyntaxKind> = None;
-
-    for event in syn.preorder_with_tokens() {
-        let token = match event {
-            WalkEvent::Enter(NodeOrToken::Token(token)) => token,
-            WalkEvent::Leave(NodeOrToken::Node(node))
-                if matches!(node.kind(), ATTR | MATCH_ARM | STRUCT | ENUM | UNION | FN | IMPL) =>
-            {
-                res.push('\n');
-                res.extend(iter::repeat(" ").take(2 * indent));
-                continue;
-            }
-            _ => continue,
-        };
-        let is_next = |f: fn(SyntaxKind) -> bool, default| -> bool {
-            token.next_token().map(|it| f(it.kind())).unwrap_or(default)
-        };
-        let is_last =
-            |f: fn(SyntaxKind) -> bool, default| -> bool { last.map(f).unwrap_or(default) };
-
-        match token.kind() {
-            k if is_text(k) && is_next(|it| !it.is_punct(), true) => {
-                res.push_str(token.text());
-                res.push(' ');
-            }
-            L_CURLY if is_next(|it| it != R_CURLY, true) => {
-                indent += 1;
-                if is_last(is_text, false) {
-                    res.push(' ');
-                }
-                res.push_str("{\n");
-                res.extend(iter::repeat(" ").take(2 * indent));
-            }
-            R_CURLY if is_last(|it| it != L_CURLY, true) => {
-                indent = indent.saturating_sub(1);
-                res.push('\n');
-                res.extend(iter::repeat(" ").take(2 * indent));
-                res.push_str("}");
-            }
-            R_CURLY => {
-                res.push_str("}\n");
-                res.extend(iter::repeat(" ").take(2 * indent));
-            }
-            LIFETIME_IDENT if is_next(|it| it == IDENT || it == MUT_KW, true) => {
-                res.push_str(token.text());
-                res.push(' ');
-            }
-            AS_KW => {
-                res.push_str(token.text());
-                res.push(' ');
-            }
-            T![;] => {
-                res.push_str(";\n");
-                res.extend(iter::repeat(" ").take(2 * indent));
-            }
-            T![->] => res.push_str(" -> "),
-            T![=] => res.push_str(" = "),
-            T![=>] => res.push_str(" => "),
-            _ => res.push_str(token.text()),
-        }
-
-        last = Some(token.kind());
-    }
-
-    return res;
-
-    fn is_text(k: SyntaxKind) -> bool {
-        k.is_keyword() || k.is_literal() || k == IDENT
-    }
 }
 
 #[cfg(test)]

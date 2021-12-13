@@ -79,7 +79,7 @@ fn complete_methods(
 ) {
     if let Some(krate) = ctx.krate {
         let mut seen_methods = FxHashSet::default();
-        let traits_in_scope = ctx.scope.traits_in_scope();
+        let traits_in_scope = ctx.scope.visible_traits();
         receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
             if func.self_param(ctx.db).is_some() && seen_methods.insert(func.name(ctx.db)) {
                 f(func);

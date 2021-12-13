@@ -1164,8 +1164,7 @@ impl<'a> SemanticsScope<'a> {
     }
 
     /// Note: `FxHashSet<TraitId>` should be treated as an opaque type, passed into `Type
-    // FIXME: rename to visible_traits to not repeat scope?
-    pub fn traits_in_scope(&self) -> FxHashSet<TraitId> {
+    pub fn visible_traits(&self) -> FxHashSet<TraitId> {
         let resolver = &self.resolver;
         resolver.traits_in_scope(self.db.upcast())
     }

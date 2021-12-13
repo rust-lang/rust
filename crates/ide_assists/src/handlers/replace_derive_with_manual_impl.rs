@@ -1,4 +1,5 @@
 use hir::ModuleDef;
+use ide_db::helpers::insert_whitespace_into_node::insert_ws_into;
 use ide_db::helpers::{
     get_path_at_cursor_in_tt, import_assets::NameToImport, mod_path_to_ast,
     parse_tt_as_comma_sep_paths,
@@ -170,7 +171,7 @@ fn impl_def_from_trait(
 ) -> Option<(ast::Impl, ast::AssocItem)> {
     let trait_ = trait_?;
     let target_scope = sema.scope(annotated_name.syntax());
-    let trait_items = filter_assoc_items(sema.db, &trait_.items(sema.db), DefaultMethods::No);
+    let trait_items = filter_assoc_items(sema, &trait_.items(sema.db), DefaultMethods::No);
     if trait_items.is_empty() {
         return None;
     }
@@ -193,6 +194,17 @@ fn impl_def_from_trait(
         node
     };
 
+    let trait_items = trait_items
+        .into_iter()
+        .map(|it| {
+            if sema.hir_file_for(it.syntax()).is_macro() {
+                if let Some(it) = ast::AssocItem::cast(insert_ws_into(it.syntax().clone())) {
+                    return it;
+                }
+            }
+            it.clone_for_update()
+        })
+        .collect();
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
 

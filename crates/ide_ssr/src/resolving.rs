@@ -222,7 +222,7 @@ impl<'db> ResolutionScope<'db> {
             adt.ty(self.scope.db).iterate_path_candidates(
                 self.scope.db,
                 self.scope.module()?.krate(),
-                &self.scope.traits_in_scope(),
+                &self.scope.visible_traits(),
                 None,
                 |_ty, assoc_item| {
                     let item_name = assoc_item.name(self.scope.db)?;

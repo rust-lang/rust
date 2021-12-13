@@ -92,7 +92,7 @@ fn get_impl_method(
     let scope = ctx.sema.scope(impl_.syntax());
     let krate = impl_def.module(db).krate();
     let ty = impl_def.self_ty(db);
-    let traits_in_scope = scope.traits_in_scope();
+    let traits_in_scope = scope.visible_traits();
     ty.iterate_method_candidates(db, krate, &traits_in_scope, Some(fn_name), |_, func| Some(func))
 }
 
