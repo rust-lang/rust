@@ -669,7 +669,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<i32> = [1].into_iter().collect();
+    /// let mut buf: VecDeque<i32> = [1].into();
     /// buf.reserve_exact(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
@@ -692,7 +692,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<i32> = [1].into_iter().collect();
+    /// let mut buf: VecDeque<i32> = [1].into();
     /// buf.reserve(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
@@ -1153,7 +1153,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let v: VecDeque<_> = [1, 2, 3].into_iter().collect();
+    /// let v: VecDeque<_> = [1, 2, 3].into();
     /// let range = v.range(2..).copied().collect::<VecDeque<_>>();
     /// assert_eq!(range, [3]);
     ///
@@ -1188,17 +1188,17 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut v: VecDeque<_> = [1, 2, 3].into_iter().collect();
+    /// let mut v: VecDeque<_> = [1, 2, 3].into();
     /// for v in v.range_mut(2..) {
     ///   *v *= 2;
     /// }
-    /// assert_eq!(v, vec![1, 2, 6]);
+    /// assert_eq!(v, [1, 2, 6]);
     ///
     /// // A full range covers all contents
     /// for v in v.range_mut(..) {
     ///   *v *= 2;
     /// }
-    /// assert_eq!(v, vec![2, 4, 12]);
+    /// assert_eq!(v, [2, 4, 12]);
     /// ```
     #[inline]
     #[stable(feature = "deque_range", since = "1.51.0")]
@@ -1235,7 +1235,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut v: VecDeque<_> = [1, 2, 3].into_iter().collect();
+    /// let mut v: VecDeque<_> = [1, 2, 3].into();
     /// let drained = v.drain(2..).collect::<VecDeque<_>>();
     /// assert_eq!(drained, [3]);
     /// assert_eq!(v, [1, 2]);
@@ -2025,7 +2025,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = [1, 2, 3].into_iter().collect();
+    /// let mut buf: VecDeque<_> = [1, 2, 3].into();
     /// let buf2 = buf.split_off(1);
     /// assert_eq!(buf, [1]);
     /// assert_eq!(buf2, [2, 3]);
@@ -2091,8 +2091,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = [1, 2].into_iter().collect();
-    /// let mut buf2: VecDeque<_> = [3, 4].into_iter().collect();
+    /// let mut buf: VecDeque<_> = [1, 2].into();
+    /// let mut buf2: VecDeque<_> = [3, 4].into();
     /// buf.append(&mut buf2);
     /// assert_eq!(buf, [1, 2, 3, 4]);
     /// assert_eq!(buf2, []);
@@ -2547,7 +2547,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let deque: VecDeque<_> = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+    /// let deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     ///
     /// assert_eq!(deque.binary_search(&13),  Ok(9));
     /// assert_eq!(deque.binary_search(&4),   Err(7));
@@ -2562,7 +2562,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut deque: VecDeque<_> = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+    /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     /// let num = 42;
     /// let idx = deque.binary_search(&num).unwrap_or_else(|x| x);
     /// deque.insert(idx, num);
@@ -2605,7 +2605,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let deque: VecDeque<_> = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+    /// let deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     ///
     /// assert_eq!(deque.binary_search_by(|x| x.cmp(&13)),  Ok(9));
     /// assert_eq!(deque.binary_search_by(|x| x.cmp(&4)),   Err(7));
@@ -2658,7 +2658,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let deque: VecDeque<_> = vec![(0, 0), (2, 1), (4, 1), (5, 1),
+    /// let deque: VecDeque<_> = [(0, 0), (2, 1), (4, 1), (5, 1),
     ///          (3, 1), (1, 2), (2, 3), (4, 5), (5, 8), (3, 13),
     ///          (1, 21), (2, 34), (4, 55)].into();
     ///
@@ -2701,7 +2701,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let deque: VecDeque<_> = vec![1, 2, 3, 3, 5, 6, 7].into();
+    /// let deque: VecDeque<_> = [1, 2, 3, 3, 5, 6, 7].into();
     /// let i = deque.partition_point(|&x| x < 5);
     ///
     /// assert_eq!(i, 4);
