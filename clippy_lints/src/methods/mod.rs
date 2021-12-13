@@ -1993,7 +1993,7 @@ impl_lint_pass!(Methods => [
     EXTEND_WITH_DRAIN,
     MANUAL_SPLIT_ONCE,
     NEEDLESS_SPLITN,
-    UNNECESSARY_TO_OWNED
+    UNNECESSARY_TO_OWNED,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
