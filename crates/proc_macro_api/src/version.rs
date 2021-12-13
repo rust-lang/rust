@@ -99,7 +99,7 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 /// * [length byte] next 1 byte tells us how many bytes we should read next
 ///   for the version string's utf8 bytes
 /// * [version string bytes encoded in utf8] <- GET THIS BOI
-/// * [some more bytes that we don really care but still there] :-)
+/// * [some more bytes that we don't really care but about still there] :-)
 /// Check this issue for more about the bytes layout:
 /// <https://github.com/rust-analyzer/rust-analyzer/issues/6174>
 fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
@@ -108,14 +108,24 @@ fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
 
     let dot_rustc = read_section(&dylib_mmaped, ".rustc")?;
 
-    let header = &dot_rustc[..8];
-    const EXPECTED_HEADER: [u8; 8] = [b'r', b'u', b's', b't', 0, 0, 0, 5];
-    // check if header is valid
-    if header != EXPECTED_HEADER {
+    // check if magic is valid
+    if &dot_rustc[0..4] != b"rust" {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("only metadata version 5 is supported, section header was: {:?}", header),
+            format!("unknown metadata magic, expected `rust`, found `{:?}`", &dot_rustc[0..4]),
         ));
+    }
+    let version = u32::from_be_bytes([dot_rustc[4], dot_rustc[5], dot_rustc[6], dot_rustc[7]]);
+    // Last supported version is:
+    // https://github.com/rust-lang/rust/commit/0696e79f2740ad89309269b460579e548a5cd632
+    match version {
+        5 | 6 => {}
+        _ => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("unsupported metadata version {}", version),
+            ));
+        }
     }
 
     let snappy_portion = &dot_rustc[8..];
@@ -130,7 +140,7 @@ fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
     // to know the length
     let mut bytes_before_version = [0u8; 13];
     snappy_decoder.read_exact(&mut bytes_before_version)?;
-    let length = bytes_before_version[12]; // what? can't use -1 indexing?
+    let length = bytes_before_version[12];
 
     let mut version_string_utf8 = vec![0u8; length as usize];
     snappy_decoder.read_exact(&mut version_string_utf8)?;
