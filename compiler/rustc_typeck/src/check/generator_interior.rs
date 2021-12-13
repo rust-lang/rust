@@ -3,9 +3,8 @@
 //! is calculated in `rustc_const_eval::transform::generator` and may be a subset of the
 //! types computed here.
 
-use self::drop_ranges::{DropRangeVisitor, DropRanges, ExprUseDelegate};
+use self::drop_ranges::DropRanges;
 use super::FnCtxt;
-use crate::expr_use_visitor::ExprUseVisitor;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::pluralize;
 use rustc_hir as hir;
@@ -187,42 +186,17 @@ pub fn resolve_interior<'a, 'tcx>(
     kind: hir::GeneratorKind,
 ) {
     let body = fcx.tcx.hir().body(body_id);
-
-    let mut visitor = {
-        let mut expr_use_visitor = ExprUseDelegate::new(fcx.tcx.hir());
-
-        // Run ExprUseVisitor to find where values are consumed.
-        ExprUseVisitor::new(
-            &mut expr_use_visitor,
-            &fcx.infcx,
-            def_id.expect_local(),
-            fcx.param_env,
-            &fcx.typeck_results.borrow(),
-        )
-        .consume_body(body);
-
-        let region_scope_tree = fcx.tcx.region_scope_tree(def_id);
-        let mut drop_range_visitor = DropRangeVisitor::from_uses(
-            expr_use_visitor,
-            region_scope_tree.body_expr_count(body.id()).unwrap_or(0),
-        );
-        intravisit::walk_body(&mut drop_range_visitor, body);
-
-        let mut drop_ranges = drop_range_visitor.into_drop_ranges();
-        drop_ranges.propagate_to_fixpoint();
-
-        InteriorVisitor {
-            fcx,
-            types: FxIndexSet::default(),
-            region_scope_tree,
-            expr_count: 0,
-            kind,
-            prev_unresolved_span: None,
-            guard_bindings: <_>::default(),
-            guard_bindings_set: <_>::default(),
-            linted_values: <_>::default(),
-            drop_ranges: drop_ranges,
-        }
+    let mut visitor = InteriorVisitor {
+        fcx,
+        types: FxIndexSet::default(),
+        region_scope_tree: fcx.tcx.region_scope_tree(def_id),
+        expr_count: 0,
+        kind,
+        prev_unresolved_span: None,
+        guard_bindings: <_>::default(),
+        guard_bindings_set: <_>::default(),
+        linted_values: <_>::default(),
+        drop_ranges: drop_ranges::compute_drop_ranges(fcx, def_id, body),
     };
     intravisit::walk_body(&mut visitor, body);
 
