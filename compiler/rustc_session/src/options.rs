@@ -68,7 +68,7 @@ macro_rules! top_level_options {
         pub struct Options {
             $(
                 $( #[$attr] )*
-                pub $opt: $t
+                $opt: $t
             ),*
         }
 
