@@ -559,20 +559,28 @@ where
 fn stable_hash_reduce<HCX, I, C, F>(
     hcx: &mut HCX,
     hasher: &mut StableHasher,
-    collection: C,
+    mut collection: C,
     length: usize,
     hash_function: F,
 ) where
     C: Iterator<Item = I>,
     F: Fn(&mut StableHasher, &mut HCX, I),
 {
-    let hash = collection
-        .map(|value| {
-            let mut hasher = StableHasher::new();
-            hash_function(&mut hasher, hcx, value);
-            hasher.finish::<u128>()
-        })
-        .reduce(|accum, value| accum.wrapping_add(value));
     length.hash_stable(hcx, hasher);
-    hash.hash_stable(hcx, hasher);
+
+    match length {
+        1 => {
+            hash_function(hasher, hcx, collection.next().unwrap());
+        }
+        _ => {
+            let hash = collection
+                .map(|value| {
+                    let mut hasher = StableHasher::new();
+                    hash_function(&mut hasher, hcx, value);
+                    hasher.finish::<u128>()
+                })
+                .reduce(|accum, value| accum.wrapping_add(value));
+            hash.hash_stable(hcx, hasher);
+        }
+    }
 }
