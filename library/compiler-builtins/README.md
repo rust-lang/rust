@@ -126,7 +126,7 @@ features = ["c"]
 - [x] arm/softfloat-alias.list
 - [x] arm/subdf3vfp.S
 - [x] arm/subsf3vfp.S
-- [ ] arm/truncdfsf2vfp.S
+- [x] arm/truncdfsf2vfp.S
 - [ ] arm/udivmodsi4.S (generic version is done)
 - [ ] arm/udivsi3.S (generic version is done)
 - [ ] arm/umodsi3.S (generic version is done)

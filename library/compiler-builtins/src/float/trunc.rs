@@ -112,6 +112,7 @@ where
 }
 
 intrinsics! {
+    #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_d2f]
     pub extern "C" fn __truncdfsf2(a: f64) -> f32 {
         trunc(a)

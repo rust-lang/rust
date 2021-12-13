@@ -204,3 +204,11 @@ fn float_trunc() {
 
     trunc!(f64, f32, __truncdfsf2);
 }
+
+#[cfg(target_arch = "arm")]
+#[test]
+fn float_trunc_arm() {
+    use compiler_builtins::float::trunc::__truncdfsf2vfp;
+
+    trunc!(f64, f32, __truncdfsf2vfp);
+}

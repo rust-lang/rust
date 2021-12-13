@@ -227,7 +227,6 @@ mod c {
                 ("__negsf2", "negsf2.c"),
                 ("__powixf2", "powixf2.c"),
                 ("__truncdfhf2", "truncdfhf2.c"),
-                ("__truncdfsf2", "truncdfsf2.c"),
                 ("__truncsfhf2", "truncsfhf2.c"),
             ]);
         }
