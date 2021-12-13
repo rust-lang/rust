@@ -84,3 +84,6 @@ heap_size = 0x8000000
 name = "stdbenches"
 path = "benches/lib.rs"
 test = true
+
+[build-dependencies]
+build_helper = { path = "../../src/build_helper" }

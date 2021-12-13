@@ -2,7 +2,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use build_helper::{output, tracked_env_var_os};
+use build_helper::{maybe_static_library, output, tracked_env_var_os};
 
 fn detect_llvm_link() -> (&'static str, &'static str) {
     // Force the link mode we want, preferring static by default, but
@@ -307,4 +307,6 @@ fn main() {
     if target.contains("windows-gnu") {
         println!("cargo:rustc-link-lib=static:-bundle=pthread");
     }
+
+    maybe_static_library("RUSTC_STATIC_CLANG_RT_PATH", "clang_rt");
 }

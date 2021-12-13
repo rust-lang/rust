@@ -4995,6 +4995,7 @@ version = "0.0.0"
 dependencies = [
  "addr2line",
  "alloc",
+ "build_helper",
  "cfg-if 0.1.10",
  "compiler_builtins",
  "core",
@@ -5662,6 +5663,7 @@ dependencies = [
 name = "unwind"
 version = "0.0.0"
 dependencies = [
+ "build_helper",
  "cc",
  "cfg-if 0.1.10",
  "compiler_builtins",

@@ -1,8 +1,14 @@
 use std::env;
 
+use build_helper::maybe_static_library;
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let target = env::var("TARGET").expect("TARGET was not set");
+
+    if maybe_static_library("RUSTC_STATIC_UNWIND_PATH", "unwind") {
+        return;
+    }
 
     if target.contains("android") {
         let build = cc::Build::new();

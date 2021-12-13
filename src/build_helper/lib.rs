@@ -203,3 +203,25 @@ fn fail(s: &str) -> ! {
     println!("\n\n{}\n\n", s);
     std::process::exit(1);
 }
+
+/// if you need for some reason to statically inject some library, like clang_rt
+/// here a good place. Anyway, you should use only thin .a file on macOS.
+/// You may extract it like:
+///   lipo -thin x86_64 -output libclang_rt.a /path/to/llvm/lib/../libclang_rt.osx.a
+///
+/// It returns true, when it had injected static library.
+pub fn maybe_static_library(env_path_name: &str, library_name: &str) -> bool {
+    println!("cargo:rerun-if-env-changed={}", env_path_name);
+
+    if let Ok(path) = env::var(env_path_name) {
+        let target = env::var("TARGET").expect("TARGET was not set");
+        println!("cargo:rerun-if-env-changed=TARGET");
+
+        println!("cargo:rustc-link-search=native={}", path);
+        println!("cargo:rustc-link-search=native={}/{}", path, target);
+        println!("cargo:rustc-link-lib=static={}", library_name);
+        return true;
+    }
+
+    return false;
+}

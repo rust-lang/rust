@@ -1,5 +1,7 @@
 use std::env;
 
+use build_helper::maybe_static_library;
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let target = env::var("TARGET").expect("TARGET was not set");
@@ -47,4 +49,6 @@ fn main() {
     }
     println!("cargo:rustc-env=STD_ENV_ARCH={}", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
     println!("cargo:rustc-cfg=backtrace_in_libstd");
+
+    maybe_static_library("RUSTC_STATIC_CLANG_RT_PATH", "clang_rt");
 }
