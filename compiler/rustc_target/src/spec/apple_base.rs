@@ -79,18 +79,6 @@ pub fn macos_llvm_target(arch: &str) -> String {
     format!("{}-apple-macosx{}.{}.0", arch, major, minor)
 }
 
-pub fn macos_link_env(arch: &str) -> Vec<(String, String)> {
-    // Use the default deployment target for linking just as with the LLVM target if not
-    // specified via MACOSX_DEPLOYMENT_TARGET, otherwise the system linker would use its
-    // default which varies with Xcode version.
-    if env::var("MACOSX_DEPLOYMENT_TARGET").is_err() {
-        let default = macos_default_deployment_target(arch);
-        vec![("MACOSX_DEPLOYMENT_TARGET".to_string(), format!("{}.{}", default.0, default.1))]
-    } else {
-        vec![]
-    }
-}
-
 pub fn macos_link_env_remove() -> Vec<String> {
     let mut env_remove = Vec::with_capacity(2);
     // Remove the `SDKROOT` environment variable if it's clearly set for the wrong platform, which

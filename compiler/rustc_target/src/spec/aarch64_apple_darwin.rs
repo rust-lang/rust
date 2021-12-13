@@ -9,7 +9,6 @@ pub fn target() -> Target {
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD;
 
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-arch".to_string(), "arm64".to_string()]);
-    base.link_env.extend(super::apple_base::macos_link_env("arm64"));
     base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
 
     // Clang automatically chooses a more specific target based on
