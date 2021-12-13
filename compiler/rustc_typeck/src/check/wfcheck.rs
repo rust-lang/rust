@@ -487,9 +487,12 @@ fn check_gat_where_clauses(
             );
 
             let bound = if clauses.len() > 1 { "these bounds are" } else { "this bound is" };
-            err.note(&format!("{} required to ensure that impls have maximum flexibility", bound));
+            err.note(&format!(
+                "{} currently required to ensure that impls have maximum flexibility",
+                bound
+            ));
             err.note(
-                "see issue #87479 \
+                "we are soliciting feedback, see issue #87479 \
                  <https://github.com/rust-lang/rust/issues/87479> \
                  for more information",
             );
