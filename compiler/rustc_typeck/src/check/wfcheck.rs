@@ -14,9 +14,8 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::{self, RegionckMode, SubregionOrigin};
-use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
-use rustc_infer::traits::TraitEngine;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -27,9 +26,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::{
-    self, ObligationCause, ObligationCauseCode, TraitEngineExt, WellFormedLoc,
-};
+use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, WellFormedLoc};
 
 use std::convert::TryInto;
 use std::iter;
@@ -435,99 +432,70 @@ fn check_gat_where_clauses(
     if !clauses.is_empty() {
         let param_env = tcx.param_env(trait_item.def_id);
 
-        // This shouldn't really matter, but we need it
-        let cause = traits::ObligationCause::new(
-            trait_item.span,
-            trait_item.hir_id(),
-            ObligationCauseCode::MiscObligation,
-        );
-        // Create an `InferCtxt` to try to prove the clauses we require
-        tcx.infer_ctxt().enter(|infcx| {
-            let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(tcx);
-
-            // Register all the clauses as obligations
-            clauses
-                .clone()
-                .into_iter()
-                .map(|predicate| {
-                    traits::Obligation::new(
-                        cause.clone(),
+        let mut clauses: Vec<_> = clauses
+            .into_iter()
+            .filter(|clause| match clause.kind().skip_binder() {
+                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
+                    !region_known_to_outlive(
+                        tcx,
+                        trait_item.hir_id(),
                         param_env,
-                        predicate,
+                        &FxHashSet::default(),
+                        a,
+                        b,
                     )
-                })
-                .for_each(|obligation| {
-                    fulfillment_cx.register_predicate_obligation(&infcx, obligation)
-                });
+                }
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
+                    !ty_known_to_outlive(
+                        tcx,
+                        trait_item.hir_id(),
+                        param_env,
+                        &FxHashSet::default(),
+                        a,
+                        b,
+                    )
+                }
+                _ => bug!("Unexpected PredicateKind"),
+            })
+            .map(|clause| format!("{}", clause))
+            .collect();
 
-            // Convert these obligations into constraints by selecting
-            let errors = fulfillment_cx.select_all_or_error(&infcx);
-            if !errors.is_empty() {
-                bug!("should have only registered region obligations, which get registerd as constraints");
-            }
+        // We sort so that order is predictable
+        clauses.sort();
 
-            // FIXME(jackh726): some of this code is shared with `regionctxt`, but in a different
-            // flow; we could probably better extract the shared logic
+        if !clauses.is_empty() {
+            let plural = if clauses.len() > 1 { "s" } else { "" };
+            let mut err = tcx.sess.struct_span_err(
+                trait_item.span,
+                &format!("missing required bound{} on `{}`", plural, trait_item.ident),
+            );
 
-            // Process the region obligations
-            let body_id_map = infcx
-                .inner
-                .borrow()
-                .region_obligations()
-                .iter()
-                .map(|&(id, _)| (id, vec![]))
-                .collect();
+            let suggestion = format!(
+                "{} {}",
+                if !trait_item.generics.where_clause.predicates.is_empty() {
+                    ","
+                } else {
+                    " where"
+                },
+                clauses.join(", "),
+            );
+            err.span_suggestion(
+                trait_item.generics.where_clause.tail_span_for_suggestion(),
+                &format!("add the required where clause{}", plural),
+                suggestion,
+                Applicability::MachineApplicable,
+            );
 
-            infcx.process_registered_region_obligations(&body_id_map, None, param_env);
+            let bound = if clauses.len() > 1 { "these bounds are" } else { "this bound is" };
+            err.note(&format!("{} required to ensure that impls have maximum flexibility", bound));
+            err.note(
+                "see issue #87479 \
+                 <https://github.com/rust-lang/rust/issues/87479> \
+                 for more information",
+            );
 
-            // Resolve the region constraints to find any constraints that we're provable
-            let outlives_env = OutlivesEnvironment::new(param_env);
-            let errors = infcx.resolve_regions(trait_item.def_id.to_def_id(), &outlives_env, RegionckMode::default());
-
-            // Emit an error if there are non-provable constriants
-            if !errors.is_empty() {
-                let mut clauses: Vec<_> = errors.into_iter().map(|error| match error {
-                    RegionResolutionError::ConcreteFailure(_, sup, sub) => format!("{}: {}", sub, sup),
-                    RegionResolutionError::GenericBoundFailure(_, sub, sup) => format!("{}: {}", sub, sup),
-                    _ => bug!("Unexpected region resolution error when resolving outlives lint"),
-                }).collect();
-                clauses.sort();
-
-                let plural = if clauses.len() > 1 { "s" } else { "" };
-                let mut err = tcx.sess.struct_span_err(
-                    trait_item.span,
-                    &format!("missing required bound{} on `{}`", plural, trait_item.ident),
-                );
-
-                let suggestion = format!(
-                    "{} {}",
-                    if !trait_item.generics.where_clause.predicates.is_empty() {
-                        ","
-                    } else {
-                        " where"
-                    },
-                    clauses.join(", "),
-                );
-                err.span_suggestion(
-                    trait_item.generics.where_clause.tail_span_for_suggestion(),
-                    &format!("add the required where clause{}", plural),
-                    suggestion,
-                    Applicability::MachineApplicable,
-                );
-
-                let bound = if clauses.len() > 1 { "these bounds are" } else { "this bound is" };
-                err.note(
-                    &format!("{} required to ensure that impls have maximum flexibility", bound)
-                );
-                err.note(
-                    "see issue #87479 \
-                     <https://github.com/rust-lang/rust/issues/87479> \
-                     for more information",
-                );
-
-                err.emit()
-            }
-        });
+            err.emit()
+        }
     }
 }
 
