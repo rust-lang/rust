@@ -113,7 +113,7 @@ pub enum DefKind {
     Field,
     /// Lifetime parameter: the `'a` in `struct Foo<'a> { ... }`
     LifetimeParam,
-    /// A use of [`global_asm!`].
+    /// A use of `global_asm!`.
     GlobalAsm,
     Impl,
     Closure,
