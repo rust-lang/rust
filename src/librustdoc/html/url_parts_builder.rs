@@ -1,3 +1,5 @@
+use rustc_span::Symbol;
+
 /// A builder that allows efficiently and easily constructing the part of a URL
 /// after the domain: `nightly/core/str/struct.Bytes.html`.
 ///
@@ -112,6 +114,23 @@ impl<'a> Extend<&'a str> for UrlPartsBuilder {
         let iter = iter.into_iter();
         self.buf.reserve(AVG_PART_LENGTH * iter.size_hint().0);
         iter.for_each(|part| self.push(part));
+    }
+}
+
+impl FromIterator<Symbol> for UrlPartsBuilder {
+    fn from_iter<T: IntoIterator<Item = Symbol>>(iter: T) -> Self {
+        let iter = iter.into_iter();
+        let mut builder = Self::with_capacity_bytes(AVG_PART_LENGTH * iter.size_hint().0);
+        iter.for_each(|part| builder.push(&part.as_str()));
+        builder
+    }
+}
+
+impl Extend<Symbol> for UrlPartsBuilder {
+    fn extend<T: IntoIterator<Item = Symbol>>(&mut self, iter: T) {
+        let iter = iter.into_iter();
+        self.buf.reserve(AVG_PART_LENGTH * iter.size_hint().0);
+        iter.for_each(|part| self.push(&part.as_str()));
     }
 }
 

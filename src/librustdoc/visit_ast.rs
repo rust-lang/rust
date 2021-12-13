@@ -42,13 +42,9 @@ impl Module<'hir> {
 }
 
 // FIXME: Should this be replaced with tcx.def_path_str?
-fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
-    let crate_name = tcx.crate_name(did.krate).to_string();
-    let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| {
-        // extern blocks have an empty name
-        let s = elem.data.to_string();
-        if !s.is_empty() { Some(s) } else { None }
-    });
+fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
+    let crate_name = tcx.crate_name(did.krate);
+    let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| elem.data.get_opt_name());
     std::iter::once(crate_name).chain(relative).collect()
 }
 
@@ -71,7 +67,7 @@ crate struct RustdocVisitor<'a, 'tcx> {
     inlining: bool,
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
-    exact_paths: FxHashMap<DefId, Vec<String>>,
+    exact_paths: FxHashMap<DefId, Vec<Symbol>>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {

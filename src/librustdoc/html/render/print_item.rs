@@ -22,6 +22,7 @@ use super::{
     ImplRenderingParameters,
 };
 use crate::clean;
+use crate::clean::utils::join_path_segments_with_sep;
 use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
@@ -874,7 +875,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             cx.current.join("/")
         } else {
             let (ref path, _) = cache.external_paths[&it.def_id.expect_def_id()];
-            path[..path.len() - 1].join("/")
+            join_path_segments_with_sep(&path[..path.len() - 1], "/")
         },
         ty = it.type_(),
         name = *it.name.as_ref().unwrap()

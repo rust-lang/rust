@@ -569,7 +569,7 @@ pub(super) fn write_shared(
 
         let mut mydst = dst.clone();
         for part in &remote_path[..remote_path.len() - 1] {
-            mydst.push(part);
+            mydst.push(&*part.as_str());
         }
         cx.shared.ensure_dir(&mydst)?;
         mydst.push(&format!("{}.{}.js", remote_item_type, remote_path[remote_path.len() - 1]));

@@ -63,6 +63,7 @@ use rustc_span::{
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
+use crate::clean::utils::join_path_segments;
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -2524,7 +2525,7 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
         let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
 
         if let Some(path) = fqp {
-            out.push(path.join("::"));
+            out.push(join_path_segments(&path));
         }
     };
 

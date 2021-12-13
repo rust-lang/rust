@@ -162,13 +162,11 @@ crate fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) {
-    let crate_name = cx.tcx.crate_name(did.krate).to_string();
+    let crate_name = cx.tcx.crate_name(did.krate);
 
-    let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
-        // extern blocks have an empty name
-        let s = elem.data.to_string();
-        if !s.is_empty() { Some(s) } else { None }
-    });
+    // FIXME: use def_id_to_path instead
+    let relative =
+        cx.tcx.def_path(did).data.into_iter().filter_map(|elem| elem.data.get_opt_name());
     let fqn = if let ItemType::Macro = kind {
         // Check to see if it is a macro 2.0 or built-in macro
         if matches!(

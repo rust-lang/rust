@@ -19,8 +19,10 @@ use rustc_middle::ty;
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::CRATE_DEF_INDEX;
+use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
+use crate::clean::utils::join_path_segments;
 use crate::clean::{self, utils::find_nearest_parent_module, ExternalCrate, ItemId, PrimitiveType};
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
@@ -505,7 +507,7 @@ crate fn href_with_root_path(
     did: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
-) -> Result<(String, ItemType, Vec<String>), HrefError> {
+) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     let tcx = cx.tcx();
     let def_kind = tcx.def_kind(did);
     let did = match def_kind {
@@ -517,7 +519,7 @@ crate fn href_with_root_path(
     };
     let cache = cx.cache();
     let relative_to = &cx.current;
-    fn to_module_fqp(shortty: ItemType, fqp: &[String]) -> &[String] {
+    fn to_module_fqp(shortty: ItemType, fqp: &[Symbol]) -> &[Symbol] {
         if shortty == ItemType::Module { fqp } else { &fqp[..fqp.len() - 1] }
     }
 
@@ -547,7 +549,7 @@ crate fn href_with_root_path(
                             is_remote = true;
                             let s = s.trim_end_matches('/');
                             let mut builder = UrlPartsBuilder::singleton(s);
-                            builder.extend(module_fqp.iter().map(String::as_str));
+                            builder.extend(module_fqp.iter().copied());
                             builder
                         }
                         ExternalLocation::Local => href_relative_parts(module_fqp, relative_to),
@@ -566,7 +568,7 @@ crate fn href_with_root_path(
         }
     }
     debug!(?url_parts);
-    let last = &fqp.last().unwrap()[..];
+    let last = &*fqp.last().unwrap().as_str();
     match shortty {
         ItemType::Module => {
             url_parts.push("index.html");
@@ -579,25 +581,28 @@ crate fn href_with_root_path(
     Ok((url_parts.finish(), shortty, fqp.to_vec()))
 }
 
-crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<String>), HrefError> {
+crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     href_with_root_path(did, cx, None)
 }
 
 /// Both paths should only be modules.
 /// This is because modules get their own directories; that is, `std::vec` and `std::vec::Vec` will
 /// both need `../iter/trait.Iterator.html` to get at the iterator trait.
-crate fn href_relative_parts(fqp: &[String], relative_to_fqp: &[String]) -> UrlPartsBuilder {
+crate fn href_relative_parts(fqp: &[Symbol], relative_to_fqp: &[String]) -> UrlPartsBuilder {
     for (i, (f, r)) in fqp.iter().zip(relative_to_fqp.iter()).enumerate() {
         // e.g. linking to std::iter from std::vec (`dissimilar_part_count` will be 1)
-        if f != r {
+        if &*f.as_str() != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
-            let fqp_module = fqp[i..fqp.len()].iter().map(String::as_str);
-            return iter::repeat("..").take(dissimilar_part_count).chain(fqp_module).collect();
+            let fqp_module = &fqp[i..fqp.len()];
+            let mut builder: UrlPartsBuilder =
+                iter::repeat("..").take(dissimilar_part_count).collect();
+            builder.extend(fqp_module.iter().copied());
+            return builder;
         }
     }
     // e.g. linking to std::sync::atomic from std::sync
     if relative_to_fqp.len() < fqp.len() {
-        fqp[relative_to_fqp.len()..fqp.len()].iter().map(String::as_str).collect()
+        fqp[relative_to_fqp.len()..fqp.len()].iter().copied().collect()
     // e.g. linking to std::sync from std::sync::atomic
     } else if fqp.len() < relative_to_fqp.len() {
         let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
@@ -631,8 +636,8 @@ fn resolved_path<'cx>(
             if let Ok((_, _, fqp)) = href(did, cx) {
                 format!(
                     "{}::{}",
-                    fqp[..fqp.len() - 1].join("::"),
-                    anchor(did, fqp.last().unwrap(), cx)
+                    join_path_segments(&fqp[..fqp.len() - 1]),
+                    anchor(did, &fqp.last().unwrap().as_str(), cx)
                 )
             } else {
                 last.name.to_string()
@@ -743,7 +748,7 @@ crate fn anchor<'a, 'cx: 'a>(
                 short_ty,
                 url,
                 short_ty,
-                fqp.join("::"),
+                join_path_segments(&fqp),
                 text
             )
         } else {
@@ -961,7 +966,7 @@ fn fmt_type<'cx>(
                         url = url,
                         shortty = ItemType::AssocType,
                         name = name,
-                        path = path.join("::")
+                        path = join_path_segments(path),
                     )?;
                 }
                 _ => write!(f, "{}", name)?,

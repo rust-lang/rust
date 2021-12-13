@@ -8,6 +8,7 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
 use crate::clean::types::{FnDecl, FnRetTy, GenericBound, Generics, Type, WherePredicate};
+use crate::clean::utils::join_path_segments;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
@@ -38,7 +39,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap().to_string(),
-                path: fqp[..fqp.len() - 1].join("::"),
+                path: join_path_segments(&fqp[..fqp.len() - 1]),
                 desc,
                 parent: Some(did),
                 parent_idx: None,
@@ -90,7 +91,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                     lastpathid += 1;
 
                     if let Some(&(ref fqp, short)) = paths.get(&defid) {
-                        crate_paths.push((short, fqp.last().unwrap().clone()));
+                        crate_paths.push((short, fqp.last().unwrap().to_string()));
                         Some(pathid)
                     } else {
                         None

@@ -536,3 +536,20 @@ pub(super) fn display_macro_source(
         }
     }
 }
+
+crate fn join_path_segments(segments: &[Symbol]) -> String {
+    join_path_segments_with_sep(segments, "::")
+}
+
+crate fn join_path_segments_with_sep(segments: &[Symbol], sep: &str) -> String {
+    let mut out = String::new();
+    // This can't use an iterator intersperse because then it would be borrowing from
+    // temporary SymbolStrs due to the lifetimes on SymbolStr's Deref impl.
+    for (i, s) in segments.iter().enumerate() {
+        if i > 0 {
+            out.push_str(sep);
+        }
+        out.push_str(&s.as_str())
+    }
+    out
+}
