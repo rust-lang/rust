@@ -2541,8 +2541,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 GenericParamDefKind::Type { object_lifetime_default, .. } => {
                                     Some(object_lifetime_default)
                                 }
-                                GenericParamDefKind::Lifetime
-                                | GenericParamDefKind::Const { .. } => None,
+                                GenericParamDefKind::Const { .. } => Some(Set1::Empty),
+                                GenericParamDefKind::Lifetime => None,
                             })
                             .collect()
                     })
@@ -2569,12 +2569,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
                 GenericArg::Const(ct) => {
                     self.visit_anon_const(&ct.value);
+                    i += 1;
                 }
                 GenericArg::Infer(inf) => {
                     self.visit_id(inf.hir_id);
-                    if inf.kind.is_type() {
-                        i += 1;
-                    }
+                    i += 1;
                 }
             }
         }

@@ -53,7 +53,7 @@ use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefPathHash, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
-use rustc_hir::{ConstArg, GenericArg, InferKind, ParamName};
+use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::BARE_TRAIT_OBJECTS;
@@ -1114,7 +1114,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         return GenericArg::Infer(hir::InferArg {
                             hir_id: self.lower_node_id(ty.id),
                             span: self.lower_span(ty.span),
-                            kind: InferKind::Type,
                         });
                     }
                     // We parse const arguments as path types as we cannot distinguish them during
