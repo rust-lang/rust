@@ -24,16 +24,9 @@ extern "C" {}
 // have an additional comment: the function name is the ARM name for the intrinsic and the comment
 // in the non-ARM name for the intrinsic.
 mod intrinsics {
-    // trunccdfsf2
+    // truncdfsf2
     pub fn aeabi_d2f(x: f64) -> f32 {
-        // This is only implemented in C currently, so only test it there.
-        #[cfg(feature = "c")]
-        return x as f32;
-        #[cfg(not(feature = "c"))]
-        {
-            drop(x);
-            0.0
-        }
+        x as f32
     }
 
     // fixdfsi
