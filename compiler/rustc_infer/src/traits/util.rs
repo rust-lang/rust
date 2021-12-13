@@ -20,7 +20,7 @@ pub struct PredicateSet<'tcx> {
     set: FxHashSet<ty::Predicate<'tcx>>,
 }
 
-impl PredicateSet<'tcx> {
+impl<'tcx> PredicateSet<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self { tcx, set: Default::default() }
     }
@@ -40,7 +40,7 @@ impl PredicateSet<'tcx> {
     }
 }
 
-impl Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
+impl<'tcx> Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
     fn extend<I: IntoIterator<Item = ty::Predicate<'tcx>>>(&mut self, iter: I) {
         for pred in iter {
             self.insert(pred);
@@ -131,7 +131,7 @@ fn predicate_obligation<'tcx>(
     Obligation { cause, param_env, recursion_depth: 0, predicate }
 }
 
-impl Elaborator<'tcx> {
+impl<'tcx> Elaborator<'tcx> {
     pub fn filter_to_traits(self) -> FilterToTraits<Self> {
         FilterToTraits::new(self)
     }
@@ -267,7 +267,7 @@ impl Elaborator<'tcx> {
     }
 }
 
-impl Iterator for Elaborator<'tcx> {
+impl<'tcx> Iterator for Elaborator<'tcx> {
     type Item = PredicateObligation<'tcx>;
 
     fn size_hint(&self) -> (usize, Option<usize>) {

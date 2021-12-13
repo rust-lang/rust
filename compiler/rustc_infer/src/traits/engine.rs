@@ -63,7 +63,7 @@ pub trait TraitEngineExt<'tcx> {
     );
 }
 
-impl<T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
+impl<'tcx, T: ?Sized + TraitEngine<'tcx>> TraitEngineExt<'tcx> for T {
     fn register_predicate_obligations(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,

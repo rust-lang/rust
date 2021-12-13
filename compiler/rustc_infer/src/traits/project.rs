@@ -80,7 +80,7 @@ pub struct ProjectionCacheKey<'tcx> {
     ty: ty::ProjectionTy<'tcx>,
 }
 
-impl ProjectionCacheKey<'tcx> {
+impl<'tcx> ProjectionCacheKey<'tcx> {
     pub fn new(ty: ty::ProjectionTy<'tcx>) -> Self {
         Self { ty }
     }

@@ -55,7 +55,7 @@ pub struct Obligation<'tcx, T> {
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
-impl PredicateObligation<'tcx> {
+impl<'tcx> PredicateObligation<'tcx> {
     /// Flips the polarity of the inner predicate.
     ///
     /// Given `T: Trait` predicate it returns `T: !Trait` and given `T: !Trait` returns `T: Trait`.
@@ -69,7 +69,7 @@ impl PredicateObligation<'tcx> {
     }
 }
 
-impl TraitObligation<'tcx> {
+impl TraitObligation<'_> {
     /// Returns `true` if the trait predicate is considered `const` in its ParamEnv.
     pub fn is_const(&self) -> bool {
         match (self.predicate.skip_binder().constness, self.param_env.constness()) {

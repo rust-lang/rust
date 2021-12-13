@@ -554,7 +554,7 @@ pub trait TyCtxtInferExt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx>;
 }
 
-impl TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
+impl<'tcx> TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
     fn infer_ctxt(self) -> InferCtxtBuilder<'tcx> {
         InferCtxtBuilder {
             tcx: self,
@@ -1718,7 +1718,7 @@ pub enum TyOrConstInferVar<'tcx> {
     Const(ConstVid<'tcx>),
 }
 
-impl TyOrConstInferVar<'tcx> {
+impl<'tcx> TyOrConstInferVar<'tcx> {
     /// Tries to extract an inference variable from a type or a constant, returns `None`
     /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
