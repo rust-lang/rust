@@ -287,7 +287,7 @@ fn check_gat_where_clauses(
     let generics: &ty::Generics = tcx.generics_of(trait_item.def_id);
     // If the current associated type doesn't have any (own) params, it's not a GAT
     // FIXME(jackh726): we can also warn in the more general case
-    if generics.params.len() == 0 {
+    if generics.params.len() == 0 && !tcx.features().generic_associated_types {
         return;
     }
     let associated_items: &ty::AssocItems<'_> = tcx.associated_items(encl_trait_def_id);
@@ -465,10 +465,18 @@ fn check_gat_where_clauses(
 
         if !clauses.is_empty() {
             let plural = if clauses.len() > 1 { "s" } else { "" };
-            let mut err = tcx.sess.struct_span_err(
-                trait_item.span,
-                &format!("missing required bound{} on `{}`", plural, trait_item.ident),
-            );
+            let severity = if generics.params.len() == 0 { "recommended" } else { "required" };
+            let mut err = if generics.params.len() == 0 {
+                tcx.sess.struct_span_warn(
+                    trait_item.span,
+                    &format!("missing {} bound{} on `{}`", severity, plural, trait_item.ident),
+                )
+            } else {
+                tcx.sess.struct_span_err(
+                    trait_item.span,
+                    &format!("missing {} bound{} on `{}`", severity, plural, trait_item.ident),
+                )
+            };
 
             let suggestion = format!(
                 "{} {}",
@@ -481,15 +489,15 @@ fn check_gat_where_clauses(
             );
             err.span_suggestion(
                 trait_item.generics.where_clause.tail_span_for_suggestion(),
-                &format!("add the required where clause{}", plural),
+                &format!("add the {} where clause{}", severity, plural),
                 suggestion,
                 Applicability::MachineApplicable,
             );
 
             let bound = if clauses.len() > 1 { "these bounds are" } else { "this bound is" };
             err.note(&format!(
-                "{} currently required to ensure that impls have maximum flexibility",
-                bound
+                "{} currently {} to ensure that impls have maximum flexibility",
+                bound, severity,
             ));
             err.note(
                 "we are soliciting feedback, see issue #87479 \

@@ -75,8 +75,30 @@ LL |     type Out<'x, D>;
    = note: this bound is currently required to ensure that impls have maximum flexibility
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
+warning: missing recommended bound on `Bar`
+  --> $DIR/self-outlives-lint.rs:107:5
+   |
+LL |     type Bar;
+   |     ^^^^^^^^-
+   |             |
+   |             help: add the recommended where clause: `where Self: 'a`
+   |
+   = note: this bound is currently recommended to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
+
+warning: missing recommended bound on `Output`
+  --> $DIR/self-outlives-lint.rs:115:5
+   |
+LL |     type Output;
+   |     ^^^^^^^^^^^-
+   |                |
+   |                help: add the recommended where clause: `where Self: 'a`
+   |
+   = note: this bound is currently recommended to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
+
 error: missing required bounds on `Bar`
-  --> $DIR/self-outlives-lint.rs:114:5
+  --> $DIR/self-outlives-lint.rs:124:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
@@ -87,7 +109,7 @@ LL |     type Bar<'b>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Bar`
-  --> $DIR/self-outlives-lint.rs:122:5
+  --> $DIR/self-outlives-lint.rs:132:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
@@ -98,7 +120,7 @@ LL |     type Bar<'b>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Bar`
-  --> $DIR/self-outlives-lint.rs:129:5
+  --> $DIR/self-outlives-lint.rs:139:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
@@ -109,7 +131,7 @@ LL |     type Bar<'b>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Iterator`
-  --> $DIR/self-outlives-lint.rs:143:5
+  --> $DIR/self-outlives-lint.rs:153:5
    |
 LL |     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -120,7 +142,7 @@ LL |     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Bar`
-  --> $DIR/self-outlives-lint.rs:151:5
+  --> $DIR/self-outlives-lint.rs:161:5
    |
 LL |     type Bar<'a, 'b>;
    |     ^^^^^^^^^^^^^^^^-
@@ -131,7 +153,7 @@ LL |     type Bar<'a, 'b>;
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
 error: missing required bound on `Fut`
-  --> $DIR/self-outlives-lint.rs:167:5
+  --> $DIR/self-outlives-lint.rs:177:5
    |
 LL |     type Fut<'out>;
    |     ^^^^^^^^^^^^^^-
@@ -141,5 +163,5 @@ LL |     type Fut<'out>;
    = note: this bound is currently required to ensure that impls have maximum flexibility
    = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: aborting due to 13 previous errors
+error: aborting due to 13 previous errors; 2 warnings emitted
 

@@ -102,10 +102,20 @@ impl Des3 for () {
 }
 */
 
-// Similar case to before, except with GAT.
+// Similar case to before, except without GAT.
 trait NoGat<'a> {
     type Bar;
+    //~^ missing recommended
     fn method(&'a self) -> Self::Bar;
+}
+
+
+// Same as above, except explicit
+trait NoGatWarning<'a> {
+    type Output;
+    //~^ missing recommended
+
+    fn method(&'a self) -> <Self as NoGatWarning<'a>>::Output;
 }
 
 // Lifetime is not on function; except `Self: 'a`
@@ -184,7 +194,7 @@ trait MultipleMethods {
 
 // We would normally require `Self: 'a`, but we can prove that `Self: 'static`
 // because of the the bounds on the trait, so the bound is proven
-trait Trait: 'static {
+trait StaticTrait: 'static {
     type Assoc<'a>;
     fn make_assoc(_: &u32) -> Self::Assoc<'_>;
 }
