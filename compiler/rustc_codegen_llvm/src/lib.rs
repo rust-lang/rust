@@ -340,6 +340,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
+        outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
@@ -348,7 +349,8 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         sess.time("llvm_dump_timing_file", || {
             if sess.opts.debugging_opts.llvm_time_trace {
-                llvm_util::time_trace_profiler_finish("llvm_timings.json");
+                let file_name = outputs.with_extension("llvm_timings.json");
+                llvm_util::time_trace_profiler_finish(&file_name);
             }
         });
 

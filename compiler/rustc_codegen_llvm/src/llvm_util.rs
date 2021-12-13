@@ -4,6 +4,7 @@ use libc::c_int;
 use libloading::Library;
 use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::config::PrintRequest;
 use rustc_session::Session;
@@ -13,6 +14,7 @@ use std::ffi::{CStr, CString};
 use tracing::debug;
 
 use std::mem;
+use std::path::Path;
 use std::ptr;
 use std::slice;
 use std::str;
@@ -134,9 +136,9 @@ unsafe fn configure_llvm(sess: &Session) {
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
 }
 
-pub fn time_trace_profiler_finish(file_name: &str) {
+pub fn time_trace_profiler_finish(file_name: &Path) {
     unsafe {
-        let file_name = CString::new(file_name).unwrap();
+        let file_name = path_to_c_string(file_name);
         llvm::LLVMTimeTraceProfilerFinish(file_name.as_ptr());
     }
 }
