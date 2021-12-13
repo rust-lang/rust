@@ -223,7 +223,7 @@ impl<'a> Parser<'a> {
             (Ident::empty(), ItemKind::Use(tree))
         } else if self.check_fn_front_matter(def_final) {
             // FUNCTION ITEM
-            let (ident, sig, generics, body) = self.parse_fn(attrs, fn_parse_mode, lo, Some(vis))?;
+            let (ident, sig, generics, body) = self.parse_fn(attrs, fn_parse_mode, lo, vis)?;
             (ident, ItemKind::Fn(Box::new(Fn { defaultness: def(), sig, generics, body })))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
@@ -1511,9 +1511,16 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err()?;
         if !is_raw && ident.is_reserved() {
             let err = if self.check_fn_front_matter(false) {
+                let inherited_vis = Visibility {
+                    span: rustc_span::DUMMY_SP,
+                    kind: VisibilityKind::Inherited,
+                    tokens: None,
+                };
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
-                if let Err(mut db) = self.parse_fn(&mut Vec::new(), fn_parse_mode, lo, None) {
+                if let Err(mut db) =
+                    self.parse_fn(&mut Vec::new(), fn_parse_mode, lo, &inherited_vis)
+                {
                     db.delay_as_bug();
                 }
                 let mut err = self.struct_span_err(
@@ -1793,7 +1800,7 @@ impl<'a> Parser<'a> {
         attrs: &mut Vec<Attribute>,
         fn_parse_mode: FnParseMode,
         sig_lo: Span,
-        vis: Option<&Visibility>,
+        vis: &Visibility,
     ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
         let header = self.parse_fn_front_matter(vis)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
@@ -1909,10 +1916,10 @@ impl<'a> Parser<'a> {
     /// FnQual = "const"? "async"? "unsafe"? Extern? ;
     /// FnFrontMatter = FnQual "fn" ;
     /// ```
-    pub(super) fn parse_fn_front_matter(
-        &mut self,
-        vis: Option<&Visibility>,
-    ) -> PResult<'a, FnHeader> {
+    ///
+    /// `vis` represents the visibility that was already parsed, if any. Use
+    /// `Visibility::Inherited` when no visibility is known.
+    pub(super) fn parse_fn_front_matter(&mut self, orig_vis: &Visibility) -> PResult<'a, FnHeader> {
         let sp_start = self.token.span;
         let constness = self.parse_constness();
 
@@ -1995,12 +2002,6 @@ impl<'a> Parser<'a> {
                     }
                     // Recover incorrect visibility order such as `async pub`
                     else if self.check_keyword(kw::Pub) {
-                        let orig_vis = vis.unwrap_or(&Visibility {
-                            span: rustc_span::DUMMY_SP,
-                            kind: VisibilityKind::Inherited,
-                            tokens: None,
-                        });
-
                         let sp = sp_start.to(self.prev_token.span);
                         if let Ok(snippet) = self.span_to_snippet(sp) {
                             let current_vis = match self.parse_visibility(FollowedByType::No) {
