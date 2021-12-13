@@ -20,21 +20,16 @@ fn main::{closure#0}(_1: *mut [generator@$DIR/generator-drop-cleanup.rs:10:15: 1
     let _3: std::string::String;         // in scope 0 at $DIR/generator-drop-cleanup.rs:11:13: 11:15
     let _4: ();                          // in scope 0 at $DIR/generator-drop-cleanup.rs:12:9: 12:14
     let mut _5: ();                      // in scope 0 at $DIR/generator-drop-cleanup.rs:12:9: 12:14
-    let mut _7: ();                      // in scope 0 at $DIR/generator-drop-cleanup.rs:10:18: 10:18
-    let mut _8: ();                      // in scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
-    let mut _9: u32;                     // in scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
+    let mut _6: ();                      // in scope 0 at $DIR/generator-drop-cleanup.rs:10:18: 10:18
+    let mut _7: ();                      // in scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
+    let mut _8: u32;                     // in scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     scope 1 {
         debug _s => (((*_1) as variant#3).0: std::string::String); // in scope 1 at $DIR/generator-drop-cleanup.rs:11:13: 11:15
     }
-    scope 2 (inlined String::new) {      // at $DIR/generator-drop-cleanup.rs:11:18: 11:31
-        let mut _6: std::vec::Vec<u8>;   // in scope 2 at $DIR/generator-drop-cleanup.rs:11:18: 11:31
-        scope 3 (inlined Vec::<u8>::new) { // at $DIR/generator-drop-cleanup.rs:11:18: 11:31
-        }
-    }
 
     bb0: {
-        _9 = discriminant((*_1));        // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
-        switchInt(move _9) -> [0_u32: bb7, 3_u32: bb10, otherwise: bb11]; // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
+        _8 = discriminant((*_1));        // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
+        switchInt(move _8) -> [0_u32: bb7, 3_u32: bb10, otherwise: bb11]; // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     }
 
     bb1: {
