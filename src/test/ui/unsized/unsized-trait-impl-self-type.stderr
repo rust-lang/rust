@@ -6,7 +6,7 @@ LL | impl<X: ?Sized> T3<X> for S5<X> {
    |      |
    |      this type parameter needs to be `std::marker::Sized`
    |
-note: type parameters have an implicit `Sized` obligation
+note: required by a bound in `S5`
   --> $DIR/unsized-trait-impl-self-type.rs:8:11
    |
 LL | struct S5<Y>(Y);

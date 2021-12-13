@@ -9,7 +9,7 @@ note: required because it appears within the type `S`
    |
 LL | struct S(Option<<S as Mirror>::It>);
    |        ^
-note: type parameters have an implicit `Sized` obligation
+note: required by a bound in `Option`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
 LL | pub enum Option<T> {

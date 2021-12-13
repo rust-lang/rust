@@ -1,4 +1,4 @@
-trait Mirror {
+trait Mirror { //~ NOTE required by a bound in this
     type It: ?Sized;
 }
 impl<T: ?Sized> Mirror for T {
@@ -7,7 +7,7 @@ impl<T: ?Sized> Mirror for T {
 struct S(Option<<S as Mirror>::It>);
 //~^ ERROR overflow evaluating the requirement `S: Sized`
 //~| NOTE required because it appears within the type `S`
-//~| NOTE type parameters have an implicit `Sized` obligation
+//~| NOTE required by a bound in `Option`
 
 fn main() {
     let _s = S(None);

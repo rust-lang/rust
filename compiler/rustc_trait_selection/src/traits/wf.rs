@@ -710,12 +710,12 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         iter::zip(iter::zip(predicates.predicates, predicates.spans), origins.into_iter().rev())
             .map(|((pred, span), origin_def_id)| {
-                let code = match pred.kind().skip_binder() {
+                let code = match () {// pred.kind().skip_binder() {
                     _ if span.is_dummy() => traits::MiscObligation,
-                    ty::PredicateKind::Trait(ty::TraitPredicate {
-                        implicit: ty::ImplicitBound::Yes,
-                        ..
-                    }) => traits::ImplicitSizedObligation(origin_def_id, span),
+                    // ty::PredicateKind::Trait(ty::TraitPredicate {
+                    //     implicit: ty::ImplicitBound::Yes,
+                    //     ..
+                    // }) => traits::ImplicitSizedObligation(origin_def_id, span),
                     _ => traits::BindingObligation(origin_def_id, span),
                 };
                 let cause = self.cause(code);

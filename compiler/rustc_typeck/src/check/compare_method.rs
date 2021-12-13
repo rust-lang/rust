@@ -1378,16 +1378,17 @@ pub fn check_type_bounds<'tcx>(
 
         let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
         let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
-        let mk_cause = |bound, span: Span| {
+        // let mk_cause = |bound, span: Span| {
+        let mk_cause = |span: Span| {
             ObligationCause::new(
                 impl_ty_span,
                 impl_ty_hir_id,
-                match bound {
+                match () {
                     _ if span.is_dummy() => traits::MiscObligation,
-                    ty::PredicateKind::Trait(ty::TraitPredicate {
-                        implicit: ty::ImplicitBound::Yes,
-                        ..
-                    }) => traits::ImplicitSizedObligation(trait_ty.def_id, span),
+                    // ty::PredicateKind::Trait(ty::TraitPredicate {
+                    //     implicit: ty::ImplicitBound::Yes,
+                    //     ..
+                    // }) => traits::ImplicitSizedObligation(trait_ty.def_id, span),
                     _ => ObligationCauseCode::BindingObligation(trait_ty.def_id, span),
                 },
             )
@@ -1402,7 +1403,8 @@ pub fn check_type_bounds<'tcx>(
                 debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
 
                 traits::Obligation::new(
-                    mk_cause(bound.kind().skip_binder(), span),
+                    // mk_cause(bound.kind().skip_binder(), span),
+                    mk_cause(span),
                     param_env,
                     concrete_ty_bound,
                 )
