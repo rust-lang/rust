@@ -2,7 +2,7 @@ use crate::{
     check::FnCtxt,
     expr_use_visitor::{self, ExprUseVisitor},
 };
-use hir::{HirId, HirIdMap, HirIdSet, Body, def_id::DefId};
+use hir::{def_id::DefId, Body, HirId, HirIdMap, HirIdSet};
 use rustc_hir as hir;
 use rustc_middle::hir::{
     map::Map,
@@ -10,12 +10,17 @@ use rustc_middle::hir::{
 };
 use rustc_middle::ty;
 
-/// Works with ExprUseVisitor to find interesting values for the drop range analysis.
-///
-/// Interesting values are those that are either dropped or borrowed. For dropped values, we also
-/// record the parent expression, which is the point where the drop actually takes place.
-pub struct ExprUseDelegate<'tcx> {
-    pub(super) hir: Map<'tcx>,
+pub fn find_consumed_and_borrowed<'a, 'tcx>(
+    fcx: &'a FnCtxt<'a, 'tcx>,
+    def_id: DefId,
+    body: &'tcx Body<'tcx>,
+) -> ConsumedAndBorrowedPlaces {
+    let mut expr_use_visitor = ExprUseDelegate::new(fcx.tcx.hir());
+    expr_use_visitor.consume_body(fcx, def_id, body);
+    expr_use_visitor.places
+}
+
+pub struct ConsumedAndBorrowedPlaces {
     /// Records the variables/expressions that are dropped by a given expression.
     ///
     /// The key is the hir-id of the expression, and the value is a set or hir-ids for variables
@@ -23,17 +28,32 @@ pub struct ExprUseDelegate<'tcx> {
     ///
     /// Note that this set excludes "partial drops" -- for example, a statement like `drop(x.y)` is
     /// not considered a drop of `x`, although it would be a drop of `x.y`.
-    pub(super) consumed_places: HirIdMap<HirIdSet>,
+    pub consumed: HirIdMap<HirIdSet>,
     /// A set of hir-ids of values or variables that are borrowed at some point within the body.
-    pub(super) borrowed_places: HirIdSet,
+    pub borrowed: HirIdSet,
+}
+
+/// Works with ExprUseVisitor to find interesting values for the drop range analysis.
+///
+/// Interesting values are those that are either dropped or borrowed. For dropped values, we also
+/// record the parent expression, which is the point where the drop actually takes place.
+struct ExprUseDelegate<'tcx> {
+    hir: Map<'tcx>,
+    places: ConsumedAndBorrowedPlaces,
 }
 
 impl<'tcx> ExprUseDelegate<'tcx> {
-    pub fn new(hir: Map<'tcx>) -> Self {
-        Self { hir, consumed_places: <_>::default(), borrowed_places: <_>::default() }
+    fn new(hir: Map<'tcx>) -> Self {
+        Self {
+            hir,
+            places: ConsumedAndBorrowedPlaces {
+                consumed: <_>::default(),
+                borrowed: <_>::default(),
+            },
+        }
     }
 
-    pub fn consume_body(
+    fn consume_body(
         &mut self,
         fcx: &'_ FnCtxt<'_, 'tcx>,
         def_id: DefId,
@@ -51,10 +71,10 @@ impl<'tcx> ExprUseDelegate<'tcx> {
     }
 
     fn mark_consumed(&mut self, consumer: HirId, target: HirId) {
-        if !self.consumed_places.contains_key(&consumer) {
-            self.consumed_places.insert(consumer, <_>::default());
+        if !self.places.consumed.contains_key(&consumer) {
+            self.places.consumed.insert(consumer, <_>::default());
         }
-        self.consumed_places.get_mut(&consumer).map(|places| places.insert(target));
+        self.places.consumed.get_mut(&consumer).map(|places| places.insert(target));
     }
 }
 
@@ -82,7 +102,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         _diag_expr_id: HirId,
         _bk: rustc_middle::ty::BorrowKind,
     ) {
-        place_hir_id(&place_with_id.place).map(|place| self.borrowed_places.insert(place));
+        place_hir_id(&place_with_id.place).map(|place| self.places.borrowed.insert(place));
     }
 
     fn mutate(

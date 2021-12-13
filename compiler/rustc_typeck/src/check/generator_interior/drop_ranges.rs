@@ -12,39 +12,33 @@
 //! The end result is a data structure that maps the post-order index of each node in the HIR tree
 //! to a set of values that are known to be dropped at that location.
 
-use self::cfg_build::DropRangeVisitor;
-use self::record_consumed_borrow::ExprUseDelegate;
+use self::cfg_build::build_control_flow_graph;
+use self::record_consumed_borrow::find_consumed_and_borrowed;
 use crate::check::FnCtxt;
 use hir::def_id::DefId;
-use hir::{Body, HirId, HirIdMap, Node, intravisit};
+use hir::{Body, HirId, HirIdMap, Node};
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
-use rustc_middle::hir::map::Map;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::mem::swap;
 
 mod cfg_build;
-mod record_consumed_borrow;
 mod cfg_propagate;
 mod cfg_visualize;
+mod record_consumed_borrow;
 
 pub fn compute_drop_ranges<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     def_id: DefId,
     body: &'tcx Body<'tcx>,
 ) -> DropRanges {
-    let mut expr_use_visitor = ExprUseDelegate::new(fcx.tcx.hir());
-    expr_use_visitor.consume_body(fcx, def_id, body);
+    let consumed_borrowed_places = find_consumed_and_borrowed(fcx, def_id, body);
 
-    let mut drop_range_visitor = DropRangeVisitor::from_uses(
-        expr_use_visitor,
-        fcx.tcx.region_scope_tree(def_id).body_expr_count(body.id()).unwrap_or(0),
-    );
-    intravisit::walk_body(&mut drop_range_visitor, body);
+    let num_exprs = fcx.tcx.region_scope_tree(def_id).body_expr_count(body.id()).unwrap_or(0);
+    let mut drop_ranges =
+        build_control_flow_graph(fcx.tcx.hir(), consumed_borrowed_places, body, num_exprs);
 
-    let mut drop_ranges = drop_range_visitor.into_drop_ranges();
     drop_ranges.propagate_to_fixpoint();
 
     drop_ranges
@@ -105,31 +99,6 @@ impl Debug for DropRanges {
 /// (hir_id, post_order_id) -> bool, where a true value indicates that the value is definitely
 /// dropped at the point of the node identified by post_order_id.
 impl DropRanges {
-    pub fn new(hir_ids: impl Iterator<Item = HirId>, hir: &Map<'_>, num_exprs: usize) -> Self {
-        let mut hir_id_map = HirIdMap::<HirIdIndex>::default();
-        let mut next = <_>::from(0u32);
-        for hir_id in hir_ids {
-            for_each_consumable(hir_id, hir.find(hir_id), |hir_id| {
-                if !hir_id_map.contains_key(&hir_id) {
-                    hir_id_map.insert(hir_id, next);
-                    next = <_>::from(next.index() + 1);
-                }
-            });
-        }
-        debug!("hir_id_map: {:?}", hir_id_map);
-        let num_values = hir_id_map.len();
-        Self {
-            hir_id_map,
-            nodes: IndexVec::from_fn_n(|_| NodeInfo::new(num_values), num_exprs + 1),
-            deferred_edges: <_>::default(),
-            post_order_map: <_>::default(),
-        }
-    }
-
-    fn hidx(&self, hir_id: HirId) -> HirIdIndex {
-        *self.hir_id_map.get(&hir_id).unwrap()
-    }
-
     pub fn is_dropped_at(&mut self, hir_id: HirId, location: usize) -> bool {
         self.hir_id_map
             .get(&hir_id)
@@ -140,13 +109,6 @@ impl DropRanges {
     /// Returns the number of values (hir_ids) that are tracked
     fn num_values(&self) -> usize {
         self.hir_id_map.len()
-    }
-
-    /// Adds an entry in the mapping from HirIds to PostOrderIds
-    ///
-    /// Needed so that `add_control_edge_hir_id` can work.
-    pub fn add_node_mapping(&mut self, hir_id: HirId, post_order_id: usize) {
-        self.post_order_map.insert(hir_id, post_order_id);
     }
 
     /// Returns a reference to the NodeInfo for a node, panicking if it does not exist
@@ -160,48 +122,10 @@ impl DropRanges {
         &mut self.nodes[id]
     }
 
-    pub fn add_control_edge(&mut self, from: usize, to: usize) {
+    fn add_control_edge(&mut self, from: usize, to: usize) {
         trace!("adding control edge from {} to {}", from, to);
         self.node_mut(from.into()).successors.push(to.into());
     }
-
-    /// Like add_control_edge, but uses a hir_id as the target.
-    ///
-    /// This can be used for branches where we do not know the PostOrderId of the target yet,
-    /// such as when handling `break` or `continue`.
-    pub fn add_control_edge_hir_id(&mut self, from: usize, to: HirId) {
-        self.deferred_edges.push((from, to));
-    }
-
-    /// Looks up PostOrderId for any control edges added by HirId and adds a proper edge for them.
-    ///
-    /// Should be called after visiting the HIR but before solving the control flow, otherwise some
-    /// edges will be missed.
-    fn process_deferred_edges(&mut self) {
-        let mut edges = vec![];
-        swap(&mut edges, &mut self.deferred_edges);
-        edges.into_iter().for_each(|(from, to)| {
-            let to = *self.post_order_map.get(&to).expect("Expression ID not found");
-            trace!("Adding deferred edge from {} to {}", from, to);
-            self.add_control_edge(from, to)
-        });
-    }
-
-    pub fn drop_at(&mut self, value: HirId, location: usize) {
-        let value = self.hidx(value);
-        self.node_mut(location.into()).drops.push(value);
-    }
-
-    pub fn reinit_at(&mut self, value: HirId, location: usize) {
-        let value = match self.hir_id_map.get(&value) {
-            Some(value) => *value,
-            // If there's no value, this is never consumed and therefore is never dropped. We can
-            // ignore this.
-            None => return,
-        };
-        self.node_mut(location.into()).reinits.push(value);
-    }
-
 }
 
 #[derive(Debug)]

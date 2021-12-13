@@ -1,10 +1,30 @@
-use super::{for_each_consumable, record_consumed_borrow::ExprUseDelegate, DropRanges};
+use super::{
+    for_each_consumable, record_consumed_borrow::ConsumedAndBorrowedPlaces, DropRanges, HirIdIndex,
+    NodeInfo,
+};
 use hir::{
     intravisit::{self, NestedVisitorMap, Visitor},
-    Expr, ExprKind, Guard, HirId, HirIdMap, HirIdSet,
+    Body, Expr, ExprKind, Guard, HirId, HirIdMap,
 };
 use rustc_hir as hir;
+use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::Map;
+
+/// Traverses the body to find the control flow graph and locations for the
+/// relevant places are dropped or reinitialized.
+///
+/// The resulting structure still needs to be iterated to a fixed point, which
+/// can be done with propagate_to_fixpoint in cfg_propagate.
+pub fn build_control_flow_graph<'tcx>(
+    hir: Map<'tcx>,
+    consumed_borrowed_places: ConsumedAndBorrowedPlaces,
+    body: &'tcx Body<'tcx>,
+    num_exprs: usize,
+) -> DropRanges {
+    let mut drop_range_visitor = DropRangeVisitor::new(hir, consumed_borrowed_places, num_exprs);
+    intravisit::walk_body(&mut drop_range_visitor, body);
+    drop_range_visitor.drop_ranges
+}
 
 /// This struct is used to gather the information for `DropRanges` to determine the regions of the
 /// HIR tree for which a value is dropped.
@@ -12,40 +32,26 @@ use rustc_middle::hir::map::Map;
 /// We are interested in points where a variables is dropped or initialized, and the control flow
 /// of the code. We identify locations in code by their post-order traversal index, so it is
 /// important for this traversal to match that in `RegionResolutionVisitor` and `InteriorVisitor`.
-pub struct DropRangeVisitor<'tcx> {
+struct DropRangeVisitor<'tcx> {
     hir: Map<'tcx>,
-    /// Maps a HirId to a set of HirIds that are dropped by that node.
-    ///
-    /// See also the more detailed comment on `ExprUseDelegate.consumed_places`.
-    consumed_places: HirIdMap<HirIdSet>,
-    borrowed_places: HirIdSet,
+    places: ConsumedAndBorrowedPlaces,
     drop_ranges: DropRanges,
     expr_count: usize,
 }
 
 impl<'tcx> DropRangeVisitor<'tcx> {
-    pub fn from_uses(uses: ExprUseDelegate<'tcx>, num_exprs: usize) -> Self {
-        debug!("consumed_places: {:?}", uses.consumed_places);
+    fn new(hir: Map<'tcx>, places: ConsumedAndBorrowedPlaces, num_exprs: usize) -> Self {
+        debug!("consumed_places: {:?}", places.consumed);
         let drop_ranges = DropRanges::new(
-            uses.consumed_places.iter().flat_map(|(_, places)| places.iter().copied()),
-            &uses.hir,
+            places.consumed.iter().flat_map(|(_, places)| places.iter().copied()),
+            hir,
             num_exprs,
         );
-        Self {
-            hir: uses.hir,
-            consumed_places: uses.consumed_places,
-            borrowed_places: uses.borrowed_places,
-            drop_ranges,
-            expr_count: 0,
-        }
-    }
-
-    pub fn into_drop_ranges(self) -> DropRanges {
-        self.drop_ranges
+        Self { hir, places, drop_ranges, expr_count: 0 }
     }
 
     fn record_drop(&mut self, hir_id: HirId) {
-        if self.borrowed_places.contains(&hir_id) {
+        if self.places.borrowed.contains(&hir_id) {
             debug!("not marking {:?} as dropped because it is borrowed at some point", hir_id);
         } else {
             debug!("marking {:?} as dropped at {}", hir_id, self.expr_count);
@@ -59,7 +65,8 @@ impl<'tcx> DropRangeVisitor<'tcx> {
     fn consume_expr(&mut self, expr: &hir::Expr<'_>) {
         debug!("consuming expr {:?}, count={}", expr.hir_id, self.expr_count);
         let places = self
-            .consumed_places
+            .places
+            .consumed
             .get(&expr.hir_id)
             .map_or(vec![], |places| places.iter().cloned().collect());
         for place in places {
@@ -165,5 +172,62 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
 
         // Increment expr_count here to match what InteriorVisitor expects.
         self.expr_count += 1;
+    }
+}
+
+impl DropRanges {
+    fn new(hir_ids: impl Iterator<Item = HirId>, hir: Map<'_>, num_exprs: usize) -> Self {
+        let mut hir_id_map = HirIdMap::<HirIdIndex>::default();
+        let mut next = <_>::from(0u32);
+        for hir_id in hir_ids {
+            for_each_consumable(hir_id, hir.find(hir_id), |hir_id| {
+                if !hir_id_map.contains_key(&hir_id) {
+                    hir_id_map.insert(hir_id, next);
+                    next = <_>::from(next.index() + 1);
+                }
+            });
+        }
+        debug!("hir_id_map: {:?}", hir_id_map);
+        let num_values = hir_id_map.len();
+        Self {
+            hir_id_map,
+            nodes: IndexVec::from_fn_n(|_| NodeInfo::new(num_values), num_exprs + 1),
+            deferred_edges: <_>::default(),
+            post_order_map: <_>::default(),
+        }
+    }
+
+    fn hidx(&self, hir_id: HirId) -> HirIdIndex {
+        *self.hir_id_map.get(&hir_id).unwrap()
+    }
+
+    /// Adds an entry in the mapping from HirIds to PostOrderIds
+    ///
+    /// Needed so that `add_control_edge_hir_id` can work.
+    fn add_node_mapping(&mut self, hir_id: HirId, post_order_id: usize) {
+        self.post_order_map.insert(hir_id, post_order_id);
+    }
+
+    /// Like add_control_edge, but uses a hir_id as the target.
+    ///
+    /// This can be used for branches where we do not know the PostOrderId of the target yet,
+    /// such as when handling `break` or `continue`.
+    fn add_control_edge_hir_id(&mut self, from: usize, to: HirId) {
+        self.deferred_edges.push((from, to));
+    }
+
+    fn drop_at(&mut self, value: HirId, location: usize) {
+        let value = self.hidx(value);
+        self.node_mut(location.into()).drops.push(value);
+    }
+
+    fn reinit_at(&mut self, value: HirId, location: usize) {
+        let value = match self.hir_id_map.get(&value) {
+            Some(value) => *value,
+            // If there's no value, this is never consumed and therefore is never dropped. We can
+            // ignore this.
+            None => return,
+        };
+        self.node_mut(location.into()).reinits.push(value);
     }
 }

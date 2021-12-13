@@ -1,8 +1,7 @@
-use std::collections::BTreeMap;
-
-use rustc_index::{bit_set::BitSet, vec::IndexVec};
-
 use super::{DropRanges, PostOrderId};
+use rustc_index::{bit_set::BitSet, vec::IndexVec};
+use std::collections::BTreeMap;
+use std::mem::swap;
 
 impl DropRanges {
     pub fn propagate_to_fixpoint(&mut self) {
@@ -63,5 +62,19 @@ impl DropRanges {
             }
         }
         preds
+    }
+
+    /// Looks up PostOrderId for any control edges added by HirId and adds a proper edge for them.
+    ///
+    /// Should be called after visiting the HIR but before solving the control flow, otherwise some
+    /// edges will be missed.
+    fn process_deferred_edges(&mut self) {
+        let mut edges = vec![];
+        swap(&mut edges, &mut self.deferred_edges);
+        edges.into_iter().for_each(|(from, to)| {
+            let to = *self.post_order_map.get(&to).expect("Expression ID not found");
+            trace!("Adding deferred edge from {} to {}", from, to);
+            self.add_control_edge(from, to)
+        });
     }
 }
