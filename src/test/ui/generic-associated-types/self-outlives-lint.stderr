@@ -1,98 +1,145 @@
-error: Missing required bounds on Item
+error: missing required bound on `Item`
   --> $DIR/self-outlives-lint.rs:9:5
    |
 LL |     type Item<'x>;
    |     ^^^^^^^^^^^^^-
    |                  |
-   |                  help: add the required where clauses: `where Self: 'x`
+   |                  help: add the required where clause: `where Self: 'x`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Out
+error: missing required bound on `Out`
   --> $DIR/self-outlives-lint.rs:25:5
    |
 LL |     type Out<'x>;
    |     ^^^^^^^^^^^^-
    |                 |
-   |                 help: add the required where clauses: `where T: 'x`
+   |                 help: add the required where clause: `where T: 'x`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Out
+error: missing required bound on `Out`
   --> $DIR/self-outlives-lint.rs:39:5
    |
 LL |     type Out<'x>;
    |     ^^^^^^^^^^^^-
    |                 |
-   |                 help: add the required where clauses: `where T: 'x`
+   |                 help: add the required where clause: `where T: 'x`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Out
+error: missing required bounds on `Out`
   --> $DIR/self-outlives-lint.rs:46:5
    |
 LL |     type Out<'x, 'y>;
    |     ^^^^^^^^^^^^^^^^-
    |                     |
    |                     help: add the required where clauses: `where T: 'x, U: 'y`
+   |
+   = note: these bounds are currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Out
+error: missing required bound on `Out`
   --> $DIR/self-outlives-lint.rs:61:5
    |
 LL |     type Out<'x, D>;
    |     ^^^^^^^^^^^^^^^-
    |                    |
-   |                    help: add the required where clauses: `where D: 'x`
+   |                    help: add the required where clause: `where D: 'x`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Out
+error: missing required bound on `Out`
   --> $DIR/self-outlives-lint.rs:77:5
    |
 LL |     type Out<'x, D>;
    |     ^^^^^^^^^^^^^^^-
    |                    |
-   |                    help: add the required where clauses: `where D: 'x`
+   |                    help: add the required where clause: `where D: 'x`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Out
+error: missing required bound on `Out`
   --> $DIR/self-outlives-lint.rs:92:5
    |
 LL |     type Out<'x, D>;
    |     ^^^^^^^^^^^^^^^-
    |                    |
-   |                    help: add the required where clauses: `where D: 'x`
+   |                    help: add the required where clause: `where D: 'x`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Bar
+error: missing required bounds on `Bar`
   --> $DIR/self-outlives-lint.rs:114:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
    |                 |
    |                 help: add the required where clauses: `where Self: 'a, Self: 'b`
+   |
+   = note: these bounds are currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Bar
+error: missing required bound on `Bar`
   --> $DIR/self-outlives-lint.rs:122:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
    |                 |
-   |                 help: add the required where clauses: `where Self: 'a, Self: 'b`
+   |                 help: add the required where clause: `where Self: 'b`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Bar
+error: missing required bound on `Bar`
   --> $DIR/self-outlives-lint.rs:129:5
    |
 LL |     type Bar<'b>;
    |     ^^^^^^^^^^^^-
    |                 |
-   |                 help: add the required where clauses: `where Self: 'b`
+   |                 help: add the required where clause: `where Self: 'b`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Iterator
+error: missing required bound on `Iterator`
   --> $DIR/self-outlives-lint.rs:143:5
    |
 LL |     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |                                                       |
-   |                                                       help: add the required where clauses: `where Self: 'a`
+   |                                                       help: add the required where clause: `where Self: 'a`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: Missing required bounds on Bar
-  --> $DIR/self-outlives-lint.rs:150:5
+error: missing required bound on `Bar`
+  --> $DIR/self-outlives-lint.rs:151:5
    |
 LL |     type Bar<'a, 'b>;
    |     ^^^^^^^^^^^^^^^^-
    |                     |
-   |                     help: add the required where clauses: `where 'a: 'b`
+   |                     help: add the required where clause: `where 'b: 'a`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
 
-error: aborting due to 12 previous errors
+error: missing required bound on `Fut`
+  --> $DIR/self-outlives-lint.rs:167:5
+   |
+LL |     type Fut<'out>;
+   |     ^^^^^^^^^^^^^^-
+   |                   |
+   |                   help: add the required where clause: `where 'ctx: 'out`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
+
+error: aborting due to 13 previous errors
 

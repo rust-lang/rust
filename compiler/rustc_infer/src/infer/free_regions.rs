@@ -11,7 +11,7 @@ use rustc_middle::ty::{self, Lift, Region, TyCtxt};
 ///
 /// This stuff is a bit convoluted and should be refactored, but as we
 /// transition to NLL, it'll all go away anyhow.
-pub struct RegionRelations<'a, 'tcx> {
+pub(crate) struct RegionRelations<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
 
     /// The context used for debug messages
