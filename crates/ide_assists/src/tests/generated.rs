@@ -1608,6 +1608,19 @@ pub mod std { pub mod collections { pub struct HashMap { } } }
 }
 
 #[test]
+fn doctest_reformat_number_literal() {
+    check_doc_test(
+        "reformat_number_literal",
+        r#####"
+const _: i32 = 1012345$0;
+"#####,
+        r#####"
+const _: i32 = 1_012_345;
+"#####,
+    )
+}
+
+#[test]
 fn doctest_remove_dbg() {
     check_doc_test(
         "remove_dbg",
