@@ -332,10 +332,10 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Result<(), &'static str> {
         match callee_attrs.inline {
             InlineAttr::Never => return Err("never inline hint"),
-            InlineAttr::Always => {}
-            _ => {
+            InlineAttr::Always | InlineAttr::Hint => {}
+            InlineAttr::None => {
                 if self.tcx.sess.mir_opt_level() <= 2 {
-                    return Err("at mir-opt-level=2, only #[inline(always)] is inlined");
+                    return Err("at mir-opt-level=2, only #[inline] is inlined");
                 }
             }
         }

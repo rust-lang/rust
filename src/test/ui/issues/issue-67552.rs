@@ -1,4 +1,4 @@
-// build-fail
+// build-pass
 // normalize-stderr-test: ".nll/" -> "/"
 
 fn main() {
@@ -26,6 +26,5 @@ where
         T::count(it);
     } else {
         rec(identity(&mut it))
-        //~^ ERROR reached the recursion limit while instantiating
     }
 }
