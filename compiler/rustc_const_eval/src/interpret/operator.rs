@@ -330,7 +330,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ if left.layout.ty.is_any_ptr() => {
                 // The RHS type must be the same *or an integer type* (for `Offset`).
                 assert!(
-                    right.layout.ty == left.layout.ty || right.layout.ty.is_integral(),
+                    right.layout.ty.is_any_ptr()|| right.layout.ty.is_integral(),
                     "Unexpected types for BinOp: {:?} {:?} {:?}",
                     left.layout.ty,
                     bin_op,
