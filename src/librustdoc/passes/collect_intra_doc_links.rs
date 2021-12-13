@@ -963,7 +963,7 @@ fn preprocess_link<'a>(
         return None;
     }
 
-    let stripped = ori_link.link.replace("`", "");
+    let stripped = ori_link.link.replace('`', "");
     let mut parts = stripped.split('#');
 
     let link = parts.next().unwrap();
