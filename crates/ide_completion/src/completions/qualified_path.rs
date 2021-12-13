@@ -152,7 +152,9 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             }
         }
         hir::PathResolution::Def(
-            def @ (hir::ModuleDef::Adt(_)
+            def
+            @
+            (hir::ModuleDef::Adt(_)
             | hir::ModuleDef::TypeAlias(_)
             | hir::ModuleDef::BuiltinType(_)),
         ) => {

@@ -1163,10 +1163,6 @@ impl<'a> SemanticsScope<'a> {
         Some(Crate { id: self.resolver.krate()? })
     }
 
-    pub fn in_macro_file(&self) -> bool {
-        self.file_id.is_macro()
-    }
-
     /// Note: `FxHashSet<TraitId>` should be treated as an opaque type, passed into `Type
     pub fn visible_traits(&self) -> FxHashSet<TraitId> {
         let resolver = &self.resolver;

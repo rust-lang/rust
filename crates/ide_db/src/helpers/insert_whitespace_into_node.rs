@@ -1,3 +1,4 @@
+//! Utilities for formatting macro expanded nodes until we get a proper formatter.
 use syntax::{
     ast::make,
     ted::{self, Position},
@@ -9,7 +10,7 @@ use syntax::{
 // FIXME: It would also be cool to share logic here and in the mbe tests,
 // which are pretty unreadable at the moment.
 /// Renders a [`SyntaxNode`] with whitespace inserted between tokens that require them.
-pub fn render_with_ws_inserted(syn: SyntaxNode) -> SyntaxNode {
+pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
     let mut indent = 0;
     let mut last: Option<SyntaxKind> = None;
     let mut mods = Vec::new();
@@ -40,7 +41,9 @@ pub fn render_with_ws_inserted(syn: SyntaxNode) -> SyntaxNode {
                         make::tokens::whitespace(&" ".repeat(2 * indent)),
                     ));
                 }
-                mods.push((Position::after(node), make::tokens::single_newline()));
+                if node.parent().is_some() {
+                    mods.push((Position::after(node), make::tokens::single_newline()));
+                }
                 continue;
             }
             _ => continue,
@@ -82,7 +85,7 @@ pub fn render_with_ws_inserted(syn: SyntaxNode) -> SyntaxNode {
                 }
                 mods.push(do_nl(after, tok));
             }
-            LIFETIME_IDENT if is_next(|it| it == IDENT || it == MUT_KW, true) => {
+            LIFETIME_IDENT if is_next(|it| is_text(it), true) => {
                 mods.push(do_ws(after, tok));
             }
             AS_KW => {

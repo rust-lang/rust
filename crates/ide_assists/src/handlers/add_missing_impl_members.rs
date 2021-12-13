@@ -1,5 +1,5 @@
 use hir::HasSource;
-use ide_db::traits::resolve_target_trait;
+use ide_db::{helpers::insert_whitespace_into_node::insert_ws_into, traits::resolve_target_trait};
 use syntax::ast::{self, make, AstNode};
 
 use crate::{
@@ -105,7 +105,7 @@ fn add_missing_impl_members_inner(
     let trait_ = resolve_target_trait(&ctx.sema, &impl_def)?;
 
     let missing_items = filter_assoc_items(
-        ctx.db(),
+        &ctx.sema,
         &ide_db::traits::get_missing_assoc_items(&ctx.sema, &impl_def),
         mode,
     );
@@ -117,6 +117,17 @@ fn add_missing_impl_members_inner(
     let target = impl_def.syntax().text_range();
     acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |builder| {
         let target_scope = ctx.sema.scope(impl_def.syntax());
+        let missing_items = missing_items
+            .into_iter()
+            .map(|it| {
+                if ctx.sema.hir_file_for(it.syntax()).is_macro() {
+                    if let Some(it) = ast::AssocItem::cast(insert_ws_into(it.syntax().clone())) {
+                        return it;
+                    }
+                }
+                it.clone_for_update()
+            })
+            .collect();
         let (new_impl_def, first_new_item) = add_trait_assoc_items_to_impl(
             &ctx.sema,
             missing_items,
@@ -124,9 +135,6 @@ fn add_missing_impl_members_inner(
             impl_def.clone(),
             target_scope,
         );
-        // if target_scope.in_macro_file() {
-
-        // }
         match ctx.config.snippet_cap {
             None => builder.replace(target, new_impl_def.to_string()),
             Some(cap) => {
@@ -892,6 +900,44 @@ impl Default for Foo {
     $0fn default() -> Self {
         Self(Default::default())
     }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_from_macro() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+macro_rules! foo {
+    () => {
+        trait FooB {
+            fn foo<'lt>(&'lt self) {}
+        }
+    }
+}
+foo!();
+struct Foo(usize);
+
+impl FooB for Foo {
+    $0
+}
+"#,
+            r#"
+macro_rules! foo {
+    () => {
+        trait FooB {
+            fn foo<'lt>(&'lt self) {}
+        }
+    }
+}
+foo!();
+struct Foo(usize);
+
+impl FooB for Foo {
+    $0fn foo< 'lt>(& 'lt self){}
+
 }
 "#,
         )

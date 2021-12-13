@@ -4,7 +4,7 @@ pub mod generated_lints;
 pub mod import_assets;
 pub mod insert_use;
 pub mod merge_imports;
-pub mod render_macro_node;
+pub mod insert_whitespace_into_node;
 pub mod node_ext;
 pub mod rust_doc;
 

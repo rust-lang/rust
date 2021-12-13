@@ -1,6 +1,6 @@
 use hir::Semantics;
 use ide_db::{
-    helpers::{pick_best_token, render_macro_node::render_with_ws_inserted},
+    helpers::{insert_whitespace_into_node::insert_ws_into, pick_best_token},
     RootDatabase,
 };
 use itertools::Itertools;
@@ -50,7 +50,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             let expansions = sema.expand_derive_macro(&attr)?;
             Some(ExpandedMacro {
                 name: tt,
-                expansion: expansions.into_iter().map(render_with_ws_inserted).join(""),
+                expansion: expansions.into_iter().map(insert_ws_into).join(""),
             })
         } else {
             None
@@ -83,7 +83,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // FIXME:
     // macro expansion may lose all white space information
     // But we hope someday we can use ra_fmt for that
-    let expansion = render_with_ws_inserted(expanded?).to_string();
+    let expansion = insert_ws_into(expanded?).to_string();
     Some(ExpandedMacro { name: name.unwrap_or_else(|| "???".to_owned()), expansion })
 }
 

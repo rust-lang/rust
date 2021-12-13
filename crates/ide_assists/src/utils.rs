@@ -5,7 +5,7 @@ use std::ops;
 use itertools::Itertools;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
-use hir::{db::HirDatabase, HasSource, HirDisplay};
+use hir::{db::HirDatabase, HirDisplay, Semantics};
 use ide_db::{
     helpers::FamousDefs, helpers::SnippetCap, path_transform::PathTransform, RootDatabase,
 };
@@ -92,7 +92,7 @@ pub enum DefaultMethods {
 }
 
 pub fn filter_assoc_items(
-    db: &RootDatabase,
+    sema: &Semantics<RootDatabase>,
     items: &[hir::AssocItem],
     default_methods: DefaultMethods,
 ) -> Vec<ast::AssocItem> {
@@ -109,11 +109,11 @@ pub fn filter_assoc_items(
     items
         .iter()
         // Note: This throws away items with no source.
-        .filter_map(|i| {
+        .filter_map(|&i| {
             let item = match i {
-                hir::AssocItem::Function(i) => ast::AssocItem::Fn(i.source(db)?.value),
-                hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAlias(i.source(db)?.value),
-                hir::AssocItem::Const(i) => ast::AssocItem::Const(i.source(db)?.value),
+                hir::AssocItem::Function(i) => ast::AssocItem::Fn(sema.source(i)?.value),
+                hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAlias(sema.source(i)?.value),
+                hir::AssocItem::Const(i) => ast::AssocItem::Const(sema.source(i)?.value),
             };
             Some(item)
         })
@@ -129,7 +129,7 @@ pub fn filter_assoc_items(
 }
 
 pub fn add_trait_assoc_items_to_impl(
-    sema: &hir::Semantics<ide_db::RootDatabase>,
+    sema: &Semantics<RootDatabase>,
     items: Vec<ast::AssocItem>,
     trait_: hir::Trait,
     impl_: ast::Impl,
@@ -140,7 +140,6 @@ pub fn add_trait_assoc_items_to_impl(
     let transform = PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
 
     let items = items.into_iter().map(|assoc_item| {
-        let assoc_item = assoc_item.clone_for_update();
         transform.apply(assoc_item.syntax());
         assoc_item.remove_attrs_and_docs();
         assoc_item
