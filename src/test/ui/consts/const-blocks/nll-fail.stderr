@@ -4,8 +4,7 @@ error[E0277]: the trait bound `Option<Bar>: Copy` is not satisfied
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
    |                                     ^^^^^^ the trait `Copy` is not implemented for `Option<Bar>`
    |
-   = help: the following implementations were found:
-             <Option<T> as Copy>
+   = help: the trait `Copy` is implemented for `Option<T>`
    = note: the `Copy` trait is required because the repeated element will be copied
 
 error[E0277]: the trait bound `Option<Bar>: Copy` is not satisfied
@@ -14,8 +13,7 @@ error[E0277]: the trait bound `Option<Bar>: Copy` is not satisfied
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
    |                                     ^^^^^^ the trait `Copy` is not implemented for `Option<Bar>`
    |
-   = help: the following implementations were found:
-             <Option<T> as Copy>
+   = help: the trait `Copy` is implemented for `Option<T>`
    = note: the `Copy` trait is required because the repeated element will be copied
 
 error: aborting due to 2 previous errors

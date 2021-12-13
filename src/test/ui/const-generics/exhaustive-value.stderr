@@ -9,7 +9,7 @@ LL |     <() as Foo<N>>::test()
              <() as Foo<100_u8>>
              <() as Foo<101_u8>>
              <() as Foo<102_u8>>
-           and 252 others
+           and 248 others
 
 error: aborting due to previous error
 

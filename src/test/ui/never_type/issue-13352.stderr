@@ -5,6 +5,12 @@ LL |     2_usize + (loop {});
    |             ^ no implementation for `usize + ()`
    |
    = help: the trait `Add<()>` is not implemented for `usize`
+   = help: the following implementations were found:
+             <&'a usize as Add<usize>>
+             <&usize as Add<&usize>>
+             <usize as Add<&usize>>
+             <usize as Add>
+           and 48 others
 
 error: aborting due to previous error
 

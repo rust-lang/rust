@@ -58,7 +58,7 @@ pub trait InferCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-    );
+    ) -> bool;
 
     fn get_closure_name(&self, def_id: DefId, err: &mut Diagnostic, msg: &str) -> Option<String>;
 
@@ -67,7 +67,7 @@ pub trait InferCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-    );
+    ) -> bool;
 
     fn suggest_add_reference_to_arg(
         &self,
@@ -82,7 +82,7 @@ pub trait InferCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-    );
+    ) -> bool;
 
     fn suggest_remove_await(&self, obligation: &PredicateObligation<'tcx>, err: &mut Diagnostic);
 
@@ -99,7 +99,7 @@ pub trait InferCtxtExt<'tcx> {
         err: &mut Diagnostic,
         span: Span,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-    );
+    ) -> bool;
 
     fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span>;
 
@@ -494,14 +494,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-    ) {
+    ) -> bool {
         // It only make sense when suggesting dereferences for arguments
         let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
             obligation.cause.code()
         {
             parent_code.clone()
         } else {
-            return;
+            return false;
         };
         let param_env = obligation.param_env;
         let body_id = obligation.cause.body_id;
@@ -513,7 +513,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             _ => trait_pred,
         };
         let Some(real_ty) = real_trait_pred.self_ty().no_bound_vars() else {
-            return;
+            return false;
         };
 
         if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
@@ -537,11 +537,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 format!("&{}{}", derefs, &src[1..]),
                                 Applicability::MachineApplicable,
                             );
+                            return true;
                         }
                     }
                 }
             }
         }
+        false
     }
 
     /// Given a closure's `DefId`, return the given name of the closure.
@@ -584,22 +586,22 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-    ) {
+    ) -> bool {
         let Some(self_ty) = trait_pred.self_ty().no_bound_vars() else {
-            return;
+            return false;
         };
 
         let (def_id, output_ty, callable) = match *self_ty.kind() {
             ty::Closure(def_id, substs) => (def_id, substs.as_closure().sig().output(), "closure"),
             ty::FnDef(def_id, _) => (def_id, self_ty.fn_sig(self.tcx).output(), "function"),
-            _ => return,
+            _ => return false,
         };
         let msg = format!("use parentheses to call the {}", callable);
 
         // `mk_trait_obligation_with_new_self_ty` only works for types with no escaping bound
         // variables, so bail out if we have any.
         let Some(output_ty) = output_ty.no_bound_vars() else {
-            return;
+            return false;
         };
 
         let new_obligation =
@@ -611,7 +613,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 | EvaluationResult::EvaluatedToOkModuloRegions
                 | EvaluationResult::EvaluatedToAmbig,
             ) => {}
-            _ => return,
+            _ => return false,
         }
         let hir = self.tcx.hir();
         // Get the name of the callable and the arguments to be used in the suggestion.
@@ -622,7 +624,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             })) => {
                 err.span_label(*span, "consider calling this closure");
                 let Some(name) = self.get_closure_name(def_id, err, &msg) else {
-                    return;
+                    return false;
                 };
                 let args = decl.inputs.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
                 let sugg = format!("({})", args);
@@ -650,7 +652,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let sugg = format!("({})", args);
                 (format!("{}{}", ident, sugg), sugg)
             }
-            _ => return,
+            _ => return false,
         };
         if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArgumentObligation { .. })
         {
@@ -667,6 +669,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         } else {
             err.help(&format!("{}: `{}`", msg, snippet));
         }
+        true
     }
 
     fn suggest_add_reference_to_arg(
@@ -808,19 +811,20 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-    ) {
+    ) -> bool {
         let span = obligation.cause.span;
 
+        let mut suggested = false;
         if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
             let refs_number =
                 snippet.chars().filter(|c| !c.is_whitespace()).take_while(|c| *c == '&').count();
             if let Some('\'') = snippet.chars().filter(|c| !c.is_whitespace()).nth(refs_number) {
                 // Do not suggest removal of borrow from type arguments.
-                return;
+                return false;
             }
 
             let Some(mut suggested_ty) = trait_pred.self_ty().no_bound_vars() else {
-                return;
+                return false;
             };
 
             for refs_remaining in 0..refs_number {
@@ -856,10 +860,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         String::new(),
                         Applicability::MachineApplicable,
                     );
+                    suggested = true;
                     break;
                 }
             }
         }
+        suggested
     }
 
     fn suggest_remove_await(&self, obligation: &PredicateObligation<'tcx>, err: &mut Diagnostic) {
@@ -996,7 +1002,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         span: Span,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-    ) {
+    ) -> bool {
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
         let node = hir.find(parent_node);
@@ -1015,7 +1021,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         {
             let sp = self.tcx.sess.source_map().end_point(stmt.span);
             err.span_label(sp, "consider removing this semicolon");
+            return true;
         }
+        false
     }
 
     fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span> {

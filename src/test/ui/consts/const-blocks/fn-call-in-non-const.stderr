@@ -4,8 +4,7 @@ error[E0277]: the trait bound `Option<Bar>: Copy` is not satisfied
 LL |     let _: [Option<Bar>; 2] = [no_copy(); 2];
    |                               ^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `Option<Bar>`
    |
-   = help: the following implementations were found:
-             <Option<T> as Copy>
+   = help: the trait `Copy` is implemented for `Option<T>`
    = note: the `Copy` trait is required because the repeated element will be copied
    = help: consider creating a new `const` item and initializing it with the result of the function call to be used in the repeat position, like `const VAL: Type = const_fn();` and `let x = [VAL; 42];`
    = help: create an inline `const` block, see RFC #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information

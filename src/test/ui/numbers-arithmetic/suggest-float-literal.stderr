@@ -5,6 +5,12 @@ LL |     x + 100
    |       ^ no implementation for `f32 + {integer}`
    |
    = help: the trait `Add<{integer}>` is not implemented for `f32`
+   = help: the following implementations were found:
+             <&'a f32 as Add<f32>>
+             <&f32 as Add<&f32>>
+             <f32 as Add<&f32>>
+             <f32 as Add>
+           and 48 others
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x + 100.0
@@ -17,6 +23,12 @@ LL |     x + 100
    |       ^ no implementation for `f64 + {integer}`
    |
    = help: the trait `Add<{integer}>` is not implemented for `f64`
+   = help: the following implementations were found:
+             <&'a f64 as Add<f64>>
+             <&f64 as Add<&f64>>
+             <f64 as Add<&f64>>
+             <f64 as Add>
+           and 48 others
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x + 100.0
@@ -29,6 +41,12 @@ LL |     x - 100
    |       ^ no implementation for `f32 - {integer}`
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f32`
+   = help: the following implementations were found:
+             <&'a f32 as Sub<f32>>
+             <&f32 as Sub<&f32>>
+             <f32 as Sub<&f32>>
+             <f32 as Sub>
+           and 48 others
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x - 100.0
@@ -41,6 +59,12 @@ LL |     x - 100
    |       ^ no implementation for `f64 - {integer}`
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f64`
+   = help: the following implementations were found:
+             <&'a f64 as Sub<f64>>
+             <&f64 as Sub<&f64>>
+             <f64 as Sub<&f64>>
+             <f64 as Sub>
+           and 48 others
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x - 100.0
@@ -53,6 +77,12 @@ LL |     x * 100
    |       ^ no implementation for `f32 * {integer}`
    |
    = help: the trait `Mul<{integer}>` is not implemented for `f32`
+   = help: the following implementations were found:
+             <&'a f32 as Mul<f32>>
+             <&f32 as Mul<&f32>>
+             <f32 as Mul<&f32>>
+             <f32 as Mul>
+           and 49 others
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x * 100.0
@@ -65,6 +95,12 @@ LL |     x * 100
    |       ^ no implementation for `f64 * {integer}`
    |
    = help: the trait `Mul<{integer}>` is not implemented for `f64`
+   = help: the following implementations were found:
+             <&'a f64 as Mul<f64>>
+             <&f64 as Mul<&f64>>
+             <f64 as Mul<&f64>>
+             <f64 as Mul>
+           and 49 others
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x * 100.0
@@ -77,6 +113,12 @@ LL |     x / 100
    |       ^ no implementation for `f32 / {integer}`
    |
    = help: the trait `Div<{integer}>` is not implemented for `f32`
+   = help: the following implementations were found:
+             <&'a f32 as Div<f32>>
+             <&f32 as Div<&f32>>
+             <f32 as Div<&f32>>
+             <f32 as Div>
+           and 54 others
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x / 100.0
@@ -89,6 +131,12 @@ LL |     x / 100
    |       ^ no implementation for `f64 / {integer}`
    |
    = help: the trait `Div<{integer}>` is not implemented for `f64`
+   = help: the following implementations were found:
+             <&'a f64 as Div<f64>>
+             <&f64 as Div<&f64>>
+             <f64 as Div<&f64>>
+             <f64 as Div>
+           and 54 others
 help: consider using a floating-point literal by writing it with `.0`
    |
 LL |     x / 100.0

@@ -3,6 +3,8 @@ error[E0277]: the trait bound `dyn CompareToInts: CompareTo<i32>` is not satisfi
    |
 LL |     c.same_as(22)
    |       ^^^^^^^ the trait `CompareTo<i32>` is not implemented for `dyn CompareToInts`
+   |
+   = help: the trait `CompareTo<i32>` is implemented for `i64`
 
 error[E0277]: the trait bound `C: CompareTo<i32>` is not satisfied
   --> $DIR/repeated-supertrait-ambig.rs:30:7
@@ -20,6 +22,8 @@ error[E0277]: the trait bound `dyn CompareToInts: CompareTo<i32>` is not satisfi
    |
 LL |     <dyn CompareToInts>::same_as(c, 22)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `CompareTo<i32>` is not implemented for `dyn CompareToInts`
+   |
+   = help: the trait `CompareTo<i32>` is implemented for `i64`
 
 error[E0277]: the trait bound `C: CompareTo<i32>` is not satisfied
   --> $DIR/repeated-supertrait-ambig.rs:38:5

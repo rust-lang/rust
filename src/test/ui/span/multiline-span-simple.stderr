@@ -5,6 +5,12 @@ LL |     foo(1 as u32 +
    |                  ^ no implementation for `u32 + ()`
    |
    = help: the trait `Add<()>` is not implemented for `u32`
+   = help: the following implementations were found:
+             <&'a u32 as Add<u32>>
+             <&u32 as Add<&u32>>
+             <u32 as Add<&u32>>
+             <u32 as Add>
+           and 48 others
 
 error: aborting due to previous error
 

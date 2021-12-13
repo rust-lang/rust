@@ -11,6 +11,12 @@ LL |     = [0; (i8::MAX + 1u8) as usize];
    |                    ^ no implementation for `i8 + u8`
    |
    = help: the trait `Add<u8>` is not implemented for `i8`
+   = help: the following implementations were found:
+             <&'a i8 as Add<i8>>
+             <&i8 as Add<&i8>>
+             <i8 as Add<&i8>>
+             <i8 as Add>
+           and 48 others
 
 error: aborting due to 2 previous errors
 

@@ -20,6 +20,12 @@ LL |     a = c + b * 5;
    |           ^ no implementation for `usize + u16`
    |
    = help: the trait `Add<u16>` is not implemented for `usize`
+   = help: the following implementations were found:
+             <&'a usize as Add<usize>>
+             <&usize as Add<&usize>>
+             <usize as Add<&usize>>
+             <usize as Add>
+           and 48 others
 
 error: aborting due to 3 previous errors
 

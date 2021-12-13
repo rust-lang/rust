@@ -4,8 +4,7 @@ error[E0277]: the trait bound `Uwu<10_u32, 12_u32>: Trait` is not satisfied
 LL | fn rawr() -> impl Trait {
    |              ^^^^^^^^^^ the trait `Trait` is not implemented for `Uwu<10_u32, 12_u32>`
    |
-   = help: the following implementations were found:
-             <Uwu<N> as Trait>
+   = help: the trait `Trait` is implemented for `Uwu<N>`
 
 error[E0277]: the trait bound `Uwu<10_u32, 12_u32>: Trait` is not satisfied
   --> $DIR/rp_impl_trait_fail.rs:6:25
@@ -18,8 +17,7 @@ LL | |     Uwu::<10, 12>
 LL | | }
    | |_^ the trait `Trait` is not implemented for `Uwu<10_u32, 12_u32>`
    |
-   = help: the following implementations were found:
-             <Uwu<N> as Trait>
+   = help: the trait `Trait` is implemented for `Uwu<N>`
 
 error[E0277]: the trait bound `u32: Traitor<N, N>` is not satisfied
   --> $DIR/rp_impl_trait_fail.rs:18:26

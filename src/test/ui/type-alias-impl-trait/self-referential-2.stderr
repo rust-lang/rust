@@ -5,6 +5,12 @@ LL |     42_i32
    |     ^^^^^^ no implementation for `i32 == Foo`
    |
    = help: the trait `PartialEq<Foo>` is not implemented for `i32`
+   = help: the following implementations were found:
+             <i32 as PartialEq>
+             <f32 as PartialEq>
+             <f64 as PartialEq>
+             <i128 as PartialEq>
+           and 6 others
 
 error: aborting due to previous error
 

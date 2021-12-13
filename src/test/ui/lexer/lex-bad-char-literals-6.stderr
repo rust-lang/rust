@@ -38,6 +38,12 @@ LL |     if x == y {}
    |          ^^ no implementation for `&str == char`
    |
    = help: the trait `PartialEq<char>` is not implemented for `&str`
+   = help: the following implementations were found:
+             <&'a str as PartialEq<OsString>>
+             <&'a str as PartialEq<String>>
+             <&'b str as PartialEq<Cow<'a, str>>>
+             <str as PartialEq<Cow<'a, str>>>
+           and 4 others
 
 error[E0308]: mismatched types
   --> $DIR/lex-bad-char-literals-6.rs:15:20
@@ -54,6 +60,12 @@ LL |     if x == z {}
    |          ^^ no implementation for `&str == char`
    |
    = help: the trait `PartialEq<char>` is not implemented for `&str`
+   = help: the following implementations were found:
+             <&'a str as PartialEq<OsString>>
+             <&'a str as PartialEq<String>>
+             <&'b str as PartialEq<Cow<'a, str>>>
+             <str as PartialEq<Cow<'a, str>>>
+           and 4 others
 
 error: aborting due to 6 previous errors
 
