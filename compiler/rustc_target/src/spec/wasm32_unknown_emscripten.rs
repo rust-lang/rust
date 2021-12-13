@@ -35,7 +35,7 @@ pub fn target() -> Target {
         exe_suffix: ".js".to_string(),
         linker: None,
         is_like_emscripten: true,
-        panic_strategy: PanicStrategy::Unwind,
+        panic_strategy: PanicStrategy::Abort,
         post_link_args,
         families: vec!["unix".to_string(), "wasm".to_string()],
         ..options
