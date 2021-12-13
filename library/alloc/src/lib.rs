@@ -107,7 +107,6 @@
 #![feature(inherent_ascii_escape)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
-#![feature(iter_zip)]
 #![feature(layout_for_ptr)]
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_slice)]

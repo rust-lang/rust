@@ -32,7 +32,6 @@
 
 #![feature(crate_visibility_modifier)]
 #![feature(box_patterns)]
-#![feature(iter_zip)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
 

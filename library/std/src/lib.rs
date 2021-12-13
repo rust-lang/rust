@@ -294,7 +294,6 @@
 #![feature(int_log)]
 #![feature(into_future)]
 #![feature(intra_doc_pointers)]
-#![feature(iter_zip)]
 #![feature(lang_items)]
 #![feature(linkage)]
 #![feature(llvm_asm)]

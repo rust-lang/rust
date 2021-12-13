@@ -40,7 +40,6 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
 /// # Examples
 ///
 /// ```
-/// #![feature(iter_zip)]
 /// use std::iter::zip;
 ///
 /// let xs = [1, 2, 3];
@@ -63,7 +62,7 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
 /// assert_eq!(iter.next().unwrap(), ((3, 6), 9));
 /// assert!(iter.next().is_none());
 /// ```
-#[unstable(feature = "iter_zip", issue = "83574")]
+#[stable(feature = "iter_zip", since = "1.59.0")]
 pub fn zip<A, B>(a: A, b: B) -> Zip<A::IntoIter, B::IntoIter>
 where
     A: IntoIterator,
