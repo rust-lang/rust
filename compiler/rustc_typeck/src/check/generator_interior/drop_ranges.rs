@@ -34,13 +34,13 @@ use crate::expr_use_visitor;
 /// record the parent expression, which is the point where the drop actually takes place.
 pub struct ExprUseDelegate<'tcx> {
     hir: Map<'tcx>,
-    /// Records the point at which an expression or local variable is dropped.
+    /// Records the variables/expressions that are dropped by a given expression.
     ///
     /// The key is the hir-id of the expression, and the value is a set or hir-ids for variables
     /// or values that are consumed by that expression.
     ///
     /// Note that this set excludes "partial drops" -- for example, a statement like `drop(x.y)` is
-    /// not considered a drop of `x`.
+    /// not considered a drop of `x`, although it would be a drop of `x.y`.
     consumed_places: HirIdMap<HirIdSet>,
     /// A set of hir-ids of values or variables that are borrowed at some point within the body.
     borrowed_places: HirIdSet,
@@ -437,29 +437,29 @@ impl DropRanges {
             let mut changed = false;
             for id in self.nodes.indices() {
                 let old_state = self.nodes[id].drop_state.clone();
-                if preds[id].len() != 0 {
-                    self.nodes[id].drop_state = self.nodes[preds[id][0]].drop_state.clone();
-                    for pred in &preds[id][1..] {
-                        let state = self.nodes[*pred].drop_state.clone();
-                        self.nodes[id].drop_state.intersect(&state);
-                    }
+                let mut new_state = if id.index() == 0 {
+                    BitSet::new_empty(self.num_values())
                 } else {
-                    self.nodes[id].drop_state = if id.index() == 0 {
-                        BitSet::new_empty(self.num_values())
-                    } else {
-                        // If we are not the start node and we have no predecessors, treat
-                        // everything as dropped because there's no way to get here anyway.
-                        BitSet::new_filled(self.num_values())
-                    };
+                    // If we are not the start node and we have no predecessors, treat
+                    // everything as dropped because there's no way to get here anyway.
+                    BitSet::new_filled(self.num_values())
                 };
-                for drop in &self.nodes[id].drops.clone() {
-                    self.nodes[id].drop_state.insert(*drop);
-                }
-                for reinit in &self.nodes[id].reinits.clone() {
-                    self.nodes[id].drop_state.remove(*reinit);
+
+                for pred in &preds[id] {
+                    let state = &self.nodes[*pred].drop_state;
+                    new_state.intersect(state);
                 }
 
-                changed |= old_state != self.nodes[id].drop_state;
+                for drop in &self.nodes[id].drops {
+                    new_state.insert(*drop);
+                }
+
+                for reinit in &self.nodes[id].reinits {
+                    new_state.remove(*reinit);
+                }
+
+                changed |= old_state != new_state;
+                self.nodes[id].drop_state = new_state;
             }
 
             changed
@@ -476,7 +476,7 @@ impl DropRanges {
         let mut preds = IndexVec::from_fn_n(|_| vec![], self.nodes.len());
         for (id, node) in self.nodes.iter_enumerated() {
             if node.successors.len() == 0 && id.index() != self.nodes.len() - 1 {
-                preds[<_>::from(id.index() + 1)].push(id);
+                preds[id + 1].push(id);
             } else {
                 for succ in &node.successors {
                     preds[*succ].push(id);
@@ -501,7 +501,7 @@ impl<'a> dot::GraphWalk<'a> for DropRanges {
             .iter_enumerated()
             .flat_map(|(i, node)| {
                 if node.successors.len() == 0 {
-                    vec![(i, PostOrderId::from_usize(i.index() + 1))]
+                    vec![(i, i + 1)]
                 } else {
                     node.successors.iter().map(move |&s| (i, s)).collect()
                 }
