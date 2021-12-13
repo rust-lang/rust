@@ -28,7 +28,7 @@ use std::fmt;
 /// assuming such values can be found. It returns the final values of
 /// all the variables as well as a set of errors that must be reported.
 #[instrument(level = "debug", skip(region_rels, var_infos, data))]
-pub fn resolve<'tcx>(
+pub(crate) fn resolve<'tcx>(
     region_rels: &RegionRelations<'_, 'tcx>,
     var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,

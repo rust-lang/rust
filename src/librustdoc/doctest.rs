@@ -29,20 +29,21 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::clean::{types::AttributesExt, Attributes};
-use crate::config::Options;
+use crate::config::Options as RustdocOptions;
 use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
 use crate::lint::init_lints;
 use crate::passes::span_of_attrs;
 
+/// Options that apply to all doctests in a crate or Markdown file (for `rustdoc foo.md`).
 #[derive(Clone, Default)]
-crate struct TestOptions {
+crate struct GlobalTestOptions {
     /// Whether to disable the default `extern crate my_crate;` when creating doctests.
     crate no_crate_inject: bool,
     /// Additional crate-level attributes to add to doctests.
     crate attrs: Vec<String>,
 }
 
-crate fn run(options: Options) -> Result<(), ErrorReported> {
+crate fn run(options: RustdocOptions) -> Result<(), ErrorReported> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
@@ -214,10 +215,10 @@ crate fn run_tests(mut test_args: Vec<String>, nocapture: bool, tests: Vec<test:
 }
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
-fn scrape_test_config(attrs: &[ast::Attribute]) -> TestOptions {
+fn scrape_test_config(attrs: &[ast::Attribute]) -> GlobalTestOptions {
     use rustc_ast_pretty::pprust;
 
-    let mut opts = TestOptions { no_crate_inject: false, attrs: Vec::new() };
+    let mut opts = GlobalTestOptions { no_crate_inject: false, attrs: Vec::new() };
 
     let test_attrs: Vec<_> = attrs
         .iter()
@@ -292,16 +293,13 @@ fn run_test(
     test: &str,
     crate_name: &str,
     line: usize,
-    options: Options,
-    should_panic: bool,
+    rustdoc_options: RustdocOptions,
+    mut lang_string: LangString,
     no_run: bool,
-    as_test_harness: bool,
     runtool: Option<String>,
     runtool_args: Vec<String>,
     target: TargetTriple,
-    compile_fail: bool,
-    mut error_codes: Vec<String>,
-    opts: &TestOptions,
+    opts: &GlobalTestOptions,
     edition: Edition,
     outdir: DirState,
     path: PathBuf,
@@ -309,49 +307,49 @@ fn run_test(
     report_unused_externs: impl Fn(UnusedExterns),
 ) -> Result<(), TestFailure> {
     let (test, line_offset, supports_color) =
-        make_test(test, Some(crate_name), as_test_harness, opts, edition, Some(test_id));
+        make_test(test, Some(crate_name), lang_string.test_harness, opts, edition, Some(test_id));
 
     let output_file = outdir.path().join("rust_out");
 
-    let rustc_binary = options
+    let rustc_binary = rustdoc_options
         .test_builder
         .as_deref()
         .unwrap_or_else(|| rustc_interface::util::rustc_path().expect("found rustc"));
     let mut compiler = Command::new(&rustc_binary);
     compiler.arg("--crate-type").arg("bin");
-    for cfg in &options.cfgs {
+    for cfg in &rustdoc_options.cfgs {
         compiler.arg("--cfg").arg(&cfg);
     }
-    if let Some(sysroot) = options.maybe_sysroot {
+    if let Some(sysroot) = rustdoc_options.maybe_sysroot {
         compiler.arg("--sysroot").arg(sysroot);
     }
     compiler.arg("--edition").arg(&edition.to_string());
     compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", path);
     compiler.env("UNSTABLE_RUSTDOC_TEST_LINE", format!("{}", line as isize - line_offset as isize));
     compiler.arg("-o").arg(&output_file);
-    if as_test_harness {
+    if lang_string.test_harness {
         compiler.arg("--test");
     }
-    if options.json_unused_externs && !compile_fail {
+    if rustdoc_options.json_unused_externs && !lang_string.compile_fail {
         compiler.arg("--error-format=json");
         compiler.arg("--json").arg("unused-externs");
         compiler.arg("-Z").arg("unstable-options");
         compiler.arg("-W").arg("unused_crate_dependencies");
     }
-    for lib_str in &options.lib_strs {
+    for lib_str in &rustdoc_options.lib_strs {
         compiler.arg("-L").arg(&lib_str);
     }
-    for extern_str in &options.extern_strs {
+    for extern_str in &rustdoc_options.extern_strs {
         compiler.arg("--extern").arg(&extern_str);
     }
     compiler.arg("-Ccodegen-units=1");
-    for codegen_options_str in &options.codegen_options_strs {
+    for codegen_options_str in &rustdoc_options.codegen_options_strs {
         compiler.arg("-C").arg(&codegen_options_str);
     }
-    for debugging_option_str in &options.debugging_opts_strs {
+    for debugging_option_str in &rustdoc_options.debugging_opts_strs {
         compiler.arg("-Z").arg(&debugging_option_str);
     }
-    if no_run && !compile_fail && options.persist_doctests.is_none() {
+    if no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none() {
         compiler.arg("--emit=metadata");
     }
     compiler.arg("--target").arg(match target {
@@ -360,7 +358,7 @@ fn run_test(
             path.to_str().expect("target path must be valid unicode").to_string()
         }
     });
-    if let ErrorOutputType::HumanReadable(kind) = options.error_format {
+    if let ErrorOutputType::HumanReadable(kind) = rustdoc_options.error_format {
         let (short, color_config) = kind.unzip();
 
         if short {
@@ -418,20 +416,20 @@ fn run_test(
 
     let out = out_lines.join("\n");
     let _bomb = Bomb(&out);
-    match (output.status.success(), compile_fail) {
+    match (output.status.success(), lang_string.compile_fail) {
         (true, true) => {
             return Err(TestFailure::UnexpectedCompilePass);
         }
         (true, false) => {}
         (false, true) => {
-            if !error_codes.is_empty() {
+            if !lang_string.error_codes.is_empty() {
                 // We used to check if the output contained "error[{}]: " but since we added the
                 // colored output, we can't anymore because of the color escape characters before
                 // the ":".
-                error_codes.retain(|err| !out.contains(&format!("error[{}]", err)));
+                lang_string.error_codes.retain(|err| !out.contains(&format!("error[{}]", err)));
 
-                if !error_codes.is_empty() {
-                    return Err(TestFailure::MissingErrorCodes(error_codes));
+                if !lang_string.error_codes.is_empty() {
+                    return Err(TestFailure::MissingErrorCodes(lang_string.error_codes));
                 }
             }
         }
@@ -454,11 +452,11 @@ fn run_test(
     } else {
         cmd = Command::new(output_file);
     }
-    if let Some(run_directory) = options.test_run_directory {
+    if let Some(run_directory) = rustdoc_options.test_run_directory {
         cmd.current_dir(run_directory);
     }
 
-    let result = if options.nocapture {
+    let result = if rustdoc_options.nocapture {
         cmd.status().map(|status| process::Output {
             status,
             stdout: Vec::new(),
@@ -470,9 +468,9 @@ fn run_test(
     match result {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
         Ok(out) => {
-            if should_panic && out.status.success() {
+            if lang_string.should_panic && out.status.success() {
                 return Err(TestFailure::UnexpectedRunPass);
-            } else if !should_panic && !out.status.success() {
+            } else if !lang_string.should_panic && !out.status.success() {
                 return Err(TestFailure::ExecutionFailure(out));
             }
         }
@@ -487,7 +485,7 @@ crate fn make_test(
     s: &str,
     crate_name: Option<&str>,
     dont_insert_main: bool,
-    opts: &TestOptions,
+    opts: &GlobalTestOptions,
     edition: Edition,
     test_id: Option<&str>,
 ) -> (String, usize, bool) {
@@ -804,11 +802,11 @@ crate struct Collector {
     // the `names` vector of that test will be `["Title", "Subtitle"]`.
     names: Vec<String>,
 
-    options: Options,
+    rustdoc_options: RustdocOptions,
     use_headers: bool,
     enable_per_target_ignores: bool,
     crate_name: Symbol,
-    opts: TestOptions,
+    opts: GlobalTestOptions,
     position: Span,
     source_map: Option<Lrc<SourceMap>>,
     filename: Option<PathBuf>,
@@ -820,9 +818,9 @@ crate struct Collector {
 impl Collector {
     crate fn new(
         crate_name: Symbol,
-        options: Options,
+        rustdoc_options: RustdocOptions,
         use_headers: bool,
-        opts: TestOptions,
+        opts: GlobalTestOptions,
         source_map: Option<Lrc<SourceMap>>,
         filename: Option<PathBuf>,
         enable_per_target_ignores: bool,
@@ -830,7 +828,7 @@ impl Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
-            options,
+            rustdoc_options,
             use_headers,
             enable_per_target_ignores,
             crate_name,
@@ -884,14 +882,14 @@ impl Tester for Collector {
         let name = self.generate_name(line, &filename);
         let crate_name = self.crate_name.to_string();
         let opts = self.opts.clone();
-        let edition = config.edition.unwrap_or(self.options.edition);
-        let options = self.options.clone();
-        let runtool = self.options.runtool.clone();
-        let runtool_args = self.options.runtool_args.clone();
-        let target = self.options.target.clone();
+        let edition = config.edition.unwrap_or(self.rustdoc_options.edition);
+        let rustdoc_options = self.rustdoc_options.clone();
+        let runtool = self.rustdoc_options.runtool.clone();
+        let runtool_args = self.rustdoc_options.runtool_args.clone();
+        let target = self.rustdoc_options.target.clone();
         let target_str = target.to_string();
         let unused_externs = self.unused_extern_reports.clone();
-        let no_run = config.no_run || options.no_run;
+        let no_run = config.no_run || rustdoc_options.no_run;
         if !config.compile_fail {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
         }
@@ -925,7 +923,7 @@ impl Tester for Collector {
                 self.visited_tests.entry((file.clone(), line)).and_modify(|v| *v += 1).or_insert(0)
             },
         );
-        let outdir = if let Some(mut path) = options.persist_doctests.clone() {
+        let outdir = if let Some(mut path) = rustdoc_options.persist_doctests.clone() {
             path.push(&test_id);
 
             std::fs::create_dir_all(&path)
@@ -965,15 +963,12 @@ impl Tester for Collector {
                     &test,
                     &crate_name,
                     line,
-                    options,
-                    config.should_panic,
+                    rustdoc_options,
+                    config,
                     no_run,
-                    config.test_harness,
                     runtool,
                     runtool_args,
                     target,
-                    config.compile_fail,
-                    config.error_codes,
                     &opts,
                     edition,
                     outdir,
