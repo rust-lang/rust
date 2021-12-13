@@ -892,6 +892,10 @@ h2.small-section-header > .anchor {
 	top: 10px;
 }
 .search-input {
+	/* Override Normalize.css: it has a rule that sets
+	   -webkit-appearance: textfield for search inputs. That
+	   causes rounded corners and no border on iOS Safari. */
+	-webkit-appearance: none;
 	/* Override Normalize.css: we have margins and do
 	 not want to overflow - the `moz` attribute is necessary
 	 until Firefox 29, too early to drop at this point */
