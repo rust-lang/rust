@@ -1,10 +1,6 @@
 // run-rustfix
 
 #![allow(clippy::ptr_arg)]
-// `needless_borrow` is to ensure there are no needles borrows in the fixed code.
-#![warn(clippy::needless_borrow)]
-// `redundant_clone` is to ensure there is no overlap between that lint and this one.
-#![warn(clippy::redundant_clone)]
 #![warn(clippy::unnecessary_to_owned)]
 
 use std::borrow::Cow;
@@ -39,6 +35,14 @@ impl X {
         s.push_str(other.as_ref());
         Self(s)
     }
+}
+
+#[allow(dead_code)]
+#[derive(Clone)]
+enum FileType {
+    Account,
+    PrivateKey,
+    Certificate,
 }
 
 fn main() {
@@ -120,6 +124,18 @@ fn main() {
 
     let _ = x.join(x_ref);
 
+    let _ = slice.iter().copied();
+    let _ = slice.iter().copied();
+    let _ = [std::path::PathBuf::new()][..].iter().cloned();
+    let _ = [std::path::PathBuf::new()][..].iter().cloned();
+
+    let _ = slice.iter().copied();
+    let _ = slice.iter().copied();
+    let _ = [std::path::PathBuf::new()][..].iter().cloned();
+    let _ = [std::path::PathBuf::new()][..].iter().cloned();
+
+    let _ = check_files(&[FileType::Account]);
+
     // negative tests
     require_string(&s.to_string());
     require_string(&Cow::from(s).into_owned());
@@ -173,5 +189,26 @@ fn require_impl_as_ref_slice<T>(_: impl AsRef<[T]>) {}
 
 fn require_as_ref_str_slice<T: AsRef<str>, U, V: AsRef<[U]>>(_: T, _: V) {}
 fn require_as_ref_slice_str<T, U: AsRef<[T]>, V: AsRef<str>>(_: U, _: V) {}
+
+// `check_files` is based on:
+// https://github.com/breard-r/acmed/blob/1f0dcc32aadbc5e52de6d23b9703554c0f925113/acmed/src/storage.rs#L262
+fn check_files(file_types: &[FileType]) -> bool {
+    for t in file_types {
+        let path = match get_file_path(t) {
+            Ok(p) => p,
+            Err(_) => {
+                return false;
+            },
+        };
+        if !path.is_file() {
+            return false;
+        }
+    }
+    true
+}
+
+fn get_file_path(_file_type: &FileType) -> Result<std::path::PathBuf, std::io::Error> {
+    Ok(std::path::PathBuf::new())
+}
 
 fn require_string(_: &String) {}

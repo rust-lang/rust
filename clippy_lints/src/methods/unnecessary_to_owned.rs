@@ -1,8 +1,9 @@
 use super::implicit_clone::is_clone_like;
+use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{implements_trait, is_copy, peel_mid_ty_refs};
-use clippy_utils::{get_parent_expr, is_diag_item_method, is_diag_trait_item};
+use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
+use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -18,17 +19,23 @@ use super::UNNECESSARY_TO_OWNED;
 pub fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol, args: &'tcx [Expr<'tcx>]) {
     if_chain! {
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-        if is_to_owned_like(cx, method_name, method_def_id);
         if let [receiver] = args;
         then {
-            // At this point, we know the call is of a `to_owned`-like function. The functions
-            // `check_addr_of_expr` and `check_call_arg` determine whether the call is unnecessary
-            // based on its context, that is, whether it is a referent in an `AddrOf` expression or
-            // an argument in a function call.
-            if check_addr_of_expr(cx, expr, method_name, method_def_id, receiver) {
-                return;
+            if is_cloned_or_copied(cx, method_name, method_def_id) {
+                unnecessary_iter_cloned::check(cx, expr, method_name, receiver);
+            } else if is_to_owned_like(cx, method_name, method_def_id) {
+                // At this point, we know the call is of a `to_owned`-like function. The functions
+                // `check_addr_of_expr` and `check_call_arg` determine whether the call is unnecessary
+                // based on its context, that is, whether it is a referent in an `AddrOf` expression, an
+                // argument in a `into_iter` call, or an argument in the call of some other function.
+                if check_addr_of_expr(cx, expr, method_name, method_def_id, receiver) {
+                    return;
+                }
+                if check_into_iter_call_arg(cx, expr, method_name, receiver) {
+                    return;
+                }
+                check_other_call_arg(cx, expr, method_name, receiver);
             }
-            check_call_arg(cx, expr, method_name, receiver);
         }
     }
 }
@@ -116,29 +123,34 @@ fn check_addr_of_expr(
                     return true;
                 }
             }
-            if implements_deref_trait(cx, receiver_ty, target_ty) {
-                if n_receiver_refs > 0 {
-                    span_lint_and_sugg(
-                        cx,
-                        UNNECESSARY_TO_OWNED,
-                        parent.span,
-                        &format!("unnecessary use of `{}`", method_name),
-                        "use",
-                        receiver_snippet,
-                        Applicability::MachineApplicable,
-                    );
-                } else {
-                    span_lint_and_sugg(
-                        cx,
-                        UNNECESSARY_TO_OWNED,
-                        expr.span.with_lo(receiver.span.hi()),
-                        &format!("unnecessary use of `{}`", method_name),
-                        "remove this",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    );
+            if_chain! {
+                if let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref);
+                if implements_trait(cx, receiver_ty, deref_trait_id, &[]);
+                if get_associated_type(cx, receiver_ty, deref_trait_id, "Target") == Some(target_ty);
+                then {
+                    if n_receiver_refs > 0 {
+                        span_lint_and_sugg(
+                            cx,
+                            UNNECESSARY_TO_OWNED,
+                            parent.span,
+                            &format!("unnecessary use of `{}`", method_name),
+                            "use",
+                            receiver_snippet,
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        span_lint_and_sugg(
+                            cx,
+                            UNNECESSARY_TO_OWNED,
+                            expr.span.with_lo(receiver.span.hi()),
+                            &format!("unnecessary use of `{}`", method_name),
+                            "remove this",
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    return true;
                 }
-                return true;
             }
             if_chain! {
                 if let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef);
@@ -161,9 +173,55 @@ fn check_addr_of_expr(
     false
 }
 
+/// Checks whether `expr` is an argument in an `into_iter` call and, if so, determines whether its
+/// call of a `to_owned`-like function is unnecessary.
+fn check_into_iter_call_arg(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    method_name: Symbol,
+    receiver: &'tcx Expr<'tcx>,
+) -> bool {
+    if_chain! {
+        if let Some(parent) = get_parent_expr(cx, expr);
+        if let Some(callee_def_id) = fn_def_id(cx, parent);
+        if is_into_iter(cx, callee_def_id);
+        if let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
+        let parent_ty = cx.typeck_results().expr_ty(parent);
+        if implements_trait(cx, parent_ty, iterator_trait_id, &[]);
+        if let Some(item_ty) = get_iterator_item_ty(cx, parent_ty);
+        if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
+        then {
+            if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver) {
+                return true;
+            }
+            let cloned_or_copied = if is_copy(cx, item_ty) {
+                "copied"
+            } else {
+                "cloned"
+            };
+            span_lint_and_sugg(
+                cx,
+                UNNECESSARY_TO_OWNED,
+                parent.span,
+                &format!("unnecessary use of `{}`", method_name),
+                "use",
+                format!("{}.iter().{}()", receiver_snippet, cloned_or_copied),
+                Applicability::MachineApplicable,
+            );
+            return true;
+        }
+    }
+    false
+}
+
 /// Checks whether `expr` is an argument in a function call and, if so, determines whether its call
 /// of a `to_owned`-like function is unnecessary.
-fn check_call_arg(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol, receiver: &'tcx Expr<'tcx>) {
+fn check_other_call_arg(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    method_name: Symbol,
+    receiver: &'tcx Expr<'tcx>,
+) -> bool {
     if_chain! {
         if let Some((maybe_call, maybe_arg)) = skip_addr_of_ancestors(cx, expr);
         if let Some((callee_def_id, call_substs, call_args)) = get_callee_substs_and_args(cx, maybe_call);
@@ -186,7 +244,8 @@ fn check_call_arg(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: S
             if let [projection_predicate] = projection_predicates[..] {
                 let normalized_ty =
                     cx.tcx.subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.ty);
-                implements_deref_trait(cx, receiver_ty, normalized_ty)
+                implements_trait(cx, receiver_ty, deref_trait_id, &[])
+                    && get_associated_type(cx, receiver_ty, deref_trait_id, "Target") == Some(normalized_ty)
             } else {
                 false
             }
@@ -215,8 +274,10 @@ fn check_call_arg(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: S
                 format!("{:&>width$}{}", "", receiver_snippet, width = n_refs),
                 Applicability::MachineApplicable,
             );
+            return true;
         }
     }
+    false
 }
 
 /// Walks an expression's ancestors until it finds a non-`AddrOf` expression. Returns the first such
@@ -315,22 +376,10 @@ fn compose_substs(cx: &LateContext<'tcx>, left: &[GenericArg<'tcx>], right: Subs
         .collect()
 }
 
-/// Helper function to check whether a type implements the `Deref` trait.
-fn implements_deref_trait(cx: &LateContext<'tcx>, ty: Ty<'tcx>, deref_target_ty: Ty<'tcx>) -> bool {
-    if_chain! {
-        if let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref);
-        if implements_trait(cx, ty, deref_trait_id, &[]);
-        if let Some(deref_target_id) = cx.tcx.lang_items().deref_target();
-        let substs = cx.tcx.mk_substs_trait(ty, &[]);
-        let projection_ty = cx.tcx.mk_projection(deref_target_id, substs);
-        let normalized_ty = cx.tcx.normalize_erasing_regions(cx.param_env, projection_ty);
-        if normalized_ty == deref_target_ty;
-        then {
-            true
-        } else {
-            false
-        }
-    }
+/// Returns true if the named method is `Iterator::cloned` or `Iterator::copied`.
+fn is_cloned_or_copied(cx: &LateContext<'_>, method_name: Symbol, method_def_id: DefId) -> bool {
+    (method_name.as_str() == "cloned" || method_name.as_str() == "copied")
+        && is_diag_trait_item(cx, method_def_id, sym::Iterator)
 }
 
 /// Returns true if the named method can be used to convert the receiver to its "owned"

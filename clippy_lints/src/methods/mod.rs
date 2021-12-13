@@ -56,6 +56,7 @@ mod suspicious_splitn;
 mod uninit_assumed_init;
 mod unnecessary_filter_map;
 mod unnecessary_fold;
+mod unnecessary_iter_cloned;
 mod unnecessary_lazy_eval;
 mod unnecessary_to_owned;
 mod unwrap_or_else_default;
