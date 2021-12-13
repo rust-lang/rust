@@ -503,13 +503,17 @@ impl_stable_hash_via_hash!(::std::path::PathBuf);
 
 impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
 where
-    K: HashStable<HCX> + ToStableHashKey<HCX> + Eq,
+    K: ToStableHashKey<HCX> + Eq,
     V: HashStable<HCX>,
     R: BuildHasher,
 {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        hash_stable_hashmap(hcx, hasher, self, ToStableHashKey::to_stable_hash_key);
+        stable_hash_reduce(hcx, hasher, self.iter(), self.len(), |hasher, hcx, (key, value)| {
+            let key = key.to_stable_hash_key(hcx);
+            key.hash_stable(hcx, hasher);
+            value.hash_stable(hcx, hasher);
+        });
     }
 }
 
@@ -519,9 +523,10 @@ where
     R: BuildHasher,
 {
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        let mut keys: Vec<_> = self.iter().map(|k| k.to_stable_hash_key(hcx)).collect();
-        keys.sort_unstable();
-        keys.hash_stable(hcx, hasher);
+        stable_hash_reduce(hcx, hasher, self.iter(), self.len(), |hasher, hcx, key| {
+            let key = key.to_stable_hash_key(hcx);
+            key.hash_stable(hcx, hasher);
+        });
     }
 }
 
@@ -531,10 +536,11 @@ where
     V: HashStable<HCX>,
 {
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        let mut entries: Vec<_> =
-            self.iter().map(|(k, v)| (k.to_stable_hash_key(hcx), v)).collect();
-        entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
-        entries.hash_stable(hcx, hasher);
+        stable_hash_reduce(hcx, hasher, self.iter(), self.len(), |hasher, hcx, (key, value)| {
+            let key = key.to_stable_hash_key(hcx);
+            key.hash_stable(hcx, hasher);
+            value.hash_stable(hcx, hasher);
+        });
     }
 }
 
@@ -543,34 +549,30 @@ where
     K: ToStableHashKey<HCX>,
 {
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        let mut keys: Vec<_> = self.iter().map(|k| k.to_stable_hash_key(hcx)).collect();
-        keys.sort_unstable();
-        keys.hash_stable(hcx, hasher);
+        stable_hash_reduce(hcx, hasher, self.iter(), self.len(), |hasher, hcx, key| {
+            let key = key.to_stable_hash_key(hcx);
+            key.hash_stable(hcx, hasher);
+        });
     }
 }
 
-pub fn hash_stable_hashmap<HCX, K, V, R, SK, F>(
+fn stable_hash_reduce<HCX, I, C, F>(
     hcx: &mut HCX,
     hasher: &mut StableHasher,
-    map: &::std::collections::HashMap<K, V, R>,
-    to_stable_hash_key: F,
+    collection: C,
+    length: usize,
+    hash_function: F,
 ) where
-    K: Eq + HashStable<HCX>,
-    V: HashStable<HCX>,
-    R: BuildHasher,
-    SK: HashStable<HCX> + Ord,
-    F: Fn(&K, &HCX) -> SK,
+    C: Iterator<Item = I>,
+    F: Fn(&mut StableHasher, &mut HCX, I),
 {
-    let hash = map
-        .iter()
-        .map(|(key, value)| {
-            let key = to_stable_hash_key(key, hcx);
+    let hash = collection
+        .map(|value| {
             let mut hasher = StableHasher::new();
-            key.hash_stable(hcx, &mut hasher);
-            value.hash_stable(hcx, &mut hasher);
+            hash_function(&mut hasher, hcx, value);
             hasher.finish::<u128>()
         })
         .reduce(|accum, value| accum.wrapping_add(value));
-    map.len().hash_stable(hcx, hasher);
+    length.hash_stable(hcx, hasher);
     hash.hash_stable(hcx, hasher);
 }
