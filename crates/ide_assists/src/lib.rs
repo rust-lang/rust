@@ -216,8 +216,6 @@ mod handlers {
             generate_constant::generate_constant,
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_default_from_new::generate_default_from_new,
-            generate_delegate_methods::generate_delegate_methods,
-            generate_deref::generate_deref,
             generate_derive::generate_derive,
             generate_enum_is_method::generate_enum_is_method,
             generate_enum_projection_method::generate_enum_as_method,
@@ -285,6 +283,8 @@ mod handlers {
             generate_getter::generate_getter,
             generate_getter::generate_getter_mut,
             generate_setter::generate_setter,
+            generate_delegate_methods::generate_delegate_methods,
+            generate_deref::generate_deref,
             // Are you sure you want to add new assist here, and not to the
             // sorted list above?
         ]

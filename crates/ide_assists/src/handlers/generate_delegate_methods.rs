@@ -47,18 +47,18 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
     let strukt_name = strukt.name()?;
     let current_module = ctx.sema.scope(strukt.syntax()).module()?;
 
-    let (field_name, field_ty) = match ctx.find_node_at_offset::<ast::RecordField>() {
+    let (field_name, field_ty, target) = match ctx.find_node_at_offset::<ast::RecordField>() {
         Some(field) => {
             let field_name = field.name()?;
             let field_ty = field.ty()?;
-            (format!("{}", field_name), field_ty)
+            (format!("{}", field_name), field_ty, field.syntax().text_range())
         }
         None => {
             let field = ctx.find_node_at_offset::<ast::TupleField>()?;
             let field_list = ctx.find_node_at_offset::<ast::TupleFieldList>()?;
             let field_list_index = field_list.fields().position(|it| it == field)?;
             let field_ty = field.ty()?;
-            (format!("{}", field_list_index), field_ty)
+            (format!("{}", field_list_index), field_ty, field.syntax().text_range())
         }
     };
 
@@ -74,7 +74,6 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
         Option::<()>::None
     });
 
-    let target = field_ty.syntax().text_range();
     for method in methods {
         let adt = ast::Adt::Struct(strukt.clone());
         let name = method.name(ctx.db()).to_string();
