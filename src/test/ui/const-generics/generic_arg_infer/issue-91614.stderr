@@ -1,0 +1,18 @@
+error[E0283]: type annotations needed for `Mask<_, {_: usize}>`
+  --> $DIR/issue-91614.rs:6:13
+   |
+LL |     let y = Mask::<_, _>::splat(false);
+   |         -   ^^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `T`
+   |         |
+   |         consider giving `y` the explicit type `Mask<_, LANES>`, where the type parameter `T` is specified
+   |
+   = note: cannot satisfy `_: MaskElement`
+note: required by a bound in `Mask::<T, LANES>::splat`
+  --> $SRC_DIR/core/src/../../portable-simd/crates/core_simd/src/masks.rs:LL:COL
+   |
+LL |     T: MaskElement,
+   |        ^^^^^^^^^^^ required by this bound in `Mask::<T, LANES>::splat`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.
