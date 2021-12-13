@@ -124,6 +124,9 @@ fn add_missing_impl_members_inner(
             impl_def.clone(),
             target_scope,
         );
+        // if target_scope.in_macro_file() {
+
+        // }
         match ctx.config.snippet_cap {
             None => builder.replace(target, new_impl_def.to_string()),
             Some(cap) => {

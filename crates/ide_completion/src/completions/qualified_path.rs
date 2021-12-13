@@ -152,9 +152,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             }
         }
         hir::PathResolution::Def(
-            def
-            @
-            (hir::ModuleDef::Adt(_)
+            def @ (hir::ModuleDef::Adt(_)
             | hir::ModuleDef::TypeAlias(_)
             | hir::ModuleDef::BuiltinType(_)),
         ) => {
@@ -187,7 +185,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
             let krate = ctx.krate;
             if let Some(krate) = krate {
-                let traits_in_scope = ctx.scope.traits_in_scope();
+                let traits_in_scope = ctx.scope.visible_traits();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
                     add_assoc_item(acc, ctx, item);
                     None::<()>
@@ -220,7 +218,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     add_enum_variants(acc, ctx, e);
                 }
 
-                let traits_in_scope = ctx.scope.traits_in_scope();
+                let traits_in_scope = ctx.scope.visible_traits();
                 let mut seen = FxHashSet::default();
                 ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
                     // We might iterate candidates of a trait multiple times here, so deduplicate
