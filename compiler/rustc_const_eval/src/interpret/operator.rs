@@ -328,9 +328,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.binary_int_op(bin_op, l, left.layout, r, right.layout)
             }
             _ if left.layout.ty.is_any_ptr() => {
-                // The RHS type must be the same *or an integer type* (for `Offset`).
+                // The RHS type must be a `pointer` *or an integer type* (for `Offset`).
+                // (Even when both sides are pointers, their type might differ, see issue #91636)
                 assert!(
-                    right.layout.ty == left.layout.ty || right.layout.ty.is_integral(),
+                    right.layout.ty.is_any_ptr() || right.layout.ty.is_integral(),
                     "Unexpected types for BinOp: {:?} {:?} {:?}",
                     left.layout.ty,
                     bin_op,
