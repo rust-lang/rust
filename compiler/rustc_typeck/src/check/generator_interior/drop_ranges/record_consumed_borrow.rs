@@ -53,12 +53,7 @@ impl<'tcx> ExprUseDelegate<'tcx> {
         }
     }
 
-    fn consume_body(
-        &mut self,
-        fcx: &'_ FnCtxt<'_, 'tcx>,
-        def_id: DefId,
-        body: &'tcx Body<'tcx>,
-    ) {
+    fn consume_body(&mut self, fcx: &'_ FnCtxt<'_, 'tcx>, def_id: DefId, body: &'tcx Body<'tcx>) {
         // Run ExprUseVisitor to find where values are consumed.
         ExprUseVisitor::new(
             self,
