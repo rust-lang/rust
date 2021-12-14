@@ -1,14 +1,14 @@
 #![feature(prelude_import)]
 #![no_std]
-#![feature(asm)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
-
 // pretty-mode:expanded
 // pp-exact:asm.pp
 // only-x86_64
+
+use std::arch::asm;
 
 pub fn main() {
     let a: i32;

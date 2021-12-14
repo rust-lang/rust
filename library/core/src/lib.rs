@@ -153,7 +153,6 @@
 #![feature(abi_unadjusted)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
-#![feature(asm)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
 #![feature(cfg_target_has_atomic)]
@@ -373,26 +372,14 @@ pub mod arch {
     pub use crate::core_arch::arch::*;
 
     /// Inline assembly.
-    ///
-    /// Read the [unstable book] for the usage.
-    ///
-    /// [unstable book]: ../../unstable-book/library-features/asm.html
-    #[unstable(
-        feature = "asm",
-        issue = "72016",
-        reason = "inline assembly is not stable enough for use and is subject to change"
-    )]
+    #[stable(feature = "asm", since = "1.59.0")]
     #[rustc_builtin_macro]
     pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
         /* compiler built-in */
     }
 
     /// Module-level inline assembly.
-    #[unstable(
-        feature = "global_asm",
-        issue = "35119",
-        reason = "`global_asm!` is not stable enough for use and is subject to change"
-    )]
+    #[stable(feature = "global_asm", since = "1.59.0")]
     #[rustc_builtin_macro]
     pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
         /* compiler built-in */

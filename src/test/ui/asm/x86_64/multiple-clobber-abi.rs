@@ -4,7 +4,9 @@
 
 // Checks that multiple clobber_abi options can be used
 
-#![feature(asm, asm_sym)]
+#![feature(asm_sym)]
+
+use std::arch::asm;
 
 extern "sysv64" fn foo(x: i32) -> i32 {
     x + 16

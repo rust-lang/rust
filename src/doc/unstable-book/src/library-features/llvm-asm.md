@@ -188,6 +188,3 @@ documentation as well][llvm-docs] for more information about clobbers,
 constraints, etc.
 
 [llvm-docs]: http://llvm.org/docs/LangRef.html#inline-assembler-expressions
-
-If you need more power and don't mind losing some of the niceties of
-`llvm_asm!`, check out [global_asm](global-asm.md).

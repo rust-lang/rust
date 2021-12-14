@@ -1,9 +1,9 @@
 // needs-asm-support
 // only-x86_64
 
-// checks various modes of failure for the `clobber_abi` argument (after parsing)
+use std::arch::asm;
 
-#![feature(asm)]
+// checks various modes of failure for the `clobber_abi` argument (after parsing)
 
 fn main() {
     unsafe {

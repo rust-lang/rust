@@ -2,7 +2,7 @@
 // needs-asm-support
 // Also test for #72960
 
-#![feature(asm)]
+use std::arch::asm;
 
 fn main() {
     unsafe {

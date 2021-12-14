@@ -2,7 +2,8 @@
 // only-x86_64
 
 #![crate_type = "rlib"]
-#![feature(asm)]
+
+use std::arch::asm;
 
 // CHECK-LABEL: @pure
 // CHECK-NOT: asm

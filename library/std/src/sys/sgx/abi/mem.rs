@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 // Do not remove inline: will result in relocation failure
 #[inline(always)]
 pub(crate) unsafe fn rel_ptr<T>(offset: u64) -> *const T {

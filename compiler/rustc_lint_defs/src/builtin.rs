@@ -2419,8 +2419,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,ignore (fails on system llvm)
-    /// #![feature(asm)]
+    /// ```rust,ignore (fails on non-x86_64)
+    /// #[cfg(target_arch="x86_64")]
+    /// use std::arch::asm;
     ///
     /// fn main() {
     ///     #[cfg(target_arch="x86_64")]
@@ -2430,19 +2431,7 @@ declare_lint! {
     /// }
     /// ```
     ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// warning: formatting may not be suitable for sub-register argument
-    ///  --> src/main.rs:6:19
-    ///   |
-    /// 6 |         asm!("mov {0}, {0}", in(reg) 0i16);
-    ///   |                   ^^^  ^^^           ---- for this argument
-    ///   |
-    ///   = note: `#[warn(asm_sub_register)]` on by default
-    ///   = help: use the `x` modifier to have the register formatted as `ax`
-    ///   = help: or use the `r` modifier to keep the default formatting of `rax`
-    /// ```
+    /// {{produces}}
     ///
     /// ### Explanation
     ///
@@ -2455,10 +2444,6 @@ declare_lint! {
     /// register size, to alert you of possibly using the incorrect width. To
     /// fix this, add the suggested modifier to the template, or cast the
     /// value to the correct size.
-    ///
-    /// See [register template modifiers] for more details.
-    ///
-    /// [register template modifiers]: https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#register-template-modifiers
     pub ASM_SUB_REGISTER,
     Warn,
     "using only a subset of a register for inline asm inputs",
@@ -2470,34 +2455,22 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,ignore (fails on system llvm)
-    /// #![feature(asm)]
+    /// ```rust,ignore (fails on non-x86_64)
+    /// #[cfg(target_arch="x86_64")]
+    /// use std::arch::asm;
     ///
     /// fn main() {
     ///     #[cfg(target_arch="x86_64")]
     ///     unsafe {
     ///         asm!(
     ///             ".att_syntax",
-    ///             "movl {0}, {0}", in(reg) 0usize
+    ///             "movq %{0}, %{0}", in(reg) 0usize
     ///         );
     ///     }
     /// }
     /// ```
     ///
-    /// This will produce:
-    ///
-    /// ```text
-    ///  warning: avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
-    ///  --> test.rs:7:14
-    ///   |
-    /// 7 |             ".att_syntax",
-    ///   |              ^^^^^^^^^^^
-    /// 8 |             "movq {0}, {0}", out(reg) _,
-    /// 9 |         );
-    ///   |         - help: add option: `, options(att_syntax)`
-    ///   |
-    ///   = note: `#[warn(bad_asm_style)]` on by default
-    /// ```
+    /// {{produces}}
     ///
     /// ### Explanation
     ///
@@ -2739,7 +2712,8 @@ declare_lint! {
     ///
     /// ```rust
     /// #![feature(naked_functions)]
-    /// #![feature(asm)]
+    ///
+    /// use std::arch::asm;
     ///
     /// #[naked]
     /// pub fn default_abi() -> u32 {

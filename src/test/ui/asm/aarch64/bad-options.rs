@@ -1,6 +1,6 @@
 // only-aarch64
 
-#![feature(asm, global_asm)]
+use std::arch::{asm, global_asm};
 
 fn main() {
     let mut foo = 0;

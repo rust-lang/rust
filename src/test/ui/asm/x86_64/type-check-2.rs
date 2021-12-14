@@ -1,6 +1,8 @@
 // only-x86_64
 
-#![feature(asm, repr_simd, never_type, asm_sym)]
+#![feature(repr_simd, never_type, asm_sym)]
+
+use std::arch::asm;
 
 #[repr(simd)]
 struct SimdNonCopy(f32, f32, f32, f32);

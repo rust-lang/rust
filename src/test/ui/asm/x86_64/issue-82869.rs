@@ -1,8 +1,9 @@
 // only-x86_64
 // Make sure rustc doesn't ICE on asm! for a foreign architecture.
 
-#![feature(asm)]
 #![crate_type = "rlib"]
+
+use std::arch::asm;
 
 pub unsafe fn aarch64(a: f64, b: f64) -> f64 {
     let c;

@@ -1,9 +1,10 @@
 // only-aarch64
 // compile-flags: -C target-feature=+neon
 
-#![feature(asm, global_asm, repr_simd, stdsimd, asm_const)]
+#![feature(repr_simd, stdsimd, asm_const)]
 
 use std::arch::aarch64::float64x2_t;
+use std::arch::{asm, global_asm};
 
 #[repr(simd)]
 #[derive(Copy, Clone)]

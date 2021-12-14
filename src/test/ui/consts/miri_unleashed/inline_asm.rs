@@ -1,8 +1,10 @@
 // compile-flags: -Zunleash-the-miri-inside-of-you
 // only-x86_64
-#![feature(asm,llvm_asm)]
+#![feature(llvm_asm)]
 #![allow(const_err)]
 #![allow(deprecated)] // llvm_asm!
+
+use std::arch::asm;
 
 fn main() {}
 

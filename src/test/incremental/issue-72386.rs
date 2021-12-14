@@ -4,13 +4,11 @@
 // Checks that we don't ICE when switching to an invalid register
 // and back again
 
-#![feature(asm)]
+use std::arch::asm;
 
 #[cfg(any(rpass1, rpass3))]
 fn main() {
-    unsafe {
-        asm!("nop")
-    }
+    unsafe { asm!("nop") }
 }
 
 #[cfg(cfail1)]

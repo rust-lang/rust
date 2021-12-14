@@ -5,5 +5,5 @@ macro_rules! m {
 }
 
 macro_rules! n {
-    () => { unsafe { asm!(include_str!("file.txt")); } }
+    () => { unsafe { core::arch::asm!(include_str!("file.txt")); } }
 }

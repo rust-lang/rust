@@ -1,8 +1,8 @@
-#![feature(asm)]
-
 // pretty-mode:expanded
 // pp-exact:asm.pp
 // only-x86_64
+
+use std::arch::asm;
 
 pub fn main() {
     let a: i32;
@@ -20,8 +20,10 @@ pub fn main() {
         asm!("inst1 {}, 42", "inst2 {}, 24", in(reg) a, out(reg) b);
         asm!("inst2 {1}, 24", "inst1 {0}, 42", in(reg) a, out(reg) b);
         asm!("inst1 {}, 42", "inst2 {name}, 24", in(reg) a, name = out(reg) b);
-        asm!("inst1
-inst2");
+        asm!(
+            "inst1
+inst2"
+        );
         asm!("inst1\ninst2");
         asm!("inst1\n\tinst2");
         asm!("inst1\ninst2", "inst3\ninst4");
