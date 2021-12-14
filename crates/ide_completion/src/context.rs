@@ -517,7 +517,7 @@ impl<'a> CompletionContext<'a> {
 
                         (ty, name)
                     },
-                    ast::ArgList(_it) => {
+                    ast::ArgList(_) => {
                         cov_mark::hit!(expected_type_fn_param);
                         ActiveParameter::at_token(
                             &self.sema,
@@ -608,9 +608,9 @@ impl<'a> CompletionContext<'a> {
                             .map(|c| (Some(c.return_type()), None))
                             .unwrap_or((None, None))
                     },
-                    ast::ParamList(__) => (None, None),
-                    ast::Stmt(__) => (None, None),
-                    ast::Item(__) => (None, None),
+                    ast::ParamList(_) => (None, None),
+                    ast::Stmt(_) => (None, None),
+                    ast::Item(_) => (None, None),
                     _ => {
                         match node.parent() {
                             Some(n) => {
@@ -702,10 +702,10 @@ impl<'a> CompletionContext<'a> {
 
         Some(match_ast! {
             match parent {
-                ast::LifetimeParam(_it) => LifetimeContext::LifetimeParam(sema.find_node_at_offset_with_macros(original_file, offset)),
-                ast::BreakExpr(_it) => LifetimeContext::LabelRef,
-                ast::ContinueExpr(_it) => LifetimeContext::LabelRef,
-                ast::Label(_it) => LifetimeContext::LabelDef,
+                ast::LifetimeParam(_) => LifetimeContext::LifetimeParam(sema.find_node_at_offset_with_macros(original_file, offset)),
+                ast::BreakExpr(_) => LifetimeContext::LabelRef,
+                ast::ContinueExpr(_) => LifetimeContext::LabelRef,
+                ast::Label(_) => LifetimeContext::LabelDef,
                 _ => LifetimeContext::Lifetime,
             }
         })
@@ -753,7 +753,7 @@ impl<'a> CompletionContext<'a> {
         path_ctx.kind  = path.syntax().ancestors().find_map(|it| {
             match_ast! {
                 match it {
-                    ast::PathType(_it) => Some(PathKind::Type),
+                    ast::PathType(_) => Some(PathKind::Type),
                     ast::PathExpr(it) => {
                         path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
                         Some(PathKind::Expr)
@@ -772,9 +772,9 @@ impl<'a> CompletionContext<'a> {
                         Some(PathKind::Pat)
                     },
                     ast::MacroCall(it) => it.excl_token().and(Some(PathKind::Mac)),
-                    ast::Meta(_it) => Some(PathKind::Attr),
+                    ast::Meta(_) => Some(PathKind::Attr),
                     ast::Visibility(it) => Some(PathKind::Vis { has_in_token: it.in_token().is_some() }),
-                    ast::UseTree(_it) => Some(PathKind::Use),
+                    ast::UseTree(_) => Some(PathKind::Use),
                     _ => None,
                 }
             }
@@ -851,9 +851,9 @@ fn pattern_context_for(pat: ast::Pat) -> PatternContext {
                         });
                         return (PatternRefutability::Irrefutable, param.ty().is_some())
                     },
-                    ast::MatchArm(__) => PatternRefutability::Refutable,
-                    ast::Condition(__) => PatternRefutability::Refutable,
-                    ast::ForExpr(__) => PatternRefutability::Irrefutable,
+                    ast::MatchArm(_) => PatternRefutability::Refutable,
+                    ast::Condition(_) => PatternRefutability::Refutable,
+                    ast::ForExpr(_) => PatternRefutability::Irrefutable,
                     _ => PatternRefutability::Irrefutable,
                 }
             };

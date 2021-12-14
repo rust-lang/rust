@@ -657,7 +657,7 @@ impl ReferenceCategory {
 
         let mode = r.syntax().ancestors().find_map(|node| {
         match_ast! {
-            match (node) {
+            match node {
                 ast::BinExpr(expr) => {
                     if matches!(expr.op_kind()?, ast::BinaryOp::Assignment { .. }) {
                         // If the variable or field ends on the LHS's end then it's a Write (covers fields and locals).

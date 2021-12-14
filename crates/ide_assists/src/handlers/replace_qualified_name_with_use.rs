@@ -102,10 +102,10 @@ fn shorten_paths(node: &SyntaxNode, path: &ast::Path) {
             match child {
                 // Don't modify `use` items, as this can break the `use` item when injecting a new
                 // import into the use tree.
-                ast::Use(_it) => continue,
+                ast::Use(_) => continue,
                 // Don't descend into submodules, they don't have the same `use` items in scope.
                 // FIXME: This isn't true due to `super::*` imports?
-                ast::Module(_it) => continue,
+                ast::Module(_) => continue,
                 ast::Path(p) => if maybe_replace_path(p.clone(), path.clone()).is_none() {
                     shorten_paths(p.syntax(), path);
                 },

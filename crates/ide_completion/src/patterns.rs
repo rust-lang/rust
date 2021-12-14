@@ -100,7 +100,7 @@ pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<Immedi
         let res = match_ast! {
             match prev_sibling {
                 // vis followed by random ident will always error the parser
-                ast::Visibility(_it) => ImmediatePrevSibling::Visibility,
+                ast::Visibility(_) => ImmediatePrevSibling::Visibility,
                 _ => return None,
             }
         };
@@ -112,7 +112,7 @@ pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<Immedi
                 let node = it.expr().filter(|_| it.semicolon_token().is_none())?.syntax().clone();
                 match_ast! {
                     match node {
-                        ast::IfExpr(_it) => ImmediatePrevSibling::IfExpr,
+                        ast::IfExpr(_) => ImmediatePrevSibling::IfExpr,
                         _ => return None,
                     }
                 }
@@ -128,7 +128,7 @@ pub(crate) fn determine_prev_sibling(name_like: &ast::NameLike) -> Option<Immedi
                 } else {
                     return None
             },
-            ast::Attr(_it) => ImmediatePrevSibling::Attribute,
+            ast::Attr(_) => ImmediatePrevSibling::Attribute,
             _ => return None,
         }
     };
@@ -200,31 +200,31 @@ pub(crate) fn determine_location(
 
     let res = match_ast! {
         match parent {
-            ast::IdentPat(_it) => ImmediateLocation::IdentPat,
-            ast::Rename(_it) => ImmediateLocation::Rename,
-            ast::StmtList(_it) => ImmediateLocation::StmtList,
-            ast::SourceFile(_it) => ImmediateLocation::ItemList,
-            ast::ItemList(_it) => ImmediateLocation::ItemList,
-            ast::RefExpr(_it) => ImmediateLocation::RefExpr,
-            ast::Variant(_it) => ImmediateLocation::Variant,
+            ast::IdentPat(_) => ImmediateLocation::IdentPat,
+            ast::Rename(_) => ImmediateLocation::Rename,
+            ast::StmtList(_) => ImmediateLocation::StmtList,
+            ast::SourceFile(_) => ImmediateLocation::ItemList,
+            ast::ItemList(_) => ImmediateLocation::ItemList,
+            ast::RefExpr(_) => ImmediateLocation::RefExpr,
+            ast::Variant(_) => ImmediateLocation::Variant,
             ast::RecordField(it) => if it.ty().map_or(false, |it| it.syntax().text_range().contains(offset)) {
                 return None;
             } else {
                 ImmediateLocation::RecordField
             },
-            ast::RecordExprFieldList(_it) => sema
+            ast::RecordExprFieldList(_) => sema
                 .find_node_at_offset_with_macros(original_file, offset)
                 .map(ImmediateLocation::RecordExprUpdate)?,
-            ast::TupleField(_it) => ImmediateLocation::TupleField,
-            ast::TupleFieldList(_it) => ImmediateLocation::TupleField,
-            ast::TypeBound(_it) => ImmediateLocation::TypeBound,
-            ast::TypeBoundList(_it) => ImmediateLocation::TypeBound,
+            ast::TupleField(_) => ImmediateLocation::TupleField,
+            ast::TupleFieldList(_) => ImmediateLocation::TupleField,
+            ast::TypeBound(_) => ImmediateLocation::TypeBound,
+            ast::TypeBoundList(_) => ImmediateLocation::TypeBound,
             ast::AssocItemList(it) => match it.syntax().parent().map(|it| it.kind()) {
                 Some(IMPL) => ImmediateLocation::Impl,
                 Some(TRAIT) => ImmediateLocation::Trait,
                 _ => return None,
             },
-            ast::GenericArgList(_it) => sema
+            ast::GenericArgList(_) => sema
                 .find_node_at_offset_with_macros(original_file, offset)
                 .map(ImmediateLocation::GenericArgList)?,
             ast::Module(it) => {
