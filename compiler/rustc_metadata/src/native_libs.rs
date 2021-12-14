@@ -31,7 +31,7 @@ struct Collector<'tcx> {
     libs: Vec<NativeLib>,
 }
 
-impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
+impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
         let (abi, foreign_mod_items) = match it.kind {
             hir::ItemKind::ForeignMod { abi, items } => (abi, items),
@@ -223,7 +223,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_foreign_item(&mut self, _it: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
-impl Collector<'tcx> {
+impl Collector<'_> {
     fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLib) {
         if lib.name.as_ref().map_or(false, |&s| s == kw::Empty) {
             match span {
