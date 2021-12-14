@@ -76,7 +76,7 @@ struct ImplWfCheck<'tcx> {
     min_specialization: bool,
 }
 
-impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
+impl<'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if let hir::ItemKind::Impl(ref impl_) = item.kind {
             enforce_impl_params_are_constrained(self.tcx, item.def_id, impl_.items);

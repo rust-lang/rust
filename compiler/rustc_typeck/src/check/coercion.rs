@@ -102,7 +102,7 @@ fn identity(_: Ty<'_>) -> Vec<Adjustment<'_>> {
     vec![]
 }
 
-fn simple(kind: Adjust<'tcx>) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>> {
+fn simple<'tcx>(kind: Adjust<'tcx>) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>> {
     move |target| vec![Adjustment { kind, target }]
 }
 
@@ -1694,7 +1694,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         err.help("you could instead create a new `enum` with a variant for each returned type");
     }
 
-    fn is_return_ty_unsized(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
+    fn is_return_ty_unsized<'a>(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
         if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id) {
             if let hir::FnRetTy::Return(ty) = fn_decl.output {
                 let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);

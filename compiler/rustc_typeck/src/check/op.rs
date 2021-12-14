@@ -893,7 +893,7 @@ enum Op {
 }
 
 /// Dereferences a single level of immutable referencing.
-fn deref_ty_if_possible(ty: Ty<'tcx>) -> Ty<'tcx> {
+fn deref_ty_if_possible<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.kind() {
         ty::Ref(_, ty, hir::Mutability::Not) => ty,
         _ => ty,
@@ -1007,7 +1007,7 @@ impl<'tcx> TypeVisitor<'tcx> for TypeParamVisitor<'tcx> {
 
 struct TypeParamEraser<'a, 'tcx>(&'a FnCtxt<'a, 'tcx>, Span);
 
-impl TypeFolder<'tcx> for TypeParamEraser<'_, 'tcx> {
+impl<'tcx> TypeFolder<'tcx> for TypeParamEraser<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.0.tcx
     }
