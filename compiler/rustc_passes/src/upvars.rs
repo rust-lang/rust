@@ -42,7 +42,7 @@ struct LocalCollector {
     locals: FxHashSet<HirId>,
 }
 
-impl Visitor<'tcx> for LocalCollector {
+impl<'tcx> Visitor<'tcx> for LocalCollector {
     type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -71,7 +71,7 @@ impl CaptureCollector<'_, '_> {
     }
 }
 
-impl Visitor<'tcx> for CaptureCollector<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for CaptureCollector<'_, 'tcx> {
     type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
