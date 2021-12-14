@@ -37,8 +37,8 @@ Table of contents:
 
 ## Usage
 
-Below are instructions on how to use Clippy as a subcommand, compiled from source
-or in Travis CI.
+Below are instructions on how to use Clippy as a cargo subcommand,
+in projects that do not use cargo, or in Travis CI.
 
 ### As a cargo subcommand (`cargo clippy`)
 
