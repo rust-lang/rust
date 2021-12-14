@@ -10,7 +10,7 @@ LL |     if let Some(x) = foo {}
    |        +++
 
 error[E0425]: cannot find value `x` in this scope
-  --> $DIR/if-let-typo.rs:13:8
+  --> $DIR/if-let-typo.rs:10:8
    |
 LL |     if x = 5 {}
    |        ^ not found in this scope
@@ -20,39 +20,6 @@ help: you might have meant to use pattern matching
 LL |     if let x = 5 {}
    |        +++
 
-error[E0658]: destructuring assignments are unstable
-  --> $DIR/if-let-typo.rs:4:16
-   |
-LL |     if Some(x) = foo {}
-   |        ------- ^
-   |        |
-   |        cannot assign to this expression
-   |
-   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
-   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
-
-error[E0658]: destructuring assignments are unstable
-  --> $DIR/if-let-typo.rs:7:18
-   |
-LL |     if Some(foo) = bar {}
-   |        --------- ^
-   |        |
-   |        cannot assign to this expression
-   |
-   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
-   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
-
-error[E0658]: destructuring assignments are unstable
-  --> $DIR/if-let-typo.rs:10:16
-   |
-LL |     if Some(3) = foo {}
-   |        ------- ^
-   |        |
-   |        cannot assign to this expression
-   |
-   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
-   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
-
 error[E0308]: mismatched types
   --> $DIR/if-let-typo.rs:4:8
    |
@@ -60,19 +27,19 @@ LL |     if Some(x) = foo {}
    |        ^^^^^^^^^^^^^ expected `bool`, found `()`
 
 error[E0308]: mismatched types
-  --> $DIR/if-let-typo.rs:7:8
+  --> $DIR/if-let-typo.rs:6:8
    |
 LL |     if Some(foo) = bar {}
    |        ^^^^^^^^^^^^^^^ expected `bool`, found `()`
 
 error[E0308]: mismatched types
-  --> $DIR/if-let-typo.rs:9:8
+  --> $DIR/if-let-typo.rs:7:8
    |
 LL |     if 3 = foo {}
    |        ^^^^^^^ expected `bool`, found `()`
 
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/if-let-typo.rs:10:16
+  --> $DIR/if-let-typo.rs:8:16
    |
 LL |     if Some(3) = foo {}
    |             -  ^
@@ -80,12 +47,12 @@ LL |     if Some(3) = foo {}
    |             cannot assign to this expression
 
 error[E0308]: mismatched types
-  --> $DIR/if-let-typo.rs:10:8
+  --> $DIR/if-let-typo.rs:8:8
    |
 LL |     if Some(3) = foo {}
    |        ^^^^^^^^^^^^^ expected `bool`, found `()`
 
-error: aborting due to 10 previous errors
+error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0070, E0308, E0425, E0658.
+Some errors have detailed explanations: E0070, E0308, E0425.
 For more information about an error, try `rustc --explain E0070`.

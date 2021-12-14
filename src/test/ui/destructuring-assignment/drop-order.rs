@@ -2,7 +2,6 @@
 
 //! Test that let bindings and destructuring assignments have consistent drop orders
 
-#![feature(destructuring_assignment)]
 #![allow(unused_variables, unused_assignments)]
 
 use std::cell::RefCell;

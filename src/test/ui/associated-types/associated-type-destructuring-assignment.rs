@@ -1,6 +1,5 @@
 // check-pass
 
-#![feature(destructuring_assignment)]
 #![feature(more_qualified_paths)]
 
 enum E { V() }

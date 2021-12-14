@@ -114,6 +114,8 @@ declare_features! (
     (accepted, default_type_params, "1.0.0", None, None),
     /// Allows `#[deprecated]` attribute.
     (accepted, deprecated, "1.9.0", Some(29935), None),
+    /// Allows the use of destructuring assignments.
+    (accepted, destructuring_assignment, "1.59.0", Some(71126), None),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146), None),
     /// Allows `..` in tuple (struct) patterns.
