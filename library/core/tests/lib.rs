@@ -8,6 +8,7 @@
 #![feature(cfg_panic)]
 #![feature(cfg_target_has_atomic)]
 #![feature(const_assume)]
+#![feature(const_bool_to_option)]
 #![feature(const_cell_into_inner)]
 #![feature(const_convert)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
