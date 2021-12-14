@@ -1040,4 +1040,37 @@ mod test {
         let sugg = Sugg::BinOp(AssocOp::Add, "(1 + 1) + (1 + 1)".into());
         assert_eq!("((1 + 1) + (1 + 1))", sugg.maybe_par().to_string());
     }
+    #[test]
+    fn not_op() {
+        use AssocOp::{Add, Equal, Greater, GreaterEqual, LAnd, LOr, Less, LessEqual, NotEqual};
+
+        // Invert the comparison operator.
+        let sugg = Sugg::BinOp(Equal, "1 == 1".into());
+        assert_eq!("1 != 1", (!sugg).to_string());
+
+        let sugg = Sugg::BinOp(NotEqual, "1 != 1".into());
+        assert_eq!("1 == 1", (!sugg).to_string());
+
+        let sugg = Sugg::BinOp(Less, "1 < 1".into());
+        assert_eq!("1 >= 1", (!sugg).to_string());
+
+        let sugg = Sugg::BinOp(LessEqual, "1 <= 1".into());
+        assert_eq!("1 > 1", (!sugg).to_string());
+
+        let sugg = Sugg::BinOp(Greater, "1 > 1".into());
+        assert_eq!("1 <= 1", (!sugg).to_string());
+
+        let sugg = Sugg::BinOp(GreaterEqual, "1 >= 1".into());
+        assert_eq!("1 < 1", (!sugg).to_string());
+
+        // Other operators are inverted like !(..).
+        let sugg = Sugg::BinOp(Add, "1 + 1".into());
+        assert_eq!("!(1 + 1)", (!sugg).to_string());
+
+        let sugg = Sugg::BinOp(LAnd, "1 && 1".into());
+        assert_eq!("!(1 && 1)", (!sugg).to_string());
+
+        let sugg = Sugg::BinOp(LOr, "1 || 1".into());
+        assert_eq!("!(1 || 1)", (!sugg).to_string());
+    }
 }

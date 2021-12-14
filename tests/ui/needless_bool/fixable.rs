@@ -53,6 +53,39 @@ fn main() {
     } else {
         true
     };
+    let a = 0;
+    let b = 1;
+
+    if a == b {
+        false
+    } else {
+        true
+    };
+    if a != b {
+        false
+    } else {
+        true
+    };
+    if a < b {
+        false
+    } else {
+        true
+    };
+    if a <= b {
+        false
+    } else {
+        true
+    };
+    if a > b {
+        false
+    } else {
+        true
+    };
+    if a >= b {
+        false
+    } else {
+        true
+    };
     if x {
         x
     } else {
