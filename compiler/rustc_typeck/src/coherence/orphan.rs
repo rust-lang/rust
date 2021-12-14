@@ -143,7 +143,7 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorRep
     Ok(())
 }
 
-fn emit_orphan_check_error(
+fn emit_orphan_check_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     trait_span: Span,

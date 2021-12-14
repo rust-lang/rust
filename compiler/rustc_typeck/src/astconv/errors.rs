@@ -92,7 +92,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         span: Span,
         trait_def_id: DefId,
-        trait_segment: &'a hir::PathSegment<'a>,
+        trait_segment: &'_ hir::PathSegment<'_>,
     ) {
         let trait_def = self.tcx().trait_def(trait_def_id);
 

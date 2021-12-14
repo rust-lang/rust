@@ -16,10 +16,10 @@ struct UnsafetyChecker<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl UnsafetyChecker<'tcx> {
+impl<'tcx> UnsafetyChecker<'tcx> {
     fn check_unsafety_coherence(
         &mut self,
-        item: &'v hir::Item<'v>,
+        item: &hir::Item<'_>,
         impl_generics: Option<&hir::Generics<'_>>,
         unsafety: hir::Unsafety,
         polarity: hir::ImplPolarity,
@@ -83,8 +83,8 @@ impl UnsafetyChecker<'tcx> {
     }
 }
 
-impl ItemLikeVisitor<'v> for UnsafetyChecker<'tcx> {
-    fn visit_item(&mut self, item: &'v hir::Item<'v>) {
+impl<'tcx> ItemLikeVisitor<'_> for UnsafetyChecker<'tcx> {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::Impl(ref impl_) = item.kind {
             self.check_unsafety_coherence(
                 item,

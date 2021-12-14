@@ -1672,7 +1672,7 @@ fn restrict_repr_packed_field_ref_capture<'tcx>(
 }
 
 /// Returns a Ty that applies the specified capture kind on the provided capture Ty
-fn apply_capture_kind_on_capture_ty(
+fn apply_capture_kind_on_capture_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     capture_kind: UpvarCapture<'tcx>,
@@ -1685,7 +1685,7 @@ fn apply_capture_kind_on_capture_ty(
 }
 
 /// Returns the Span of where the value with the provided HirId would be dropped
-fn drop_location_span(tcx: TyCtxt<'tcx>, hir_id: &hir::HirId) -> Span {
+fn drop_location_span<'tcx>(tcx: TyCtxt<'tcx>, hir_id: &hir::HirId) -> Span {
     let owner_id = tcx.hir().get_enclosing_scope(*hir_id).unwrap();
 
     let owner_node = tcx.hir().get(owner_id);
@@ -1999,7 +1999,7 @@ fn restrict_precision_for_drop_types<'a, 'tcx>(
 /// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
 ///   them completely.
 /// - No projections are applied on top of Union ADTs, since these require unsafe blocks.
-fn restrict_precision_for_unsafe(
+fn restrict_precision_for_unsafe<'tcx>(
     mut place: Place<'tcx>,
     mut curr_mode: ty::UpvarCapture<'tcx>,
 ) -> (Place<'tcx>, ty::UpvarCapture<'tcx>) {
@@ -2097,7 +2097,7 @@ fn adjust_for_non_move_closure<'tcx>(
     (place, kind)
 }
 
-fn construct_place_string(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
+fn construct_place_string<'tcx>(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
     let variable_name = match place.base {
         PlaceBase::Upvar(upvar_id) => var_name(tcx, upvar_id.var_path.hir_id).to_string(),
         _ => bug!("Capture_information should only contain upvars"),
@@ -2120,7 +2120,7 @@ fn construct_place_string(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
     format!("{}[{}]", variable_name, projections_str)
 }
 
-fn construct_capture_kind_reason_string(
+fn construct_capture_kind_reason_string<'tcx>(
     tcx: TyCtxt<'_>,
     place: &Place<'tcx>,
     capture_info: &ty::CaptureInfo<'tcx>,
@@ -2135,13 +2135,13 @@ fn construct_capture_kind_reason_string(
     format!("{} captured as {} here", place_str, capture_kind_str)
 }
 
-fn construct_path_string(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
+fn construct_path_string<'tcx>(tcx: TyCtxt<'_>, place: &Place<'tcx>) -> String {
     let place_str = construct_place_string(tcx, place);
 
     format!("{} used here", place_str)
 }
 
-fn construct_capture_info_string(
+fn construct_capture_info_string<'tcx>(
     tcx: TyCtxt<'_>,
     place: &Place<'tcx>,
     capture_info: &ty::CaptureInfo<'tcx>,
@@ -2233,7 +2233,7 @@ fn migration_suggestion_for_2229(
 /// would've already handled `E1`, and have an existing capture_information for it.
 /// Calling `determine_capture_info(existing_info_e1, current_info_e2)` will return
 /// `existing_info_e1` in this case, allowing us to point to `E1` in case of diagnostics.
-fn determine_capture_info(
+fn determine_capture_info<'tcx>(
     capture_info_a: ty::CaptureInfo<'tcx>,
     capture_info_b: ty::CaptureInfo<'tcx>,
 ) -> ty::CaptureInfo<'tcx> {
@@ -2292,7 +2292,7 @@ fn determine_capture_info(
 ///
 /// Note: Capture kind changes from `MutBorrow` to `UniqueImmBorrow` if the truncated part of the `place`
 /// contained `Deref` of `&mut`.
-fn truncate_place_to_len_and_update_capture_kind(
+fn truncate_place_to_len_and_update_capture_kind<'tcx>(
     place: &mut Place<'tcx>,
     curr_mode: &mut ty::UpvarCapture<'tcx>,
     len: usize,
@@ -2330,7 +2330,7 @@ fn truncate_place_to_len_and_update_capture_kind(
 /// `PlaceAncestryRelation::Ancestor` implies Place A is ancestor of Place B
 /// `PlaceAncestryRelation::Descendant` implies Place A is descendant of Place B
 /// `PlaceAncestryRelation::Divergent` implies neither of them is the ancestor of the other.
-fn determine_place_ancestry_relation(
+fn determine_place_ancestry_relation<'tcx>(
     place_a: &Place<'tcx>,
     place_b: &Place<'tcx>,
 ) -> PlaceAncestryRelation {
