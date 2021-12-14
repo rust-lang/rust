@@ -85,6 +85,37 @@ fn infer_associated_method_struct() {
 }
 
 #[test]
+fn infer_associated_method_struct_in_local_scope() {
+    check_infer(
+        r#"
+        fn mismatch() {
+            struct A;
+
+            impl A {
+                fn from(_: i32, _: i32) -> Self {
+                    A
+                }
+            }
+
+            let _a = A::from(1, 2);
+        }
+        "#,
+        expect![[r#"
+            14..146 '{     ... 2); }': ()
+            125..127 '_a': A
+            130..137 'A::from': fn from(i32, i32) -> A
+            130..143 'A::from(1, 2)': A
+            138..139 '1': i32
+            141..142 '2': i32
+            60..61 '_': i32
+            68..69 '_': i32
+            84..109 '{     ...     }': A
+            98..99 'A': A
+        "#]],
+    );
+}
+
+#[test]
 fn infer_associated_method_enum() {
     check_infer(
         r#"
