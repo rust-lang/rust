@@ -16,7 +16,7 @@ pub enum CopyImplementationError<'tcx> {
     HasDestructor,
 }
 
-pub fn can_type_implement_copy(
+pub fn can_type_implement_copy<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
