@@ -1,15 +1,4 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-orphan.rs:17:1
-   |
-LL | impl !Send for Vec<isize> { }
-   | ^^^^^^^^^^^^^^^----------
-   | |              |
-   | |              `Vec` is not defined in the current crate
-   | impl doesn't use only types from inside the current crate
-   |
-   = note: define and implement a trait or new type instead
-
-error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-orphan.rs:10:1
    |
 LL | impl TheTrait<usize> for isize { }
@@ -17,6 +6,17 @@ LL | impl TheTrait<usize> for isize { }
    | |    |                   |
    | |    |                   `isize` is not defined in the current crate
    | |    `usize` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-orphan.rs:17:1
+   |
+LL | impl !Send for Vec<isize> { }
+   | ^^^^^^^^^^^^^^^----------
+   | |              |
+   | |              `Vec` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead
