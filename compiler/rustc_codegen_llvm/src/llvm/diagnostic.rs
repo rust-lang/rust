@@ -43,7 +43,7 @@ pub struct OptimizationDiagnostic<'ll> {
     pub message: String,
 }
 
-impl OptimizationDiagnostic<'ll> {
+impl<'ll> OptimizationDiagnostic<'ll> {
     unsafe fn unpack(kind: OptimizationDiagnosticKind, di: &'ll DiagnosticInfo) -> Self {
         let mut function = None;
         let mut line = 0;
@@ -142,7 +142,7 @@ pub struct InlineAsmDiagnostic {
 }
 
 impl InlineAsmDiagnostic {
-    unsafe fn unpackInlineAsm(di: &'ll DiagnosticInfo) -> Self {
+    unsafe fn unpackInlineAsm(di: &DiagnosticInfo) -> Self {
         let mut cookie = 0;
         let mut message = None;
         let mut level = super::DiagnosticLevel::Error;
@@ -157,7 +157,7 @@ impl InlineAsmDiagnostic {
         }
     }
 
-    unsafe fn unpackSrcMgr(di: &'ll DiagnosticInfo) -> Self {
+    unsafe fn unpackSrcMgr(di: &DiagnosticInfo) -> Self {
         let mut cookie = 0;
         let smdiag = SrcMgrDiagnostic::unpack(super::LLVMRustGetSMDiagnostic(di, &mut cookie));
         InlineAsmDiagnostic {
@@ -180,7 +180,7 @@ pub enum Diagnostic<'ll> {
     UnknownDiagnostic(&'ll DiagnosticInfo),
 }
 
-impl Diagnostic<'ll> {
+impl<'ll> Diagnostic<'ll> {
     pub unsafe fn unpack(di: &'ll DiagnosticInfo) -> Self {
         use super::DiagnosticKind as Dk;
         let kind = super::LLVMRustGetDiagInfoKind(di);

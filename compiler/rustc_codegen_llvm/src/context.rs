@@ -124,7 +124,7 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
     }
 }
 
-pub unsafe fn create_module(
+pub unsafe fn create_module<'ll>(
     tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
     mod_name: &str,
@@ -363,7 +363,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 
     #[inline]
-    pub fn coverage_context(&'a self) -> Option<&'a coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
+    pub fn coverage_context(&self) -> Option<&coverageinfo::CrateCoverageContext<'ll, 'tcx>> {
         self.coverage_cx.as_ref()
     }
 
@@ -380,7 +380,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(
         &self,
     ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
@@ -504,8 +504,8 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl CodegenCx<'b, 'tcx> {
-    crate fn get_intrinsic(&self, key: &str) -> (&'b Type, &'b Value) {
+impl<'ll> CodegenCx<'ll, '_> {
+    crate fn get_intrinsic(&self, key: &str) -> (&'ll Type, &'ll Value) {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }
@@ -516,9 +516,9 @@ impl CodegenCx<'b, 'tcx> {
     fn insert_intrinsic(
         &self,
         name: &'static str,
-        args: Option<&[&'b llvm::Type]>,
-        ret: &'b llvm::Type,
-    ) -> (&'b llvm::Type, &'b llvm::Value) {
+        args: Option<&[&'ll llvm::Type]>,
+        ret: &'ll llvm::Type,
+    ) -> (&'ll llvm::Type, &'ll llvm::Value) {
         let fn_ty = if let Some(args) = args {
             self.type_func(args, ret)
         } else {
@@ -529,7 +529,7 @@ impl CodegenCx<'b, 'tcx> {
         (fn_ty, f)
     }
 
-    fn declare_intrinsic(&self, key: &str) -> Option<(&'b Type, &'b Value)> {
+    fn declare_intrinsic(&self, key: &str) -> Option<(&'ll Type, &'ll Value)> {
         macro_rules! ifn {
             ($name:expr, fn() -> $ret:expr) => (
                 if key == $name {
@@ -793,7 +793,7 @@ impl CodegenCx<'b, 'tcx> {
         None
     }
 
-    crate fn eh_catch_typeinfo(&self) -> &'b Value {
+    crate fn eh_catch_typeinfo(&self) -> &'ll Value {
         if let Some(eh_catch_typeinfo) = self.eh_catch_typeinfo.get() {
             return eh_catch_typeinfo;
         }
@@ -813,7 +813,7 @@ impl CodegenCx<'b, 'tcx> {
     }
 }
 
-impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
+impl CodegenCx<'_, '_> {
     /// Generates a new symbol name with the given prefix. This symbol name must
     /// only be used for definitions with `internal` or `private` linkage.
     pub fn generate_local_symbol_name(&self, prefix: &str) -> String {
@@ -829,21 +829,21 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     }
 }
 
-impl HasDataLayout for CodegenCx<'ll, 'tcx> {
+impl HasDataLayout for CodegenCx<'_, '_> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl HasTargetSpec for CodegenCx<'ll, 'tcx> {
+impl HasTargetSpec for CodegenCx<'_, '_> {
     #[inline]
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target
     }
 }
 
-impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'tcx> ty::layout::HasTyCtxt<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
@@ -856,7 +856,7 @@ impl<'tcx, 'll> HasParamEnv<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl LayoutOfHelpers<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
     #[inline]
@@ -869,7 +869,7 @@ impl LayoutOfHelpers<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl FnAbiOfHelpers<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
 
     #[inline]

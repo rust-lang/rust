@@ -25,7 +25,10 @@ use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 use std::cmp::Ordering;
 use std::iter;
 
-fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: Symbol) -> Option<(&'ll Type, &'ll Value)> {
+fn get_simple_intrinsic<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    name: Symbol,
+) -> Option<(&'ll Type, &'ll Value)> {
     let llvm_name = match name {
         sym::sqrtf32 => "llvm.sqrt.f32",
         sym::sqrtf64 => "llvm.sqrt.f64",
@@ -74,7 +77,7 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: Symbol) -> Option<(&'ll T
     Some(cx.get_intrinsic(llvm_name))
 }
 
-impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -411,8 +414,8 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-fn try_intrinsic(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn try_intrinsic<'ll>(
+    bx: &mut Builder<'_, 'll, '_>,
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
@@ -441,8 +444,8 @@ fn try_intrinsic(
 // instructions are meant to work for all targets, as of the time of this
 // writing, however, LLVM does not recommend the usage of these new instructions
 // as the old ones are still more optimized.
-fn codegen_msvc_try(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn codegen_msvc_try<'ll>(
+    bx: &mut Builder<'_, 'll, '_>,
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
@@ -593,8 +596,8 @@ fn codegen_msvc_try(
 // function calling it, and that function may already have other personality
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
-fn codegen_gnu_try(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn codegen_gnu_try<'ll>(
+    bx: &mut Builder<'_, 'll, '_>,
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
@@ -649,8 +652,8 @@ fn codegen_gnu_try(
 // Variant of codegen_gnu_try used for emscripten where Rust panics are
 // implemented using C++ exceptions. Here we use exceptions of a specific type
 // (`struct rust_panic`) to represent Rust panics.
-fn codegen_emcc_try(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn codegen_emcc_try<'ll>(
+    bx: &mut Builder<'_, 'll, '_>,
     try_func: &'ll Value,
     data: &'ll Value,
     catch_func: &'ll Value,
@@ -799,8 +802,8 @@ fn get_rust_try_fn<'ll, 'tcx>(
     rust_try
 }
 
-fn generic_simd_intrinsic(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn generic_simd_intrinsic<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     name: Symbol,
     callee_ty: Ty<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
@@ -1129,12 +1132,12 @@ fn generic_simd_intrinsic(
         }
     }
 
-    fn simd_simple_float_intrinsic(
+    fn simd_simple_float_intrinsic<'ll, 'tcx>(
         name: Symbol,
         in_elem: &::rustc_middle::ty::TyS<'_>,
         in_ty: &::rustc_middle::ty::TyS<'_>,
         in_len: u64,
-        bx: &mut Builder<'a, 'll, 'tcx>,
+        bx: &mut Builder<'_, 'll, 'tcx>,
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
     ) -> Result<&'ll Value, ()> {
@@ -1232,7 +1235,7 @@ fn generic_simd_intrinsic(
         elem_ty: Ty<'_>,
         vec_len: u64,
         no_pointers: usize,
-        bx: &Builder<'a, 'll, 'tcx>,
+        bx: &Builder<'_, '_, '_>,
     ) -> String {
         let p0s: String = "p0".repeat(no_pointers);
         match *elem_ty.kind() {
@@ -1255,7 +1258,7 @@ fn generic_simd_intrinsic(
         }
     }
 
-    fn llvm_vector_ty(
+    fn llvm_vector_ty<'ll>(
         cx: &CodegenCx<'ll, '_>,
         elem_ty: Ty<'_>,
         vec_len: u64,

@@ -25,7 +25,7 @@ use crate::value::Value;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
-fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
+fn inline<'ll>(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
     use self::InlineAttr::*;
     match inline {
         Hint => Attribute::InlineHint.apply_llfn(Function, val),
@@ -41,7 +41,7 @@ fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
 
 /// Apply LLVM sanitize attributes.
 #[inline]
-pub fn sanitize(cx: &CodegenCx<'ll, '_>, no_sanitize: SanitizerSet, llfn: &'ll Value) {
+pub fn sanitize<'ll>(cx: &CodegenCx<'ll, '_>, no_sanitize: SanitizerSet, llfn: &'ll Value) {
     let enabled = cx.tcx.sess.opts.debugging_opts.sanitizer - no_sanitize;
     if enabled.contains(SanitizerSet::ADDRESS) {
         llvm::Attribute::SanitizeAddress.apply_llfn(Function, llfn);
@@ -59,17 +59,17 @@ pub fn sanitize(cx: &CodegenCx<'ll, '_>, no_sanitize: SanitizerSet, llfn: &'ll V
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
 #[inline]
-pub fn emit_uwtable(val: &'ll Value, emit: bool) {
+pub fn emit_uwtable(val: &Value, emit: bool) {
     Attribute::UWTable.toggle_llfn(Function, val, emit);
 }
 
 /// Tell LLVM if this function should be 'naked', i.e., skip the epilogue and prologue.
 #[inline]
-fn naked(val: &'ll Value, is_naked: bool) {
+fn naked(val: &Value, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
 }
 
-pub fn set_frame_pointer_type(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+pub fn set_frame_pointer_type<'ll>(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     let mut fp = cx.sess().target.frame_pointer;
     // "mcount" function relies on stack pointer.
     // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
@@ -92,7 +92,7 @@ pub fn set_frame_pointer_type(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 
 /// Tell LLVM what instrument function to insert.
 #[inline]
-fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+fn set_instrument_function<'ll>(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if cx.sess().instrument_mcount() {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
@@ -110,7 +110,7 @@ fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     }
 }
 
-fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+fn set_probestack<'ll>(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
@@ -161,7 +161,7 @@ fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     }
 }
 
-fn set_stackprotector(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+fn set_stackprotector<'ll>(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     let sspattr = match cx.sess().stack_protector() {
         StackProtector::None => return,
         StackProtector::All => Attribute::StackProtectReq,
@@ -172,7 +172,7 @@ fn set_stackprotector(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     sspattr.apply_llfn(Function, llfn)
 }
 
-pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+pub fn apply_target_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     let target_cpu = SmallCStr::new(llvm_util::target_cpu(cx.tcx.sess));
     llvm::AddFunctionAttrStringValue(
         llfn,
@@ -182,7 +182,7 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     );
 }
 
-pub fn apply_tune_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+pub fn apply_tune_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if let Some(tune) = llvm_util::tune_cpu(cx.tcx.sess) {
         let tune_cpu = SmallCStr::new(tune);
         llvm::AddFunctionAttrStringValue(
@@ -196,14 +196,14 @@ pub fn apply_tune_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 
 /// Sets the `NonLazyBind` LLVM attribute on a given function,
 /// assuming the codegen options allow skipping the PLT.
-pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
+pub fn non_lazy_bind<'ll>(sess: &Session, llfn: &'ll Value) {
     // Don't generate calls through PLT if it's not necessary
     if !sess.needs_plt() {
         Attribute::NonLazyBind.apply_llfn(Function, llfn);
     }
 }
 
-pub(crate) fn default_optimisation_attrs(sess: &Session, llfn: &'ll Value) {
+pub(crate) fn default_optimisation_attrs<'ll>(sess: &Session, llfn: &'ll Value) {
     match sess.opts.optimize {
         OptLevel::Size => {
             llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
@@ -226,7 +226,11 @@ pub(crate) fn default_optimisation_attrs(sess: &Session, llfn: &'ll Value) {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
-pub fn from_fn_attrs(cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value, instance: ty::Instance<'tcx>) {
+pub fn from_fn_attrs<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    llfn: &'ll Value,
+    instance: ty::Instance<'tcx>,
+) {
     let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
 
     match codegen_fn_attrs.optimize {

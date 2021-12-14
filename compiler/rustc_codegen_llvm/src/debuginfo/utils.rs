@@ -23,21 +23,26 @@ pub fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
 }
 
 #[allow(non_snake_case)]
-pub fn create_DIArray(builder: &DIBuilder<'ll>, arr: &[Option<&'ll DIDescriptor>]) -> &'ll DIArray {
+pub fn create_DIArray<'ll>(
+    builder: &DIBuilder<'ll>,
+    arr: &[Option<&'ll DIDescriptor>],
+) -> &'ll DIArray {
     unsafe { llvm::LLVMRustDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32) }
 }
 
 #[inline]
-pub fn debug_context(cx: &'a CodegenCx<'ll, 'tcx>) -> &'a CrateDebugContext<'ll, 'tcx> {
+pub fn debug_context<'a, 'll, 'tcx>(
+    cx: &'a CodegenCx<'ll, 'tcx>,
+) -> &'a CrateDebugContext<'ll, 'tcx> {
     cx.dbg_cx.as_ref().unwrap()
 }
 
 #[inline]
 #[allow(non_snake_case)]
-pub fn DIB(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
+pub fn DIB<'a, 'll>(cx: &'a CodegenCx<'ll, '_>) -> &'a DIBuilder<'ll> {
     cx.dbg_cx.as_ref().unwrap().builder
 }
 
-pub fn get_namespace_for_item(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
+pub fn get_namespace_for_item<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
     item_namespace(cx, cx.tcx.parent(def_id).expect("get_namespace_for_item: missing parent?"))
 }

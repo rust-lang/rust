@@ -11,8 +11,8 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::Ty;
 use rustc_target::abi::{Align, Endian, HasDataLayout, Size};
 
-fn round_pointer_up_to_alignment(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn round_pointer_up_to_alignment<'ll>(
+    bx: &mut Builder<'_, 'll, '_>,
     addr: &'ll Value,
     align: Align,
     ptr_ty: &'ll Type,
@@ -23,8 +23,8 @@ fn round_pointer_up_to_alignment(
     bx.inttoptr(ptr_as_int, ptr_ty)
 }
 
-fn emit_direct_ptr_va_arg(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn emit_direct_ptr_va_arg<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
     llty: &'ll Type,
     size: Size,
@@ -62,8 +62,8 @@ fn emit_direct_ptr_va_arg(
     }
 }
 
-fn emit_ptr_va_arg(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn emit_ptr_va_arg<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
     target_ty: Ty<'tcx>,
     indirect: bool,
@@ -90,8 +90,8 @@ fn emit_ptr_va_arg(
     }
 }
 
-fn emit_aapcs_va_arg(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn emit_aapcs_va_arg<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
     target_ty: Ty<'tcx>,
 ) -> &'ll Value {
@@ -175,8 +175,8 @@ fn emit_aapcs_va_arg(
     val
 }
 
-pub(super) fn emit_va_arg(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+pub(super) fn emit_va_arg<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     addr: OperandRef<'tcx, &'ll Value>,
     target_ty: Ty<'tcx>,
 ) -> &'ll Value {
