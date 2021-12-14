@@ -124,7 +124,7 @@ fn write(
     //
     // If the data is not valid UTF-8 we write out as many bytes as are valid.
     // If the first byte is invalid it is either first byte of a multi-byte sequence but the
-    // provided byte slice is too short or it is the first byte of an invalide multi-byte sequence.
+    // provided byte slice is too short or it is the first byte of an invalid multi-byte sequence.
     let len = cmp::min(data.len(), MAX_BUFFER_SIZE / 2);
     let utf8 = match str::from_utf8(&data[..len]) {
         Ok(s) => s,

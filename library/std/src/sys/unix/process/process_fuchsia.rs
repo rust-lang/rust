@@ -284,7 +284,7 @@ impl ExitStatus {
         //
         // The other view would be to say that the caller on Fuchsia ought to know that `into_raw`
         // will give a raw Fuchsia status (whatever that is - I don't know, personally).  That is
-        // not possible here becaause we must return a c_int because that's what Unix (including
+        // not possible here because we must return a c_int because that's what Unix (including
         // SuS and POSIX) say a wait status is, but Fuchsia apparently uses a u64, so it won't
         // necessarily fit.
         //

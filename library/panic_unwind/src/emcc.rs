@@ -49,7 +49,7 @@ static EXCEPTION_TYPE_INFO: TypeInfo = TypeInfo {
 };
 
 struct Exception {
-    // This is necessary because C++ code can capture our execption with
+    // This is necessary because C++ code can capture our exception with
     // std::exception_ptr and rethrow it multiple times, possibly even in
     // another thread.
     caught: AtomicBool,
