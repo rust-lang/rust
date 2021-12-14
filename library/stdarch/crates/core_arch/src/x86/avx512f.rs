@@ -19479,7 +19479,7 @@ pub unsafe fn _mm_maskz_permute_pd<const IMM2: i32>(k: __mmask8, a: __m128d) -> 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_permutex_epi64&expand=4208)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //shoud be vpermq
+#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //should be vpermq
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_permutex_epi64<const MASK: i32>(a: __m512i) -> __m512i {
     static_assert_imm8!(MASK);
@@ -19535,7 +19535,7 @@ pub unsafe fn _mm512_maskz_permutex_epi64<const MASK: i32>(k: __mmask8, a: __m51
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permutex_epi64&expand=4205)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //shoud be vpermq
+#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //should be vpermq
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm256_permutex_epi64<const MASK: i32>(a: __m256i) -> __m256i {
     static_assert_imm8!(MASK);
@@ -19587,7 +19587,7 @@ pub unsafe fn _mm256_maskz_permutex_epi64<const MASK: i32>(k: __mmask8, a: __m25
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_permutex_pd&expand=4214)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //shoud be vpermpd
+#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //should be vpermpd
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_permutex_pd<const MASK: i32>(a: __m512d) -> __m512d {
     static_assert_imm8!(MASK);
@@ -19612,7 +19612,7 @@ pub unsafe fn _mm512_permutex_pd<const MASK: i32>(a: __m512d) -> __m512d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_permutex_pd&expand=4212)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //shoud be vpermpd
+#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //should be vpermpd
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm512_mask_permutex_pd<const MASK: i32>(
     src: __m512d,
@@ -19628,7 +19628,7 @@ pub unsafe fn _mm512_mask_permutex_pd<const MASK: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_permutex_pd&expand=4213)
 #[inline]
 #[target_feature(enable = "avx512f")]
-#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //shoud be vpermpd
+#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //should be vpermpd
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_maskz_permutex_pd<const MASK: i32>(k: __mmask8, a: __m512d) -> __m512d {
     let r = _mm512_permutex_pd::<MASK>(a);
@@ -19641,7 +19641,7 @@ pub unsafe fn _mm512_maskz_permutex_pd<const MASK: i32>(k: __mmask8, a: __m512d)
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_permutex_pd&expand=4211)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //shoud be vpermpd
+#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //should be vpermpd
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm256_permutex_pd<const MASK: i32>(a: __m256d) -> __m256d {
     static_assert_imm8!(MASK);
@@ -19662,7 +19662,7 @@ pub unsafe fn _mm256_permutex_pd<const MASK: i32>(a: __m256d) -> __m256d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mask_permutex_pd&expand=4209)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //shoud be vpermpd
+#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //should be vpermpd
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn _mm256_mask_permutex_pd<const MASK: i32>(
     src: __m256d,
@@ -19679,7 +19679,7 @@ pub unsafe fn _mm256_mask_permutex_pd<const MASK: i32>(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_maskz_permutex_pd&expand=4210)
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
-#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //shoud be vpermpd
+#[cfg_attr(test, assert_instr(vperm, MASK = 0b10_01_10_11))] //should be vpermpd
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm256_maskz_permutex_pd<const MASK: i32>(k: __mmask8, a: __m256d) -> __m256d {
     static_assert_imm8!(MASK);

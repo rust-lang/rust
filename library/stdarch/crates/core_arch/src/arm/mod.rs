@@ -93,7 +93,7 @@ pub unsafe fn udf() -> ! {
 /// This provides a hint to debugging and related systems. The argument must be
 /// a constant integer from 0 to 15 inclusive. See implementation documentation
 /// for the effect (if any) of this instruction and the meaning of the
-/// argument. This is available only when compliling for AArch32.
+/// argument. This is available only when compiling for AArch32.
 // Section 10.1 of ACLE says that the supported arches are: 7, 7-M
 // "The DBG hint instruction is added in ARMv7. It is UNDEFINED in the ARMv6 base architecture, and
 // executes as a NOP instruction in ARMv6K and ARMv6T2." - ARM Architecture Reference Manual ARMv7-A

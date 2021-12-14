@@ -1412,19 +1412,19 @@ pub unsafe fn _mm_getcsr() -> u32 {
 /// * `_MM_EXCEPT_DENORM`: An operation attempted to operate on a denormalized
 ///   number. Mainly this can cause loss of precision.
 ///
-/// * `_MM_EXCEPT_DIV_ZERO`: Division by zero occured.
+/// * `_MM_EXCEPT_DIV_ZERO`: Division by zero occurred.
 ///
-/// * `_MM_EXCEPT_OVERFLOW`: A numeric overflow exception occured, i.e., a
+/// * `_MM_EXCEPT_OVERFLOW`: A numeric overflow exception occurred, i.e., a
 /// result was too large to be represented (e.g., an `f32` with absolute
 /// value
 ///   greater than `2^128`).
 ///
-/// * `_MM_EXCEPT_UNDERFLOW`: A numeric underflow exception occured, i.e., a
+/// * `_MM_EXCEPT_UNDERFLOW`: A numeric underflow exception occurred, i.e., a
 /// result was too small to be represented in a normalized way (e.g., an
 /// `f32`
 ///   with absulte value smaller than `2^-126`.)
 ///
-/// * `_MM_EXCEPT_INEXACT`: An inexact-result exception occured (a.k.a.
+/// * `_MM_EXCEPT_INEXACT`: An inexact-result exception occurred (a.k.a.
 ///   precision exception). This means some precision was lost due to rounding.
 ///   For example, the fraction `1/3` cannot be represented accurately in a
 ///   32 or 64 bit float and computing it would cause this exception to be
@@ -1752,7 +1752,7 @@ pub const _MM_HINT_ET1: i32 = 6;
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
-    // We use the `llvm.prefetch` instrinsic with `cache type` = 1 (data cache).
+    // We use the `llvm.prefetch` intrinsic with `cache type` = 1 (data cache).
     // `locality` and `rw` are based on our `STRATEGY`.
     prefetch(p, (STRATEGY >> 2) & 1, STRATEGY & 3, 1);
 }

@@ -55,7 +55,7 @@ pub struct ArgumentList {
 }
 
 impl ArgumentList {
-    /// Converts the argument list into the call paramters for a C function call.
+    /// Converts the argument list into the call parameters for a C function call.
     /// e.g. this would generate something like `a, &b, c`
     pub fn as_call_param_c(&self) -> String {
         self.args
@@ -70,7 +70,7 @@ impl ArgumentList {
             .join(", ")
     }
 
-    /// Converts the argument list into the call paramters for a Rust function.
+    /// Converts the argument list into the call parameters for a Rust function.
     /// e.g. this would generate something like `a, b, c`
     pub fn as_call_param_rust(&self) -> String {
         self.args

@@ -66,7 +66,7 @@ pub const _PREFETCH_LOCALITY3: i32 = 3;
 #[rustc_legacy_const_generics(1, 2)]
 // FIXME: Replace this with the standard ACLE __pld/__pldx/__pli/__plix intrinsics
 pub unsafe fn _prefetch<const RW: i32, const LOCALITY: i32>(p: *const i8) {
-    // We use the `llvm.prefetch` instrinsic with `cache type` = 1 (data cache).
+    // We use the `llvm.prefetch` intrinsic with `cache type` = 1 (data cache).
     static_assert_imm1!(RW);
     static_assert_imm2!(LOCALITY);
     prefetch(p, RW, LOCALITY, 1);

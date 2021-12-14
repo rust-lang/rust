@@ -53,7 +53,7 @@ pub unsafe fn _mm256_add_ps(a: __m256, b: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_and_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-// FIXME: Should be 'vandpd' instuction.
+// FIXME: Should be 'vandpd' instruction.
 // See https://github.com/rust-lang/stdarch/issues/71
 #[cfg_attr(test, assert_instr(vandps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -83,7 +83,7 @@ pub unsafe fn _mm256_and_ps(a: __m256, b: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_or_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-// FIXME: should be `vorpd` instuction.
+// FIXME: should be `vorpd` instruction.
 // See <https://github.com/rust-lang/stdarch/issues/71>.
 #[cfg_attr(test, assert_instr(vorps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]

@@ -32,7 +32,7 @@ extern "C" {
 /// If the length is zero, it is interpreted as `64`. If the length and index
 /// are zero, the lower 64 bits of `x` are extracted.
 ///
-/// If `length == 0 && index > 0` or `lenght + index > 64` the result is
+/// If `length == 0 && index > 0` or `length + index > 64` the result is
 /// undefined.
 #[inline]
 #[target_feature(enable = "sse4a")]

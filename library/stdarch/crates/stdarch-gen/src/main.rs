@@ -2806,7 +2806,7 @@ fn get_call(
         let s = &params[i];
         if s.starts_with('{') {
             let mut sub_fn = String::new();
-            let mut paranthes = 0;
+            let mut parentheses = 0;
             while i < params.len() {
                 if !sub_fn.is_empty() {
                     sub_fn.push_str(", ");
@@ -2815,19 +2815,19 @@ fn get_call(
                 let l = params[i].len();
                 for j in 0..l {
                     if &params[i][j..j + 1] == "{" {
-                        paranthes += 1;
+                        parentheses += 1;
                     } else {
                         break;
                     }
                 }
                 for j in 0..l {
                     if &params[i][l - j - 1..l - j] == "}" {
-                        paranthes -= 1;
+                        parentheses -= 1;
                     } else {
                         break;
                     }
                 }
-                if paranthes == 0 {
+                if parentheses == 0 {
                     break;
                 }
                 i += 1;

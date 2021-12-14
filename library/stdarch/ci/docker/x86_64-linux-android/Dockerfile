@@ -17,7 +17,7 @@ COPY android-install-ndk.sh /android/
 RUN sh /android/android-install-ndk.sh $ANDROID_ARCH
 
 # We do not run x86_64-linux-android tests on an android emulator.
-# See ci/android-sysimage.sh for informations about how tests are run.
+# See ci/android-sysimage.sh for information about how tests are run.
 COPY android-sysimage.sh /android/
 RUN bash /android/android-sysimage.sh x86_64 x86_64-24_r07.zip
 

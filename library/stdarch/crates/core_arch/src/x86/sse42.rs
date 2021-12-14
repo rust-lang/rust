@@ -146,7 +146,7 @@ pub unsafe fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 /// # }
 /// ```
 ///
-/// The `_mm_cmpistri` intrinsic may also be used to find the existance of
+/// The `_mm_cmpistri` intrinsic may also be used to find the existence of
 /// one or more of a given set of characters in the haystack.
 ///
 /// ```

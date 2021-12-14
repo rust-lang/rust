@@ -16,7 +16,7 @@ pub struct NSHLD;
 
 dmb_dsb!(NSHLD);
 
-/// Outher Shareable is the required shareability domain, reads are the required
+/// Outer Shareable is the required shareability domain, reads are the required
 /// access type
 pub struct OSHLD;
 

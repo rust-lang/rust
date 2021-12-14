@@ -56,7 +56,7 @@
 // MAX - maximal value proper to overflow
 //
 // # validate <values>
-// Validates a and b aginst the expected result of the test.
+// Validates a and b against the expected result of the test.
 // The special values 'TRUE' and 'FALSE' can be used to
 // represent the correct NEON representation of true or
 // false values. It too gets scaled to the type.
@@ -4685,7 +4685,7 @@ link-arm = vmaxs._EXT_
 link-aarch64 = fmax._EXT_
 generate float*_t
 
-/// Floating-point Maximun Number (vector)
+/// Floating-point Maximum Number (vector)
 name = vmaxnm
 a = 1.0, 2.0, 3.0, -4.0
 b = 8.0, 16.0, -1.0, 6.0
@@ -4789,7 +4789,7 @@ link-arm = vmins._EXT_
 link-aarch64 = fmin._EXT_
 generate float*_t
 
-/// Floating-point Minimun Number (vector)
+/// Floating-point Minimum Number (vector)
 name = vminnm
 a = 1.0, 2.0, 3.0, -4.0
 b = 8.0, 16.0, -1.0, 6.0

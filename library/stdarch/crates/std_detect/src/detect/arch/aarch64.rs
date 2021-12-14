@@ -8,7 +8,7 @@ features! {
     /// Currently most features are only supported on linux-based platforms.
     ///
     /// This macro takes one argument which is a string literal of the feature being tested for.
-    /// The feature names are mostly taken from their FEAT_* definitiions in the [ARM Architecture
+    /// The feature names are mostly taken from their FEAT_* definitions in the [ARM Architecture
     /// Reference Manual][docs].
     ///
     /// ## Supported arguments
@@ -104,9 +104,9 @@ features! {
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] pauth: "pauth";
     /// FEAT_PAuth (pointer authentication)
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] dpb: "dpb";
-    /// FEAT_DPB (aka dcpop - data cache clean to point of persistance)
+    /// FEAT_DPB (aka dcpop - data cache clean to point of persistence)
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] dpb2: "dpb2";
-    /// FEAT_DPB2 (aka dcpodp - data cache clean to point of deep persistance)
+    /// FEAT_DPB2 (aka dcpodp - data cache clean to point of deep persistence)
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] sve2: "sve2";
     /// FEAT_SVE2 (Scalable Vector Extension 2)
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] sve2_aes: "sve2-aes";

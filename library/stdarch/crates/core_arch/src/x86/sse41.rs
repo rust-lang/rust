@@ -8,7 +8,7 @@ use crate::{
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-// SSE4 rounding constans
+// SSE4 rounding constants
 /// round to nearest
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_FROUND_TO_NEAREST_INT: i32 = 0x00;
@@ -830,7 +830,7 @@ pub unsafe fn _mm_round_sd<const ROUNDING: i32>(a: __m128d, b: __m128d) -> __m12
 /// using the `ROUNDING` parameter, store the result as a single-precision
 /// floating-point element in the lower element of the intrinsic result,
 /// and copies the upper 3 packed elements from `a` to the upper elements
-/// of the instrinsic result.
+/// of the intrinsic result.
 /// Rounding is done according to the rounding parameter, which can be one of:
 ///
 /// ```

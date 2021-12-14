@@ -16,7 +16,7 @@ extern "C" {
 /// pointed to by `ptr` is equal to `expression` (performing this action
 /// atomically).
 ///
-/// The argument `timeout_ns` is a maxinum number of nanoseconds the calling
+/// The argument `timeout_ns` is a maximum number of nanoseconds the calling
 /// thread will be blocked for, if it blocks. If the timeout is negative then
 /// the calling thread will be blocked forever.
 ///
@@ -46,7 +46,7 @@ pub unsafe fn memory_atomic_wait32(ptr: *mut i32, expression: i32, timeout_ns: i
 /// pointed to by `ptr` is equal to `expression` (performing this action
 /// atomically).
 ///
-/// The argument `timeout_ns` is a maxinum number of nanoseconds the calling
+/// The argument `timeout_ns` is a maximum number of nanoseconds the calling
 /// thread will be blocked for, if it blocks. If the timeout is negative then
 /// the calling thread will be blocked forever.
 ///

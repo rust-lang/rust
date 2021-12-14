@@ -1,4 +1,4 @@
-//! FXSR floating-point context fast save and restor.
+//! FXSR floating-point context fast save and restore.
 
 #[cfg(test)]
 use stdarch_test::assert_instr;

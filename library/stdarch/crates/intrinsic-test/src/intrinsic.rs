@@ -8,7 +8,7 @@ pub struct Intrinsic {
     /// The function name of this intrinsic.
     pub name: String,
 
-    /// Any arguments for this intrinsinc.
+    /// Any arguments for this intrinsic.
     pub arguments: ArgumentList,
 
     /// The return type of this intrinsic.

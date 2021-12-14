@@ -33,7 +33,7 @@ types! {
     /// * four 32-bit floats (`f32`)
     /// * two 64-bit floats (`f64`)
     ///
-    /// The `v128` type in Rust is intended to be quite analagous to the `v128`
+    /// The `v128` type in Rust is intended to be quite analogous to the `v128`
     /// type in WebAssembly. Operations on `v128` can only be performed with the
     /// functions in this module.
     // N.B., internals here are arbitrary.
@@ -2305,7 +2305,7 @@ pub fn i8x16_abs(a: v128) -> v128 {
     }
 }
 
-/// Negates a 128-bit vectors intepreted as sixteen 8-bit signed integers
+/// Negates a 128-bit vectors interpreted as sixteen 8-bit signed integers
 #[inline]
 #[cfg_attr(test, assert_instr(i8x16.neg))]
 #[target_feature(enable = "simd128")]
@@ -2602,7 +2602,7 @@ pub fn i16x8_abs(a: v128) -> v128 {
     }
 }
 
-/// Negates a 128-bit vectors intepreted as eight 16-bit signed integers
+/// Negates a 128-bit vectors interpreted as eight 16-bit signed integers
 #[inline]
 #[cfg_attr(test, assert_instr(i16x8.neg))]
 #[target_feature(enable = "simd128")]
@@ -3090,7 +3090,7 @@ pub fn i32x4_abs(a: v128) -> v128 {
     }
 }
 
-/// Negates a 128-bit vectors intepreted as four 32-bit signed integers
+/// Negates a 128-bit vectors interpreted as four 32-bit signed integers
 #[inline]
 #[cfg_attr(test, assert_instr(i32x4.neg))]
 #[target_feature(enable = "simd128")]
@@ -3472,7 +3472,7 @@ pub fn i64x2_abs(a: v128) -> v128 {
     }
 }
 
-/// Negates a 128-bit vectors intepreted as two 64-bit signed integers
+/// Negates a 128-bit vectors interpreted as two 64-bit signed integers
 #[inline]
 #[cfg_attr(test, assert_instr(i64x2.neg))]
 #[target_feature(enable = "simd128")]
