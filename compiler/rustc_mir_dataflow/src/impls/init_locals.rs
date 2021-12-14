@@ -10,7 +10,7 @@ use rustc_middle::mir::{self, BasicBlock, Local, Location};
 
 pub struct MaybeInitializedLocals;
 
-impl crate::AnalysisDomain<'tcx> for MaybeInitializedLocals {
+impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeInitializedLocals {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_init_locals";
@@ -28,7 +28,7 @@ impl crate::AnalysisDomain<'tcx> for MaybeInitializedLocals {
     }
 }
 
-impl crate::GenKillAnalysis<'tcx> for MaybeInitializedLocals {
+impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeInitializedLocals {
     type Idx = Local;
 
     fn statement_effect(
@@ -73,7 +73,7 @@ struct TransferFunction<'a, T> {
     trans: &'a mut T,
 }
 
-impl<T> Visitor<'tcx> for TransferFunction<'a, T>
+impl<T> Visitor<'_> for TransferFunction<'_, T>
 where
     T: GenKill<Local>,
 {

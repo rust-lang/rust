@@ -31,12 +31,15 @@ where
     pub(super) entry_sets: IndexVec<BasicBlock, A::Domain>,
 }
 
-impl<A> Results<'tcx, A>
+impl<'tcx, A> Results<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
     /// Creates a `ResultsCursor` that can inspect these `Results`.
-    pub fn into_results_cursor(self, body: &'mir mir::Body<'tcx>) -> ResultsCursor<'mir, 'tcx, A> {
+    pub fn into_results_cursor<'mir>(
+        self,
+        body: &'mir mir::Body<'tcx>,
+    ) -> ResultsCursor<'mir, 'tcx, A> {
         ResultsCursor::new(body, self)
     }
 
@@ -45,7 +48,7 @@ where
         &self.entry_sets[block]
     }
 
-    pub fn visit_with(
+    pub fn visit_with<'mir>(
         &self,
         body: &'mir mir::Body<'tcx>,
         blocks: impl IntoIterator<Item = BasicBlock>,
@@ -54,7 +57,7 @@ where
         visit_results(body, blocks, self, vis)
     }
 
-    pub fn visit_reachable_with(
+    pub fn visit_reachable_with<'mir>(
         &self,
         body: &'mir mir::Body<'tcx>,
         vis: &mut impl ResultsVisitor<'mir, 'tcx, FlowState = A::Domain>,
@@ -85,7 +88,7 @@ where
     apply_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
 }
 
-impl<A, D, T> Engine<'a, 'tcx, A>
+impl<'a, 'tcx, A, D, T> Engine<'a, 'tcx, A>
 where
     A: GenKillAnalysis<'tcx, Idx = T, Domain = D>,
     D: Clone + JoinSemiLattice + GenKill<T> + BorrowMut<BitSet<T>>,
@@ -119,7 +122,7 @@ where
     }
 }
 
-impl<A, D> Engine<'a, 'tcx, A>
+impl<'a, 'tcx, A, D> Engine<'a, 'tcx, A>
 where
     A: Analysis<'tcx, Domain = D>,
     D: Clone + JoinSemiLattice,
@@ -257,7 +260,7 @@ where
 
 /// Writes a DOT file containing the results of a dataflow analysis if the user requested it via
 /// `rustc_mir` attributes.
-fn write_graphviz_results<A>(
+fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
     results: &Results<'tcx, A>,
@@ -330,7 +333,7 @@ struct RustcMirAttrs {
 }
 
 impl RustcMirAttrs {
-    fn parse(tcx: TyCtxt<'tcx>, def_id: DefId) -> Result<Self, ()> {
+    fn parse(tcx: TyCtxt<'_>, def_id: DefId) -> Result<Self, ()> {
         let attrs = tcx.get_attrs(def_id);
 
         let mut result = Ok(());
@@ -373,7 +376,7 @@ impl RustcMirAttrs {
 
     fn set_field<T>(
         field: &mut Option<T>,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         attr: &ast::NestedMetaItem,
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {

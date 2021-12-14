@@ -17,7 +17,7 @@ impl MaybeStorageLive {
     }
 }
 
-impl crate::AnalysisDomain<'tcx> for MaybeStorageLive {
+impl<'tcx> crate::AnalysisDomain<'tcx> for MaybeStorageLive {
     type Domain = BitSet<Local>;
 
     const NAME: &'static str = "maybe_storage_live";
@@ -39,7 +39,7 @@ impl crate::AnalysisDomain<'tcx> for MaybeStorageLive {
     }
 }
 
-impl crate::GenKillAnalysis<'tcx> for MaybeStorageLive {
+impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeStorageLive {
     type Idx = Local;
 
     fn statement_effect(
