@@ -90,7 +90,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(in_band_lifetimes)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -116,7 +115,7 @@ pub mod test;
 /// This function computes the symbol name for the given `instance` and the
 /// given instantiating crate. That is, if you know that instance X is
 /// instantiated in crate Y, this is the symbol name this instance would have.
-pub fn symbol_name_for_instance_in_crate(
+pub fn symbol_name_for_instance_in_crate<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     instantiating_crate: CrateNum,
@@ -131,7 +130,7 @@ pub fn provide(providers: &mut Providers) {
 // The `symbol_name` query provides the symbol name for calling a given
 // instance from the local crate. In particular, it will also look up the
 // correct symbol name of instances from upstream crates.
-fn symbol_name_provider(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
+fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
     let symbol_name = compute_symbol_name(tcx, instance, || {
         // This closure determines the instantiating crate for instances that
         // need an instantiating-crate-suffix for their symbol name, in order
@@ -151,14 +150,14 @@ fn symbol_name_provider(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::Symb
 }
 
 /// This function computes the typeid for the given function ABI.
-pub fn typeid_for_fnabi(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> String {
+pub fn typeid_for_fnabi<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> String {
     v0::mangle_typeid_for_fnabi(tcx, fn_abi)
 }
 
 /// Computes the symbol name for the given instance. This function will call
 /// `compute_instantiating_crate` if it needs to factor the instantiating crate
 /// into the symbol name.
-fn compute_symbol_name(
+fn compute_symbol_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     compute_instantiating_crate: impl FnOnce() -> CrateNum,
