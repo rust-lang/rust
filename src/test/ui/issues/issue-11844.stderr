@@ -1,8 +1,6 @@
 error[E0308]: mismatched types
   --> $DIR/issue-11844.rs:6:9
    |
-LL |     match a {
-   |           - this expression has type `Option<Box<{integer}>>`
 LL |         Ok(a) =>
    |         ^^^^^ expected enum `Option`, found enum `Result`
    |

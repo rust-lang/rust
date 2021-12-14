@@ -1,8 +1,6 @@
 error[E0308]: mismatched types
   --> $DIR/exclusive_range_pattern_syntax_collision.rs:6:13
    |
-LL |     match [5..4, 99..105, 43..44] {
-   |           ----------------------- this expression has type `[std::ops::Range<{integer}>; 3]`
 LL |         [_, 99.., _] => {},
    |             ^^ expected struct `std::ops::Range`, found integer
    |

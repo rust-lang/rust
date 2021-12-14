@@ -86,9 +86,8 @@ error[E0308]: mismatched types
   --> $DIR/already-bound-name.rs:30:32
    |
 LL |     let (B(A(a, _) | B(a)) | A(a, A(a, _) | B(a))) = B(B(1));
-   |              -                 ^                     ------- this expression has type `E<E<{integer}>>`
-   |              |                 |
-   |              |                 expected integer, found enum `E`
+   |              -                 ^ expected integer, found enum `E`
+   |              |
    |              first introduced with type `{integer}` here
    |
    = note: expected type `{integer}`

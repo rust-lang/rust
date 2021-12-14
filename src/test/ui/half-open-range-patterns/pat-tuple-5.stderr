@@ -1,8 +1,6 @@
 error[E0308]: mismatched types
   --> $DIR/pat-tuple-5.rs:8:10
    |
-LL |     match (0, 1) {
-   |           ------ this expression has type `({integer}, {integer})`
 LL |         (PAT ..) => {}
    |          ^^^ expected tuple, found `u8`
    |

@@ -1,7 +1,12 @@
 //! Diagnostics related methods for `TyS`.
 
+use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::TyKind::*;
-use crate::ty::{InferTy, TyCtxt, TyS};
+use crate::ty::{
+    ConstKind, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, InferTy,
+    ProjectionTy, TyCtxt, TyS, TypeAndMut,
+};
+
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -63,16 +68,55 @@ impl<'tcx> TyS<'tcx> {
 
     /// Whether the type can be safely suggested during error recovery.
     pub fn is_suggestable(&self) -> bool {
-        !matches!(
-            self.kind(),
+        fn generic_arg_is_suggestible(arg: GenericArg<'_>) -> bool {
+            match arg.unpack() {
+                GenericArgKind::Type(ty) => ty.is_suggestable(),
+                GenericArgKind::Const(c) => const_is_suggestable(c.val),
+                _ => true,
+            }
+        }
+
+        fn const_is_suggestable(kind: ConstKind<'_>) -> bool {
+            match kind {
+                ConstKind::Infer(..)
+                | ConstKind::Bound(..)
+                | ConstKind::Placeholder(..)
+                | ConstKind::Error(..) => false,
+                _ => true,
+            }
+        }
+
+        // FIXME(compiler-errors): Some types are still not good to suggest,
+        // specifically references with lifetimes within the function. Not
+        //sure we have enough information to resolve whether a region is
+        // temporary, so I'll leave this as a fixme.
+
+        match self.kind() {
             Opaque(..)
-                | FnDef(..)
-                | FnPtr(..)
-                | Dynamic(..)
-                | Closure(..)
-                | Infer(..)
-                | Projection(..)
-        )
+            | FnDef(..)
+            | Closure(..)
+            | Infer(..)
+            | Generator(..)
+            | GeneratorWitness(..)
+            | Bound(_, _)
+            | Placeholder(_)
+            | Error(_) => false,
+            Dynamic(dty, _) => dty.iter().all(|pred| match pred.skip_binder() {
+                ExistentialPredicate::Trait(ExistentialTraitRef { substs, .. }) => {
+                    substs.iter().all(generic_arg_is_suggestible)
+                }
+                ExistentialPredicate::Projection(ExistentialProjection { substs, ty, .. }) => {
+                    ty.is_suggestable() && substs.iter().all(generic_arg_is_suggestible)
+                }
+                _ => true,
+            }),
+            Projection(ProjectionTy { substs: args, .. }) | Adt(_, args) | Tuple(args) => {
+                args.iter().all(generic_arg_is_suggestible)
+            }
+            Slice(ty) | RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => ty.is_suggestable(),
+            Array(ty, c) => ty.is_suggestable() && const_is_suggestable(c.val),
+            _ => true,
+        }
     }
 }
 
