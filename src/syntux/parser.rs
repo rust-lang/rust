@@ -95,15 +95,17 @@ pub(crate) enum ParserError {
 
 impl<'a> Parser<'a> {
     pub(crate) fn submod_path_from_attr(attrs: &[ast::Attribute], path: &Path) -> Option<PathBuf> {
-        let path_string = first_attr_value_str_by_name(attrs, sym::path)?.as_str();
+        let path_sym = first_attr_value_str_by_name(attrs, sym::path)?;
+        let path_str = path_sym.as_str();
+
         // On windows, the base path might have the form
         // `\\?\foo\bar` in which case it does not tolerate
         // mixed `/` and `\` separators, so canonicalize
         // `/` to `\`.
         #[cfg(windows)]
-        let path_string = path_string.replace("/", "\\");
+        let path_str = path_str.replace("/", "\\");
 
-        Some(path.join(&*path_string))
+        Some(path.join(path_str))
     }
 
     pub(crate) fn parse_file_as_module(
