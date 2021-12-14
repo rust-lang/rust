@@ -78,7 +78,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::SymbolStr;
+use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 use rustc_typeck::hir_ty_to_ty;
 
@@ -1968,21 +1968,21 @@ impl_lint_pass!(Methods => [
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
-fn method_call<'tcx>(recv: &'tcx hir::Expr<'tcx>) -> Option<(SymbolStr, &'tcx [hir::Expr<'tcx>], Span)> {
+fn method_call<'tcx>(recv: &'tcx hir::Expr<'tcx>) -> Option<(Symbol, &'tcx [hir::Expr<'tcx>], Span)> {
     if let ExprKind::MethodCall(path, span, args, _) = recv.kind {
         if !args.iter().any(|e| e.span.from_expansion()) {
-            return Some((path.ident.name.as_str(), args, span));
+            return Some((path.ident.name, args, span));
         }
     }
     None
 }
 
-/// Same as `method_call` but the `SymbolStr` is dereferenced into a temporary `&str`
+/// Same as `method_call` but the `Symbol` is dereferenced into a temporary `&str`
 macro_rules! method_call {
     ($expr:expr) => {
         method_call($expr)
             .as_ref()
-            .map(|&(ref name, args, span)| (&**name, args, span))
+            .map(|&(ref name, args, span)| (name.as_str(), args, span))
     };
 }
 

@@ -9,7 +9,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::symbol::SymbolStr;
+use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
@@ -71,8 +71,8 @@ impl LateLintPass<'_> for MatchStrCaseMismatch {
                 visitor.visit_expr(match_expr);
 
                 if let Some(case_method) = visitor.case_method {
-                    if let Some((bad_case_span, bad_case_str)) = verify_case(&case_method, arms) {
-                        lint(cx, &case_method, bad_case_span, &bad_case_str);
+                    if let Some((bad_case_span, bad_case_sym)) = verify_case(&case_method, arms) {
+                        lint(cx, &case_method, bad_case_span, bad_case_sym.as_str());
                     }
                 }
             }
@@ -126,7 +126,7 @@ fn get_case_method(segment_ident_str: &str) -> Option<CaseMethod> {
     }
 }
 
-fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(Span, SymbolStr)> {
+fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(Span, Symbol)> {
     let case_check = match case_method {
         CaseMethod::LowerCase => |input: &str| -> bool { input.chars().all(|c| c.to_lowercase().next() == Some(c)) },
         CaseMethod::AsciiLowerCase => |input: &str| -> bool { !input.chars().any(|c| c.is_ascii_uppercase()) },
@@ -144,7 +144,7 @@ fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(
             let input = symbol.as_str();
             if !case_check(&input);
             then {
-                return Some((lit.span, input));
+                return Some((lit.span, symbol));
             }
         }
     }
