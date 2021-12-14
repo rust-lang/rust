@@ -1,0 +1,8 @@
+error: invalid comparison operator `<>`
+  --> $DIR/less-than-greater-than.rs:2:22
+   |
+LL |     println!("{}", 1 <> 2);
+   |                      ^^ help: `<>` is not a valid comparison operator, use `!=`
+
+error: aborting due to previous error
+
