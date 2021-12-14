@@ -78,7 +78,7 @@ macro_rules! define_handles {
                 }
             }
 
-            impl<S: server::Types> Decode<'_, 's, HandleStore<server::MarkedTypes<S>>>
+            impl<'s, S: server::Types> Decode<'_, 's, HandleStore<server::MarkedTypes<S>>>
                 for &'s Marked<S::$oty, $oty>
             {
                 fn decode(r: &mut Reader<'_>, s: &'s HandleStore<server::MarkedTypes<S>>) -> Self {
@@ -92,7 +92,7 @@ macro_rules! define_handles {
                 }
             }
 
-            impl<S: server::Types> DecodeMut<'_, 's, HandleStore<server::MarkedTypes<S>>>
+            impl<'s, S: server::Types> DecodeMut<'_, 's, HandleStore<server::MarkedTypes<S>>>
                 for &'s mut Marked<S::$oty, $oty>
             {
                 fn decode(

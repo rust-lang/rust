@@ -79,7 +79,7 @@ macro_rules! rpc_encode_decode {
             }
         }
 
-        impl<S, $($($T: for<'s> DecodeMut<'a, 's, S>),+)?> DecodeMut<'a, '_, S>
+        impl<'a, S, $($($T: for<'s> DecodeMut<'a, 's, S>),+)?> DecodeMut<'a, '_, S>
             for $name $(<$($T),+>)?
         {
             fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
@@ -176,7 +176,7 @@ impl<S, A: Encode<S>, B: Encode<S>> Encode<S> for (A, B) {
     }
 }
 
-impl<S, A: for<'s> DecodeMut<'a, 's, S>, B: for<'s> DecodeMut<'a, 's, S>> DecodeMut<'a, '_, S>
+impl<'a, S, A: for<'s> DecodeMut<'a, 's, S>, B: for<'s> DecodeMut<'a, 's, S>> DecodeMut<'a, '_, S>
     for (A, B)
 {
     fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
@@ -213,7 +213,7 @@ impl<S> Encode<S> for &[u8] {
     }
 }
 
-impl<S> DecodeMut<'a, '_, S> for &'a [u8] {
+impl<'a, S> DecodeMut<'a, '_, S> for &'a [u8] {
     fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
         let len = usize::decode(r, s);
         let xs = &r[..len];
@@ -228,7 +228,7 @@ impl<S> Encode<S> for &str {
     }
 }
 
-impl<S> DecodeMut<'a, '_, S> for &'a str {
+impl<'a, S> DecodeMut<'a, '_, S> for &'a str {
     fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
         str::from_utf8(<&[u8]>::decode(r, s)).unwrap()
     }
