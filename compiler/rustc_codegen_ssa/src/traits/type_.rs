@@ -97,7 +97,7 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
     }
 }
 
-impl<T> DerivedTypeMethods<'tcx> for T where Self: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {}
+impl<'tcx, T> DerivedTypeMethods<'tcx> for T where Self: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {}
 
 pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     fn backend_type(&self, layout: TyAndLayout<'tcx>) -> Self::Type;
@@ -135,4 +135,4 @@ pub trait ArgAbiMethods<'tcx>: HasCodegen<'tcx> {
 
 pub trait TypeMethods<'tcx>: DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> {}
 
-impl<T> TypeMethods<'tcx> for T where Self: DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> {}
+impl<'tcx, T> TypeMethods<'tcx> for T where Self: DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> {}

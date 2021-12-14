@@ -2,7 +2,6 @@
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(try_blocks)]
-#![feature(in_band_lifetimes)]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![feature(nll)]
