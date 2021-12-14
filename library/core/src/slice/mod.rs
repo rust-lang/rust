@@ -3436,12 +3436,30 @@ impl<T> [T] {
         }
     }
 
-    /// Split a slice into a prefix, a middle of aligned simd types, and a suffix.
+    /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
     ///
     /// This is a safe wrapper around [`slice::align_to`], so has the same weak
-    /// preconditions as that method.  Notably, you must not assume any particular
-    /// split between the three parts: it's legal for the middle slice to be
-    /// empty even if the input slice is longer than `3 * LANES`.
+    /// postconditions as that method.  You're only assured that
+    /// `self.len() == prefix.len() + middle.len() * LANES + suffix.len()`.
+    ///
+    /// Notably, all of the following are possible:
+    /// - `prefix.len() >= LANES`.
+    /// - `middle.is_empty()` despite `self.len() >= 3 * LANES`.
+    /// - `suffix.len() >= LANES`.
+    ///
+    /// That said, this is a safe method, so if you're only writing safe code,
+    /// then this can at most cause incorrect logic, not unsoundness.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if the size of the SIMD type is different from
+    /// `LANES` times that of the scalar.
+    ///
+    /// At the time of writing, the trait restrictions on `Simd<T, LANES>` keeps
+    /// that from ever happening, as only power-of-two numbers of lanes are
+    /// supported.  It's possible that, in the future, those restrictions might
+    /// be lifted in a way that would make it possible to see panics from this
+    /// method for something like `LANES == 3`.
     ///
     /// # Examples
     ///
@@ -3491,14 +3509,32 @@ impl<T> [T] {
         unsafe { self.align_to() }
     }
 
-    /// Split a slice into a prefix, a middle of aligned simd types, and a suffix.
+    /// Split a slice into a prefix, a middle of aligned SIMD types, and a suffix.
     ///
-    /// This is a safe wrapper around [`slice::align_to`], so has the same weak
-    /// preconditions as that method.  Notably, you must not assume any particular
-    /// split between the three parts: it's legal for the middle slice to be
-    /// empty even if the input slice is longer than `3 * LANES`.
+    /// This is a safe wrapper around [`slice::align_to_mut`], so has the same weak
+    /// postconditions as that method.  You're only assured that
+    /// `self.len() == prefix.len() + middle.len() * LANES + suffix.len()`.
     ///
-    /// This is the mutable version of [`slice::as_simd`]; see that for more.
+    /// Notably, all of the following are possible:
+    /// - `prefix.len() >= LANES`.
+    /// - `middle.is_empty()` despite `self.len() >= 3 * LANES`.
+    /// - `suffix.len() >= LANES`.
+    ///
+    /// That said, this is a safe method, so if you're only writing safe code,
+    /// then this can at most cause incorrect logic, not unsoundness.
+    ///
+    /// This is the mutable version of [`slice::as_simd`]; see that for examples.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if the size of the SIMD type is different from
+    /// `LANES` times that of the scalar.
+    ///
+    /// At the time of writing, the trait restrictions on `Simd<T, LANES>` keeps
+    /// that from ever happening, as only power-of-two numbers of lanes are
+    /// supported.  It's possible that, in the future, those restrictions might
+    /// be lifted in a way that would make it possible to see panics from this
+    /// method for something like `LANES == 3`.
     #[unstable(feature = "portable_simd", issue = "86656")]
     #[cfg(not(miri))] // Miri does not support all SIMD intrinsics
     pub fn as_simd_mut<const LANES: usize>(&mut self) -> (&mut [T], &mut [Simd<T, LANES>], &mut [T])
