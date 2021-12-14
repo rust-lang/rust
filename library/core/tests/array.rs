@@ -259,7 +259,7 @@ fn iterator_drops() {
 // This test does not work on targets without panic=unwind support.
 // To work around this problem, test is marked is should_panic, so it will
 // be automagically skipped on unsuitable targets, such as
-// wasm32-unknown-unkown.
+// wasm32-unknown-unknown.
 //
 // It means that we use panic for indicating success.
 #[test]

@@ -104,7 +104,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
                 // - overflows cannot happen for `i` since the function's safety contract ask for
                 //   `mid+right-1 = x+left+right` to be valid for writing
                 // - underflows cannot happen because `i` must be bigger or equal to `left` for
-                //   a substraction of `left` to happen.
+                //   a subtraction of `left` to happen.
                 //
                 // So `x+i` is valid for reading and writing if the caller respected the contract
                 tmp = unsafe { x.add(i).replace(tmp) };
@@ -202,7 +202,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
             loop {
                 // SAFETY:
                 // `left >= right` so `[mid-right, mid+right)` is valid for reading and writing
-                // Substracting `right` from `mid` each turn is counterbalanced by the addition and
+                // Subtracting `right` from `mid` each turn is counterbalanced by the addition and
                 // check after it.
                 unsafe {
                     ptr::swap_nonoverlapping(mid.sub(right), mid, right);
@@ -218,7 +218,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) 
             loop {
                 // SAFETY: `[mid-left, mid+left)` is valid for reading and writing because
                 // `left < right` so `mid+left < mid+right`.
-                // Adding `left` to `mid` each turn is counterbalanced by the substraction and check
+                // Adding `left` to `mid` each turn is counterbalanced by the subtraction and check
                 // after it.
                 unsafe {
                     ptr::swap_nonoverlapping(mid.sub(left), mid, left);

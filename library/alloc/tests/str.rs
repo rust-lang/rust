@@ -162,7 +162,7 @@ fn test_join_for_different_lengths_with_long_separator() {
 }
 
 #[test]
-fn test_join_isue_80335() {
+fn test_join_issue_80335() {
     use core::{borrow::Borrow, cell::Cell};
 
     struct WeirdBorrow {
