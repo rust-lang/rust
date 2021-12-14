@@ -35,7 +35,7 @@ use crate::clean::inline::build_external_trait;
 use crate::clean::{self, ItemId, TraitWithExtraInfo};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
-use crate::passes::{self, Condition::*, ConditionalPass};
+use crate::passes::{self, Condition::*};
 
 crate use rustc_session::config::{DebuggingOptions, Input, Options};
 
@@ -327,8 +327,7 @@ crate fn create_resolver<'a>(
 crate fn run_global_ctxt(
     tcx: TyCtxt<'_>,
     resolver: Rc<RefCell<interface::BoxedResolver>>,
-    mut default_passes: passes::DefaultPassOption,
-    manual_passes: Vec<String>,
+    show_coverage: bool,
     render_options: RenderOptions,
     output_format: OutputFormat,
 ) -> (clean::Crate, RenderOptions, Cache) {
@@ -420,11 +419,13 @@ crate fn run_global_ctxt(
             diag.struct_span_warn(sp, &format!("the `#![doc({})]` attribute is deprecated", name));
         msg.note(
             "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-             for more information",
+            for more information",
         );
 
         if name == "no_default_passes" {
-            msg.help("you may want to use `#![doc(document_private_items)]`");
+            msg.help("`#![doc(no_default_passes)]` no longer functions; you may want to use `#![doc(document_private_items)]`");
+        } else if name.starts_with("passes") {
+            msg.help("`#![doc(passes = \"...\")]` no longer functions; you may want to use `#![doc(document_private_items)]`");
         } else if name.starts_with("plugins") {
             msg.warn("`#![doc(plugins = \"...\")]` no longer functions; see CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>");
         }
@@ -432,54 +433,24 @@ crate fn run_global_ctxt(
         msg.emit();
     }
 
-    let parse_pass = |name: &str, sp: Option<Span>| {
-        if let Some(pass) = passes::find_pass(name) {
-            Some(ConditionalPass::always(pass))
-        } else {
-            let msg = &format!("ignoring unknown pass `{}`", name);
-            let mut warning = if let Some(sp) = sp {
-                tcx.sess.struct_span_warn(sp, msg)
-            } else {
-                tcx.sess.struct_warn(msg)
-            };
-            if name == "collapse-docs" {
-                warning.note("the `collapse-docs` pass was removed in #80261 <https://github.com/rust-lang/rust/pull/80261>");
-            }
-            warning.emit();
-            None
-        }
-    };
-
-    let mut manual_passes: Vec<_> =
-        manual_passes.into_iter().flat_map(|name| parse_pass(&name, None)).collect();
-
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
     for attr in krate.module.attrs.lists(sym::doc) {
         let diag = ctxt.sess().diagnostic();
 
         let name = attr.name_or_empty();
-        if attr.is_word() {
-            if name == sym::no_default_passes {
-                report_deprecated_attr("no_default_passes", diag, attr.span());
-                if default_passes == passes::DefaultPassOption::Default {
-                    default_passes = passes::DefaultPassOption::None;
-                }
-            }
-        } else if let Some(value) = attr.value_str() {
+        // `plugins = "..."`, `no_default_passes`, and `passes = "..."` have no effect
+        if attr.is_word() && name == sym::no_default_passes {
+            report_deprecated_attr("no_default_passes", diag, attr.span());
+        } else if attr.value_str().is_some() {
             match name {
                 sym::passes => {
                     report_deprecated_attr("passes = \"...\"", diag, attr.span());
                 }
                 sym::plugins => {
                     report_deprecated_attr("plugins = \"...\"", diag, attr.span());
-                    continue;
                 }
-                _ => continue,
-            };
-            for name in value.as_str().split_whitespace() {
-                let span = attr.name_value_literal_span().unwrap_or_else(|| attr.span());
-                manual_passes.extend(parse_pass(name, Some(span)));
+                _ => (),
             }
         }
 
@@ -488,10 +459,9 @@ crate fn run_global_ctxt(
         }
     }
 
-    let passes = passes::defaults(default_passes).iter().copied().chain(manual_passes);
     info!("Executing passes");
 
-    for p in passes {
+    for p in passes::defaults(show_coverage) {
         let run = match p.condition {
             Always => true,
             WhenDocumentPrivate => ctxt.render_options.document_private,

@@ -1,8 +1,7 @@
-warning: the `passes` flag is deprecated
+warning: the `passes` flag no longer functions
    |
    = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
-
-warning: ignoring unknown pass `unknown-pass`
+   = help: you may want to use --document-private-items
 
 warning: the `#![doc(no_default_passes)]` attribute is deprecated
   --> $DIR/deprecated-attrs.rs:5:8
@@ -11,7 +10,7 @@ LL | #![doc(no_default_passes)]
    |        ^^^^^^^^^^^^^^^^^
    |
    = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
-   = help: you may want to use `#![doc(document_private_items)]`
+   = help: `#![doc(no_default_passes)]` no longer functions; you may want to use `#![doc(document_private_items)]`
 
 warning: the `#![doc(passes = "...")]` attribute is deprecated
   --> $DIR/deprecated-attrs.rs:9:8
@@ -20,17 +19,10 @@ LL | #![doc(passes = "collapse-docs unindent-comments")]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
-
-warning: ignoring unknown pass `collapse-docs`
-  --> $DIR/deprecated-attrs.rs:9:17
-   |
-LL | #![doc(passes = "collapse-docs unindent-comments")]
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the `collapse-docs` pass was removed in #80261 <https://github.com/rust-lang/rust/pull/80261>
+   = help: `#![doc(passes = "...")]` no longer functions; you may want to use `#![doc(document_private_items)]`
 
 warning: the `#![doc(plugins = "...")]` attribute is deprecated
-  --> $DIR/deprecated-attrs.rs:14:8
+  --> $DIR/deprecated-attrs.rs:13:8
    |
 LL | #![doc(plugins = "xxx")]
    |        ^^^^^^^^^^^^^^^
@@ -38,5 +30,5 @@ LL | #![doc(plugins = "xxx")]
    = note: see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information
    = warning: `#![doc(plugins = "...")]` no longer functions; see CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>
 
-warning: 5 warnings emitted
+warning: 3 warnings emitted
 

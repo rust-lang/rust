@@ -1,4 +1,4 @@
-// compile-flags: --no-defaults
+// compile-flags: --document-private-items
 
 #![crate_name = "foo"]
 

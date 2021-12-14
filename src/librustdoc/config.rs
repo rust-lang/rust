@@ -24,7 +24,7 @@ use crate::html::markdown::IdMap;
 use crate::html::render::StylePath;
 use crate::html::static_files;
 use crate::opts;
-use crate::passes::{self, Condition, DefaultPassOption};
+use crate::passes::{self, Condition};
 use crate::scrape_examples::{AllCallLocations, ScrapeExamplesOptions};
 use crate::theme;
 
@@ -128,14 +128,6 @@ crate struct Options {
     crate test_builder: Option<PathBuf>,
 
     // Options that affect the documentation process
-    /// The selected default set of passes to use.
-    ///
-    /// Be aware: This option can come both from the CLI and from crate attributes!
-    crate default_passes: DefaultPassOption,
-    /// Any passes manually selected by the user.
-    ///
-    /// Be aware: This option can come both from the CLI and from crate attributes!
-    crate manual_passes: Vec<String>,
     /// Whether to run the `calculate-doc-coverage` pass, which counts the number of public items
     /// with and without documentation.
     crate show_coverage: bool,
@@ -192,8 +184,6 @@ impl fmt::Debug for Options {
             .field("test_args", &self.test_args)
             .field("test_run_directory", &self.test_run_directory)
             .field("persist_doctests", &self.persist_doctests)
-            .field("default_passes", &self.default_passes)
-            .field("manual_passes", &self.manual_passes)
             .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
             .field("render_options", &self.render_options)
@@ -605,15 +595,6 @@ impl Options {
 
         let show_coverage = matches.opt_present("show-coverage");
 
-        let default_passes = if matches.opt_present("no-defaults") {
-            passes::DefaultPassOption::None
-        } else if show_coverage {
-            passes::DefaultPassOption::Coverage
-        } else {
-            passes::DefaultPassOption::Default
-        };
-        let manual_passes = matches.opt_strs("passes");
-
         let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
             Ok(types) => types,
             Err(e) => {
@@ -710,8 +691,6 @@ impl Options {
             lint_cap,
             should_test,
             test_args,
-            default_passes,
-            manual_passes,
             show_coverage,
             crate_version,
             test_run_directory,
@@ -769,31 +748,36 @@ impl Options {
 
 /// Prints deprecation warnings for deprecated options
 fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Handler) {
-    let deprecated_flags = ["input-format", "no-defaults", "passes"];
+    let deprecated_flags = [];
 
-    for flag in deprecated_flags.iter() {
+    for &flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
-            let mut err = diag.struct_warn(&format!("the `{}` flag is deprecated", flag));
-            err.note(
-                "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
-                 for more information",
-            );
-
-            if *flag == "no-defaults" {
-                err.help("you may want to use --document-private-items");
-            }
-
-            err.emit();
+            diag.struct_warn(&format!("the `{}` flag is deprecated", flag))
+                .note(
+                    "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
+                    for more information",
+                )
+                .emit();
         }
     }
 
-    let removed_flags = ["plugins", "plugin-path"];
+    let removed_flags = ["plugins", "plugin-path", "no-defaults", "passes", "input-format"];
 
     for &flag in removed_flags.iter() {
         if matches.opt_present(flag) {
-            diag.struct_warn(&format!("the '{}' flag no longer functions", flag))
-                .warn("see CVE-2018-1000622")
-                .emit();
+            let mut err = diag.struct_warn(&format!("the `{}` flag no longer functions", flag));
+            err.note(
+                "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
+                for more information",
+            );
+
+            if flag == "no-defaults" || flag == "passes" {
+                err.help("you may want to use --document-private-items");
+            } else if flag == "plugins" || flag == "plugin-path" {
+                err.warn("see CVE-2018-1000622");
+            }
+
+            err.emit();
         }
     }
 }
