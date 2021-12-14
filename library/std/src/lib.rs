@@ -317,6 +317,7 @@
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
+#![feature(platform_intrinsics)]
 #![feature(pin_static_ref)]
 #![feature(portable_simd)]
 #![feature(prelude_import)]
@@ -471,8 +472,6 @@ pub use core::pin;
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
-#[unstable(feature = "portable_simd", issue = "86656")]
-pub use core::simd;
 #[unstable(feature = "async_stream", issue = "79024")]
 pub use core::stream;
 #[stable(feature = "i128", since = "1.26.0")]
@@ -518,6 +517,10 @@ pub mod time;
 
 #[unstable(feature = "once_cell", issue = "74465")]
 pub mod lazy;
+
+#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
+#[unstable(feature = "portable_simd", issue = "86656")]
+pub mod simd;
 
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
