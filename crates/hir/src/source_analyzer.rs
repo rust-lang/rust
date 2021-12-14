@@ -291,15 +291,12 @@ impl SourceAnalyzer {
             }
         }
 
-        if let Some(pat) = parent()
-            .and_then(ast::RecordPat::cast)
-            .map(ast::Pat::from)
-            .or_else(|| parent().and_then(ast::TupleStructPat::cast).map(ast::Pat::from))
-        {
+        let record_pat = parent().and_then(ast::RecordPat::cast).map(ast::Pat::from);
+        let tuple_struct_pat = || parent().and_then(ast::TupleStructPat::cast).map(ast::Pat::from);
+        if let Some(pat) = record_pat.or_else(tuple_struct_pat) {
             let pat_id = self.pat_id(&pat)?;
-            if let Some(VariantId::EnumVariantId(variant)) =
-                self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
-            {
+            let variant_res_for_pat = self.infer.as_ref()?.variant_resolution_for_pat(pat_id);
+            if let Some(VariantId::EnumVariantId(variant)) = variant_res_for_pat {
                 return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
             }
         }
@@ -335,6 +332,9 @@ impl SourceAnalyzer {
                 }
             }
         } else if is_path_of_attr {
+            // Case where we are resolving the final path segment of a path in an attribute
+            // in this case we have to check for inert/builtin attributes and tools and prioritize
+            // resolution of attributes over other namesapces
             let name_ref = path.as_single_name_ref();
             let builtin =
                 name_ref.as_ref().map(ast::NameRef::text).as_deref().and_then(BuiltinAttr::by_name);

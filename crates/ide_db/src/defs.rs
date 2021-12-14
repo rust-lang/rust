@@ -447,7 +447,7 @@ impl NameRefClass {
             }
         }
 
-        if let Some(path) = name_ref.syntax().ancestors().find_map(ast::Path::cast) {
+        if let Some(path) = ast::PathSegment::cast(parent.clone()).map(|it| it.parent_path()) {
             if path.qualifier().is_none() {
                 if let Some(macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
                     // Only use this to resolve single-segment macro calls like `foo!()`. Multi-segment
