@@ -809,6 +809,7 @@ impl dyn Error + Send + Sync {
 }
 
 /// An error reporter that exposes the entire error chain for printing.
+///
 /// It also exposes options for formatting the error chain, either entirely on a single line,
 /// or in multi-line format with each cause in the error chain on a new line.
 /// `Report` only requires that the wrapped error implements `Error`. It doesn't require that the
