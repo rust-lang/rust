@@ -1608,9 +1608,9 @@ bitflags! {
         // the seed stored in `ReprOptions.layout_seed`
         const RANDOMIZE_LAYOUT   = 1 << 5;
         // Any of these flags being set prevent field reordering optimisation.
-        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits |
-                                   ReprFlags::IS_SIMD.bits |
-                                   ReprFlags::IS_LINEAR.bits;
+        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits
+                                 | ReprFlags::IS_SIMD.bits
+                                 | ReprFlags::IS_LINEAR.bits;
     }
 }
 
