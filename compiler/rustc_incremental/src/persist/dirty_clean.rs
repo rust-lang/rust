@@ -155,7 +155,7 @@ pub struct DirtyCleanVisitor<'tcx> {
     checked_attrs: FxHashSet<ast::AttrId>,
 }
 
-impl DirtyCleanVisitor<'tcx> {
+impl<'tcx> DirtyCleanVisitor<'tcx> {
     /// Possibly "deserialize" the attribute into a clean/dirty assertion
     fn assertion_maybe(&mut self, item_id: LocalDefId, attr: &Attribute) -> Option<Assertion> {
         if !attr.has_name(sym::rustc_clean) {
@@ -352,7 +352,7 @@ impl DirtyCleanVisitor<'tcx> {
     }
 }
 
-impl ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
+impl<'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         self.check_item(item.def_id, item.span);
     }
@@ -415,7 +415,7 @@ pub struct FindAllAttrs<'tcx> {
     found_attrs: Vec<&'tcx Attribute>,
 }
 
-impl FindAllAttrs<'tcx> {
+impl<'tcx> FindAllAttrs<'tcx> {
     fn is_active_attr(&mut self, attr: &Attribute) -> bool {
         if attr.has_name(sym::rustc_clean) && check_config(self.tcx, attr) {
             return true;
@@ -434,7 +434,7 @@ impl FindAllAttrs<'tcx> {
     }
 }
 
-impl intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
+impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
