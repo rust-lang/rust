@@ -50,10 +50,7 @@ pub fn astconv_object_safety_violations(
     violations
 }
 
-fn object_safety_violations(
-    tcx: TyCtxt<'tcx>,
-    trait_def_id: DefId,
-) -> &'tcx [ObjectSafetyViolation] {
+fn object_safety_violations(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &'_ [ObjectSafetyViolation] {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("object_safety_violations: {:?}", trait_def_id);
 
@@ -272,7 +269,7 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
         .collect()
 }
 
-fn predicate_references_self(
+fn predicate_references_self<'tcx>(
     tcx: TyCtxt<'tcx>,
     (predicate, sp): (ty::Predicate<'tcx>, Span),
 ) -> Option<Span> {
