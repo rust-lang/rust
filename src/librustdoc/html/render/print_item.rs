@@ -26,7 +26,8 @@ use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
-    print_abi_with_space, print_constness_with_space, print_where_clause, Buffer, PrintWithSpace,
+    join_with_double_colon, join_with_slash, print_abi_with_space, print_constness_with_space,
+    print_where_clause, Buffer, PrintWithSpace,
 };
 use crate::html::highlight;
 use crate::html::layout::Page;
@@ -40,9 +41,9 @@ const ITEM_TABLE_ROW_OPEN: &str = "<div class=\"item-row\">";
 const ITEM_TABLE_ROW_CLOSE: &str = "</div>";
 
 // A component in a `use` path, like `string` in std::string::ToString
-struct PathComponent<'a> {
+struct PathComponent {
     path: String,
-    name: &'a str,
+    name: Symbol,
 }
 
 #[derive(Template)]
@@ -53,7 +54,7 @@ struct ItemVars<'a> {
     typ: &'a str,
     name: &'a str,
     item_type: &'a str,
-    path_components: Vec<PathComponent<'a>>,
+    path_components: Vec<PathComponent>,
     stability_since_raw: &'a str,
     src_href: Option<&'a str>,
 }
@@ -121,7 +122,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
             .take(amt)
             .map(|(i, component)| PathComponent {
                 path: "../".repeat(cur.len() - i - 1),
-                name: component,
+                name: *component,
             })
             .collect()
     };
@@ -304,22 +305,18 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 match *src {
-                    Some(ref src) => write!(
+                    Some(src) => write!(
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {} as {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
-                        anchor(myitem.def_id.expect_def_id(), src.as_str(), cx),
+                        anchor(myitem.def_id.expect_def_id(), src, cx),
                         myitem.name.as_ref().unwrap(),
                     ),
                     None => write!(
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
-                        anchor(
-                            myitem.def_id.expect_def_id(),
-                            myitem.name.as_ref().unwrap().as_str(),
-                            cx
-                        ),
+                        anchor(myitem.def_id.expect_def_id(), *myitem.name.as_ref().unwrap(), cx),
                     ),
                 }
                 w.write_str("</code></div>");
@@ -864,10 +861,10 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
          </script>",
         root_path = vec![".."; cx.current.len()].join("/"),
         path = if it.def_id.is_local() {
-            cx.current.join("/")
+            join_with_slash(None, &cx.current)
         } else {
             let (ref path, _) = cache.external_paths[&it.def_id.expect_def_id()];
-            path[..path.len() - 1].join("/")
+            join_with_slash(None, &path[..path.len() - 1])
         },
         ty = it.type_(),
         name = *it.name.as_ref().unwrap()
@@ -1410,7 +1407,7 @@ crate fn compare_names(mut lhs: &str, mut rhs: &str) -> Ordering {
 }
 
 pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
-    let mut s = cx.current.join("::");
+    let mut s = join_with_double_colon(&cx.current);
     s.push_str("::");
     s.push_str(item.name.unwrap().as_str());
     s

@@ -5,7 +5,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::definitions::DefPathData;
 use rustc_hir::Node;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::middle::privacy::AccessLevel;
@@ -43,12 +42,9 @@ impl Module<'_> {
 }
 
 // FIXME: Should this be replaced with tcx.def_path_str?
-fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
-    let crate_name = tcx.crate_name(did.krate).to_string();
-    let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| {
-        // Filter out extern blocks
-        (elem.data != DefPathData::ForeignMod).then(|| elem.data.to_string())
-    });
+fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
+    let crate_name = tcx.crate_name(did.krate);
+    let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| elem.data.get_opt_name());
     std::iter::once(crate_name).chain(relative).collect()
 }
 
@@ -71,7 +67,7 @@ crate struct RustdocVisitor<'a, 'tcx> {
     inlining: bool,
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
-    exact_paths: FxHashMap<DefId, Vec<String>>,
+    exact_paths: FxHashMap<DefId, Vec<Symbol>>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {

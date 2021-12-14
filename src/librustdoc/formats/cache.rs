@@ -4,13 +4,14 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::sym;
+use rustc_span::{sym, Symbol};
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate, ItemId, PrimitiveType};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
+use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::search_index::get_function_type_for_search;
 use crate::html::render::IndexItem;
@@ -39,11 +40,11 @@ crate struct Cache {
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    crate paths: FxHashMap<DefId, (Vec<String>, ItemType)>,
+    crate paths: FxHashMap<DefId, (Vec<Symbol>, ItemType)>,
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    crate external_paths: FxHashMap<DefId, (Vec<String>, ItemType)>,
+    crate external_paths: FxHashMap<DefId, (Vec<Symbol>, ItemType)>,
 
     /// Maps local `DefId`s of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
@@ -55,7 +56,7 @@ crate struct Cache {
     /// to the path used if the corresponding type is inlined. By
     /// doing this, we can detect duplicate impls on a trait page, and only display
     /// the impl for the inlined type.
-    crate exact_paths: FxHashMap<DefId, Vec<String>>,
+    crate exact_paths: FxHashMap<DefId, Vec<Symbol>>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -92,7 +93,7 @@ crate struct Cache {
     crate masked_crates: FxHashSet<CrateNum>,
 
     // Private fields only used when initially crawling a crate to build a cache
-    stack: Vec<String>,
+    stack: Vec<Symbol>,
     parent_stack: Vec<DefId>,
     parent_is_trait_impl: bool,
     stripped_mod: bool,
@@ -155,7 +156,7 @@ impl Cache {
             let dst = &render_options.output;
             let location = e.location(extern_url, extern_url_takes_precedence, dst, tcx);
             cx.cache.extern_locations.insert(e.crate_num, location);
-            cx.cache.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
+            cx.cache.external_paths.insert(e.def_id(), (vec![name], ItemType::Module));
         }
 
         // FIXME: avoid this clone (requires implementing Default manually)
@@ -164,10 +165,9 @@ impl Cache {
             let crate_name = tcx.crate_name(def_id.krate);
             // Recall that we only allow primitive modules to be at the root-level of the crate.
             // If that restriction is ever lifted, this will have to include the relative paths instead.
-            cx.cache.external_paths.insert(
-                def_id,
-                (vec![crate_name.to_string(), prim.as_sym().to_string()], ItemType::Primitive),
-            );
+            cx.cache
+                .external_paths
+                .insert(def_id, (vec![crate_name, prim.as_sym()], ItemType::Primitive));
         }
 
         krate = CacheBuilder { tcx, cache: &mut cx.cache }.fold_crate(krate);
@@ -299,7 +299,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         self.cache.search_index.push(IndexItem {
                             ty: item.type_(),
                             name: s.to_string(),
-                            path: path.join("::"),
+                            path: join_with_double_colon(path),
                             desc,
                             parent,
                             parent_idx: None,
@@ -320,7 +320,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Keep track of the fully qualified path for this item.
         let pushed = match item.name {
             Some(n) if !n.is_empty() => {
-                self.cache.stack.push(n.to_string());
+                self.cache.stack.push(n);
                 true
             }
             _ => false,

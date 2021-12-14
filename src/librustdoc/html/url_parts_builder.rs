@@ -1,3 +1,7 @@
+use std::fmt::{self, Write};
+
+use rustc_span::Symbol;
+
 /// A builder that allows efficiently and easily constructing the part of a URL
 /// after the domain: `nightly/core/str/struct.Bytes.html`.
 ///
@@ -10,6 +14,7 @@ crate struct UrlPartsBuilder {
 
 impl UrlPartsBuilder {
     /// Create an empty buffer.
+    #[allow(dead_code)]
     crate fn new() -> Self {
         Self { buf: String::new() }
     }
@@ -62,6 +67,13 @@ impl UrlPartsBuilder {
         self.buf.push_str(part);
     }
 
+    crate fn push_fmt(&mut self, args: fmt::Arguments<'_>) {
+        if !self.buf.is_empty() {
+            self.buf.push('/');
+        }
+        self.buf.write_fmt(args).unwrap()
+    }
+
     /// Push a component onto the front of the buffer.
     ///
     /// # Examples
@@ -112,6 +124,27 @@ impl<'a> Extend<&'a str> for UrlPartsBuilder {
         let iter = iter.into_iter();
         self.buf.reserve(AVG_PART_LENGTH * iter.size_hint().0);
         iter.for_each(|part| self.push(part));
+    }
+}
+
+impl FromIterator<Symbol> for UrlPartsBuilder {
+    fn from_iter<T: IntoIterator<Item = Symbol>>(iter: T) -> Self {
+        // This code has to be duplicated from the `&str` impl because of
+        // `Symbol::as_str`'s lifetimes.
+        let iter = iter.into_iter();
+        let mut builder = Self::with_capacity_bytes(AVG_PART_LENGTH * iter.size_hint().0);
+        iter.for_each(|part| builder.push(part.as_str()));
+        builder
+    }
+}
+
+impl Extend<Symbol> for UrlPartsBuilder {
+    fn extend<T: IntoIterator<Item = Symbol>>(&mut self, iter: T) {
+        // This code has to be duplicated from the `&str` impl because of
+        // `Symbol::as_str`'s lifetimes.
+        let iter = iter.into_iter();
+        self.buf.reserve(AVG_PART_LENGTH * iter.size_hint().0);
+        iter.for_each(|part| self.push(part.as_str()));
     }
 }
 

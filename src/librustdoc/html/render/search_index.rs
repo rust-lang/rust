@@ -10,6 +10,7 @@ use crate::clean;
 use crate::clean::types::{FnRetTy, Function, GenericBound, Generics, Type, WherePredicate};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
+use crate::html::format::join_with_double_colon;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
 
@@ -28,7 +29,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap().to_string(),
-                path: fqp[..fqp.len() - 1].join("::"),
+                path: join_with_double_colon(&fqp[..fqp.len() - 1]),
                 desc,
                 parent: Some(did),
                 parent_idx: None,
@@ -102,7 +103,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     struct CrateData<'a> {
         doc: String,
         items: Vec<&'a IndexItem>,
-        paths: Vec<(ItemType, String)>,
+        paths: Vec<(ItemType, Symbol)>,
         // The String is alias name and the vec is the list of the elements with this alias.
         //
         // To be noted: the `usize` elements are indexes to `items`.
@@ -154,7 +155,10 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 "f",
                 &self.items.iter().map(|item| &item.search_type).collect::<Vec<_>>(),
             )?;
-            crate_data.serialize_field("p", &self.paths)?;
+            crate_data.serialize_field(
+                "p",
+                &self.paths.iter().map(|(it, s)| (it, s.to_string())).collect::<Vec<_>>(),
+            )?;
             if has_aliases {
                 crate_data.serialize_field("a", &self.aliases)?;
             }
