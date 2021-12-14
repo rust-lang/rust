@@ -823,10 +823,10 @@ fn test_hover_infer_associated_method_exact() {
     check(
         r#"
 mod wrapper {
-    struct Thing { x: u32 }
+    pub struct Thing { x: u32 }
 
     impl Thing {
-        fn new() -> Thing { Thing { x: 0 } }
+        pub fn new() -> Thing { Thing { x: 0 } }
     }
 }
 
@@ -840,9 +840,9 @@ fn main() { let foo_test = wrapper::Thing::new$0(); }
                 ```
 
                 ```rust
-                fn new() -> Thing
+                pub fn new() -> Thing
                 ```
-            "#]],
+        "#]],
     )
 }
 

@@ -308,7 +308,7 @@ fn test() {
 pub mod foo {
     pub struct S;
     impl S {
-        fn thing() -> i128 { 0 }
+        pub fn thing() -> i128 { 0 }
     }
 }
 "#,
