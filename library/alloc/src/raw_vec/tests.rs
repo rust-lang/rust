@@ -135,11 +135,11 @@ fn zst() {
     assert_eq!(v.try_reserve_exact(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 
-    assert_eq!(v.grow_amortized(100, usize::MAX - 100), cap_err);
+    //v.grow_amortized(100, usize::MAX - 100); // panics, in `zst_grow_amortized_panic` below
     assert_eq!(v.grow_amortized(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 
-    assert_eq!(v.grow_exact(100, usize::MAX - 100), cap_err);
+    //v.grow_exact(100, usize::MAX - 100); // panics, in `zst_grow_exact_panic` below
     assert_eq!(v.grow_exact(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 }
@@ -160,4 +160,26 @@ fn zst_reserve_exact_panic() {
     zst_sanity(&v);
 
     v.reserve_exact(101, usize::MAX - 100);
+}
+
+#[test]
+#[should_panic(expected = "divide by zero")]
+fn zst_grow_amortized_panic() {
+    let mut v: RawVec<ZST> = RawVec::new();
+    zst_sanity(&v);
+
+    // This shows the divide by zero that occurs when `grow_amortized()` is
+    // called when `needs_to_grow()` would have returned `false`.
+    let _ = v.grow_amortized(100, usize::MAX - 100);
+}
+
+#[test]
+#[should_panic(expected = "divide by zero")]
+fn zst_grow_exact_panic() {
+    let mut v: RawVec<ZST> = RawVec::new();
+    zst_sanity(&v);
+
+    // This shows the divide by zero that occurs when `grow_amortized()` is
+    // called when `needs_to_grow()` would have returned `false`.
+    let _ = v.grow_exact(100, usize::MAX - 100);
 }
