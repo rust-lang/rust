@@ -107,7 +107,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
 /// type inference variables that appear in `result` to be
 /// unified, and hence we need to process those obligations to get
 /// the complete picture of the type.
-fn drain_fulfillment_cx_or_panic<T>(
+fn drain_fulfillment_cx_or_panic<'tcx, T>(
     infcx: &InferCtxt<'_, 'tcx>,
     fulfill_cx: &mut FulfillmentContext<'tcx>,
     result: T,

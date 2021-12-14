@@ -801,7 +801,7 @@ fn vtable_trait_first_method_offset<'tcx>(
 }
 
 /// Find slot offset for trait vptr within vtable entries of another trait
-pub fn vtable_trait_upcasting_coercion_new_vptr_slot(
+pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (
         Ty<'tcx>, // trait object type whose trait owning vtable
