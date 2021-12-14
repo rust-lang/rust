@@ -337,6 +337,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.expr_ty
                 )
                 .span_label(self.span, "invalid cast")
+                .span_help(self.span, "try `char::from_u32` instead")
                 .emit();
             }
             CastError::NonScalar => {
