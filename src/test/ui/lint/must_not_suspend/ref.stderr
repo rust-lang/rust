@@ -5,7 +5,7 @@ LL |         let guard = &mut self.u;
    |                          ^^^^^^
 LL | 
 LL |         other().await;
-   |         ------------- the value is held across this suspend point
+   |                ------ the value is held across this suspend point
    |
 note: the lint level is defined here
   --> $DIR/ref.rs:3:9

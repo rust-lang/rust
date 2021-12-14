@@ -348,6 +348,12 @@ pub enum ObligationCauseCode<'tcx> {
     /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
     OpaqueType,
 
+    AwaitableExpr(Option<hir::HirId>),
+
+    ForLoopIterator,
+
+    QuestionMark,
+
     /// Well-formed checking. If a `WellFormedLoc` is provided,
     /// then it will be used to eprform HIR-based wf checking
     /// after an error occurs, in order to generate a more precise error span.

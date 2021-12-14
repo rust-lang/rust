@@ -204,7 +204,7 @@ fn parse_iter_usage(
         match e.kind {
             ExprKind::Call(
                 Expr {
-                    kind: ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, _)),
+                    kind: ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, ..)),
                     ..
                 },
                 _,

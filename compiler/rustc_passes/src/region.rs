@@ -421,11 +421,14 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
         // Mark this expr's scope and all parent scopes as containing `yield`.
         let mut scope = Scope { id: expr.hir_id.local_id, data: ScopeData::Node };
         loop {
-            let data = YieldData {
-                span: expr.span,
-                expr_and_pat_count: visitor.expr_and_pat_count,
-                source: *source,
+            let span = match expr.kind {
+                hir::ExprKind::Yield(expr, hir::YieldSource::Await { .. }) => {
+                    expr.span.shrink_to_hi().to(expr.span)
+                }
+                _ => expr.span,
             };
+            let data =
+                YieldData { span, expr_and_pat_count: visitor.expr_and_pat_count, source: *source };
             visitor.scope_tree.yield_in_scope.insert(scope, data);
             if visitor.pessimistic_yield {
                 debug!("resolve_expr in pessimistic_yield - marking scope {:?} for fixup", scope);
