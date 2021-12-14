@@ -14,7 +14,7 @@ impl<'tcx> DropckOutlives<'tcx> {
     }
 }
 
-impl super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
+impl<'tcx> super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
     type QueryResponse = DropckOutlivesResult<'tcx>;
 
     fn try_fast_path(
