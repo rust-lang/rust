@@ -263,7 +263,6 @@ fn call_inline_asm<'tcx>(
 ) {
     let stack_slot = fx.bcx.func.create_stack_slot(StackSlotData {
         kind: StackSlotKind::ExplicitSlot,
-        offset: None,
         size: u32::try_from(slot_size.bytes()).unwrap(),
     });
     if fx.clif_comments.enabled() {
