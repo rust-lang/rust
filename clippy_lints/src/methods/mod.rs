@@ -1893,7 +1893,7 @@ declare_clippy_lint! {
     /// and other `to_owned`-like functions.
     ///
     /// ### Why is this bad?
-    /// The unnecessary calls result in unnecessary allocations.
+    /// The unnecessary calls result in useless allocations.
     ///
     /// ### Example
     /// ```rust

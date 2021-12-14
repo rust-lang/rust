@@ -107,21 +107,17 @@ fn check_addr_of_expr(
         then {
             let (target_ty, n_target_refs) = peel_mid_ty_refs(target_ty);
             let (receiver_ty, n_receiver_refs) = peel_mid_ty_refs(receiver_ty);
-            if_chain! {
-                if receiver_ty == target_ty;
-                if n_target_refs >= n_receiver_refs;
-                then {
-                    span_lint_and_sugg(
-                        cx,
-                        UNNECESSARY_TO_OWNED,
-                        parent.span,
-                        &format!("unnecessary use of `{}`", method_name),
-                        "use",
-                        format!("{:&>width$}{}", "", receiver_snippet, width = n_target_refs - n_receiver_refs),
-                        Applicability::MachineApplicable,
-                    );
-                    return true;
-                }
+            if receiver_ty == target_ty && n_target_refs >= n_receiver_refs {
+                span_lint_and_sugg(
+                    cx,
+                    UNNECESSARY_TO_OWNED,
+                    parent.span,
+                    &format!("unnecessary use of `{}`", method_name),
+                    "use",
+                    format!("{:&>width$}{}", "", receiver_snippet, width = n_target_refs - n_receiver_refs),
+                    Applicability::MachineApplicable,
+                );
+                return true;
             }
             if_chain! {
                 if let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref);
