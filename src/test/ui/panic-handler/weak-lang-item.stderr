@@ -11,6 +11,9 @@ LL | extern crate core as other_core;
    |
 
 error: language item required, but not found: `eh_personality`
+   |
+   = note: this can occur when a binary crate with `#![no_std]` is compiled for a target where `eh_personality` is defined in the standard library
+   = help: you may be able to compile for a target that doesn't need `eh_personality`, specify a target with `--target` or in `.cargo/config`
 
 error: `#[panic_handler]` function required, but not found
 
