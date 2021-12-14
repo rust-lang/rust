@@ -24,8 +24,7 @@ use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
-    self, AdtKind, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt,
-    TypeFoldable,
+    self, AdtKind, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_session::DiagnosticMessageId;
 use rustc_span::symbol::{kw, sym};
