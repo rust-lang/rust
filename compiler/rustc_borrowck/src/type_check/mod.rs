@@ -945,7 +945,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     crate type_tests: Vec<TypeTest<'tcx>>,
 }
 
-impl MirTypeckRegionConstraints<'tcx> {
+impl<'tcx> MirTypeckRegionConstraints<'tcx> {
     fn placeholder_region(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,

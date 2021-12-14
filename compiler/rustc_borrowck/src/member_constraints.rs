@@ -53,7 +53,7 @@ rustc_index::newtype_index! {
     }
 }
 
-impl Default for MemberConstraintSet<'tcx, ty::RegionVid> {
+impl Default for MemberConstraintSet<'_, ty::RegionVid> {
     fn default() -> Self {
         Self {
             first_constraints: Default::default(),
@@ -97,7 +97,7 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
     }
 }
 
-impl<R1> MemberConstraintSet<'tcx, R1>
+impl<'tcx, R1> MemberConstraintSet<'tcx, R1>
 where
     R1: Copy + Hash + Eq,
 {
@@ -140,7 +140,7 @@ where
     }
 }
 
-impl<R> MemberConstraintSet<'tcx, R>
+impl<R> MemberConstraintSet<'_, R>
 where
     R: Copy + Hash + Eq,
 {
