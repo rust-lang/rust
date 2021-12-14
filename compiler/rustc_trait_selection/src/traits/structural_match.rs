@@ -66,7 +66,7 @@ pub fn search_for_structural_match_violation<'tcx>(
 ///
 /// Note that this does *not* recursively check if the substructure of `adt_ty`
 /// implements the traits.
-fn type_marked_structural(
+fn type_marked_structural<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     adt_ty: Ty<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -119,7 +119,7 @@ struct Search<'a, 'tcx> {
     seen: FxHashSet<hir::def_id::DefId>,
 }
 
-impl Search<'a, 'tcx> {
+impl<'a, 'tcx> Search<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }

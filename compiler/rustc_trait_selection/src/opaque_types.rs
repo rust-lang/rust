@@ -97,7 +97,7 @@ struct ReverseMapper<'tcx> {
     span: Span,
 }
 
-impl ReverseMapper<'tcx> {
+impl<'tcx> ReverseMapper<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         tainted_by_errors: bool,
@@ -134,7 +134,7 @@ impl ReverseMapper<'tcx> {
     }
 }
 
-impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
+impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -338,7 +338,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
 #[instrument(skip(tcx, predicates), level = "debug")]
-crate fn required_region_bounds(
+crate fn required_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     erased_self_ty: Ty<'tcx>,
     predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
