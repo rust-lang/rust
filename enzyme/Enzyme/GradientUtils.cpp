@@ -2639,8 +2639,47 @@ Constant *GradientUtils::GetOrCreateShadowFunction(EnzymeLogic &Logic,
   //  indirect augmented calls), topLevel MUST be true otherwise subcalls will
   //  not be able to lookup the augmenteddata/subdata (triggering an assertion
   //  failure, among much worse)
+  bool isRealloc = false;
+  if (fn->empty()) {
+    if (hasMetadata(fn, "enzyme_callwrapper")) {
+      auto md = fn->getMetadata("enzyme_callwrapper");
+      if (!isa<MDTuple>(md)) {
+        llvm::errs() << *fn << "\n";
+        llvm::errs() << *md << "\n";
+        assert(0 && "callwrapper of incorrect type");
+        report_fatal_error("callwrapper of incorrect type");
+      }
+      auto md2 = cast<MDTuple>(md);
+      assert(md2->getNumOperands() == 1);
+      auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
+      fn = cast<Function>(gvemd->getValue());
+    } else {
+      auto oldfn = fn;
+      fn = Function::Create(oldfn->getFunctionType(), Function::InternalLinkage,
+                            "callwrap_" + oldfn->getName(), oldfn->getParent());
+      BasicBlock *entry = BasicBlock::Create(fn->getContext(), "entry", fn);
+      IRBuilder<> B(entry);
+      SmallVector<Value *, 4> args;
+      for (auto &a : fn->args())
+        args.push_back(&a);
+      auto res = B.CreateCall(oldfn, args);
+      if (fn->getReturnType()->isVoidTy())
+        B.CreateRetVoid();
+      else
+        B.CreateRet(res);
+      oldfn->setMetadata(
+          "enzyme_callwrapper",
+          MDTuple::get(oldfn->getContext(), {ConstantAsMetadata::get(fn)}));
+      if (oldfn->getName() == "realloc")
+        isRealloc = true;
+    }
+  }
   std::map<Argument *, bool> uncacheable_args;
   FnTypeInfo type_args(fn);
+  if (isRealloc) {
+    llvm::errs() << "warning: assuming realloc only creates pointers\n";
+    type_args.Return.insert({-1, -1}, BaseType::Pointer);
+  }
 
   // conservatively assume that we can only cache existing floating types
   // (i.e. that all args are uncacheable)

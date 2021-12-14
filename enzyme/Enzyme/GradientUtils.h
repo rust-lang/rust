@@ -434,6 +434,8 @@ public:
 
   Value *getNewFromOriginal(const Value *originst) const {
     assert(originst);
+    if (isa<ConstantData>(originst))
+      return const_cast<Value *>(originst);
     auto f = originalToNewFn.find(originst);
     if (f == originalToNewFn.end()) {
       llvm::errs() << *oldFunc << "\n";
@@ -691,6 +693,20 @@ public:
     placeholder->setName("");
     IRBuilder<> bb(placeholder);
 
+    Function *Fn = orig->getCalledFunction();
+
+#if LLVM_VERSION_MAJOR >= 11
+    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledOperand()))
+#else
+    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledValue()))
+#endif
+    {
+      if (castinst->isCast())
+        if (auto fn = dyn_cast<Function>(castinst->getOperand(0)))
+          Fn = fn;
+    }
+    assert(Fn);
+
     SmallVector<Value *, 8> args;
 #if LLVM_VERSION_MAJOR >= 14
     for (auto &arg : orig->args())
@@ -701,14 +717,12 @@ public:
       args.push_back(getNewFromOriginal(arg));
     }
 
-    if (shadowHandlers.find(orig->getCalledFunction()->getName().str()) !=
-        shadowHandlers.end()) {
+    if (shadowHandlers.find(Fn->getName().str()) != shadowHandlers.end()) {
       bb.SetInsertPoint(placeholder);
       Value *anti = placeholder;
 
       if (mode != DerivativeMode::ReverseModeGradient) {
-        anti = shadowHandlers[orig->getCalledFunction()->getName().str()](
-            bb, orig, args);
+        anti = shadowHandlers[Fn->getName().str()](bb, orig, args);
 
         invertedPointers.erase(found);
         bb.SetInsertPoint(placeholder);
@@ -726,8 +740,14 @@ public:
       return anti;
     }
 
+#if LLVM_VERSION_MAJOR >= 11
     Value *anti =
-        bb.CreateCall(orig->getCalledFunction(), args, orig->getName() + "'mi");
+        bb.CreateCall(orig->getFunctionType(), orig->getCalledOperand(), args,
+                      orig->getName() + "'mi");
+#else
+    Value *anti =
+        bb.CreateCall(orig->getCalledValue(), args, orig->getName() + "'mi");
+#endif
     cast<CallInst>(anti)->setAttributes(orig->getAttributes());
     cast<CallInst>(anti)->setCallingConv(orig->getCallingConv());
     cast<CallInst>(anti)->setTailCallKind(orig->getTailCallKind());
@@ -745,8 +765,7 @@ public:
                                        Attribute::NonNull);
 #endif
     unsigned derefBytes = 0;
-    if (orig->getCalledFunction()->getName() == "malloc" ||
-        orig->getCalledFunction()->getName() == "_Znwm") {
+    if (Fn->getName() == "malloc" || Fn->getName() == "_Znwm") {
       if (auto ci = dyn_cast<ConstantInt>(args[0])) {
         derefBytes = ci->getLimitedValue();
         CallInst *cal = cast<CallInst>(getNewFromOriginal(orig));
@@ -789,7 +808,7 @@ public:
         std::make_pair((const Value *)orig, InvertedPointerVH(this, anti)));
 
     if (tape == nullptr) {
-      if (orig->getCalledFunction()->getName() == "julia.gc_alloc_obj") {
+      if (Fn->getName() == "julia.gc_alloc_obj") {
         Type *tys[] = {
             PointerType::get(StructType::get(orig->getContext()), 10)};
         FunctionType *FT =
@@ -799,7 +818,7 @@ public:
                       anti);
       }
 
-      if (orig->getCalledFunction()->getName() == "swift_allocObject") {
+      if (Fn->getName() == "swift_allocObject") {
         EmitFailure(
             "SwiftShadowAllocation", orig->getDebugLoc(), orig,
             "Haven't implemented shadow allocator for `swift_allocObject`",
@@ -817,7 +836,7 @@ public:
       auto val_arg = ConstantInt::get(Type::getInt8Ty(orig->getContext()), 0);
       Value *size;
       // todo check if this memset is legal and if a write barrier is needed
-      if (orig->getCalledFunction()->getName() == "julia.gc_alloc_obj") {
+      if (Fn->getName() == "julia.gc_alloc_obj") {
         size = args[1];
       } else {
         size = args[0];
@@ -1667,7 +1686,7 @@ public:
         llvm::errs() << "module: " << *oldFunc->getParent() << "\n";
         llvm::errs() << "oldFunc: " << *oldFunc << "\n";
         llvm::errs() << "newFunc: " << *newFunc << "\n";
-        llvm::errs() << "val: " << *val << " old: " << old << "\n";
+        llvm::errs() << "val: " << *val << " old: " << *old << "\n";
       }
       assert(addingType);
       assert(addingType->isFPOrFPVectorTy());

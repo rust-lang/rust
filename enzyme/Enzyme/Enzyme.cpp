@@ -570,7 +570,14 @@ public:
             }
           }
         }
-        if (!res->getType()->canLosslesslyBitCastTo(PTy)) {
+        if (res->getType()->canLosslesslyBitCastTo(PTy)) {
+          res = Builder.CreateBitCast(res, PTy);
+        }
+        if (res->getType() != PTy && res->getType()->isIntegerTy() &&
+            PTy->isIntegerTy(1)) {
+          res = Builder.CreateTrunc(res, PTy);
+        }
+        if (res->getType() != PTy) {
           auto loc = CI->getDebugLoc();
           if (auto arg = dyn_cast<Instruction>(res)) {
             loc = arg->getDebugLoc();
@@ -581,7 +588,6 @@ public:
                       " - to arg ", truei, " ", *PTy);
           return false;
         }
-        res = Builder.CreateBitCast(res, PTy);
       }
 #if LLVM_VERSION_MAJOR >= 9
       if (CI->isByValArgument(i)) {

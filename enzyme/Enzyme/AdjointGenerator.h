@@ -2294,6 +2294,11 @@ public:
             }
           }
         }
+        EmitWarning("CannotDeduceType", MTI.getDebugLoc(), gutils->oldFunc,
+                    MTI.getParent(), &MTI, "failed to deduce type of copy ",
+                    MTI);
+        vd = TypeTree(BaseType::Pointer).Only(0);
+        goto known;
       }
       EmitFailure("CannotDeduceType", MTI.getDebugLoc(), &MTI,
                   "failed to deduce type of copy ", MTI);

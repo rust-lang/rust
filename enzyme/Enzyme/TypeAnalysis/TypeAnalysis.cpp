@@ -2489,8 +2489,9 @@ void TypeAnalyzer::visitMemTransferCommon(llvm::CallInst &MTI) {
   size_t sz = 1;
   for (auto val :
        fntypeinfo.knownIntegralValues(MTI.getArgOperand(2), *DT, intseen)) {
-    assert(val >= 0);
-    sz = max(sz, (size_t)val);
+    if (val >= 0) {
+      sz = max(sz, (size_t)val);
+    }
   }
 
   TypeTree res = getAnalysis(MTI.getArgOperand(0)).AtMost(sz).PurgeAnything();

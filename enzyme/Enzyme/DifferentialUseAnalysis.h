@@ -259,6 +259,17 @@ static inline bool is_value_needed_in_reverse(
             return seen[idx] = true;
           }
         }
+#if LLVM_VERSION_MAJOR >= 11
+        const Value *F = CI->getCalledOperand();
+#else
+        const Value *F = CI->getCalledValue();
+#endif
+        if (F == inst) {
+          if (!gutils->isConstantInstruction(const_cast<Instruction *>(user)) ||
+              !gutils->isConstantValue(const_cast<Value *>((Value *)user))) {
+            return seen[idx] = true;
+          }
+        }
       }
 
       if (isa<ReturnInst>(user)) {

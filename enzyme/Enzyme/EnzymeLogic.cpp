@@ -73,6 +73,11 @@ llvm::cl::opt<bool>
     EnzymePrint("enzyme-print", cl::init(false), cl::Hidden,
                 cl::desc("Print before and after fns for autodiff"));
 
+llvm::cl::opt<bool>
+    EnzymePrintUnnecessary("enzyme-print-unnecessary", cl::init(false),
+                           cl::Hidden,
+                           cl::desc("Print unnecessary values in function"));
+
 cl::opt<bool> looseTypeAnalysis("enzyme-loose-types", cl::init(false),
                                 cl::Hidden,
                                 cl::desc("Allow looser use of types"));
@@ -910,16 +915,27 @@ void calculateUnusedValuesInFunction(
         }
         return UseReq::Recur;
       });
-#if 0
-  llvm::errs() << "unnecessaryValues of " << func.getName() << ": mode=" << to_string(mode) << "\n";
-  for (auto a : unnecessaryValues) {
-    llvm::errs() << *a << "\n";
+
+  if (EnzymePrintUnnecessary) {
+    llvm::errs() << "unnecessaryValues of " << func.getName()
+                 << ": mode=" << to_string(mode) << "\n";
+    for (auto a : unnecessaryValues) {
+      bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
+          TR, gutils, a, mode, PrimalSeen, oldUnreachable);
+      bool isn = is_value_needed_in_reverse<ValueType::ShadowPtr>(
+          TR, gutils, a, mode, PrimalSeen, oldUnreachable);
+      llvm::errs() << *a << " ivn=" << (int)ivn << " isn: " << (int)isn;
+      auto found = gutils->knownRecomputeHeuristic.find(a);
+      if (found != gutils->knownRecomputeHeuristic.end()) {
+        llvm::errs() << " krc=" << (int)found->second;
+      }
+      llvm::errs() << "\n";
+    }
+    llvm::errs() << "unnecessaryInstructions " << func.getName() << ":\n";
+    for (auto a : unnecessaryInstructions) {
+      llvm::errs() << *a << "\n";
+    }
   }
-  llvm::errs() << "unnecessaryInstructions " << func.getName() << ":\n";
-  for (auto a : unnecessaryInstructions) {
-    llvm::errs() << *a << "\n";
-  }
-#endif
 }
 
 void calculateUnusedStoresInFunction(

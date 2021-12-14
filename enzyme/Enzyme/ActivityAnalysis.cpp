@@ -112,10 +112,13 @@ const std::map<std::string, size_t> MPIInactiveCommAllocators = {
 };
 
 const std::set<std::string> KnownInactiveFunctions = {
+    "abort",
     "__assert_fail",
     "__cxa_guard_acquire",
     "__cxa_guard_release",
     "__cxa_guard_abort",
+    "snprintf",
+    "sprintf",
     "printf",
     "putchar",
     "fprintf",
@@ -777,7 +780,6 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     // of the global
     auto res = TR.query(GI).Data0();
     auto dt = res[{-1}];
-    dt |= res[{0}];
     if (dt.isIntegral()) {
       if (EnzymePrintActivity)
         llvm::errs() << " VALUE const as global int pointer " << *Val
