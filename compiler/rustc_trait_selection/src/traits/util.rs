@@ -172,7 +172,7 @@ pub fn supertrait_def_ids(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SupertraitDef
     }
 }
 
-impl Iterator for SupertraitDefIds<'tcx> {
+impl Iterator for SupertraitDefIds<'_> {
     type Item = DefId;
 
     fn next(&mut self) -> Option<DefId> {
@@ -259,7 +259,7 @@ pub fn predicate_for_trait_ref<'tcx>(
     }
 }
 
-pub fn predicate_for_trait_def(
+pub fn predicate_for_trait_def<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -276,7 +276,7 @@ pub fn predicate_for_trait_def(
 /// Casts a trait reference into a reference to one of its super
 /// traits; returns `None` if `target_trait_def_id` is not a
 /// supertrait.
-pub fn upcast_choices(
+pub fn upcast_choices<'tcx>(
     tcx: TyCtxt<'tcx>,
     source_trait_ref: ty::PolyTraitRef<'tcx>,
     target_trait_def_id: DefId,
@@ -291,7 +291,10 @@ pub fn upcast_choices(
 /// Given a trait `trait_ref`, returns the number of vtable entries
 /// that come from `trait_ref`, excluding its supertraits. Used in
 /// computing the vtable base for an upcast trait of a trait object.
-pub fn count_own_vtable_entries(tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> usize {
+pub fn count_own_vtable_entries<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> usize {
     let existential_trait_ref =
         trait_ref.map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
     let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
@@ -301,7 +304,7 @@ pub fn count_own_vtable_entries(tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'
 /// Given an upcast trait object described by `object`, returns the
 /// index of the method `method_def_id` (which should be part of
 /// `object.upcast_trait_ref`) within the vtable for `object`.
-pub fn get_vtable_index_of_object_method<N>(
+pub fn get_vtable_index_of_object_method<'tcx, N>(
     tcx: TyCtxt<'tcx>,
     object: &super::ImplSourceObjectData<'tcx, N>,
     method_def_id: DefId,
@@ -323,7 +326,7 @@ pub fn get_vtable_index_of_object_method<N>(
     object.vtable_base + index
 }
 
-pub fn closure_trait_ref_and_return_type(
+pub fn closure_trait_ref_and_return_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
@@ -342,7 +345,7 @@ pub fn closure_trait_ref_and_return_type(
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 
-pub fn generator_trait_ref_and_outputs(
+pub fn generator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,

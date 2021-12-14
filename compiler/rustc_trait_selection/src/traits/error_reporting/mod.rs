@@ -1156,10 +1156,10 @@ trait InferCtxtPrivExt<'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         span: Span,
-        node: Node<'hir>,
+        node: Node<'_>,
     );
 
-    fn maybe_indirection_for_unsized(
+    fn maybe_indirection_for_unsized<'hir>(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         item: &'hir Item<'hir>,
@@ -2027,7 +2027,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         span: Span,
-        node: Node<'hir>,
+        node: Node<'_>,
     ) {
         let generics = match node.generics() {
             Some(generics) => generics,
@@ -2090,7 +2090,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         );
     }
 
-    fn maybe_indirection_for_unsized(
+    fn maybe_indirection_for_unsized<'hir>(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         item: &'hir Item<'hir>,
@@ -2204,7 +2204,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
 }
 
 pub fn recursive_type_with_infinite_size_error(
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'_>,
     type_def_id: DefId,
     spans: Vec<Span>,
 ) {

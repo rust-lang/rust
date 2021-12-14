@@ -154,18 +154,24 @@ fn overlap<'cx, 'tcx>(
     })
 }
 
-fn overlap_within_probe(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
+fn overlap_within_probe<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
     skip_leak_check: SkipLeakCheck,
     a_def_id: DefId,
     b_def_id: DefId,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
-    fn loose_check(selcx: &mut SelectionContext<'cx, 'tcx>, o: &PredicateObligation<'tcx>) -> bool {
+    fn loose_check<'tcx>(
+        selcx: &mut SelectionContext<'_, 'tcx>,
+        o: &PredicateObligation<'tcx>,
+    ) -> bool {
         !selcx.predicate_may_hold_fatal(o)
     }
 
-    fn strict_check(selcx: &SelectionContext<'cx, 'tcx>, o: &PredicateObligation<'tcx>) -> bool {
+    fn strict_check<'tcx>(
+        selcx: &SelectionContext<'_, 'tcx>,
+        o: &PredicateObligation<'tcx>,
+    ) -> bool {
         let infcx = selcx.infcx();
         let tcx = infcx.tcx;
         o.flip_polarity(tcx)
@@ -518,7 +524,11 @@ fn orphan_check_trait_ref<'tcx>(
 /// - for `Foo<u32>`, where `Foo` is a local type, this returns `[]`.
 /// - `&mut u32` returns `[u32]`, as `&mut` is a fundamental type, similar to `Box`.
 /// - `Box<Foo<u32>>` returns `[]`, as `Box` is a fundamental type and `Foo` is local.
-fn contained_non_local_types(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<Ty<'tcx>> {
+fn contained_non_local_types<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    in_crate: InCrate,
+) -> Vec<Ty<'tcx>> {
     if ty_is_local_constructor(ty, in_crate) {
         Vec::new()
     } else {
@@ -534,7 +544,7 @@ fn contained_non_local_types(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate)
 /// For `#[fundamental]` ADTs and `&T` / `&mut T`, returns `Some` with the
 /// type parameters of the ADT, or `T`, respectively. For non-fundamental
 /// types, returns `None`.
-fn fundamental_ty_inner_tys(
+fn fundamental_ty_inner_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<impl Iterator<Item = Ty<'tcx>>> {
