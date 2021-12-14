@@ -148,7 +148,7 @@ impl DebugOptions {
         let mut counter_format = ExpressionFormat::default();
 
         if let Ok(env_debug_options) = std::env::var(RUSTC_COVERAGE_DEBUG_OPTIONS) {
-            for setting_str in env_debug_options.replace(" ", "").replace("-", "_").split(',') {
+            for setting_str in env_debug_options.replace(' ', "").replace('-', "_").split(',') {
                 let (option, value) = match setting_str.split_once('=') {
                     None => (setting_str, None),
                     Some((k, v)) => (k, Some(v)),

@@ -1036,7 +1036,7 @@ fn find_config(supplied: Option<Config>) -> Config {
 
 // Helper function to escape quotes in a string
 fn escape(s: String) -> String {
-    s.replace("\"", "\"\"")
+    s.replace('\"', "\"\"")
 }
 
 // Helper function to determine if a span came from a
