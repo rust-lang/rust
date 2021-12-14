@@ -25,7 +25,7 @@ use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
 use crate::cell;
 use crate::char;
-use crate::fmt::{self, Debug, Display};
+use crate::fmt::{self, Debug, Display, Write};
 use crate::mem::transmute;
 use crate::num;
 use crate::str;
@@ -63,7 +63,7 @@ pub trait Error: Debug + Display {
     ///
     /// #[derive(Debug)]
     /// struct SuperError {
-    ///     side: SuperErrorSideKick,
+    ///     source: SuperErrorSideKick,
     /// }
     ///
     /// impl fmt::Display for SuperError {
@@ -74,7 +74,7 @@ pub trait Error: Debug + Display {
     ///
     /// impl Error for SuperError {
     ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
-    ///         Some(&self.side)
+    ///         Some(&self.source)
     ///     }
     /// }
     ///
@@ -90,7 +90,7 @@ pub trait Error: Debug + Display {
     /// impl Error for SuperErrorSideKick {}
     ///
     /// fn get_super_error() -> Result<(), SuperError> {
-    ///     Err(SuperError { side: SuperErrorSideKick })
+    ///     Err(SuperError { source: SuperErrorSideKick })
     /// }
     ///
     /// fn main() {
@@ -836,10 +836,6 @@ impl dyn Error + Send + Sync {
 ///
 /// impl<'a> Error for SuperError<'a> {}
 ///
-/// // Note that the error doesn't need to be `Send` or `Sync`.
-/// impl<'a> !Send for SuperError<'a> {}
-/// impl<'a> !Sync for SuperError<'a> {}
-///
 /// fn main() {
 ///     let msg = String::from("Huzzah!");
 ///     let error = SuperError { side: &msg };
@@ -883,6 +879,19 @@ where
         self
     }
 
+    fn backtrace(&self) -> Option<&Backtrace> {
+        // have to grab the backtrace on the first error directly since that error may not be
+        // 'static
+        let backtrace = self.error.backtrace();
+        let backtrace = backtrace.or_else(|| {
+            self.error
+                .source()
+                .map(|source| source.chain().find_map(|source| source.backtrace()))
+                .flatten()
+        });
+        backtrace
+    }
+
     /// Format the report as a single line.
     #[unstable(feature = "error_reporter", issue = "90172")]
     fn fmt_singleline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -911,17 +920,17 @@ where
 
             for (ind, error) in cause.chain().enumerate() {
                 writeln!(f)?;
-
-                if multiple {
-                    write!(f, "{: >4}: {}", ind, Indented { source: error })?;
-                } else {
-                    write!(f, "    {}", error)?;
-                }
+                let mut indented = Indented {
+                    inner: f,
+                    number: if multiple { Some(ind) } else { None },
+                    started: false,
+                };
+                write!(indented, "{}", error)?;
             }
         }
 
         if self.show_backtrace {
-            let backtrace = error.backtrace();
+            let backtrace = self.backtrace();
 
             if let Some(backtrace) = backtrace {
                 let backtrace = backtrace.to_string();
@@ -968,23 +977,34 @@ where
 }
 
 /// Wrapper type for indenting the inner source.
-struct Indented<D> {
-    source: D,
+struct Indented<'a, D> {
+    inner: &'a mut D,
+    number: Option<usize>,
+    started: bool,
 }
 
-impl<D> fmt::Display for Indented<D>
+impl<T> Write for Indented<'_, T>
 where
-    D: fmt::Display,
+    T: Write,
 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let source = self.source.to_string();
-
-        for (ind, line) in source.trim().split('\n').filter(|l| !l.is_empty()).enumerate() {
-            if ind > 0 {
-                write!(f, "\n      {}", line)?;
-            } else {
-                write!(f, "{}", line)?;
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for (i, line) in s.split('\n').enumerate() {
+            if !self.started {
+                self.started = true;
+                match self.number {
+                    Some(number) => write!(self.inner, "{: >5}: ", number)?,
+                    None => self.inner.write_str("    ")?,
+                }
+            } else if i > 0 {
+                self.inner.write_char('\n')?;
+                if self.number.is_some() {
+                    self.inner.write_str("       ")?;
+                } else {
+                    self.inner.write_str("    ")?;
+                }
             }
+
+            self.inner.write_str(line)?;
         }
 
         Ok(())

@@ -36,13 +36,12 @@ fn downcasting() {
     }
 }
 
-use crate::backtrace;
-use crate::env;
+use crate::backtrace::Backtrace;
 use crate::error::Report;
 
 #[derive(Debug)]
 struct SuperError {
-    side: SuperErrorSideKick,
+    source: SuperErrorSideKick,
 }
 
 impl fmt::Display for SuperError {
@@ -53,7 +52,7 @@ impl fmt::Display for SuperError {
 
 impl Error for SuperError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        Some(&self.side)
+        Some(&self.source)
     }
 }
 
@@ -70,7 +69,7 @@ impl Error for SuperErrorSideKick {}
 
 #[test]
 fn single_line_formatting() {
-    let error = SuperError { side: SuperErrorSideKick };
+    let error = SuperError { source: SuperErrorSideKick };
     let report = Report::new(&error);
     let actual = report.to_string();
     let expected = String::from("SuperError is here!: SuperErrorSideKick is here!");
@@ -80,7 +79,7 @@ fn single_line_formatting() {
 
 #[test]
 fn multi_line_formatting() {
-    let error = SuperError { side: SuperErrorSideKick };
+    let error = SuperError { source: SuperErrorSideKick };
     let report = Report::new(&error).pretty(true);
     let actual = report.to_string();
     let expected =
@@ -108,50 +107,57 @@ fn error_with_no_sources_formats_multi_line_correctly() {
 }
 
 #[test]
-fn error_with_backtrace_outputs_correctly() {
-    use backtrace::Backtrace;
+fn error_with_backtrace_outputs_correctly_with_one_source() {
+    let trace = Backtrace::force_capture();
+    let expected = format!("The source of the error
 
-    env::remove_var("RUST_BACKTRACE");
+Caused by:
+    Error with backtrace
 
-    #[derive(Debug)]
-    struct ErrorWithBacktrace<'a> {
-        msg: &'a str,
-        trace: Backtrace,
-    }
+Stack backtrace:
+{}", trace);
+    let error = GenericError::new("Error with backtrace");
+    let mut error = GenericError::new_with_source("The source of the error", error);
+    error.backtrace = Some(trace);
+    let report = Report::new(error).pretty(true).show_backtrace(true);
 
-    impl<'a> fmt::Display for ErrorWithBacktrace<'a> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "Error with backtrace: {}", self.msg)
-        }
-    }
 
-    impl<'a> Error for ErrorWithBacktrace<'a> {
-        fn backtrace(&self) -> Option<&Backtrace> {
-            Some(&self.trace)
-        }
-    }
+    println!("Error: {}", report);
+    assert_eq!(expected.trim_end(), report.to_string());
+}
 
-    let msg = String::from("The source of the error");
-    let report = Report::new(ErrorWithBacktrace { msg: &msg, trace: Backtrace::capture() })
-        .pretty(true)
-        .show_backtrace(true);
+#[test]
+fn error_with_backtrace_outputs_correctly_with_two_sources() {
+    let trace = Backtrace::force_capture();
+    let expected = format!("Error with two sources
 
-    let expected = String::from(
-        "Error with backtrace: The source of the error\n\nStack backtrace:\ndisabled backtrace",
-    );
+Caused by:
+    0: The source of the error
+    1: Error with backtrace
 
-    assert_eq!(expected, report.to_string());
+Stack backtrace:
+{}", trace);
+    let mut error = GenericError::new("Error with backtrace");
+    error.backtrace = Some(trace);
+    let error = GenericError::new_with_source("The source of the error", error);
+    let error = GenericError::new_with_source("Error with two sources", error);
+    let report = Report::new(error).pretty(true).show_backtrace(true);
+
+
+    println!("Error: {}", report);
+    assert_eq!(expected.trim_end(), report.to_string());
 }
 
 #[derive(Debug)]
 struct GenericError<D> {
     message: D,
+    backtrace: Option<Backtrace>,
     source: Option<Box<dyn Error + 'static>>,
 }
 
 impl<D> GenericError<D> {
     fn new(message: D) -> GenericError<D> {
-        Self { message, source: None }
+        Self { message, backtrace: None, source: None }
     }
 
     fn new_with_source<E>(message: D, source: E) -> GenericError<D>
@@ -160,7 +166,7 @@ impl<D> GenericError<D> {
     {
         let source: Box<dyn Error + 'static> = Box::new(source);
         let source = Some(source);
-        GenericError { message, source }
+        GenericError { message, backtrace: None, source }
     }
 }
 
@@ -179,6 +185,10 @@ where
 {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.source.as_deref()
+    }
+
+    fn backtrace(&self) -> Option<&Backtrace> {
+        self.backtrace.as_ref()
     }
 }
 
@@ -254,24 +264,24 @@ line 5
 line 6
 
 Caused by:
-   0: line 1
-      line 2
-      line 3
-      line 4
-      line 5
-      line 6
-   1: line 1
-      line 2
-      line 3
-      line 4
-      line 5
-      line 6
-   2: line 1
-      line 2
-      line 3
-      line 4
-      line 5
-      line 6"#;
+    0: line 1
+       line 2
+       line 3
+       line 4
+       line 5
+       line 6
+    1: line 1
+       line 2
+       line 3
+       line 4
+       line 5
+       line 6
+    2: line 1
+       line 2
+       line 3
+       line 4
+       line 5
+       line 6"#;
 
     let actual = report.to_string();
     assert_eq!(expected, actual);
@@ -297,8 +307,12 @@ The message
 
 
 Caused by:
-   0: The message
-   1: The message"#;
+    0: 
+       The message
+       
+    1: 
+       The message
+       "#;
 
     let actual = report.to_string();
     assert_eq!(expected, actual);
@@ -323,6 +337,62 @@ fn errors_with_string_interpolation_formats_correctly() {
 
 Caused by:
     Got an error code: (10). What would you like to do in response?"#;
+    let actual = report.to_string();
+    assert_eq!(expected, actual);
+}
+
+#[test]
+fn empty_lines_mid_message() {
+    #[derive(Debug)]
+    struct MyMessage;
+
+    impl fmt::Display for MyMessage {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("line 1\n\nline 2")
+        }
+    }
+
+    let error = GenericError::new(MyMessage);
+    let error = GenericError::new_with_source(MyMessage, error);
+    let error = GenericError::new_with_source(MyMessage, error);
+    let report = Report::new(error).pretty(true);
+    let expected = r#"line 1
+
+line 2
+
+Caused by:
+    0: line 1
+       
+       line 2
+    1: line 1
+       
+       line 2"#;
+
+    let actual = report.to_string();
+    assert_eq!(expected, actual);
+}
+
+#[test]
+fn only_one_source() {
+    #[derive(Debug)]
+    struct MyMessage;
+
+    impl fmt::Display for MyMessage {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("line 1\nline 2")
+        }
+    }
+
+    let error = GenericError::new(MyMessage);
+    let error = GenericError::new_with_source(MyMessage, error);
+    let report = Report::new(error).pretty(true);
+    let expected = r#"line 1
+line 2
+
+Caused by:
+    line 1
+    line 2"#;
+
     let actual = report.to_string();
     assert_eq!(expected, actual);
 }
