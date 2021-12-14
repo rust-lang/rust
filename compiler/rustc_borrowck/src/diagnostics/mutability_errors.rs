@@ -747,7 +747,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             HirId, ImplItem, ImplItemKind, Item, ItemKind,
         };
 
-        fn maybe_body_id_of_fn(hir_map: &Map<'tcx>, id: HirId) -> Option<BodyId> {
+        fn maybe_body_id_of_fn(hir_map: &Map<'_>, id: HirId) -> Option<BodyId> {
             match hir_map.find(id) {
                 Some(Node::Item(Item { kind: ItemKind::Fn(_, _, body_id), .. }))
                 | Some(Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(_, body_id), .. })) => {
@@ -1066,7 +1066,7 @@ fn is_closure_or_generator(ty: Ty<'_>) -> bool {
 /// LL |     s: &'a String
 ///    |        ---------- use `&'a mut String` here to make mutable
 /// ```
-fn annotate_struct_field(
+fn annotate_struct_field<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     field: &mir::Field,
