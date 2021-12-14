@@ -23,7 +23,7 @@ use rustc_target::asm::*;
 use libc::{c_char, c_uint};
 use tracing::debug;
 
-impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn codegen_llvm_inline_asm(
         &mut self,
         ia: &hir::LlvmInlineAsmInner,
@@ -399,7 +399,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-impl AsmMethods for CodegenCx<'ll, 'tcx> {
+impl AsmMethods for CodegenCx<'_, '_> {
     fn codegen_global_asm(
         &self,
         template: &[InlineAsmTemplatePiece],
@@ -447,8 +447,8 @@ impl AsmMethods for CodegenCx<'ll, 'tcx> {
     }
 }
 
-pub(crate) fn inline_asm_call(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+pub(crate) fn inline_asm_call<'ll>(
+    bx: &mut Builder<'_, 'll, '_>,
     asm: &str,
     cons: &str,
     inputs: &[&'ll Value],
@@ -583,7 +583,7 @@ fn a64_vreg_index(reg: InlineAsmReg) -> Option<u32> {
 }
 
 /// Converts a register class to an LLVM constraint code.
-fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) -> String {
+fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) -> String {
     match reg {
         // For vector registers LLVM wants the register name to match the type size.
         InlineAsmRegOrRegClass::Reg(reg) => {
@@ -773,7 +773,7 @@ fn modifier_to_llvm(
 
 /// Type to use for outputs that are discarded. It doesn't really matter what
 /// the type is, as long as it is valid for the constraint code.
-fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll Type {
+fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'ll Type {
     match reg {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg)
@@ -841,7 +841,7 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
 
 /// Helper function to get the LLVM type for a Scalar. Pointers are returned as
 /// the equivalent integer type.
-fn llvm_asm_scalar_type(cx: &CodegenCx<'ll, 'tcx>, scalar: Scalar) -> &'ll Type {
+fn llvm_asm_scalar_type<'ll>(cx: &CodegenCx<'ll, '_>, scalar: Scalar) -> &'ll Type {
     match scalar.value {
         Primitive::Int(Integer::I8, _) => cx.type_i8(),
         Primitive::Int(Integer::I16, _) => cx.type_i16(),
@@ -855,8 +855,8 @@ fn llvm_asm_scalar_type(cx: &CodegenCx<'ll, 'tcx>, scalar: Scalar) -> &'ll Type 
 }
 
 /// Fix up an input value to work around LLVM bugs.
-fn llvm_fixup_input(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn llvm_fixup_input<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     mut value: &'ll Value,
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
@@ -933,8 +933,8 @@ fn llvm_fixup_input(
 }
 
 /// Fix up an output value to work around LLVM bugs.
-fn llvm_fixup_output(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+fn llvm_fixup_output<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
     mut value: &'ll Value,
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,
@@ -1009,7 +1009,7 @@ fn llvm_fixup_output(
 }
 
 /// Output type to use for llvm_fixup_output.
-fn llvm_fixup_output_type(
+fn llvm_fixup_output_type<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     reg: InlineAsmRegClass,
     layout: &TyAndLayout<'tcx>,

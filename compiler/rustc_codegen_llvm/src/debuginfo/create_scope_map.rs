@@ -16,7 +16,7 @@ use rustc_index::vec::Idx;
 
 /// Produces DIScope DIEs for each MIR Scope which has variables defined in it.
 // FIXME(eddyb) almost all of this should be in `rustc_codegen_ssa::mir::debuginfo`.
-pub fn compute_mir_scopes(
+pub fn compute_mir_scopes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
@@ -45,7 +45,7 @@ pub fn compute_mir_scopes(
     }
 }
 
-fn make_mir_scope(
+fn make_mir_scope<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
