@@ -956,7 +956,7 @@ where
     }
 }
 
-// This type intentionally outputs the same format for `Display` and `Debug`for
+// This type intentionally outputs the same format for `Display` and `Debug` for
 // situations where you unwrap a `Report` or return it from main.
 #[unstable(feature = "error_reporter", issue = "90172")]
 impl<E> fmt::Debug for Report<E>
