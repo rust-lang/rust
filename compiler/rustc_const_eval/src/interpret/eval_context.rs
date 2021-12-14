@@ -935,7 +935,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[must_use]
-    pub fn dump_place(&'a self, place: Place<M::PointerTag>) -> PlacePrinter<'a, 'mir, 'tcx, M> {
+    pub fn dump_place(&self, place: Place<M::PointerTag>) -> PlacePrinter<'_, 'mir, 'tcx, M> {
         PlacePrinter { ecx: self, place }
     }
 

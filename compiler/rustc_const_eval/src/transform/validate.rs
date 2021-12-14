@@ -66,7 +66,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
 ///
 /// The point of this function is to approximate "equal up to subtyping".  However,
 /// the approximation is incorrect as variance is ignored.
-pub fn equal_up_to_regions(
+pub fn equal_up_to_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     src: Ty<'tcx>,

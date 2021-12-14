@@ -168,8 +168,8 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
     }
 }
 
-pub fn collect_temps_and_candidates(
-    ccx: &ConstCx<'mir, 'tcx>,
+pub fn collect_temps_and_candidates<'tcx>(
+    ccx: &ConstCx<'_, 'tcx>,
     rpo: &mut ReversePostorder<'_, 'tcx>,
 ) -> (IndexVec<Local, TempState>, Vec<Candidate>) {
     let mut collector = Collector {
@@ -191,7 +191,7 @@ struct Validator<'a, 'tcx> {
     temps: &'a IndexVec<Local, TempState>,
 }
 
-impl std::ops::Deref for Validator<'a, 'tcx> {
+impl<'a, 'tcx> std::ops::Deref for Validator<'a, 'tcx> {
     type Target = ConstCx<'a, 'tcx>;
 
     fn deref(&self) -> &Self::Target {

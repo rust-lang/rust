@@ -522,7 +522,7 @@ pub struct GenericParam<'hir> {
     pub kind: GenericParamKind<'hir>,
 }
 
-impl GenericParam<'hir> {
+impl<'hir> GenericParam<'hir> {
     pub fn bounds_span_for_suggestions(&self) -> Option<Span> {
         self.bounds
             .iter()
@@ -557,7 +557,7 @@ pub struct Generics<'hir> {
     pub span: Span,
 }
 
-impl Generics<'hir> {
+impl<'hir> Generics<'hir> {
     pub const fn empty() -> Generics<'hir> {
         Generics {
             params: &[],
@@ -622,7 +622,7 @@ pub enum WherePredicate<'hir> {
     EqPredicate(WhereEqPredicate<'hir>),
 }
 
-impl WherePredicate<'_> {
+impl<'hir> WherePredicate<'hir> {
     pub fn span(&self) -> Span {
         match self {
             WherePredicate::BoundPredicate(p) => p.span,
@@ -644,7 +644,7 @@ pub struct WhereBoundPredicate<'hir> {
     pub bounds: GenericBounds<'hir>,
 }
 
-impl WhereBoundPredicate<'hir> {
+impl<'hir> WhereBoundPredicate<'hir> {
     /// Returns `true` if `param_def_id` matches the `bounded_ty` of this predicate.
     pub fn is_param_bound(&self, param_def_id: DefId) -> bool {
         let path = match self.bounded_ty.kind {
@@ -1236,7 +1236,7 @@ pub struct Body<'hir> {
     pub generator_kind: Option<GeneratorKind>,
 }
 
-impl Body<'hir> {
+impl<'hir> Body<'hir> {
     pub fn id(&self) -> BodyId {
         BodyId { hir_id: self.value.hir_id }
     }
@@ -2623,7 +2623,7 @@ pub enum VariantData<'hir> {
     Unit(HirId),
 }
 
-impl VariantData<'hir> {
+impl<'hir> VariantData<'hir> {
     /// Return the fields of this variant.
     pub fn fields(&self) -> &'hir [FieldDef<'hir>] {
         match *self {

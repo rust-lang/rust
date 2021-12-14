@@ -559,6 +559,7 @@ impl<CTX> HashStable<CTX> for FloatTy {
 impl<CTX> HashStable<CTX> for InferTy {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         use InferTy::*;
+        discriminant(self).hash_stable(ctx, hasher);
         match self {
             TyVar(v) => v.as_u32().hash_stable(ctx, hasher),
             IntVar(v) => v.index.hash_stable(ctx, hasher),
