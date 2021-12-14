@@ -142,6 +142,7 @@ pub trait QueryContext: HasDepContext {
         &self,
         token: QueryJobId<Self::DepKind>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+        read_allowed: bool,
         compute: impl FnOnce() -> R,
     ) -> R;
 }

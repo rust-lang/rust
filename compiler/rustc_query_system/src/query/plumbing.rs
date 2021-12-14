@@ -440,7 +440,7 @@ where
     // Fast path for when incr. comp. is off.
     if !dep_graph.is_fully_enabled() {
         let prof_timer = tcx.dep_context().profiler().query_provider();
-        let result = tcx.start_query(job_id, None, || query.compute(*tcx.dep_context(), key));
+        let result = tcx.start_query(job_id, None, true, || query.compute(*tcx.dep_context(), key));
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
         return (result, dep_node_index);
@@ -453,7 +453,7 @@ where
 
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        if let Some(ret) = tcx.start_query(job_id, None, || {
+        if let Some(ret) = tcx.start_query(job_id, None, false, || {
             try_load_from_disk_and_cache_in_memory(tcx, &key, &dep_node, query)
         }) {
             return ret;
@@ -463,7 +463,7 @@ where
     let prof_timer = tcx.dep_context().profiler().query_provider();
     let diagnostics = Lock::new(ThinVec::new());
 
-    let (result, dep_node_index) = tcx.start_query(job_id, Some(&diagnostics), || {
+    let (result, dep_node_index) = tcx.start_query(job_id, Some(&diagnostics), true, || {
         if query.anon {
             return dep_graph.with_anon_task(*tcx.dep_context(), query.dep_kind, || {
                 query.compute(*tcx.dep_context(), key)

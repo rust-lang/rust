@@ -251,6 +251,7 @@ impl<K: DepKind> DepGraph<K> {
                 reads: SmallVec::new(),
                 read_set: Default::default(),
                 phantom_data: PhantomData,
+                read_allowed: true,
             }))
         };
         let result = K::with_deps(task_deps.as_ref(), || task(cx, arg));
@@ -362,6 +363,11 @@ impl<K: DepKind> DepGraph<K> {
                 if let Some(task_deps) = task_deps {
                     let mut task_deps = task_deps.lock();
                     let task_deps = &mut *task_deps;
+
+                    if !task_deps.read_allowed {
+                        panic!("Illegal read of: {:?}", dep_node_index);
+                    }
+
                     if cfg!(debug_assertions) {
                         data.current.total_read_count.fetch_add(1, Relaxed);
                     }
@@ -1115,6 +1121,7 @@ pub struct TaskDeps<K> {
     reads: EdgesVec,
     read_set: FxHashSet<DepNodeIndex>,
     phantom_data: PhantomData<DepNode<K>>,
+    pub read_allowed: bool,
 }
 
 impl<K> Default for TaskDeps<K> {
@@ -1125,6 +1132,7 @@ impl<K> Default for TaskDeps<K> {
             reads: EdgesVec::new(),
             read_set: FxHashSet::default(),
             phantom_data: PhantomData,
+            read_allowed: true,
         }
     }
 }

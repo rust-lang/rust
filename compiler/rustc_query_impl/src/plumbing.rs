@@ -83,12 +83,17 @@ impl QueryContext for QueryCtxt<'_> {
         &self,
         token: QueryJobId<Self::DepKind>,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+        read_allowed: bool,
         compute: impl FnOnce() -> R,
     ) -> R {
         // The `TyCtxt` stored in TLS has the same global interner lifetime
         // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
         // when accessing the `ImplicitCtxt`.
         tls::with_related_context(**self, move |current_icx| {
+            let mut old_read_allowed = false;
+            if let Some(task_deps) = current_icx.task_deps {
+                old_read_allowed = std::mem::replace(&mut task_deps.lock().read_allowed, read_allowed);
+            }
             // Update the `ImplicitCtxt` to point to our new query job.
             let new_icx = ImplicitCtxt {
                 tcx: **self,
@@ -99,9 +104,14 @@ impl QueryContext for QueryCtxt<'_> {
             };
 
             // Use the `ImplicitCtxt` while we execute the query.
-            tls::enter_context(&new_icx, |_| {
+            let res = tls::enter_context(&new_icx, |_| {
                 rustc_data_structures::stack::ensure_sufficient_stack(compute)
-            })
+            });
+
+            if let Some(task_deps) = new_icx.task_deps {
+                task_deps.lock().read_allowed = old_read_allowed;
+            }
+            res
         })
     }
 }
