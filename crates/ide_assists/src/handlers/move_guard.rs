@@ -1,6 +1,7 @@
 use syntax::{
-    ast::{edit::AstNodeEdit, make, AstNode, BlockExpr, Expr, IfExpr, MatchArm},
-    SyntaxKind::WHITESPACE,
+    ast::{edit::AstNodeEdit, make, AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm},
+    NodeOrToken,
+    SyntaxKind::{COMMA, WHITESPACE},
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -118,10 +119,6 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
     let cond = if_expr.condition()?;
     let then_block = if_expr.then_branch()?;
 
-    // Not support if with else branch
-    if if_expr.else_branch().is_some() {
-        return None;
-    }
     // Not support moving if let to arm guard
     if cond.is_pattern_cond() {
         return None;
@@ -149,6 +146,32 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
             }
 
             edit.insert(match_pat.syntax().text_range().end(), buf);
+
+            // If with only an else branch
+            if let Some(ElseBranch::Block(else_block)) = if_expr.else_branch() {
+                let then_arm_end = match_arm.syntax().text_range().end();
+                if then_block.tail_expr().is_some() && then_only_expr {
+                    // Insert comma for expression if there isn't one
+                    match match_arm.syntax().last_child_or_token() {
+                        Some(NodeOrToken::Token(t)) if t.kind() == COMMA => {}
+                        _ => edit.insert(then_arm_end, ","),
+                    }
+                }
+                let else_only_expr = else_block.statements().next().is_none();
+                let indent_level = match_arm.indent_level();
+                let spaces = "    ".repeat(indent_level.0 as _);
+                edit.insert(then_arm_end, format!("\n{}{} => ", spaces, match_pat));
+                match &else_block.tail_expr() {
+                    Some(else_expr) if else_only_expr => {
+                        edit.insert(then_arm_end, else_expr.syntax().text());
+                        edit.insert(then_arm_end, ",");
+                    }
+                    _ if replace_node != *if_expr.syntax() => {
+                        edit.insert(then_arm_end, else_block.dedent(1.into()).syntax().text());
+                    }
+                    _ => edit.insert(then_arm_end, else_block.syntax().text()),
+                }
+            }
         },
     )
 }
@@ -382,6 +405,220 @@ fn main() {
             false
         }
         _ => true
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_with_else_works() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => if x > 10 {$0
+            false
+        } else {
+            true
+        }
+        _ => true,
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        x => true,
+        _ => true,
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_with_else_block_works() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => {
+            if x > 10 {$0
+                false
+            } else {
+                true
+            }
+        }
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        x => true,
+        _ => true
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_else_if_empty_body_works() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => if x > 10 { $0 } else { },
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => {  },
+        x => { }
+        _ => true
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_with_else_multiline_works() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => if x > 10 {
+            92;$0
+            false
+        } else {
+            true
+        }
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => {
+            92;
+            false
+        }
+        x => true,
+        _ => true
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_with_else_multiline_else_works() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => {
+            if x > 10 {$0
+                false
+            } else {
+                42;
+                true
+            }
+        }
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        x => {
+            42;
+            true
+        }
+        _ => true
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_with_else_last_arm_works() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        3 => true,
+        x => {
+            if x > 10 {$0
+                false
+            } else {
+                92;
+                true
+            }
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        3 => true,
+        x if x > 10 => false,
+        x => {
+            92;
+            true
+        }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_with_else_comma_works() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        3 => true,
+        x => if x > 10 {$0
+            false
+        } else {
+            92;
+            true
+        },
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        3 => true,
+        x if x > 10 => false,
+        x => {
+            92;
+            true
+        }
     }
 }
 "#,
