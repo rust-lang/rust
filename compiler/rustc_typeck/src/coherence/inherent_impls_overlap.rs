@@ -115,8 +115,8 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
     }
 }
 
-impl<'v, 'tcx> ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
-    fn visit_item(&mut self, item: &'v hir::Item<'v>) {
+impl<'tcx> ItemLikeVisitor<'_> for InherentOverlapChecker<'tcx> {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         match item.kind {
             hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
@@ -300,9 +300,9 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'v>) {}
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'v>) {}
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
 
-    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'v>) {}
+    fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
 }

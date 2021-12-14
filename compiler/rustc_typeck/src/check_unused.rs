@@ -21,7 +21,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     unused_crates_lint(tcx);
 }
 
-impl <'v, 'tcx> ItemLikeVisitor<'v> for CheckVisitor<'tcx> {
+impl<'tcx> ItemLikeVisitor<'_> for CheckVisitor<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         if item.vis.node.is_pub() || item.span.is_dummy() {
             return;

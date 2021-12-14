@@ -223,7 +223,10 @@ crate fn placeholder_type_error<'tcx>(
     err.emit();
 }
 
-fn reject_placeholder_type_signatures_in_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
+fn reject_placeholder_type_signatures_in_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: &'tcx hir::Item<'tcx>,
+) {
     let (generics, suggest) = match &item.kind {
         hir::ItemKind::Union(_, generics)
         | hir::ItemKind::Enum(_, generics)

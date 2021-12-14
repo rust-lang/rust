@@ -1450,7 +1450,7 @@ fn check_method_receiver<'fcx, 'tcx>(
     }
 }
 
-fn e0307<'fcx, 'tcx> (fcx: &FnCtxt<'fcx, 'tcx>, span: Span, receiver_ty: Ty<'_>) {
+fn e0307<'tcx>(fcx: &FnCtxt<'_, 'tcx>, span: Span, receiver_ty: Ty<'_>) {
     struct_span_err!(
         fcx.tcx.sess.diagnostic(),
         span,
@@ -1696,8 +1696,8 @@ pub struct CheckTypeWellFormedVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl CheckTypeWellFormedVisitor<'_> {
-    pub fn new(tcx: TyCtxt<'_>) -> CheckTypeWellFormedVisitor<'_> {
+impl<'tcx> CheckTypeWellFormedVisitor<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> CheckTypeWellFormedVisitor<'tcx> {
         CheckTypeWellFormedVisitor { tcx }
     }
 }

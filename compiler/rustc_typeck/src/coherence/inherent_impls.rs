@@ -38,7 +38,7 @@ struct InherentCollect<'tcx> {
     impls_map: CrateInherentImpls,
 }
 
-impl<'v, 'tcx> ItemLikeVisitor<'v> for InherentCollect<'tcx> {
+impl<'tcx> ItemLikeVisitor<'_> for InherentCollect<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         let (ty, assoc_items) = match item.kind {
             hir::ItemKind::Impl(hir::Impl { of_trait: None, ref self_ty, items, .. }) => {
