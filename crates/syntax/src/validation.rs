@@ -275,7 +275,7 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
                             return Some(tree_path);
                         }
                     },
-                    ast::UseTreeList(_it) => continue,
+                    ast::UseTreeList(_) => continue,
                     ast::Path(parent) => path = parent,
                     _ => return None,
                 }
