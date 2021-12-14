@@ -1062,7 +1062,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     }
 }
 
-trait InferCtxtPrivExt<'tcx> {
+trait InferCtxtPrivExt<'hir, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool;
@@ -1173,7 +1173,7 @@ trait InferCtxtPrivExt<'tcx> {
     ) -> bool;
 }
 
-impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
+impl<'a, 'tcx> InferCtxtPrivExt<'a,'tcx> for InferCtxt<'a, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {
@@ -2027,7 +2027,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         span: Span,
-        node: Node<'hir>,
+        node: Node<'a>,
     ) {
         let generics = match node.generics() {
             Some(generics) => generics,
@@ -2093,8 +2093,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
     fn maybe_indirection_for_unsized(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
-        item: &'hir Item<'hir>,
-        param: &'hir GenericParam<'hir>,
+        item: &'a Item<'a>,
+        param: &'a GenericParam<'a>,
     ) -> bool {
         // Suggesting `T: ?Sized` is only valid in an ADT if `T` is only used in a
         // borrow. `struct S<'a, T: ?Sized>(&'a T);` is valid, `struct S<T: ?Sized>(T);`
@@ -2203,7 +2203,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
     }
 }
 
-pub fn recursive_type_with_infinite_size_error(
+pub fn recursive_type_with_infinite_size_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     type_def_id: DefId,
     spans: Vec<Span>,

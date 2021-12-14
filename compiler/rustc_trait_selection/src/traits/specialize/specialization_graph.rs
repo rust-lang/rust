@@ -32,19 +32,19 @@ enum Inserted {
     ShouldRecurseOn(DefId),
 }
 
-trait ChildrenExt {
+trait ChildrenExt<'tcx> {
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId);
     fn remove_existing(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId);
 
     fn insert(
         &mut self,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
     ) -> Result<Inserted, OverlapError>;
 }
 
-impl ChildrenExt for Children {
+impl<'tcx> ChildrenExt<'tcx> for Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'tcx>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -79,7 +79,7 @@ impl ChildrenExt for Children {
     /// specialization relationships.
     fn insert(
         &mut self,
-        tcx: TyCtxt<'tcx>,
+        tcx: TyCtxt<'_>,
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
     ) -> Result<Inserted, OverlapError> {
@@ -255,7 +255,7 @@ where
     }
 }
 
-pub trait GraphExt {
+pub trait GraphExt<'tcx> {
     /// Insert a local impl into the specialization graph. If an existing impl
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.
@@ -269,7 +269,7 @@ pub trait GraphExt {
     fn record_impl_from_cstore(&mut self, tcx: TyCtxt<'tcx>, parent: DefId, child: DefId);
 }
 
-impl GraphExt for Graph {
+impl<'tcx> GraphExt<'tcx> for Graph {
     /// Insert a local impl into the specialization graph. If an existing impl
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.

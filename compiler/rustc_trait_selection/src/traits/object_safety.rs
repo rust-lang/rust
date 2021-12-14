@@ -50,7 +50,7 @@ pub fn astconv_object_safety_violations(
     violations
 }
 
-fn object_safety_violations(
+fn object_safety_violations<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
 ) -> &'tcx [ObjectSafetyViolation] {
@@ -272,7 +272,7 @@ fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span
         .collect()
 }
 
-fn predicate_references_self(
+fn predicate_references_self<'tcx>(
     tcx: TyCtxt<'tcx>,
     (predicate, sp): (ty::Predicate<'tcx>, Span),
 ) -> Option<Span> {
