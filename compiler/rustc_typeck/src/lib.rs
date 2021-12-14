@@ -59,7 +59,6 @@ This API is completely unstable and subject to change.
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
-#![feature(in_band_lifetimes)]
 #![feature(is_sorted)]
 #![feature(iter_zip)]
 #![feature(let_else)]

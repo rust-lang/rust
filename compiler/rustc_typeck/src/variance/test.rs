@@ -12,7 +12,7 @@ struct VarianceTest<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
+impl<'tcx> ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         // For unit testing: check for a special "rustc_variance"
         // attribute and report an error with various results if found.

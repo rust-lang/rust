@@ -21,7 +21,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     unused_crates_lint(tcx);
 }
 
-impl ItemLikeVisitor<'v> for CheckVisitor<'tcx> {
+impl<'tcx> ItemLikeVisitor<'_> for CheckVisitor<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         if item.vis.node.is_pub() || item.span.is_dummy() {
             return;
@@ -43,7 +43,7 @@ struct CheckVisitor<'tcx> {
     used_trait_imports: FxHashSet<LocalDefId>,
 }
 
-impl CheckVisitor<'tcx> {
+impl<'tcx> CheckVisitor<'tcx> {
     fn check_import(&self, item_id: hir::ItemId, span: Span) {
         if !self.tcx.maybe_unused_trait_import(item_id.def_id) {
             return;

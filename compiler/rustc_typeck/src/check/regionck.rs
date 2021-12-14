@@ -106,7 +106,7 @@ macro_rules! ignore_err {
 pub(crate) trait OutlivesEnvironmentExt<'tcx> {
     fn add_implied_bounds(
         &mut self,
-        infcx: &InferCtxt<'a, 'tcx>,
+        infcx: &InferCtxt<'_, 'tcx>,
         fn_sig_tys: FxHashSet<Ty<'tcx>>,
         body_id: hir::HirId,
         span: Span,
@@ -130,7 +130,7 @@ impl<'tcx> OutlivesEnvironmentExt<'tcx> for OutlivesEnvironment<'tcx> {
     /// add those assumptions into the outlives-environment.
     ///
     /// Tests: `src/test/ui/regions/regions-free-region-ordering-*.rs`
-    fn add_implied_bounds(
+    fn add_implied_bounds<'a>(
         &mut self,
         infcx: &InferCtxt<'a, 'tcx>,
         fn_sig_tys: FxHashSet<Ty<'tcx>>,
