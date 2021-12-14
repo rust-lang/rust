@@ -46,6 +46,7 @@ impl CodegenBackend for TheBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
+        _outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
         let codegen_results = ongoing_codegen
             .downcast::<CodegenResults>()

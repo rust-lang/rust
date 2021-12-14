@@ -96,7 +96,7 @@ impl CodegenBackend for GccCodegenBackend {
         Box::new(res)
     }
 
-    fn join_codegen(&self, ongoing_codegen: Box<dyn Any>, sess: &Session) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
+    fn join_codegen(&self, ongoing_codegen: Box<dyn Any>, sess: &Session, _outputs: &OutputFilenames) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
