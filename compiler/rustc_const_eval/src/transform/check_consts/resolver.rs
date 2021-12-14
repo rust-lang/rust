@@ -28,7 +28,7 @@ struct TransferFunction<'a, 'mir, 'tcx, Q> {
     _qualif: PhantomData<Q>,
 }
 
-impl<Q> TransferFunction<'a, 'mir, 'tcx, Q>
+impl<'a, 'mir, 'tcx, Q> TransferFunction<'a, 'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -127,7 +127,7 @@ where
     }
 }
 
-impl<Q> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx, Q>
+impl<'tcx, Q> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -330,7 +330,7 @@ impl JoinSemiLattice for State {
     }
 }
 
-impl<Q> AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<'tcx, Q> AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -350,7 +350,7 @@ where
     }
 }
 
-impl<Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<'tcx, Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
 where
     Q: Qualif,
 {

@@ -150,7 +150,7 @@ impl<Tag: Provenance> MemPlace<Tag> {
     }
 
     #[inline]
-    pub fn offset(
+    pub fn offset<'tcx>(
         self,
         offset: Size,
         meta: MemPlaceMeta<Tag>,
@@ -420,7 +420,7 @@ where
 
     // Iterates over all fields of an array. Much more efficient than doing the
     // same by repeatedly calling `mplace_array`.
-    pub(super) fn mplace_array_fields(
+    pub(super) fn mplace_array_fields<'a>(
         &self,
         base: &'a MPlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'a>
