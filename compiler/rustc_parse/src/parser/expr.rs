@@ -1679,7 +1679,8 @@ impl<'a> Parser<'a> {
                 );
             }
             LitError::InvalidIntSuffix => {
-                let suf = suffix.expect("suffix error with no suffix").as_str();
+                let suf = suffix.expect("suffix error with no suffix");
+                let suf = suf.as_str();
                 if looks_like_width_suffix(&['i', 'u'], &suf) {
                     // If it looks like a width, try to be helpful.
                     let msg = format!("invalid width `{}` for integer literal", &suf[1..]);
@@ -1695,7 +1696,8 @@ impl<'a> Parser<'a> {
                 }
             }
             LitError::InvalidFloatSuffix => {
-                let suf = suffix.expect("suffix error with no suffix").as_str();
+                let suf = suffix.expect("suffix error with no suffix");
+                let suf = suf.as_str();
                 if looks_like_width_suffix(&['f'], &suf) {
                     // If it looks like a width, try to be helpful.
                     let msg = format!("invalid width `{}` for float literal", &suf[1..]);

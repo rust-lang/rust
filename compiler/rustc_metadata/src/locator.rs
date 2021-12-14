@@ -976,7 +976,8 @@ impl CrateError {
                 let candidates = libraries
                     .iter()
                     .map(|lib| {
-                        let crate_name = &lib.metadata.get_root().name().as_str();
+                        let crate_name = lib.metadata.get_root().name();
+                        let crate_name = crate_name.as_str();
                         let mut paths = lib.source.paths();
 
                         // This `unwrap()` should be okay because there has to be at least one

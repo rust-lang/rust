@@ -666,20 +666,18 @@ fn primitive_link(
                 needs_termination = true;
             }
             Some(&def_id) => {
-                let cname_str;
+                let cname_sym;
                 let loc = match m.extern_locations[&def_id.krate] {
                     ExternalLocation::Remote(ref s) => {
-                        cname_str =
-                            ExternalCrate { crate_num: def_id.krate }.name(cx.tcx()).as_str();
-                        Some(vec![s.trim_end_matches('/'), &cname_str[..]])
+                        cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
+                        Some(vec![s.trim_end_matches('/'), cname_sym.as_str()])
                     }
                     ExternalLocation::Local => {
-                        cname_str =
-                            ExternalCrate { crate_num: def_id.krate }.name(cx.tcx()).as_str();
-                        Some(if cx.current.first().map(|x| &x[..]) == Some(&cname_str[..]) {
+                        cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
+                        Some(if cx.current.first().map(|x| &x[..]) == Some(cname_sym.as_str()) {
                             iter::repeat("..").take(cx.current.len() - 1).collect()
                         } else {
-                            let cname = iter::once(&cname_str[..]);
+                            let cname = iter::once(cname_sym.as_str());
                             iter::repeat("..").take(cx.current.len()).chain(cname).collect()
                         })
                     }
@@ -1401,9 +1399,9 @@ impl clean::ImportSource {
                 for seg in &self.path.segments[..self.path.segments.len() - 1] {
                     write!(f, "{}::", seg.name)?;
                 }
-                let name = self.path.last_name();
+                let name = self.path.last();
                 if let hir::def::Res::PrimTy(p) = self.path.res {
-                    primitive_link(f, PrimitiveType::from(p), &*name, cx)?;
+                    primitive_link(f, PrimitiveType::from(p), name.as_str(), cx)?;
                 } else {
                     write!(f, "{}", name)?;
                 }

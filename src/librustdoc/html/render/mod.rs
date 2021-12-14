@@ -1421,7 +1421,7 @@ fn render_impl(
                     let source_id = trait_
                         .and_then(|trait_| {
                             trait_.items.iter().find(|item| {
-                                item.name.map(|n| n.as_str().eq(&name.as_str())).unwrap_or(false)
+                                item.name.map(|n| n.as_str().eq(name.as_str())).unwrap_or(false)
                             })
                         })
                         .map(|item| format!("{}.{}", item.type_(), name));

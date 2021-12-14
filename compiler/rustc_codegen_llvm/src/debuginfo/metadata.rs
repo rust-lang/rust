@@ -2087,8 +2087,8 @@ fn prepare_enum_metadata(
                 let item_name;
                 let discriminant_name = match enum_type.kind() {
                     ty::Adt(..) => {
-                        item_name = tcx.item_name(enum_def_id).as_str();
-                        &*item_name
+                        item_name = tcx.item_name(enum_def_id);
+                        item_name.as_str()
                     }
                     ty::Generator(..) => enum_name.as_str(),
                     _ => bug!(),
@@ -2563,7 +2563,8 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
     let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, ty::ParamEnv::reveal_all());
     let type_metadata = type_metadata(cx, variable_type, span);
-    let var_name = tcx.item_name(def_id).as_str();
+    let var_name = tcx.item_name(def_id);
+    let var_name = var_name.as_str();
     let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id)).name;
     // When empty, linkage_name field is omitted,
     // which is what we want for no_mangle statics

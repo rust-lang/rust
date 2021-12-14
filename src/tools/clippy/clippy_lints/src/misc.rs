@@ -407,6 +407,7 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
             // Don't lint things expanded by #[derive(...)], etc or `await` desugaring
             return;
         }
+        let sym;
         let binding = match expr.kind {
             ExprKind::Path(ref qpath) if !matches!(qpath, hir::QPath::LangItem(..)) => {
                 let binding = last_path_segment(qpath).ident.as_str();
@@ -423,7 +424,8 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
                 }
             },
             ExprKind::Field(_, ident) => {
-                let name = ident.as_str();
+                sym = ident.name;
+                let name = sym.as_str();
                 if name.starts_with('_') && !name.starts_with("__") {
                     Some(name)
                 } else {

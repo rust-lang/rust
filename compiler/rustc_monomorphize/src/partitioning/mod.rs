@@ -208,7 +208,7 @@ pub fn partition<'tcx>(
         internalization_candidates: _,
     } = post_inlining;
 
-    result.sort_by_cached_key(|cgu| cgu.name().as_str());
+    result.sort_by(|a, b| a.name().as_str().partial_cmp(b.name().as_str()).unwrap());
 
     result
 }

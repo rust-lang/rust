@@ -1038,7 +1038,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             .collect();
 
         // Sort them by the name so we have a stable result.
-        names.sort_by_cached_key(|n| n.as_str());
+        names.sort_by(|a, b| a.as_str().partial_cmp(b.as_str()).unwrap());
         names
     }
 

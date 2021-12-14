@@ -26,7 +26,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::DUMMY_SP;
-use rustc_span::symbol::{kw, sym, Ident, Symbol, SymbolStr};
+use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName, Loc};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
@@ -2006,10 +2006,6 @@ impl Path {
 
     crate fn last(&self) -> Symbol {
         self.segments.last().expect("segments were empty").name
-    }
-
-    crate fn last_name(&self) -> SymbolStr {
-        self.segments.last().expect("segments were empty").name.as_str()
     }
 
     crate fn whole_name(&self) -> String {

@@ -315,7 +315,7 @@ impl<'tcx> Context<'tcx> {
         };
         let file = &file;
 
-        let symbol;
+        let krate_sym;
         let (krate, path) = if cnum == LOCAL_CRATE {
             if let Some(path) = self.shared.local_sources.get(file) {
                 (self.shared.layout.krate.as_str(), path)
@@ -343,8 +343,8 @@ impl<'tcx> Context<'tcx> {
             let mut fname = file.file_name().expect("source has no filename").to_os_string();
             fname.push(".html");
             path.push_str(&fname.to_string_lossy());
-            symbol = krate.as_str();
-            (&*symbol, &path)
+            krate_sym = krate;
+            (krate_sym.as_str(), &path)
         };
 
         let anchor = if with_lines {

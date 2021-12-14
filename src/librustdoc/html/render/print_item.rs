@@ -239,9 +239,9 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 (true, false) => return Ordering::Greater,
             }
         }
-        let lhs = i1.name.unwrap_or(kw::Empty).as_str();
-        let rhs = i2.name.unwrap_or(kw::Empty).as_str();
-        compare_names(&lhs, &rhs)
+        let lhs = i1.name.unwrap_or(kw::Empty);
+        let rhs = i2.name.unwrap_or(kw::Empty);
+        compare_names(lhs.as_str(), rhs.as_str())
     }
 
     if cx.shared.sort_modules_alphabetically {
