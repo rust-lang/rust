@@ -1919,7 +1919,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = if self.inner.is_some() { 1 } else { 0 };
+        let n = self.len();
         (n, Some(n))
     }
 }
@@ -1933,7 +1933,12 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for Iter<'_, T> {}
+impl<T> ExactSizeIterator for Iter<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        if self.inner.is_some() { 1 } else { 0 }
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Iter<'_, T> {}
@@ -1968,7 +1973,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = if self.inner.is_some() { 1 } else { 0 };
+        let n = self.len();
         (n, Some(n))
     }
 }
@@ -1982,7 +1987,12 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for IterMut<'_, T> {}
+impl<T> ExactSizeIterator for IterMut<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        if self.inner.is_some() { 1 } else { 0 }
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IterMut<'_, T> {}
@@ -2014,7 +2024,7 @@ impl<T> Iterator for IntoIter<T> {
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = if self.inner.is_some() { 1 } else { 0 };
+        let n = self.len();
         (n, Some(n))
     }
 }
@@ -2028,7 +2038,12 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for IntoIter<T> {}
+impl<T> ExactSizeIterator for IntoIter<T> {
+    #[inline]
+    fn len(&self) -> usize {
+        if self.inner.is_some() { 1 } else { 0 }
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}

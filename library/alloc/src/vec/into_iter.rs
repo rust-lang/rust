@@ -166,11 +166,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let exact = if mem::size_of::<T>() == 0 {
-            self.end.addr().wrapping_sub(self.ptr.addr())
-        } else {
-            unsafe { self.end.sub_ptr(self.ptr) }
-        };
+        let exact = self.len();
         (exact, Some(exact))
     }
 
@@ -265,6 +261,15 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        if mem::size_of::<T>() == 0 {
+            self.end.addr().wrapping_sub(self.ptr.addr())
+        } else {
+            unsafe { self.end.sub_ptr(self.ptr) }
+        }
+    }
+
     fn is_empty(&self) -> bool {
         self.ptr == self.end
     }

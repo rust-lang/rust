@@ -136,7 +136,14 @@ impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {}
+impl<T, A: Allocator> ExactSizeIterator for Drain<'_, T, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        let n = self.iter.len();
+        debug_assert_eq!(self.size_hint(), (n, Some(n)));
+        n
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator> FusedIterator for Drain<'_, T, A> {}

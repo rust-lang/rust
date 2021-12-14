@@ -386,7 +386,13 @@ impl Iterator for EscapeDebug {
 }
 
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
-impl ExactSizeIterator for EscapeDebug {}
+impl ExactSizeIterator for EscapeDebug {
+    fn len(&self) -> usize {
+        let n = self.0.len();
+        debug_assert_eq!(self.size_hint(), (n, Some(n)));
+        n
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EscapeDebug {}
@@ -430,7 +436,13 @@ impl DoubleEndedIterator for ToLowercase {
 impl FusedIterator for ToLowercase {}
 
 #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
-impl ExactSizeIterator for ToLowercase {}
+impl ExactSizeIterator for ToLowercase {
+    fn len(&self) -> usize {
+        let n = self.0.len();
+        debug_assert_eq!(self.size_hint(), (n, Some(n)));
+        n
+    }
+}
 
 /// Returns an iterator that yields the uppercase equivalent of a `char`.
 ///
@@ -464,7 +476,13 @@ impl DoubleEndedIterator for ToUppercase {
 impl FusedIterator for ToUppercase {}
 
 #[stable(feature = "exact_size_case_mapping_iter", since = "1.35.0")]
-impl ExactSizeIterator for ToUppercase {}
+impl ExactSizeIterator for ToUppercase {
+    fn len(&self) -> usize {
+        let n = self.0.len();
+        debug_assert_eq!(self.size_hint(), (n, Some(n)));
+        n
+    }
+}
 
 #[derive(Debug, Clone)]
 enum CaseMappingIter {
@@ -509,13 +527,19 @@ impl Iterator for CaseMappingIter {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = match self {
+        let size = self.len();
+        (size, Some(size))
+    }
+}
+
+impl CaseMappingIter {
+    fn len(&self) -> usize {
+        match self {
             CaseMappingIter::Three(..) => 3,
             CaseMappingIter::Two(..) => 2,
             CaseMappingIter::One(_) => 1,
             CaseMappingIter::Zero => 0,
-        };
-        (size, Some(size))
+        }
     }
 }
 

@@ -48,7 +48,13 @@ impl<I: Iterator, A: Allocator> DoubleEndedIterator for Splice<'_, I, A> {
 }
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
-impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
+impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {
+    fn len(&self) -> usize {
+        let n = self.drain.len();
+        debug_assert_eq!(self.size_hint(), (n, Some(n)));
+        n
+    }
+}
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
 impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {

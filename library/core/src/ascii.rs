@@ -129,7 +129,11 @@ impl DoubleEndedIterator for EscapeDefault {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ExactSizeIterator for EscapeDefault {}
+impl ExactSizeIterator for EscapeDefault {
+    fn len(&self) -> usize {
+        self.range.len()
+    }
+}
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EscapeDefault {}
 

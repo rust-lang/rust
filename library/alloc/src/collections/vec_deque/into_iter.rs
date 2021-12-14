@@ -60,6 +60,11 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+
     fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }

@@ -2049,10 +2049,8 @@ impl<A> Iterator for Item<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.opt {
-            Some(_) => (1, Some(1)),
-            None => (0, Some(0)),
-        }
+        let exact = self.len();
+        (exact, Some(exact))
     }
 }
 
@@ -2063,7 +2061,16 @@ impl<A> DoubleEndedIterator for Item<A> {
     }
 }
 
-impl<A> ExactSizeIterator for Item<A> {}
+impl<A> ExactSizeIterator for Item<A> {
+    #[inline]
+    fn len(&self) -> usize {
+        match self.opt {
+            Some(_) => 1,
+            None => 0,
+        }
+    }
+}
+
 impl<A> FusedIterator for Item<A> {}
 unsafe impl<A> TrustedLen for Item<A> {}
 
@@ -2101,7 +2108,14 @@ impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> ExactSizeIterator for Iter<'_, A> {}
+impl<A> ExactSizeIterator for Iter<'_, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        let n = self.inner.len();
+        debug_assert_eq!(self.size_hint(), (n, Some(n)));
+        n
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for Iter<'_, A> {}
@@ -2151,7 +2165,14 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> ExactSizeIterator for IterMut<'_, A> {}
+impl<A> ExactSizeIterator for IterMut<'_, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        let n = self.inner.len();
+        debug_assert_eq!(self.size_hint(), (n, Some(n)));
+        n
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for IterMut<'_, A> {}
@@ -2192,7 +2213,14 @@ impl<A> DoubleEndedIterator for IntoIter<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> ExactSizeIterator for IntoIter<A> {}
+impl<A> ExactSizeIterator for IntoIter<A> {
+    #[inline]
+    fn len(&self) -> usize {
+        let n = self.inner.len();
+        debug_assert_eq!(self.size_hint(), (n, Some(n)));
+        n
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for IntoIter<A> {}

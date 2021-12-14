@@ -1342,6 +1342,10 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
@@ -1395,6 +1399,10 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
@@ -1452,7 +1460,11 @@ impl<T: Ord> Iterator for IntoIterSorted<T> {
 }
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
-impl<T: Ord> ExactSizeIterator for IntoIterSorted<T> {}
+impl<T: Ord> ExactSizeIterator for IntoIterSorted<T> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 impl<T: Ord> FusedIterator for IntoIterSorted<T> {}
@@ -1497,6 +1509,10 @@ impl<T> DoubleEndedIterator for Drain<'_, T> {
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T> ExactSizeIterator for Drain<'_, T> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
@@ -1554,7 +1570,11 @@ impl<T: Ord> Iterator for DrainSorted<'_, T> {
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<T: Ord> ExactSizeIterator for DrainSorted<'_, T> {}
+impl<T: Ord> ExactSizeIterator for DrainSorted<'_, T> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 impl<T: Ord> FusedIterator for DrainSorted<'_, T> {}

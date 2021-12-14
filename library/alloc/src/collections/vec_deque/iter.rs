@@ -67,7 +67,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = count(self.tail, self.head, self.ring.len());
+        let len = self.len();
         (len, Some(len))
     }
 
@@ -113,7 +113,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if n >= count(self.tail, self.head, self.ring.len()) {
+        if n >= self.len() {
             self.tail = self.head;
             None
         } else {
@@ -197,6 +197,11 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        count(self.tail, self.head, self.ring.len())
+    }
+
     fn is_empty(&self) -> bool {
         self.head == self.tail
     }
