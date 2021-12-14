@@ -2420,6 +2420,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #[cfg(target_arch="x86_64")]
     /// use std::arch::asm;
     ///
     /// fn main() {
@@ -2455,6 +2456,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #[cfg(target_arch="x86_64")]
     /// use std::arch::asm;
     ///
     /// fn main() {
