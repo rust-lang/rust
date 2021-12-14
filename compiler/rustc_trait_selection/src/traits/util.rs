@@ -291,7 +291,10 @@ pub fn upcast_choices<'tcx>(
 /// Given a trait `trait_ref`, returns the number of vtable entries
 /// that come from `trait_ref`, excluding its supertraits. Used in
 /// computing the vtable base for an upcast trait of a trait object.
-pub fn count_own_vtable_entries<'tcx>(tcx: TyCtxt<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> usize {
+pub fn count_own_vtable_entries<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> usize {
     let existential_trait_ref =
         trait_ref.map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
     let existential_trait_ref = tcx.erase_regions(existential_trait_ref);

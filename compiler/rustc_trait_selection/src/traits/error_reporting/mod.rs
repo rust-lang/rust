@@ -1173,7 +1173,7 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
     ) -> bool;
 }
 
-impl<'a, 'tcx> InferCtxtPrivExt<'a,'tcx> for InferCtxt<'a, 'tcx> {
+impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {

@@ -119,7 +119,7 @@ struct Search<'a, 'tcx> {
     seen: FxHashSet<hir::def_id::DefId>,
 }
 
-impl<'a,'tcx> Search<'a, 'tcx> {
+impl<'a, 'tcx> Search<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }

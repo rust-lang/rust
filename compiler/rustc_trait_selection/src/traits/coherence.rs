@@ -161,11 +161,17 @@ fn overlap_within_probe<'cx, 'tcx>(
     b_def_id: DefId,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
-    fn loose_check<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>, o: &PredicateObligation<'tcx>) -> bool {
+    fn loose_check<'cx, 'tcx>(
+        selcx: &mut SelectionContext<'cx, 'tcx>,
+        o: &PredicateObligation<'tcx>,
+    ) -> bool {
         !selcx.predicate_may_hold_fatal(o)
     }
 
-    fn strict_check<'cx, 'tcx>(selcx: &SelectionContext<'cx, 'tcx>, o: &PredicateObligation<'tcx>) -> bool {
+    fn strict_check<'cx, 'tcx>(
+        selcx: &SelectionContext<'cx, 'tcx>,
+        o: &PredicateObligation<'tcx>,
+    ) -> bool {
         let infcx = selcx.infcx();
         let tcx = infcx.tcx;
         o.flip_polarity(tcx)
@@ -518,7 +524,11 @@ fn orphan_check_trait_ref<'tcx>(
 /// - for `Foo<u32>`, where `Foo` is a local type, this returns `[]`.
 /// - `&mut u32` returns `[u32]`, as `&mut` is a fundamental type, similar to `Box`.
 /// - `Box<Foo<u32>>` returns `[]`, as `Box` is a fundamental type and `Foo` is local.
-fn contained_non_local_types<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, in_crate: InCrate) -> Vec<Ty<'tcx>> {
+fn contained_non_local_types<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    in_crate: InCrate,
+) -> Vec<Ty<'tcx>> {
     if ty_is_local_constructor(ty, in_crate) {
         Vec::new()
     } else {
