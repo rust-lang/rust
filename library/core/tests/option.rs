@@ -86,17 +86,49 @@ fn test_and() {
     let x: Option<isize> = None;
     assert_eq!(x.and(Some(2)), None);
     assert_eq!(x.and(None::<isize>), None);
+
+    const FOO: Option<isize> = Some(1);
+    const A: Option<isize> = FOO.and(Some(2));
+    const B: Option<isize> = FOO.and(None);
+    assert_eq!(A, Some(2));
+    assert_eq!(B, None);
+
+    const BAR: Option<isize> = None;
+    const C: Option<isize> = BAR.and(Some(2));
+    const D: Option<isize> = BAR.and(None);
+    assert_eq!(C, None);
+    assert_eq!(D, None);
 }
 
 #[test]
 fn test_and_then() {
+    const fn plus_one(x: isize) -> Option<isize> {
+        Some(x + 1)
+    }
+
+    const fn none(_: isize) -> Option<isize> {
+        None
+    }
+
     let x: Option<isize> = Some(1);
-    assert_eq!(x.and_then(|x| Some(x + 1)), Some(2));
-    assert_eq!(x.and_then(|_| None::<isize>), None);
+    assert_eq!(x.and_then(plus_one), Some(2));
+    assert_eq!(x.and_then(none), None);
 
     let x: Option<isize> = None;
-    assert_eq!(x.and_then(|x| Some(x + 1)), None);
-    assert_eq!(x.and_then(|_| None::<isize>), None);
+    assert_eq!(x.and_then(plus_one), None);
+    assert_eq!(x.and_then(none), None);
+
+    const FOO: Option<isize> = Some(1);
+    const A: Option<isize> = FOO.and_then(plus_one);
+    const B: Option<isize> = FOO.and_then(none);
+    assert_eq!(A, Some(2));
+    assert_eq!(B, None);
+
+    const BAR: Option<isize> = None;
+    const C: Option<isize> = BAR.and_then(plus_one);
+    const D: Option<isize> = BAR.and_then(none);
+    assert_eq!(C, None);
+    assert_eq!(D, None);
 }
 
 #[test]
@@ -108,17 +140,49 @@ fn test_or() {
     let x: Option<isize> = None;
     assert_eq!(x.or(Some(2)), Some(2));
     assert_eq!(x.or(None), None);
+
+    const FOO: Option<isize> = Some(1);
+    const A: Option<isize> = FOO.or(Some(2));
+    const B: Option<isize> = FOO.or(None);
+    assert_eq!(A, Some(1));
+    assert_eq!(B, Some(1));
+
+    const BAR: Option<isize> = None;
+    const C: Option<isize> = BAR.or(Some(2));
+    const D: Option<isize> = BAR.or(None);
+    assert_eq!(C, Some(2));
+    assert_eq!(D, None);
 }
 
 #[test]
 fn test_or_else() {
+    const fn two() -> Option<isize> {
+        Some(2)
+    }
+
+    const fn none() -> Option<isize> {
+        None
+    }
+
     let x: Option<isize> = Some(1);
-    assert_eq!(x.or_else(|| Some(2)), Some(1));
-    assert_eq!(x.or_else(|| None), Some(1));
+    assert_eq!(x.or_else(two), Some(1));
+    assert_eq!(x.or_else(none), Some(1));
 
     let x: Option<isize> = None;
-    assert_eq!(x.or_else(|| Some(2)), Some(2));
-    assert_eq!(x.or_else(|| None), None);
+    assert_eq!(x.or_else(two), Some(2));
+    assert_eq!(x.or_else(none), None);
+
+    const FOO: Option<isize> = Some(1);
+    const A: Option<isize> = FOO.or_else(two);
+    const B: Option<isize> = FOO.or_else(none);
+    assert_eq!(A, Some(1));
+    assert_eq!(B, Some(1));
+
+    const BAR: Option<isize> = None;
+    const C: Option<isize> = BAR.or_else(two);
+    const D: Option<isize> = BAR.or_else(none);
+    assert_eq!(C, Some(2));
+    assert_eq!(D, None);
 }
 
 #[test]
@@ -149,15 +213,29 @@ fn test_unwrap_or() {
 
     let x: Option<isize> = None;
     assert_eq!(x.unwrap_or(2), 2);
+
+    const A: isize = Some(1).unwrap_or(2);
+    const B: isize = None.unwrap_or(2);
+    assert_eq!(A, 1);
+    assert_eq!(B, 2);
 }
 
 #[test]
 fn test_unwrap_or_else() {
+    const fn two() -> isize {
+        2
+    }
+
     let x: Option<isize> = Some(1);
-    assert_eq!(x.unwrap_or_else(|| 2), 1);
+    assert_eq!(x.unwrap_or_else(two), 1);
 
     let x: Option<isize> = None;
-    assert_eq!(x.unwrap_or_else(|| 2), 2);
+    assert_eq!(x.unwrap_or_else(two), 2);
+
+    const A: isize = Some(1).unwrap_or_else(two);
+    const B: isize = None.unwrap_or_else(two);
+    assert_eq!(A, 1);
+    assert_eq!(B, 2);
 }
 
 #[test]

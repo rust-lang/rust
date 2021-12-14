@@ -123,6 +123,7 @@
 #![feature(const_num_from_num)]
 #![feature(const_ops)]
 #![feature(const_option)]
+#![feature(const_option_ext)]
 #![feature(const_pin)]
 #![feature(const_replace)]
 #![feature(const_ptr_is_null)]
