@@ -1968,7 +1968,7 @@ fn find_use_placement<'tcx>(tcx: TyCtxt<'tcx>, target_module: LocalDefId) -> (Op
     (span, found_use)
 }
 
-fn print_disambiguation_help(
+fn print_disambiguation_help<'tcx>(
     item_name: Ident,
     args: Option<&'tcx [hir::Expr<'tcx>]>,
     err: &mut DiagnosticBuilder<'_>,

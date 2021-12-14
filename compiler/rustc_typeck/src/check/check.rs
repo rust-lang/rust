@@ -453,7 +453,7 @@ pub(super) fn check_opaque<'tcx>(
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
 /// in "inheriting lifetimes".
 #[instrument(level = "debug", skip(tcx, span))]
-pub(super) fn check_opaque_for_inheriting_lifetimes(
+pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     span: Span,
@@ -517,7 +517,7 @@ pub(super) fn check_opaque_for_inheriting_lifetimes(
         }
     }
 
-    impl Visitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
+    impl<'tcx> Visitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         type Map = rustc_middle::hir::map::Map<'tcx>;
 
         fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
@@ -1512,7 +1512,7 @@ pub(super) use wfcheck::check_trait_item as check_trait_item_well_formed;
 
 pub(super) use wfcheck::check_impl_item as check_impl_item_well_formed;
 
-fn async_opaque_type_cycle_error(tcx: TyCtxt<'tcx>, span: Span) {
+fn async_opaque_type_cycle_error(tcx: TyCtxt<'_>, span: Span) {
     struct_span_err!(tcx.sess, span, E0733, "recursion in an `async fn` requires boxing")
         .span_label(span, "recursive `async fn`")
         .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
@@ -1530,7 +1530,7 @@ fn async_opaque_type_cycle_error(tcx: TyCtxt<'tcx>, span: Span) {
 ///
 /// If all the return expressions evaluate to `!`, then we explain that the error will go away
 /// after changing it. This can happen when a user uses `panic!()` or similar as a placeholder.
-fn opaque_type_cycle_error(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Span) {
+fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
     let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
 
     let mut label = false;

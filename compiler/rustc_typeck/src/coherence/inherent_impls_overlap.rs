@@ -18,7 +18,7 @@ struct InherentOverlapChecker<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl InherentOverlapChecker<'tcx> {
+impl<'tcx> InherentOverlapChecker<'tcx> {
     /// Checks whether any associated items in impls 1 and 2 share the same identifier and
     /// namespace.
     fn impls_have_common_items(
@@ -115,7 +115,7 @@ impl InherentOverlapChecker<'tcx> {
     }
 }
 
-impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
+impl<'v, 'tcx> ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
     fn visit_item(&mut self, item: &'v hir::Item<'v>) {
         match item.kind {
             hir::ItemKind::Enum(..)

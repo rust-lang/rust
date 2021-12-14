@@ -482,7 +482,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_struct_expr(
+    fn walk_struct_expr<'hir>(
         &mut self,
         fields: &[hir::ExprField<'_>],
         opt_with: &Option<&'hir hir::Expr<'_>>,
@@ -705,7 +705,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
     /// closure as the DefId.
     fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
-        fn upvar_is_local_variable(
+        fn upvar_is_local_variable<'tcx>(
             upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
             upvar_id: &hir::HirId,
             body_owner_is_closure: bool,
@@ -846,7 +846,7 @@ fn delegate_consume<'a, 'tcx>(
     }
 }
 
-fn is_multivariant_adt(ty: Ty<'tcx>) -> bool {
+fn is_multivariant_adt(ty: Ty<'_>) -> bool {
     if let ty::Adt(def, _) = ty.kind() {
         // Note that if a non-exhaustive SingleVariant is defined in another crate, we need
         // to assume that more cases will be added to the variant in the future. This mean

@@ -76,7 +76,7 @@ pub struct InheritedBuilder<'tcx> {
     def_id: LocalDefId,
 }
 
-impl Inherited<'_, 'tcx> {
+impl<'tcx> Inherited<'_, 'tcx> {
     pub fn build(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> InheritedBuilder<'tcx> {
         let hir_owner = tcx.hir().local_def_id_to_hir_id(def_id).owner;
 
@@ -97,7 +97,7 @@ impl<'tcx> InheritedBuilder<'tcx> {
     }
 }
 
-impl Inherited<'a, 'tcx> {
+impl<'a, 'tcx> Inherited<'a, 'tcx> {
     pub(super) fn new(infcx: InferCtxt<'a, 'tcx>, def_id: LocalDefId) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir().local_def_id_to_hir_id(def_id);

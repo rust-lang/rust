@@ -302,7 +302,7 @@ impl<'tcx> SimpleEqRelation<'tcx> {
     }
 }
 
-impl TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
+impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
