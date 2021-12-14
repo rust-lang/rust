@@ -25,7 +25,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
 #![feature(extern_types)]
-#![feature(in_band_lifetimes)]
 #![feature(negative_impls)]
 #![feature(auto_traits)]
 #![feature(restricted_std)]

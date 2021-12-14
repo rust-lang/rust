@@ -295,13 +295,13 @@ impl<T, M> Unmark for Marked<T, M> {
         self.value
     }
 }
-impl<T, M> Unmark for &'a Marked<T, M> {
+impl<'a, T, M> Unmark for &'a Marked<T, M> {
     type Unmarked = &'a T;
     fn unmark(self) -> Self::Unmarked {
         &self.value
     }
 }
-impl<T, M> Unmark for &'a mut Marked<T, M> {
+impl<'a, T, M> Unmark for &'a mut Marked<T, M> {
     type Unmarked = &'a mut T;
     fn unmark(self) -> Self::Unmarked {
         &mut self.value
@@ -356,8 +356,8 @@ mark_noop! {
     (),
     bool,
     char,
-    &'a [u8],
-    &'a str,
+    &'_ [u8],
+    &'_ str,
     String,
     usize,
     Delimiter,
