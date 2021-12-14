@@ -23,7 +23,7 @@ pub fn checking_enabled(ccx: &ConstCx<'_, '_>) -> bool {
 ///
 /// This is separate from the rest of the const checking logic because it must run after drop
 /// elaboration.
-pub fn check_live_drops(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
+pub fn check_live_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
     let const_kind = tcx.hir().body_const_context(def_id);
     if const_kind.is_none() {
@@ -50,7 +50,7 @@ struct CheckLiveDrops<'mir, 'tcx> {
 }
 
 // So we can access `body` and `tcx`.
-impl std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
+impl<'mir, 'tcx> std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
     type Target = ConstCx<'mir, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
@@ -58,13 +58,13 @@ impl std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
     }
 }
 
-impl CheckLiveDrops<'mir, 'tcx> {
+impl CheckLiveDrops<'_, '_> {
     fn check_live_drop(&self, span: Span) {
         ops::LiveDrop { dropped_at: None }.build_error(self.ccx, span).emit();
     }
 }
 
-impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
+impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, block: &mir::BasicBlockData<'tcx>) {
         trace!("visit_basic_block_data: bb={:?} is_cleanup={:?}", bb, block.is_cleanup);
 

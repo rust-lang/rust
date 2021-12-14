@@ -292,14 +292,15 @@ pub enum InternKind {
 /// Any errors here would anyway be turned into `const_err` lints, whereas validation failures
 /// are hard errors.
 #[tracing::instrument(level = "debug", skip(ecx))]
-pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>>(
+pub fn intern_const_alloc_recursive<
+    'mir,
+    'tcx: 'mir,
+    M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>,
+>(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     intern_kind: InternKind,
     ret: &MPlaceTy<'tcx>,
-) -> Result<(), ErrorReported>
-where
-    'tcx: 'mir,
-{
+) -> Result<(), ErrorReported> {
     let tcx = ecx.tcx;
     let base_intern_mode = match intern_kind {
         InternKind::Static(mutbl) => InternMode::Static(mutbl),

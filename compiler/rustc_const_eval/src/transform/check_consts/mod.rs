@@ -28,7 +28,7 @@ pub struct ConstCx<'mir, 'tcx> {
     pub const_kind: Option<hir::ConstContext>,
 }
 
-impl ConstCx<'mir, 'tcx> {
+impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Self {
         let def_id = body.source.def_id().expect_local();
         let param_env = tcx.param_env(def_id);
@@ -72,11 +72,7 @@ impl ConstCx<'mir, 'tcx> {
     }
 }
 
-pub fn rustc_allow_const_fn_unstable(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-    feature_gate: Symbol,
-) -> bool {
+pub fn rustc_allow_const_fn_unstable(tcx: TyCtxt<'_>, def_id: DefId, feature_gate: Symbol) -> bool {
     let attrs = tcx.get_attrs(def_id);
     attr::rustc_allow_const_fn_unstable(&tcx.sess, attrs).any(|name| name == feature_gate)
 }
@@ -89,7 +85,7 @@ pub fn rustc_allow_const_fn_unstable(
 // functions can be called in a const-context by users of the stable compiler. "const-stable"
 // functions are subject to more stringent restrictions than "const-unstable" functions: They
 // cannot use unstable features and can only call other "const-stable" functions.
-pub fn is_const_stable_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
+pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     use attr::{ConstStability, Stability, StabilityLevel};
 
     // A default body marked const is not const-stable because const

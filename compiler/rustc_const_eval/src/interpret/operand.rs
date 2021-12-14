@@ -106,7 +106,7 @@ pub struct ImmTy<'tcx, Tag: Provenance = AllocId> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
 
-impl<Tag: Provenance> std::fmt::Display for ImmTy<'tcx, Tag> {
+impl<Tag: Provenance> std::fmt::Display for ImmTy<'_, Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         /// Helper function for printing a scalar to a FmtPrinter
         fn p<'a, 'tcx, F: std::fmt::Write, Tag: Provenance>(
