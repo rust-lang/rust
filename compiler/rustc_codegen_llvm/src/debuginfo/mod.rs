@@ -71,7 +71,7 @@ pub struct CrateDebugContext<'a, 'tcx> {
     composite_types_completed: RefCell<FxHashSet<&'a DIType>>,
 }
 
-impl Drop for CrateDebugContext<'a, 'tcx> {
+impl Drop for CrateDebugContext<'_, '_> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMRustDIBuilderDispose(&mut *(self.builder as *mut _));
@@ -144,7 +144,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     }
 }
 
-impl DebugInfoBuilderMethods for Builder<'a, 'll, 'tcx> {
+impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn dbg_var_addr(
@@ -236,7 +236,7 @@ pub struct DebugLoc {
     pub col: u32,
 }
 
-impl CodegenCx<'ll, '_> {
+impl CodegenCx<'_, '_> {
     /// Looks up debug source information about a `BytePos`.
     // FIXME(eddyb) rename this to better indicate it's a duplicate of
     // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
@@ -266,7 +266,7 @@ impl CodegenCx<'ll, '_> {
     }
 }
 
-impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn create_function_debug_context(
         &self,
         instance: Instance<'tcx>,

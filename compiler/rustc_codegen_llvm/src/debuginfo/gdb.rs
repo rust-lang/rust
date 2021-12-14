@@ -28,7 +28,7 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder<'_,
 
 /// Allocates the global variable responsible for the .debug_gdb_scripts binary
 /// section.
-pub fn get_or_insert_gdb_debug_scripts_section_global(cx: &CodegenCx<'ll, '_>) -> &'ll Value {
+pub fn get_or_insert_gdb_debug_scripts_section_global<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll Value {
     let c_section_var_name = "__rustc_debug_gdb_scripts_section__\0";
     let section_var_name = &c_section_var_name[..c_section_var_name.len() - 1];
 
