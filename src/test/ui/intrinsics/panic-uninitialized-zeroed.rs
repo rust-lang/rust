@@ -168,12 +168,12 @@ fn main() {
         );
         test_panic_msg(
             || mem::uninitialized::<[*const dyn Send; 2]>(),
-            "attempted to leave type `[*const dyn std::marker::Send; 2]` uninitialized, \
+            "attempted to leave type `[*const dyn core::marker::Send; 2]` uninitialized, \
                 which is invalid"
         );
         test_panic_msg(
             || mem::zeroed::<[*const dyn Send; 2]>(),
-            "attempted to zero-initialize type `[*const dyn std::marker::Send; 2]`, \
+            "attempted to zero-initialize type `[*const dyn core::marker::Send; 2]`, \
                 which is invalid"
         );
 
@@ -206,7 +206,7 @@ fn main() {
         );
         test_panic_msg(
             || mem::zeroed::<(NonNull<u32>, u32, u32)>(),
-            "attempted to zero-initialize type `(std::ptr::NonNull<u32>, u32, u32)`, \
+            "attempted to zero-initialize type `(core::ptr::non_null::NonNull<u32>, u32, u32)`, \
                 which is invalid"
         );
         test_panic_msg(
@@ -216,7 +216,7 @@ fn main() {
         );
         test_panic_msg(
             || mem::zeroed::<[(NonNull<u32>, u32, u32); 2]>(),
-            "attempted to zero-initialize type `[(std::ptr::NonNull<u32>, u32, u32); 2]`, \
+            "attempted to zero-initialize type `[(core::ptr::non_null::NonNull<u32>, u32, u32); 2]`, \
                 which is invalid"
         );
 
@@ -285,7 +285,7 @@ fn main() {
         );
         test_panic_msg(
             || mem::uninitialized::<[ManuallyDrop<LR>; 2]>(),
-            "attempted to leave type `[std::mem::ManuallyDrop<LR>; 2]` uninitialized, \
+            "attempted to leave type `[core::mem::manually_drop::ManuallyDrop<LR>; 2]` uninitialized, \
                 which is invalid"
         );
 
