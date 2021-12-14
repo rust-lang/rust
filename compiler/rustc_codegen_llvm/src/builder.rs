@@ -36,7 +36,7 @@ pub struct Builder<'a, 'll, 'tcx> {
     pub cx: &'a CodegenCx<'ll, 'tcx>,
 }
 
-impl Drop for Builder<'a, 'll, 'tcx> {
+impl Drop for Builder<'_, '_, '_> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMDisposeBuilder(&mut *(self.llbuilder as *mut _));
@@ -52,7 +52,7 @@ const EMPTY_C_STR: &CStr = unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") }
 // FIXME(eddyb) pass `&CStr` directly to FFI once it's a thin pointer.
 const UNNAMED: *const c_char = EMPTY_C_STR.as_ptr();
 
-impl BackendTypes for Builder<'_, 'll, 'tcx> {
+impl<'ll, 'tcx> BackendTypes for Builder<'_, 'll, 'tcx> {
     type Value = <CodegenCx<'ll, 'tcx> as BackendTypes>::Value;
     type Function = <CodegenCx<'ll, 'tcx> as BackendTypes>::Function;
     type BasicBlock = <CodegenCx<'ll, 'tcx> as BackendTypes>::BasicBlock;
@@ -70,27 +70,27 @@ impl abi::HasDataLayout for Builder<'_, '_, '_> {
     }
 }
 
-impl ty::layout::HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
+impl<'tcx> ty::layout::HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.cx.tcx
     }
 }
 
-impl ty::layout::HasParamEnv<'tcx> for Builder<'_, '_, 'tcx> {
+impl<'tcx> ty::layout::HasParamEnv<'tcx> for Builder<'_, '_, 'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.cx.param_env()
     }
 }
 
-impl HasTargetSpec for Builder<'_, '_, 'tcx> {
+impl HasTargetSpec for Builder<'_, '_, '_> {
     #[inline]
     fn target_spec(&self) -> &Target {
         self.cx.target_spec()
     }
 }
 
-impl LayoutOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
+impl<'tcx> LayoutOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
     #[inline]
@@ -99,7 +99,7 @@ impl LayoutOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
     }
 }
 
-impl FnAbiOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
+impl<'tcx> FnAbiOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
     type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
 
     #[inline]
@@ -113,7 +113,7 @@ impl FnAbiOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
     }
 }
 
-impl Deref for Builder<'_, 'll, 'tcx> {
+impl<'ll, 'tcx> Deref for Builder<'_, 'll, 'tcx> {
     type Target = CodegenCx<'ll, 'tcx>;
 
     #[inline]
@@ -122,7 +122,7 @@ impl Deref for Builder<'_, 'll, 'tcx> {
     }
 }
 
-impl HasCodegen<'tcx> for Builder<'_, 'll, 'tcx> {
+impl<'ll, 'tcx> HasCodegen<'tcx> for Builder<'_, 'll, 'tcx> {
     type CodegenCx = CodegenCx<'ll, 'tcx>;
 }
 
@@ -136,7 +136,7 @@ macro_rules! builder_methods_for_value_instructions {
     }
 }
 
-impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
+impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn build(cx: &'a CodegenCx<'ll, 'tcx>, llbb: &'ll BasicBlock) -> Self {
         let bx = Builder::with_cx(cx);
         unsafe {
@@ -1206,14 +1206,14 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-impl StaticBuilderMethods for Builder<'a, 'll, 'tcx> {
+impl<'ll> StaticBuilderMethods for Builder<'_, 'll, '_> {
     fn get_static(&mut self, def_id: DefId) -> &'ll Value {
         // Forward to the `get_static` method of `CodegenCx`
         self.cx().get_static(def_id)
     }
 }
 
-impl Builder<'a, 'll, 'tcx> {
+impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
         // Create a fresh builder from the crate context.
         let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(cx.llcx) };

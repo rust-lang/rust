@@ -26,7 +26,7 @@ use tracing::debug;
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-fn declare_raw_fn(
+fn declare_raw_fn<'ll>(
     cx: &CodegenCx<'ll, '_>,
     name: &str,
     callconv: llvm::CallConv,
@@ -50,7 +50,7 @@ fn declare_raw_fn(
     llfn
 }
 
-impl CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// Declare a global value.
     ///
     /// If there’s a value with the same name already declared, the function will
