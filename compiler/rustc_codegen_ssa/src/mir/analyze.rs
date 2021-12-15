@@ -73,7 +73,7 @@ struct LocalAnalyzer<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     locals: IndexVec<mir::Local, LocalKind>,
 }
 
-impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
+impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     fn assign(&mut self, local: mir::Local, location: Location) {
         let kind = &mut self.locals[local];
         match *kind {
