@@ -12,6 +12,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use crate::builder::TaskPath;
 use crate::cache::{Interned, INTERNER};
 use crate::channel::GitInfo;
 pub use crate::flags::Subcommand;
@@ -62,7 +63,7 @@ pub struct Config {
     pub sanitizers: bool,
     pub profiler: bool,
     pub ignore_git: bool,
-    pub exclude: Vec<PathBuf>,
+    pub exclude: Vec<TaskPath>,
     pub include_default_paths: bool,
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
@@ -635,7 +636,7 @@ impl Config {
         let flags = Flags::parse(&args);
 
         let mut config = Config::default_opts();
-        config.exclude = flags.exclude;
+        config.exclude = flags.exclude.into_iter().map(|path| TaskPath::parse(path)).collect();
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;

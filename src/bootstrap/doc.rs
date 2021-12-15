@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use crate::Mode;
 use build_helper::{t, up_to_date};
 
-use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
+use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::{Config, TargetSelection};
@@ -240,7 +240,7 @@ impl Step for TheBook {
             invoke_rustdoc(builder, compiler, target, path);
         }
 
-        if builder.was_invoked_explicitly::<Self>() {
+        if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
             let out = builder.doc_out(target);
             let index = out.join("book").join("index.html");
             open(builder, &index);
@@ -400,7 +400,7 @@ impl Step for Standalone {
 
         // We open doc/index.html as the default if invoked as `x.py doc --open`
         // with no particular explicit doc requested (e.g. library/core).
-        if builder.paths.is_empty() || builder.was_invoked_explicitly::<Self>() {
+        if builder.paths.is_empty() || builder.was_invoked_explicitly::<Self>(Kind::Doc) {
             let index = out.join("index.html");
             open(builder, &index);
         }
@@ -902,7 +902,7 @@ impl Step for RustcBook {
             name: INTERNER.intern_str("rustc"),
             src: INTERNER.intern_path(out_base),
         });
-        if builder.was_invoked_explicitly::<Self>() {
+        if builder.was_invoked_explicitly::<Self>(Kind::Doc) {
             let out = builder.doc_out(self.target);
             let index = out.join("rustc").join("index.html");
             open(builder, &index);
