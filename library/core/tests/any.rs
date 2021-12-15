@@ -127,3 +127,25 @@ fn distinct_type_names() {
 
     assert_ne!(type_name_of_val(Velocity), type_name_of_val(Velocity(0.0, -9.8)),);
 }
+
+// Test the `Provider` API.
+
+struct SomeConcreteType {
+    some_string: String,
+}
+
+impl Provider for SomeConcreteType {
+    fn provide<'a>(&'a self, mut req: Requisition<'a, '_>) {
+        req.provide_ref::<String>(&self.some_string)
+            .provide_value::<String, _>(|| "bye".to_owned());
+    }
+}
+
+#[test]
+fn test_provider() {
+    let obj: &dyn Provider = &SomeConcreteType { some_string: "hello".to_owned() };
+
+    assert_eq!(&**request_by_type_tag::<tags::Ref<String>>(obj).unwrap(), "hello");
+    assert_eq!(&*request_by_type_tag::<tags::Value<String>>(obj).unwrap(), "bye");
+    assert_eq!(request_by_type_tag::<tags::Value<u8>>(obj), None);
+}
