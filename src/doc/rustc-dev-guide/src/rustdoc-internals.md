@@ -73,8 +73,8 @@ Here is the list of passes as of <!-- date: 2021-10 --> October 2021:
 
 - `check-bare-urls` detects links that are not linkified, e.g., in Markdown such as
   `Go to https://example.com/.` It suggests wrapping the link with angle brackets:
-  `Go to <https://example.com/>.` to linkify it. This is the code behind the
-  <!-- date: 2021-10 --> `rustdoc::bare_urls` lint.
+  `Go to <https://example.com/>.` to linkify it. This is the code behind the <!--
+  date: 2021-10 --> `rustdoc::bare_urls` lint.
 
 - `check-code-block-syntax` validates syntax inside Rust code blocks
   (<code>```rust</code>)
