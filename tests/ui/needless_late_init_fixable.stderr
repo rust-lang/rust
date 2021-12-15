@@ -1,5 +1,5 @@
 error: unneeded late initalization
-  --> $DIR/needless_late_init_fixable.rs:6:5
+  --> $DIR/needless_late_init_fixable.rs:4:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -11,7 +11,7 @@ LL |     let a = "zero";
    |     ~~~~~
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init_fixable.rs:9:5
+  --> $DIR/needless_late_init_fixable.rs:7:5
    |
 LL |     let b;
    |     ^^^^^^
@@ -22,7 +22,7 @@ LL |     let b = 1;
    |     ~~~~~
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init_fixable.rs:10:5
+  --> $DIR/needless_late_init_fixable.rs:8:5
    |
 LL |     let c;
    |     ^^^^^^
@@ -33,7 +33,7 @@ LL |     let c = 2;
    |     ~~~~~
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init_fixable.rs:14:5
+  --> $DIR/needless_late_init_fixable.rs:12:5
    |
 LL |     let d: usize;
    |     ^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |     let d: usize = 1;
    |     ~~~~~~~~~~~~
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init_fixable.rs:17:5
+  --> $DIR/needless_late_init_fixable.rs:15:5
    |
 LL |     let mut e;
    |     ^^^^^^^^^^
@@ -55,7 +55,7 @@ LL |     let mut e = 1;
    |     ~~~~~~~~~
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init_fixable.rs:21:5
+  --> $DIR/needless_late_init_fixable.rs:19:5
    |
 LL |     let f;
    |     ^^^^^^
@@ -66,11 +66,12 @@ LL |     let f = match 1 {
    |     +++++++
 help: remove the assignments from the `match` arms
    |
-LL |         1 => "three",
-   |              ~~~~~~~
+LL -         1 => f = "three",
+LL +         1 => "three",
+   | 
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init_fixable.rs:27:5
+  --> $DIR/needless_late_init_fixable.rs:25:5
    |
 LL |     let g: usize;
    |     ^^^^^^^^^^^^^
@@ -81,15 +82,16 @@ LL |     let g: usize = if true {
    |     ++++++++++++++
 help: remove the assignments from the branches
    |
-LL |         5
-   |
+LL -         g = 5;
+LL +         5
+   | 
 help: add a semicolon after the `if` expression
    |
 LL |     };
    |      +
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init_fixable.rs:34:5
+  --> $DIR/needless_late_init_fixable.rs:32:5
    |
 LL |     let h;
    |     ^^^^^^
