@@ -335,8 +335,11 @@ pub struct Linker {
 
 impl Linker {
     pub fn link(self) -> Result<()> {
-        let (codegen_results, work_products) =
-            self.codegen_backend.join_codegen(self.ongoing_codegen, &self.sess)?;
+        let (codegen_results, work_products) = self.codegen_backend.join_codegen(
+            self.ongoing_codegen,
+            &self.sess,
+            &self.prepare_outputs,
+        )?;
 
         self.sess.compile_status()?;
 
