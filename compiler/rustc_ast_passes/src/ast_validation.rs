@@ -580,8 +580,7 @@ impl<'a> AstValidator<'a> {
 
     /// An item in `extern { ... }` cannot use non-ascii identifier.
     fn check_foreign_item_ascii_only(&self, ident: Ident) {
-        let symbol_str = ident.as_str();
-        if !symbol_str.is_ascii() {
+        if !ident.as_str().is_ascii() {
             let n = 83942;
             self.err_handler()
                 .struct_span_err(

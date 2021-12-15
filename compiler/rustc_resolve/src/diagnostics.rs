@@ -1185,7 +1185,7 @@ impl<'a> Resolver<'a> {
                 ("", " from prelude")
             } else if b.is_extern_crate()
                 && !b.is_import()
-                && self.session.opts.externs.get(&ident.as_str()).is_some()
+                && self.session.opts.externs.get(ident.as_str()).is_some()
             {
                 ("", " passed with `--extern`")
             } else if add_built_in {

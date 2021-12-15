@@ -2444,7 +2444,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             CtorKind::Fictive => {
                                 let mut struct_fmt = fmt.debug_struct(&name);
                                 for (field, place) in iter::zip(&variant_def.fields, places) {
-                                    struct_fmt.field(&field.ident.as_str(), place);
+                                    struct_fmt.field(field.ident.as_str(), place);
                                 }
                                 struct_fmt.finish()
                             }

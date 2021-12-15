@@ -105,7 +105,7 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
                 path_str.push_str("::");
             }
             if segment.ident.name != kw::PathRoot {
-                path_str.push_str(&segment.ident.as_str())
+                path_str.push_str(segment.ident.as_str())
             }
         }
         Symbol::intern(&path_str)

@@ -560,7 +560,7 @@ impl Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     ty::ExistentialPredicate::Projection(projection) => {
                         let name = cx.tcx.associated_item(projection.item_def_id).ident;
                         cx.push("p");
-                        cx.push_ident(&name.as_str());
+                        cx.push_ident(name.as_str());
                         cx = projection.ty.print(cx)?;
                     }
                     ty::ExistentialPredicate::AutoTrait(def_id) => {

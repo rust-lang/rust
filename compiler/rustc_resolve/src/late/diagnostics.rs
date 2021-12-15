@@ -231,7 +231,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         let is_assoc_fn = self.self_type_is_available(span);
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
-        if ["this", "my"].contains(&&*item_str.as_str()) && is_assoc_fn {
+        if ["this", "my"].contains(&item_str.as_str()) && is_assoc_fn {
             err.span_suggestion_short(
                 span,
                 "you might have meant to use `self` here instead",
@@ -1372,7 +1372,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     fn likely_rust_type(path: &[Segment]) -> Option<Symbol> {
         let name = path[path.len() - 1].ident.as_str();
         // Common Java types
-        Some(match &*name {
+        Some(match name {
             "byte" => sym::u8, // In Java, bytes are signed, but in practice one almost always wants unsigned bytes.
             "short" => sym::i16,
             "boolean" => sym::bool,

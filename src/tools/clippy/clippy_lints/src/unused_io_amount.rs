@@ -57,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
                     check_map_error(cx, res, expr);
                 }
             },
-            hir::ExprKind::MethodCall(path, _, [ref arg_0, ..], _) => match &*path.ident.as_str() {
+            hir::ExprKind::MethodCall(path, _, [ref arg_0, ..], _) => match path.ident.as_str() {
                 "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
                     check_map_error(cx, arg_0, expr);
                 },
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
 fn check_map_error(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
     let mut call = call;
     while let hir::ExprKind::MethodCall(path, _, args, _) = call.kind {
-        if matches!(&*path.ident.as_str(), "or" | "or_else" | "ok") {
+        if matches!(path.ident.as_str(), "or" | "or_else" | "ok") {
             call = &args[0];
         } else {
             break;
@@ -82,7 +82,7 @@ fn check_map_error(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<
 
 fn check_method_call(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
     if let hir::ExprKind::MethodCall(path, _, _, _) = call.kind {
-        let symbol = &*path.ident.as_str();
+        let symbol = path.ident.as_str();
         let read_trait = match_trait_method(cx, call, &paths::IO_READ);
         let write_trait = match_trait_method(cx, call, &paths::IO_WRITE);
 

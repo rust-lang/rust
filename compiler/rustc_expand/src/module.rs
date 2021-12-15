@@ -103,10 +103,10 @@ crate fn mod_dir_path(
             if let DirOwnership::Owned { relative } = &mut dir_ownership {
                 if let Some(ident) = relative.take() {
                     // Remove the relative offset.
-                    dir_path.push(&*ident.as_str());
+                    dir_path.push(ident.as_str());
                 }
             }
-            dir_path.push(&*ident.as_str());
+            dir_path.push(ident.as_str());
 
             (dir_path, dir_ownership)
         }

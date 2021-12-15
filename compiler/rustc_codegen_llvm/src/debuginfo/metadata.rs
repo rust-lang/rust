@@ -1922,7 +1922,7 @@ enum VariantInfo<'a, 'tcx> {
 impl<'tcx> VariantInfo<'_, 'tcx> {
     fn map_struct_name<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         match self {
-            VariantInfo::Adt(variant) => f(&variant.ident.as_str()),
+            VariantInfo::Adt(variant) => f(variant.ident.as_str()),
             VariantInfo::Generator { variant_index, .. } => {
                 f(&GeneratorSubsts::variant_name(*variant_index))
             }
