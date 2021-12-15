@@ -383,7 +383,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
             trait_ref,
             constness: ty::BoundConstness::NotConst,
             polarity: _,
-            implicit: _,
+            // implicit: _,
         }) => {
             if !matches!(
                 trait_predicate_kind(tcx, predicate),
@@ -416,7 +416,7 @@ fn trait_predicate_kind<'tcx>(
             trait_ref,
             constness: ty::BoundConstness::NotConst,
             polarity: _,
-            implicit: _,
+            // implicit: _,
         }) => Some(tcx.trait_def(trait_ref.def_id).specialization_kind),
         ty::PredicateKind::Trait(_)
         | ty::PredicateKind::RegionOutlives(_)

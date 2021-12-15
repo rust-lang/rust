@@ -290,7 +290,7 @@ impl AutoTraitFinder<'tcx> {
             constness: ty::BoundConstness::NotConst,
             // Auto traits are positive
             polarity: ty::ImplPolarity::Positive,
-            implicit: ty::ImplicitBound::No,
+            // implicit: ty::ImplicitBound::No,
         }));
 
         let computed_preds = param_env.caller_bounds().iter();

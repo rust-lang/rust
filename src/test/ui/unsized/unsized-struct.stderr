@@ -37,7 +37,7 @@ note: required because it appears within the type `Bar<T>`
    |
 LL | struct Bar<T: ?Sized> { data: T }
    |        ^^^
-note: type parameters have an implicit `Sized` obligation
+note: required by a bound in `is_sized`
   --> $DIR/unsized-struct.rs:1:13
    |
 LL | fn is_sized<T:Sized>() { }

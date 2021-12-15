@@ -826,7 +826,7 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot(
             trait_ref,
             constness: ty::BoundConstness::NotConst,
             polarity: ty::ImplPolarity::Positive,
-            implicit: ty::ImplicitBound::No,
+            // implicit: ty::ImplicitBound::No,
         }),
     );
 

@@ -45,7 +45,7 @@ pub(crate) fn update<'tcx, T>(
                                 trait_ref,
                                 constness: predicate.constness,
                                 polarity: predicate.polarity,
-                                implicit: predicate.implicit,
+                                // implicit: predicate.implicit,
                             })
                         })
                         .to_predicate(infcx.tcx),

@@ -5,10 +5,10 @@ LL |     type Assoc = OnlySized<<T as Foo>::Item>;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: required by a bound in `OnlySized`
-  --> $DIR/projection-bound-cycle-generic.rs:28:30
+  --> $DIR/projection-bound-cycle-generic.rs:28:18
    |
 LL | struct OnlySized<T> where T: Sized { f: T }
-   |                              ^^^^^ required by this bound in `OnlySized`
+   |                  ^ required by this bound in `OnlySized`
 
 error: aborting due to previous error
 

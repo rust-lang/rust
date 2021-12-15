@@ -165,24 +165,24 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    TyEncodable,
-    TyDecodable,
-    HashStable,
-    Debug,
-    TypeFoldable
-)]
-pub enum ImplicitBound {
-    /// `T: Trait`
-    No,
-    /// implicit `T: Sized`
-    Yes,
-}
+// #[derive(
+//     Copy,
+//     Clone,
+//     PartialEq,
+//     Eq,
+//     Hash,
+//     TyEncodable,
+//     TyDecodable,
+//     HashStable,
+//     Debug,
+//     TypeFoldable
+// )]
+// pub enum ImplicitBound {
+//     /// `T: Trait`
+//     No,
+//     /// implicit `T: Sized`
+//     Yes,
+// }
 
 #[derive(
     Copy,
@@ -541,12 +541,12 @@ impl<'tcx> Predicate<'tcx> {
                     trait_ref,
                     constness,
                     polarity,
-                    implicit,
+                    // implicit,
                 }) => Some(PredicateKind::Trait(TraitPredicate {
                     trait_ref,
                     constness,
                     polarity: polarity.flip()?,
-                    implicit,
+                    // implicit,
                 })),
 
                 _ => None,
@@ -753,7 +753,7 @@ pub struct TraitPredicate<'tcx> {
 
     pub polarity: ImplPolarity,
 
-    pub implicit: ImplicitBound,
+    // pub implicit: ImplicitBound,
 }
 
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
@@ -1450,7 +1450,7 @@ impl PolyTraitRef<'tcx> {
             trait_ref,
             constness,
             polarity: ty::ImplPolarity::Positive,
-            implicit: ty::ImplicitBound::No,
+            // implicit: ty::ImplicitBound::No,
         })
     }
     #[inline]

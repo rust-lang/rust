@@ -8,7 +8,7 @@ LL |     f2::<X>(x);
    |     |
    |     required by a bound introduced by this call
    |
-note: type parameters have an implicit `Sized` obligation
+note: required by a bound in `f2`
   --> $DIR/unsized3.rs:10:7
    |
 LL | fn f2<X>(x: &X) {
@@ -33,7 +33,7 @@ LL |     f4::<X>(x);
    |     |
    |     required by a bound introduced by this call
    |
-note: type parameters have an implicit `Sized` obligation
+note: required by a bound in `f4`
   --> $DIR/unsized3.rs:21:7
    |
 LL | fn f4<X: T>(x: &X) {
@@ -63,7 +63,7 @@ note: required because it appears within the type `S<X>`
    |
 LL | struct S<X: ?Sized> {
    |        ^
-note: type parameters have an implicit `Sized` obligation
+note: required by a bound in `f5`
   --> $DIR/unsized3.rs:24:7
    |
 LL | fn f5<Y>(x: &Y) {}

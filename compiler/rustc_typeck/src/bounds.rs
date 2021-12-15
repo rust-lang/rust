@@ -63,7 +63,7 @@ impl<'tcx> Bounds<'tcx> {
                     },
                     constness: ty::BoundConstness::NotConst,
                     polarity: ty::ImplPolarity::Positive,
-                    implicit: ty::ImplicitBound::Yes,
+                    // implicit: ty::ImplicitBound::Yes,
                 }))
                 .to_predicate(tcx);
                 (pred, span)

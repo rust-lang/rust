@@ -237,10 +237,10 @@ pub fn predicates_for_generics<'tcx>(
                 cause.span,
                 cause.body_id,
                 match predicate.kind().skip_binder() {
-                    ty::PredicateKind::Trait(ty::TraitPredicate {
-                        implicit: ty::ImplicitBound::Yes,
-                        ..
-                    }) => traits::ImplicitSizedObligation(def_id, span),
+                    // ty::PredicateKind::Trait(ty::TraitPredicate {
+                    //     implicit: ty::ImplicitBound::Yes,
+                    //     ..
+                    // }) => traits::ImplicitSizedObligation(def_id, span),
                     _ => traits::BindingObligation(def_id, span),
                 },
             ),
