@@ -249,46 +249,46 @@ impl SocketCred {
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     #[must_use]
     pub fn new() -> SocketCred {
-        SocketCred(libc::cmsgcred { cmsgcred_pid: 0, cmsgcred_uid: 0, cmsgcred_gid: 0 })
+        SocketCred(libc::cmsgcred { cmcred_pid: 0, cmcred_uid: 0, cmcred_gid: 0 })
     }
 
     /// Set the PID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn set_pid(&mut self, pid: libc::pid_t) {
-        self.0.cmsgcred_pid = pid;
+        self.0.cmcred_pid = pid;
     }
 
     /// Get the current PID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_pid(&self) -> libc::pid_t {
-        self.0.cmsgcred_pid
+        self.0.cmcred_pid
     }
 
     /// Set the UID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn set_uid(&mut self, uid: libc::uid_t) {
-        self.0.cmsgcred_uid = uid;
+        self.0.cmcred_uid = uid;
     }
 
     /// Get the current UID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_uid(&self) -> libc::uid_t {
-        self.0.cmsgcred_uid
+        self.0.cmcred_uid
     }
 
     /// Set the GID.
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn set_gid(&mut self, gid: libc::gid_t) {
-        self.0.cmsgcred_gid = gid;
+        self.0.cmcred_gid = gid;
     }
 
     /// Get the current GID.
     #[must_use]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn get_gid(&self) -> libc::gid_t {
-        self.0.cmsgcred_gid
+        self.0.cmcred_gid
     }
 }
 
@@ -340,7 +340,7 @@ pub enum AncillaryError {
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 pub enum AncillaryData<'a> {
     ScmRights(ScmRights<'a>),
-    #[cfg(any(doc, target_os = "android", target_os = "linux",))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "dragonfly"))]
     ScmCredentials(ScmCredentials<'a>),
 }
 
@@ -363,7 +363,7 @@ impl<'a> AncillaryData<'a> {
     ///
     /// `data` must contain a valid control message and the control message must be type of
     /// `SOL_SOCKET` and level of `SCM_CREDENTIALS` or `SCM_CREDS`.
-    #[cfg(any(doc, target_os = "android", target_os = "linux",))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "dragonfly"))]
     unsafe fn as_credentials(data: &'a [u8]) -> Self {
         let ancillary_data_iter = AncillaryDataIter::new(data);
         let scm_credentials = ScmCredentials(ancillary_data_iter);
