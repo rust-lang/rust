@@ -476,8 +476,11 @@ trait UnusedDelimLint {
 
         lhs_needs_parens
             || (followed_by_block
-                && match inner.kind {
+                && match &inner.kind {
                     ExprKind::Ret(_) | ExprKind::Break(..) | ExprKind::Yield(..) => true,
+                    ExprKind::Range(_lhs, Some(rhs), _limits) => {
+                        !classify::expr_requires_semi_to_be_stmt(&rhs)
+                    }
                     _ => parser::contains_exterior_struct_lit(&inner),
                 })
     }
