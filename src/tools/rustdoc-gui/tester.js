@@ -133,7 +133,7 @@ async function main(argv) {
     // Print successful tests too
     let debug = false;
     // Run tests in sequentially
-    let no_headless = false;
+    let headless = true;
     const options = new Options();
     try {
         // This is more convenient that setting fields one by one.
@@ -150,7 +150,7 @@ async function main(argv) {
         }
         if (opts["no_headless"]) {
             args.push("--no-headless");
-            no_headless = true;
+            headless = false;
         }
         options.parseArguments(args);
     } catch (error) {
@@ -172,7 +172,7 @@ async function main(argv) {
     }
     files.sort();
 
-    if (no_headless) {
+    if (!headless) {
         opts["jobs"] = 1;
         console.log("`--no-headless` option is active, disabling concurrency for running tests.");
     }
@@ -181,7 +181,7 @@ async function main(argv) {
 
     if (opts["jobs"] < 1) {
         process.setMaxListeners(files.length + 1);
-    } else if (!no_headless) {
+    } else if (headless) {
         process.setMaxListeners(opts["jobs"] + 1);
     }
 
@@ -226,7 +226,7 @@ async function main(argv) {
             await Promise.race(tests_queue);
         }
     }
-    if (!no_headless && tests_queue.length > 0) {
+    if (tests_queue.length > 0) {
         await Promise.all(tests_queue);
     }
     status_bar.finish();
