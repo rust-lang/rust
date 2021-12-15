@@ -84,7 +84,7 @@ pub enum LocalsStateAtExit {
 }
 
 impl LocalsStateAtExit {
-    fn build(
+    fn build<'tcx>(
         locals_are_invalidated_at_exit: bool,
         body: &Body<'tcx>,
         move_data: &MoveData<'tcx>,

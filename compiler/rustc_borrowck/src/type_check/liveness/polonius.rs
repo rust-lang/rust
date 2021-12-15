@@ -53,7 +53,7 @@ impl UseFactsExtractor<'_> {
     }
 }
 
-impl Visitor<'tcx> for UseFactsExtractor<'_> {
+impl Visitor<'_> for UseFactsExtractor<'_> {
     fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
         match def_use::categorize(context) {
             Some(DefUse::Def) => self.insert_def(local, location),
@@ -63,7 +63,7 @@ impl Visitor<'tcx> for UseFactsExtractor<'_> {
         }
     }
 
-    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
+    fn visit_place(&mut self, place: &Place<'_>, context: PlaceContext, location: Location) {
         self.super_place(place, context, location);
         match context {
             PlaceContext::NonMutatingUse(_) => {
@@ -82,7 +82,7 @@ impl Visitor<'tcx> for UseFactsExtractor<'_> {
     }
 }
 
-pub(super) fn populate_access_facts(
+pub(super) fn populate_access_facts<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
     location_table: &LocationTable,
@@ -123,7 +123,7 @@ pub(super) fn populate_access_facts(
 
 // For every potentially drop()-touched region `region` in `local`'s type
 // (`kind`), emit a Polonius `use_of_var_derefs_origin(local, origin)` fact.
-pub(super) fn add_drop_of_var_derefs_origin(
+pub(super) fn add_drop_of_var_derefs_origin<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     local: Local,
     kind: &GenericArg<'tcx>,
