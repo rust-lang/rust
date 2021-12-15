@@ -88,4 +88,18 @@ fn test_bool_to_option() {
     assert_eq!(true.then_some(0), Some(0));
     assert_eq!(false.then(|| 0), None);
     assert_eq!(true.then(|| 0), Some(0));
+
+    const fn zero() -> i32 {
+        0
+    }
+
+    const A: Option<i32> = false.then_some(0);
+    const B: Option<i32> = true.then_some(0);
+    const C: Option<i32> = false.then(zero);
+    const D: Option<i32> = true.then(zero);
+
+    assert_eq!(A, None);
+    assert_eq!(B, Some(0));
+    assert_eq!(C, None);
+    assert_eq!(D, Some(0));
 }
