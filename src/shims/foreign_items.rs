@@ -176,7 +176,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         if let Some((original_instance, original_cnum)) = instance_and_crate {
                             // Make sure we are consistent wrt what is 'first' and 'second'.
                             let original_span = tcx.def_span(original_instance.def_id()).data();
-                            let span =  tcx.def_span(def_id).data();
+                            let span = tcx.def_span(def_id).data();
                             if original_span < span {
                                 throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
                                     link_name,
