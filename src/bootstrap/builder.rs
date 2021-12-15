@@ -107,6 +107,18 @@ struct StepDescription {
     name: &'static str,
 }
 
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
+pub struct TaskPath {
+    pub path: PathBuf,
+    pub module: Option<String>,
+}
+
+impl TaskPath {
+    pub fn parse(path: impl Into<PathBuf>) -> TaskPath {
+        TaskPath { path: path.into(), module: None }
+    }
+}
+
 /// Collection of paths used to match a task rule.
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub enum PathSet {
@@ -115,14 +127,14 @@ pub enum PathSet {
     /// These are generally matched as a path suffix. For example, a
     /// command-line value of `libstd` will match if `src/libstd` is in the
     /// set.
-    Set(BTreeSet<PathBuf>),
+    Set(BTreeSet<TaskPath>),
     /// A "suite" of paths.
     ///
     /// These can match as a path suffix (like `Set`), or as a prefix. For
     /// example, a command-line value of `src/test/ui/abi/variadic-ffi.rs`
     /// will match `src/test/ui`. A command-line value of `ui` would also
     /// match `src/test/ui`.
-    Suite(PathBuf),
+    Suite(TaskPath),
 }
 
 impl PathSet {
@@ -132,21 +144,23 @@ impl PathSet {
 
     fn one<P: Into<PathBuf>>(path: P) -> PathSet {
         let mut set = BTreeSet::new();
-        set.insert(path.into());
+        set.insert(TaskPath::parse(path));
         PathSet::Set(set)
     }
 
     fn has(&self, needle: &Path) -> bool {
         match self {
-            PathSet::Set(set) => set.iter().any(|p| p.ends_with(needle)),
-            PathSet::Suite(suite) => suite.ends_with(needle),
+            PathSet::Set(set) => set.iter().any(|p| p.path.ends_with(needle)),
+            PathSet::Suite(suite) => suite.path.ends_with(needle),
         }
     }
 
     fn path(&self, builder: &Builder<'_>) -> PathBuf {
         match self {
-            PathSet::Set(set) => set.iter().next().unwrap_or(&builder.build.src).to_path_buf(),
-            PathSet::Suite(path) => PathBuf::from(path),
+            PathSet::Set(set) => {
+                set.iter().next().map(|p| &p.path).unwrap_or(&builder.build.src).clone()
+            }
+            PathSet::Suite(path) => path.path.clone(),
         }
     }
 }
@@ -293,7 +307,7 @@ impl<'a> ShouldRun<'a> {
         let mut set = BTreeSet::new();
         for krate in self.builder.in_tree_crates(name, None) {
             let path = krate.local_path(self.builder);
-            set.insert(path);
+            set.insert(TaskPath::parse(path));
         }
         self.paths.insert(PathSet::Set(set));
         self
@@ -318,19 +332,19 @@ impl<'a> ShouldRun<'a> {
 
     // multiple aliases for the same job
     pub fn paths(mut self, paths: &[&str]) -> Self {
-        self.paths.insert(PathSet::Set(paths.iter().map(PathBuf::from).collect()));
+        self.paths.insert(PathSet::Set(paths.iter().map(|p| TaskPath::parse(p)).collect()));
         self
     }
 
     pub fn is_suite_path(&self, path: &Path) -> Option<&PathSet> {
         self.paths.iter().find(|pathset| match pathset {
-            PathSet::Suite(p) => path.starts_with(p),
+            PathSet::Suite(p) => path.starts_with(&p.path),
             PathSet::Set(_) => false,
         })
     }
 
     pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths.insert(PathSet::Suite(PathBuf::from(suite)));
+        self.paths.insert(PathSet::Suite(TaskPath::parse(suite)));
         self
     }
 
@@ -552,11 +566,11 @@ impl<'a> Builder<'a> {
             match pathset {
                 PathSet::Set(set) => {
                     for path in set {
-                        add_path(&path);
+                        add_path(&path.path);
                     }
                 }
                 PathSet::Suite(path) => {
-                    add_path(&path.join("..."));
+                    add_path(&path.path.join("..."));
                 }
             }
         }
@@ -1648,7 +1662,7 @@ impl<'a> Builder<'a> {
 
         for path in &self.paths {
             if should_run.paths.iter().any(|s| s.has(path))
-                && !desc.is_excluded(self, &PathSet::Suite(path.clone()))
+                && !desc.is_excluded(self, &PathSet::Suite(TaskPath::parse(path)))
             {
                 return true;
             }
