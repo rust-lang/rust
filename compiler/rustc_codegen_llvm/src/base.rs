@@ -82,7 +82,7 @@ pub fn compile_codegen_unit(
             &[cgu_name.to_string(), cgu.size_estimate().to_string()],
         );
         // Instantiate monomorphizations without filling out definitions yet...
-        let llvm_module = ModuleLlvm::new(tcx, &cgu_name.as_str());
+        let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
         {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
@@ -146,7 +146,7 @@ pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
         None => return,
     };
     unsafe {
-        let buf = SmallCStr::new(&sect.as_str());
+        let buf = SmallCStr::new(sect.as_str());
         llvm::LLVMSetSection(llval, buf.as_ptr());
     }
 }

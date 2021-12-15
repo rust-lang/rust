@@ -324,7 +324,7 @@ pub fn configure_and_expand(
         let crate_attrs = krate.attrs.clone();
         let extern_mod_loaded = |ident: Ident, attrs, items, span| {
             let krate = ast::Crate { attrs, items, span, is_placeholder: None };
-            pre_expansion_lint(sess, lint_store, &krate, &crate_attrs, &ident.name.as_str());
+            pre_expansion_lint(sess, lint_store, &krate, &crate_attrs, ident.name.as_str());
             (krate.attrs, krate.items)
         };
         let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&extern_mod_loaded));
@@ -631,7 +631,7 @@ fn write_out_deps(
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.parse_sess.file_depinfo.borrow();
         let extra_tracked_files = file_depinfo.iter().map(|path_sym| {
-            let path = PathBuf::from(&*path_sym.as_str());
+            let path = PathBuf::from(path_sym.as_str());
             let file = FileName::from(path);
             escape_dep_filename(&file.prefer_local().to_string())
         });

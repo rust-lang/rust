@@ -338,7 +338,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn work_product_id(&self) -> WorkProductId {
-        WorkProductId::from_cgu_name(&self.name().as_str())
+        WorkProductId::from_cgu_name(self.name().as_str())
     }
 
     pub fn work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
@@ -470,7 +470,7 @@ impl CodegenUnitNameBuilder<'tcx> {
         if self.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
             cgu_name
         } else {
-            Symbol::intern(&CodegenUnit::mangle_name(&cgu_name.as_str()))
+            Symbol::intern(&CodegenUnit::mangle_name(cgu_name.as_str()))
         }
     }
 

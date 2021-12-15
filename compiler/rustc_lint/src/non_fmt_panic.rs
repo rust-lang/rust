@@ -71,7 +71,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
     if let hir::ExprKind::Lit(lit) = &arg.kind {
         if let ast::LitKind::Str(sym, _) = lit.node {
             // The argument is a string literal.
-            check_panic_str(cx, f, arg, &sym.as_str());
+            check_panic_str(cx, f, arg, sym.as_str());
             return;
         }
     }

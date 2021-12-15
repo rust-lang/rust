@@ -640,9 +640,9 @@ fn short_item_info(
         // We display deprecation messages for #[deprecated] and #[rustc_deprecated]
         // but only display the future-deprecation messages for #[rustc_deprecated].
         let mut message = if let Some(since) = since {
-            let since = &since.as_str();
+            let since = since.as_str();
             if !stability::deprecation_in_effect(&depr) {
-                if *since == "TBD" {
+                if since == "TBD" {
                     String::from("Deprecating in a future Rust version")
                 } else {
                     format!("Deprecating in {}", Escape(since))
@@ -658,7 +658,7 @@ fn short_item_info(
             let note = note.as_str();
             let mut ids = cx.id_map.borrow_mut();
             let html = MarkdownHtml(
-                &note,
+                note,
                 &mut ids,
                 error_codes,
                 cx.shared.edition(),
@@ -683,7 +683,7 @@ fn short_item_info(
         let mut message =
             "<span class=\"emoji\">🔬</span> This is a nightly-only experimental API.".to_owned();
 
-        let mut feature = format!("<code>{}</code>", Escape(&feature.as_str()));
+        let mut feature = format!("<code>{}</code>", Escape(feature.as_str()));
         if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue) {
             feature.push_str(&format!(
                 "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",

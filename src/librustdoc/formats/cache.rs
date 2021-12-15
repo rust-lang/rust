@@ -150,8 +150,7 @@ impl Cache {
 
             let name = e.name(tcx);
             let render_options = &cx.render_options;
-            let extern_url =
-                render_options.extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
+            let extern_url = render_options.extern_html_root_urls.get(name.as_str()).map(|u| &**u);
             let extern_url_takes_precedence = render_options.extern_html_root_takes_precedence;
             let dst = &render_options.output;
             let location = e.location(extern_url, extern_url_takes_precedence, dst, tcx);

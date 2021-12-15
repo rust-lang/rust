@@ -298,43 +298,43 @@ impl InlineAsmReg {
         let name = name.as_str();
         Ok(match arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
-                Self::X86(X86InlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::X86(X86InlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::Arm => {
-                Self::Arm(ArmInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::Arm(ArmInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::AArch64 => {
-                Self::AArch64(AArch64InlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::AArch64(AArch64InlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
-                Self::RiscV(RiscVInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::RiscV(RiscVInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::Nvptx64 => {
-                Self::Nvptx(NvptxInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::Nvptx(NvptxInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
-                Self::PowerPC(PowerPCInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::PowerPC(PowerPCInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::Hexagon => {
-                Self::Hexagon(HexagonInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::Hexagon(HexagonInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
-                Self::Mips(MipsInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::Mips(MipsInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::S390x => {
-                Self::S390x(S390xInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::S390x(S390xInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::SpirV => {
-                Self::SpirV(SpirVInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::SpirV(SpirVInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
-                Self::Wasm(WasmInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::Wasm(WasmInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::Bpf => {
-                Self::Bpf(BpfInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::Bpf(BpfInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
             InlineAsmArch::Avr => {
-                Self::Avr(AvrInlineAsmReg::parse(arch, has_feature, target, &name)?)
+                Self::Avr(AvrInlineAsmReg::parse(arch, has_feature, target, name)?)
             }
         })
     }
@@ -798,7 +798,7 @@ impl InlineAsmClobberAbi {
         target: &Target,
         name: Symbol,
     ) -> Result<Self, &'static [&'static str]> {
-        let name = &*name.as_str();
+        let name = name.as_str();
         match arch {
             InlineAsmArch::X86 => match name {
                 "C" | "system" | "efiapi" | "cdecl" | "stdcall" | "fastcall" => {

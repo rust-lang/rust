@@ -124,7 +124,7 @@ impl AssertModuleSource<'tcx> {
 
         debug!("mapping '{}' to cgu name '{}'", self.field(attr, sym::module), cgu_name);
 
-        if !self.available_cgus.contains(&*cgu_name.as_str()) {
+        if !self.available_cgus.contains(cgu_name.as_str()) {
             self.tcx.sess.span_err(
                 attr.span,
                 &format!(

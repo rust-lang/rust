@@ -1033,7 +1033,7 @@ pub fn compile_unit_metadata(
 ) -> &'ll DIDescriptor {
     let mut name_in_debuginfo = match tcx.sess.local_crate_source_file {
         Some(ref path) => path.clone(),
-        None => PathBuf::from(&*tcx.crate_name(LOCAL_CRATE).as_str()),
+        None => PathBuf::from(tcx.crate_name(LOCAL_CRATE).as_str()),
     };
 
     // The OSX linker has an idiosyncrasy where it will ignore some debuginfo
@@ -1353,7 +1353,7 @@ fn closure_saved_names_of_captured_variables(tcx: TyCtxt<'tcx>, def_id: DefId) -
                 _ => return None,
             };
             let prefix = if is_ref { "_ref__" } else { "" };
-            Some(prefix.to_owned() + &var.name.as_str())
+            Some(prefix.to_owned() + var.name.as_str())
         })
         .collect::<Vec<_>>()
 }
@@ -2421,7 +2421,7 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> &'ll DIAr
                             cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                         let actual_type_metadata =
                             type_metadata(cx, actual_type, rustc_span::DUMMY_SP);
-                        let name = &name.as_str();
+                        let name = name.as_str();
                         Some(unsafe {
                             Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                                 DIB(cx),

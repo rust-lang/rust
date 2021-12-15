@@ -693,7 +693,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             intravisit::FnKind::Method(id, _, _) => id.name,
             intravisit::FnKind::Closure => sym::closure,
         };
-        let name: &str = name.as_str();
+        let name = name.as_str();
         let span = span!(Level::DEBUG, "visit_fn", name);
         let _enter = span.enter();
         match fk {

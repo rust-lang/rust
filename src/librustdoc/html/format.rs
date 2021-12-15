@@ -173,7 +173,7 @@ impl clean::GenericParamDef {
                 Ok(())
             }
             clean::GenericParamDefKind::Type { bounds, default, .. } => {
-                f.write_str(&*self.name.as_str())?;
+                f.write_str(self.name.as_str())?;
 
                 if !bounds.is_empty() {
                     if f.alternate() {
@@ -637,7 +637,7 @@ fn resolved_path<'cx>(
                 last.name.to_string()
             }
         } else {
-            anchor(did, &*last.name.as_str(), cx).to_string()
+            anchor(did, last.name.as_str(), cx).to_string()
         };
         write!(w, "{}{}", path, last.args.print(cx))?;
     }
@@ -772,7 +772,7 @@ fn fmt_type<'cx>(
         clean::Primitive(clean::PrimitiveType::Never) => {
             primitive_link(f, PrimitiveType::Never, "!", cx)
         }
-        clean::Primitive(prim) => primitive_link(f, prim, &*prim.as_sym().as_str(), cx),
+        clean::Primitive(prim) => primitive_link(f, prim, prim.as_sym().as_str(), cx),
         clean::BareFunction(ref decl) => {
             if f.alternate() {
                 write!(
@@ -1268,7 +1268,7 @@ impl clean::Visibility {
                     debug!("path={:?}", path);
                     // modified from `resolved_path()` to work with `DefPathData`
                     let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                    let anchor = anchor(vis_did, &last_name.as_str(), cx).to_string();
+                    let anchor = anchor(vis_did, last_name.as_str(), cx).to_string();
 
                     let mut s = "pub(in ".to_owned();
                     for seg in &path.data[..path.data.len() - 1] {
@@ -1417,7 +1417,7 @@ impl clean::TypeBinding {
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
-            f.write_str(&*self.name.as_str())?;
+            f.write_str(self.name.as_str())?;
             match self.kind {
                 clean::TypeBindingKind::Equality { ref ty } => {
                     if f.alternate() {

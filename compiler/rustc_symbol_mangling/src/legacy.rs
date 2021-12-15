@@ -255,7 +255,7 @@ impl Printer<'tcx> for &mut SymbolPrinter<'tcx> {
     }
 
     fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
-        self.write_str(&self.tcx.crate_name(cnum).as_str())?;
+        self.write_str(self.tcx.crate_name(cnum).as_str())?;
         Ok(self)
     }
     fn path_qualified(

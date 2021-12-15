@@ -206,7 +206,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             {
                 let local_info = &self.body.local_decls[local].local_info;
                 if let Some(box LocalInfo::StaticRef { def_id, .. }) = *local_info {
-                    buf.push_str(&self.infcx.tcx.item_name(def_id).as_str());
+                    buf.push_str(self.infcx.tcx.item_name(def_id).as_str());
                 } else {
                     unreachable!();
                 }
@@ -318,7 +318,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let decl = &self.body.local_decls[local];
         match self.local_names[local] {
             Some(name) if !decl.from_compiler_desugaring() => {
-                buf.push_str(&name.as_str());
+                buf.push_str(name.as_str());
                 Ok(())
             }
             _ => Err(()),

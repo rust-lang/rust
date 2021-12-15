@@ -315,7 +315,7 @@ impl<'a> CrateLocator<'a> {
             exact_paths: if hash.is_none() {
                 sess.opts
                     .externs
-                    .get(&crate_name.as_str())
+                    .get(crate_name.as_str())
                     .into_iter()
                     .filter_map(|entry| entry.files())
                     .flatten()
@@ -1175,7 +1175,7 @@ impl CrateError {
                     } else if crate_name
                         == Symbol::intern(&sess.opts.debugging_opts.profiler_runtime)
                     {
-                        err.note(&"the compiler may have been built without the profiler runtime");
+                        err.note("the compiler may have been built without the profiler runtime");
                     } else if crate_name.as_str().starts_with("rustc_") {
                         err.help(
                             "maybe you need to install the missing components with: \

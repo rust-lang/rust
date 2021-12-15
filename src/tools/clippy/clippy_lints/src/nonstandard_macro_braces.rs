@@ -104,7 +104,7 @@ fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a Mac
     };
     if_chain! {
         if let ExpnKind::Macro(MacroKind::Bang, mac_name) = span.ctxt().outer_expn_data().kind;
-        let name = &*mac_name.as_str();
+        let name = mac_name.as_str();
         if let Some(braces) = mac_braces.macro_braces.get(name);
         if let Some(snip) = snippet_opt(cx, span.ctxt().outer_expn_data().call_site);
         // we must check only invocation sites

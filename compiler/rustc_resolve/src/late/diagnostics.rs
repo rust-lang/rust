@@ -2340,7 +2340,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         _ => None,
                     });
                 }
-                suggest_existing(err, &name.as_str()[..], suggs);
+                suggest_existing(err, name.as_str(), suggs);
             }
             [] => {
                 let mut suggs = Vec::new();

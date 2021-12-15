@@ -154,7 +154,7 @@ impl<'s> LintLevelsBuilder<'s> {
                         LintLevelSource::Node(_, forbid_source_span, reason) => {
                             diag_builder.span_label(forbid_source_span, "`forbid` level set here");
                             if let Some(rationale) = reason {
-                                diag_builder.note(&rationale.as_str());
+                                diag_builder.note(rationale.as_str());
                             }
                         }
                         LintLevelSource::CommandLine(_, _) => {

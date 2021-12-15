@@ -696,7 +696,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
             let recv_ty = cx.typeck_results().expr_ty(&args[0]);
 
             if recv_ty.is_floating_point() {
-                match &*path.ident.name.as_str() {
+                match path.ident.name.as_str() {
                     "ln" => check_ln1p(cx, expr, args),
                     "log" => check_log_base(cx, expr, args),
                     "powf" => check_powf(cx, expr, args),

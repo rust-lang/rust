@@ -313,7 +313,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         let mut err = lint.build(&msg);
                         // check for #[must_use = "..."]
                         if let Some(note) = attr.value_str() {
-                            err.note(&note.as_str());
+                            err.note(note.as_str());
                         }
                         err.emit();
                     });

@@ -60,7 +60,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) 
 
     if let Some(ref s) = sess.opts.crate_name {
         if let Some((attr, name)) = attr_crate_name {
-            if name.as_str() != *s {
+            if name.as_str() != s {
                 let msg = format!(
                     "`--crate-name` and `#[crate_name]` are \
                                    required to match, but `{}` != `{}`",

@@ -1464,7 +1464,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         if name == kw::Empty {
             return None;
         }
-        let name: &str = &name.as_str();
+        let name = name.as_str();
         if name.as_bytes()[0] == b'_' {
             return None;
         }

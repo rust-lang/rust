@@ -173,7 +173,7 @@ impl DisambiguatedDefPathData {
                 if verbose && self.disambiguator != 0 {
                     write!(writer, "{}#{}", name, self.disambiguator)
                 } else {
-                    writer.write_str(&name.as_str())
+                    writer.write_str(name.as_str())
                 }
             }
             DefPathDataName::Anon { namespace } => {
@@ -494,7 +494,7 @@ impl DefPathData {
 impl fmt::Display for DefPathData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.name() {
-            DefPathDataName::Named(name) => f.write_str(&name.as_str()),
+            DefPathDataName::Named(name) => f.write_str(name.as_str()),
             // FIXME(#70334): this will generate legacy {{closure}}, {{impl}}, etc
             DefPathDataName::Anon { namespace } => write!(f, "{{{{{}}}}}", namespace),
         }

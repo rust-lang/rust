@@ -80,11 +80,11 @@ pub fn expand_env<'cx>(
     }
 
     let sp = cx.with_def_site_ctxt(sp);
-    let value = env::var(&*var.as_str()).ok().as_deref().map(Symbol::intern);
+    let value = env::var(var.as_str()).ok().as_deref().map(Symbol::intern);
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
-            cx.span_err(sp, &msg.as_str());
+            cx.span_err(sp, msg.as_str());
             return DummyResult::any(sp);
         }
         Some(value) => cx.expr_str(sp, value),

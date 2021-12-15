@@ -371,9 +371,9 @@ impl EarlyLintPass for Write {
 /// Return this and a boolean indicating whether it only consisted of a newline.
 fn newline_span(fmtstr: &StrLit) -> (Span, bool) {
     let sp = fmtstr.span;
-    let contents = &fmtstr.symbol.as_str();
+    let contents = fmtstr.symbol.as_str();
 
-    if *contents == r"\n" {
+    if contents == r"\n" {
         return (sp, true);
     }
 
@@ -484,7 +484,7 @@ impl Write {
             StrStyle::Raw(n) => Some(n as usize),
         };
 
-        let mut parser = Parser::new(&str_sym, style, snippet_opt(cx, str_lit.span), false, ParseMode::Format);
+        let mut parser = Parser::new(str_sym, style, snippet_opt(cx, str_lit.span), false, ParseMode::Format);
         let mut args = SimpleFormatArgs::default();
 
         while let Some(arg) = parser.next() {
@@ -589,7 +589,7 @@ impl Write {
                     lit.token.symbol.as_str().replace('{', "{{").replace('}', "}}")
                 },
                 LitKind::StrRaw(_) | LitKind::Str | LitKind::ByteStrRaw(_) | LitKind::ByteStr => continue,
-                LitKind::Byte | LitKind::Char => match &*lit.token.symbol.as_str() {
+                LitKind::Byte | LitKind::Char => match lit.token.symbol.as_str() {
                     "\"" if matches!(fmtstr.style, StrStyle::Cooked) => "\\\"",
                     "\"" if matches!(fmtstr.style, StrStyle::Raw(0)) => continue,
                     "\\\\" if matches!(fmtstr.style, StrStyle::Raw(_)) => "\\",
@@ -671,7 +671,7 @@ fn check_newlines(fmtstr: &StrLit) -> bool {
     let mut last_was_cr = false;
     let mut should_lint = false;
 
-    let contents = &fmtstr.symbol.as_str();
+    let contents = fmtstr.symbol.as_str();
 
     let mut cb = |r: Range<usize>, c: Result<char, EscapeError>| {
         let c = c.unwrap();

@@ -201,7 +201,7 @@ impl ExternalCrate {
         // See if there's documentation generated into the local directory
         // WARNING: since rustdoc creates these directories as it generates documentation, this check is only accurate before rendering starts.
         // Make sure to call `location()` by that time.
-        let local_location = dst.join(&*self.name(tcx).as_str());
+        let local_location = dst.join(self.name(tcx).as_str());
         if local_location.is_dir() {
             return Local;
         }

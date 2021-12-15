@@ -303,7 +303,7 @@ pub trait PrettyPrinter<'tcx>:
         match self.tcx().trimmed_def_paths(()).get(&def_id) {
             None => Ok((self, false)),
             Some(symbol) => {
-                self.write_str(&symbol.as_str())?;
+                self.write_str(symbol.as_str())?;
                 Ok((self, true))
             }
         }
