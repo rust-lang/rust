@@ -73,7 +73,7 @@ pub struct ReentrantMutex {
 unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
 
-// Reentrant mutexes are similarly implemented to mutexs above except that
+// Reentrant mutexes are similarly implemented to mutexes above except that
 // instead of "1" meaning unlocked we use the id of a thread to represent
 // whether it has locked a mutex. That way we have an atomic counter which
 // always holds the id of the thread that currently holds the lock (or 0 if the
@@ -96,7 +96,7 @@ impl ReentrantMutex {
     pub unsafe fn lock(&self) {
         let me = thread::my_id();
         while let Err(owner) = self._try_lock(me) {
-            // SAFETY: the caller must gurantee that `self.ptr()` and `owner` are valid i32.
+            // SAFETY: the caller must guarantee that `self.ptr()` and `owner` are valid i32.
             let val = unsafe { wasm32::memory_atomic_wait32(self.ptr(), owner as i32, -1) };
             debug_assert!(val == 0 || val == 1);
         }
@@ -136,7 +136,7 @@ impl ReentrantMutex {
         match *self.recursions.get() {
             0 => {
                 self.owner.swap(0, SeqCst);
-                // SAFETY: the caller must gurantee that `self.ptr()` is valid i32.
+                // SAFETY: the caller must guarantee that `self.ptr()` is valid i32.
                 unsafe {
                     wasm32::memory_atomic_notify(self.ptr() as *mut i32, 1);
                 } // wake up one waiter, if any

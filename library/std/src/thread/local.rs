@@ -582,7 +582,7 @@ pub mod fast {
             Key { inner: LazyKeyInner::new(), dtor_state: Cell::new(DtorState::Unregistered) }
         }
 
-        // note that this is just a publically-callable function only for the
+        // note that this is just a publicly-callable function only for the
         // const-initialized form of thread locals, basically a way to call the
         // free `register_dtor` function defined elsewhere in libstd.
         pub unsafe fn register_dtor(a: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
@@ -593,7 +593,7 @@ pub mod fast {
 
         pub unsafe fn get<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
             // SAFETY: See the definitions of `LazyKeyInner::get` and
-            // `try_initialize` for more informations.
+            // `try_initialize` for more information.
             //
             // The caller must ensure no mutable references are ever active to
             // the inner cell or the inner T when this is called.

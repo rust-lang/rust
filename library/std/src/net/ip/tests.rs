@@ -749,7 +749,7 @@ fn ipv4_from_constructors() {
 }
 
 #[test]
-fn ipv6_from_contructors() {
+fn ipv6_from_constructors() {
     assert_eq!(Ipv6Addr::LOCALHOST, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     assert!(Ipv6Addr::LOCALHOST.is_loopback());
     assert_eq!(Ipv6Addr::UNSPECIFIED, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));

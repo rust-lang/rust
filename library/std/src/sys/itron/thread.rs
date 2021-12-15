@@ -126,7 +126,7 @@ impl Thread {
                     // In this case, `inner`'s ownership has been moved to us,
                     // And we are responsible for dropping it. The acquire
                     // ordering is not necessary because the parent thread made
-                    // no memory acccess needing synchronization since the call
+                    // no memory access needing synchronization since the call
                     // to `acre_tsk`.
                     // Safety: See above.
                     let _ = unsafe { Box::from_raw(inner as *const _ as *mut ThreadInner) };
@@ -264,7 +264,7 @@ impl Drop for Thread {
                 // one will ever join it.
                 // The ownership of `self.inner` is moved to the child thread.
                 // However, the release ordering is not necessary because we
-                // made no memory acccess needing synchronization since the call
+                // made no memory access needing synchronization since the call
                 // to `acre_tsk`.
             }
             LIFECYCLE_FINISHED => {

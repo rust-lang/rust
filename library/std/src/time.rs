@@ -273,7 +273,7 @@ impl Instant {
         // While issues have been seen on arm64 platforms the Arm architecture
         // requires that the counter monotonically increases and that it must
         // provide a uniform view of system time (e.g. it must not be possible
-        // for a core to recieve a message from another core with a time stamp
+        // for a core to receive a message from another core with a time stamp
         // and observe time going backwards (ARM DDI 0487G.b D11.1.2). While
         // there have been a few 64bit SoCs that have bugs which cause time to
         // not monoticially increase, these have been fixed in the Linux kernel
