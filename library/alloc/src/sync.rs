@@ -961,11 +961,7 @@ impl<T: ?Sized> Arc<T> {
         let cnt = this.inner().weak.load(SeqCst);
         // If the weak count is currently locked, the value of the
         // count was 0 just before taking the lock.
-        if cnt == usize::MAX {
-            0
-        } else {
-            cnt - 1
-        }
+        if cnt == usize::MAX { 0 } else { cnt - 1 }
     }
 
     /// Gets the number of strong (`Arc`) pointers to this allocation.
@@ -1218,7 +1214,10 @@ impl<T> Arc<[T]> {
     /// Tries to allocate an `ArcInner<[T]>` with the given length.
     unsafe fn try_allocate_for_slice(len: usize) -> Result<*mut ArcInner<[T]>, TryReserveError> {
         unsafe {
-            let layout = Layout::array::<T>(len)?;
+            let layout = match Layout::array::<T>(len) {
+                Ok(layout) => layout,
+                Err(_) => return Err(TryReserveError::from(TryReserveErrorKind::CapacityOverflow)),
+            };
             Self::try_allocate_for_layout(
                 layout,
                 |l| Global.allocate(l),
@@ -1947,11 +1946,7 @@ impl<T: ?Sized> Weak<T> {
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() {
-            inner.strong.load(SeqCst)
-        } else {
-            0
-        }
+        if let Some(inner) = self.inner() { inner.strong.load(SeqCst) } else { 0 }
     }
 
     /// Gets an approximation of the number of `Weak` pointers pointing to this

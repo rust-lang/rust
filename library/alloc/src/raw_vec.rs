@@ -183,14 +183,6 @@ impl<T, A: Allocator> RawVec<T, A> {
         Self::try_allocate_in(capacity, AllocInit::Zeroed, alloc)
     }
 
-    /// Converts a `Box<[T]>` into a `RawVec<T>`.
-    pub fn from_box(slice: Box<[T], A>) -> Self {
-        unsafe {
-            let (slice, alloc) = Box::into_raw_with_allocator(slice);
-            RawVec::from_raw_parts_in(slice.as_mut_ptr(), slice.len(), alloc)
-        }
-    }
-
     /// Converts the entire buffer into `Box<[MaybeUninit<T>]>` with the specified `len`.
     ///
     /// Note that this will correctly reconstitute any `cap` changes
@@ -235,7 +227,10 @@ impl<T, A: Allocator> RawVec<T, A> {
         } else {
             // We avoid `unwrap_or_else` here because it bloats the amount of
             // LLVM IR generated.
-            let layout = Layout::array::<T>(capacity)?;
+            let layout = match Layout::array::<T>(capacity) {
+                Ok(layout) => layout,
+                Err(_) => return Err(TryReserveError::from(CapacityOverflow)),
+            };
             alloc_guard(layout.size())?;
             let result = match init {
                 AllocInit::Uninitialized => alloc.allocate(layout),
@@ -244,7 +239,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             let ptr = match result {
                 Ok(ptr) => ptr,
                 Err(_) => {
-                    return Err(TryReserveError::from(AllocError { layout, non_exhaustive: () }))
+                    return Err(TryReserveError::from(AllocError { layout, non_exhaustive: () }));
                 }
             };
 
@@ -284,11 +279,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// This will always be `usize::MAX` if `T` is zero-sized.
     #[inline(always)]
     pub fn capacity(&self) -> usize {
-        if mem::size_of::<T>() == 0 {
-            usize::MAX
-        } else {
-            self.cap
-        }
+        if mem::size_of::<T>() == 0 { usize::MAX } else { self.cap }
     }
 
     /// Returns a shared reference to the allocator backing this `RawVec`.
@@ -396,11 +387,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         len: usize,
         additional: usize,
     ) -> Result<(), TryReserveError> {
-        if self.needs_to_grow(len, additional) {
-            self.grow_exact(len, additional)
-        } else {
-            Ok(())
-        }
+        if self.needs_to_grow(len, additional) { self.grow_exact(len, additional) } else { Ok(()) }
     }
 
     /// Shrinks the allocation down to the specified amount. If the given amount
