@@ -1,6 +1,6 @@
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
-#![feature(destructuring_assignment)]
+#![cfg_attr(bootstrap, feature(destructuring_assignment))]
 #![feature(if_let_guard)]
 #![feature(let_else)]
 #![feature(proc_macro_diagnostic)]

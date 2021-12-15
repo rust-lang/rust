@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(destructuring_assignment)]
-
 #![warn(unused_assignments)]
 
 fn main() {

@@ -136,7 +136,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_trait_impl)]
-#![feature(destructuring_assignment)]
+#![cfg_attr(bootstrap, feature(destructuring_assignment))]
 #![feature(dropck_eyepatch)]
 #![feature(exclusive_range_pattern)]
 #![feature(fundamental)]
