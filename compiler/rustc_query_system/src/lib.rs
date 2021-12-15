@@ -2,7 +2,6 @@
 #![feature(bool_to_option)]
 #![feature(core_intrinsics)]
 #![feature(hash_raw_entry)]
-#![feature(iter_zip)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(extern_types)]

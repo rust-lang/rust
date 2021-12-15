@@ -97,6 +97,7 @@ pub trait CodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
+        outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported>;
 
     /// This is called on the returned `Box<dyn Any>` from `join_codegen`

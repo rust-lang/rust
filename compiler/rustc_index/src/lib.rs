@@ -1,7 +1,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(bench_black_box)]
 #![feature(extend_one)]
-#![feature(iter_zip)]
 #![feature(min_specialization)]
 #![feature(step_trait)]
 #![feature(test)]

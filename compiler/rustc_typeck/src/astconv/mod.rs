@@ -2340,7 +2340,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|_| tcx.ty_error())
             }
-            hir::TyKind::Path(hir::QPath::LangItem(lang_item, span)) => {
+            hir::TyKind::Path(hir::QPath::LangItem(lang_item, span, _)) => {
                 let def_id = tcx.require_lang_item(lang_item, Some(span));
                 let (substs, _) = self.create_substs_for_ast_path(
                     span,

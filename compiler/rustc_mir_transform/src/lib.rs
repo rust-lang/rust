@@ -1,7 +1,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
-#![feature(iter_zip)]
 #![feature(let_else)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]

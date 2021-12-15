@@ -740,7 +740,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_pat_path(
+    fn check_pat_path<'b>(
         &self,
         pat: &Pat<'_>,
         path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]),
@@ -816,7 +816,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
-    fn emit_bad_pat_path(
+    fn emit_bad_pat_path<'b>(
         &self,
         mut e: DiagnosticBuilder<'_>,
         pat_span: Span,

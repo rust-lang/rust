@@ -51,7 +51,6 @@
 #![feature(half_open_range_patterns)]
 #![feature(control_flow_enum)]
 #![feature(associated_type_defaults)]
-#![feature(iter_zip)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(try_reserve_kind)]

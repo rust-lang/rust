@@ -6,25 +6,20 @@ LL | fn foo(tx: std::sync::mpsc::Sender<i32>) -> impl Future + Send {
    |
    = help: the trait `Sync` is not implemented for `Sender<i32>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-70935-complex-spans.rs:13:9
+  --> $DIR/issue-70935-complex-spans.rs:15:11
    |
-LL | /         baz(|| async{
+LL |           baz(|| async{
+   |  _____________-
 LL | |             foo(tx.clone());
 LL | |         }).await;
-   | |________________^ first, await occurs here, with the value maybe used later...
+   | |         - ^^^^^^ await occurs here, with the value maybe used later
+   | |_________|
+   |           has type `[closure@$DIR/issue-70935-complex-spans.rs:13:13: 15:10]` which is not `Send`
 note: the value is later dropped here
   --> $DIR/issue-70935-complex-spans.rs:15:17
    |
 LL |         }).await;
    |                 ^
-note: this has type `[closure@$DIR/issue-70935-complex-spans.rs:13:13: 15:10]` which is not `Send`
-  --> $DIR/issue-70935-complex-spans.rs:13:13
-   |
-LL |           baz(|| async{
-   |  _____________^
-LL | |             foo(tx.clone());
-LL | |         }).await;
-   | |_________^
 
 error: aborting due to previous error
 

@@ -6,17 +6,17 @@ LL |     assert_send(async {
    |
    = help: within `impl Future<Output = [async output]>`, the trait `Send` is not implemented for `*const u8`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-65436-raw-ptr-not-send.rs:14:9
+  --> $DIR/issue-65436-raw-ptr-not-send.rs:14:35
    |
 LL |         bar(Foo(std::ptr::null())).await;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ first, await occurs here, with `std::ptr::null()` maybe used later...
+   |                 ----------------  ^^^^^^ await occurs here, with `std::ptr::null()` maybe used later
+   |                 |
+   |                 has type `*const u8` which is not `Send`
 note: `std::ptr::null()` is later dropped here
   --> $DIR/issue-65436-raw-ptr-not-send.rs:14:41
    |
 LL |         bar(Foo(std::ptr::null())).await;
-   |                 ----------------        ^
-   |                 |
-   |                 has type `*const u8` which is not `Send`
+   |                                         ^
 help: consider moving this into a `let` binding to create a shorter lived borrow
   --> $DIR/issue-65436-raw-ptr-not-send.rs:14:13
    |

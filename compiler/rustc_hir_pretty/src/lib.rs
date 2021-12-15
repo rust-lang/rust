@@ -1731,7 +1731,7 @@ impl<'a> State<'a> {
                     colons_before_params,
                 )
             }
-            hir::QPath::LangItem(lang_item, span) => {
+            hir::QPath::LangItem(lang_item, span, _) => {
                 self.word("#[lang = \"");
                 self.print_ident(Ident::new(lang_item.name(), span));
                 self.word("\"]");

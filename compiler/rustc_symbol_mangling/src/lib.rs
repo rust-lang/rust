@@ -91,7 +91,6 @@
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(in_band_lifetimes)]
-#![feature(iter_zip)]
 #![recursion_limit = "256"]
 
 #[macro_use]

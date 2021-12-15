@@ -6,12 +6,12 @@ LL |   fake_spawn(wrong_mutex());
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `MutexGuard<'_, i32>`
 note: future is not `Send` as this value is used across an await
-  --> $DIR/issue-71137.rs:14:5
+  --> $DIR/issue-71137.rs:14:25
    |
 LL |     let mut guard = m.lock().unwrap();
    |         --------- has type `MutexGuard<'_, i32>` which is not `Send`
 LL |     (async { "right"; }).await;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ await occurs here, with `mut guard` maybe used later
+   |                         ^^^^^^ await occurs here, with `mut guard` maybe used later
 LL |     *guard += 1;
 LL |   }
    |   - `mut guard` is later dropped here
