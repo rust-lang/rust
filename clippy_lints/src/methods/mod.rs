@@ -2154,7 +2154,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty().skip_binder();
                 wrong_self_convention::check(
                     cx,
-                    &item.ident.name.as_str(),
+                    item.ident.name.as_str(),
                     self_ty,
                     first_arg_ty,
                     first_arg_span,

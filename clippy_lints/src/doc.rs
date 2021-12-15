@@ -437,7 +437,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
 
     for attr in attrs {
         if let AttrKind::DocComment(comment_kind, comment) = attr.kind {
-            let (comment, current_spans) = strip_doc_comment_decoration(&comment.as_str(), comment_kind, attr.span);
+            let (comment, current_spans) = strip_doc_comment_decoration(comment.as_str(), comment_kind, attr.span);
             spans.extend_from_slice(&current_spans);
             doc.push_str(&comment);
         } else if attr.has_name(sym::doc) {
