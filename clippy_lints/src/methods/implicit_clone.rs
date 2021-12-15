@@ -32,6 +32,9 @@ pub fn check(cx: &LateContext<'_>, method_name: &str, expr: &hir::Expr<'_>, recv
 }
 
 /// Returns true if the named method can be used to clone the receiver.
+/// Note that `to_string` is not flagged by `implicit_clone`. So other lints that call
+/// `is_clone_like` and that do flag `to_string` must handle it separately. See, e.g.,
+/// `is_to_owned_like` in `unnecessary_to_owned.rs`.
 pub fn is_clone_like(cx: &LateContext<'_>, method_name: &str, method_def_id: hir::def_id::DefId) -> bool {
     match method_name {
         "to_os_string" => is_diag_item_method(cx, method_def_id, sym::OsStr),
