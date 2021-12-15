@@ -681,13 +681,13 @@ fn hir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<&'tcx rustc_hir::B
 }
 
 fn escape_html(s: &str) -> String {
-    s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
 }
 
 fn escape_attr(s: &str) -> String {
-    s.replace("&", "&amp;")
-        .replace("\"", "&quot;")
-        .replace("'", "&#39;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
+    s.replace('&', "&amp;")
+        .replace('\"', "&quot;")
+        .replace('\'', "&#39;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }

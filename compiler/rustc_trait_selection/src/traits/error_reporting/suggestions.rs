@@ -741,7 +741,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                     let msg = format!(
                         "the trait bound `{}: {}` is not satisfied",
-                        orig_ty.to_string(),
+                        orig_ty,
                         old_ref.print_only_trait_path(),
                     );
                     if has_custom_message {

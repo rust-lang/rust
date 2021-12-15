@@ -2226,8 +2226,8 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                     continue;
                 }
 
-                let canonical = f.replace("-", "_");
-                let canonical_name = name.replace("-", "_");
+                let canonical = f.replace('-', "_");
+                let canonical_name = name.replace('-', "_");
 
                 let is_rust_object =
                     canonical.starts_with(&canonical_name) && looks_like_rust_object_file(&f);
