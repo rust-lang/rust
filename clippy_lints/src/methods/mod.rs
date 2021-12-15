@@ -1999,8 +1999,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
             },
             hir::ExprKind::MethodCall(method_call, ref method_span, args, _) => {
-                or_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
-                expect_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
+                or_fun_call::check(cx, expr, *method_span, method_call.ident.as_str(), args);
+                expect_fun_call::check(cx, expr, *method_span, method_call.ident.as_str(), args);
                 clone_on_copy::check(cx, expr, method_call.ident.name, args);
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, args);
                 inefficient_to_string::check(cx, expr, method_call.ident.name, args);

@@ -1127,7 +1127,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
             if let CommonPrefixSearcher::Path(path_prefix) = path_prefix {
                 let mut s = String::new();
                 for seg in path_prefix {
-                    s.push_str(&seg.ident.as_str());
+                    s.push_str(seg.ident.as_str());
                     s.push_str("::");
                 }
                 s

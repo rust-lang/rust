@@ -599,7 +599,7 @@ fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>
             return method_name_a.as_str() == method_name_b.as_str() &&
                 args_a.len() == args_b.len() &&
                 (
-                    ["ln", "log2", "log10"].contains(&&*method_name_a.as_str()) ||
+                    ["ln", "log2", "log10"].contains(&method_name_a.as_str()) ||
                     method_name_a.as_str() == "log" && args_a.len() == 2 && eq_expr_value(cx, &args_a[1], &args_b[1])
                 );
         }
