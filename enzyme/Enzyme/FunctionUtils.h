@@ -52,7 +52,7 @@ public:
   llvm::FunctionAnalysisManager FAM;
   llvm::ModuleAnalysisManager MAM;
 
-  std::map<std::pair<llvm::Function *, bool>, llvm::Function *> cache;
+  std::map<std::pair<llvm::Function *, DerivativeMode>, llvm::Function *> cache;
   std::map<llvm::Function *, llvm::Function *> CloneOrigin;
 
   llvm::Function *preprocessForClone(llvm::Function *F, DerivativeMode mode);

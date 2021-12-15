@@ -247,8 +247,9 @@ IsFunctionRecursive(Function *F,
 static inline bool OnlyUsedInOMP(AllocaInst *AI) {
   bool ompUse = false;
   for (auto U : AI->users()) {
-    if (isa<StoreInst>(U))
-      continue;
+    if (auto SI = dyn_cast<StoreInst>(U))
+      if (SI->getPointerOperand() == AI)
+        continue;
     if (auto CI = dyn_cast<CallInst>(U)) {
       if (auto F = CI->getCalledFunction()) {
         if (F->getName() == "__kmpc_for_static_init_4" ||
@@ -873,12 +874,16 @@ PreProcessCache::getAAResultsFromFunction(llvm::Function *NewF) {
 Function *PreProcessCache::preprocessForClone(Function *F,
                                               DerivativeMode mode) {
 
+  if (mode == DerivativeMode::ReverseModeGradient)
+    mode = DerivativeMode::ReverseModePrimal;
+  if (mode == DerivativeMode::ForwardModeVector ||
+      mode == DerivativeMode::ForwardModeSplit)
+    mode = DerivativeMode::ForwardMode;
+
   // If we've already processed this, return the previous version
   // and derive aliasing information
-  if (cache.find(std::make_pair(
-          F, mode == DerivativeMode::ReverseModeCombined)) != cache.end()) {
-    Function *NewF =
-        cache[std::make_pair(F, mode == DerivativeMode::ReverseModeCombined)];
+  if (cache.find(std::make_pair(F, mode)) != cache.end()) {
+    Function *NewF = cache[std::make_pair(F, mode)];
     return NewF;
   }
 
@@ -1546,7 +1551,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
     llvm::errs() << *NewF << "\n";
     report_fatal_error("function failed verification (1)");
   }
-  cache[std::make_pair(F, mode == DerivativeMode::ReverseModeCombined)] = NewF;
+  cache[std::make_pair(F, mode)] = NewF;
   return NewF;
 }
 

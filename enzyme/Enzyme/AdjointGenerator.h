@@ -1530,12 +1530,24 @@ public:
              7) /
             8;
 
-      Type *flt = nullptr;
-      if (!gutils->isConstantValue(orig_inserted) &&
-          (flt = TR.intType(size0, orig_inserted).isFloat())) {
-        auto prediff = diffe(&IVI, Builder2);
-        auto dindex = Builder2.CreateExtractValue(prediff, IVI.getIndices());
-        addToDiffe(orig_inserted, dindex, Builder2, flt);
+      if (!gutils->isConstantValue(orig_inserted)) {
+        auto it =
+            TR.intType(size0, orig_inserted, /*errIfFalse*/ !looseTypeAnalysis);
+        Type *flt = it.isFloat();
+        if (!it.isKnown()) {
+          assert(looseTypeAnalysis);
+          if (orig_inserted->getType()->isFPOrFPVectorTy())
+            flt = orig_inserted->getType()->getScalarType();
+          else if (orig_inserted->getType()->isIntOrIntVectorTy())
+            flt = nullptr;
+          else
+            TR.intType(size0, orig_inserted);
+        }
+        if (flt) {
+          auto prediff = diffe(&IVI, Builder2);
+          auto dindex = Builder2.CreateExtractValue(prediff, IVI.getIndices());
+          addToDiffe(orig_inserted, dindex, Builder2, flt);
+        }
       }
 
       size_t size1 = 1;
