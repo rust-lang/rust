@@ -486,6 +486,8 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(more_fallible_allocation_methods)]
+    ///
     /// let mut vec = Vec::try_with_capacity(10).unwrap();
     ///
     /// // The vector contains no items, even though it has capacity for more
@@ -504,7 +506,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.len(), 11);
     /// assert!(vec.capacity() >= 11);
     ///
-    /// let mut result = Vec::try_with_capacity(usize::MAX);
+    /// let result = Vec::<isize>::try_with_capacity(usize::MAX);
     /// assert!(result.is_err());
     /// ```
     #[inline]
@@ -670,8 +672,10 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// ```
     /// #![feature(allocator_api)]
+    /// #![feature(more_fallible_allocation_methods)]
     ///
     /// use std::alloc::System;
+    /// use alloc::collections::TryReserveError;
     ///
     /// let mut vec = Vec::try_with_capacity_in(10, System).unwrap();
     ///
@@ -691,7 +695,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec.len(), 11);
     /// assert!(vec.capacity() >= 11);
     ///
-    /// let mut result = Vec::try_with_capacity_in(usize::MAX, System);
+    /// let result: Result<Vec<isize, System>, TryReserveError> = Vec::try_with_capacity_in(usize::MAX, System);
     /// assert!(result.is_err());
     /// ```
     #[inline]
@@ -1037,6 +1041,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(more_fallible_allocation_methods)]
+    ///
     /// let mut vec = Vec::with_capacity(10);
     /// vec.extend([1, 2, 3]);
     /// assert_eq!(vec.capacity(), 10);
@@ -1124,6 +1130,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(more_fallible_allocation_methods)]
+    ///
     /// let v = vec![1, 2, 3];
     ///
     /// let slice = v.try_into_boxed_slice().unwrap();
@@ -1132,6 +1140,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Any excess capacity is removed:
     ///
     /// ```
+    /// #![feature(more_fallible_allocation_methods)]
+    ///
     /// let mut vec = Vec::with_capacity(10);
     /// vec.extend([1, 2, 3]);
     ///
@@ -1882,6 +1892,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(more_fallible_allocation_methods)]
+    ///
     /// let mut vec = vec![1, 2];
     /// vec.try_push(3).unwrap();
     /// assert_eq!(vec, [1, 2, 3]);
@@ -2387,6 +2399,8 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(more_fallible_allocation_methods)]
+    ///
     /// let mut vec = vec!["hello"];
     /// vec.try_resize(3, "world").unwrap();
     /// assert_eq!(vec, ["hello", "world", "world"]);
@@ -2449,6 +2463,8 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(more_fallible_allocation_methods)]
+    ///
     /// let mut vec = vec![1];
     /// vec.try_extend_from_slice(&[2, 3, 4]).unwrap();
     /// assert_eq!(vec, [1, 2, 3, 4]);

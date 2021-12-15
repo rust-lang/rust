@@ -2515,9 +2515,11 @@ impl<T> Arc<[T]> {
     /// # Example
     ///
     /// ```
+    /// #![feature(more_fallible_allocation_methods)]
+    ///
     /// # use std::sync::Arc;
     /// let unique: Vec<i32> = vec![1, 2, 3];
-    /// let shared: Arc<[i32]> = Arc::try_from(unique).unwrap();
+    /// let shared: Arc<[i32]> = Arc::try_from_vec(unique).unwrap();
     /// assert_eq!(&[1, 2, 3], &shared[..]);
     /// ```
     #[unstable(feature = "more_fallible_allocation_methods", issue = "86942")]

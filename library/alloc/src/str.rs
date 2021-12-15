@@ -599,6 +599,8 @@ impl str {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(more_fallible_allocation_methods)]
+    ///
     /// let s: &str = "a";
     /// let ss: String = s.try_to_owned().unwrap();
     /// ```

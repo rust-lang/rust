@@ -534,6 +534,8 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(more_fallible_allocation_methods)]
+    ///
     /// let s = [10, 40, 30];
     /// let x = s.try_to_vec().unwrap();
     /// // Here, `s` and `x` can be modified independently.
@@ -577,6 +579,7 @@ impl<T> [T] {
     ///
     /// ```
     /// #![feature(allocator_api)]
+    /// #![feature(more_fallible_allocation_methods)]
     ///
     /// use std::alloc::System;
     ///
