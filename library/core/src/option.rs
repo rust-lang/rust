@@ -512,11 +512,11 @@ use crate::{
 #[rustc_diagnostic_item = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
-    /// No value
+    /// No value.
     #[lang = "None"]
     #[stable(feature = "rust1", since = "1.0.0")]
     None,
-    /// Some value `T`
+    /// Some value of type `T`.
     #[lang = "Some"]
     #[stable(feature = "rust1", since = "1.0.0")]
     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
