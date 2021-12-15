@@ -194,11 +194,12 @@ jobs:
     runs-on: macos-latest
     env:
       RA_TARGET: x86_64-apple-darwin
-      SELECT_XCODE: /Applications/Xcode_12.2.app
+#      SELECT_XCODE: /Applications/Xcode_12.2.app
 
     steps:
-    - name: Select XCode version
-      run: sudo xcode-select -s "${SELECT_XCODE}"
+# use the default (12.5.1 as of today)
+#    - name: Select XCode version
+#      run: sudo xcode-select -s "${SELECT_XCODE}"
 
     - name: Checkout repository
       uses: actions/checkout@v2
