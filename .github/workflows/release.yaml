@@ -2,6 +2,8 @@ name: release
 on:
   schedule:
   - cron: '0 0 * * *' # midnight UTC
+  
+  workflow_dispatch:
 
   push:
     branches:
