@@ -3,7 +3,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::is_present_in_source;
 use clippy_utils::str_utils::{self, count_match_end, count_match_start};
-use rustc_hir::{EnumDef, Item, ItemKind};
+use rustc_hir::{EnumDef, Item, ItemKind, Variant};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
@@ -115,50 +115,54 @@ impl EnumVariantNames {
 }
 
 impl_lint_pass!(EnumVariantNames => [
-    ENUM_VARIANT_NAMES,
-    MODULE_NAME_REPETITIONS,
-    MODULE_INCEPTION
+                ENUM_VARIANT_NAMES,
+                MODULE_NAME_REPETITIONS,
+                MODULE_INCEPTION
 ]);
 
-fn check_variant(
-    cx: &LateContext<'_>,
-    threshold: u64,
-    def: &EnumDef<'_>,
-    item_name: &str,
-    item_name_chars: usize,
-    span: Span,
-) {
+fn check_enum_start(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) {
+    let name = variant.ident.name.as_str();
+    let item_name_chars = item_name.chars().count();
+
+    if count_match_start(item_name, &name).char_count == item_name_chars
+        && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
+        && name.chars().nth(item_name_chars + 1).map_or(false, |c| !c.is_numeric())
+    {
+        span_lint(
+            cx,
+            ENUM_VARIANT_NAMES,
+            variant.span,
+            "variant name starts with the enum's name",
+        );
+    }
+}
+
+fn check_enum_end(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) {
+    let name = variant.ident.name.as_str();
+    let item_name_chars = item_name.chars().count();
+
+    if count_match_end(item_name, &name).char_count == item_name_chars {
+        span_lint(
+            cx,
+            ENUM_VARIANT_NAMES,
+            variant.span,
+            "variant name ends with the enum's name",
+        );
+    }
+}
+
+fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_name: &str, span: Span) {
     if (def.variants.len() as u64) < threshold {
         return;
     }
-    for var in def.variants {
-        let name = var.ident.name.as_str();
-        if count_match_start(item_name, &name).char_count == item_name_chars
-            && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
-            && name.chars().nth(item_name_chars + 1).map_or(false, |c| !c.is_numeric())
-        {
-            span_lint(
-                cx,
-                ENUM_VARIANT_NAMES,
-                var.span,
-                "variant name starts with the enum's name",
-            );
-        }
-        if count_match_end(item_name, &name).char_count == item_name_chars {
-            span_lint(
-                cx,
-                ENUM_VARIANT_NAMES,
-                var.span,
-                "variant name ends with the enum's name",
-            );
-        }
-    }
+
     let first = &def.variants[0].ident.name.as_str();
     let mut pre = &first[..str_utils::camel_case_until(&*first).byte_index];
     let mut post = &first[str_utils::camel_case_start(&*first).byte_index..];
     for var in def.variants {
+        check_enum_start(cx, item_name, var);
+        check_enum_end(cx, item_name, var);
         let name = var.ident.name.as_str();
-
         let pre_match = count_match_start(pre, &name).byte_count;
         pre = &pre[..pre_match];
         let pre_camel = str_utils::camel_case_until(pre).byte_index;
@@ -233,7 +237,6 @@ impl LateLintPass<'_> for EnumVariantNames {
     #[allow(clippy::similar_names)]
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         let item_name = item.ident.name.as_str();
-        let item_name_chars = item_name.chars().count();
         let item_camel = to_camel_case(&item_name);
         if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
             if let Some(&(ref mod_name, ref mod_camel)) = self.modules.last() {
@@ -283,7 +286,7 @@ impl LateLintPass<'_> for EnumVariantNames {
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
             if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.def_id)) {
-                check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span);
+                check_variant(cx, self.threshold, def, &item_name, item.span);
             }
         }
         self.modules.push((item.ident.name, item_camel));
