@@ -5,8 +5,13 @@ LL | type FooRet = impl std::fmt::Debug;
    |               -------------------- the found opaque type
 ...
 LL | type Foo = impl Iterator<Item = FooItem>;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `Option`, found opaque type
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<Bar as Iterator>::Item == Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
    |
+note: expected this to be `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
+  --> $DIR/issue-70877.rs:13:17
+   |
+LL |     type Item = FooItem;
+   |                 ^^^^^^^
    = note: expected struct `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
               found struct `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> impl Debug + 'static)>`
 
