@@ -33,7 +33,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             return value;
         }
 
-        let global = self.global_string(&*symbol.as_str());
+        let global = self.global_string(symbol.as_str());
 
         self.const_cstr_cache.borrow_mut().insert(symbol, global);
         global
