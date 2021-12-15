@@ -898,7 +898,7 @@ impl<T: ?Sized> RefCell<T> {
                 Ok(Ref { value: unsafe { &*self.value.get() }, borrow: b })
             }
             None => Err(BorrowError {
-                // If a borrow occured, then we must already have an outstanding borrow,
+                // If a borrow occurred, then we must already have an outstanding borrow,
                 // so `borrowed_at` will be `Some`
                 #[cfg(feature = "debug_refcell")]
                 location: self.borrowed_at.get().unwrap(),
@@ -983,7 +983,7 @@ impl<T: ?Sized> RefCell<T> {
                 Ok(RefMut { value: unsafe { &mut *self.value.get() }, borrow: b })
             }
             None => Err(BorrowMutError {
-                // If a borrow occured, then we must already have an outstanding borrow,
+                // If a borrow occurred, then we must already have an outstanding borrow,
                 // so `borrowed_at` will be `Some`
                 #[cfg(feature = "debug_refcell")]
                 location: self.borrowed_at.get().unwrap(),
@@ -1104,7 +1104,7 @@ impl<T: ?Sized> RefCell<T> {
             Ok(unsafe { &*self.value.get() })
         } else {
             Err(BorrowError {
-                // If a borrow occured, then we must already have an outstanding borrow,
+                // If a borrow occurred, then we must already have an outstanding borrow,
                 // so `borrowed_at` will be `Some`
                 #[cfg(feature = "debug_refcell")]
                 location: self.borrowed_at.get().unwrap(),

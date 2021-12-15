@@ -40,7 +40,7 @@ impl Number {
             && !self.many_digits
     }
 
-    /// The fast path algorithmn using machine-sized integers and floats.
+    /// The fast path algorithm using machine-sized integers and floats.
     ///
     /// This is extracted into a separate function so that it can be attempted before constructing
     /// a Decimal. This only works if both the mantissa and the exponent

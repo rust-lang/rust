@@ -1,4 +1,4 @@
-//! Shared utilties used by both float and integer formatting.
+//! Shared utilities used by both float and integer formatting.
 #![doc(hidden)]
 #![unstable(
     feature = "numfmt",
