@@ -1,10 +1,10 @@
 #[no_mangle]
 fn foo() {}
-//~^ HELP then it's defined here again, in crate `exported_symbol_clashing`
+//~^ HELP it's first defined here, in crate `exported_symbol_clashing`
 
 #[export_name = "foo"]
 fn bar() {}
-//~^ HELP it's first defined here, in crate `exported_symbol_clashing`
+//~^ HELP then it's defined here again, in crate `exported_symbol_clashing`
 
 fn main() {
     extern "Rust" {
