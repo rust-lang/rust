@@ -40,7 +40,7 @@ error[E0308]: mismatched types
 LL | fn f(){||yield(((){),
    |       -^^^^^^^^^^^^^^^ expected `()`, found generator
    |       |
-   |       help: try adding a return type: `-> [generator@$DIR/issue-91334.rs:10:8: 10:23]`
+   |       possibly return type missing here?
    |
    = note: expected unit type `()`
               found generator `[generator@$DIR/issue-91334.rs:10:8: 10:23]`

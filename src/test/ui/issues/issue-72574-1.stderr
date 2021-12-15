@@ -21,8 +21,6 @@ LL |         (_a, _x @ ..) => {}
 error[E0308]: mismatched types
   --> $DIR/issue-72574-1.rs:4:9
    |
-LL |     match x {
-   |           - this expression has type `({integer}, {integer}, {integer})`
 LL |         (_a, _x @ ..) => {}
    |         ^^^^^^^^^^^^^ expected a tuple with 3 elements, found one with 2 elements
    |

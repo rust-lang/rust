@@ -1,8 +1,6 @@
 error[E0308]: mismatched types
   --> $DIR/issue-3680.rs:3:9
    |
-LL |     match None {
-   |           ---- this expression has type `Option<_>`
 LL |         Err(_) => ()
    |         ^^^^^^ expected enum `Option`, found enum `Result`
    |

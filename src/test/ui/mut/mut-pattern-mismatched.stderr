@@ -3,9 +3,6 @@ error[E0308]: mismatched types
    |
 LL |      let &_
    |          ^^ types differ in mutability
-...
-LL |         = foo;
-   |           --- this expression has type `&mut {integer}`
    |
    = note: expected mutable reference `&mut {integer}`
                       found reference `&_`
@@ -15,9 +12,6 @@ error[E0308]: mismatched types
    |
 LL |     let &mut _
    |         ^^^^^^ types differ in mutability
-...
-LL |          = bar;
-   |            --- this expression has type `&{integer}`
    |
    = note:      expected reference `&{integer}`
            found mutable reference `&mut _`

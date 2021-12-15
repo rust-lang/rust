@@ -65,9 +65,8 @@ error[E0308]: mismatched types
   --> $DIR/inconsistent-modes.rs:13:32
    |
 LL |     let (Ok((ref a, b)) | Err((ref mut a, ref b))) = Ok((0, &0));
-   |              -----             ^^^^^^^^^             ----------- this expression has type `Result<({integer}, &{integer}), (_, _)>`
-   |              |                 |
-   |              |                 types differ in mutability
+   |              -----             ^^^^^^^^^ types differ in mutability
+   |              |
    |              first introduced with type `&{integer}` here
    |
    = note: expected type `&{integer}`

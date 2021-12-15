@@ -150,8 +150,6 @@ LL |         E1::Z0 => {}
 error[E0308]: mismatched types
   --> $DIR/pat-tuple-overfield.rs:19:9
    |
-LL |     match (1, 2, 3) {
-   |           --------- this expression has type `({integer}, {integer}, {integer})`
 LL |         (1, 2, 3, 4) => {}
    |         ^^^^^^^^^^^^ expected a tuple with 3 elements, found one with 4 elements
    |
@@ -161,9 +159,6 @@ LL |         (1, 2, 3, 4) => {}
 error[E0308]: mismatched types
   --> $DIR/pat-tuple-overfield.rs:20:9
    |
-LL |     match (1, 2, 3) {
-   |           --------- this expression has type `({integer}, {integer}, {integer})`
-LL |         (1, 2, 3, 4) => {}
 LL |         (1, 2, .., 3, 4) => {}
    |         ^^^^^^^^^^^^^^^^ expected a tuple with 3 elements, found one with 4 elements
    |
