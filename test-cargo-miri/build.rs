@@ -1,5 +1,3 @@
-#![feature(asm)]
-
 use std::env;
 
 #[cfg(miri)]
@@ -9,7 +7,7 @@ fn not_in_miri() -> i32 {
     // Inline assembly definitely does not work in Miri.
     let mut dummy = 42;
     unsafe {
-        asm!("/* {} */", in(reg) &mut dummy);
+        std::arch::asm!("/* {} */", in(reg) &mut dummy);
     }
     return dummy;
 }
