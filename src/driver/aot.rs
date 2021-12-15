@@ -84,7 +84,7 @@ fn reuse_workproduct_for_cgu(
     let work_product = cgu.work_product(tcx);
     if let Some(saved_file) = &work_product.saved_file {
         let obj_out =
-            tcx.output_filenames(()).temp_path(OutputType::Object, Some(&cgu.name().as_str()));
+            tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu.name().as_str()));
         object = Some(obj_out.clone());
         let source_file = rustc_incremental::in_incr_comp_dir_sess(&tcx.sess, &saved_file);
         if let Err(err) = rustc_fs_util::link_or_copy(&source_file, &obj_out) {
@@ -176,7 +176,7 @@ fn module_codegen(
         )
     });
 
-    codegen_global_asm(tcx, &cgu.name().as_str(), &cx.global_asm);
+    codegen_global_asm(tcx, cgu.name().as_str(), &cx.global_asm);
 
     codegen_result
 }
@@ -207,7 +207,7 @@ pub(crate) fn run_aot(
         cgus.iter()
             .map(|cgu| {
                 let cgu_reuse = determine_cgu_reuse(tcx, cgu);
-                tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
+                tcx.sess.cgu_reuse_tracker.set_actual_reuse(cgu.name().as_str(), cgu_reuse);
 
                 match cgu_reuse {
                     _ if backend_config.disable_incr_cache => {}
