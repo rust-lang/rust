@@ -530,13 +530,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_suggestion(
                     span,
                     "try adding a return type",
-                    format!("-> {} ", self.resolve_vars_with_obligations(found)),
+                    format!("-> {} ", found),
                     Applicability::MachineApplicable,
                 );
                 true
             }
             (&hir::FnRetTy::DefaultReturn(span), false, true, true) => {
-                err.span_label(span, "possibly return type missing here?");
+                // FIXME: if `found` could be `impl Iterator` or `impl Fn*`, we should suggest
+                // that.
+                err.span_suggestion(
+                    span,
+                    "a return type might be missing here",
+                    "-> _ ".to_string(),
+                    Applicability::HasPlaceholders,
+                );
                 true
             }
             (&hir::FnRetTy::DefaultReturn(span), _, false, true) => {
