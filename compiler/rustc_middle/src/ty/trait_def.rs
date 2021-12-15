@@ -1,5 +1,5 @@
 use crate::traits::specialization_graph;
-use crate::ty::fast_reject;
+use crate::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ty, TyCtxt};
 use rustc_hir as hir;
@@ -146,6 +146,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self_ty: Ty<'tcx>,
         mut f: F,
     ) -> Option<T> {
+        // FIXME: This depends on the set of all impls for the trait. That is
+        // unfortunate wrt. incremental compilation.
+        //
+        // If we want to be faster, we could have separate queries for
+        // blanket and non-blanket impls, and compare them separately.
         let impls = self.trait_impls_of(def_id);
 
         for &impl_def_id in impls.blanket_impls.iter() {
@@ -154,32 +159,16 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
-        // simplify_type(.., false) basically replaces type parameters and
-        // projections with infer-variables. This is, of course, done on
-        // the impl trait-ref when it is instantiated, but not on the
-        // predicate trait-ref which is passed here.
+        // Note that we're using `SimplifyParams::Yes` to query `non_blanket_impls` while using
+        // `SimplifyParams::No` while actually adding them.
         //
-        // for example, if we match `S: Copy` against an impl like
-        // `impl<T:Copy> Copy for Option<T>`, we replace the type variable
-        // in `Option<T>` with an infer variable, to `Option<_>` (this
-        // doesn't actually change fast_reject output), but we don't
-        // replace `S` with anything - this impl of course can't be
-        // selected, and as there are hundreds of similar impls,
-        // considering them would significantly harm performance.
-
-        // This depends on the set of all impls for the trait. That is
-        // unfortunate. When we get red-green recompilation, we would like
-        // to have a way of knowing whether the set of relevant impls
-        // changed. The most naive
-        // way would be to compute the Vec of relevant impls and see whether
-        // it differs between compilations. That shouldn't be too slow by
-        // itself - we do quite a bit of work for each relevant impl anyway.
-        //
-        // If we want to be faster, we could have separate queries for
-        // blanket and non-blanket impls, and compare them separately.
-        //
-        // I think we'll cross that bridge when we get to it.
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, true) {
+        // This way, when searching for some impl for `T: Trait`, we do not look at any impls
+        // whose outer level is not a parameter or projection. Especially for things like
+        // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
+        // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
+        if let Some(simp) =
+            fast_reject::simplify_type(self, self_ty, SimplifyParams::Yes, StripReferences::No)
+        {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
                     if let result @ Some(_) = f(impl_def_id) {
@@ -238,7 +227,9 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
             continue;
         }
 
-        if let Some(simplified_self_ty) = fast_reject::simplify_type(tcx, impl_self_ty, false) {
+        if let Some(simplified_self_ty) =
+            fast_reject::simplify_type(tcx, impl_self_ty, SimplifyParams::No, StripReferences::No)
+        {
             impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {
             impls.blanket_impls.push(impl_def_id);

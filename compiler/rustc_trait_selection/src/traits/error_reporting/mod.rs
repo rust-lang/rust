@@ -21,10 +21,10 @@ use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
-    self, fast_reject, AdtKind, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt,
-    TypeFoldable,
+    self, AdtKind, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_session::DiagnosticMessageId;
 use rustc_span::symbol::{kw, sym};
@@ -1440,14 +1440,32 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Vec<ty::TraitRef<'tcx>> {
-        let simp = fast_reject::simplify_type(self.tcx, trait_ref.skip_binder().self_ty(), true);
+        // We simplify params and strip references here.
+        //
+        // This both removes a lot of unhelpful suggestions, e.g.
+        // when searching for `&Foo: Trait` it doesn't suggestion `impl Trait for &Bar`,
+        // while also suggesting impls for `&Foo` when we're looking for `Foo: Trait`.
+        //
+        // The second thing isn't necessarily always a good thing, but
+        // any other simple setup results in a far worse output, so 🤷
+        let simp = fast_reject::simplify_type(
+            self.tcx,
+            trait_ref.skip_binder().self_ty(),
+            SimplifyParams::Yes,
+            StripReferences::Yes,
+        );
         let all_impls = self.tcx.all_impls(trait_ref.def_id());
 
         match simp {
             Some(simp) => all_impls
                 .filter_map(|def_id| {
                     let imp = self.tcx.impl_trait_ref(def_id).unwrap();
-                    let imp_simp = fast_reject::simplify_type(self.tcx, imp.self_ty(), true);
+                    let imp_simp = fast_reject::simplify_type(
+                        self.tcx,
+                        imp.self_ty(),
+                        SimplifyParams::Yes,
+                        StripReferences::Yes,
+                    );
                     if let Some(imp_simp) = imp_simp {
                         if simp != imp_simp {
                             return None;
