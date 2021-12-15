@@ -61,7 +61,6 @@ This API is completely unstable and subject to change.
 #![feature(if_let_guard)]
 #![feature(in_band_lifetimes)]
 #![feature(is_sorted)]
-#![feature(iter_zip)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(nll)]

@@ -2,7 +2,6 @@
 #![feature(decl_macro)]
 #![feature(destructuring_assignment)]
 #![feature(if_let_guard)]
-#![feature(iter_zip)]
 #![feature(let_else)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]

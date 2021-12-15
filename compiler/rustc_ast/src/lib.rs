@@ -11,7 +11,6 @@
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
-#![feature(iter_zip)]
 #![feature(label_break_value)]
 #![feature(nll)]
 #![feature(min_specialization)]
