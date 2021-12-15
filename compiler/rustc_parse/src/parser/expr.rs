@@ -213,11 +213,11 @@ impl<'a> Parser<'a> {
                 }
             }
 
+            // Look for JS' `===` and `!==` and recover
             if (op.node == AssocOp::Equal || op.node == AssocOp::NotEqual)
                 && self.token.kind == token::Eq
                 && self.prev_token.span.hi() == self.token.span.lo()
             {
-                // Look for JS' `===` and `!==` and recover 😇
                 let sp = op.span.to(self.token.span);
                 let sugg = match op.node {
                     AssocOp::Equal => "==",
@@ -230,6 +230,38 @@ impl<'a> Parser<'a> {
                         &format!("`{s}=` is not a valid comparison operator, use `{s}`", s = sugg),
                         sugg.to_string(),
                         Applicability::MachineApplicable,
+                    )
+                    .emit();
+                self.bump();
+            }
+
+            // Look for PHP's `<>` and recover
+            if op.node == AssocOp::Less
+                && self.token.kind == token::Gt
+                && self.prev_token.span.hi() == self.token.span.lo()
+            {
+                let sp = op.span.to(self.token.span);
+                self.struct_span_err(sp, "invalid comparison operator `<>`")
+                    .span_suggestion_short(
+                        sp,
+                        "`<>` is not a valid comparison operator, use `!=`",
+                        "!=".to_string(),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                self.bump();
+            }
+
+            // Look for C++'s `<=>` and recover
+            if op.node == AssocOp::LessEqual
+                && self.token.kind == token::Gt
+                && self.prev_token.span.hi() == self.token.span.lo()
+            {
+                let sp = op.span.to(self.token.span);
+                self.struct_span_err(sp, "invalid comparison operator `<=>`")
+                    .span_label(
+                        sp,
+                        "`<=>` is not a valid comparison operator, use `std::cmp::Ordering`",
                     )
                     .emit();
                 self.bump();

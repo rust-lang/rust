@@ -752,62 +752,44 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         place: Place<'tcx>,
     ) -> Option<()> {
-        self.use_ecx(|this| {
-            match rvalue {
-                Rvalue::BinaryOp(op, box (left, right))
-                | Rvalue::CheckedBinaryOp(op, box (left, right)) => {
-                    let l = this.ecx.eval_operand(left, None);
-                    let r = this.ecx.eval_operand(right, None);
+        self.use_ecx(|this| match rvalue {
+            Rvalue::BinaryOp(op, box (left, right))
+            | Rvalue::CheckedBinaryOp(op, box (left, right)) => {
+                let l = this.ecx.eval_operand(left, None);
+                let r = this.ecx.eval_operand(right, None);
 
-                    let const_arg = match (l, r) {
-                        (Ok(ref x), Err(_)) | (Err(_), Ok(ref x)) => this.ecx.read_immediate(x)?,
-                        (Err(e), Err(_)) => return Err(e),
-                        (Ok(_), Ok(_)) => {
-                            this.ecx.eval_rvalue_into_place(rvalue, place)?;
-                            return Ok(());
-                        }
-                    };
+                let const_arg = match (l, r) {
+                    (Ok(ref x), Err(_)) | (Err(_), Ok(ref x)) => this.ecx.read_immediate(x)?,
+                    (Err(e), Err(_)) => return Err(e),
+                    (Ok(_), Ok(_)) => return this.ecx.eval_rvalue_into_place(rvalue, place),
+                };
 
-                    let arg_value = const_arg.to_scalar()?.to_bits(const_arg.layout.size)?;
-                    let dest = this.ecx.eval_place(place)?;
+                let arg_value = const_arg.to_scalar()?.to_bits(const_arg.layout.size)?;
+                let dest = this.ecx.eval_place(place)?;
 
-                    match op {
-                        BinOp::BitAnd => {
-                            if arg_value == 0 {
-                                this.ecx.write_immediate(*const_arg, &dest)?;
-                            }
-                        }
-                        BinOp::BitOr => {
-                            if arg_value == const_arg.layout.size.truncate(u128::MAX)
-                                || (const_arg.layout.ty.is_bool() && arg_value == 1)
-                            {
-                                this.ecx.write_immediate(*const_arg, &dest)?;
-                            }
-                        }
-                        BinOp::Mul => {
-                            if const_arg.layout.ty.is_integral() && arg_value == 0 {
-                                if let Rvalue::CheckedBinaryOp(_, _) = rvalue {
-                                    let val = Immediate::ScalarPair(
-                                        const_arg.to_scalar()?.into(),
-                                        Scalar::from_bool(false).into(),
-                                    );
-                                    this.ecx.write_immediate(val, &dest)?;
-                                } else {
-                                    this.ecx.write_immediate(*const_arg, &dest)?;
-                                }
-                            }
-                        }
-                        _ => {
-                            this.ecx.eval_rvalue_into_place(rvalue, place)?;
+                match op {
+                    BinOp::BitAnd if arg_value == 0 => this.ecx.write_immediate(*const_arg, &dest),
+                    BinOp::BitOr
+                        if arg_value == const_arg.layout.size.truncate(u128::MAX)
+                            || (const_arg.layout.ty.is_bool() && arg_value == 1) =>
+                    {
+                        this.ecx.write_immediate(*const_arg, &dest)
+                    }
+                    BinOp::Mul if const_arg.layout.ty.is_integral() && arg_value == 0 => {
+                        if let Rvalue::CheckedBinaryOp(_, _) = rvalue {
+                            let val = Immediate::ScalarPair(
+                                const_arg.to_scalar()?.into(),
+                                Scalar::from_bool(false).into(),
+                            );
+                            this.ecx.write_immediate(val, &dest)
+                        } else {
+                            this.ecx.write_immediate(*const_arg, &dest)
                         }
                     }
-                }
-                _ => {
-                    this.ecx.eval_rvalue_into_place(rvalue, place)?;
+                    _ => this.ecx.eval_rvalue_into_place(rvalue, place),
                 }
             }
-
-            Ok(())
+            _ => this.ecx.eval_rvalue_into_place(rvalue, place),
         })
     }
 
