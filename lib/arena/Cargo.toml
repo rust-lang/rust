@@ -7,4 +7,4 @@ repository = "https://github.com/rust-analyzer/rust-analyzer"
 documentation = "https://docs.rs/la-arena"
 categories = ["data-structures", "memory-management", "rust-patterns"]
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.57"
