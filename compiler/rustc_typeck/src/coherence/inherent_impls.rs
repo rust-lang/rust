@@ -38,7 +38,7 @@ struct InherentCollect<'tcx> {
     impls_map: CrateInherentImpls,
 }
 
-impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
+impl<'tcx> ItemLikeVisitor<'_> for InherentCollect<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         let (ty, assoc_items) = match item.kind {
             hir::ItemKind::Impl(hir::Impl { of_trait: None, ref self_ty, items, .. }) => {
@@ -370,7 +370,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
     fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
 }
 
-impl InherentCollect<'tcx> {
+impl<'tcx> InherentCollect<'tcx> {
     fn check_def_id(&mut self, item: &hir::Item<'_>, def_id: DefId) {
         if let Some(def_id) = def_id.as_local() {
             // Add the implementation to the mapping from implementation to base

@@ -1488,7 +1488,7 @@ fn check_method_receiver<'fcx, 'tcx>(
     }
 }
 
-fn e0307(fcx: &FnCtxt<'fcx, 'tcx>, span: Span, receiver_ty: Ty<'_>) {
+fn e0307<'tcx>(fcx: &FnCtxt<'_, 'tcx>, span: Span, receiver_ty: Ty<'_>) {
     struct_span_err!(
         fcx.tcx.sess.diagnostic(),
         span,
@@ -1591,7 +1591,7 @@ fn receiver_is_valid<'fcx, 'tcx>(
     true
 }
 
-fn receiver_is_implemented(
+fn receiver_is_implemented<'tcx>(
     fcx: &FnCtxt<'_, 'tcx>,
     receiver_trait_def_id: DefId,
     cause: ObligationCause<'tcx>,
@@ -1734,13 +1734,13 @@ pub struct CheckTypeWellFormedVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl CheckTypeWellFormedVisitor<'tcx> {
+impl<'tcx> CheckTypeWellFormedVisitor<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> CheckTypeWellFormedVisitor<'tcx> {
         CheckTypeWellFormedVisitor { tcx }
     }
 }
 
-impl ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
+impl<'tcx> ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
     fn visit_item(&self, i: &'tcx hir::Item<'tcx>) {
         Visitor::visit_item(&mut self.clone(), i);
     }
@@ -1758,7 +1758,7 @@ impl ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
     }
 }
 
-impl Visitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
     type Map = hir_map::Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {

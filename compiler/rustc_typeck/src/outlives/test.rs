@@ -12,7 +12,7 @@ struct OutlivesTest<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl ItemLikeVisitor<'tcx> for OutlivesTest<'tcx> {
+impl<'tcx> ItemLikeVisitor<'tcx> for OutlivesTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         // For unit testing: check for a special "rustc_outlives"
         // attribute and report an error with various results if found.

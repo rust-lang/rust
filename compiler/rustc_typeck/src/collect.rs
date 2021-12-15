@@ -147,7 +147,7 @@ struct CollectItemTypesVisitor<'tcx> {
 /// If there are any placeholder types (`_`), emit an error explaining that this is not allowed
 /// and suggest adding type parameters in the appropriate place, taking into consideration any and
 /// all already existing generic type parameters to avoid suggesting a name that is already in use.
-crate fn placeholder_type_error(
+crate fn placeholder_type_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Option<Span>,
     generics: &[hir::GenericParam<'_>],
@@ -223,7 +223,10 @@ crate fn placeholder_type_error(
     err.emit();
 }
 
-fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
+fn reject_placeholder_type_signatures_in_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: &'tcx hir::Item<'tcx>,
+) {
     let (generics, suggest) = match &item.kind {
         hir::ItemKind::Union(_, generics)
         | hir::ItemKind::Enum(_, generics)
@@ -251,7 +254,7 @@ fn reject_placeholder_type_signatures_in_item(tcx: TyCtxt<'tcx>, item: &'tcx hir
     );
 }
 
-impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -311,7 +314,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Utility types and common code for the above passes.
 
-fn bad_placeholder_type(
+fn bad_placeholder_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut spans: Vec<Span>,
     kind: &'static str,
@@ -332,7 +335,7 @@ fn bad_placeholder_type(
     err
 }
 
-impl ItemCtxt<'tcx> {
+impl<'tcx> ItemCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, item_def_id: DefId) -> ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id }
     }
@@ -350,7 +353,7 @@ impl ItemCtxt<'tcx> {
     }
 }
 
-impl AstConv<'tcx> for ItemCtxt<'tcx> {
+impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -643,7 +646,7 @@ fn type_param_predicates(
     result
 }
 
-impl ItemCtxt<'tcx> {
+impl<'tcx> ItemCtxt<'tcx> {
     /// Finds bounds from `hir::Generics`. This requires scanning through the
     /// AST. We do this to avoid having to convert *all* the bounds, which
     /// would create artificial cycles. Instead, we can only convert the
@@ -1239,7 +1242,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
         has_late_bound_regions: Option<Span>,
     }
 
-    impl Visitor<'tcx> for LateBoundRegionsDetector<'tcx> {
+    impl<'tcx> Visitor<'tcx> for LateBoundRegionsDetector<'tcx> {
         type Map = intravisit::ErasedMap<'tcx>;
 
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -1746,7 +1749,7 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
     }
 }
 
-pub fn get_infer_ret_ty(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
+pub fn get_infer_ret_ty<'hir>(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
     if let hir::FnRetTy::Return(ty) = output {
         if is_suggestable_infer_ty(ty) {
             return Some(&*ty);
