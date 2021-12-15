@@ -26,7 +26,7 @@ use crate::visitor::FmtVisitor;
 fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
     match (&a.kind, &b.kind) {
         (&ast::ItemKind::Mod(..), &ast::ItemKind::Mod(..)) => {
-            a.ident.as_str().cmp(&b.ident.as_str())
+            a.ident.as_str().cmp(b.ident.as_str())
         }
         (&ast::ItemKind::ExternCrate(ref a_name), &ast::ItemKind::ExternCrate(ref b_name)) => {
             // `extern crate foo as bar;`
@@ -44,7 +44,7 @@ fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
                 (Some(..), None) => Ordering::Greater,
                 (None, Some(..)) => Ordering::Less,
                 (None, None) => Ordering::Equal,
-                (Some(..), Some(..)) => a.ident.as_str().cmp(&b.ident.as_str()),
+                (Some(..), Some(..)) => a.ident.as_str().cmp(b.ident.as_str()),
             }
         }
         _ => unreachable!(),

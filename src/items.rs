@@ -616,10 +616,10 @@ impl<'a> FmtVisitor<'a> {
                 (TyAlias(lty), TyAlias(rty))
                     if both_type(&lty.ty, &rty.ty) || both_opaque(&lty.ty, &rty.ty) =>
                 {
-                    a.ident.as_str().cmp(&b.ident.as_str())
+                    a.ident.as_str().cmp(b.ident.as_str())
                 }
                 (Const(..), Const(..)) | (MacCall(..), MacCall(..)) => {
-                    a.ident.as_str().cmp(&b.ident.as_str())
+                    a.ident.as_str().cmp(b.ident.as_str())
                 }
                 (Fn(..), Fn(..)) => a.span.lo().cmp(&b.span.lo()),
                 (TyAlias(ty), _) if is_type(&ty.ty) => Ordering::Less,
@@ -1029,7 +1029,7 @@ pub(crate) fn format_trait(
         if !bounds.is_empty() {
             let ident_hi = context
                 .snippet_provider
-                .span_after(item.span, &item.ident.as_str());
+                .span_after(item.span, item.ident.as_str());
             let bound_hi = bounds.last().unwrap().span().hi();
             let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
             if contains_comment(snippet) {

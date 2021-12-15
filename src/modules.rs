@@ -467,10 +467,10 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
                 if let Some(ident) = relative.take() {
                     // remove the relative offset
-                    self.directory.path.push(&*ident.as_str());
+                    self.directory.path.push(ident.as_str());
                 }
             }
-            self.directory.path.push(&*id.as_str());
+            self.directory.path.push(id.as_str());
         }
     }
 
