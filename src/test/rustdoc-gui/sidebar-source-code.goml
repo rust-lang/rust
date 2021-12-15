@@ -1,0 +1,32 @@
+// The goal of this test is to ensure that the sidebar is working as expected in the source
+// code pages.
+goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+// First: desktop mode.
+size: (1100, 800)
+// We check that the sidebar isn't expanded and has the expected width.
+assert-css: ("nav.sidebar", {"width": "50px"})
+// We now click on the button to expand the sidebar.
+click: (10, 10)
+// We wait for the sidebar to be expanded (there is a 0.5s animation).
+wait-for: 600
+assert-css: ("nav.sidebar.expanded", {"width": "300px"})
+// We collapse the sidebar.
+click: (10, 10)
+// We wait for the sidebar to be collapsed (there is a 0.5s animation).
+wait-for: 600
+// We ensure that the class has been removed.
+assert-false: "nav.sidebar.expanded"
+assert: "nav.sidebar"
+
+// We now switch to mobile mode.
+size: (600, 600)
+// We check that the sidebar has the expected width (0 and 1px for the border).
+assert-css: ("nav.sidebar", {"width": "1px"})
+// We expand the sidebar.
+click: "#sidebar-toggle"
+assert-css: ("nav.sidebar.expanded", {"width": "600px"})
+// We collapse the sidebar.
+click: (10, 10)
+// We ensure that the class has been removed.
+assert-false: "nav.sidebar.expanded"
+assert: "nav.sidebar"

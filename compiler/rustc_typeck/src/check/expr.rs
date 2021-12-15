@@ -878,11 +878,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "let ".to_string(),
                         Applicability::MachineApplicable,
                     );
-                    if !self.sess().features_untracked().destructuring_assignment {
-                        // We already emit an E0658 with a suggestion for `while let`, this is
-                        // redundant output.
-                        err.delay_as_bug();
-                    }
                     break;
                 }
                 hir::Node::Item(_)

@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(destructuring_assignment)]
-
 fn main() {
   let (mut a, mut b);
   [a, b] = [0, 1];

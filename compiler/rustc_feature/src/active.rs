@@ -356,8 +356,6 @@ declare_features! (
     (active, default_type_parameter_fallback, "1.3.0", Some(27336), None),
     /// Allows `#[derive(Default)]` and `#[default]` on enums.
     (active, derive_default_enum, "1.56.0", Some(86985), None),
-    /// Allows the use of destructuring assignments.
-    (active, destructuring_assignment, "1.49.0", Some(71126), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (active, doc_auto_cfg, "1.58.0", Some(43781), None),
     /// Allows `#[doc(cfg(...))]`.

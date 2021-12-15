@@ -373,7 +373,6 @@ nav.sub {
 
 .source .sidebar.expanded {
 	overflow-y: auto;
-	width: 300px;
 }
 
 .source .sidebar.expanded > * {
@@ -1394,7 +1393,7 @@ pre.rust {
 	z-index: 10;
 }
 #source-sidebar {
-	width: 300px;
+	width: 100%;
 	z-index: 1;
 	overflow: auto;
 }
@@ -1711,6 +1710,10 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	.rustdoc.source .sidebar {
 		transition: width .5s;
 	}
+
+	.source .sidebar.expanded {
+		width: 300px;
+	}
 }
 
 @media (max-width: 700px) {
@@ -1998,6 +2001,11 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 	.search-results div.desc, .search-results .result-description, .item-right {
 		padding-left: 2em;
+	}
+
+	.source .sidebar.expanded {
+		max-width: 100vw;
+		width: 100vw;
 	}
 }
 
