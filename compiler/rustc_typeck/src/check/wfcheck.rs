@@ -21,7 +21,6 @@ use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, AdtKind, GenericParamDefKind, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitor,
-    WithConstness,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -427,22 +426,48 @@ fn check_gat_where_clauses(
         }
     }
 
-    // If there are any missing clauses, emit an error
-    let mut clauses = clauses.unwrap_or_default();
+    // If there are any clauses that aren't provable, emit an error
+    let clauses = clauses.unwrap_or_default();
     debug!(?clauses);
     if !clauses.is_empty() {
-        let written_predicates: ty::GenericPredicates<'_> =
-            tcx.explicit_predicates_of(trait_item.def_id);
+        let param_env = tcx.param_env(trait_item.def_id);
+
         let mut clauses: Vec<_> = clauses
-            .drain_filter(|clause| !written_predicates.predicates.iter().any(|p| &p.0 == clause))
+            .into_iter()
+            .filter(|clause| match clause.kind().skip_binder() {
+                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
+                    !region_known_to_outlive(
+                        tcx,
+                        trait_item.hir_id(),
+                        param_env,
+                        &FxHashSet::default(),
+                        a,
+                        b,
+                    )
+                }
+                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
+                    !ty_known_to_outlive(
+                        tcx,
+                        trait_item.hir_id(),
+                        param_env,
+                        &FxHashSet::default(),
+                        a,
+                        b,
+                    )
+                }
+                _ => bug!("Unexpected PredicateKind"),
+            })
             .map(|clause| format!("{}", clause))
             .collect();
+
         // We sort so that order is predictable
         clauses.sort();
+
         if !clauses.is_empty() {
+            let plural = if clauses.len() > 1 { "s" } else { "" };
             let mut err = tcx.sess.struct_span_err(
                 trait_item.span,
-                &format!("Missing required bounds on {}", trait_item.ident),
+                &format!("missing required bound{} on `{}`", plural, trait_item.ident),
             );
 
             let suggestion = format!(
@@ -456,9 +481,20 @@ fn check_gat_where_clauses(
             );
             err.span_suggestion(
                 trait_item.generics.where_clause.tail_span_for_suggestion(),
-                "add the required where clauses",
+                &format!("add the required where clause{}", plural),
                 suggestion,
                 Applicability::MachineApplicable,
+            );
+
+            let bound = if clauses.len() > 1 { "these bounds are" } else { "this bound is" };
+            err.note(&format!(
+                "{} currently required to ensure that impls have maximum flexibility",
+                bound
+            ));
+            err.note(
+                "we are soliciting feedback, see issue #87479 \
+                 <https://github.com/rust-lang/rust/issues/87479> \
+                 for more information",
             );
 
             err.emit()
@@ -542,7 +578,8 @@ fn region_known_to_outlive<'tcx>(
         });
 
         use rustc_infer::infer::outlives::obligations::TypeOutlivesDelegate;
-        (&infcx).push_sub_region_constraint(origin, region_a, region_b);
+        // `region_a: region_b` -> `region_b <= region_a`
+        (&infcx).push_sub_region_constraint(origin, region_b, region_a);
 
         let errors = infcx.resolve_regions(
             id.expect_owner().to_def_id(),
@@ -683,7 +720,8 @@ pub fn check_impl_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     let (method_sig, span) = match impl_item.kind {
         hir::ImplItemKind::Fn(ref sig, _) => (Some(sig), impl_item.span),
-        hir::ImplItemKind::TyAlias(ty) => (None, ty.span),
+        // Constrain binding and overflow error spans to `<Ty>` in `type foo = <Ty>`.
+        hir::ImplItemKind::TyAlias(ty) if ty.span != DUMMY_SP => (None, ty.span),
         _ => (None, impl_item.span),
     };
 
@@ -696,7 +734,6 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
         hir::GenericParamKind::Lifetime { .. } | hir::GenericParamKind::Type { .. } => (),
 
         // Const parameters are well formed if their type is structural match.
-        // FIXME(const_generics_defaults): we also need to check that the `default` is wf.
         hir::GenericParamKind::Const { ty: hir_ty, default: _ } => {
             let ty = tcx.type_of(tcx.hir().local_def_id(param.hir_id));
 

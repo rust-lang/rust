@@ -25,6 +25,7 @@ declare_clippy_lint! {
     /// // still locked
     /// operation_that_requires_mutex_to_be_unlocked();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DROP_REF,
     correctness,
     "calls to `std::mem::drop` with a reference instead of an owned value"
@@ -46,6 +47,7 @@ declare_clippy_lint! {
     /// let x = Box::new(1);
     /// std::mem::forget(&x) // Should have been forget(x), x will still be dropped
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub FORGET_REF,
     correctness,
     "calls to `std::mem::forget` with a reference instead of an owned value"
@@ -67,6 +69,7 @@ declare_clippy_lint! {
     /// std::mem::drop(x) // A copy of x is passed to the function, leaving the
     ///                   // original unaffected
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DROP_COPY,
     correctness,
     "calls to `std::mem::drop` with a value that implements Copy"
@@ -94,6 +97,7 @@ declare_clippy_lint! {
     /// std::mem::forget(x) // A copy of x is passed to the function, leaving the
     ///                     // original unaffected
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub FORGET_COPY,
     correctness,
     "calls to `std::mem::forget` with a value that implements Copy"

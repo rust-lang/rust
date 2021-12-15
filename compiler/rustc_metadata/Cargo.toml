@@ -7,7 +7,7 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-libc = "0.2"
+libloading = "0.7.1"
 odht = { version = "0.3.1", features = ["nightly"] }
 snap = "1"
 tracing = "0.1"
@@ -27,6 +27,3 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_span = { path = "../rustc_span" }
 rustc_session = { path = "../rustc_session" }
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["errhandlingapi", "libloaderapi"] }

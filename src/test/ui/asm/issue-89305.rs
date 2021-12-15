@@ -4,8 +4,9 @@
 // check-pass
 // needs-asm-support
 
-#![feature(asm)]
 #![warn(unused)]
+
+use std::arch::asm;
 
 fn main() {
     unsafe {

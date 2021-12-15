@@ -26,6 +26,7 @@ declare_clippy_lint! {
     /// ```rust
     /// use std::io;
     /// ```
+    #[clippy::version = "1.53.0"]
     pub UNNECESSARY_SELF_IMPORTS,
     restriction,
     "imports ending in `::{self}`, which can be omitted"

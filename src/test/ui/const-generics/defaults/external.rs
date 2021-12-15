@@ -1,7 +1,5 @@
 // aux-build:const_defaulty.rs
 // check-pass
-#![feature(const_generics_defaults)]
-
 extern crate const_defaulty;
 use const_defaulty::Defaulted;
 

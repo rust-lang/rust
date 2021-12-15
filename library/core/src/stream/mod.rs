@@ -114,9 +114,9 @@
 //! # Laziness
 //!
 //! Streams are *lazy*. This means that just creating a stream doesn't _do_ a
-//! whole lot. Nothing really happens until you call `next`. This is sometimes a
-//! source of confusion when creating a stream solely for its side effects. The
-//! compiler will warn us about this kind of behavior:
+//! whole lot. Nothing really happens until you call `poll_next`. This is
+//! sometimes a source of confusion when creating a stream solely for its side
+//! effects. The compiler will warn us about this kind of behavior:
 //!
 //! ```text
 //! warning: unused result that must be used: streams do nothing unless polled

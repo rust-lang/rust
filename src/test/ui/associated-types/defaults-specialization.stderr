@@ -11,24 +11,23 @@ LL | #![feature(associated_type_defaults, specialization)]
 error[E0053]: method `make` has an incompatible type for trait
   --> $DIR/defaults-specialization.rs:19:18
    |
-LL |     fn make() -> Self::Ty {
-   |                  -------- type in trait
-...
 LL |     fn make() -> u8 { 0 }
    |                  ^^
    |                  |
    |                  expected associated type, found `u8`
    |                  help: change the output type to match the trait: `<A<T> as Tr>::Ty`
    |
+note: type in trait
+  --> $DIR/defaults-specialization.rs:9:18
+   |
+LL |     fn make() -> Self::Ty {
+   |                  ^^^^^^^^
    = note: expected fn pointer `fn() -> <A<T> as Tr>::Ty`
               found fn pointer `fn() -> u8`
 
 error[E0053]: method `make` has an incompatible type for trait
   --> $DIR/defaults-specialization.rs:35:18
    |
-LL |     fn make() -> Self::Ty {
-   |                  -------- type in trait
-...
 LL |     default type Ty = bool;
    |     ----------------------- expected this associated type
 LL | 
@@ -38,6 +37,11 @@ LL |     fn make() -> bool { true }
    |                  expected associated type, found `bool`
    |                  help: change the output type to match the trait: `<B<T> as Tr>::Ty`
    |
+note: type in trait
+  --> $DIR/defaults-specialization.rs:9:18
+   |
+LL |     fn make() -> Self::Ty {
+   |                  ^^^^^^^^
    = note: expected fn pointer `fn() -> <B<T> as Tr>::Ty`
               found fn pointer `fn() -> bool`
 

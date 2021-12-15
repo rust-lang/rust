@@ -1,5 +1,7 @@
 // needs-asm-support
-#![feature(asm, naked_functions)]
+#![feature(naked_functions)]
+
+use std::arch::asm;
 
 #[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`
 #[naked]

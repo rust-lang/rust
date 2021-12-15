@@ -39,8 +39,9 @@
 // ignore-emscripten
 // compile-flags: -C no-prepopulate-passes
 
-#![feature(global_asm)]
 #![crate_type = "lib"]
+
+use std::arch::global_asm;
 
 // CHECK-LABEL: foo
 // CHECK: module asm

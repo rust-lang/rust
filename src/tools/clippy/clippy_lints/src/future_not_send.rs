@@ -41,6 +41,7 @@ declare_clippy_lint! {
     /// ```rust
     /// async fn is_send(bytes: std::sync::Arc<[u8]>) {}
     /// ```
+    #[clippy::version = "1.44.0"]
     pub FUTURE_NOT_SEND,
     nursery,
     "public Futures must be Send"
@@ -67,8 +68,8 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             let mut is_future = false;
             for &(p, _span) in preds {
                 let p = p.subst(cx.tcx, subst);
-                if let Some(trait_ref) = p.to_opt_poly_trait_ref() {
-                    if Some(trait_ref.value.def_id()) == cx.tcx.lang_items().future_trait() {
+                if let Some(trait_pred) = p.to_opt_poly_trait_pred() {
+                    if Some(trait_pred.skip_binder().trait_ref.def_id) == cx.tcx.lang_items().future_trait() {
                         is_future = true;
                         break;
                     }

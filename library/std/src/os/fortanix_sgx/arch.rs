@@ -5,6 +5,7 @@
 #![unstable(feature = "sgx_platform", issue = "56975")]
 
 use crate::mem::MaybeUninit;
+use core::arch::asm;
 
 /// Wrapper struct to force 16-byte alignment.
 #[repr(align(16))]

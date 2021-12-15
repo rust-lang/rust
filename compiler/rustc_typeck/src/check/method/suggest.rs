@@ -12,7 +12,7 @@ use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::fast_reject::simplify_type;
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_span::lev_distance;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{source_map, FileName, MultiSpan, Span, Symbol};
@@ -65,6 +65,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
             }
         }
+    }
+
+    fn is_slice_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        self.autoderef(span, ty).any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
     }
 
     pub fn report_method_error(
@@ -691,7 +695,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let mut restrict_type_params = false;
                 let mut unsatisfied_bounds = false;
-                if !unsatisfied_predicates.is_empty() {
+                if item_name.name == sym::count && self.is_slice_ty(actual, span) {
+                    let msg = "consider using `len` instead";
+                    if let SelfSource::MethodCall(_expr) = source {
+                        err.span_suggestion_short(
+                            span,
+                            msg,
+                            String::from("len"),
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.span_label(span, msg);
+                    }
+                    if let Some(iterator_trait) = self.tcx.get_diagnostic_item(sym::Iterator) {
+                        let iterator_trait = self.tcx.def_path_str(iterator_trait);
+                        err.note(&format!("`count` is defined on `{iterator_trait}`, which `{actual}` does not implement"));
+                    }
+                } else if !unsatisfied_predicates.is_empty() {
                     let def_span = |def_id| {
                         self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id))
                     };
@@ -990,9 +1010,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                let mut fallback_span = true;
-                let msg = "remove this method call";
                 if item_name.name == sym::as_str && actual.peel_refs().is_str() {
+                    let msg = "remove this method call";
+                    let mut fallback_span = true;
                     if let SelfSource::MethodCall(expr) = source {
                         let call_expr =
                             self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id));
@@ -1324,7 +1344,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if candidates.len() > limit {
                 msg.push_str(&format!("\nand {} others", candidates.len() - limit));
             }
-            err.note(&msg[..]);
+            err.note(&msg);
         }
     }
 

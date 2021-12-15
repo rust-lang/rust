@@ -1,30 +1,34 @@
 error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/E0053.rs:9:15
    |
-LL |     fn foo(x: u16);
-   |               --- type in trait
-...
 LL |     fn foo(x: i16) { }
    |               ^^^
    |               |
    |               expected `u16`, found `i16`
    |               help: change the parameter type to match the trait: `u16`
    |
+note: type in trait
+  --> $DIR/E0053.rs:2:15
+   |
+LL |     fn foo(x: u16);
+   |               ^^^
    = note: expected fn pointer `fn(u16)`
               found fn pointer `fn(i16)`
 
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/E0053.rs:11:12
    |
-LL |     fn bar(&self);
-   |            ----- type in trait
-...
 LL |     fn bar(&mut self) { }
    |            ^^^^^^^^^
    |            |
    |            types differ in mutability
    |            help: change the self-receiver type to match the trait: `self: &Bar`
    |
+note: type in trait
+  --> $DIR/E0053.rs:3:12
+   |
+LL |     fn bar(&self);
+   |            ^^^^^
    = note: expected fn pointer `fn(&Bar)`
               found fn pointer `fn(&mut Bar)`
 

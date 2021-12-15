@@ -32,3 +32,14 @@ fn paper() {
     assert_eq!(immediate_dominators[5], Some(6));
     assert_eq!(immediate_dominators[6], Some(6));
 }
+
+#[test]
+fn paper_slt() {
+    // example from the paper:
+    let graph = TestGraph::new(
+        1,
+        &[(1, 2), (1, 3), (2, 3), (2, 7), (3, 4), (3, 6), (4, 5), (5, 4), (6, 7), (7, 8), (8, 5)],
+    );
+
+    dominators(&graph);
+}

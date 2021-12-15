@@ -8,6 +8,7 @@ doctest = false
 
 [dependencies]
 libc = "0.2"
+libloading = "0.7.1"
 tracing = "0.1"
 rustc-rayon-core = "0.3.1"
 rayon = { version = "0.3.1", package = "rustc-rayon" }

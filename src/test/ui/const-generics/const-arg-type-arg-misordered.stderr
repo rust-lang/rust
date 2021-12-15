@@ -3,9 +3,6 @@ error[E0747]: constant provided when a type was expected
    |
 LL | fn foo<const N: usize>() -> Array<N, ()> {
    |                                   ^
-   |
-   = note: type arguments must be provided before constant arguments
-   = help: reorder the arguments: types, then consts: `<T, N>`
 
 error: aborting due to previous error
 

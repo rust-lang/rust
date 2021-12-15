@@ -1,8 +1,8 @@
 error[E0277]: can't compare `Foo` with `Foo`
-  --> $DIR/issue-87429-associated-type-default.rs:14:5
+  --> $DIR/issue-87429-associated-type-default.rs:14:60
    |
 LL |     type Member<'a>: for<'b> PartialEq<Self::Member<'b>> = Foo;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `Foo == Foo`
+   |                                                            ^^^ no implementation for `Foo == Foo`
    |
    = help: the trait `PartialEq` is not implemented for `Foo`
 note: required by a bound in `Family2::Member`

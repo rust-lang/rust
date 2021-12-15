@@ -20,6 +20,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt as _;
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
@@ -27,7 +28,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 
 use std::collections::BTreeMap;
@@ -944,9 +945,14 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 Normalized { value: projected_ty, obligations: projected_obligations }
             };
 
+            let mut deduped: SsoHashSet<_> = Default::default();
             let mut canonical =
                 SelectionContext::with_query_mode(selcx.infcx(), TraitQueryMode::Canonical);
+
             result.obligations.drain_filter(|projected_obligation| {
+                if !deduped.insert(projected_obligation.clone()) {
+                    return true;
+                }
                 // If any global obligations always apply, considering regions, then we don't
                 // need to include them. The `is_global` check rules out inference variables,
                 // so there's no need for the caller of `opt_normalize_projection_type`

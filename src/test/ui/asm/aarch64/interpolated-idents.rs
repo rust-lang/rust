@@ -1,6 +1,6 @@
 // only-aarch64
 
-#![feature(asm)]
+use std::arch::asm;
 
 macro_rules! m {
     ($in:ident $out:ident $lateout:ident $inout:ident $inlateout:ident $const:ident $sym:ident

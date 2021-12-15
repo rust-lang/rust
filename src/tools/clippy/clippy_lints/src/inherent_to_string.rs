@@ -41,6 +41,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.38.0"]
     pub INHERENT_TO_STRING,
     style,
     "type implements inherent method `to_string()`, but should instead implement the `Display` trait"
@@ -88,6 +89,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.38.0"]
     pub INHERENT_TO_STRING_SHADOW_DISPLAY,
     correctness,
     "type implements inherent method `to_string()`, which gets shadowed by the implementation of the `Display` trait"

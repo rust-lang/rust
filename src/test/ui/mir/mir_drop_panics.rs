@@ -1,4 +1,5 @@
 // run-fail
+// needs-unwind
 // error-pattern:panic 1
 // error-pattern:drop 2
 // ignore-emscripten no processes

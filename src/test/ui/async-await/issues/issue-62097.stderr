@@ -2,12 +2,15 @@ error[E0759]: `self` has an anonymous lifetime `'_` but it needs to satisfy a `'
   --> $DIR/issue-62097.rs:12:31
    |
 LL |     pub async fn run_dummy_fn(&self) {
-   |                               ^^^^^
-   |                               |
-   |                               this data with an anonymous lifetime `'_`...
-   |                               ...is captured here...
+   |                               ^^^^^ this data with an anonymous lifetime `'_`...
 LL |         foo(|| self.bar()).await;
-   |         --- ...and is required to live as long as `'static` here
+   |         --- ...is used and required to live as long as `'static` here
+   |
+note: `'static` lifetime requirement introduced by this bound
+  --> $DIR/issue-62097.rs:4:19
+   |
+LL |     F: FnOnce() + 'static
+   |                   ^^^^^^^
 
 error: aborting due to previous error
 

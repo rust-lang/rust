@@ -536,22 +536,28 @@ pub fn check_must_not_suspend_ty<'tcx>(
             }
             has_emitted
         }
-        ty::Tuple(ref tys) => {
+        ty::Tuple(_) => {
             let mut has_emitted = false;
-            let spans = if let Some(hir::ExprKind::Tup(comps)) = data.expr.map(|e| &e.kind) {
-                debug_assert_eq!(comps.len(), tys.len());
-                comps.iter().map(|e| e.span).collect()
-            } else {
-                vec![]
+            let comps = match data.expr.map(|e| &e.kind) {
+                Some(hir::ExprKind::Tup(comps)) => {
+                    debug_assert_eq!(comps.len(), ty.tuple_fields().count());
+                    Some(comps)
+                }
+                _ => None,
             };
-            for (i, ty) in tys.iter().map(|k| k.expect_ty()).enumerate() {
+            for (i, ty) in ty.tuple_fields().enumerate() {
                 let descr_post = &format!(" in tuple element {}", i);
-                let span = *spans.get(i).unwrap_or(&data.source_span);
+                let span = comps.and_then(|c| c.get(i)).map(|e| e.span).unwrap_or(data.source_span);
                 if check_must_not_suspend_ty(
                     fcx,
                     ty,
                     hir_id,
-                    SuspendCheckData { descr_post, source_span: span, ..data },
+                    SuspendCheckData {
+                        descr_post,
+                        expr: comps.and_then(|comps| comps.get(i)),
+                        source_span: span,
+                        ..data
+                    },
                 ) {
                     has_emitted = true;
                 }

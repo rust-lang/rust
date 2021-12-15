@@ -3,7 +3,6 @@
 //! See the `Qualif` trait for more info.
 
 use rustc_errors::ErrorReported;
-use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
@@ -14,7 +13,7 @@ use rustc_trait_selection::traits::{
 
 use super::ConstCx;
 
-pub fn in_any_value_of_ty(
+pub fn in_any_value_of_ty<'tcx>(
     cx: &ConstCx<'_, 'tcx>,
     ty: Ty<'tcx>,
     error_occured: Option<ErrorReported>,
@@ -59,7 +58,7 @@ pub trait Qualif {
     /// from a call to another function.
     ///
     /// It also determines the `Qualif`s for primitive types.
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool;
+    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool;
 
     /// Returns `true` if this `Qualif` is inherent to the given struct or enum.
     ///
@@ -69,7 +68,7 @@ pub trait Qualif {
     /// with a custom `Drop` impl is inherently `NeedsDrop`.
     ///
     /// Returning `true` for `in_adt_inherently` but `false` for `in_any_value_of_ty` is unsound.
-    fn in_adt_inherently(
+    fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
         adt: &'tcx AdtDef,
         substs: SubstsRef<'tcx>,
@@ -90,11 +89,15 @@ impl Qualif for HasMutInterior {
         qualifs.has_mut_interior
     }
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         !ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env)
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
+    fn in_adt_inherently<'tcx>(
+        cx: &ConstCx<'_, 'tcx>,
+        adt: &'tcx AdtDef,
+        _: SubstsRef<'tcx>,
+    ) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
         Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()
@@ -116,11 +119,15 @@ impl Qualif for NeedsDrop {
         qualifs.needs_drop
     }
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         ty.needs_drop(cx.tcx, cx.param_env)
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
+    fn in_adt_inherently<'tcx>(
+        cx: &ConstCx<'_, 'tcx>,
+        adt: &'tcx AdtDef,
+        _: SubstsRef<'tcx>,
+    ) -> bool {
         adt.has_dtor(cx.tcx)
     }
 }
@@ -138,7 +145,7 @@ impl Qualif for NeedsNonConstDrop {
         qualifs.needs_non_const_drop
     }
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, mut ty: Ty<'tcx>) -> bool {
+    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, mut ty: Ty<'tcx>) -> bool {
         // Avoid selecting for simple cases.
         match ty::util::needs_drop_components(ty, &cx.tcx.data_layout).as_deref() {
             Ok([]) => return false,
@@ -167,7 +174,7 @@ impl Qualif for NeedsNonConstDrop {
         );
 
         let implsrc = cx.tcx.infer_ctxt().enter(|infcx| {
-            let mut selcx = SelectionContext::with_constness(&infcx, hir::Constness::Const);
+            let mut selcx = SelectionContext::new(&infcx);
             selcx.select(&obligation)
         });
         !matches!(
@@ -178,7 +185,11 @@ impl Qualif for NeedsNonConstDrop {
         )
     }
 
-    fn in_adt_inherently(cx: &ConstCx<'_, 'tcx>, adt: &'tcx AdtDef, _: SubstsRef<'tcx>) -> bool {
+    fn in_adt_inherently<'tcx>(
+        cx: &ConstCx<'_, 'tcx>,
+        adt: &'tcx AdtDef,
+        _: SubstsRef<'tcx>,
+    ) -> bool {
         adt.has_non_const_dtor(cx.tcx)
     }
 }
@@ -193,7 +204,7 @@ impl Qualif for CustomEq {
         qualifs.custom_eq
     }
 
-    fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         // If *any* component of a composite data type does not implement `Structural{Partial,}Eq`,
         // we know that at least some values of that type are not structural-match. I say "some"
         // because that component may be part of an enum variant (e.g.,
@@ -203,7 +214,7 @@ impl Qualif for CustomEq {
         traits::search_for_structural_match_violation(id, cx.body.span, cx.tcx, ty).is_some()
     }
 
-    fn in_adt_inherently(
+    fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
         adt: &'tcx AdtDef,
         substs: SubstsRef<'tcx>,
@@ -216,7 +227,11 @@ impl Qualif for CustomEq {
 // FIXME: Use `mir::visit::Visitor` for the `in_*` functions if/when it supports early return.
 
 /// Returns `true` if this `Rvalue` contains qualif `Q`.
-pub fn in_rvalue<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, rvalue: &Rvalue<'tcx>) -> bool
+pub fn in_rvalue<'tcx, Q, F>(
+    cx: &ConstCx<'_, 'tcx>,
+    in_local: &mut F,
+    rvalue: &Rvalue<'tcx>,
+) -> bool
 where
     Q: Qualif,
     F: FnMut(Local) -> bool,
@@ -271,7 +286,7 @@ where
 }
 
 /// Returns `true` if this `Place` contains qualif `Q`.
-pub fn in_place<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, place: PlaceRef<'tcx>) -> bool
+pub fn in_place<'tcx, Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, place: PlaceRef<'tcx>) -> bool
 where
     Q: Qualif,
     F: FnMut(Local) -> bool,
@@ -303,7 +318,11 @@ where
 }
 
 /// Returns `true` if this `Operand` contains qualif `Q`.
-pub fn in_operand<Q, F>(cx: &ConstCx<'_, 'tcx>, in_local: &mut F, operand: &Operand<'tcx>) -> bool
+pub fn in_operand<'tcx, Q, F>(
+    cx: &ConstCx<'_, 'tcx>,
+    in_local: &mut F,
+    operand: &Operand<'tcx>,
+) -> bool
 where
     Q: Qualif,
     F: FnMut(Local) -> bool,

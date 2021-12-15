@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `T: MyDisplay` is not satisfied
-  --> $DIR/issue-65774-1.rs:10:5
+  --> $DIR/issue-65774-1.rs:10:33
    |
 LL |     type MpuConfig: MyDisplay = T;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `MyDisplay` is not implemented for `T`
+   |                                 ^ the trait `MyDisplay` is not implemented for `T`
    |
 note: required by a bound in `MPU::MpuConfig`
   --> $DIR/issue-65774-1.rs:10:21

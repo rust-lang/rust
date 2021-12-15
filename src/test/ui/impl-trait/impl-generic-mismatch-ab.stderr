@@ -1,9 +1,6 @@
 error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/impl-generic-mismatch-ab.rs:8:32
    |
-LL |     fn foo<A: Debug>(&self, a: &A, b: &impl Debug);
-   |                                -- type in trait
-...
 LL |     fn foo<B: Debug>(&self, a: &impl Debug, b: &B) { }
    |            -                   ^^^^^^^^^^^
    |            |                   |
@@ -11,6 +8,11 @@ LL |     fn foo<B: Debug>(&self, a: &impl Debug, b: &B) { }
    |            |                   help: change the parameter type to match the trait: `&B`
    |            expected type parameter
    |
+note: type in trait
+  --> $DIR/impl-generic-mismatch-ab.rs:4:32
+   |
+LL |     fn foo<A: Debug>(&self, a: &A, b: &impl Debug);
+   |                                ^^
    = note: expected fn pointer `fn(&(), &B, &impl Debug)`
               found fn pointer `fn(&(), &impl Debug, &B)`
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound

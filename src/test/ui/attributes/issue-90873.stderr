@@ -8,7 +8,7 @@ LL | #![u=||{static d=||1;}]
    |      ^^^^^^^^^^^^^^^^^
 
 error: unexpected token: `{
-           impl std::ops::Neg for i8 { }
+           impl std::ops::Neg for i8 {}
        }`
   --> $DIR/issue-90873.rs:7:6
    |

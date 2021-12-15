@@ -1,6 +1,6 @@
 // pp-exact
 
-fn main() { }
+fn main() {}
 
 struct C {
     field: u8,

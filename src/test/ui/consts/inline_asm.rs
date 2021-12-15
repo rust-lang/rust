@@ -1,6 +1,6 @@
 // needs-asm-support
 
-#![feature(asm)]
+use std::arch::asm;
 
 const _: () = unsafe { asm!("nop") };
 //~^ ERROR inline assembly

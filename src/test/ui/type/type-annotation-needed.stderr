@@ -1,5 +1,5 @@
 error[E0283]: type annotations needed
-  --> $DIR/type-annotation-needed.rs:5:5
+  --> $DIR/type-annotation-needed.rs:6:5
    |
 LL |     foo(42);
    |     ^^^ cannot infer type for type parameter `T` declared on the function `foo`

@@ -4,8 +4,15 @@ error[E0759]: `v` has lifetime `'a` but it needs to satisfy a `'static` lifetime
 LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
    |                         ------------------ this data with lifetime `'a`...
 LL |     Box::new(B(&*v)) as Box<dyn X>
-   |                ^^^ ...is captured here, requiring it to live as long as `'static`
+   |                ^^^ ...is used and required to live as long as `'static` here
    |
+note: `'static` lifetime requirement introduced by the return type
+  --> $DIR/regions-close-object-into-object-2.rs:8:60
+   |
+LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
+   |                                                            ^^^^^^^ `'static` requirement introduced here
+LL |     Box::new(B(&*v)) as Box<dyn X>
+   |     ------------------------------ because of this returned expression
 help: consider changing the trait object's explicit `'static` bound to the lifetime of argument `v`
    |
 LL | fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'a> {

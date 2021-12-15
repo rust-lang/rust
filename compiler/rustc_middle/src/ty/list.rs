@@ -1,7 +1,5 @@
 use crate::arena::Arena;
-
 use rustc_serialize::{Encodable, Encoder};
-
 use std::alloc::Layout;
 use std::cmp::Ordering;
 use std::fmt;
@@ -12,49 +10,69 @@ use std::ops::Deref;
 use std::ptr;
 use std::slice;
 
-extern "C" {
-    /// A dummy type used to force `List` to be unsized while not requiring references to it be wide
-    /// pointers.
-    type OpaqueListContents;
-}
-
-/// A wrapper for slices with the additional invariant
-/// that the slice is interned and no other slice with
-/// the same contents can exist in the same context.
-/// This means we can use pointer for both
-/// equality comparisons and hashing.
-///
-/// Unlike slices, the types contained in `List` are expected to be `Copy`
-/// and iterating over a `List` returns `T` instead of a reference.
-///
-/// Note: `Slice` was already taken by the `Ty`.
+/// `List<T>` is a bit like `&[T]`, but with some critical differences.
+/// - IMPORTANT: Every `List<T>` is *required* to have unique contents. The
+///   type's correctness relies on this, *but it does not enforce it*.
+///   Therefore, any code that creates a `List<T>` must ensure uniqueness
+///   itself. In practice this is achieved by interning.
+/// - The length is stored within the `List<T>`, so `&List<Ty>` is a thin
+///   pointer.
+/// - Because of this, you cannot get a `List<T>` that is a sub-list of another
+///   `List<T>`. You can get a sub-slice `&[T]`, however.
+/// - `List<T>` can be used with `CopyTaggedPtr`, which is useful within
+///   structs whose size must be minimized.
+/// - Because of the uniqueness assumption, we can use the address of a
+///   `List<T>` for faster equality comparisons and hashing.
+/// - `T` must be `Copy`. This lets `List<T>` be stored in a dropless arena and
+///   iterators return a `T` rather than a `&T`.
+/// - `T` must not be zero-sized.
 #[repr(C)]
 pub struct List<T> {
     len: usize,
+
+    /// Although this claims to be a zero-length array, in practice `len`
+    /// elements are actually present.
     data: [T; 0],
+
     opaque: OpaqueListContents,
 }
 
-unsafe impl<'a, T: 'a> rustc_data_structures::tagged_ptr::Pointer for &'a List<T> {
-    const BITS: usize = std::mem::align_of::<usize>().trailing_zeros() as usize;
-    #[inline]
-    fn into_usize(self) -> usize {
-        self as *const List<T> as usize
-    }
-    #[inline]
-    unsafe fn from_usize(ptr: usize) -> Self {
-        &*(ptr as *const List<T>)
-    }
-    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
-        // Self: Copy so this is fine
-        let ptr = Self::from_usize(ptr);
-        f(&ptr)
+extern "C" {
+    /// A dummy type used to force `List` to be unsized while not requiring
+    /// references to it be wide pointers.
+    type OpaqueListContents;
+}
+
+impl<T> List<T> {
+    /// Returns a reference to the (unique, static) empty list.
+    #[inline(always)]
+    pub fn empty<'a>() -> &'a List<T> {
+        #[repr(align(64))]
+        struct MaxAlign;
+
+        assert!(mem::align_of::<T>() <= mem::align_of::<MaxAlign>());
+
+        #[repr(C)]
+        struct InOrder<T, U>(T, U);
+
+        // The empty slice is static and contains a single `0` usize (for the
+        // length) that is 64-byte aligned, thus featuring the necessary
+        // trailing padding for elements with up to 64-byte alignment.
+        static EMPTY_SLICE: InOrder<usize, MaxAlign> = InOrder(0, MaxAlign);
+        unsafe { &*(&EMPTY_SLICE as *const _ as *const List<T>) }
     }
 }
 
-unsafe impl<T: Sync> Sync for List<T> {}
-
 impl<T: Copy> List<T> {
+    /// Allocates a list from `arena` and copies the contents of `slice` into it.
+    ///
+    /// WARNING: the contents *must be unique*, such that no list with these
+    /// contents has been previously created. If not, operations such as `eq`
+    /// and `hash` might give incorrect results.
+    ///
+    /// Panics if `T` is `Drop`, or `T` is zero-sized, or the slice is empty
+    /// (because the empty list exists statically, and is available via
+    /// `empty()`).
     #[inline]
     pub(super) fn from_arena<'tcx>(arena: &'tcx Arena<'tcx>, slice: &[T]) -> &'tcx List<T> {
         assert!(!mem::needs_drop::<T>());
@@ -73,7 +91,7 @@ impl<T: Copy> List<T> {
                 .cast::<T>()
                 .copy_from_nonoverlapping(slice.as_ptr(), slice.len());
 
-            &mut *mem
+            &*mem
         }
     }
 
@@ -107,11 +125,24 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for &List<T> {
     }
 }
 
+impl<T: PartialEq> PartialEq for List<T> {
+    #[inline]
+    fn eq(&self, other: &List<T>) -> bool {
+        // Pointer equality implies list equality (due to the unique contents
+        // assumption).
+        ptr::eq(self, other)
+    }
+}
+
+impl<T: Eq> Eq for List<T> {}
+
 impl<T> Ord for List<T>
 where
     T: Ord,
 {
     fn cmp(&self, other: &List<T>) -> Ordering {
+        // Pointer equality implies list equality (due to the unique contents
+        // assumption), but the contents must be compared otherwise.
         if self == other { Ordering::Equal } else { <[T] as Ord>::cmp(&**self, &**other) }
     }
 }
@@ -121,6 +152,8 @@ where
     T: PartialOrd,
 {
     fn partial_cmp(&self, other: &List<T>) -> Option<Ordering> {
+        // Pointer equality implies list equality (due to the unique contents
+        // assumption), but the contents must be compared otherwise.
         if self == other {
             Some(Ordering::Equal)
         } else {
@@ -129,17 +162,11 @@ where
     }
 }
 
-impl<T: PartialEq> PartialEq for List<T> {
-    #[inline]
-    fn eq(&self, other: &List<T>) -> bool {
-        ptr::eq(self, other)
-    }
-}
-impl<T: Eq> Eq for List<T> {}
-
 impl<T> Hash for List<T> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
+        // Pointer hashing is sufficient (due to the unique contents
+        // assumption).
         (self as *const List<T>).hash(s)
     }
 }
@@ -168,13 +195,24 @@ impl<'a, T: Copy> IntoIterator for &'a List<T> {
     }
 }
 
-impl<T> List<T> {
-    #[inline(always)]
-    pub fn empty<'a>() -> &'a List<T> {
-        #[repr(align(64), C)]
-        struct EmptySlice([u8; 64]);
-        static EMPTY_SLICE: EmptySlice = EmptySlice([0; 64]);
-        assert!(mem::align_of::<T>() <= 64);
-        unsafe { &*(&EMPTY_SLICE as *const _ as *const List<T>) }
+unsafe impl<T: Sync> Sync for List<T> {}
+
+unsafe impl<'a, T: 'a> rustc_data_structures::tagged_ptr::Pointer for &'a List<T> {
+    const BITS: usize = std::mem::align_of::<usize>().trailing_zeros() as usize;
+
+    #[inline]
+    fn into_usize(self) -> usize {
+        self as *const List<T> as usize
+    }
+
+    #[inline]
+    unsafe fn from_usize(ptr: usize) -> &'a List<T> {
+        &*(ptr as *const List<T>)
+    }
+
+    unsafe fn with_ref<R, F: FnOnce(&Self) -> R>(ptr: usize, f: F) -> R {
+        // `Self` is `&'a List<T>` which impls `Copy`, so this is fine.
+        let ptr = Self::from_usize(ptr);
+        f(&ptr)
     }
 }

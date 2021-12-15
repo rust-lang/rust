@@ -52,6 +52,7 @@ declare_clippy_lint! {
     /// #[non_exhaustive]
     /// struct T(pub i32, pub i32);
     /// ```
+    #[clippy::version = "1.45.0"]
     pub MANUAL_NON_EXHAUSTIVE,
     style,
     "manual implementations of the non-exhaustive pattern can be simplified using #[non_exhaustive]"

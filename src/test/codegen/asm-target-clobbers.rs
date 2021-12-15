@@ -3,7 +3,8 @@
 // [avx512]compile-flags: -C target-feature=+avx512f
 
 #![crate_type = "rlib"]
-#![feature(asm)]
+
+use std::arch::asm;
 
 // CHECK-LABEL: @avx512_clobber
 // base: call void asm sideeffect inteldialect "", "~{xmm31}"()

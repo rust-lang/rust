@@ -3,13 +3,14 @@
 // ignore-spirv
 // ignore-wasm32
 
-#![feature(asm)]
 #![feature(llvm_asm)]
 #![feature(naked_functions)]
 #![feature(or_patterns)]
 #![feature(asm_const, asm_sym)]
 #![crate_type = "lib"]
 #![allow(deprecated)] // llvm_asm!
+
+use std::arch::asm;
 
 #[repr(C)]
 pub struct P {

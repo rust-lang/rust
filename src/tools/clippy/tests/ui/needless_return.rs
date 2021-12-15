@@ -108,6 +108,7 @@ fn test_return_in_macro() {
 }
 
 mod issue6501 {
+    #[allow(clippy::unnecessary_lazy_evaluations)]
     fn foo(bar: Result<(), ()>) {
         bar.unwrap_or_else(|_| return)
     }

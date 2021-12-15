@@ -4,11 +4,11 @@
 // compile-flags: --crate-type staticlib
 // only-x86_64-fortanix-unknown-sgx
 
-#![feature(asm)]
+use std::arch::asm;
 
 #[no_mangle]
-pub extern fn get(ptr: *const u64) -> u64 {
-    let value : u64;
+pub extern "C" fn get(ptr: *const u64) -> u64 {
+    let value: u64;
     unsafe {
         asm!(".start_inline_asm:",
             "mov {}, [{}]",
@@ -26,11 +26,13 @@ pub extern fn get(ptr: *const u64) -> u64 {
 // CHECK-NEXT: .end_inline_asm
 
 #[no_mangle]
-pub extern fn myret() {
+pub extern "C" fn myret() {
     unsafe {
-        asm!(".start_myret_inline_asm:
-            ret
-            .end_myret_inline_asm:");
+        asm!(
+            ".start_myret_inline_asm:",
+            "ret",
+            ".end_myret_inline_asm:",
+        );
     }
 }
 

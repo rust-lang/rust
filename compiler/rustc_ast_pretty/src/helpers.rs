@@ -35,4 +35,14 @@ impl Printer {
         self.word(w);
         self.nbsp()
     }
+
+    // Synthesizes a comment that was not textually present in the original
+    // source file.
+    pub fn synth_comment(&mut self, text: impl Into<Cow<'static, str>>) {
+        self.word("/*");
+        self.space();
+        self.word(text);
+        self.space();
+        self.word("*/")
+    }
 }

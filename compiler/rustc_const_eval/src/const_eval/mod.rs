@@ -25,9 +25,9 @@ pub use fn_queries::*;
 pub use machine::*;
 
 pub(crate) fn const_caller_location(
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'_>,
     (file, line, col): (Symbol, u32, u32),
-) -> ConstValue<'tcx> {
+) -> ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), false);
 

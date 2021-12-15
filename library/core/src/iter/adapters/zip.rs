@@ -45,15 +45,23 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
 ///
 /// let xs = [1, 2, 3];
 /// let ys = [4, 5, 6];
-/// for (x, y) in zip(&xs, &ys) {
-///     println!("x:{}, y:{}", x, y);
-/// }
+///
+/// let mut iter = zip(xs, ys);
+///
+/// assert_eq!(iter.next().unwrap(), (1, 4));
+/// assert_eq!(iter.next().unwrap(), (2, 5));
+/// assert_eq!(iter.next().unwrap(), (3, 6));
+/// assert!(iter.next().is_none());
 ///
 /// // Nested zips are also possible:
 /// let zs = [7, 8, 9];
-/// for ((x, y), z) in zip(zip(&xs, &ys), &zs) {
-///     println!("x:{}, y:{}, z:{}", x, y, z);
-/// }
+///
+/// let mut iter = zip(zip(xs, ys), zs);
+///
+/// assert_eq!(iter.next().unwrap(), ((1, 4), 7));
+/// assert_eq!(iter.next().unwrap(), ((2, 5), 8));
+/// assert_eq!(iter.next().unwrap(), ((3, 6), 9));
+/// assert!(iter.next().is_none());
 /// ```
 #[unstable(feature = "iter_zip", issue = "83574")]
 pub fn zip<A, B>(a: A, b: B) -> Zip<A::IntoIter, B::IntoIter>

@@ -46,6 +46,7 @@ declare_clippy_lint! {
     ///     ..
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub LEN_ZERO,
     style,
     "checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead"
@@ -71,6 +72,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub LEN_WITHOUT_IS_EMPTY,
     style,
     "traits or impls with a public `len` method but no corresponding `is_empty` method"
@@ -108,6 +110,7 @@ declare_clippy_lint! {
     ///     ..
     /// }
     /// ```
+    #[clippy::version = "1.49.0"]
     pub COMPARISON_TO_EMPTY,
     style,
     "checking `x == \"\"` or `x == []` (or similar) when `.is_empty()` could be used instead"

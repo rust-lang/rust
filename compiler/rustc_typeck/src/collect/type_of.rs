@@ -172,7 +172,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 // We've encountered an `AnonConst` in some path, so we need to
                 // figure out which generic parameter it corresponds to and return
                 // the relevant type.
-                let (arg_index, segment) = path
+                let filtered = path
                     .segments
                     .iter()
                     .filter_map(|seg| seg.args.map(|args| (args.args, seg)))
@@ -181,10 +181,17 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                             .filter(|arg| arg.is_const())
                             .position(|arg| arg.id() == hir_id)
                             .map(|index| (index, seg))
-                    })
-                    .unwrap_or_else(|| {
-                        bug!("no arg matching AnonConst in path");
                     });
+                let (arg_index, segment) = match filtered {
+                    None => {
+                        tcx.sess.delay_span_bug(
+                            tcx.def_span(def_id),
+                            "no arg matching AnonConst in path",
+                        );
+                        return None;
+                    }
+                    Some(inner) => inner,
+                };
 
                 // Try to use the segment resolution if it is valid, otherwise we
                 // default to the path resolution.
@@ -387,13 +394,13 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
                     tcx.mk_adt(def, substs)
                 }
-                ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }) => {
+                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
                     find_opaque_ty_constraints(tcx, def_id)
                 }
                 // Opaque types desugared from `impl Trait`.
-                ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: Some(owner), .. }) => {
+                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner), .. }) => {
                     let concrete_ty = tcx
-                        .mir_borrowck(owner.expect_local())
+                        .mir_borrowck(owner)
                         .concrete_opaque_types
                         .get_value_matching(|(key, _)| key.def_id == def_id.to_def_id())
                         .copied()
@@ -406,7 +413,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                 ),
                             );
                             if let Some(ErrorReported) =
-                                tcx.typeck(owner.expect_local()).tainted_by_errors
+                                tcx.typeck(owner).tainted_by_errors
                             {
                                 // Some error in the
                                 // owner fn prevented us from populating

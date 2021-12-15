@@ -319,6 +319,9 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         "~{vxrm}".to_string(),
                     ]);
                 }
+                InlineAsmArch::Avr => {
+                    constraints.push("~{sreg}".to_string());
+                }
                 InlineAsmArch::Nvptx64 => {}
                 InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {}
                 InlineAsmArch::Hexagon => {}
@@ -474,7 +477,7 @@ pub(crate) fn inline_asm_call(
         .collect::<Vec<_>>();
 
     debug!("Asm Output Type: {:?}", output);
-    let fty = bx.cx.type_func(&argtys[..], output);
+    let fty = bx.cx.type_func(&argtys, output);
     unsafe {
         // Ask LLVM to verify that the constraints are well-formed.
         let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr().cast(), cons.len());
@@ -629,7 +632,6 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
                 unreachable!("clobber-only")
             }
             InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => "r",
-            InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg_thumb) => "l",
             InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
             | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low16)
             | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::qreg_low8) => "t",
@@ -669,6 +671,11 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
             InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => "r",
             InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) => "w",
+            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_upper) => "d",
+            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_pair) => "r",
+            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_iw) => "w",
+            InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => "e",
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
@@ -695,8 +702,7 @@ fn modifier_to_llvm(
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")
         }
-        InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg)
-        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg_thumb) => None,
+        InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => None,
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16) => None,
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg)
@@ -749,6 +755,14 @@ fn modifier_to_llvm(
         }
         InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => None,
         InlineAsmRegClass::Bpf(_) => None,
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_pair)
+        | InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_iw)
+        | InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => match modifier {
+            Some('h') => Some('B'),
+            Some('l') => Some('A'),
+            _ => None,
+        },
+        InlineAsmRegClass::Avr(_) => None,
         InlineAsmRegClass::S390x(_) => None,
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
@@ -769,8 +783,7 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")
         }
-        InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg)
-        | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg_thumb) => cx.type_i32(),
+        InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg_low16) => cx.type_f32(),
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg)
@@ -812,6 +825,11 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
         InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => cx.type_i32(),
         InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) => cx.type_i64(),
         InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) => cx.type_i32(),
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg) => cx.type_i8(),
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_upper) => cx.type_i8(),
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_pair) => cx.type_i16(),
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_iw) => cx.type_i16(),
+        InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => cx.type_i16(),
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {

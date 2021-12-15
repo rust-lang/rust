@@ -1,10 +1,10 @@
 goto: file://|DOC_PATH|/test_docs/index.html
-assert-attribute: ("#main > details.top-doc", {"open": ""})
+assert-attribute: ("#main-content > details.top-doc", {"open": ""})
 click: "#toggle-all-docs"
 wait-for: 1000
 // This is now collapsed so there shouldn't be the "open" attribute on details.
-assert-attribute-false: ("#main > details.top-doc", {"open": ""})
+assert-attribute-false: ("#main-content > details.top-doc", {"open": ""})
 click: "#toggle-all-docs"
 wait-for: 1000
 // Not collapsed anymore so the "open" attribute should be back.
-assert-attribute: ("#main > details.top-doc", {"open": ""})
+assert-attribute: ("#main-content > details.top-doc", {"open": ""})

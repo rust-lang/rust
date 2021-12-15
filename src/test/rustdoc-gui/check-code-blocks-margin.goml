@@ -1,6 +1,6 @@
 // This test ensures that the docblock elements have the appropriate left margin.
 goto: file://|DOC_PATH|/test_docs/fn.foo.html
 // The top docblock elements shouldn't have left margin...
-assert-css: ("#main .docblock.item-decl", {"margin-left": "0px"})
+assert-css: ("#main-content .docblock.item-decl", {"margin-left": "0px"})
 // ... but all the others should!
-assert-css: ("#main .docblock:not(.item-decl)", {"margin-left": "24px"})
+assert-css: ("#main-content .docblock:not(.item-decl)", {"margin-left": "24px"})

@@ -1,4 +1,4 @@
-error: no rules expected the token `enum E { }`
+error: no rules expected the token `enum E {}`
   --> $DIR/nonterminal-matching.rs:19:10
    |
 LL |     macro n(a $nt_item b) {

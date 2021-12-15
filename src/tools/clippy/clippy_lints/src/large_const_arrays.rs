@@ -27,6 +27,7 @@ declare_clippy_lint! {
     /// // Good
     /// pub static a = [0u32; 1_000_000];
     /// ```
+    #[clippy::version = "1.44.0"]
     pub LARGE_CONST_ARRAYS,
     perf,
     "large non-scalar const array may cause performance overhead"

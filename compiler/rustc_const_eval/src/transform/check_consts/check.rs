@@ -35,7 +35,7 @@ pub struct Qualifs<'mir, 'tcx> {
     needs_non_const_drop: Option<QualifResults<'mir, 'tcx, NeedsNonConstDrop>>,
 }
 
-impl Qualifs<'mir, 'tcx> {
+impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     /// Returns `true` if `local` is `NeedsDrop` at the given `Location`.
     ///
     /// Only updates the cursor if absolutely necessary
@@ -185,7 +185,7 @@ pub struct Checker<'mir, 'tcx> {
     secondary_errors: Vec<Diagnostic>,
 }
 
-impl Deref for Checker<'mir, 'tcx> {
+impl<'mir, 'tcx> Deref for Checker<'mir, 'tcx> {
     type Target = ConstCx<'mir, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
@@ -193,7 +193,7 @@ impl Deref for Checker<'mir, 'tcx> {
     }
 }
 
-impl Checker<'mir, 'tcx> {
+impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     pub fn new(ccx: &'mir ConstCx<'mir, 'tcx>) -> Self {
         Checker {
             span: ccx.body.span,
@@ -273,7 +273,7 @@ impl Checker<'mir, 'tcx> {
                 struct StorageDeads {
                     locals: BitSet<Local>,
                 }
-                impl Visitor<'tcx> for StorageDeads {
+                impl<'tcx> Visitor<'tcx> for StorageDeads {
                     fn visit_statement(&mut self, stmt: &Statement<'tcx>, _: Location) {
                         if let StatementKind::StorageDead(l) = stmt.kind {
                             self.locals.insert(l);
@@ -460,7 +460,7 @@ impl Checker<'mir, 'tcx> {
     }
 }
 
-impl Visitor<'tcx> for Checker<'mir, 'tcx> {
+impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, block: &BasicBlockData<'tcx>) {
         trace!("visit_basic_block_data: bb={:?} is_cleanup={:?}", bb, block.is_cleanup);
 
@@ -801,7 +801,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
                     if !self.tcx.features().const_trait_impl {
-                        self.check_op(ops::FnCallNonConst);
+                        self.check_op(ops::FnCallNonConst(Some((callee, substs))));
                         return;
                     }
 
@@ -817,8 +817,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                     );
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {
-                        let mut selcx =
-                            SelectionContext::with_constness(&infcx, hir::Constness::Const);
+                        let mut selcx = SelectionContext::new(&infcx);
                         selcx.select(&obligation)
                     });
 
@@ -857,7 +856,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                             }
 
                             if !nonconst_call_permission {
-                                self.check_op(ops::FnCallNonConst);
+                                self.check_op(ops::FnCallNonConst(None));
                                 return;
                             }
                         }
@@ -926,7 +925,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
                     }
 
                     if !nonconst_call_permission {
-                        self.check_op(ops::FnCallNonConst);
+                        self.check_op(ops::FnCallNonConst(None));
                         return;
                     }
                 }
@@ -1043,7 +1042,7 @@ impl Visitor<'tcx> for Checker<'mir, 'tcx> {
     }
 }
 
-fn place_as_reborrow(
+fn place_as_reborrow<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     place: Place<'tcx>,

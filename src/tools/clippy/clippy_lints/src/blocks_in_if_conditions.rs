@@ -41,6 +41,7 @@ declare_clippy_lint! {
     /// let res = { let x = somefunc(); x };
     /// if res { /* ... */ }
     /// ```
+    #[clippy::version = "1.45.0"]
     pub BLOCKS_IN_IF_CONDITIONS,
     style,
     "useless or complex blocks that can be eliminated in conditions"

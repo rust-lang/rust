@@ -46,20 +46,13 @@ pub use core::prelude::v1::{
 };
 
 #[unstable(
-    feature = "asm",
-    issue = "72016",
-    reason = "inline assembly is not stable enough for use and is subject to change"
+    feature = "concat_bytes",
+    issue = "87555",
+    reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
+#[cfg(not(bootstrap))]
 #[doc(no_inline)]
-pub use core::prelude::v1::asm;
-
-#[unstable(
-    feature = "global_asm",
-    issue = "35119",
-    reason = "`global_asm!` is not stable enough for use and is subject to change"
-)]
-#[doc(no_inline)]
-pub use core::prelude::v1::global_asm;
+pub use core::prelude::v1::concat_bytes;
 
 // FIXME: Attribute and internal derive macros are not documented because for them rustdoc generates
 // dead links which fail link checker testing.

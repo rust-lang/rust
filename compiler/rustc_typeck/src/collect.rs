@@ -41,7 +41,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtKind, Const, DefIdTree, Ty, TyCtxt};
-use rustc_middle::ty::{ReprOptions, ToPredicate, WithConstness};
+use rustc_middle::ty::{ReprOptions, ToPredicate, TypeFoldable};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -594,7 +594,11 @@ fn type_param_predicates(
                 ItemKind::Fn(.., ref generics, _)
                 | ItemKind::Impl(hir::Impl { ref generics, .. })
                 | ItemKind::TyAlias(_, ref generics)
-                | ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. })
+                | ItemKind::OpaqueTy(OpaqueTy {
+                    ref generics,
+                    origin: hir::OpaqueTyOrigin::TyAlias,
+                    ..
+                })
                 | ItemKind::Enum(_, ref generics)
                 | ItemKind::Struct(_, ref generics)
                 | ItemKind::Union(_, ref generics) => generics,
@@ -793,7 +797,10 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         }
 
         // Desugared from `impl Trait`, so visited by the function's return type.
-        hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn: Some(_), .. }) => {}
+        hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+            origin: hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..),
+            ..
+        }) => {}
 
         // Don't call `type_of` on opaque types, since that depends on type
         // checking function bodies. `check_item_type` ensures that it's called
@@ -1488,15 +1495,18 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             Some(tcx.typeck_root_def_id(def_id))
         }
         Node::Item(item) => match item.kind {
-            ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => {
-                impl_trait_fn.or_else(|| {
-                    let parent_id = tcx.hir().get_parent_item(hir_id);
-                    assert!(parent_id != hir_id && parent_id != CRATE_HIR_ID);
-                    debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent_id);
-                    // Opaque types are always nested within another item, and
-                    // inherit the generics of the item.
-                    Some(tcx.hir().local_def_id(parent_id).to_def_id())
-                })
+            ItemKind::OpaqueTy(hir::OpaqueTy {
+                origin:
+                    hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
+                ..
+            }) => Some(fn_def_id.to_def_id()),
+            ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
+                let parent_id = tcx.hir().get_parent_item(hir_id);
+                assert!(parent_id != hir_id && parent_id != CRATE_HIR_ID);
+                debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent_id);
+                // Opaque types are always nested within another item, and
+                // inherit the generics of the item.
+                Some(tcx.hir().local_def_id(parent_id).to_def_id())
             }
             _ => None,
         },
@@ -1777,7 +1787,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     visitor.visit_ty(ty);
                     let mut diag = bad_placeholder_type(tcx, visitor.0, "return type");
                     let ret_ty = fn_sig.skip_binder().output();
-                    if ret_ty != tcx.ty_error() {
+                    if !ret_ty.references_error() {
                         if !ret_ty.is_closure() {
                             let ret_ty_str = match ret_ty.kind() {
                                 // Suggest a function pointer return type instead of a unique function definition
@@ -2051,31 +2061,32 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     generics
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
-                    bounds: _,
-                    impl_trait_fn,
-                    ref generics,
-                    origin: _,
+                    origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
+                    ..
                 }) => {
-                    if impl_trait_fn.is_some() {
-                        // return-position impl trait
-                        //
-                        // We don't inherit predicates from the parent here:
-                        // If we have, say `fn f<'a, T: 'a>() -> impl Sized {}`
-                        // then the return type is `f::<'static, T>::{{opaque}}`.
-                        //
-                        // If we inherited the predicates of `f` then we would
-                        // require that `T: 'static` to show that the return
-                        // type is well-formed.
-                        //
-                        // The only way to have something with this opaque type
-                        // is from the return type of the containing function,
-                        // which will ensure that the function's predicates
-                        // hold.
-                        return ty::GenericPredicates { parent: None, predicates: &[] };
-                    } else {
-                        // type-alias impl trait
-                        generics
-                    }
+                    // return-position impl trait
+                    //
+                    // We don't inherit predicates from the parent here:
+                    // If we have, say `fn f<'a, T: 'a>() -> impl Sized {}`
+                    // then the return type is `f::<'static, T>::{{opaque}}`.
+                    //
+                    // If we inherited the predicates of `f` then we would
+                    // require that `T: 'static` to show that the return
+                    // type is well-formed.
+                    //
+                    // The only way to have something with this opaque type
+                    // is from the return type of the containing function,
+                    // which will ensure that the function's predicates
+                    // hold.
+                    return ty::GenericPredicates { parent: None, predicates: &[] };
+                }
+                ItemKind::OpaqueTy(OpaqueTy {
+                    ref generics,
+                    origin: hir::OpaqueTyOrigin::TyAlias,
+                    ..
+                }) => {
+                    // type-alias impl trait
+                    generics
                 }
 
                 _ => NO_GENERICS,
@@ -2998,9 +3009,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     )
                     .emit();
                     InlineAttr::None
-                } else if list_contains_name(&items[..], sym::always) {
+                } else if list_contains_name(&items, sym::always) {
                     InlineAttr::Always
-                } else if list_contains_name(&items[..], sym::never) {
+                } else if list_contains_name(&items, sym::never) {
                     InlineAttr::Never
                 } else {
                     struct_span_err!(
@@ -3034,9 +3045,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 if items.len() != 1 {
                     err(attr.span, "expected one argument");
                     OptimizeAttr::None
-                } else if list_contains_name(&items[..], sym::size) {
+                } else if list_contains_name(&items, sym::size) {
                     OptimizeAttr::Size
-                } else if list_contains_name(&items[..], sym::speed) {
+                } else if list_contains_name(&items, sym::speed) {
                     OptimizeAttr::Speed
                 } else {
                     err(items[0].span(), "invalid argument");

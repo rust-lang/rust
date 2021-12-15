@@ -57,13 +57,13 @@ release: 1.17.0
 LLVM version: 3.9
 ```
 
-## `-o`/`--output`: output path
+## `-o`/`--out-dir`: output directory path
 
 Using this flag looks like this:
 
 ```bash
 $ rustdoc src/lib.rs -o target/doc
-$ rustdoc src/lib.rs --output target/doc
+$ rustdoc src/lib.rs --out-dir target/doc
 ```
 
 By default, `rustdoc`'s output appears in a directory named `doc` in

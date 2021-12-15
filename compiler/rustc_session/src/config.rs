@@ -746,6 +746,7 @@ impl Default for Options {
             edition: DEFAULT_EDITION,
             json_artifact_notifications: false,
             json_unused_externs: false,
+            json_future_incompat: false,
             pretty: None,
             working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
         }
@@ -1257,6 +1258,7 @@ pub struct JsonConfig {
     pub json_rendered: HumanReadableErrorType,
     pub json_artifact_notifications: bool,
     pub json_unused_externs: bool,
+    pub json_future_incompat: bool,
 }
 
 /// Parse the `--json` flag.
@@ -1269,6 +1271,7 @@ pub fn parse_json(matches: &getopts::Matches) -> JsonConfig {
     let mut json_color = ColorConfig::Never;
     let mut json_artifact_notifications = false;
     let mut json_unused_externs = false;
+    let mut json_future_incompat = false;
     for option in matches.opt_strs("json") {
         // For now conservatively forbid `--color` with `--json` since `--json`
         // won't actually be emitting any colors and anything colorized is
@@ -1286,6 +1289,7 @@ pub fn parse_json(matches: &getopts::Matches) -> JsonConfig {
                 "diagnostic-rendered-ansi" => json_color = ColorConfig::Always,
                 "artifacts" => json_artifact_notifications = true,
                 "unused-externs" => json_unused_externs = true,
+                "future-incompat" => json_future_incompat = true,
                 s => early_error(
                     ErrorOutputType::default(),
                     &format!("unknown `--json` option `{}`", s),
@@ -1298,6 +1302,7 @@ pub fn parse_json(matches: &getopts::Matches) -> JsonConfig {
         json_rendered: json_rendered(json_color),
         json_artifact_notifications,
         json_unused_externs,
+        json_future_incompat,
     }
 }
 
@@ -1730,7 +1735,7 @@ fn parse_native_lib_modifiers(
 ) -> (NativeLibKind, Option<bool>) {
     let mut verbatim = None;
     for modifier in modifiers.split(',') {
-        let (modifier, value) = match modifier.strip_prefix(&['+', '-'][..]) {
+        let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
             Some(m) => (m, modifier.starts_with('+')),
             None => early_error(
                 error_format,
@@ -2011,14 +2016,18 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let edition = parse_crate_edition(matches);
 
-    let JsonConfig { json_rendered, json_artifact_notifications, json_unused_externs } =
-        parse_json(matches);
+    let JsonConfig {
+        json_rendered,
+        json_artifact_notifications,
+        json_unused_externs,
+        json_future_incompat,
+    } = parse_json(matches);
 
     let error_format = parse_error_format(matches, color, json_rendered);
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
-        .unwrap_or_else(|e| early_error(error_format, &e[..]));
+        .unwrap_or_else(|e| early_error(error_format, &e));
 
     let mut debugging_opts = DebuggingOptions::build(matches, error_format);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
@@ -2142,7 +2151,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
-        search_paths.push(SearchPath::from_cli_opt(&s[..], error_format));
+        search_paths.push(SearchPath::from_cli_opt(&s, error_format));
     }
 
     let libs = parse_libs(matches, error_format);
@@ -2248,6 +2257,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         edition,
         json_artifact_notifications,
         json_unused_externs,
+        json_future_incompat,
         pretty,
         working_dir,
     }

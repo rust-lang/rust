@@ -1,11 +1,11 @@
 error[E0736]: cannot use `#[track_caller]` with `#[naked]`
-  --> $DIR/error-with-naked.rs:4:1
+  --> $DIR/error-with-naked.rs:6:1
    |
 LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
 error[E0736]: cannot use `#[track_caller]` with `#[naked]`
-  --> $DIR/error-with-naked.rs:13:5
+  --> $DIR/error-with-naked.rs:15:5
    |
 LL |     #[track_caller]
    |     ^^^^^^^^^^^^^^^

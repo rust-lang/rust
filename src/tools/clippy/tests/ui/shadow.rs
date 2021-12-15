@@ -79,4 +79,10 @@ fn question_mark() -> Option<()> {
     None
 }
 
+pub async fn foo1(_a: i32) {}
+
+pub async fn foo2(_a: i32, _b: i64) {
+    let _b = _a;
+}
+
 fn main() {}

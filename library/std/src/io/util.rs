@@ -5,7 +5,7 @@ mod tests;
 
 use crate::fmt;
 use crate::io::{
-    self, BufRead, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write,
+    self, BufRead, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, SizeHint, Write,
 };
 
 /// A reader which is always at EOF.
@@ -47,8 +47,8 @@ impl Read for Empty {
     }
 
     #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
+    fn read_buf(&mut self, _buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        Ok(())
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -130,6 +130,24 @@ impl Read for Repeat {
         Ok(buf.len())
     }
 
+    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        // SAFETY: No uninit bytes are being written
+        for slot in unsafe { buf.unfilled_mut() } {
+            slot.write(self.byte);
+        }
+
+        let remaining = buf.remaining();
+
+        // SAFETY: the entire unfilled portion of buf has been initialized
+        unsafe {
+            buf.assume_init(remaining);
+        }
+
+        buf.add_filled(remaining);
+
+        Ok(())
+    }
+
     #[inline]
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let mut nwritten = 0;
@@ -142,11 +160,6 @@ impl Read for Repeat {
     #[inline]
     fn is_read_vectored(&self) -> bool {
         true
-    }
-
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
     }
 }
 

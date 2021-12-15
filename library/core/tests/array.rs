@@ -28,11 +28,22 @@ fn array_try_from() {
         ($($N:expr)+) => {
             $({
                 type Array = [u8; $N];
-                let array: Array = [0; $N];
+                let mut array: Array = [0; $N];
                 let slice: &[u8] = &array[..];
 
                 let result = <&Array>::try_from(slice);
                 assert_eq!(&array, result.unwrap());
+
+                let result = <Array>::try_from(slice);
+                assert_eq!(&array, &result.unwrap());
+
+                let mut_slice: &mut [u8] = &mut array[..];
+                let result = <&mut Array>::try_from(mut_slice);
+                assert_eq!(&[0; $N], result.unwrap());
+
+                let mut_slice: &mut [u8] = &mut array[..];
+                let result = <Array>::try_from(mut_slice);
+                assert_eq!(&array, &result.unwrap());
             })+
         }
     }
@@ -459,6 +470,23 @@ fn array_split_array_mut() {
     }
 }
 
+#[test]
+fn array_rsplit_array_mut() {
+    let mut v = [1, 2, 3, 4, 5, 6];
+
+    {
+        let (left, right) = v.rsplit_array_mut::<0>();
+        assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
+        assert_eq!(right, &mut []);
+    }
+
+    {
+        let (left, right) = v.rsplit_array_mut::<6>();
+        assert_eq!(left, &mut []);
+        assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
+    }
+}
+
 #[should_panic]
 #[test]
 fn array_split_array_ref_out_of_bounds() {
@@ -473,4 +501,126 @@ fn array_split_array_mut_out_of_bounds() {
     let mut v = [1, 2, 3, 4, 5, 6];
 
     v.split_array_mut::<7>();
+}
+
+#[should_panic]
+#[test]
+fn array_rsplit_array_ref_out_of_bounds() {
+    let v = [1, 2, 3, 4, 5, 6];
+
+    v.rsplit_array_ref::<7>();
+}
+
+#[should_panic]
+#[test]
+fn array_rsplit_array_mut_out_of_bounds() {
+    let mut v = [1, 2, 3, 4, 5, 6];
+
+    v.rsplit_array_mut::<7>();
+}
+
+#[test]
+fn array_intoiter_advance_by() {
+    use std::cell::Cell;
+    struct DropCounter<'a>(usize, &'a Cell<usize>);
+    impl Drop for DropCounter<'_> {
+        fn drop(&mut self) {
+            let x = self.1.get();
+            self.1.set(x + 1);
+        }
+    }
+
+    let counter = Cell::new(0);
+    let a: [_; 100] = std::array::from_fn(|i| DropCounter(i, &counter));
+    let mut it = IntoIterator::into_iter(a);
+
+    let r = it.advance_by(1);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_by(11);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 88);
+    assert_eq!(counter.get(), 12);
+
+    let x = it.next();
+    assert_eq!(x.as_ref().map(|x| x.0), Some(12));
+    assert_eq!(it.len(), 87);
+    assert_eq!(counter.get(), 12);
+    drop(x);
+    assert_eq!(counter.get(), 13);
+
+    let r = it.advance_by(123456);
+    assert_eq!(r, Err(87));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_by(10);
+    assert_eq!(r, Err(0));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+}
+
+#[test]
+fn array_intoiter_advance_back_by() {
+    use std::cell::Cell;
+    struct DropCounter<'a>(usize, &'a Cell<usize>);
+    impl Drop for DropCounter<'_> {
+        fn drop(&mut self) {
+            let x = self.1.get();
+            self.1.set(x + 1);
+        }
+    }
+
+    let counter = Cell::new(0);
+    let a: [_; 100] = std::array::from_fn(|i| DropCounter(i, &counter));
+    let mut it = IntoIterator::into_iter(a);
+
+    let r = it.advance_back_by(1);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_back_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 99);
+    assert_eq!(counter.get(), 1);
+
+    let r = it.advance_back_by(11);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 88);
+    assert_eq!(counter.get(), 12);
+
+    let x = it.next_back();
+    assert_eq!(x.as_ref().map(|x| x.0), Some(87));
+    assert_eq!(it.len(), 87);
+    assert_eq!(counter.get(), 12);
+    drop(x);
+    assert_eq!(counter.get(), 13);
+
+    let r = it.advance_back_by(123456);
+    assert_eq!(r, Err(87));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_back_by(0);
+    assert_eq!(r, Ok(()));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
+
+    let r = it.advance_back_by(10);
+    assert_eq!(r, Err(0));
+    assert_eq!(it.len(), 0);
+    assert_eq!(counter.get(), 100);
 }

@@ -75,6 +75,17 @@ fn negative_tests(arg: Option<u32>) -> u32 {
     7
 }
 
+// #7973
+fn pattern_to_vec(pattern: &str) -> Vec<String> {
+    pattern
+        .trim_matches('/')
+        .split('/')
+        .flat_map(|s| {
+            s.find('.').map_or_else(|| vec![s.to_string()], |idx| vec![s[..idx].to_string(), s[idx..].to_string()])
+        })
+        .collect::<Vec<_>>()
+}
+
 fn main() {
     let optional = Some(5);
     let _ = optional.map_or(5, |x| x + 2);
@@ -110,7 +121,7 @@ fn main() {
 
     let s = String::new();
     // Lint, both branches immutably borrow `s`.
-    let _ = Some(0).map_or_else(|| s.len(), |x| s.len() + x);
+    let _ = Some(0).map_or(s.len(), |x| s.len() + x);
 
     let s = String::new();
     // Lint, `Some` branch consumes `s`, but else branch doesn't use `s`.
@@ -146,4 +157,6 @@ fn main() {
         // Don't lint. `await` can't be moved into a closure.
         let _ = if let Some(x) = Some(0) { _f1(x).await } else { 0 };
     }
+
+    let _ = pattern_to_vec("hello world");
 }

@@ -21,6 +21,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// a =- 42; // confusing, should it be `a -= 42` or `a = -42`?
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SUSPICIOUS_ASSIGNMENT_FORMATTING,
     suspicious,
     "suspicious formatting of `*=`, `-=` or `!=`"
@@ -43,6 +44,7 @@ declare_clippy_lint! {
     /// if foo &&! bar { // this should be `foo && !bar` but looks like a different operator
     /// }
     /// ```
+    #[clippy::version = "1.40.0"]
     pub SUSPICIOUS_UNARY_OP_FORMATTING,
     suspicious,
     "suspicious formatting of unary `-` or `!` on the RHS of a BinOp"
@@ -79,6 +81,7 @@ declare_clippy_lint! {
     /// if bar { // this is the `else` block of the previous `if`, but should it be?
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SUSPICIOUS_ELSE_FORMATTING,
     suspicious,
     "suspicious formatting of `else`"
@@ -99,6 +102,7 @@ declare_clippy_lint! {
     ///     -4, -5, -6
     /// ];
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub POSSIBLE_MISSING_COMMA,
     correctness,
     "possible missing comma in array"

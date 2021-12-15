@@ -1,12 +1,14 @@
 error[E0053]: method `jumbo` has an incompatible type for trait
   --> $DIR/impl-method-mismatch.rs:7:5
    |
-LL |     fn jumbo(&self, x: &usize) -> usize;
-   |     ------------------------------------ type in trait
-...
 LL |     unsafe fn jumbo(&self, x: &usize) { *self + *x; }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected normal fn, found unsafe fn
    |
+note: type in trait
+  --> $DIR/impl-method-mismatch.rs:2:5
+   |
+LL |     fn jumbo(&self, x: &usize) -> usize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: expected fn pointer `fn(&usize, &usize) -> usize`
               found fn pointer `unsafe fn(&usize, &usize)`
 

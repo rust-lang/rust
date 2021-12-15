@@ -1,7 +1,7 @@
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
+use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
@@ -203,6 +203,10 @@ impl File {
     }
 
     pub fn is_read_vectored(&self) -> bool {
+        self.0
+    }
+
+    pub fn read_buf(&self, _buf: &mut ReadBuf<'_>) -> io::Result<()> {
         self.0
     }
 

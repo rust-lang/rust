@@ -6,7 +6,6 @@ use std::fmt;
 def_reg_class! {
     Arm ArmInlineAsmRegClass {
         reg,
-        reg_thumb,
         sreg,
         sreg_low16,
         dreg,
@@ -47,7 +46,7 @@ impl ArmInlineAsmRegClass {
         _arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<&'static str>)] {
         match self {
-            Self::reg | Self::reg_thumb => types! { _: I8, I16, I32, F32; },
+            Self::reg => types! { _: I8, I16, I32, F32; },
             Self::sreg | Self::sreg_low16 => types! { "vfp2": I32, F32; },
             Self::dreg | Self::dreg_low16 | Self::dreg_low8 => types! {
                 "vfp2": I64, F64, VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2);
@@ -88,20 +87,49 @@ fn frame_pointer_r7(
     }
 }
 
+fn not_thumb1(
+    _arch: InlineAsmArch,
+    mut has_feature: impl FnMut(&str) -> bool,
+    _target: &Target,
+) -> Result<(), &'static str> {
+    if has_feature("thumb-mode") && !has_feature("thumb2") {
+        Err("high registers (r8+) cannot be used in Thumb-1 code")
+    } else {
+        Ok(())
+    }
+}
+
+fn reserved_r9(
+    arch: InlineAsmArch,
+    mut has_feature: impl FnMut(&str) -> bool,
+    target: &Target,
+) -> Result<(), &'static str> {
+    not_thumb1(arch, &mut has_feature, target)?;
+
+    // We detect this using the reserved-r9 feature instead of using the target
+    // because the relocation model can be changed with compiler options.
+    if has_feature("reserved-r9") {
+        Err("the RWPI static base register (r9) cannot be used as an operand for inline asm")
+    } else {
+        Ok(())
+    }
+}
+
 def_regs! {
     Arm ArmInlineAsmReg ArmInlineAsmRegClass {
-        r0: reg, reg_thumb = ["r0", "a1"],
-        r1: reg, reg_thumb = ["r1", "a2"],
-        r2: reg, reg_thumb = ["r2", "a3"],
-        r3: reg, reg_thumb = ["r3", "a4"],
-        r4: reg, reg_thumb = ["r4", "v1"],
-        r5: reg, reg_thumb = ["r5", "v2"],
-        r7: reg, reg_thumb = ["r7", "v4"] % frame_pointer_r7,
-        r8: reg = ["r8", "v5"],
-        r10: reg = ["r10", "sl"],
+        r0: reg = ["r0", "a1"],
+        r1: reg = ["r1", "a2"],
+        r2: reg = ["r2", "a3"],
+        r3: reg = ["r3", "a4"],
+        r4: reg = ["r4", "v1"],
+        r5: reg = ["r5", "v2"],
+        r7: reg = ["r7", "v4"] % frame_pointer_r7,
+        r8: reg = ["r8", "v5"] % not_thumb1,
+        r9: reg = ["r9", "v6", "rfp"] % reserved_r9,
+        r10: reg = ["r10", "sl"] % not_thumb1,
         r11: reg = ["r11", "fp"] % frame_pointer_r11,
-        r12: reg = ["r12", "ip"],
-        r14: reg = ["r14", "lr"],
+        r12: reg = ["r12", "ip"] % not_thumb1,
+        r14: reg = ["r14", "lr"] % not_thumb1,
         s0: sreg, sreg_low16 = ["s0"],
         s1: sreg, sreg_low16 = ["s1"],
         s2: sreg, sreg_low16 = ["s2"],
@@ -184,8 +212,6 @@ def_regs! {
         q15: qreg = ["q15"],
         #error = ["r6", "v3"] =>
             "r6 is used internally by LLVM and cannot be used as an operand for inline asm",
-        #error = ["r9", "v6", "rfp"] =>
-            "r9 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["r13", "sp"] =>
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["r15", "pc"] =>

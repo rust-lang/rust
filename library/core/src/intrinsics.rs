@@ -1919,7 +1919,7 @@ extern "rust-intrinsic" {
 
     /// Determines whether the raw bytes of the two values are equal.
     ///
-    /// The is particularly handy for arrays, since it allows things like just
+    /// This is particularly handy for arrays, since it allows things like just
     /// comparing `i96`s instead of forcing `alloca`s for `[6 x i16]`.
     ///
     /// Above some backend-decided threshold this will emit calls to `memcmp`,
@@ -2070,8 +2070,8 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     #[cfg(debug_assertions)]
     const fn compiletime_check<T>(_src: *const T, _dst: *mut T, _count: usize) {}
     #[cfg(debug_assertions)]
-    // SAFETY: runtime debug-assertions are a best-effort basis; it's fine to
-    // not do them during compile time
+    // SAFETY: As per our safety precondition, we may assume that the `abort` above is never reached.
+    // Therefore, compiletime_check and runtime_check are observably equivalent.
     unsafe {
         const_eval_select((src, dst, count), compiletime_check, runtime_check);
     }
@@ -2161,8 +2161,8 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     #[cfg(debug_assertions)]
     const fn compiletime_check<T>(_src: *const T, _dst: *mut T) {}
     #[cfg(debug_assertions)]
-    // SAFETY: runtime debug-assertions are a best-effort basis; it's fine to
-    // not do them during compile time
+    // SAFETY: As per our safety precondition, we may assume that the `abort` above is never reached.
+    // Therefore, compiletime_check and runtime_check are observably equivalent.
     unsafe {
         const_eval_select((src, dst), compiletime_check, runtime_check);
     }
@@ -2244,13 +2244,29 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// assert_eq!(*v, 42);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
 #[inline]
-pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
+pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     extern "rust-intrinsic" {
+        #[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
         fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
 
-    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
+    #[cfg(debug_assertions)]
+    fn runtime_check<T>(ptr: *mut T) {
+        debug_assert!(
+            is_aligned_and_not_null(ptr),
+            "attempt to write to unaligned or null pointer"
+        );
+    }
+    #[cfg(debug_assertions)]
+    const fn compiletime_check<T>(_ptr: *mut T) {}
+    #[cfg(debug_assertions)]
+    // SAFETY: runtime debug-assertions are a best-effort basis; it's fine to
+    // not do them during compile time
+    unsafe {
+        const_eval_select((dst,), compiletime_check, runtime_check);
+    }
 
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
     unsafe { write_bytes(dst, val, count) }
@@ -2273,19 +2289,40 @@ pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 ///
 /// # Safety
 ///
-/// This intrinsic allows breaking [referential transparency] in `const fn`
-/// and is therefore `unsafe`.
+/// The two functions must behave observably equivalent. Safe code in other
+/// crates may assume that calling a `const fn` at compile-time and at run-time
+/// produces the same result. A function that produces a different result when
+/// evaluated at run-time, or has any other observable side-effects, is
+/// *unsound*.
 ///
-/// Code that uses this intrinsic must be extremely careful to ensure that
-/// `const fn`s remain referentially-transparent independently of when they
-/// are evaluated.
+/// Here is an example of how this could cause a problem:
+/// ```no_run
+/// #![feature(const_eval_select)]
+/// use std::hint::unreachable_unchecked;
+/// use std::intrinsics::const_eval_select;
 ///
-/// The Rust compiler assumes that it is sound to replace a call to a `const
-/// fn` with the result produced by evaluating it at compile-time. If
-/// evaluating the function at run-time were to produce a different result,
-/// or have any other observable side-effects, the behavior is undefined.
+/// // Crate A
+/// pub const fn inconsistent() -> i32 {
+///     fn runtime() -> i32 { 1 }
+///     const fn compiletime() -> i32 { 2 }
 ///
-/// [referential transparency]: https://en.wikipedia.org/wiki/Referential_transparency
+///     unsafe {
+//          // ⚠ This code violates the required equivalence of `compiletime`
+///         // and `runtime`.
+///         const_eval_select((), compiletime, runtime)
+///     }
+/// }
+///
+/// // Crate B
+/// const X: i32 = inconsistent();
+/// let x = inconsistent();
+/// if x != X { unsafe { unreachable_unchecked(); }}
+/// ```
+///
+/// This code causes Undefined Behavior when being run, since the
+/// `unreachable_unchecked` is actually being reached. The bug is in *crate A*,
+/// which violates the principle that a `const fn` must behave the same at
+/// compile-time and at run-time. The unsafe code in crate B is fine.
 #[unstable(
     feature = "const_eval_select",
     issue = "none",

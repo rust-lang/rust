@@ -85,7 +85,7 @@ struct Patcher<'a, 'tcx> {
     statement_idx: usize,
 }
 
-impl<'a, 'tcx> Patcher<'a, 'tcx> {
+impl<'tcx> Patcher<'_, 'tcx> {
     fn patch_expand_statement(
         &mut self,
         statement: &mut Statement<'tcx>,

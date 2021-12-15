@@ -4,7 +4,7 @@ error[E0759]: `val` has lifetime `'a` but it needs to satisfy a `'static` lifeti
 LL |     fn use_it<'a, T>(val: &'a dyn ObjectTrait<T>) -> impl OtherTrait<'a> + 'a {
    |                           ---------------------- this data with lifetime `'a`...
 LL |         val.use_self::<T>()
-   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |             ^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:14:32
@@ -24,7 +24,7 @@ error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an impli
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
    |                        ------------------- this data with lifetime `'a`...
 LL |         val.use_self()
-   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here because of an implicit lifetime bound on the inherent `impl`
+   |             ^^^^^^^^ ...is used and required to live as long as `'static` here because of an implicit lifetime bound on the inherent `impl`
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:64:14
@@ -44,7 +44,7 @@ error[E0759]: `val` has lifetime `'a` but it needs to satisfy a `'static` lifeti
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> {
    |                        ------------------- this data with lifetime `'a`...
 LL |         val.use_self()
-   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |             ^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:85:26
@@ -69,7 +69,7 @@ error[E0759]: `val` has lifetime `'a` but it needs to satisfy a `'static` lifeti
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
    |                        ------------------- this data with lifetime `'a`...
 LL |         MyTrait::use_self(val)
-   |                           ^^^ ...is captured here...
+   |                           ^^^ ...is used here...
    |
 note: ...and is required to live as long as `'static` here
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:108:9
@@ -95,7 +95,7 @@ error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an impli
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> &'a () {
    |                        ------------------- this data with lifetime `'a`...
 LL |         val.use_self()
-   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |             ^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:31:26
@@ -115,7 +115,7 @@ error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an impli
 LL |     fn use_it<'a>(val: &'a Box<dyn ObjectTrait + 'a>) -> &'a () {
    |                        ----------------------------- this data with lifetime `'a`...
 LL |         val.use_self()
-   |             ^^^^^^^^ ...is captured and required to live as long as `'static` here
+   |             ^^^^^^^^ ...is used and required to live as long as `'static` here
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:48:30

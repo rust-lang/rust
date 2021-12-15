@@ -17,6 +17,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let foo = 3.14;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub BLACKLISTED_NAME,
     style,
     "usage of a blacklisted/placeholder name"

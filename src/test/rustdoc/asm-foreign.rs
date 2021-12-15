@@ -1,6 +1,6 @@
 // Make sure rustdoc accepts asm! for a foreign architecture.
 
-#![feature(asm)]
+use std::arch::asm;
 
 // @has asm_foreign/fn.aarch64.html
 pub unsafe fn aarch64(a: f64, b: f64) -> f64 {

@@ -1,41 +1,41 @@
 error: the `#[default]` attribute may only be used on unit enum variants
-  --> $DIR/macros-nonfatal-errors.rs:14:5
+  --> $DIR/macros-nonfatal-errors.rs:16:5
    |
 LL |     #[default]
    |     ^^^^^^^^^^
 
 error: the `#[default]` attribute may only be used on unit enum variants
-  --> $DIR/macros-nonfatal-errors.rs:19:36
+  --> $DIR/macros-nonfatal-errors.rs:21:36
    |
 LL | struct DefaultInnerAttrTupleStruct(#[default] ());
    |                                    ^^^^^^^^^^
 
 error: the `#[default]` attribute may only be used on unit enum variants
-  --> $DIR/macros-nonfatal-errors.rs:23:1
+  --> $DIR/macros-nonfatal-errors.rs:25:1
    |
 LL | #[default]
    | ^^^^^^^^^^
 
 error: the `#[default]` attribute may only be used on unit enum variants
-  --> $DIR/macros-nonfatal-errors.rs:27:1
+  --> $DIR/macros-nonfatal-errors.rs:29:1
    |
 LL | #[default]
    | ^^^^^^^^^^
 
 error: the `#[default]` attribute may only be used on unit enum variants
-  --> $DIR/macros-nonfatal-errors.rs:37:11
+  --> $DIR/macros-nonfatal-errors.rs:39:11
    |
 LL |     Foo = #[default] 0,
    |           ^^^^^^^^^^
 
 error: the `#[default]` attribute may only be used on unit enum variants
-  --> $DIR/macros-nonfatal-errors.rs:38:14
+  --> $DIR/macros-nonfatal-errors.rs:40:14
    |
 LL |     Bar([u8; #[default] 1]),
    |              ^^^^^^^^^^
 
 error: no default declared
-  --> $DIR/macros-nonfatal-errors.rs:43:10
+  --> $DIR/macros-nonfatal-errors.rs:45:10
    |
 LL | #[derive(Default)]
    |          ^^^^^^^
@@ -44,7 +44,7 @@ LL | #[derive(Default)]
    = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: multiple declared defaults
-  --> $DIR/macros-nonfatal-errors.rs:49:10
+  --> $DIR/macros-nonfatal-errors.rs:51:10
    |
 LL | #[derive(Default)]
    |          ^^^^^^^
@@ -62,7 +62,7 @@ LL |     Baz,
    = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `#[default]` attribute does not accept a value
-  --> $DIR/macros-nonfatal-errors.rs:61:5
+  --> $DIR/macros-nonfatal-errors.rs:63:5
    |
 LL |     #[default = 1]
    |     ^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL |     #[default = 1]
    = help: try using `#[default]`
 
 error: multiple `#[default]` attributes
-  --> $DIR/macros-nonfatal-errors.rs:69:5
+  --> $DIR/macros-nonfatal-errors.rs:71:5
    |
 LL |     #[default]
    |     ---------- `#[default]` used here
@@ -81,13 +81,13 @@ LL |     Foo,
    |
    = note: only one `#[default]` attribute is needed
 help: try removing this
-  --> $DIR/macros-nonfatal-errors.rs:68:5
+  --> $DIR/macros-nonfatal-errors.rs:70:5
    |
 LL |     #[default]
    |     ^^^^^^^^^^
 
 error: multiple `#[default]` attributes
-  --> $DIR/macros-nonfatal-errors.rs:79:5
+  --> $DIR/macros-nonfatal-errors.rs:81:5
    |
 LL |     #[default]
    |     ---------- `#[default]` used here
@@ -99,7 +99,7 @@ LL |     Foo,
    |
    = note: only one `#[default]` attribute is needed
 help: try removing these
-  --> $DIR/macros-nonfatal-errors.rs:76:5
+  --> $DIR/macros-nonfatal-errors.rs:78:5
    |
 LL |     #[default]
    |     ^^^^^^^^^^
@@ -109,7 +109,7 @@ LL |     #[default]
    |     ^^^^^^^^^^
 
 error: the `#[default]` attribute may only be used on unit enum variants
-  --> $DIR/macros-nonfatal-errors.rs:86:5
+  --> $DIR/macros-nonfatal-errors.rs:88:5
    |
 LL |     Foo {},
    |     ^^^
@@ -117,7 +117,7 @@ LL |     Foo {},
    = help: consider a manual implementation of `Default`
 
 error: default variant must be exhaustive
-  --> $DIR/macros-nonfatal-errors.rs:94:5
+  --> $DIR/macros-nonfatal-errors.rs:96:5
    |
 LL |     #[non_exhaustive]
    |     ----------------- declared `#[non_exhaustive]` here
@@ -127,43 +127,43 @@ LL |     Foo,
    = help: consider a manual implementation of `Default`
 
 error: asm template must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:99:10
+  --> $DIR/macros-nonfatal-errors.rs:101:10
    |
 LL |     asm!(invalid);
    |          ^^^^^^^
 
 error: inline assembly must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:100:15
+  --> $DIR/macros-nonfatal-errors.rs:102:15
    |
 LL |     llvm_asm!(invalid);
    |               ^^^^^^^
 
 error: concat_idents! requires ident args
-  --> $DIR/macros-nonfatal-errors.rs:102:5
+  --> $DIR/macros-nonfatal-errors.rs:104:5
    |
 LL |     concat_idents!("not", "idents");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: argument must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:104:17
+  --> $DIR/macros-nonfatal-errors.rs:106:17
    |
 LL |     option_env!(invalid);
    |                 ^^^^^^^
 
 error: expected string literal
-  --> $DIR/macros-nonfatal-errors.rs:105:10
+  --> $DIR/macros-nonfatal-errors.rs:107:10
    |
 LL |     env!(invalid);
    |          ^^^^^^^
 
 error: expected string literal
-  --> $DIR/macros-nonfatal-errors.rs:106:10
+  --> $DIR/macros-nonfatal-errors.rs:108:10
    |
 LL |     env!(foo, abr, baz);
    |          ^^^
 
 error: environment variable `RUST_HOPEFULLY_THIS_DOESNT_EXIST` not defined
-  --> $DIR/macros-nonfatal-errors.rs:107:5
+  --> $DIR/macros-nonfatal-errors.rs:109:5
    |
 LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -171,7 +171,7 @@ LL |     env!("RUST_HOPEFULLY_THIS_DOESNT_EXIST");
    = note: this error originates in the macro `env` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: format argument must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:109:13
+  --> $DIR/macros-nonfatal-errors.rs:111:13
    |
 LL |     format!(invalid);
    |             ^^^^^^^
@@ -182,19 +182,19 @@ LL |     format!("{}", invalid);
    |             +++++
 
 error: argument must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:111:14
+  --> $DIR/macros-nonfatal-errors.rs:113:14
    |
 LL |     include!(invalid);
    |              ^^^^^^^
 
 error: argument must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:113:18
+  --> $DIR/macros-nonfatal-errors.rs:115:18
    |
 LL |     include_str!(invalid);
    |                  ^^^^^^^
 
 error: couldn't read $DIR/i'd be quite surprised if a file with this name existed: $FILE_NOT_FOUND_MSG (os error 2)
-  --> $DIR/macros-nonfatal-errors.rs:114:5
+  --> $DIR/macros-nonfatal-errors.rs:116:5
    |
 LL |     include_str!("i'd be quite surprised if a file with this name existed");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -202,13 +202,13 @@ LL |     include_str!("i'd be quite surprised if a file with this name existed")
    = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: argument must be a string literal
-  --> $DIR/macros-nonfatal-errors.rs:115:20
+  --> $DIR/macros-nonfatal-errors.rs:117:20
    |
 LL |     include_bytes!(invalid);
    |                    ^^^^^^^
 
 error: couldn't read $DIR/i'd be quite surprised if a file with this name existed: $FILE_NOT_FOUND_MSG (os error 2)
-  --> $DIR/macros-nonfatal-errors.rs:116:5
+  --> $DIR/macros-nonfatal-errors.rs:118:5
    |
 LL |     include_bytes!("i'd be quite surprised if a file with this name existed");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -216,7 +216,7 @@ LL |     include_bytes!("i'd be quite surprised if a file with this name existed
    = note: this error originates in the macro `include_bytes` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: trace_macros! accepts only `true` or `false`
-  --> $DIR/macros-nonfatal-errors.rs:118:5
+  --> $DIR/macros-nonfatal-errors.rs:120:5
    |
 LL |     trace_macros!(invalid);
    |     ^^^^^^^^^^^^^^^^^^^^^^

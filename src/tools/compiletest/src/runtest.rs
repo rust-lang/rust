@@ -1802,6 +1802,7 @@ impl<'test> TestCx<'test> {
                 // patterns still match the raw compiler output.
                 if self.props.error_patterns.is_empty() {
                     rustc.args(&["--error-format", "json"]);
+                    rustc.args(&["--json", "future-incompat"]);
                 }
                 rustc.arg("-Zui-testing");
                 rustc.arg("-Zdeduplicate-diagnostics=no");
@@ -1809,11 +1810,11 @@ impl<'test> TestCx<'test> {
             Ui => {
                 if !self.props.compile_flags.iter().any(|s| s.starts_with("--error-format")) {
                     rustc.args(&["--error-format", "json"]);
+                    rustc.args(&["--json", "future-incompat"]);
                 }
                 rustc.arg("-Ccodegen-units=1");
                 rustc.arg("-Zui-testing");
                 rustc.arg("-Zdeduplicate-diagnostics=no");
-                rustc.arg("-Zemit-future-incompat-report");
             }
             MirOpt => {
                 rustc.args(&[

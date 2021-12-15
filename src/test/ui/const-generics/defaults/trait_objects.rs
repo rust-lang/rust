@@ -1,6 +1,4 @@
 // run-pass
-#![feature(const_generics_defaults)]
-
 trait Trait<const N: u8 = 12> {
     fn uwu(&self) -> u8 {
         N

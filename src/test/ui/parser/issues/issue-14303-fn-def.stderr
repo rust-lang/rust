@@ -2,7 +2,7 @@ error: lifetime parameters must be declared prior to type parameters
   --> $DIR/issue-14303-fn-def.rs:1:15
    |
 LL | fn foo<'a, T, 'b>(x: &'a T) {}
-   |       --------^^- help: reorder the parameters: lifetimes, then types, then consts: `<'a, 'b, T>`
+   |       --------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, 'b, T>`
 
 error: aborting due to previous error
 

@@ -172,11 +172,16 @@ async function main(argv) {
     }
     files.sort();
 
+    if (no_headless) {
+        opts["jobs"] = 1;
+        console.log("`--no-headless` option is active, disabling concurrency for running tests.");
+    }
+
     console.log(`Running ${files.length} rustdoc-gui (${opts["jobs"]} concurrently) ...`);
 
     if (opts["jobs"] < 1) {
         process.setMaxListeners(files.length + 1);
-    } else {
+    } else if (!no_headless) {
         process.setMaxListeners(opts["jobs"] + 1);
     }
 
@@ -217,9 +222,7 @@ async function main(argv) {
                 tests_queue.splice(tests_queue.indexOf(callback), 1);
             });
         tests_queue.push(callback);
-        if (no_headless) {
-            await tests_queue[i];
-        } else if (opts["jobs"] > 0 && tests_queue.length >= opts["jobs"]) {
+        if (opts["jobs"] > 0 && tests_queue.length >= opts["jobs"]) {
             await Promise.race(tests_queue);
         }
     }

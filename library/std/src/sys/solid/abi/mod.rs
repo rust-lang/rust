@@ -10,9 +10,9 @@ pub fn breakpoint_program_exited(tid: usize) {
         match () {
             // SOLID_BP_PROGRAM_EXITED = 15
             #[cfg(target_arch = "arm")]
-            () => asm!("bkpt #15", in("r0") tid),
+            () => core::arch::asm!("bkpt #15", in("r0") tid),
             #[cfg(target_arch = "aarch64")]
-            () => asm!("hlt #15", in("x0") tid),
+            () => core::arch::asm!("hlt #15", in("x0") tid),
         }
     }
 }
@@ -23,9 +23,9 @@ pub fn breakpoint_abort() {
         match () {
             // SOLID_BP_CSABORT = 16
             #[cfg(target_arch = "arm")]
-            () => asm!("bkpt #16"),
+            () => core::arch::asm!("bkpt #16"),
             #[cfg(target_arch = "aarch64")]
-            () => asm!("hlt #16"),
+            () => core::arch::asm!("hlt #16"),
         }
     }
 }

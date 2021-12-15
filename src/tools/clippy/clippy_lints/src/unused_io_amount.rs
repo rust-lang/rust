@@ -29,6 +29,7 @@ declare_clippy_lint! {
     ///     Ok(())
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNUSED_IO_AMOUNT,
     correctness,
     "unused written/read amount"

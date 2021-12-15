@@ -1044,9 +1044,9 @@ impl String {
     ///
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore, capacity can not be relied upon to be precisely
-    /// minimal. Prefer [`reserve`] if future insertions are expected.
+    /// minimal. Prefer [`try_reserve`] if future insertions are expected.
     ///
-    /// [`reserve`]: String::reserve
+    /// [`try_reserve`]: String::try_reserve
     ///
     /// # Errors
     ///

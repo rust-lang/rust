@@ -103,65 +103,65 @@ LL |     MySome(T),
    = help: add `T: Send` bound in `Send` impl
 
 error: this implementation is unsound, as some fields in `MultiParam<A, B>` are `!Send`
-  --> $DIR/non_send_fields_in_send_ty.rs:77:1
+  --> $DIR/non_send_fields_in_send_ty.rs:82:1
    |
 LL | unsafe impl<A, B> Send for MultiParam<A, B> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the type of field `vec` is `!Send`
-  --> $DIR/non_send_fields_in_send_ty.rs:74:5
+  --> $DIR/non_send_fields_in_send_ty.rs:79:5
    |
 LL |     vec: Vec<(A, B)>,
    |     ^^^^^^^^^^^^^^^^
    = help: add bounds on type parameters `A, B` that satisfy `Vec<(A, B)>: Send`
 
 error: this implementation is unsound, as some fields in `HeuristicTest` are `!Send`
-  --> $DIR/non_send_fields_in_send_ty.rs:95:1
+  --> $DIR/non_send_fields_in_send_ty.rs:100:1
    |
 LL | unsafe impl Send for HeuristicTest {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the type of field `field4` is `!Send`
-  --> $DIR/non_send_fields_in_send_ty.rs:90:5
+  --> $DIR/non_send_fields_in_send_ty.rs:95:5
    |
 LL |     field4: (*const NonSend, Rc<u8>),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
 
 error: this implementation is unsound, as some fields in `AttrTest3<T>` are `!Send`
-  --> $DIR/non_send_fields_in_send_ty.rs:114:1
+  --> $DIR/non_send_fields_in_send_ty.rs:119:1
    |
 LL | unsafe impl<T> Send for AttrTest3<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the type of field `0` is `!Send`
-  --> $DIR/non_send_fields_in_send_ty.rs:109:11
+  --> $DIR/non_send_fields_in_send_ty.rs:114:11
    |
 LL |     Enum2(T),
    |           ^
    = help: add `T: Send` bound in `Send` impl
 
 error: this implementation is unsound, as some fields in `Complex<P, u32>` are `!Send`
-  --> $DIR/non_send_fields_in_send_ty.rs:122:1
+  --> $DIR/non_send_fields_in_send_ty.rs:127:1
    |
 LL | unsafe impl<P> Send for Complex<P, u32> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the type of field `field1` is `!Send`
-  --> $DIR/non_send_fields_in_send_ty.rs:118:5
+  --> $DIR/non_send_fields_in_send_ty.rs:123:5
    |
 LL |     field1: A,
    |     ^^^^^^^^^
    = help: add `P: Send` bound in `Send` impl
 
 error: this implementation is unsound, as some fields in `Complex<Q, MutexGuard<'static, bool>>` are `!Send`
-  --> $DIR/non_send_fields_in_send_ty.rs:125:1
+  --> $DIR/non_send_fields_in_send_ty.rs:130:1
    |
 LL | unsafe impl<Q: Send> Send for Complex<Q, MutexGuard<'static, bool>> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the type of field `field2` is `!Send`
-  --> $DIR/non_send_fields_in_send_ty.rs:119:5
+  --> $DIR/non_send_fields_in_send_ty.rs:124:5
    |
 LL |     field2: B,
    |     ^^^^^^^^^

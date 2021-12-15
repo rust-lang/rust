@@ -396,7 +396,7 @@ Note that the third item is the crate root, which in this case is undocumented.
 ### `-w`/`--output-format`: output format
 
 `--output-format json` emits documentation in the experimental
-[JSON format](https://github.com/rust-lang/rfcs/pull/2963). `--output-format html` has no effect,
+[JSON format](https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc_json_types/). `--output-format html` has no effect,
 and is also accepted on stable toolchains.
 
 It can also be used with `--show-coverage`. Take a look at its

@@ -558,11 +558,11 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "2.33.3"
+version = "2.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37e58ac78573c40708d45522f0d80fa2f01cc4f9b4e2bf749807255454312002"
+checksum = "a0610544180c38b88101fecf2dd634b174a62eef6946f84dfc6a7127512b381c"
 dependencies = [
- "ansi_term 0.11.0",
+ "ansi_term 0.12.1",
  "atty",
  "bitflags",
  "strsim",
@@ -574,7 +574,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.58"
+version = "0.1.59"
 dependencies = [
  "cargo_metadata 0.14.0",
  "clippy_lints",
@@ -584,6 +584,7 @@ dependencies = [
  "filetime",
  "if_chain",
  "itertools 0.10.1",
+ "parking_lot",
  "quote",
  "regex",
  "rustc-workspace-hack",
@@ -600,6 +601,7 @@ name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
  "bytecount",
+ "cargo_metadata 0.14.0",
  "clap",
  "indoc",
  "itertools 0.10.1",
@@ -611,13 +613,13 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.58"
+version = "0.1.59"
 dependencies = [
  "cargo_metadata 0.14.0",
  "clippy_utils",
  "if_chain",
  "itertools 0.10.1",
- "pulldown-cmark 0.8.0",
+ "pulldown-cmark",
  "quine-mc_cluskey",
  "regex-syntax",
  "rustc-semver",
@@ -632,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.58"
+version = "0.1.59"
 dependencies = [
  "if_chain",
  "rustc-semver",
@@ -678,9 +680,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.55"
+version = "0.1.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9ac60765140c97aaf531dae151a287646b0805ec725805da9e2a3ee31cd501c"
+checksum = "ed37ea958309f2451e1cea7fd2b37aa56b1894c9a9fbdbbe6a194f7b78f0362d"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -1713,9 +1715,12 @@ dependencies = [
 
 [[package]]
 name = "instant"
-version = "0.1.6"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b141fdc7836c525d4d594027d318c84161ca17aaf8113ab1f81ab93ae897485"
+checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
+dependencies = [
+ "cfg-if 1.0.0",
+]
 
 [[package]]
 name = "itertools"
@@ -1922,6 +1927,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libloading"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0cf036d15402bea3c5d4de17b3fce76b3e4a56ebc1f577be0e7a72f7c607cf0"
+dependencies = [
+ "cfg-if 1.0.0",
+ "winapi",
+]
+
+[[package]]
 name = "libm"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1992,9 +2007,9 @@ version = "0.1.0"
 
 [[package]]
 name = "lock_api"
-version = "0.4.1"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28247cc5a5be2f05fbcd76dd0cf2c7d3b5400cb978a28042abcd4fa0b3f8261c"
+checksum = "712a4d093c9976e24e7dbca41db895dabcbac38eb5f4045393d17a95bdfb1109"
 dependencies = [
  "scopeguard",
 ]
@@ -2124,9 +2139,9 @@ dependencies = [
 
 [[package]]
 name = "mdbook"
-version = "0.4.12"
+version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0651782b4cc514c3f98c0acf9b5af1101a735bbe1ac6852bb1a90cb91bdf0ed4"
+checksum = "f6e77253c46a90eb7e96b2807201dab941a4db5ea05eca5aaaf7027395f352b3"
 dependencies = [
  "ammonia",
  "anyhow",
@@ -2138,8 +2153,8 @@ dependencies = [
  "lazy_static",
  "log",
  "memchr",
- "open",
- "pulldown-cmark 0.7.2",
+ "opener",
+ "pulldown-cmark",
  "regex",
  "serde",
  "serde_derive",
@@ -2147,6 +2162,7 @@ dependencies = [
  "shlex",
  "tempfile",
  "toml",
+ "topological-sort",
 ]
 
 [[package]]
@@ -2375,15 +2391,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
-name = "open"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c283bf0114efea9e42f1a60edea9859e8c47528eae09d01df4b29c1e489cc48"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "opener"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2511,9 +2518,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.11.1"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d7744ac029df22dca6284efe4e898991d28e3085c706c972bcd7da4a27a15eb"
+checksum = "7d17b78036a60663b797adeaee46f5c9dfebb86948d1255007a1d6be0271ff99"
 dependencies = [
  "instant",
  "lock_api",
@@ -2522,9 +2529,9 @@ dependencies = [
 
 [[package]]
 name = "parking_lot_core"
-version = "0.8.3"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa7a782938e745763fe6907fc6ba86946d72f49fe7e21de074e08128a99fb018"
+checksum = "d76e8e1493bcac0d2766c42737f34458f1c8c50c0d23bcb24ea953affb273216"
 dependencies = [
  "cfg-if 1.0.0",
  "instant",
@@ -2796,23 +2803,12 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca36dea94d187597e104a5c8e4b07576a8a45aa5db48a65e12940d3eb7461f55"
-dependencies = [
- "bitflags",
- "getopts",
- "memchr",
- "unicase",
-]
-
-[[package]]
-name = "pulldown-cmark"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ffade02495f22453cd593159ea2f59827aae7f53fa8323f756799b670881dcf8"
 dependencies = [
  "bitflags",
+ "getopts",
  "memchr",
  "unicase",
 ]
@@ -3708,6 +3704,7 @@ dependencies = [
  "bitflags",
  "cstr",
  "libc",
+ "libloading",
  "measureme 10.0.0",
  "rustc-demangle",
  "rustc_arena",
@@ -3728,7 +3725,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec",
- "snap",
  "tracing",
 ]
 
@@ -3763,6 +3759,7 @@ dependencies = [
  "rustc_symbol_mangling",
  "rustc_target",
  "smallvec",
+ "snap",
  "tempfile",
  "tracing",
 ]
@@ -3992,6 +3989,7 @@ name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
  "libc",
+ "libloading",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_ast",
@@ -4104,7 +4102,7 @@ dependencies = [
 name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
- "libc",
+ "libloading",
  "odht",
  "rustc_ast",
  "rustc_attr",
@@ -4124,7 +4122,6 @@ dependencies = [
  "smallvec",
  "snap",
  "tracing",
- "winapi",
 ]
 
 [[package]]
@@ -4297,6 +4294,7 @@ dependencies = [
 name = "rustc_plugin_impl"
 version = "0.0.0"
 dependencies = [
+ "libloading",
  "rustc_ast",
  "rustc_errors",
  "rustc_hir",
@@ -4616,7 +4614,7 @@ dependencies = [
  "expect-test",
  "itertools 0.9.0",
  "minifier",
- "pulldown-cmark 0.8.0",
+ "pulldown-cmark",
  "rayon",
  "regex",
  "rustdoc-json-types",
@@ -5392,6 +5390,12 @@ checksum = "75cf45bb0bef80604d001caaec0d09da99611b3c0fd39d3080468875cdb65645"
 dependencies = [
  "serde",
 ]
+
+[[package]]
+name = "topological-sort"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa7c7f42dea4b1b99439786f5633aeb9c14c1b53f75e282803c2ec2ad545873c"
 
 [[package]]
 name = "tower-service"

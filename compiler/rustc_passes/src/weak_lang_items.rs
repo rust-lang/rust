@@ -67,10 +67,16 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
             } else if item == LangItem::Oom {
                 if !tcx.features().default_alloc_error_handler {
                     tcx.sess.err("`#[alloc_error_handler]` function required, but not found");
-                    tcx.sess.note_without_error("Use `#![feature(default_alloc_error_handler)]` for a default error handler");
+                    tcx.sess.note_without_error("use `#![feature(default_alloc_error_handler)]` for a default error handler");
                 }
             } else {
-                tcx.sess.err(&format!("language item required, but not found: `{}`", name));
+                tcx
+                    .sess
+                    .diagnostic()
+                    .struct_err(&format!("language item required, but not found: `{}`", name))
+                    .note(&format!("this can occur when a binary crate with `#![no_std]` is compiled for a target where `{}` is defined in the standard library", name))
+                    .help(&format!("you may be able to compile for a target that doesn't need `{}`, specify a target with `--target` or in `.cargo/config`", name))
+                    .emit();
             }
         }
     }

@@ -107,7 +107,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         kind:
                             hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                                 bounds,
-                                origin: hir::OpaqueTyOrigin::AsyncFn,
+                                origin: hir::OpaqueTyOrigin::AsyncFn(..),
                                 ..
                             }),
                         ..

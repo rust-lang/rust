@@ -1,7 +1,7 @@
 #![unstable(issue = "none", feature = "windows_handle")]
 
 use crate::cmp;
-use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, Read};
+use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf};
 use crate::mem;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
@@ -126,6 +126,39 @@ impl Handle {
         match res {
             Ok(_) => Ok(read as usize),
             Err(ref e) if e.raw_os_error() == Some(c::ERROR_HANDLE_EOF as i32) => Ok(0),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        let mut read = 0;
+        let len = cmp::min(buf.remaining(), <c::DWORD>::MAX as usize) as c::DWORD;
+        let res = cvt(unsafe {
+            c::ReadFile(
+                self.as_raw_handle(),
+                buf.unfilled_mut().as_mut_ptr() as c::LPVOID,
+                len,
+                &mut read,
+                ptr::null_mut(),
+            )
+        });
+
+        match res {
+            Ok(_) => {
+                // Safety: `read` bytes were written to the initialized portion of the buffer
+                unsafe {
+                    buf.assume_init(read as usize);
+                }
+                buf.add_filled(read as usize);
+                Ok(())
+            }
+
+            // The special treatment of BrokenPipe is to deal with Windows
+            // pipe semantics, which yields this error when *reading* from
+            // a pipe after the other end has closed; we interpret that as
+            // EOF on the pipe.
+            Err(ref e) if e.kind() == ErrorKind::BrokenPipe => Ok(()),
+
             Err(e) => Err(e),
         }
     }

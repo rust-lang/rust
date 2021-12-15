@@ -2,7 +2,7 @@ use crate::future::Future;
 use crate::pin::Pin;
 use crate::task::{Context, Poll};
 
-/// Creates a future that is immediately ready with a value.
+/// A future that is immediately ready with a value.
 ///
 /// This `struct` is created by [`ready()`]. See its
 /// documentation for more.

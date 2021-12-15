@@ -298,11 +298,16 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             .get(0)
                             .map(|p| (p.span.shrink_to_lo(), "&self, "))
                             .unwrap_or_else(|| {
+                                // Try to look for the "(" after the function name, if possible.
+                                // This avoids placing the suggestion into the visibility specifier.
+                                let span = fn_kind
+                                    .ident()
+                                    .map_or(*span, |ident| span.with_lo(ident.span.hi()));
                                 (
                                     self.r
                                         .session
                                         .source_map()
-                                        .span_through_char(*span, '(')
+                                        .span_through_char(span, '(')
                                         .shrink_to_hi(),
                                     "&self",
                                 )
@@ -2115,6 +2120,11 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     })
                     .map(|(formatter, span)| (*span, formatter(name)))
                     .collect();
+                if spans_suggs.is_empty() {
+                    // If all the spans come from macros, we cannot extract snippets and then
+                    // `formatters` only contains None and `spans_suggs` is empty.
+                    return;
+                }
                 err.multipart_suggestion_verbose(
                     &format!(
                         "consider using the `{}` lifetime",

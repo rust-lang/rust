@@ -148,7 +148,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 }
 
-impl PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
+impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     fn region_should_not_be_omitted(&self, _region: ty::Region<'_>) -> bool {
         false
     }

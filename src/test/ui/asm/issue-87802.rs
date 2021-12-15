@@ -4,7 +4,7 @@
 // ignore-wasm32
 // Make sure rustc doesn't ICE on asm! when output type is !.
 
-#![feature(asm)]
+use std::arch::asm;
 
 fn hmm() -> ! {
     let x;

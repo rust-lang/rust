@@ -28,6 +28,7 @@ declare_clippy_lint! {
     /// let a: Vec<_> = my_iterator.take(1).collect();
     /// let b: Vec<_> = my_iterator.collect();
     /// ```
+    #[clippy::version = "1.30.0"]
     pub COPY_ITERATOR,
     pedantic,
     "implementing `Iterator` on a `Copy` type"

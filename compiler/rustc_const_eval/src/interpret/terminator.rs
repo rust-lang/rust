@@ -103,7 +103,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.eval_fn_call(
                     fn_val,
                     abi,
-                    &args[..],
+                    &args,
                     ret,
                     match (cleanup, caller_can_unwind) {
                         (Some(cleanup), true) => StackPopUnwind::Cleanup(*cleanup),

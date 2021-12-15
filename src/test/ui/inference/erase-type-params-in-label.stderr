@@ -1,0 +1,41 @@
+error[E0283]: type annotations needed for `Foo<i32, &str, W, Z>`
+  --> $DIR/erase-type-params-in-label.rs:2:15
+   |
+LL |     let foo = foo(1, "");
+   |         ---   ^^^ cannot infer type for type parameter `W` declared on the function `foo`
+   |         |
+   |         consider giving `foo` the explicit type `Foo<_, _, W, Z>`, where the type parameter `W` is specified
+   |
+   = note: cannot satisfy `_: Default`
+note: required by a bound in `foo`
+  --> $DIR/erase-type-params-in-label.rs:25:17
+   |
+LL | fn foo<T, K, W: Default, Z: Default>(t: T, k: K) -> Foo<T, K, W, Z> {
+   |                 ^^^^^^^ required by this bound in `foo`
+help: consider specifying the type arguments in the function call
+   |
+LL |     let foo = foo::<T, K, W, Z>(1, "");
+   |                  ++++++++++++++
+
+error[E0283]: type annotations needed for `Bar<i32, &str, Z>`
+  --> $DIR/erase-type-params-in-label.rs:5:15
+   |
+LL |     let bar = bar(1, "");
+   |         ---   ^^^ cannot infer type for type parameter `Z` declared on the function `bar`
+   |         |
+   |         consider giving `bar` the explicit type `Bar<_, _, Z>`, where the type parameter `Z` is specified
+   |
+   = note: cannot satisfy `_: Default`
+note: required by a bound in `bar`
+  --> $DIR/erase-type-params-in-label.rs:14:17
+   |
+LL | fn bar<T, K, Z: Default>(t: T, k: K) -> Bar<T, K, Z> {
+   |                 ^^^^^^^ required by this bound in `bar`
+help: consider specifying the type arguments in the function call
+   |
+LL |     let bar = bar::<T, K, Z>(1, "");
+   |                  +++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

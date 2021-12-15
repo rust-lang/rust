@@ -1,6 +1,8 @@
 // only-x86_64
 
-#![feature(asm, global_asm, asm_const)]
+#![feature(asm_const)]
+
+use std::arch::{asm, global_asm};
 
 fn main() {
     let mut foo = 0;

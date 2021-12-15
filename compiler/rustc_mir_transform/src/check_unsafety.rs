@@ -46,7 +46,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         self.source_info = terminator.source_info;
         match terminator.kind {
@@ -244,7 +244,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
+impl<'tcx> UnsafetyChecker<'_, 'tcx> {
     fn require_unsafe(&mut self, kind: UnsafetyViolationKind, details: UnsafetyViolationDetails) {
         // Violations can turn out to be `UnsafeFn` during analysis, but they should not start out as such.
         assert_ne!(kind, UnsafetyViolationKind::UnsafeFn);
@@ -397,7 +397,7 @@ struct UnusedUnsafeVisitor<'a> {
     unsafe_blocks: &'a mut Vec<(hir::HirId, bool)>,
 }
 
-impl<'a, 'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'a> {
+impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_> {
     type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {

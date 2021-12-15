@@ -135,7 +135,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
     }
 }
 
-fn resolve_rust_intrinsic(
+fn resolve_rust_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     func_ty: Ty<'tcx>,
 ) -> Option<(Symbol, SubstsRef<'tcx>)> {
@@ -148,7 +148,7 @@ fn resolve_rust_intrinsic(
     None
 }
 
-fn validate_simd_shuffle(tcx: TyCtxt<'tcx>, args: &[Operand<'tcx>], span: Span) {
+fn validate_simd_shuffle<'tcx>(tcx: TyCtxt<'tcx>, args: &[Operand<'tcx>], span: Span) {
     match &args[2] {
         Operand::Constant(_) => {} // all good
         _ => {

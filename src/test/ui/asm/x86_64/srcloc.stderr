@@ -1,5 +1,5 @@
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:10:15
+  --> $DIR/srcloc.rs:11:15
    |
 LL |         asm!("invalid_instruction");
    |               ^
@@ -11,7 +11,7 @@ LL |     invalid_instruction
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:14:13
+  --> $DIR/srcloc.rs:15:13
    |
 LL |             invalid_instruction
    |             ^
@@ -23,7 +23,7 @@ LL |             invalid_instruction
    |             ^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:19:13
+  --> $DIR/srcloc.rs:20:13
    |
 LL |             invalid_instruction
    |             ^
@@ -35,7 +35,7 @@ LL |             invalid_instruction
    |             ^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:25:13
+  --> $DIR/srcloc.rs:26:13
    |
 LL |             invalid_instruction
    |             ^
@@ -47,7 +47,7 @@ LL |             invalid_instruction
    |             ^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:32:13
+  --> $DIR/srcloc.rs:33:13
    |
 LL |             invalid_instruction
    |             ^
@@ -59,7 +59,7 @@ LL |             invalid_instruction
    |             ^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:37:14
+  --> $DIR/srcloc.rs:38:14
    |
 LL |         asm!(concat!("invalid", "_", "instruction"));
    |              ^
@@ -71,7 +71,7 @@ LL |     invalid_instruction
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: scale factor without index register is ignored
-  --> $DIR/srcloc.rs:40:15
+  --> $DIR/srcloc.rs:41:15
    |
 LL |         asm!("movaps %xmm3, (%esi, 2)", options(att_syntax));
    |               ^
@@ -83,7 +83,7 @@ LL |     movaps %xmm3, (%esi, 2)
    |                          ^
 
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:44:14
+  --> $DIR/srcloc.rs:45:14
    |
 LL |             "invalid_instruction",
    |              ^
@@ -95,7 +95,7 @@ LL |     invalid_instruction
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:50:14
+  --> $DIR/srcloc.rs:51:14
    |
 LL |             "invalid_instruction",
    |              ^
@@ -107,7 +107,7 @@ LL | invalid_instruction
    | ^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:57:14
+  --> $DIR/srcloc.rs:58:14
    |
 LL |             "invalid_instruction",
    |              ^
@@ -119,7 +119,7 @@ LL | invalid_instruction
    | ^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:64:13
+  --> $DIR/srcloc.rs:65:13
    |
 LL |             concat!("invalid", "_", "instruction"),
    |             ^
@@ -131,7 +131,7 @@ LL | invalid_instruction
    | ^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction'
-  --> $DIR/srcloc.rs:71:13
+  --> $DIR/srcloc.rs:72:13
    |
 LL |             concat!("invalid", "_", "instruction"),
    |             ^
@@ -143,7 +143,7 @@ LL | invalid_instruction
    | ^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction1'
-  --> $DIR/srcloc.rs:78:14
+  --> $DIR/srcloc.rs:79:14
    |
 LL |             "invalid_instruction1",
    |              ^
@@ -155,7 +155,7 @@ LL |     invalid_instruction1
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction2'
-  --> $DIR/srcloc.rs:79:14
+  --> $DIR/srcloc.rs:80:14
    |
 LL |             "invalid_instruction2",
    |              ^
@@ -167,7 +167,7 @@ LL | invalid_instruction2
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction1'
-  --> $DIR/srcloc.rs:85:13
+  --> $DIR/srcloc.rs:86:13
    |
 LL |             concat!(
    |             ^
@@ -179,7 +179,7 @@ LL |     invalid_instruction1
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction2'
-  --> $DIR/srcloc.rs:85:13
+  --> $DIR/srcloc.rs:86:13
    |
 LL |             concat!(
    |             ^
@@ -191,7 +191,7 @@ LL | invalid_instruction2
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction1'
-  --> $DIR/srcloc.rs:94:13
+  --> $DIR/srcloc.rs:95:13
    |
 LL |             concat!(
    |             ^
@@ -203,7 +203,7 @@ LL |     invalid_instruction1
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction2'
-  --> $DIR/srcloc.rs:94:13
+  --> $DIR/srcloc.rs:95:13
    |
 LL |             concat!(
    |             ^
@@ -215,7 +215,7 @@ LL | invalid_instruction2
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction3'
-  --> $DIR/srcloc.rs:98:13
+  --> $DIR/srcloc.rs:99:13
    |
 LL |             concat!(
    |             ^
@@ -227,7 +227,7 @@ LL | invalid_instruction3
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction4'
-  --> $DIR/srcloc.rs:98:13
+  --> $DIR/srcloc.rs:99:13
    |
 LL |             concat!(
    |             ^
@@ -239,7 +239,7 @@ LL | invalid_instruction4
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction1'
-  --> $DIR/srcloc.rs:109:13
+  --> $DIR/srcloc.rs:110:13
    |
 LL |             concat!(
    |             ^
@@ -251,7 +251,7 @@ LL |     invalid_instruction1
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction2'
-  --> $DIR/srcloc.rs:109:13
+  --> $DIR/srcloc.rs:110:13
    |
 LL |             concat!(
    |             ^
@@ -263,7 +263,7 @@ LL | invalid_instruction2
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction3'
-  --> $DIR/srcloc.rs:113:13
+  --> $DIR/srcloc.rs:114:13
    |
 LL |             concat!(
    |             ^
@@ -275,7 +275,7 @@ LL | invalid_instruction3
    | ^^^^^^^^^^^^^^^^^^^^
 
 error: invalid instruction mnemonic 'invalid_instruction4'
-  --> $DIR/srcloc.rs:113:13
+  --> $DIR/srcloc.rs:114:13
    |
 LL |             concat!(
    |             ^

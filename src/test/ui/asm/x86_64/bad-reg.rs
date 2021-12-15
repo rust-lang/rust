@@ -1,7 +1,9 @@
 // only-x86_64
 // compile-flags: -C target-feature=+avx2
 
-#![feature(asm, asm_const, asm_sym)]
+#![feature(asm_const, asm_sym)]
+
+use std::arch::asm;
 
 fn main() {
     let mut foo = 0;

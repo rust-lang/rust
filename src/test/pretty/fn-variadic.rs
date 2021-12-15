@@ -12,4 +12,4 @@ pub unsafe extern "C" fn bar(_: i32, mut ap: ...) -> usize {
     ap.arg::<usize>()
 }
 
-fn main() { }
+fn main() {}

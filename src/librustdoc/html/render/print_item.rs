@@ -296,7 +296,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             let (short, name) = item_ty_to_strs(myty.unwrap());
             write!(
                 w,
-                "<h2 id=\"{id}\" class=\"section-header\">\
+                "<h2 id=\"{id}\" class=\"small-section-header\">\
                     <a href=\"#{id}\">{name}</a>\
                  </h2>\n{}",
                 ITEM_TABLE_OPEN,
@@ -976,6 +976,7 @@ fn item_typedef(
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
     render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
+    document_type_layout(w, cx, def_id);
 }
 
 fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Union) {

@@ -915,7 +915,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `usize`.
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Examples
     ///
@@ -974,9 +974,9 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore, capacity can not be relied upon to be precisely
-    /// minimal. Prefer [`reserve`] if future insertions are expected.
+    /// minimal. Prefer [`try_reserve`] if future insertions are expected.
     ///
-    /// [`reserve`]: Vec::reserve
+    /// [`try_reserve`]: Vec::try_reserve
     ///
     /// # Errors
     ///
@@ -2416,7 +2416,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// Clones and appends all elements in a slice to the `Vec`.
     ///
     /// Iterates over the slice `other`, clones each element, and then appends
-    /// it to this `Vec`. The `other` vector is traversed in-order.
+    /// it to this `Vec`. The `other` slice is traversed in-order.
     ///
     /// Note that this function is same as [`extend`] except that it is
     /// specialized to work with slices instead. If and when Rust gets

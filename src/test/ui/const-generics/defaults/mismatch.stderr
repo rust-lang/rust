@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:9:28
+  --> $DIR/mismatch.rs:7:28
    |
 LL |     let e: Example::<13> = ();
    |            -------------   ^^ expected struct `Example`, found `()`
@@ -10,7 +10,7 @@ LL |     let e: Example::<13> = ();
            found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:12:34
+  --> $DIR/mismatch.rs:10:34
    |
 LL |     let e: Example2::<u32, 13> = ();
    |            -------------------   ^^ expected struct `Example2`, found `()`
@@ -21,7 +21,7 @@ LL |     let e: Example2::<u32, 13> = ();
            found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:15:34
+  --> $DIR/mismatch.rs:13:34
    |
 LL |     let e: Example3::<13, u32> = ();
    |            -------------------   ^^ expected struct `Example3`, found `()`
@@ -32,7 +32,7 @@ LL |     let e: Example3::<13, u32> = ();
            found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:18:28
+  --> $DIR/mismatch.rs:16:28
    |
 LL |     let e: Example3::<7> = ();
    |            -------------   ^^ expected struct `Example3`, found `()`
@@ -43,7 +43,7 @@ LL |     let e: Example3::<7> = ();
            found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/mismatch.rs:21:28
+  --> $DIR/mismatch.rs:19:28
    |
 LL |     let e: Example4::<7> = ();
    |            -------------   ^^ expected struct `Example4`, found `()`

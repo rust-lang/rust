@@ -150,7 +150,7 @@ impl<Tag: Provenance> MemPlace<Tag> {
     }
 
     #[inline]
-    pub fn offset(
+    pub fn offset<'tcx>(
         self,
         offset: Size,
         meta: MemPlaceMeta<Tag>,
@@ -327,7 +327,7 @@ where
         self.memory.get_mut(place.ptr, size, place.align)
     }
 
-    /// Check if this mplace is dereferencable and sufficiently aligned.
+    /// Check if this mplace is dereferenceable and sufficiently aligned.
     fn check_mplace_access(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
@@ -420,7 +420,7 @@ where
 
     // Iterates over all fields of an array. Much more efficient than doing the
     // same by repeatedly calling `mplace_array`.
-    pub(super) fn mplace_array_fields(
+    pub(super) fn mplace_array_fields<'a>(
         &self,
         base: &'a MPlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'a>
@@ -643,7 +643,7 @@ where
             self.param_env,
             self.layout_of(self.subst_from_current_frame_and_normalize_erasing_regions(
                 place.ty(&self.frame().body.local_decls, *self.tcx).ty
-            ))?,
+            )?)?,
             place_ty.layout,
         ));
         Ok(place_ty)

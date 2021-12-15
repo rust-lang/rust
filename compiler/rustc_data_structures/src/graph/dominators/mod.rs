@@ -1,11 +1,14 @@
 //! Finding the dominators in a control-flow graph.
 //!
-//! Algorithm based on Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy,
-//! "A Simple, Fast Dominance Algorithm",
-//! Rice Computer Science TS-06-33870,
-//! <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>.
+//! Algorithm based on Loukas Georgiadis,
+//! "Linear-Time Algorithms for Dominators and Related Problems",
+//! <ftp://ftp.cs.princeton.edu/techreports/2005/737.pdf>
+//!
+//! Additionally useful is the original Lengauer-Tarjan paper on this subject,
+//! "A Fast Algorithm for Finding Dominators in a Flowgraph"
+//! Thomas Lengauer and Robert Endre Tarjan.
+//! <https://www.cs.princeton.edu/courses/archive/spr03/cs423/download/dominators.pdf>
 
-use super::iterate::reverse_post_order;
 use super::ControlFlowGraph;
 use rustc_index::vec::{Idx, IndexVec};
 use std::cmp::Ordering;
@@ -13,69 +16,239 @@ use std::cmp::Ordering;
 #[cfg(test)]
 mod tests;
 
-pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
-    let start_node = graph.start_node();
-    let rpo = reverse_post_order(&graph, start_node);
-    dominators_given_rpo(graph, &rpo)
+struct PreOrderFrame<Iter> {
+    pre_order_idx: PreorderIndex,
+    iter: Iter,
 }
 
-fn dominators_given_rpo<G: ControlFlowGraph>(graph: G, rpo: &[G::Node]) -> Dominators<G::Node> {
-    let start_node = graph.start_node();
-    assert_eq!(rpo[0], start_node);
+rustc_index::newtype_index! {
+    struct PreorderIndex { .. }
+}
 
+pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
     // compute the post order index (rank) for each node
     let mut post_order_rank = IndexVec::from_elem_n(0, graph.num_nodes());
-    for (index, node) in rpo.iter().rev().cloned().enumerate() {
-        post_order_rank[node] = index;
+
+    // We allocate capacity for the full set of nodes, because most of the time
+    // most of the nodes *are* reachable.
+    let mut parent: IndexVec<PreorderIndex, PreorderIndex> =
+        IndexVec::with_capacity(graph.num_nodes());
+
+    let mut stack = vec![PreOrderFrame {
+        pre_order_idx: PreorderIndex::new(0),
+        iter: graph.successors(graph.start_node()),
+    }];
+    let mut pre_order_to_real: IndexVec<PreorderIndex, G::Node> =
+        IndexVec::with_capacity(graph.num_nodes());
+    let mut real_to_pre_order: IndexVec<G::Node, Option<PreorderIndex>> =
+        IndexVec::from_elem_n(None, graph.num_nodes());
+    pre_order_to_real.push(graph.start_node());
+    parent.push(PreorderIndex::new(0)); // the parent of the root node is the root for now.
+    real_to_pre_order[graph.start_node()] = Some(PreorderIndex::new(0));
+    let mut post_order_idx = 0;
+
+    // Traverse the graph, collecting a number of things:
+    //
+    // * Preorder mapping (to it, and back to the actual ordering)
+    // * Postorder mapping (used exclusively for rank_partial_cmp on the final product)
+    // * Parents for each vertex in the preorder tree
+    //
+    // These are all done here rather than through one of the 'standard'
+    // graph traversals to help make this fast.
+    'recurse: while let Some(frame) = stack.last_mut() {
+        while let Some(successor) = frame.iter.next() {
+            if real_to_pre_order[successor].is_none() {
+                let pre_order_idx = pre_order_to_real.push(successor);
+                real_to_pre_order[successor] = Some(pre_order_idx);
+                parent.push(frame.pre_order_idx);
+                stack.push(PreOrderFrame { pre_order_idx, iter: graph.successors(successor) });
+
+                continue 'recurse;
+            }
+        }
+        post_order_rank[pre_order_to_real[frame.pre_order_idx]] = post_order_idx;
+        post_order_idx += 1;
+
+        stack.pop();
+    }
+
+    let reachable_vertices = pre_order_to_real.len();
+
+    let mut idom = IndexVec::from_elem_n(PreorderIndex::new(0), reachable_vertices);
+    let mut semi = IndexVec::from_fn_n(std::convert::identity, reachable_vertices);
+    let mut label = semi.clone();
+    let mut bucket = IndexVec::from_elem_n(vec![], reachable_vertices);
+    let mut lastlinked = None;
+
+    // We loop over vertices in reverse preorder. This implements the pseudocode
+    // of the simple Lengauer-Tarjan algorithm. A few key facts are noted here
+    // which are helpful for understanding the code (full proofs and such are
+    // found in various papers, including one cited at the top of this file).
+    //
+    // For each vertex w (which is not the root),
+    //  * semi[w] is a proper ancestor of the vertex w (i.e., semi[w] != w)
+    //  * idom[w] is an ancestor of semi[w] (i.e., idom[w] may equal semi[w])
+    //
+    // An immediate dominator of w (idom[w]) is a vertex v where v dominates w
+    // and every other dominator of w dominates v. (Every vertex except the root has
+    // a unique immediate dominator.)
+    //
+    // A semidominator for a given vertex w (semi[w]) is the vertex v with minimum
+    // preorder number such that there exists a path from v to w in which all elements (other than w) have
+    // preorder numbers greater than w (i.e., this path is not the tree path to
+    // w).
+    for w in (PreorderIndex::new(1)..PreorderIndex::new(reachable_vertices)).rev() {
+        // Optimization: process buckets just once, at the start of the
+        // iteration. Do not explicitly empty the bucket (even though it will
+        // not be used again), to save some instructions.
+        //
+        // The bucket here contains the vertices whose semidominator is the
+        // vertex w, which we are guaranteed to have found: all vertices who can
+        // be semidominated by w must have a preorder number exceeding w, so
+        // they have been placed in the bucket.
+        //
+        // We compute a partial set of immediate dominators here.
+        let z = parent[w];
+        for &v in bucket[z].iter() {
+            // This uses the result of Lemma 5 from section 2 from the original
+            // 1979 paper, to compute either the immediate or relative dominator
+            // for a given vertex v.
+            //
+            // eval returns a vertex y, for which semi[y] is minimum among
+            // vertices semi[v] +> y *> v. Note that semi[v] = z as we're in the
+            // z bucket.
+            //
+            // Given such a vertex y, semi[y] <= semi[v] and idom[y] = idom[v].
+            // If semi[y] = semi[v], though, idom[v] = semi[v].
+            //
+            // Using this, we can either set idom[v] to be:
+            //  * semi[v] (i.e. z), if semi[y] is z
+            //  * idom[y], otherwise
+            //
+            // We don't directly set to idom[y] though as it's not necessarily
+            // known yet. The second preorder traversal will cleanup by updating
+            // the idom for any that were missed in this pass.
+            let y = eval(&mut parent, lastlinked, &semi, &mut label, v);
+            idom[v] = if semi[y] < z { y } else { z };
+        }
+
+        // This loop computes the semi[w] for w.
+        semi[w] = w;
+        for v in graph.predecessors(pre_order_to_real[w]) {
+            let v = real_to_pre_order[v].unwrap();
+
+            // eval returns a vertex x from which semi[x] is minimum among
+            // vertices semi[v] +> x *> v.
+            //
+            // From Lemma 4 from section 2, we know that the semidominator of a
+            // vertex w is the minimum (by preorder number) vertex of the
+            // following:
+            //
+            //  * direct predecessors of w with preorder number less than w
+            //  * semidominators of u such that u > w and there exists (v, w)
+            //    such that u *> v
+            //
+            // This loop therefore identifies such a minima. Note that any
+            // semidominator path to w must have all but the first vertex go
+            // through vertices numbered greater than w, so the reverse preorder
+            // traversal we are using guarantees that all of the information we
+            // might need is available at this point.
+            //
+            // The eval call will give us semi[x], which is either:
+            //
+            //  * v itself, if v has not yet been processed
+            //  * A possible 'best' semidominator for w.
+            let x = eval(&mut parent, lastlinked, &semi, &mut label, v);
+            semi[w] = std::cmp::min(semi[w], semi[x]);
+        }
+        // semi[w] is now semidominator(w) and won't change any more.
+
+        // Optimization: Do not insert into buckets if parent[w] = semi[w], as
+        // we then immediately know the idom.
+        //
+        // If we don't yet know the idom directly, then push this vertex into
+        // our semidominator's bucket, where it will get processed at a later
+        // stage to compute its immediate dominator.
+        if parent[w] != semi[w] {
+            bucket[semi[w]].push(w);
+        } else {
+            idom[w] = parent[w];
+        }
+
+        // Optimization: We share the parent array between processed and not
+        // processed elements; lastlinked represents the divider.
+        lastlinked = Some(w);
+    }
+
+    // Finalize the idoms for any that were not fully settable during initial
+    // traversal.
+    //
+    // If idom[w] != semi[w] then we know that we've stored vertex y from above
+    // into idom[w]. It is known to be our 'relative dominator', which means
+    // that it's one of w's ancestors and has the same immediate dominator as w,
+    // so use that idom.
+    for w in PreorderIndex::new(1)..PreorderIndex::new(reachable_vertices) {
+        if idom[w] != semi[w] {
+            idom[w] = idom[idom[w]];
+        }
     }
 
     let mut immediate_dominators = IndexVec::from_elem_n(None, graph.num_nodes());
-    immediate_dominators[start_node] = Some(start_node);
-
-    let mut changed = true;
-    while changed {
-        changed = false;
-
-        for &node in &rpo[1..] {
-            let mut new_idom = None;
-            for pred in graph.predecessors(node) {
-                if immediate_dominators[pred].is_some() {
-                    // (*) dominators for `pred` have been calculated
-                    new_idom = Some(if let Some(new_idom) = new_idom {
-                        intersect(&post_order_rank, &immediate_dominators, new_idom, pred)
-                    } else {
-                        pred
-                    });
-                }
-            }
-
-            if new_idom != immediate_dominators[node] {
-                immediate_dominators[node] = new_idom;
-                changed = true;
-            }
-        }
+    for (idx, node) in pre_order_to_real.iter_enumerated() {
+        immediate_dominators[*node] = Some(pre_order_to_real[idom[idx]]);
     }
 
     Dominators { post_order_rank, immediate_dominators }
 }
 
-fn intersect<Node: Idx>(
-    post_order_rank: &IndexVec<Node, usize>,
-    immediate_dominators: &IndexVec<Node, Option<Node>>,
-    mut node1: Node,
-    mut node2: Node,
-) -> Node {
-    while node1 != node2 {
-        while post_order_rank[node1] < post_order_rank[node2] {
-            node1 = immediate_dominators[node1].unwrap();
-        }
-
-        while post_order_rank[node2] < post_order_rank[node1] {
-            node2 = immediate_dominators[node2].unwrap();
-        }
+/// Evaluate the link-eval virtual forest, providing the currently minimum semi
+/// value for the passed `node` (which may be itself).
+///
+/// This maintains that for every vertex v, `label[v]` is such that:
+///
+/// ```text
+/// semi[eval(v)] = min { semi[label[u]] | root_in_forest(v) +> u *> v }
+/// ```
+///
+/// where `+>` is a proper ancestor and `*>` is just an ancestor.
+#[inline]
+fn eval(
+    ancestor: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    lastlinked: Option<PreorderIndex>,
+    semi: &IndexVec<PreorderIndex, PreorderIndex>,
+    label: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    node: PreorderIndex,
+) -> PreorderIndex {
+    if is_processed(node, lastlinked) {
+        compress(ancestor, lastlinked, semi, label, node);
+        label[node]
+    } else {
+        node
     }
+}
 
-    node1
+#[inline]
+fn is_processed(v: PreorderIndex, lastlinked: Option<PreorderIndex>) -> bool {
+    if let Some(ll) = lastlinked { v >= ll } else { false }
+}
+
+#[inline]
+fn compress(
+    ancestor: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    lastlinked: Option<PreorderIndex>,
+    semi: &IndexVec<PreorderIndex, PreorderIndex>,
+    label: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    v: PreorderIndex,
+) {
+    assert!(is_processed(v, lastlinked));
+    let u = ancestor[v];
+    if is_processed(u, lastlinked) {
+        compress(ancestor, lastlinked, semi, label, u);
+        if semi[label[u]] < semi[label[v]] {
+            label[v] = label[u];
+        }
+        ancestor[v] = ancestor[u];
+    }
 }
 
 #[derive(Clone, Debug)]

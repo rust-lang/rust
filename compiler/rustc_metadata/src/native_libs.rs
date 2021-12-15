@@ -132,7 +132,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 if let Some(modifiers) = item.value_str() {
                     let span = item.name_value_literal_span().unwrap();
                     for modifier in modifiers.as_str().split(',') {
-                        let (modifier, value) = match modifier.strip_prefix(&['+', '-'][..]) {
+                        let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
                             Some(m) => (m, modifier.starts_with('+')),
                             None => {
                                 sess.span_err(

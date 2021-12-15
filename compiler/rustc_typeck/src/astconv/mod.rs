@@ -414,34 +414,40 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 arg: &GenericArg<'_>,
             ) -> subst::GenericArg<'tcx> {
                 let tcx = self.astconv.tcx();
+
+                let mut handle_ty_args = |has_default, ty: &hir::Ty<'_>| {
+                    if has_default {
+                        tcx.check_optional_stability(
+                            param.def_id,
+                            Some(arg.id()),
+                            arg.span(),
+                            None,
+                            |_, _| {
+                                // Default generic parameters may not be marked
+                                // with stability attributes, i.e. when the
+                                // default parameter was defined at the same time
+                                // as the rest of the type. As such, we ignore missing
+                                // stability attributes.
+                            },
+                        )
+                    }
+                    if let (hir::TyKind::Infer, false) = (&ty.kind, self.astconv.allow_ty_infer()) {
+                        self.inferred_params.push(ty.span);
+                        tcx.ty_error().into()
+                    } else {
+                        self.astconv.ast_ty_to_ty(ty).into()
+                    }
+                };
+
                 match (&param.kind, arg) {
                     (GenericParamDefKind::Lifetime, GenericArg::Lifetime(lt)) => {
                         self.astconv.ast_region_to_region(lt, Some(param)).into()
                     }
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Type(ty)) => {
-                        if has_default {
-                            tcx.check_optional_stability(
-                                param.def_id,
-                                Some(arg.id()),
-                                arg.span(),
-                                None,
-                                |_, _| {
-                                    // Default generic parameters may not be marked
-                                    // with stability attributes, i.e. when the
-                                    // default parameter was defined at the same time
-                                    // as the rest of the type. As such, we ignore missing
-                                    // stability attributes.
-                                },
-                            )
-                        }
-                        if let (hir::TyKind::Infer, false) =
-                            (&ty.kind, self.astconv.allow_ty_infer())
-                        {
-                            self.inferred_params.push(ty.span);
-                            tcx.ty_error().into()
-                        } else {
-                            self.astconv.ast_ty_to_ty(ty).into()
-                        }
+                        handle_ty_args(has_default, ty)
+                    }
+                    (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Infer(inf)) => {
+                        handle_ty_args(has_default, &inf.to_ty())
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
                         ty::Const::from_opt_const_arg_anon_const(
@@ -453,41 +459,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         )
                         .into()
                     }
-                    (&GenericParamDefKind::Const { has_default }, hir::GenericArg::Infer(inf)) => {
-                        if has_default {
-                            tcx.const_param_default(param.def_id).into()
-                        } else if self.astconv.allow_ty_infer() {
-                            // FIXME(const_generics): Actually infer parameter here?
-                            todo!()
-                        } else {
-                            self.inferred_params.push(inf.span);
-                            tcx.ty_error().into()
-                        }
-                    }
-                    (
-                        &GenericParamDefKind::Type { has_default, .. },
-                        hir::GenericArg::Infer(inf),
-                    ) => {
-                        if has_default {
-                            tcx.check_optional_stability(
-                                param.def_id,
-                                Some(arg.id()),
-                                arg.span(),
-                                None,
-                                |_, _| {
-                                    // Default generic parameters may not be marked
-                                    // with stability attributes, i.e. when the
-                                    // default parameter was defined at the same time
-                                    // as the rest of the type. As such, we ignore missing
-                                    // stability attributes.
-                                },
-                            );
-                        }
+                    (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
+                        let ty = tcx.at(self.span).type_of(param.def_id);
                         if self.astconv.allow_ty_infer() {
-                            self.astconv.ast_ty_to_ty(&inf.to_ty()).into()
+                            self.astconv.ct_infer(ty, Some(param), inf.span).into()
                         } else {
                             self.inferred_params.push(inf.span);
-                            tcx.ty_error().into()
+                            tcx.const_error(ty).into()
                         }
                     }
                     _ => unreachable!(),
@@ -1350,7 +1328,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     tcx,
                     span,
                     item.trait_ref().def_id(),
-                    &object_safety_violations[..],
+                    &object_safety_violations,
                 )
                 .emit();
                 return tcx.ty_error();
@@ -1587,7 +1565,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 traits::transitive_bounds_that_define_assoc_type(
                     tcx,
                     predicates.iter().filter_map(|(p, _)| {
-                        p.to_opt_poly_trait_ref().map(|trait_ref| trait_ref.value)
+                        Some(p.to_opt_poly_trait_pred()?.map_bound(|t| t.trait_ref))
                     }),
                     assoc_name,
                 )
@@ -2336,9 +2314,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let def_id = item_id.def_id.to_def_id();
 
                 match opaque_ty.kind {
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { impl_trait_fn, .. }) => {
-                        self.impl_trait_ty_to_ty(def_id, lifetimes, impl_trait_fn.is_some())
-                    }
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => self
+                        .impl_trait_ty_to_ty(
+                            def_id,
+                            lifetimes,
+                            matches!(
+                                origin,
+                                hir::OpaqueTyOrigin::FnReturn(..)
+                                    | hir::OpaqueTyOrigin::AsyncFn(..)
+                            ),
+                        ),
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
                 }
             }

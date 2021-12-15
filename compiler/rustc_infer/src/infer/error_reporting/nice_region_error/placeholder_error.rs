@@ -34,6 +34,7 @@ impl NiceRegionError<'me, 'tcx> {
                 sub_placeholder @ ty::RePlaceholder(_),
                 _,
                 sup_placeholder @ ty::RePlaceholder(_),
+                _,
             )) => self.try_report_trait_placeholder_mismatch(
                 Some(self.tcx().mk_region(ty::ReVar(*vid))),
                 cause,
@@ -49,6 +50,7 @@ impl NiceRegionError<'me, 'tcx> {
                 sub_placeholder @ ty::RePlaceholder(_),
                 _,
                 _,
+                _,
             )) => self.try_report_trait_placeholder_mismatch(
                 Some(self.tcx().mk_region(ty::ReVar(*vid))),
                 cause,
@@ -64,6 +66,7 @@ impl NiceRegionError<'me, 'tcx> {
                 _,
                 _,
                 sup_placeholder @ ty::RePlaceholder(_),
+                _,
             )) => self.try_report_trait_placeholder_mismatch(
                 Some(self.tcx().mk_region(ty::ReVar(*vid))),
                 cause,
@@ -79,6 +82,7 @@ impl NiceRegionError<'me, 'tcx> {
                 _,
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sup_placeholder @ ty::RePlaceholder(_),
+                _,
             )) => self.try_report_trait_placeholder_mismatch(
                 Some(self.tcx().mk_region(ty::ReVar(*vid))),
                 cause,

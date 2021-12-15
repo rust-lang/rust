@@ -24,6 +24,7 @@ declare_clippy_lint! {
     /// let checked_exp = something;
     /// let checked_expr = something_else;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub SIMILAR_NAMES,
     pedantic,
     "similarly named items and bindings"
@@ -42,6 +43,7 @@ declare_clippy_lint! {
     /// ```ignore
     /// let (a, b, c, d, e, f, g) = (...);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MANY_SINGLE_CHAR_NAMES,
     pedantic,
     "too many single character bindings"
@@ -62,6 +64,7 @@ declare_clippy_lint! {
     /// let ___1 = 1;
     /// let __1___2 = 11;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub JUST_UNDERSCORES_AND_DIGITS,
     style,
     "unclear name"
@@ -357,7 +360,12 @@ impl EarlyLintPass for NonExpressiveNames {
             return;
         }
 
-        if let ItemKind::Fn(box ast::Fn { ref sig, body: Some(ref blk), .. }) = item.kind {
+        if let ItemKind::Fn(box ast::Fn {
+            ref sig,
+            body: Some(ref blk),
+            ..
+        }) = item.kind
+        {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }
@@ -367,7 +375,12 @@ impl EarlyLintPass for NonExpressiveNames {
             return;
         }
 
-        if let AssocItemKind::Fn(box ast::Fn { ref sig, body: Some(ref blk), .. }) = item.kind {
+        if let AssocItemKind::Fn(box ast::Fn {
+            ref sig,
+            body: Some(ref blk),
+            ..
+        }) = item.kind
+        {
             do_check(self, cx, &item.attrs, &sig.decl, blk);
         }
     }

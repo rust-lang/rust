@@ -1264,6 +1264,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
+            (
+                &ty::Uint(ty::UintTy::U32 | ty::UintTy::U64 | ty::UintTy::U128)
+                | &ty::Int(ty::IntTy::I32 | ty::IntTy::I64 | ty::IntTy::I128),
+                &ty::Char,
+            ) => {
+                err.multipart_suggestion_verbose(
+                    &format!("{}, since a `char` always occupies 4 bytes", cast_msg,),
+                    cast_suggestion,
+                    Applicability::MachineApplicable,
+                );
+                true
+            }
             _ => false,
         }
     }

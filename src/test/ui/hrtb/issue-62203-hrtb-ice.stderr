@@ -2,8 +2,13 @@ error[E0271]: type mismatch resolving `for<'r> <L<[closure@$DIR/issue-62203-hrtb
   --> $DIR/issue-62203-hrtb-ice.rs:38:19
    |
 LL |     let v = Unit2.m(
-   |                   ^ expected associated type, found struct `Unit4`
+   |                   ^ type mismatch resolving `for<'r> <L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:17: 42:39]> as T0<'r, (&'r u8,)>>::O == <_ as Ty<'r>>::V`
    |
+note: expected this to be `<_ as Ty<'_>>::V`
+  --> $DIR/issue-62203-hrtb-ice.rs:21:14
+   |
+LL |     type O = T::Output;
+   |              ^^^^^^^^^
    = note: expected associated type `<_ as Ty<'_>>::V`
                        found struct `Unit4`
    = help: consider constraining the associated type `<_ as Ty<'_>>::V` to `Unit4` or calling a method that returns `<_ as Ty<'_>>::V`

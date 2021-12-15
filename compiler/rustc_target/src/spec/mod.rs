@@ -867,6 +867,7 @@ supported_targets! {
     ("powerpc-unknown-freebsd", powerpc_unknown_freebsd),
     ("powerpc64-unknown-freebsd", powerpc64_unknown_freebsd),
     ("powerpc64le-unknown-freebsd", powerpc64le_unknown_freebsd),
+    ("riscv64gc-unknown-freebsd", riscv64gc_unknown_freebsd),
     ("x86_64-unknown-freebsd", x86_64_unknown_freebsd),
 
     ("x86_64-unknown-dragonfly", x86_64_unknown_dragonfly),

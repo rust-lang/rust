@@ -14,7 +14,6 @@
 #![feature(std_internals)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
-#![feature(asm)]
 #![feature(c_unwind)]
 
 #[cfg(target_os = "android")]
@@ -69,11 +68,11 @@ pub unsafe extern "C-unwind" fn __rust_start_panic(_payload: *mut &mut dyn BoxMe
                 const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
                 cfg_if::cfg_if! {
                     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-                        asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
+                        core::arch::asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
                     } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
-                        asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
+                        core::arch::asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
                     } else if #[cfg(target_arch = "aarch64")] {
-                        asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
+                        core::arch::asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
                     } else {
                         core::intrinsics::abort();
                     }

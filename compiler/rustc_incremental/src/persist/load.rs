@@ -18,13 +18,24 @@ use super::work_product;
 type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;
 
 #[derive(Debug)]
+/// Represents the result of an attempt to load incremental compilation data.
 pub enum LoadResult<T> {
-    Ok { data: T },
+    /// Loading was successful.
+    Ok {
+        #[allow(missing_docs)]
+        data: T,
+    },
+    /// The file either didn't exist or was produced by an incompatible compiler version.
     DataOutOfDate,
-    Error { message: String },
+    /// An error occured.
+    Error {
+        #[allow(missing_docs)]
+        message: String,
+    },
 }
 
 impl<T: Default> LoadResult<T> {
+    /// Accesses the data returned in [`LoadResult::Ok`].
     pub fn open(self, sess: &Session) -> T {
         // Check for errors when using `-Zassert-incremental-state`
         match (sess.opts.assert_incr_state, &self) {
@@ -99,6 +110,7 @@ pub enum MaybeAsync<T> {
 }
 
 impl<T> MaybeAsync<LoadResult<T>> {
+    /// Accesses the data returned in [`LoadResult::Ok`] in an asynchronous way if possible.
     pub fn open(self) -> LoadResult<T> {
         match self {
             MaybeAsync::Sync(result) => result,
@@ -109,6 +121,7 @@ impl<T> MaybeAsync<LoadResult<T>> {
     }
 }
 
+/// An asynchronous type for computing the dependency graph.
 pub type DepGraphFuture = MaybeAsync<LoadResult<(SerializedDepGraph, WorkProductMap)>>;
 
 /// Launch a thread and load the dependency graph in the background.
@@ -151,7 +164,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                                     compilation session directory: {}",
                         e
                     );
-                    sess.fatal(&msg[..])
+                    sess.fatal(&msg)
                 });
 
             for swp in work_products {

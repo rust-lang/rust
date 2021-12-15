@@ -3,6 +3,6 @@
 
 fn foo() => impl Fn() => bool {
     //~^ ERROR return types are denoted using `->`
-    //~| ERROR expected one of `+`, `->`, `::`, `;`, `where`, or `{`, found `=>`
+    //~| ERROR expected one of `+`, `->`, `::`, `where`, or `{`, found `=>`
     unimplemented!()
 }

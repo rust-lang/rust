@@ -28,7 +28,7 @@ pub trait MirLint<'tcx> {
 #[derive(Debug, Clone)]
 pub struct Lint<T>(pub T);
 
-impl<T> MirPass<'tcx> for Lint<T>
+impl<'tcx, T> MirPass<'tcx> for Lint<T>
 where
     T: MirLint<'tcx>,
 {
@@ -51,7 +51,7 @@ where
 
 pub struct WithMinOptLevel<T>(pub u32, pub T);
 
-impl<T> MirPass<'tcx> for WithMinOptLevel<T>
+impl<'tcx, T> MirPass<'tcx> for WithMinOptLevel<T>
 where
     T: MirPass<'tcx>,
 {
@@ -72,7 +72,7 @@ where
     }
 }
 
-pub fn run_passes(tcx: TyCtxt<'tcx>, body: &'mir mut Body<'tcx>, passes: &[&dyn MirPass<'tcx>]) {
+pub fn run_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, passes: &[&dyn MirPass<'tcx>]) {
     let start_phase = body.phase;
     let mut cnt = 0;
 
@@ -119,11 +119,11 @@ pub fn run_passes(tcx: TyCtxt<'tcx>, body: &'mir mut Body<'tcx>, passes: &[&dyn 
     }
 }
 
-pub fn validate_body(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
+pub fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
     validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
 }
 
-pub fn dump_mir(
+pub fn dump_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     phase: MirPhase,

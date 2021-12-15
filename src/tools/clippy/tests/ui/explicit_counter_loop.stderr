@@ -42,5 +42,19 @@ error: the variable `count` is used as a loop counter
 LL |         for _i in 3..10 {
    |         ^^^^^^^^^^^^^^^ help: consider using: `for (count, _i) in (3..10).enumerate()`
 
-error: aborting due to 7 previous errors
+error: the variable `idx_usize` is used as a loop counter
+  --> $DIR/explicit_counter_loop.rs:170:9
+   |
+LL |         for _item in slice {
+   |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_usize, _item) in slice.into_iter().enumerate()`
+
+error: the variable `idx_u32` is used as a loop counter
+  --> $DIR/explicit_counter_loop.rs:182:9
+   |
+LL |         for _item in slice {
+   |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_u32, _item) in (0_u32..).zip(slice.into_iter())`
+   |
+   = note: `idx_u32` is of type `u32`, making it ineligible for `Iterator::enumerate`
+
+error: aborting due to 9 previous errors
 

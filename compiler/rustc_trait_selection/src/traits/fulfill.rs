@@ -4,7 +4,6 @@ use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_errors::ErrorReported;
-use rustc_hir as hir;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
@@ -231,35 +230,11 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
     }
 
-    fn select_all_with_constness_or_error(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-        constness: rustc_hir::Constness,
-    ) -> Vec<FulfillmentError<'tcx>> {
-        {
-            let errors = self.select_with_constness_where_possible(infcx, constness);
-            if !errors.is_empty() {
-                return errors;
-            }
-        }
-
-        self.predicates.to_errors(CodeAmbiguity).into_iter().map(to_fulfillment_error).collect()
-    }
-
     fn select_where_possible(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
     ) -> Vec<FulfillmentError<'tcx>> {
         let mut selcx = SelectionContext::new(infcx);
-        self.select(&mut selcx)
-    }
-
-    fn select_with_constness_where_possible(
-        &mut self,
-        infcx: &InferCtxt<'_, 'tcx>,
-        constness: hir::Constness,
-    ) -> Vec<FulfillmentError<'tcx>> {
-        let mut selcx = SelectionContext::with_constness(infcx, constness);
         self.select(&mut selcx)
     }
 
@@ -679,12 +654,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         if obligation.predicate.is_known_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
-            //
-            // If the predicate is considered const, then we cannot use this because
-            // it will cause false negatives in the ui tests.
-            if !self.selcx.is_predicate_const(obligation.predicate)
-                && infcx.predicate_must_hold_considering_regions(obligation)
-            {
+            if infcx.predicate_must_hold_considering_regions(obligation) {
                 debug!(
                     "selecting trait at depth {} evaluated to holds",
                     obligation.recursion_depth
@@ -738,12 +708,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         if obligation.predicate.is_global(tcx) {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
-            //
-            // If the predicate is considered const, then we cannot use this because
-            // it will cause false negatives in the ui tests.
-            if !self.selcx.is_predicate_const(obligation.predicate)
-                && self.selcx.infcx().predicate_must_hold_considering_regions(obligation)
-            {
+            if self.selcx.infcx().predicate_must_hold_considering_regions(obligation) {
                 return ProcessResult::Changed(vec![]);
             } else {
                 tracing::debug!("Does NOT hold: {:?}", obligation);

@@ -63,6 +63,7 @@ declare_clippy_lint! {
     /// }
     /// # }
     /// ```
+    #[clippy::version = "1.34.0"]
     pub MISSING_CONST_FOR_FN,
     nursery,
     "Lint functions definitions that could be made `const fn`"

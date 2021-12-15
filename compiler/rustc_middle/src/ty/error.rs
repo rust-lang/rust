@@ -118,8 +118,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ArgumentMutability(_) | Mutability => write!(f, "types differ in mutability"),
             TupleSize(values) => write!(
                 f,
-                "expected a tuple with {} element{}, \
-                           found one with {} element{}",
+                "expected a tuple with {} element{}, found one with {} element{}",
                 values.expected,
                 pluralize!(values.expected),
                 values.found,
@@ -127,8 +126,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ),
             FixedArraySize(values) => write!(
                 f,
-                "expected an array with a fixed size of {} element{}, \
-                           found one with {} element{}",
+                "expected an array with a fixed size of {} element{}, found one with {} element{}",
                 values.expected,
                 pluralize!(values.expected),
                 values.found,

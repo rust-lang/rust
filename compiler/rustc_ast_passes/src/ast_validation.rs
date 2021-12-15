@@ -894,7 +894,6 @@ impl<'a> AstValidator<'a> {
 /// Checks that generic parameters are in the correct order,
 /// which is lifetimes, then types and then consts. (`<'a, T, const N: usize>`)
 fn validate_generic_param_order(
-    sess: &Session,
     handler: &rustc_errors::Handler,
     generics: &[GenericParam],
     span: Span,
@@ -911,8 +910,7 @@ fn validate_generic_param_order(
             GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident.to_string()),
             GenericParamKind::Const { ref ty, kw_span: _, default: _ } => {
                 let ty = pprust::ty_to_string(ty);
-                let unordered = sess.features_untracked().unordered_const_ty_params();
-                (ParamKindOrd::Const { unordered }, format!("const {}: {}", ident, ty))
+                (ParamKindOrd::Const, format!("const {}: {}", ident, ty))
             }
         };
         param_idents.push((kind, ord_kind, bounds, idx, ident));
@@ -968,14 +966,7 @@ fn validate_generic_param_order(
             );
             err.span_suggestion(
                 span,
-                &format!(
-                    "reorder the parameters: lifetimes, {}",
-                    if sess.features_untracked().unordered_const_ty_params() {
-                        "then consts and types"
-                    } else {
-                        "then types, then consts"
-                    }
-                ),
+                "reorder the parameters: lifetimes, then consts and types",
                 ordered_params.clone(),
                 Applicability::MachineApplicable,
             );
@@ -1342,8 +1333,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_generics(&mut self, generics: &'a Generics) {
-        let cg_defaults = self.session.features_untracked().unordered_const_ty_params();
-
         let mut prev_param_default = None;
         for param in &generics.params {
             match param.kind {
@@ -1358,12 +1347,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             span,
                             "generic parameters with a default must be trailing",
                         );
-                        if matches!(param.kind, GenericParamKind::Const { .. }) && !cg_defaults {
-                            err.note(
-                                "using type defaults and const parameters \
-                                 in the same parameter list is currently not permitted",
-                            );
-                        }
                         err.emit();
                         break;
                     }
@@ -1371,12 +1354,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
 
-        validate_generic_param_order(
-            self.session,
-            self.err_handler(),
-            &generics.params,
-            generics.span,
-        );
+        validate_generic_param_order(self.err_handler(), &generics.params, generics.span);
 
         for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(ref predicate) = *predicate {

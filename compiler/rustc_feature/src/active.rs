@@ -69,10 +69,6 @@ macro_rules! declare_features {
                 }
             }
 
-            pub fn unordered_const_ty_params(&self) -> bool {
-                self.const_generics_defaults || self.generic_const_exprs || self.adt_const_params
-            }
-
             /// Some features are known to be incomplete and using them is likely to have
             /// unanticipated results, such as compiler crashes. We warn the user about these
             /// to alert them.
@@ -334,8 +330,6 @@ declare_features! (
     (active, const_fn_trait_bound, "1.53.0", Some(57563), None),
     /// Allows `for _ in _` loops in const contexts.
     (active, const_for, "1.56.0", Some(87575), None),
-    /// Allows const generics to have default values (e.g. `struct Foo<const N: usize = 3>(...);`).
-    (active, const_generics_defaults, "1.51.0", Some(44580), None),
     /// Allows argument and return position `impl Trait` in a `const fn`.
     (active, const_impl_trait, "1.48.0", Some(77463), None),
     /// Allows using `&mut` in constant functions.

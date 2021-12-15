@@ -1,8 +1,8 @@
 error: incompatible lifetime on type
-  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:17:5
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:17:18
    |
 LL |     type T<'a> = Box<dyn A + 'a>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^^^^^^^^^^^^^
    |
 note: because this has an unmet lifetime requirement
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:12:17
@@ -26,10 +26,10 @@ LL | impl A for Box<dyn A + '_> {}
    |                      ++++
 
 error: incompatible lifetime on type
-  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:27:5
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:27:18
    |
 LL |     type T<'a> = Box<dyn A + 'a>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^^^^^^^^^^^^^
    |
 note: because this has an unmet lifetime requirement
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:23:17
@@ -48,10 +48,10 @@ LL | impl C for Box<dyn A + 'static> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: incompatible lifetime on type
-  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:37:5
+  --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:37:18
    |
 LL |     type T<'a> = (Box<dyn A + 'a>, Box<dyn A + 'a>);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: because this has an unmet lifetime requirement
   --> $DIR/issue-78113-lifetime-mismatch-dyn-trait-box.rs:33:17

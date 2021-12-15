@@ -720,9 +720,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore, capacity can not be relied upon to be precisely
-    /// minimal. Prefer [`reserve`] if future insertions are expected.
+    /// minimal. Prefer [`try_reserve`] if future insertions are expected.
     ///
-    /// [`reserve`]: VecDeque::reserve
+    /// [`try_reserve`]: VecDeque::try_reserve
     ///
     /// # Errors
     ///
@@ -1020,7 +1020,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         // SAFETY: The internal `IterMut` safety invariant is established because the
-        // `ring` we create is a dereferencable slice for lifetime '_.
+        // `ring` we create is a dereferenceable slice for lifetime '_.
         let ring = ptr::slice_from_raw_parts_mut(self.ptr(), self.cap());
 
         unsafe { IterMut::new(ring, self.tail, self.head, PhantomData) }
@@ -1209,7 +1209,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let (tail, head) = self.range_tail_head(range);
 
         // SAFETY: The internal `IterMut` safety invariant is established because the
-        // `ring` we create is a dereferencable slice for lifetime '_.
+        // `ring` we create is a dereferenceable slice for lifetime '_.
         let ring = ptr::slice_from_raw_parts_mut(self.ptr(), self.cap());
 
         unsafe { IterMut::new(ring, tail, head, PhantomData) }

@@ -91,6 +91,38 @@ exclude_labels = [
     "requires-nightly",
 ]
 
+[autolabel."T-rustdoc"]
+trigger_files = [
+    # Source code
+    "src/librustdoc",
+    "src/tools/rustdoc",
+    "src/rustdoc-json-types",
+
+    # Tests
+    "src/test/rustdoc",
+    "src/test/rustdoc-ui",
+    "src/test/rustdoc-gui",
+    "src/test/rustdoc-js",
+    "src/test/rustdoc-js-std",
+    "src/test/rustdoc-json",
+
+    # Internal tooling
+    "src/etc/htmldocck.py",
+    "src/tools/jsondocck",
+    "src/tools/rustdoc-gui",
+    "src/tools/rustdoc-js",
+    "src/tools/rustdoc-themes",
+]
+
+[autolabel."T-compiler"]
+trigger_files = [
+    # Source code
+    "compiler",
+
+    # Tests
+    "src/test/ui",
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"

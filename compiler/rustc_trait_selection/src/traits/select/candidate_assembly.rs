@@ -11,7 +11,7 @@ use rustc_infer::traits::TraitEngine;
 use rustc_infer::traits::{Obligation, SelectionError, TraitObligation};
 use rustc_lint_defs::builtin::DEREF_INTO_DYN_SUPERTRAIT;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty, TypeFoldable};
 use rustc_target::spec::abi::Abi;
 
 use crate::traits;
@@ -303,7 +303,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if lang_items.drop_trait() == Some(def_id)
                 && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
             {
-                if self.is_in_const_context {
+                if obligation.param_env.constness() == hir::Constness::Const {
                     self.assemble_const_drop_candidates(obligation, stack, &mut candidates)?;
                 } else {
                     debug!("passing ~const Drop bound; in non-const context");
@@ -362,9 +362,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
 
-        for predicate_index in result {
-            candidates.vec.push(ProjectionCandidate(predicate_index));
-        }
+        candidates.vec.extend(result.into_iter().map(ProjectionCandidate));
     }
 
     /// Given an obligation like `<SomeTrait for T>`, searches the obligations that the caller
@@ -383,17 +381,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .param_env
             .caller_bounds()
             .iter()
-            .filter_map(|o| o.to_opt_poly_trait_ref());
+            .filter_map(|o| o.to_opt_poly_trait_pred());
 
         // Micro-optimization: filter out predicates relating to different traits.
         let matching_bounds =
-            all_bounds.filter(|p| p.value.def_id() == stack.obligation.predicate.def_id());
+            all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
 
         // Keep only those bounds which may apply, and propagate overflow if it occurs.
         for bound in matching_bounds {
-            let wc = self.evaluate_where_clause(stack, bound.value)?;
+            // FIXME(oli-obk): it is suspicious that we are dropping the constness and
+            // polarity here.
+            let wc = self.evaluate_where_clause(stack, bound.map_bound(|t| t.trait_ref))?;
             if wc.may_apply() {
-                candidates.vec.push(ParamCandidate((bound, stack.obligation.polarity())));
+                candidates.vec.push(ParamCandidate(bound));
             }
         }
 

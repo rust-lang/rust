@@ -376,6 +376,12 @@ macro_rules! test_lanes {
                 fn lanes_32() {
                     implementation::<32>();
                 }
+
+                #[test]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test::wasm_bindgen_test)]
+                fn lanes_64() {
+                    implementation::<64>();
+                }
             }
         )*
     }
@@ -430,6 +436,12 @@ macro_rules! test_lanes_panic {
                 #[should_panic]
                 fn lanes_32() {
                     implementation::<32>();
+                }
+
+                #[test]
+                #[should_panic]
+                fn lanes_64() {
+                    implementation::<64>();
                 }
             }
         )*

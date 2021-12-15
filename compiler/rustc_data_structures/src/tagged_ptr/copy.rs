@@ -94,9 +94,11 @@ where
         // SAFETY: pointer_raw returns the original pointer
         unsafe { std::mem::transmute_copy(&self.pointer_raw()) }
     }
+    #[inline]
     pub fn tag(&self) -> T {
         unsafe { T::from_usize(self.packed.get() >> Self::TAG_BIT_SHIFT) }
     }
+    #[inline]
     pub fn set_tag(&mut self, tag: T) {
         let mut packed = self.packed.get();
         let new_tag = T::into_usize(tag) << Self::TAG_BIT_SHIFT;

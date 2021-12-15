@@ -4,7 +4,7 @@ error[E0759]: `value` has an anonymous lifetime `'_` but it needs to satisfy a `
 LL | fn foo<T: Any>(value: &T) -> Box<dyn Any> {
    |                       -- this data with an anonymous lifetime `'_`...
 LL |     Box::new(value) as Box<dyn Any>
-   |              ^^^^^ ...is captured here, requiring it to live as long as `'static`
+   |              ^^^^^ ...is used and required to live as long as `'static` here
    |
 help: to declare that the trait object captures data from argument `value`, you can add an explicit `'_` lifetime bound
    |

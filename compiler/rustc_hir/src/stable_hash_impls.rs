@@ -211,7 +211,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Item<'_> {
     }
 }
 
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'tcx> {
+impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'tcx> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
@@ -221,7 +221,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'tcx> {
     }
 }
 
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap<'tcx> {
+impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap<'tcx> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
         // We ignore the `map` since it refers to information included in `hash` which is hashed in
         // the collector and used for the crate hash.

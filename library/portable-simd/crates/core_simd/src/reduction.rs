@@ -2,7 +2,8 @@ use crate::simd::intrinsics::{
     simd_reduce_add_ordered, simd_reduce_and, simd_reduce_max, simd_reduce_min,
     simd_reduce_mul_ordered, simd_reduce_or, simd_reduce_xor,
 };
-use crate::simd::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use core::ops::{BitAnd, BitOr, BitXor};
 
 macro_rules! impl_integer_reductions {
     { $scalar:ty } => {
@@ -20,27 +21,6 @@ macro_rules! impl_integer_reductions {
             #[inline]
             pub fn horizontal_product(self) -> $scalar {
                 unsafe { simd_reduce_mul_ordered(self, 1) }
-            }
-
-            /// Horizontal bitwise "and".  Returns the cumulative bitwise "and" across the lanes of
-            /// the vector.
-            #[inline]
-            pub fn horizontal_and(self) -> $scalar {
-                unsafe { simd_reduce_and(self) }
-            }
-
-            /// Horizontal bitwise "or".  Returns the cumulative bitwise "or" across the lanes of
-            /// the vector.
-            #[inline]
-            pub fn horizontal_or(self) -> $scalar {
-                unsafe { simd_reduce_or(self) }
-            }
-
-            /// Horizontal bitwise "xor".  Returns the cumulative bitwise "xor" across the lanes of
-            /// the vector.
-            #[inline]
-            pub fn horizontal_xor(self) -> $scalar {
-                unsafe { simd_reduce_xor(self) }
             }
 
             /// Horizontal maximum.  Returns the maximum lane in the vector.
@@ -121,3 +101,45 @@ macro_rules! impl_float_reductions {
 
 impl_float_reductions! { f32 }
 impl_float_reductions! { f64 }
+
+impl<T, const LANES: usize> Simd<T, LANES>
+where
+    Self: BitAnd<Self, Output = Self>,
+    T: SimdElement + BitAnd<T, Output = T>,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    /// Horizontal bitwise "and".  Returns the cumulative bitwise "and" across the lanes of
+    /// the vector.
+    #[inline]
+    pub fn horizontal_and(self) -> T {
+        unsafe { simd_reduce_and(self) }
+    }
+}
+
+impl<T, const LANES: usize> Simd<T, LANES>
+where
+    Self: BitOr<Self, Output = Self>,
+    T: SimdElement + BitOr<T, Output = T>,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    /// Horizontal bitwise "or".  Returns the cumulative bitwise "or" across the lanes of
+    /// the vector.
+    #[inline]
+    pub fn horizontal_or(self) -> T {
+        unsafe { simd_reduce_or(self) }
+    }
+}
+
+impl<T, const LANES: usize> Simd<T, LANES>
+where
+    Self: BitXor<Self, Output = Self>,
+    T: SimdElement + BitXor<T, Output = T>,
+    LaneCount<LANES>: SupportedLaneCount,
+{
+    /// Horizontal bitwise "xor".  Returns the cumulative bitwise "xor" across the lanes of
+    /// the vector.
+    #[inline]
+    pub fn horizontal_xor(self) -> T {
+        unsafe { simd_reduce_xor(self) }
+    }
+}

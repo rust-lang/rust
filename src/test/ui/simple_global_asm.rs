@@ -1,11 +1,10 @@
 // run-pass
 
-#![feature(global_asm)]
 #![feature(naked_functions)]
 #![allow(dead_code)]
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-global_asm!(
+core::arch::global_asm!(
     r#"
     .global foo
     .global _foo

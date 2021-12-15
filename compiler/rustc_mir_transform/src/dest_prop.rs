@@ -241,7 +241,7 @@ struct Replacements<'tcx> {
     kill: BitSet<Local>,
 }
 
-impl Replacements<'tcx> {
+impl<'tcx> Replacements<'tcx> {
     fn new(locals: usize) -> Self {
         Self { map: IndexVec::from_elem_n(None, locals), kill: BitSet::new_empty(locals) }
     }
@@ -298,7 +298,7 @@ struct Replacer<'tcx> {
 }
 
 impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -372,7 +372,7 @@ struct Conflicts<'a> {
     unified_locals: InPlaceUnificationTable<UnifyLocal>,
 }
 
-impl Conflicts<'a> {
+impl<'a> Conflicts<'a> {
     fn build<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &'_ Body<'tcx>,
@@ -820,10 +820,7 @@ struct CandidateAssignment<'tcx> {
 /// comment) and also throw out assignments that involve a local that has its address taken or is
 /// otherwise ineligible (eg. locals used as array indices are ignored because we cannot propagate
 /// arbitrary places into array indices).
-fn find_candidates<'a, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
-) -> Vec<CandidateAssignment<'tcx>> {
+fn find_candidates<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> Vec<CandidateAssignment<'tcx>> {
     let mut visitor = FindAssignments {
         tcx,
         body,
@@ -843,7 +840,7 @@ struct FindAssignments<'a, 'tcx> {
     locals_used_as_array_index: BitSet<Local>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for FindAssignments<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         if let StatementKind::Assign(box (
             dest,

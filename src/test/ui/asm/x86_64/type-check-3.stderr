@@ -1,5 +1,5 @@
 error: type `i128` cannot be used with this register class
-  --> $DIR/type-check-3.rs:12:28
+  --> $DIR/type-check-3.rs:14:28
    |
 LL |         asm!("{}", in(reg) 0i128);
    |                            ^^^^^
@@ -7,7 +7,7 @@ LL |         asm!("{}", in(reg) 0i128);
    = note: register class `reg` supports these types: i16, i32, i64, f32, f64
 
 error: type `__m128` cannot be used with this register class
-  --> $DIR/type-check-3.rs:14:28
+  --> $DIR/type-check-3.rs:16:28
    |
 LL |         asm!("{}", in(reg) _mm_setzero_ps());
    |                            ^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |         asm!("{}", in(reg) _mm_setzero_ps());
    = note: register class `reg` supports these types: i16, i32, i64, f32, f64
 
 error: type `__m256` cannot be used with this register class
-  --> $DIR/type-check-3.rs:16:28
+  --> $DIR/type-check-3.rs:18:28
    |
 LL |         asm!("{}", in(reg) _mm256_setzero_ps());
    |                            ^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |         asm!("{}", in(reg) _mm256_setzero_ps());
    = note: register class `reg` supports these types: i16, i32, i64, f32, f64
 
 error: type `u8` cannot be used with this register class
-  --> $DIR/type-check-3.rs:18:32
+  --> $DIR/type-check-3.rs:20:32
    |
 LL |         asm!("{}", in(xmm_reg) 0u8);
    |                                ^^^
@@ -31,7 +31,7 @@ LL |         asm!("{}", in(xmm_reg) 0u8);
    = note: register class `xmm_reg` supports these types: i32, i64, f32, f64, i8x16, i16x8, i32x4, i64x2, f32x4, f64x2
 
 error: `avx512bw` target feature is not enabled
-  --> $DIR/type-check-3.rs:27:29
+  --> $DIR/type-check-3.rs:29:29
    |
 LL |         asm!("{}", in(kreg) 0u64);
    |                             ^^^^
@@ -39,7 +39,7 @@ LL |         asm!("{}", in(kreg) 0u64);
    = note: this is required to use type `u64` with register class `kreg`
 
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:32:15
+  --> $DIR/type-check-3.rs:34:15
    |
 LL |         asm!("{0} {0}", in(reg) 0i16);
    |               ^^^ ^^^           ---- for this argument
@@ -49,7 +49,7 @@ LL |         asm!("{0} {0}", in(reg) 0i16);
    = help: or use the `r` modifier to keep the default formatting of `rax`
 
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:34:15
+  --> $DIR/type-check-3.rs:36:15
    |
 LL |         asm!("{0} {0:x}", in(reg) 0i16);
    |               ^^^                 ---- for this argument
@@ -58,7 +58,7 @@ LL |         asm!("{0} {0:x}", in(reg) 0i16);
    = help: or use the `r` modifier to keep the default formatting of `rax`
 
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:36:15
+  --> $DIR/type-check-3.rs:38:15
    |
 LL |         asm!("{}", in(reg) 0i32);
    |               ^^           ---- for this argument
@@ -67,7 +67,7 @@ LL |         asm!("{}", in(reg) 0i32);
    = help: or use the `r` modifier to keep the default formatting of `rax`
 
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:39:15
+  --> $DIR/type-check-3.rs:41:15
    |
 LL |         asm!("{}", in(ymm_reg) 0i64);
    |               ^^               ---- for this argument
@@ -76,7 +76,7 @@ LL |         asm!("{}", in(ymm_reg) 0i64);
    = help: or use the `y` modifier to keep the default formatting of `ymm0`
 
 error: type `i8` cannot be used with this register class
-  --> $DIR/type-check-3.rs:50:28
+  --> $DIR/type-check-3.rs:52:28
    |
 LL |         asm!("{}", in(reg) 0i8);
    |                            ^^^
@@ -85,7 +85,7 @@ LL |         asm!("{}", in(reg) 0i8);
    = help: consider using the `reg_byte` register class instead
 
 error: incompatible types for asm inout argument
-  --> $DIR/type-check-3.rs:62:33
+  --> $DIR/type-check-3.rs:64:33
    |
 LL |         asm!("{:r}", inout(reg) 0u32 => val_f32);
    |                                 ^^^^    ^^^^^^^ type `f32`
@@ -95,7 +95,7 @@ LL |         asm!("{:r}", inout(reg) 0u32 => val_f32);
    = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error: incompatible types for asm inout argument
-  --> $DIR/type-check-3.rs:64:33
+  --> $DIR/type-check-3.rs:66:33
    |
 LL |         asm!("{:r}", inout(reg) 0u32 => val_ptr);
    |                                 ^^^^    ^^^^^^^ type `*mut u8`
@@ -105,7 +105,7 @@ LL |         asm!("{:r}", inout(reg) 0u32 => val_ptr);
    = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error: incompatible types for asm inout argument
-  --> $DIR/type-check-3.rs:66:33
+  --> $DIR/type-check-3.rs:68:33
    |
 LL |         asm!("{:r}", inout(reg) main => val_u32);
    |                                 ^^^^    ^^^^^^^ type `u32`
@@ -115,7 +115,7 @@ LL |         asm!("{:r}", inout(reg) main => val_u32);
    = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error[E0013]: constants cannot refer to statics
-  --> $DIR/type-check-3.rs:82:25
+  --> $DIR/type-check-3.rs:84:25
    |
 LL | global_asm!("{}", const S);
    |                         ^
@@ -123,7 +123,7 @@ LL | global_asm!("{}", const S);
    = help: consider extracting the value of the `static` to a `const`, and referring to that
 
 error[E0013]: constants cannot refer to statics
-  --> $DIR/type-check-3.rs:85:35
+  --> $DIR/type-check-3.rs:87:35
    |
 LL | global_asm!("{}", const const_foo(S));
    |                                   ^
@@ -131,7 +131,7 @@ LL | global_asm!("{}", const const_foo(S));
    = help: consider extracting the value of the `static` to a `const`, and referring to that
 
 error[E0013]: constants cannot refer to statics
-  --> $DIR/type-check-3.rs:88:35
+  --> $DIR/type-check-3.rs:90:35
    |
 LL | global_asm!("{}", const const_bar(S));
    |                                   ^

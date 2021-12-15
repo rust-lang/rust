@@ -278,7 +278,16 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optopt("r", "input-format", "the input type of the specified file", "[rust]")
         }),
         stable("w", |o| o.optopt("w", "output-format", "the output type to write", "[html]")),
-        stable("o", |o| o.optopt("o", "output", "where to place the output", "PATH")),
+        stable("output", |o| {
+            o.optopt(
+                "",
+                "output",
+                "Which directory to place the output. \
+                 This option is deprecated, use --out-dir instead.",
+                "PATH",
+            )
+        }),
+        stable("o", |o| o.optopt("o", "out-dir", "which directory to place the output", "PATH")),
         stable("crate-name", |o| {
             o.optopt("", "crate-name", "specify the name of this crate", "NAME")
         }),

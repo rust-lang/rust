@@ -13,7 +13,7 @@ mod tests;
 
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use crate::io::{self, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -623,15 +623,13 @@ impl Read for File {
         self.inner.read_vectored(bufs)
     }
 
-    #[inline]
-    fn is_read_vectored(&self) -> bool {
-        self.inner.is_read_vectored()
+    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        self.inner.read_buf(buf)
     }
 
     #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        // SAFETY: Read is guaranteed to work on uninitialized memory
-        unsafe { Initializer::nop() }
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
     }
 
     // Reserves space in the buffer based on the file size when available.
@@ -677,6 +675,10 @@ impl Read for &File {
         self.inner.read(buf)
     }
 
+    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        self.inner.read_buf(buf)
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
     }
@@ -684,12 +686,6 @@ impl Read for &File {
     #[inline]
     fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
-    }
-
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        // SAFETY: Read is guaranteed to work on uninitialized memory
-        unsafe { Initializer::nop() }
     }
 
     // Reserves space in the buffer based on the file size when available.
@@ -1062,7 +1058,7 @@ impl Metadata {
     /// }
     /// ```
     #[must_use]
-    #[stable(feature = "is_symlink", since = "1.57.0")]
+    #[stable(feature = "is_symlink", since = "1.58.0")]
     pub fn is_symlink(&self) -> bool {
         self.file_type().is_symlink()
     }

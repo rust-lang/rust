@@ -1653,11 +1653,24 @@ impl<T> Result<T, T> {
 }
 
 // This is a separate function to reduce the code size of the methods
+#[cfg(not(feature = "panic_immediate_abort"))]
 #[inline(never)]
 #[cold]
 #[track_caller]
 fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
     panic!("{}: {:?}", msg, error)
+}
+
+// This is a separate function to avoid constructing a `dyn Debug`
+// that gets immediately thrown away, since vtables don't get cleaned up
+// by dead code elimination if a trait object is constructed even if it goes
+// unused
+#[cfg(feature = "panic_immediate_abort")]
+#[inline]
+#[cold]
+#[track_caller]
+fn unwrap_failed<T>(_msg: &str, _error: &T) -> ! {
+    panic!()
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1932,7 +1945,8 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T, E> ops::Try for Result<T, E> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T, E> const ops::Try for Result<T, E> {
     type Output = T;
     type Residual = Result<convert::Infallible, E>;
 
@@ -1951,7 +1965,10 @@ impl<T, E> ops::Try for Result<T, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible, E>>
+    for Result<T, F>
+{
     #[inline]
     fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
         match residual {

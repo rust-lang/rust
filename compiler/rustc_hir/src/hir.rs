@@ -325,13 +325,11 @@ impl GenericArg<'_> {
         }
     }
 
-    pub fn to_ord(&self, feats: &rustc_feature::Features) -> ast::ParamKindOrd {
+    pub fn to_ord(&self) -> ast::ParamKindOrd {
         match self {
             GenericArg::Lifetime(_) => ast::ParamKindOrd::Lifetime,
             GenericArg::Type(_) => ast::ParamKindOrd::Type,
-            GenericArg::Const(_) => {
-                ast::ParamKindOrd::Const { unordered: feats.unordered_const_ty_params() }
-            }
+            GenericArg::Const(_) => ast::ParamKindOrd::Const,
             GenericArg::Infer(_) => ast::ParamKindOrd::Infer,
         }
     }
@@ -524,7 +522,7 @@ pub struct GenericParam<'hir> {
     pub kind: GenericParamKind<'hir>,
 }
 
-impl GenericParam<'hir> {
+impl<'hir> GenericParam<'hir> {
     pub fn bounds_span_for_suggestions(&self) -> Option<Span> {
         self.bounds
             .iter()
@@ -559,7 +557,7 @@ pub struct Generics<'hir> {
     pub span: Span,
 }
 
-impl Generics<'hir> {
+impl<'hir> Generics<'hir> {
     pub const fn empty() -> Generics<'hir> {
         Generics {
             params: &[],
@@ -624,7 +622,7 @@ pub enum WherePredicate<'hir> {
     EqPredicate(WhereEqPredicate<'hir>),
 }
 
-impl WherePredicate<'_> {
+impl<'hir> WherePredicate<'hir> {
     pub fn span(&self) -> Span {
         match self {
             WherePredicate::BoundPredicate(p) => p.span,
@@ -646,7 +644,7 @@ pub struct WhereBoundPredicate<'hir> {
     pub bounds: GenericBounds<'hir>,
 }
 
-impl WhereBoundPredicate<'hir> {
+impl<'hir> WhereBoundPredicate<'hir> {
     /// Returns `true` if `param_def_id` matches the `bounded_ty` of this predicate.
     pub fn is_param_bound(&self, param_def_id: DefId) -> bool {
         let path = match self.bounded_ty.kind {
@@ -1238,7 +1236,7 @@ pub struct Body<'hir> {
     pub generator_kind: Option<GeneratorKind>,
 }
 
-impl Body<'hir> {
+impl<'hir> Body<'hir> {
     pub fn id(&self) -> BodyId {
         BodyId { hir_id: self.value.hir_id }
     }
@@ -2248,7 +2246,6 @@ pub struct BareFnTy<'hir> {
 pub struct OpaqueTy<'hir> {
     pub generics: Generics<'hir>,
     pub bounds: GenericBounds<'hir>,
-    pub impl_trait_fn: Option<DefId>,
     pub origin: OpaqueTyOrigin,
 }
 
@@ -2256,9 +2253,9 @@ pub struct OpaqueTy<'hir> {
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum OpaqueTyOrigin {
     /// `-> impl Trait`
-    FnReturn,
+    FnReturn(LocalDefId),
     /// `async fn`
-    AsyncFn,
+    AsyncFn(LocalDefId),
     /// type aliases: `type Foo = impl Trait;`
     TyAlias,
 }
@@ -2626,7 +2623,7 @@ pub enum VariantData<'hir> {
     Unit(HirId),
 }
 
-impl VariantData<'hir> {
+impl<'hir> VariantData<'hir> {
     /// Return the fields of this variant.
     pub fn fields(&self) -> &'hir [FieldDef<'hir>] {
         match *self {
@@ -2809,7 +2806,9 @@ impl ItemKind<'_> {
         Some(match *self {
             ItemKind::Fn(_, ref generics, _)
             | ItemKind::TyAlias(_, ref generics)
-            | ItemKind::OpaqueTy(OpaqueTy { ref generics, impl_trait_fn: None, .. })
+            | ItemKind::OpaqueTy(OpaqueTy {
+                ref generics, origin: OpaqueTyOrigin::TyAlias, ..
+            })
             | ItemKind::Enum(_, ref generics)
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics)
@@ -3206,59 +3205,6 @@ impl<'hir> Node<'hir> {
             | Node::ImplItem(ImplItem { generics, .. }) => Some(generics),
             Node::Item(item) => item.kind.generics(),
             _ => None,
-        }
-    }
-
-    pub fn hir_id(&self) -> Option<HirId> {
-        match self {
-            Node::Item(Item { def_id, .. })
-            | Node::TraitItem(TraitItem { def_id, .. })
-            | Node::ImplItem(ImplItem { def_id, .. })
-            | Node::ForeignItem(ForeignItem { def_id, .. }) => Some(HirId::make_owner(*def_id)),
-            Node::Field(FieldDef { hir_id, .. })
-            | Node::AnonConst(AnonConst { hir_id, .. })
-            | Node::Expr(Expr { hir_id, .. })
-            | Node::Stmt(Stmt { hir_id, .. })
-            | Node::Ty(Ty { hir_id, .. })
-            | Node::Binding(Pat { hir_id, .. })
-            | Node::Pat(Pat { hir_id, .. })
-            | Node::Arm(Arm { hir_id, .. })
-            | Node::Block(Block { hir_id, .. })
-            | Node::Local(Local { hir_id, .. })
-            | Node::Lifetime(Lifetime { hir_id, .. })
-            | Node::Param(Param { hir_id, .. })
-            | Node::Infer(InferArg { hir_id, .. })
-            | Node::GenericParam(GenericParam { hir_id, .. }) => Some(*hir_id),
-            Node::TraitRef(TraitRef { hir_ref_id, .. }) => Some(*hir_ref_id),
-            Node::PathSegment(PathSegment { hir_id, .. }) => *hir_id,
-            Node::Variant(Variant { id, .. }) => Some(*id),
-            Node::Ctor(variant) => variant.ctor_hir_id(),
-            Node::Crate(_) | Node::Visibility(_) => None,
-        }
-    }
-
-    /// Returns `Constness::Const` when this node is a const fn/impl/item.
-    pub fn constness_for_typeck(&self) -> Constness {
-        match self {
-            Node::Item(Item {
-                kind: ItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
-                ..
-            })
-            | Node::TraitItem(TraitItem {
-                kind: TraitItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
-                ..
-            })
-            | Node::ImplItem(ImplItem {
-                kind: ImplItemKind::Fn(FnSig { header: FnHeader { constness, .. }, .. }, ..),
-                ..
-            })
-            | Node::Item(Item { kind: ItemKind::Impl(Impl { constness, .. }), .. }) => *constness,
-
-            Node::Item(Item { kind: ItemKind::Const(..), .. })
-            | Node::TraitItem(TraitItem { kind: TraitItemKind::Const(..), .. })
-            | Node::ImplItem(ImplItem { kind: ImplItemKind::Const(..), .. }) => Constness::Const,
-
-            _ => Constness::NotConst,
         }
     }
 

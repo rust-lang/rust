@@ -1,5 +1,3 @@
-#![feature(const_generics_defaults)]
-
 struct Uwu<const N: u32 = 1, const M: u32 = N>;
 
 trait Trait {}

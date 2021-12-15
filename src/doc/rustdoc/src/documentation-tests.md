@@ -359,9 +359,8 @@ are added.
 # fn foo() {}
 ```
 
-`edition2018` tells `rustdoc` that the code sample should be compiled using
-the 2018 edition of Rust. Similarly, you can specify `edition2015` to compile
-the code with the 2015 edition.
+`edition2015`, `edition2018` and `edition2021` tell `rustdoc`
+that the code sample should be compiled using the respective edition of Rust.
 
 ```rust
 /// Only runs on the 2018 edition.

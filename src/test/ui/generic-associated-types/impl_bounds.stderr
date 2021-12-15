@@ -17,10 +17,10 @@ LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/impl_bounds.rs:17:5
+  --> $DIR/impl_bounds.rs:17:35
    |
 LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                   ^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/impl_bounds.rs:17:12

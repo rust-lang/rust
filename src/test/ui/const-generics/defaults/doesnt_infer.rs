@@ -1,5 +1,3 @@
-#![feature(const_generics_defaults)]
-
 // test that defaulted const params are not used to help type inference
 
 struct Foo<const N: u32 = 2>;

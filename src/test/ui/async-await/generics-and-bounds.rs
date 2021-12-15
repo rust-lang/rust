@@ -2,6 +2,8 @@
 // edition:2018
 // compile-flags: --crate-type lib
 
+#![feature(in_band_lifetimes)]
+
 use std::future::Future;
 
 pub async fn simple_generic<T>() {}
@@ -71,6 +73,10 @@ pub fn call_with_ref_block<'a>(f: &'a (impl Foo + 'a)) -> impl Future<Output = (
     async move { f.foo() }
 }
 
+pub fn call_with_ref_block_in_band(f: &'a (impl Foo + 'a)) -> impl Future<Output = ()> + 'a {
+    async move { f.foo() }
+}
+
 pub fn async_block_with_same_generic_params_unifies() {
     let mut a = call_generic_bound_block(FooType);
     a = call_generic_bound_block(FooType);
@@ -85,4 +91,9 @@ pub fn async_block_with_same_generic_params_unifies() {
     let f_two = FooType;
     let mut d = call_with_ref_block(&f_one);
     d = call_with_ref_block(&f_two);
+
+    let f_one = FooType;
+    let f_two = FooType;
+    let mut d = call_with_ref_block_in_band(&f_one);
+    d = call_with_ref_block_in_band(&f_two);
 }

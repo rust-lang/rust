@@ -2223,7 +2223,7 @@ macro_rules! uint_impl {
         /// ```
         #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
                    reason = "needs decision on wrapping behaviour")]
-        #[rustc_const_stable(feature = "const_int_pow", since = "1.50.0")]
+        #[rustc_const_unstable(feature = "wrapping_next_power_of_two", issue = "32463")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         pub const fn wrapping_next_power_of_two(self) -> Self {

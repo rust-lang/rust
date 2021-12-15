@@ -347,7 +347,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
                     if let Some(modifiers) = nested_meta.value_str() {
                         for modifier in modifiers.as_str().split(',') {
-                            if let Some(modifier) = modifier.strip_prefix(&['+', '-'][..]) {
+                            if let Some(modifier) = modifier.strip_prefix(&['+', '-']) {
                                 macro_rules! gate_modifier { ($($name:literal => $feature:ident)*) => {
                                     $(if modifier == $name {
                                         let msg = concat!("`#[link(modifiers=\"", $name, "\")]` is unstable");
@@ -383,7 +383,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Fn(..) => {
-                if self.sess.contains_name(&i.attrs[..], sym::start) {
+                if self.sess.contains_name(&i.attrs, sym::start) {
                     gate_feature_post!(
                         &self,
                         start,
@@ -396,7 +396,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Struct(..) => {
-                for attr in self.sess.filter_by_name(&i.attrs[..], sym::repr) {
+                for attr in self.sess.filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
                         if item.has_name(sym::simd) {
                             gate_feature_post!(
@@ -724,10 +724,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
     gate_all!(inline_const, "inline-const is experimental");
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
-    gate_all!(
-        const_generics_defaults,
-        "default values for const generic parameters are experimental"
-    );
     if sess.parse_sess.span_diagnostic.err_count() == 0 {
         // Errors for `destructuring_assignment` can get quite noisy, especially where `_` is
         // involved, so we only emit errors where there are no other parsing errors.

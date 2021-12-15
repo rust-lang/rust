@@ -1,3 +1,4 @@
+use libloading::Library;
 use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, AttrVec, BlockCheckMode};
@@ -7,7 +8,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::jobserver;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
-use rustc_metadata::dynamic_lib::DynamicLibrary;
 #[cfg(parallel_compiler)]
 use rustc_middle::ty::tls;
 use rustc_parse::validate_attr;
@@ -38,6 +38,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use tracing::info;
+
+/// Function pointer type that constructs a new CodegenBackend.
+pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
@@ -211,28 +214,24 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
     })
 }
 
-fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
-    let lib = DynamicLibrary::open(path).unwrap_or_else(|err| {
-        let err = format!("couldn't load codegen backend {:?}: {:?}", path, err);
+fn load_backend_from_dylib(path: &Path) -> MakeBackendFn {
+    let lib = unsafe { Library::new(path) }.unwrap_or_else(|err| {
+        let err = format!("couldn't load codegen backend {:?}: {}", path, err);
         early_error(ErrorOutputType::default(), &err);
     });
-    unsafe {
-        match lib.symbol("__rustc_codegen_backend") {
-            Ok(f) => {
-                mem::forget(lib);
-                mem::transmute::<*mut u8, _>(f)
-            }
-            Err(e) => {
-                let err = format!(
-                    "couldn't load codegen backend as it \
-                                   doesn't export the `__rustc_codegen_backend` \
-                                   symbol: {:?}",
-                    e
-                );
-                early_error(ErrorOutputType::default(), &err);
-            }
-        }
-    }
+
+    let backend_sym = unsafe { lib.get::<MakeBackendFn>(b"__rustc_codegen_backend") }
+        .unwrap_or_else(|e| {
+            let err = format!("couldn't load codegen backend: {}", e);
+            early_error(ErrorOutputType::default(), &err);
+        });
+
+    // Intentionally leak the dynamic library. We can't ever unload it
+    // since the library can make things that will live arbitrarily long.
+    let backend_sym = unsafe { backend_sym.into_raw() };
+    mem::forget(lib);
+
+    *backend_sym
 }
 
 /// Get the codegen backend based on the name and specified sysroot.
@@ -380,10 +379,7 @@ fn sysroot_candidates() -> Vec<PathBuf> {
     }
 }
 
-pub fn get_codegen_sysroot(
-    maybe_sysroot: &Option<PathBuf>,
-    backend_name: &str,
-) -> fn() -> Box<dyn CodegenBackend> {
+pub fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> MakeBackendFn {
     // For now we only allow this function to be called once as it'll dlopen a
     // few things, which seems to work best if we only do that once. In
     // general this assertion never trips due to the once guard in `get_codegen_backend`,

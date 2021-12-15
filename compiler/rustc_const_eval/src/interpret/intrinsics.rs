@@ -140,7 +140,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             sym::min_align_of_val | sym::size_of_val => {
                 // Avoid `deref_operand` -- this is not a deref, the ptr does not have to be
-                // dereferencable!
+                // dereferenceable!
                 let place = self.ref_to_mplace(&self.read_immediate(&args[0])?)?;
                 let (size, align) = self
                     .size_and_align_of_mplace(&place)?
@@ -321,6 +321,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::copy => {
                 self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
+            }
+            sym::write_bytes => {
+                self.write_bytes_intrinsic(&args[0], &args[1], &args[2])?;
             }
             sym::offset => {
                 let ptr = self.read_pointer(&args[0])?;
@@ -565,6 +568,27 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let dst = self.read_pointer(&dst)?;
 
         self.memory.copy(src, align, dst, align, size, nonoverlapping)
+    }
+
+    pub(crate) fn write_bytes_intrinsic(
+        &mut self,
+        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        byte: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+    ) -> InterpResult<'tcx> {
+        let layout = self.layout_of(dst.layout.ty.builtin_deref(true).unwrap().ty)?;
+
+        let dst = self.read_pointer(&dst)?;
+        let byte = self.read_scalar(&byte)?.to_u8()?;
+        let count = self.read_scalar(&count)?.to_machine_usize(self)?;
+
+        let len = layout
+            .size
+            .checked_mul(count, self)
+            .ok_or_else(|| err_ub_format!("overflow computing total size of `write_bytes`"))?;
+
+        let bytes = std::iter::repeat(byte).take(len.bytes_usize());
+        self.memory.write_bytes(dst, bytes)
     }
 
     pub(crate) fn raw_eq_intrinsic(

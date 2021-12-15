@@ -1,6 +1,6 @@
 // only-x86_64
 
-#![feature(asm)]
+use std::arch::asm;
 
 fn main() {
     unsafe {

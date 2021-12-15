@@ -28,6 +28,7 @@ pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
 pub(super) const BEGIN_PANIC: [&str; 3] = ["std", "panicking", "begin_panic"];
 /// Preferably use the diagnostic item `sym::Borrow` where possible
 pub const BORROW_TRAIT: [&str; 3] = ["core", "borrow", "Borrow"];
+pub const BORROW_MUT_TRAIT: [&str; 3] = ["core", "borrow", "BorrowMut"];
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
 pub const BTREEMAP_ENTRY: [&str; 6] = ["alloc", "collections", "btree", "map", "entry", "Entry"];
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
@@ -85,7 +86,6 @@ pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tup
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 #[cfg(feature = "internal-lints")]
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
-pub const LIBC_STRLEN: [&str; 2] = ["libc", "strlen"];
 #[cfg(any(feature = "internal-lints", feature = "metadata-collector-lint"))]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
 pub const MEM_DISCRIMINANT: [&str; 3] = ["core", "mem", "discriminant"];
@@ -110,6 +110,8 @@ pub(super) const PANICKING_PANIC: [&str; 3] = ["core", "panicking", "panic"];
 pub(super) const PANICKING_PANIC_FMT: [&str; 3] = ["core", "panicking", "panic_fmt"];
 pub(super) const PANICKING_PANIC_STR: [&str; 3] = ["core", "panicking", "panic_str"];
 pub(super) const PANIC_ANY: [&str; 3] = ["std", "panic", "panic_any"];
+pub const PARKING_LOT_RAWMUTEX: [&str; 3] = ["parking_lot", "raw_mutex", "RawMutex"];
+pub const PARKING_LOT_RAWRWLOCK: [&str; 3] = ["parking_lot", "raw_rwlock", "RawRwLock"];
 pub const PARKING_LOT_MUTEX_GUARD: [&str; 2] = ["parking_lot", "MutexGuard"];
 pub const PARKING_LOT_RWLOCK_READ_GUARD: [&str; 2] = ["parking_lot", "RwLockReadGuard"];
 pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 2] = ["parking_lot", "RwLockWriteGuard"];
@@ -204,3 +206,4 @@ pub const WEAK_RC: [&str; 3] = ["alloc", "rc", "Weak"];
 pub const WRITE_MACRO: [&str; 3] = ["core", "macros", "write"];
 #[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
 pub const WRITELN_MACRO: [&str; 3] = ["core", "macros", "writeln"];
+pub const PTR_NON_NULL: [&str; 4] = ["core", "ptr", "non_null", "NonNull"];

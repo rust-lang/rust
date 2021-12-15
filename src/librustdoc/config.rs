@@ -327,6 +327,19 @@ impl Options {
             return Err(0);
         }
 
+        let color = config::parse_color(matches);
+        let config::JsonConfig { json_rendered, json_unused_externs, .. } =
+            config::parse_json(matches);
+        let error_format = config::parse_error_format(matches, color, json_rendered);
+
+        let codegen_options = CodegenOptions::build(matches, error_format);
+        let debugging_opts = DebuggingOptions::build(matches, error_format);
+
+        let diag = new_handler(error_format, None, &debugging_opts);
+
+        // check for deprecated options
+        check_deprecated_options(matches, &diag);
+
         if matches.opt_strs("passes") == ["list"] {
             println!("Available passes for running rustdoc:");
             for pass in passes::PASSES {
@@ -358,19 +371,6 @@ impl Options {
 
             return Err(0);
         }
-
-        let color = config::parse_color(matches);
-        let config::JsonConfig { json_rendered, json_unused_externs, .. } =
-            config::parse_json(matches);
-        let error_format = config::parse_error_format(matches, color, json_rendered);
-
-        let codegen_options = CodegenOptions::build(matches, error_format);
-        let debugging_opts = DebuggingOptions::build(matches, error_format);
-
-        let diag = new_handler(error_format, None, &debugging_opts);
-
-        // check for deprecated options
-        check_deprecated_options(matches, &diag);
 
         let mut emit = Vec::new();
         for list in matches.opt_strs("emit") {
@@ -504,8 +504,18 @@ impl Options {
             return Err(1);
         }
 
-        let output =
-            matches.opt_str("o").map(|s| PathBuf::from(&s)).unwrap_or_else(|| PathBuf::from("doc"));
+        let out_dir = matches.opt_str("out-dir").map(|s| PathBuf::from(&s));
+        let output = matches.opt_str("output").map(|s| PathBuf::from(&s));
+        let output = match (out_dir, output) {
+            (Some(_), Some(_)) => {
+                diag.struct_err("cannot use both 'out-dir' and 'output' at once").emit();
+                return Err(1);
+            }
+            (Some(out_dir), None) => out_dir,
+            (None, Some(output)) => output,
+            (None, None) => PathBuf::from("doc"),
+        };
+
         let cfgs = matches.opt_strs("cfg");
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));

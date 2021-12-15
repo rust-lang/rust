@@ -3,7 +3,9 @@
 // only-x86_64
 
 #![crate_type = "rlib"]
-#![feature(asm, asm_unwind)]
+#![feature(asm_unwind)]
+
+use std::arch::asm;
 
 #[no_mangle]
 pub extern "C" fn panicky() {}

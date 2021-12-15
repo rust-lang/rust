@@ -19,6 +19,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReEarlyBound, ReEmpty, ReErased, ReFree, ReStatic};
 use rustc_middle::ty::{ReLateBound, RePlaceholder, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
+use rustc_span::Span;
 use std::fmt;
 
 /// This function performs lexical region resolution given a complete
@@ -27,7 +28,7 @@ use std::fmt;
 /// assuming such values can be found. It returns the final values of
 /// all the variables as well as a set of errors that must be reported.
 #[instrument(level = "debug", skip(region_rels, var_infos, data))]
-pub fn resolve<'tcx>(
+pub(crate) fn resolve<'tcx>(
     region_rels: &RegionRelations<'_, 'tcx>,
     var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
@@ -96,6 +97,7 @@ pub enum RegionResolutionError<'tcx> {
         Region<'tcx>,
         SubregionOrigin<'tcx>,
         Region<'tcx>,
+        Vec<Span>, // All the influences on a given value that didn't meet its constraints.
     ),
 
     /// Indicates a `'b: 'a` constraint where `'a` is in a universe that
@@ -567,7 +569,30 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // if this rule starts to create problems we'll
                     // have to revisit this portion of the code and
                     // think hard about it. =) -- nikomatsakis
-                    self.collect_error_for_expanding_node(graph, &mut dup_vec, node_vid, errors);
+
+                    // Obtain the spans for all the places that can
+                    // influence the constraints on this value for
+                    // richer diagnostics in `static_impl_trait`.
+                    let influences: Vec<Span> = self
+                        .data
+                        .constraints
+                        .iter()
+                        .filter_map(|(constraint, origin)| match (constraint, origin) {
+                            (
+                                Constraint::VarSubVar(_, sup),
+                                SubregionOrigin::DataBorrowed(_, sp),
+                            ) if sup == &node_vid => Some(*sp),
+                            _ => None,
+                        })
+                        .collect();
+
+                    self.collect_error_for_expanding_node(
+                        graph,
+                        &mut dup_vec,
+                        node_vid,
+                        errors,
+                        influences,
+                    );
                 }
             }
         }
@@ -621,6 +646,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         dup_vec: &mut IndexVec<RegionVid, Option<RegionVid>>,
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
+        influences: Vec<Span>,
     ) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
@@ -667,6 +693,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                          sup: {:?}",
                         origin, node_idx, lower_bound.region, upper_bound.region
                     );
+
                     errors.push(RegionResolutionError::SubSupConflict(
                         node_idx,
                         origin,
@@ -674,6 +701,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         lower_bound.region,
                         upper_bound.origin.clone(),
                         upper_bound.region,
+                        influences,
                     ));
                     return;
                 }

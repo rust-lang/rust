@@ -6,6 +6,7 @@ use crate::common::IntPredicate;
 use crate::meth;
 use crate::traits::*;
 use rustc_middle::ty::{self, Ty};
+use rustc_target::abi::WrappingRange;
 
 pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -21,14 +22,17 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
     match t.kind() {
         ty::Dynamic(..) => {
-            // load size/align from vtable
+            // Load size/align from vtable.
             let vtable = info.unwrap();
-            (
-                meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_SIZE)
-                    .get_usize(bx, vtable),
-                meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ALIGN)
-                    .get_usize(bx, vtable),
-            )
+            let size = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_SIZE)
+                .get_usize(bx, vtable);
+            let align = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ALIGN)
+                .get_usize(bx, vtable);
+
+            // Alignment is always nonzero.
+            bx.range_metadata(align, WrappingRange { start: 1, end: !0 });
+
+            (size, align)
         }
         ty::Slice(_) | ty::Str => {
             let unit = layout.field(bx, 0);
