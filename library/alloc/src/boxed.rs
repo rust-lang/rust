@@ -626,12 +626,10 @@ impl<T> Box<[T]> {
     #[inline]
     pub fn try_new_uninit_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
         unsafe {
-            let layout = match Layout::array::<mem::MaybeUninit<T>>(len) {
-                Ok(l) => l,
-                Err(_) => return Err(AllocError),
-            };
-            let ptr = Global.allocate(layout)?;
-            Ok(RawVec::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
+            match RawVec::try_with_capacity(len) {
+                Ok(raw) => Ok(raw.into_box(len)),
+                Err(_) => Err(AllocError),
+            }
         }
     }
 
@@ -658,12 +656,10 @@ impl<T> Box<[T]> {
     #[inline]
     pub fn try_new_zeroed_slice(len: usize) -> Result<Box<[mem::MaybeUninit<T>]>, AllocError> {
         unsafe {
-            let layout = match Layout::array::<mem::MaybeUninit<T>>(len) {
-                Ok(l) => l,
-                Err(_) => return Err(AllocError),
-            };
-            let ptr = Global.allocate_zeroed(layout)?;
-            Ok(RawVec::from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global).into_box(len))
+            match RawVec::try_with_capacity_zeroed(len) {
+                Ok(raw) => Ok(raw.into_box(len)),
+                Err(_) => Err(AllocError),
+            }
         }
     }
 }

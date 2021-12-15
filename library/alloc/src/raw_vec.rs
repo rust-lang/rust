@@ -98,6 +98,8 @@ impl<T> RawVec<T, Global> {
     /// equivalent to calling `RawVec::new` when `capacity` is `0` or `T` is
     /// zero-sized. Note that if `T` is zero-sized this means you will
     /// *not* get a `RawVec` with the requested capacity.
+    #[cfg(not(any(no_global_oom_handling, test)))]
+    #[must_use]
     #[inline]
     pub fn try_with_capacity(capacity: usize) -> Result<Self, TryReserveError> {
         Self::try_with_capacity_in(capacity, Global)
@@ -112,22 +114,11 @@ impl<T> RawVec<T, Global> {
     }
 
     /// Like `try_with_capacity`, but guarantees a successfully allocated buffer is zeroed.
+    #[cfg(not(any(no_global_oom_handling, test)))]
+    #[must_use]
     #[inline]
     pub fn try_with_capacity_zeroed(capacity: usize) -> Result<Self, TryReserveError> {
         Self::try_with_capacity_zeroed_in(capacity, Global)
-    }
-
-    /// Reconstitutes a `RawVec` from a pointer and capacity.
-    ///
-    /// # Safety
-    ///
-    /// The `ptr` must be allocated (on the system heap), and with the given `capacity`.
-    /// The `capacity` cannot exceed `isize::MAX` for sized types. (only a concern on 32-bit
-    /// systems). ZST vectors may have a capacity up to `usize::MAX`.
-    /// If the `ptr` and `capacity` come from a `RawVec`, then this is guaranteed.
-    #[inline]
-    pub unsafe fn from_raw_parts(ptr: *mut T, capacity: usize) -> Self {
-        unsafe { Self::from_raw_parts_in(ptr, capacity, Global) }
     }
 }
 
@@ -178,6 +169,8 @@ impl<T, A: Allocator> RawVec<T, A> {
 
     /// Like `with_capacity_zeroed`, but parameterized over the choice
     /// of allocator for the returned `RawVec`.
+    #[cfg(not(any(no_global_oom_handling, test)))]
+    #[must_use]
     #[inline]
     pub fn try_with_capacity_zeroed_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
         Self::try_allocate_in(capacity, AllocInit::Zeroed, alloc)
@@ -493,22 +486,6 @@ impl<T, A: Allocator> RawVec<T, A> {
 
         // `finish_grow` is non-generic over `T`.
         let ptr = finish_grow(new_layout, self.current_memory(), &mut self.alloc)?;
-        self.set_ptr(ptr);
-        Ok(())
-    }
-
-    fn shrink(&mut self, amount: usize) -> Result<(), TryReserveError> {
-        assert!(amount <= self.capacity(), "Tried to shrink to a larger capacity");
-
-        let (ptr, layout) = if let Some(mem) = self.current_memory() { mem } else { return Ok(()) };
-        let new_size = amount * mem::size_of::<T>();
-
-        let ptr = unsafe {
-            let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
-            self.alloc
-                .shrink(ptr, layout, new_layout)
-                .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
-        };
         self.set_ptr(ptr);
         Ok(())
     }
