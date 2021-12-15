@@ -522,6 +522,7 @@ rustc_queries! {
     }
     query adt_def(key: DefId) -> &'tcx ty::AdtDef {
         desc { |tcx| "computing ADT definition for `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { true }
         separate_provide_extern
     }
     query adt_destructor(key: DefId) -> Option<ty::Destructor> {

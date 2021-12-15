@@ -155,7 +155,8 @@ encodable_via_deref! {
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,
-    &'tcx mir::coverage::CodeRegion
+    &'tcx mir::coverage::CodeRegion,
+    &'tcx ty::AdtDef
 }
 
 pub trait TyDecoder<'tcx>: Decoder {
@@ -391,7 +392,8 @@ impl_decodable_via_ref! {
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,
     &'tcx mir::coverage::CodeRegion,
-    &'tcx ty::List<ty::BoundVariableKind>
+    &'tcx ty::List<ty::BoundVariableKind>,
+    &'tcx ty::AdtDef
 }
 
 #[macro_export]
