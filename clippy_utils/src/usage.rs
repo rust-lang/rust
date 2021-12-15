@@ -78,7 +78,7 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
 }
 
 pub struct ParamBindingIdCollector {
-    binding_hir_ids: Vec<hir::HirId>,
+    pub binding_hir_ids: Vec<hir::HirId>,
 }
 impl<'tcx> ParamBindingIdCollector {
     fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<hir::HirId> {

@@ -181,6 +181,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(methods::UNNECESSARY_FILTER_MAP),
     LintId::of(methods::UNNECESSARY_FOLD),
     LintId::of(methods::UNNECESSARY_LAZY_EVALUATIONS),
+    LintId::of(methods::UNNECESSARY_TO_OWNED),
     LintId::of(methods::UNWRAP_OR_ELSE_DEFAULT),
     LintId::of(methods::USELESS_ASREF),
     LintId::of(methods::WRONG_SELF_CONVENTION),
