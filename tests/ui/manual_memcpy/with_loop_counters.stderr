@@ -43,7 +43,7 @@ LL | /     for i in 3..(3 + src.len()) {
 LL | |         dst[i] = src[count];
 LL | |         count += 1;
 LL | |     }
-   | |_____^ help: try replacing the loop by: `dst[3..(3 + src.len())].clone_from_slice(&src[..((3 + src.len()) - 3)]);`
+   | |_____^ help: try replacing the loop by: `dst[3..(3 + src.len())].clone_from_slice(&src[..(3 + src.len() - 3)]);`
 
 error: it looks like you're manually copying between slices
   --> $DIR/with_loop_counters.rs:35:5
