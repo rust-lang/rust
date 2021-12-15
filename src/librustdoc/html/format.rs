@@ -786,7 +786,7 @@ crate fn anchor<'a, 'cx: 'a>(
                 url,
                 short_ty,
                 join_with_double_colon(&fqp),
-                &*text.as_str()
+                text.as_str()
             )
         } else {
             write!(f, "{}", text)
