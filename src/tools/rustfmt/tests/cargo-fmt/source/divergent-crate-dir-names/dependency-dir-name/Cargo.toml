@@ -6,5 +6,5 @@ edition = "2018"
 
 [dependencies]
 subdep-crate-name = { path = "subdep-dir-name" }
-indexmap = "1.0.2"
+indexmap = "1.7.0"
 rusty-hook = "0.8.4"
