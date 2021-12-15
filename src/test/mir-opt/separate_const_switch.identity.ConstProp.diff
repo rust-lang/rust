@@ -15,7 +15,7 @@
       scope 1 {
           debug residual => _6;            // in scope 1 at $DIR/separate_const_switch.rs:29:9: 29:10
           scope 2 {
-              scope 8 (inlined <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) { // at $DIR/separate_const_switch.rs:29:8: 29:10
+              scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) { // at $DIR/separate_const_switch.rs:29:8: 29:10
                   debug residual => _8;    // in scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
                   let _16: i32;            // in scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
                   let mut _17: i32;        // in scope 8 at $DIR/separate_const_switch.rs:29:8: 29:10
