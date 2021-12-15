@@ -73,7 +73,7 @@ fn contains_assign_expr<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) ->
     seen
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct LocalAssign {
     lhs_id: HirId,
     lhs_span: Span,
@@ -154,9 +154,14 @@ fn assignment_suggestions<'tcx>(
         assignments.push(assign);
     }
 
-    let suggestions = assignments
+    let suggestions = assignments.clone()
         .into_iter()
-        .map(|assignment| Some((assignment.span, snippet_opt(cx, assignment.rhs_span)?)))
+        .map(|assignment| Some((assignment.span.until(assignment.rhs_span), String::new())))
+        .chain(
+            assignments
+                .into_iter()
+                .map(|assignment| Some((assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()), String::new())))
+        )
         .collect::<Option<Vec<(Span, String)>>>()?;
 
     let applicability = if suggestions.len() > 1 {

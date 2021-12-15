@@ -1,5 +1,3 @@
-// run-rustfix
-
 #![allow(unused, clippy::assign_op_pattern)]
 
 fn main() {

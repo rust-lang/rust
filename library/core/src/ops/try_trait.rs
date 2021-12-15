@@ -115,15 +115,14 @@ use crate::ops::ControlFlow;
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 #[rustc_on_unimplemented(
     on(
-        all(from_method = "from_output", from_desugaring = "TryBlock"),
+        all(from_desugaring = "TryBlock"),
         message = "a `try` block must return `Result` or `Option` \
                     (or another type that implements `{Try}`)",
         label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
     ),
     on(
-        all(from_method = "branch", from_desugaring = "QuestionMark"),
-        message = "the `?` operator can only be applied to values \
-                    that implement `{Try}`",
+        all(from_desugaring = "QuestionMark"),
+        message = "the `?` operator can only be applied to values that implement `{Try}`",
         label = "the `?` operator cannot be applied to type `{Self}`"
     )
 )]
@@ -226,7 +225,6 @@ pub trait Try: FromResidual {
 #[rustc_on_unimplemented(
     on(
         all(
-            from_method = "from_residual",
             from_desugaring = "QuestionMark",
             _Self = "std::result::Result<T, E>",
             R = "std::option::Option<std::convert::Infallible>"
@@ -238,7 +236,6 @@ pub trait Try: FromResidual {
     ),
     on(
         all(
-            from_method = "from_residual",
             from_desugaring = "QuestionMark",
             _Self = "std::result::Result<T, E>",
         ),
@@ -252,7 +249,6 @@ pub trait Try: FromResidual {
     ),
     on(
         all(
-            from_method = "from_residual",
             from_desugaring = "QuestionMark",
             _Self = "std::option::Option<T>",
             R = "std::result::Result<T, E>",
@@ -264,7 +260,6 @@ pub trait Try: FromResidual {
     ),
     on(
         all(
-            from_method = "from_residual",
             from_desugaring = "QuestionMark",
             _Self = "std::option::Option<T>",
         ),
@@ -277,7 +272,6 @@ pub trait Try: FromResidual {
     ),
     on(
         all(
-            from_method = "from_residual",
             from_desugaring = "QuestionMark",
             _Self = "std::ops::ControlFlow<B, C>",
             R = "std::ops::ControlFlow<B, C>",
@@ -290,7 +284,6 @@ pub trait Try: FromResidual {
     ),
     on(
         all(
-            from_method = "from_residual",
             from_desugaring = "QuestionMark",
             _Self = "std::ops::ControlFlow<B, C>",
             // `R` is not a `ControlFlow`, as that case was matched previously
@@ -301,10 +294,7 @@ pub trait Try: FromResidual {
         enclosing_scope = "this function returns a `ControlFlow`",
     ),
     on(
-        all(
-            from_method = "from_residual",
-            from_desugaring = "QuestionMark"
-        ),
+        all(from_desugaring = "QuestionMark"),
         message = "the `?` operator can only be used in {ItemContext} \
                     that returns `Result` or `Option` \
                     (or another type that implements `{FromResidual}`)",

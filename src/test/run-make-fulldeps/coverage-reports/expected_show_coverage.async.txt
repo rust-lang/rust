@@ -41,9 +41,9 @@
    41|      1|                    // executed asynchronously.
    42|      1|    match x {
    43|      1|        y if c(x).await == y + 1 => { d().await; }
-                      ^0                            ^0
+                      ^0       ^0                   ^0 ^0
    44|      1|        y if f().await == y + 1 => (),
-                      ^0                         ^0
+                      ^0      ^0                 ^0
    45|      1|        _ => (),
    46|       |    }
    47|      1|}
