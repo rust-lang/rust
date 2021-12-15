@@ -163,13 +163,18 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
                 edit.insert(then_arm_end, format!("\n{}{} => ", spaces, match_pat));
                 match &else_block.tail_expr() {
                     Some(else_expr) if else_only_expr => {
+                        cov_mark::hit!(move_guard_ifelse_expr_only);
                         edit.insert(then_arm_end, else_expr.syntax().text());
                         edit.insert(then_arm_end, ",");
                     }
                     _ if replace_node != *if_expr.syntax() => {
+                        cov_mark::hit!(move_guard_ifelse_in_block);
                         edit.insert(then_arm_end, else_block.dedent(1.into()).syntax().text());
                     }
-                    _ => edit.insert(then_arm_end, else_block.syntax().text()),
+                    _ => {
+                        cov_mark::hit!(move_guard_ifelse_else_block);
+                        edit.insert(then_arm_end, else_block.syntax().text());
+                    }
                 }
             }
         },
@@ -441,6 +446,7 @@ fn main() {
 
     #[test]
     fn move_arm_cond_to_match_guard_with_else_block_works() {
+        cov_mark::check!(move_guard_ifelse_expr_only);
         check_assist(
             move_arm_cond_to_match_guard,
             r#"
@@ -527,6 +533,40 @@ fn main() {
 
     #[test]
     fn move_arm_cond_to_match_guard_with_else_multiline_else_works() {
+        cov_mark::check!(move_guard_ifelse_else_block);
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => if x > 10 {$0
+            false
+        } else {
+            42;
+            true
+        }
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        x => {
+            42;
+            true
+        }
+        _ => true
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_with_else_multiline_else_block_works() {
+        cov_mark::check!(move_guard_ifelse_in_block);
         check_assist(
             move_arm_cond_to_match_guard,
             r#"
