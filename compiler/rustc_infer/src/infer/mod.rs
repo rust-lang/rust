@@ -1434,6 +1434,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         value.fold_with(&mut r)
     }
 
+    pub fn resolve_numeric_literals_with_default<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        if !value.needs_infer() {
+            return value; // Avoid duplicated subst-folding.
+        }
+        let mut r = InferenceLiteralEraser { infcx: self };
+        value.fold_with(&mut r)
+    }
+
     /// Returns the first unresolved variable contained in `T`. In the
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
@@ -1781,6 +1792,26 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
         match ct.val() {
             ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
             _ => None,
+        }
+    }
+}
+
+/// Replace `{integer}` with `i32` and `{float}` with `f64`.
+/// Used only for diagnostics.
+struct InferenceLiteralEraser<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
+}
+
+impl<'a, 'tcx> TypeFolder<'tcx> for InferenceLiteralEraser<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.kind() {
+            ty::Infer(ty::IntVar(_) | ty::FreshIntTy(_)) => self.tcx().types.i32,
+            ty::Infer(ty::FloatVar(_) | ty::FreshFloatTy(_)) => self.tcx().types.f64,
+            _ => ty.super_fold_with(self),
         }
     }
 }

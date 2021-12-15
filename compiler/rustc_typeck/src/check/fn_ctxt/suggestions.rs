@@ -521,6 +521,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         can_suggest: bool,
         fn_id: hir::HirId,
     ) -> bool {
+        let found =
+            self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
