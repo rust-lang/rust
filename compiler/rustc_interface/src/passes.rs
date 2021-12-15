@@ -584,7 +584,7 @@ fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
 fn escape_dep_filename(filename: &str) -> String {
     // Apparently clang and gcc *only* escape spaces:
     // https://llvm.org/klaus/clang/commit/9d50634cfc268ecc9a7250226dd5ca0e945240d4
-    filename.replace(" ", "\\ ")
+    filename.replace(' ', "\\ ")
 }
 
 // Makefile comments only need escaping newlines and `\`.

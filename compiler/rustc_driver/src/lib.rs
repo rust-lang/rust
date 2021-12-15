@@ -872,7 +872,7 @@ Available lint options:
 
     let print_lints = |lints: Vec<&Lint>| {
         for lint in lints {
-            let name = lint.name_lower().replace("_", "-");
+            let name = lint.name_lower().replace('_', "-");
             println!(
                 "    {}  {:7.7}  {}",
                 padded(&name),
@@ -908,10 +908,10 @@ Available lint options:
 
     let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>| {
         for (name, to) in lints {
-            let name = name.to_lowercase().replace("_", "-");
+            let name = name.to_lowercase().replace('_', "-");
             let desc = to
                 .into_iter()
-                .map(|x| x.to_string().replace("_", "-"))
+                .map(|x| x.to_string().replace('_', "-"))
                 .collect::<Vec<String>>()
                 .join(", ");
             println!("    {}  {}", padded(&name), desc);
@@ -960,7 +960,7 @@ fn print_flag_list<T>(
         println!(
             "    {} {:>width$}=val -- {}",
             cmdline_opt,
-            name.replace("_", "-"),
+            name.replace('_', "-"),
             desc,
             width = max_len
         );
@@ -1015,7 +1015,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
                 .iter()
                 .map(|&(name, ..)| ('C', name))
                 .chain(DB_OPTIONS.iter().map(|&(name, ..)| ('Z', name)))
-                .find(|&(_, name)| *opt == name.replace("_", "-"))
+                .find(|&(_, name)| *opt == name.replace('_', "-"))
                 .map(|(flag, _)| format!("{}. Did you mean `-{} {}`?", e, flag, opt)),
             _ => None,
         };

@@ -1213,7 +1213,7 @@ pub fn get_cmd_lint_options(
             if lint_name == "help" {
                 describe_lints = true;
             } else {
-                lint_opts_with_position.push((arg_pos, lint_name.replace("-", "_"), level));
+                lint_opts_with_position.push((arg_pos, lint_name.replace('-', "_"), level));
             }
         }
     }

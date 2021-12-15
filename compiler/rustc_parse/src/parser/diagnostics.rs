@@ -2236,7 +2236,7 @@ impl<'a> Parser<'a> {
             err.span_suggestion(
                 seq_span,
                 "...or a vertical bar to match on multiple alternatives",
-                seq_snippet.replace(",", " |"),
+                seq_snippet.replace(',', " |"),
                 Applicability::MachineApplicable,
             );
         }
