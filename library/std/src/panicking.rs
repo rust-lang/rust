@@ -365,7 +365,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // The call to `intrinsics::r#try` is made safe by:
     // - `do_call`, the first argument, can be called with the initial `data_ptr`.
     // - `do_catch`, the second argument, can be called with the `data_ptr` as well.
-    // See their safety preconditions for more informations
+    // See their safety preconditions for more information
     unsafe {
         return if intrinsics::r#try(do_call::<F, R>, data_ptr, do_catch::<F, R>) == 0 {
             Ok(ManuallyDrop::into_inner(data.r))
@@ -398,7 +398,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // expects normal function pointers.
     #[inline]
     fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
-        // SAFETY: this is the responsibilty of the caller, see above.
+        // SAFETY: this is the responsibility of the caller, see above.
         unsafe {
             let data = data as *mut Data<F, R>;
             let data = &mut (*data);
@@ -420,7 +420,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
     // expects normal function pointers.
     #[inline]
     fn do_catch<F: FnOnce() -> R, R>(data: *mut u8, payload: *mut u8) {
-        // SAFETY: this is the responsibilty of the caller, see above.
+        // SAFETY: this is the responsibility of the caller, see above.
         //
         // When `__rustc_panic_cleaner` is correctly implemented we can rely
         // on `obj` being the correct thing to pass to `data.p` (after wrapping

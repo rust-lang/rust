@@ -486,7 +486,7 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'_>,
     target_cpu: String,
     metadata: EncodedMetadata,
     need_metadata_module: bool,

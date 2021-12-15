@@ -1,15 +1,13 @@
 error[E0308]: mismatched types
   --> $DIR/diverging-tuple-parts-39485.rs:8:5
    |
+LL | fn g() {
+   |        - possibly return type missing here?
 LL |     &panic!()
    |     ^^^^^^^^^ expected `()`, found reference
    |
    = note: expected unit type `()`
               found reference `&_`
-help: try adding a return type
-   |
-LL | fn g() -> &_ {
-   |        +++++
 help: consider removing the borrow
    |
 LL -     &panic!()

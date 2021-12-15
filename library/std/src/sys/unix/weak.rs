@@ -124,7 +124,7 @@ impl<F> DlsymWeak<F> {
         }
     }
 
-    // Cold because it should only happen during first-time initalization.
+    // Cold because it should only happen during first-time initialization.
     #[cold]
     unsafe fn initialize(&self) -> Option<F> {
         assert_eq!(mem::size_of::<F>(), mem::size_of::<usize>());

@@ -104,7 +104,7 @@ impl FdMeta {
 
     fn potential_sendfile_source(&self) -> bool {
         match self {
-            // procfs erronously shows 0 length on non-empty readable files.
+            // procfs erroneously shows 0 length on non-empty readable files.
             // and if a file is truly empty then a `read` syscall will determine that and skip the write syscall
             // thus there would be benefit from attempting sendfile
             FdMeta::Metadata(meta)

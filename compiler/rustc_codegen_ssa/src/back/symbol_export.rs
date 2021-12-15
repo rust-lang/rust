@@ -154,7 +154,7 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
     tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
 }
 
-fn exported_symbols_provider_local(
+fn exported_symbols_provider_local<'tcx>(
     tcx: TyCtxt<'tcx>,
     cnum: CrateNum,
 ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {

@@ -989,7 +989,7 @@ fn attributes(it: &clean::Item) -> Vec<String> {
         .iter()
         .filter_map(|attr| {
             if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
-                Some(pprust::attribute_to_string(attr).replace("\n", "").replace("  ", " "))
+                Some(pprust::attribute_to_string(attr).replace('\n', "").replace("  ", " "))
             } else {
                 None
             }

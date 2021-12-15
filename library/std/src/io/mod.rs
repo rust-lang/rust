@@ -362,7 +362,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
     let start_len = buf.len();
     let start_cap = buf.capacity();
 
-    let mut initialized = 0; // Extra initalized bytes from previous loop iteration
+    let mut initialized = 0; // Extra initialized bytes from previous loop iteration
     loop {
         if buf.len() == buf.capacity() {
             buf.reserve(32); // buf is full, need more space
@@ -370,7 +370,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
 
         let mut read_buf = ReadBuf::uninit(buf.spare_capacity_mut());
 
-        // SAFETY: These bytes were initalized but not filled in the previous loop
+        // SAFETY: These bytes were initialized but not filled in the previous loop
         unsafe {
             read_buf.assume_init(initialized);
         }

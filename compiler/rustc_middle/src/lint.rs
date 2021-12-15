@@ -295,7 +295,7 @@ pub fn struct_lint_level<'s, 'd>(
                     Level::Allow => "-A",
                     Level::ForceWarn => "--force-warn",
                 };
-                let hyphen_case_lint_name = name.replace("_", "-");
+                let hyphen_case_lint_name = name.replace('_', "-");
                 if lint_flag_val.as_str() == name {
                     sess.diag_note_once(
                         &mut err,
@@ -306,7 +306,7 @@ pub fn struct_lint_level<'s, 'd>(
                         ),
                     );
                 } else {
-                    let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
+                    let hyphen_case_flag_val = lint_flag_val.as_str().replace('_', "-");
                     sess.diag_note_once(
                         &mut err,
                         DiagnosticMessageId::from(lint),

@@ -155,7 +155,7 @@ impl CoverageSpan {
         format!(
             "{}\n    {}",
             source_range_no_file(tcx, &self.span),
-            self.format_coverage_statements(tcx, mir_body).replace("\n", "\n    "),
+            self.format_coverage_statements(tcx, mir_body).replace('\n', "\n    "),
         )
     }
 

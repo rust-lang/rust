@@ -85,7 +85,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) 
                 );
                 sess.err(&msg);
             } else {
-                return validate(s.replace("-", "_"), None);
+                return validate(s.replace('-', "_"), None);
             }
         }
     }

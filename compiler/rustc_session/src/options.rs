@@ -335,7 +335,7 @@ fn build_options<O: Default>(
             Some((k, v)) => (k.to_string(), Some(v)),
         };
 
-        let option_to_lookup = key.replace("-", "_");
+        let option_to_lookup = key.replace('-', "_");
         match descrs.iter().find(|(name, ..)| *name == option_to_lookup) {
             Some((_, setter, type_desc, _)) => {
                 if !setter(&mut op, value) {

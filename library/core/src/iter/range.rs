@@ -777,7 +777,7 @@ range_exact_iter_impl! {
     usize u8 u16
     isize i8 i16
 
-    // These are incorect per the reasoning above,
+    // These are incorrect per the reasoning above,
     // but removing them would be a breaking change as they were stabilized in Rust 1.0.0.
     // So e.g. `(0..66_000_u32).len()` for example will compile without error or warnings
     // on 16-bit platforms, but continue to give a wrong result.
@@ -805,7 +805,7 @@ range_incl_exact_iter_impl! {
     u8
     i8
 
-    // These are incorect per the reasoning above,
+    // These are incorrect per the reasoning above,
     // but removing them would be a breaking change as they were stabilized in Rust 1.26.0.
     // So e.g. `(0..=u16::MAX).len()` for example will compile without error or warnings
     // on 16-bit platforms, but continue to give a wrong result.

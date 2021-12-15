@@ -1369,7 +1369,7 @@ fn symlink_hard_link() {
     // "hard_link" should appear as a symlink.
     assert!(check!(fs::symlink_metadata(tmpdir.join("hard_link"))).file_type().is_symlink());
 
-    // We sould be able to open "file" via any of the above names.
+    // We should be able to open "file" via any of the above names.
     let _ = check!(fs::File::open(tmpdir.join("file")));
     assert!(fs::File::open(tmpdir.join("file.renamed")).is_err());
     let _ = check!(fs::File::open(tmpdir.join("symlink")));

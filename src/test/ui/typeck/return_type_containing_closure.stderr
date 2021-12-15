@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/return_type_containing_closure.rs:4:5
+   |
+LL | fn foo() {
+   |          - possibly return type missing here?
+LL |
+LL |     vec!['a'].iter().map(|c| c)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: consider using a semicolon here: `;`
+   |     |
+   |     expected `()`, found struct `Map`
+   |
+   = note: expected unit type `()`
+                 found struct `Map<std::slice::Iter<'_, char>, [closure@$DIR/return_type_containing_closure.rs:4:26: 4:31]>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

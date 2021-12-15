@@ -221,7 +221,7 @@ impl<'a, T> IterMut<'a, T> {
         // the length, to also allows for the fast `ptr == end` check.
         //
         // See the `next_unchecked!` and `is_empty!` macros as well as the
-        // `post_inc_start` method for more informations.
+        // `post_inc_start` method for more information.
         unsafe {
             assume(!ptr.is_null());
 

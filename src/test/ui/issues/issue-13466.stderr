@@ -1,8 +1,6 @@
 error[E0308]: mismatched types
   --> $DIR/issue-13466.rs:8:9
    |
-LL |     let _x: usize = match Some(1) {
-   |                           ------- this expression has type `Option<{integer}>`
 LL |         Ok(u) => u,
    |         ^^^^^ expected enum `Option`, found enum `Result`
    |
@@ -12,9 +10,6 @@ LL |         Ok(u) => u,
 error[E0308]: mismatched types
   --> $DIR/issue-13466.rs:14:9
    |
-LL |     let _x: usize = match Some(1) {
-   |                           ------- this expression has type `Option<{integer}>`
-...
 LL |         Err(e) => panic!(e)
    |         ^^^^^^ expected enum `Option`, found enum `Result`
    |
