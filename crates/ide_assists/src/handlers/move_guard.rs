@@ -135,7 +135,15 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
 
             match &then_block.tail_expr() {
                 Some(then_expr) if then_only_expr => {
-                    edit.replace(replace_node.text_range(), then_expr.syntax().text())
+                    edit.replace(replace_node.text_range(), then_expr.syntax().text());
+                    // Insert comma for expression if there isn't one
+                    match match_arm.syntax().last_child_or_token() {
+                        Some(NodeOrToken::Token(t)) if t.kind() == COMMA => {}
+                        _ => {
+                            cov_mark::hit!(move_guard_if_add_comma);
+                            edit.insert(match_arm.syntax().text_range().end(), ",");
+                        }
+                    }
                 }
                 _ if replace_node != *if_expr.syntax() => {
                     // Dedent because if_expr is in a BlockExpr
@@ -150,13 +158,6 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
             // If with only an else branch
             if let Some(ElseBranch::Block(else_block)) = if_expr.else_branch() {
                 let then_arm_end = match_arm.syntax().text_range().end();
-                if then_block.tail_expr().is_some() && then_only_expr {
-                    // Insert comma for expression if there isn't one
-                    match match_arm.syntax().last_child_or_token() {
-                        Some(NodeOrToken::Token(t)) if t.kind() == COMMA => {}
-                        _ => edit.insert(then_arm_end, ","),
-                    }
-                }
                 let else_only_expr = else_block.statements().next().is_none();
                 let indent_level = match_arm.indent_level();
                 let spaces = "    ".repeat(indent_level.0 as _);
@@ -303,6 +304,34 @@ fn main() {
                 false
             }
         },
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        _ => true
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn move_arm_cond_in_block_to_match_guard_add_comma_works() {
+        cov_mark::check!(move_guard_if_add_comma);
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => {
+            $0if x > 10 {
+                false
+            }
+        }
         _ => true
     }
 }
