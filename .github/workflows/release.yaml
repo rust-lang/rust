@@ -1,14 +1,14 @@
 name: release
 on:
   schedule:
-  - cron: '0 0 * * *' # midnight UTC
-  
+    - cron: "0 0 * * *" # midnight UTC
+
   workflow_dispatch:
 
   push:
     branches:
-    - release
-    - trigger-nightly
+      - release
+      - trigger-nightly
 
 env:
   CARGO_INCREMENTAL: 0
@@ -18,148 +18,98 @@ env:
   FETCH_DEPTH: 0 # pull in the tags for the version string
 
 jobs:
-  dist-x86_64-pc-windows-msvc:
-    name: dist (x86_64-pc-windows-msvc)
-    runs-on: windows-latest
+  dist:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+          - os: ubuntu-20.04
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-20.04
+            target: aarch64-unknown-linux-gnu
+            cross_linker: aarch64-linux-gnu-gcc
+          - os: macos-11
+            target: x86_64-apple-darwin
+          - os: macos-11
+            target: aarch64-apple-darwin
+
+    name: dist (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+
     env:
-      RA_TARGET: x86_64-pc-windows-msvc
+      RA_TARGET: ${{ matrix.target }}
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.cross_linker }}
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: ${{ env.FETCH_DEPTH }}
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: ${{ env.FETCH_DEPTH }}
 
-    # We need to disable the existing toolchain to avoid updating rust-docs
-    # which takes a long time. The fastest way to do this is to rename the
-    # existing folder, as deleting it takes about as much time as not doing
-    # anything and just updating rust-docs.
-    - name: Rename existing rust toolchain
-      run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
+      # We need to disable the existing toolchain to avoid updating rust-docs
+      # which takes a long time. The fastest way to do this is to rename the
+      # existing folder, as deleting it takes about as much time as not doing
+      # anything and just updating rust-docs.
+      - name: Rename existing Rust toolchain
+        if: matrix.os == 'windows-latest'
+        run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
 
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          profile: minimal
+          override: true
 
-    - name: Dist
-      run: cargo xtask dist
+      - name: Install Rust library source
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          profile: minimal
+          override: true
+          components: rust-src
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v1
-      with:
-        name: dist-x86_64-pc-windows-msvc
-        path: ./dist
+      - name: Install Node.js
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
 
-  dist-aarch64-pc-windows-msvc:
-    name: dist (aarch64-pc-windows-msvc)
-    runs-on: windows-latest
-    env:
-      RA_TARGET: aarch64-pc-windows-msvc
+      - name: Update apt repositories
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get update
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: ${{ env.FETCH_DEPTH }}
+      - name: Install target toolchain
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get install gcc-aarch64-linux-gnu
 
-    - name: Rename existing rust toolchain
-      run: Rename-Item C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc C:\Users\runneradmin\.rustup\toolchains\stable-x86_64-pc-windows-msvc.old
+      - name: Dist (generic)
+        if: matrix.target != 'x86_64-unknown-linux-gnu'
+        run: cargo xtask dist
 
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: aarch64-pc-windows-msvc
-        profile: minimal
-        override: true
+      - name: Dist (Linux)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: cargo xtask dist --client-patch-version $GITHUB_RUN_NUMBER
 
-    - name: Dist
-      run: cargo xtask dist
+      - name: Run analysis-stats on rust-analyzer
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats .
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v1
-      with:
-        name: dist-aarch64-pc-windows-msvc
-        path: ./dist
+      - name: Run analysis-stats on rust std library
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
 
-  dist-x86_64-unknown-linux-gnu:
-    name: dist (x86_64-unknown-linux-gnu)
-    runs-on: ubuntu-20.04
-    env:
-      RA_TARGET: x86_64-unknown-linux-gnu
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: ${{ env.FETCH_DEPTH }}
-
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
-        components: rust-src
-
-    - name: Install Nodejs
-      uses: actions/setup-node@v1
-      with:
-        node-version: 14.x
-
-    - name: Dist
-      run: cargo xtask dist --client-patch-version $GITHUB_RUN_NUMBER
-
-    - name: Run analysis-stats on rust-analyzer
-      run: target/${{ env.RA_TARGET }}/release/rust-analyzer analysis-stats .
-
-    - name: Run analysis-stats on rust std library
-      run: target/${{ env.RA_TARGET }}/release/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v1
-      with:
-        name: dist-x86_64-unknown-linux-gnu
-        path: ./dist
-
-  dist-aarch64-unknown-linux-gnu:
-    name: dist (aarch64-unknown-linux-gnu)
-    runs-on: ubuntu-20.04
-    env:
-      RA_TARGET: aarch64-unknown-linux-gnu
-      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: ${{ env.FETCH_DEPTH }}
-
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: aarch64-unknown-linux-gnu
-        profile: minimal
-        override: true
-
-    - name: Update apt repositories
-      run: sudo apt-get update
-
-    - name: Install target toolchain
-      run: sudo apt-get install gcc-aarch64-linux-gnu
-
-    - name: Dist
-      run: cargo xtask dist
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v1
-      with:
-        name: dist-aarch64-unknown-linux-gnu
-        path: ./dist
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: dist-${{ matrix.target }}
+          path: ./dist
 
   dist-x86_64-unknown-linux-musl:
     name: dist (x86_64-unknown-linux-musl)
@@ -171,158 +121,92 @@ jobs:
     container:
       image: rust:alpine
       volumes:
-      - /usr/local/cargo/registry
+        - /usr/local/cargo/registry
 
     steps:
-    - name: Install dependencies
-      run: apk add --no-cache git clang lld musl-dev
+      - name: Install dependencies
+        run: apk add --no-cache git clang lld musl-dev
 
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: ${{ env.FETCH_DEPTH }}
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: ${{ env.FETCH_DEPTH }}
 
-    - name: Dist
-      run: cargo xtask dist
+      - name: Dist
+        run: cargo xtask dist
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v1
-      with:
-        name: dist-x86_64-unknown-linux-musl
-        path: ./dist
-
-  dist-x86_64-apple-darwin:
-    name: dist (x86_64-apple-darwin)
-    runs-on: macos-latest
-    env:
-      RA_TARGET: x86_64-apple-darwin
-#      SELECT_XCODE: /Applications/Xcode_12.2.app
-
-    steps:
-# use the default (12.5.1 as of today)
-#    - name: Select XCode version
-#      run: sudo xcode-select -s "${SELECT_XCODE}"
-
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: ${{ env.FETCH_DEPTH }}
-
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        profile: minimal
-        override: true
-
-    - name: Dist
-      run: cargo xtask dist
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v1
-      with:
-        name: dist-x86_64-apple-darwin
-        path: ./dist
-
-  dist-aarch64-apple-darwin:
-    name: dist (aarch64-apple-darwin)
-    runs-on: macos-latest
-    env:
-      RA_TARGET: aarch64-apple-darwin
-#      SELECT_XCODE: /Applications/Xcode_12.2.app
-
-    steps:
-#    - name: Select XCode version
-#      run: sudo xcode-select -s "${SELECT_XCODE}"
-
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: ${{ env.FETCH_DEPTH }}
-
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: aarch64-apple-darwin
-        profile: minimal
-        override: true
-
-    - name: Dist
-      run: SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path) MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version) cargo xtask dist
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v1
-      with:
-        name: dist-aarch64-apple-darwin
-        path: ./dist
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: dist-x86_64-unknown-linux-musl
+          path: ./dist
 
   publish:
     name: publish
     runs-on: ubuntu-latest
-    needs: ['dist-x86_64-pc-windows-msvc', 'dist-aarch64-pc-windows-msvc', 'dist-x86_64-unknown-linux-gnu', 'dist-x86_64-unknown-linux-musl', 'dist-aarch64-unknown-linux-gnu', 'dist-x86_64-apple-darwin', 'dist-aarch64-apple-darwin']
+    needs: ["dist", "dist-x86_64-unknown-linux-musl"]
     steps:
-    - name: Install Nodejs
-      uses: actions/setup-node@v1
-      with:
-        node-version: 14.x
+      - name: Install Nodejs
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
 
-    - run: echo "TAG=$(date --iso -u)" >> $GITHUB_ENV
-      if: github.ref == 'refs/heads/release'
-    - run: echo "TAG=nightly" >> $GITHUB_ENV
-      if: github.ref != 'refs/heads/release'
-    - run: 'echo "TAG: $TAG"'
+      - run: echo "TAG=$(date --iso -u)" >> $GITHUB_ENV
+        if: github.ref == 'refs/heads/release'
+      - run: echo "TAG=nightly" >> $GITHUB_ENV
+        if: github.ref != 'refs/heads/release'
+      - run: 'echo "TAG: $TAG"'
 
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: ${{ env.FETCH_DEPTH }}
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: ${{ env.FETCH_DEPTH }}
 
-    - run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
-    - run: 'echo "HEAD_SHA: $HEAD_SHA"'
+      - run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> $GITHUB_ENV
+      - run: 'echo "HEAD_SHA: $HEAD_SHA"'
 
-    - uses: actions/download-artifact@v1
-      with:
-        name: dist-aarch64-apple-darwin
-        path: dist
-    - uses: actions/download-artifact@v1
-      with:
-        name: dist-x86_64-apple-darwin
-        path: dist
-    - uses: actions/download-artifact@v1
-      with:
-        name: dist-x86_64-unknown-linux-gnu
-        path: dist
-    - uses: actions/download-artifact@v1
-      with:
-        name: dist-x86_64-unknown-linux-musl
-        path: dist
-    - uses: actions/download-artifact@v1
-      with:
-        name: dist-aarch64-unknown-linux-gnu
-        path: dist
-    - uses: actions/download-artifact@v1
-      with:
-        name: dist-x86_64-pc-windows-msvc
-        path: dist
-    - uses: actions/download-artifact@v1
-      with:
-        name: dist-aarch64-pc-windows-msvc
-        path: dist
-    - run: ls -al ./dist
+      - uses: actions/download-artifact@v1
+        with:
+          name: dist-aarch64-apple-darwin
+          path: dist
+      - uses: actions/download-artifact@v1
+        with:
+          name: dist-x86_64-apple-darwin
+          path: dist
+      - uses: actions/download-artifact@v1
+        with:
+          name: dist-x86_64-unknown-linux-gnu
+          path: dist
+      - uses: actions/download-artifact@v1
+        with:
+          name: dist-x86_64-unknown-linux-musl
+          path: dist
+      - uses: actions/download-artifact@v1
+        with:
+          name: dist-aarch64-unknown-linux-gnu
+          path: dist
+      - uses: actions/download-artifact@v1
+        with:
+          name: dist-x86_64-pc-windows-msvc
+          path: dist
+      - uses: actions/download-artifact@v1
+        with:
+          name: dist-aarch64-pc-windows-msvc
+          path: dist
+      - run: ls -al ./dist
 
-    - name: Publish Release
-      uses: ./.github/actions/github-release
-      with:
-        files: "dist/*"
-        name: ${{ env.TAG }}
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Release
+        uses: ./.github/actions/github-release
+        with:
+          files: "dist/*"
+          name: ${{ env.TAG }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-    - run: npm ci
-      working-directory: ./editors/code
+      - run: npm ci
+        working-directory: ./editors/code
 
-    - name: Publish Extension
-      if: github.ref == 'refs/heads/release'
-      working-directory: ./editors/code
-      # token from https://dev.azure.com/rust-analyzer/
-      run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer.vsix
+      - name: Publish Extension
+        if: github.ref == 'refs/heads/release'
+        working-directory: ./editors/code
+        # token from https://dev.azure.com/rust-analyzer/
+        run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer.vsix
