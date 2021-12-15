@@ -255,23 +255,9 @@ pub struct ConstArg {
     pub span: Span,
 }
 
-#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
-pub enum InferKind {
-    Const,
-    Type,
-}
-
-impl InferKind {
-    #[inline]
-    pub fn is_type(self) -> bool {
-        matches!(self, InferKind::Type)
-    }
-}
-
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct InferArg {
     pub hir_id: HirId,
-    pub kind: InferKind,
     pub span: Span,
 }
 
