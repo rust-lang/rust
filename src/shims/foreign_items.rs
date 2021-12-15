@@ -173,14 +173,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         continue;
                     };
                     if symbol_name == link_name {
-                        if let Some((instance, original_cnum)) = instance_and_crate {
-                            throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
-                                link_name,
-                                first: tcx.def_span(instance.def_id()).data(),
-                                first_crate: tcx.crate_name(original_cnum),
-                                second: tcx.def_span(def_id).data(),
-                                second_crate: tcx.crate_name(cnum),
-                            });
+                        if let Some((original_instance, original_cnum)) = instance_and_crate {
+                            // Make sure we are consistent wrt what is 'first' and 'second'.
+                            let original_span = tcx.def_span(original_instance.def_id()).data();
+                            let span =  tcx.def_span(def_id).data();
+                            if original_span < span {
+                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
+                                    link_name,
+                                    first: original_span,
+                                    first_crate: tcx.crate_name(original_cnum),
+                                    second: span,
+                                    second_crate: tcx.crate_name(cnum),
+                                });
+                            } else {
+                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
+                                    link_name,
+                                    first: span,
+                                    first_crate: tcx.crate_name(cnum),
+                                    second: original_span,
+                                    second_crate: tcx.crate_name(original_cnum),
+                                });
+                            }
                         }
                         if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
                             throw_ub_format!(
