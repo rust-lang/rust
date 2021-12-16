@@ -1,15 +1,14 @@
 error[E0004]: non-exhaustive patterns: `B` not covered
   --> $DIR/match_non_exhaustive.rs:23:11
    |
-LL | enum L { A, B }
-   | ---------------
-   | |           |
-   | |           not covered
-   | `L` defined here
-...
 LL |     match l { L::A => () };
    |           ^ pattern `B` not covered
    |
+note: `L` defined here
+  --> $DIR/match_non_exhaustive.rs:10:13
+   |
+LL | enum L { A, B }
+   |      -      ^ not covered
    = note: the matched value is of type `L`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -22,6 +21,11 @@ error[E0004]: non-exhaustive patterns: type `E1` is non-empty
 LL |     match e1 {};
    |           ^^
    |
+note: `E1` defined here
+  --> $DIR/auxiliary/match_non_exhaustive_lib.rs:2:1
+   |
+LL | pub enum E1 {}
+   | ^^^^^^^^^^^^^^
    = note: the matched value is of type `E1`, which is marked as non-exhaustive
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -36,6 +40,11 @@ error[E0004]: non-exhaustive patterns: `_` not covered
 LL |     match e2 { E2::A => (), E2::B => () };
    |           ^^ pattern `_` not covered
    |
+note: `E2` defined here
+  --> $DIR/auxiliary/match_non_exhaustive_lib.rs:5:1
+   |
+LL | pub enum E2 { A, B }
+   | ^^^^^^^^^^^^^^^^^^^^
    = note: the matched value is of type `E2`, which is marked as non-exhaustive
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |

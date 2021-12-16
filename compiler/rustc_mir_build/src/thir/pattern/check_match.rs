@@ -20,7 +20,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_span::{DesugaringKind, ExpnKind, Span};
+use rustc_span::{DesugaringKind, ExpnKind, MultiSpan, Span};
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {
@@ -669,15 +669,27 @@ fn adt_defined_here<'p, 'tcx>(
 ) {
     let ty = ty.peel_refs();
     if let ty::Adt(def, _) = ty.kind() {
-        if let Some(sp) = cx.tcx.hir().span_if_local(def.did) {
-            err.span_label(sp, format!("`{}` defined here", ty));
-        }
-
-        if witnesses.len() < 4 {
+        let mut spans = vec![];
+        if witnesses.len() < 5 {
             for sp in maybe_point_at_variant(cx, def, witnesses.iter()) {
-                err.span_label(sp, "not covered");
+                spans.push(sp);
             }
         }
+        let def_span = cx
+            .tcx
+            .hir()
+            .get_if_local(def.did)
+            .and_then(|node| node.ident())
+            .map(|ident| ident.span)
+            .unwrap_or_else(|| cx.tcx.def_span(def.did));
+        let mut span: MultiSpan =
+            if spans.is_empty() { def_span.into() } else { spans.clone().into() };
+
+        span.push_span_label(def_span, String::new());
+        for pat in spans {
+            span.push_span_label(pat, "not covered".to_string());
+        }
+        err.span_note(span, &format!("`{}` defined here", ty));
     }
 }
 

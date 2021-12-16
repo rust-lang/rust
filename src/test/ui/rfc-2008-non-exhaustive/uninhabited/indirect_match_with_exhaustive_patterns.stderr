@@ -4,6 +4,11 @@ error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedEnum` is non-emp
 LL |     match x {}
    |           ^
    |
+note: `IndirectUninhabitedEnum` defined here
+  --> $DIR/auxiliary/uninhabited.rs:26:1
+   |
+LL | pub struct IndirectUninhabitedEnum(UninhabitedEnum);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the matched value is of type `IndirectUninhabitedEnum`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -18,6 +23,11 @@ error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedStruct` is non-e
 LL |     match x {}
    |           ^
    |
+note: `IndirectUninhabitedStruct` defined here
+  --> $DIR/auxiliary/uninhabited.rs:28:1
+   |
+LL | pub struct IndirectUninhabitedStruct(UninhabitedStruct);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the matched value is of type `IndirectUninhabitedStruct`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -32,6 +42,11 @@ error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedTupleStruct` is 
 LL |     match x {}
    |           ^
    |
+note: `IndirectUninhabitedTupleStruct` defined here
+  --> $DIR/auxiliary/uninhabited.rs:30:1
+   |
+LL | pub struct IndirectUninhabitedTupleStruct(UninhabitedTupleStruct);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the matched value is of type `IndirectUninhabitedTupleStruct`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -46,6 +61,11 @@ error[E0004]: non-exhaustive patterns: type `IndirectUninhabitedVariants` is non
 LL |     match x {}
    |           ^
    |
+note: `IndirectUninhabitedVariants` defined here
+  --> $DIR/auxiliary/uninhabited.rs:32:1
+   |
+LL | pub struct IndirectUninhabitedVariants(UninhabitedVariants);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the matched value is of type `IndirectUninhabitedVariants`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |

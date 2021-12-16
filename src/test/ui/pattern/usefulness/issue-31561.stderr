@@ -1,20 +1,21 @@
 error[E0005]: refutable pattern in local binding: `Bar` and `Baz` not covered
   --> $DIR/issue-31561.rs:8:9
    |
-LL | / enum Thing {
-LL | |     Foo(u8),
-LL | |     Bar,
-   | |     --- not covered
-LL | |     Baz
-   | |     --- not covered
-LL | | }
-   | |_- `Thing` defined here
-...
-LL |       let Thing::Foo(y) = Thing::Foo(1);
-   |           ^^^^^^^^^^^^^ patterns `Bar` and `Baz` not covered
+LL |     let Thing::Foo(y) = Thing::Foo(1);
+   |         ^^^^^^^^^^^^^ patterns `Bar` and `Baz` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+note: `Thing` defined here
+  --> $DIR/issue-31561.rs:3:5
+   |
+LL | enum Thing {
+   |      -----
+LL |     Foo(u8),
+LL |     Bar,
+   |     ^^^ not covered
+LL |     Baz
+   |     ^^^ not covered
    = note: the matched value is of type `Thing`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |

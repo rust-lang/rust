@@ -52,99 +52,104 @@ LL |     match_no_arms!(0u8);
 error[E0004]: non-exhaustive patterns: type `NonEmptyStruct1` is non-empty
   --> $DIR/empty-match.rs:79:20
    |
-LL | struct NonEmptyStruct1;
-   | ----------------------- `NonEmptyStruct1` defined here
-...
 LL |     match_no_arms!(NonEmptyStruct1);
    |                    ^^^^^^^^^^^^^^^
    |
+note: `NonEmptyStruct1` defined here
+  --> $DIR/empty-match.rs:14:8
+   |
+LL | struct NonEmptyStruct1;
+   |        ^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyStruct1`
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `NonEmptyStruct2` is non-empty
   --> $DIR/empty-match.rs:80:20
    |
-LL | struct NonEmptyStruct2(bool);
-   | ----------------------------- `NonEmptyStruct2` defined here
-...
 LL |     match_no_arms!(NonEmptyStruct2(true));
    |                    ^^^^^^^^^^^^^^^^^^^^^
    |
+note: `NonEmptyStruct2` defined here
+  --> $DIR/empty-match.rs:15:8
+   |
+LL | struct NonEmptyStruct2(bool);
+   |        ^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyStruct2`
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `NonEmptyUnion1` is non-empty
   --> $DIR/empty-match.rs:81:20
    |
-LL | / union NonEmptyUnion1 {
-LL | |     foo: (),
-LL | | }
-   | |_- `NonEmptyUnion1` defined here
-...
-LL |       match_no_arms!((NonEmptyUnion1 { foo: () }));
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     match_no_arms!((NonEmptyUnion1 { foo: () }));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+note: `NonEmptyUnion1` defined here
+  --> $DIR/empty-match.rs:16:7
+   |
+LL | union NonEmptyUnion1 {
+   |       ^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyUnion1`
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `NonEmptyUnion2` is non-empty
   --> $DIR/empty-match.rs:82:20
    |
-LL | / union NonEmptyUnion2 {
-LL | |     foo: (),
-LL | |     bar: (),
-LL | | }
-   | |_- `NonEmptyUnion2` defined here
-...
-LL |       match_no_arms!((NonEmptyUnion2 { foo: () }));
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     match_no_arms!((NonEmptyUnion2 { foo: () }));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+note: `NonEmptyUnion2` defined here
+  --> $DIR/empty-match.rs:19:7
+   |
+LL | union NonEmptyUnion2 {
+   |       ^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyUnion2`
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `Foo(_)` not covered
   --> $DIR/empty-match.rs:83:20
    |
-LL | / enum NonEmptyEnum1 {
-LL | |     Foo(bool),
-   | |     --- not covered
-LL | | }
-   | |_- `NonEmptyEnum1` defined here
-...
-LL |       match_no_arms!(NonEmptyEnum1::Foo(true));
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo(_)` not covered
+LL |     match_no_arms!(NonEmptyEnum1::Foo(true));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo(_)` not covered
    |
+note: `NonEmptyEnum1` defined here
+  --> $DIR/empty-match.rs:24:5
+   |
+LL | enum NonEmptyEnum1 {
+   |      -------------
+LL |     Foo(bool),
+   |     ^^^ not covered
    = note: the matched value is of type `NonEmptyEnum1`
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `Foo(_)` and `Bar` not covered
   --> $DIR/empty-match.rs:84:20
    |
-LL | / enum NonEmptyEnum2 {
-LL | |     Foo(bool),
-   | |     --- not covered
-LL | |     Bar,
-   | |     --- not covered
-LL | | }
-   | |_- `NonEmptyEnum2` defined here
-...
-LL |       match_no_arms!(NonEmptyEnum2::Foo(true));
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ patterns `Foo(_)` and `Bar` not covered
+LL |     match_no_arms!(NonEmptyEnum2::Foo(true));
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ patterns `Foo(_)` and `Bar` not covered
    |
+note: `NonEmptyEnum2` defined here
+  --> $DIR/empty-match.rs:27:5
+   |
+LL | enum NonEmptyEnum2 {
+   |      -------------
+LL |     Foo(bool),
+   |     ^^^ not covered
+LL |     Bar,
+   |     ^^^ not covered
    = note: the matched value is of type `NonEmptyEnum2`
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `V1`, `V2`, `V3` and 2 more not covered
   --> $DIR/empty-match.rs:85:20
    |
-LL | / enum NonEmptyEnum5 {
-LL | |     V1, V2, V3, V4, V5,
-LL | | }
-   | |_- `NonEmptyEnum5` defined here
-...
-LL |       match_no_arms!(NonEmptyEnum5::V1);
-   |                      ^^^^^^^^^^^^^^^^^ patterns `V1`, `V2`, `V3` and 2 more not covered
+LL |     match_no_arms!(NonEmptyEnum5::V1);
+   |                    ^^^^^^^^^^^^^^^^^ patterns `V1`, `V2`, `V3` and 2 more not covered
    |
+note: `NonEmptyEnum5` defined here
+  --> $DIR/empty-match.rs:30:6
+   |
+LL | enum NonEmptyEnum5 {
+   |      ^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyEnum5`
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
@@ -164,12 +169,14 @@ LL +             _ => todo!()
 error[E0004]: non-exhaustive patterns: `NonEmptyStruct1` not covered
   --> $DIR/empty-match.rs:88:24
    |
-LL | struct NonEmptyStruct1;
-   | ----------------------- `NonEmptyStruct1` defined here
-...
 LL |     match_guarded_arm!(NonEmptyStruct1);
    |                        ^^^^^^^^^^^^^^^ pattern `NonEmptyStruct1` not covered
    |
+note: `NonEmptyStruct1` defined here
+  --> $DIR/empty-match.rs:14:8
+   |
+LL | struct NonEmptyStruct1;
+   |        ^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyStruct1`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -180,12 +187,14 @@ LL +             NonEmptyStruct1 => todo!()
 error[E0004]: non-exhaustive patterns: `NonEmptyStruct2(_)` not covered
   --> $DIR/empty-match.rs:89:24
    |
-LL | struct NonEmptyStruct2(bool);
-   | ----------------------------- `NonEmptyStruct2` defined here
-...
 LL |     match_guarded_arm!(NonEmptyStruct2(true));
    |                        ^^^^^^^^^^^^^^^^^^^^^ pattern `NonEmptyStruct2(_)` not covered
    |
+note: `NonEmptyStruct2` defined here
+  --> $DIR/empty-match.rs:15:8
+   |
+LL | struct NonEmptyStruct2(bool);
+   |        ^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyStruct2`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -196,14 +205,14 @@ LL +             NonEmptyStruct2(_) => todo!()
 error[E0004]: non-exhaustive patterns: `NonEmptyUnion1 { .. }` not covered
   --> $DIR/empty-match.rs:90:24
    |
-LL | / union NonEmptyUnion1 {
-LL | |     foo: (),
-LL | | }
-   | |_- `NonEmptyUnion1` defined here
-...
-LL |       match_guarded_arm!((NonEmptyUnion1 { foo: () }));
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `NonEmptyUnion1 { .. }` not covered
+LL |     match_guarded_arm!((NonEmptyUnion1 { foo: () }));
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `NonEmptyUnion1 { .. }` not covered
    |
+note: `NonEmptyUnion1` defined here
+  --> $DIR/empty-match.rs:16:7
+   |
+LL | union NonEmptyUnion1 {
+   |       ^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyUnion1`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -214,15 +223,14 @@ LL +             NonEmptyUnion1 { .. } => todo!()
 error[E0004]: non-exhaustive patterns: `NonEmptyUnion2 { .. }` not covered
   --> $DIR/empty-match.rs:91:24
    |
-LL | / union NonEmptyUnion2 {
-LL | |     foo: (),
-LL | |     bar: (),
-LL | | }
-   | |_- `NonEmptyUnion2` defined here
-...
-LL |       match_guarded_arm!((NonEmptyUnion2 { foo: () }));
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `NonEmptyUnion2 { .. }` not covered
+LL |     match_guarded_arm!((NonEmptyUnion2 { foo: () }));
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `NonEmptyUnion2 { .. }` not covered
    |
+note: `NonEmptyUnion2` defined here
+  --> $DIR/empty-match.rs:19:7
+   |
+LL | union NonEmptyUnion2 {
+   |       ^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyUnion2`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -233,15 +241,16 @@ LL +             NonEmptyUnion2 { .. } => todo!()
 error[E0004]: non-exhaustive patterns: `Foo(_)` not covered
   --> $DIR/empty-match.rs:92:24
    |
-LL | / enum NonEmptyEnum1 {
-LL | |     Foo(bool),
-   | |     --- not covered
-LL | | }
-   | |_- `NonEmptyEnum1` defined here
-...
-LL |       match_guarded_arm!(NonEmptyEnum1::Foo(true));
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo(_)` not covered
+LL |     match_guarded_arm!(NonEmptyEnum1::Foo(true));
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo(_)` not covered
    |
+note: `NonEmptyEnum1` defined here
+  --> $DIR/empty-match.rs:24:5
+   |
+LL | enum NonEmptyEnum1 {
+   |      -------------
+LL |     Foo(bool),
+   |     ^^^ not covered
    = note: the matched value is of type `NonEmptyEnum1`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -252,17 +261,18 @@ LL +             Foo(_) => todo!()
 error[E0004]: non-exhaustive patterns: `Foo(_)` and `Bar` not covered
   --> $DIR/empty-match.rs:93:24
    |
-LL | / enum NonEmptyEnum2 {
-LL | |     Foo(bool),
-   | |     --- not covered
-LL | |     Bar,
-   | |     --- not covered
-LL | | }
-   | |_- `NonEmptyEnum2` defined here
-...
-LL |       match_guarded_arm!(NonEmptyEnum2::Foo(true));
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^ patterns `Foo(_)` and `Bar` not covered
+LL |     match_guarded_arm!(NonEmptyEnum2::Foo(true));
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ patterns `Foo(_)` and `Bar` not covered
    |
+note: `NonEmptyEnum2` defined here
+  --> $DIR/empty-match.rs:27:5
+   |
+LL | enum NonEmptyEnum2 {
+   |      -------------
+LL |     Foo(bool),
+   |     ^^^ not covered
+LL |     Bar,
+   |     ^^^ not covered
    = note: the matched value is of type `NonEmptyEnum2`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -273,14 +283,14 @@ LL +             Foo(_) | Bar => todo!()
 error[E0004]: non-exhaustive patterns: `V1`, `V2`, `V3` and 2 more not covered
   --> $DIR/empty-match.rs:94:24
    |
-LL | / enum NonEmptyEnum5 {
-LL | |     V1, V2, V3, V4, V5,
-LL | | }
-   | |_- `NonEmptyEnum5` defined here
-...
-LL |       match_guarded_arm!(NonEmptyEnum5::V1);
-   |                          ^^^^^^^^^^^^^^^^^ patterns `V1`, `V2`, `V3` and 2 more not covered
+LL |     match_guarded_arm!(NonEmptyEnum5::V1);
+   |                        ^^^^^^^^^^^^^^^^^ patterns `V1`, `V2`, `V3` and 2 more not covered
    |
+note: `NonEmptyEnum5` defined here
+  --> $DIR/empty-match.rs:30:6
+   |
+LL | enum NonEmptyEnum5 {
+   |      ^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyEnum5`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
