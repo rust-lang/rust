@@ -1598,8 +1598,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         mpi: MovePathIndex,
     ) -> (Vec<MoveSite>, Vec<Location>) {
-        fn predecessor_locations(
-            body: &'a mir::Body<'tcx>,
+        fn predecessor_locations<'a>(
+            body: &'a mir::Body<'_>,
             location: Location,
         ) -> impl Iterator<Item = Location> + 'a {
             if location.statement_index == 0 {
