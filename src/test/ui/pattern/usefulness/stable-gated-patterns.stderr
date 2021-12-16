@@ -10,7 +10,11 @@ LL |     Stable2,
    |     ------- not covered
    |
    = note: the matched value is of type `Foo`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         Foo::Stable => {}
+LL +         Stable2 | _ => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/stable-gated-patterns.rs:13:11

@@ -5,7 +5,11 @@ LL |         box NodeKind::Element(ed) => match ed.kind {
    |                                            ^^^^^^^ pattern `box _` not covered
    |
    = note: the matched value is of type `Box<ElementKind>`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~             box ElementKind::HTMLImageElement(ref d) if d.image.is_some() => { true }
+LL +             box _ => todo!()
+   |
 
 error: aborting due to previous error
 

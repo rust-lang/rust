@@ -591,6 +591,21 @@ fn non_exhaustive_match<'p, 'tcx>(
                 ),
             ));
         }
+        [only] => {
+            let pre_indentation = if let (Some(snippet), true) = (
+                sm.indentation_before(only.span),
+                sm.is_multiline(sp.shrink_to_hi().with_hi(only.span.lo())),
+            ) {
+                format!("\n{}", snippet)
+            } else {
+                " ".to_string()
+            };
+            let comma = if matches!(only.body.kind, hir::ExprKind::Block(..)) { "" } else { "," };
+            suggestion = Some((
+                only.span.shrink_to_hi(),
+                format!("{}{}{} => todo!()", comma, pre_indentation, pattern),
+            ));
+        }
         _ => {}
     }
 

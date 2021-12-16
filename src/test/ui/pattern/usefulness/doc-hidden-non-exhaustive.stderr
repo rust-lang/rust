@@ -33,7 +33,11 @@ LL |     B,
    |     - not covered
    |
    = note: the matched value is of type `Foo`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         Foo::A => {}
+LL +         B | _ => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `Some(B)` and `Some(_)` not covered
   --> $DIR/doc-hidden-non-exhaustive.rs:25:11

@@ -11,7 +11,10 @@ LL |     let _b = || { match l1 { L1::A => () } };
    |                         ^^ pattern `B` not covered
    |
    = note: the matched value is of type `L1`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL |     let _b = || { match l1 { L1::A => (), B => todo!() } };
+   |                                         ++++++++++++++
 
 error[E0004]: non-exhaustive patterns: type `E1` is non-empty
   --> $DIR/non-exhaustive-match.rs:37:25

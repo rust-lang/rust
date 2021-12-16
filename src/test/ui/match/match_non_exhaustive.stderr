@@ -11,7 +11,10 @@ LL |     match l { L::A => () };
    |           ^ pattern `B` not covered
    |
    = note: the matched value is of type `L`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL |     match l { L::A => (), B => todo!() };
+   |                         ++++++++++++++
 
 error[E0004]: non-exhaustive patterns: type `E1` is non-empty
   --> $DIR/match_non_exhaustive.rs:28:11
