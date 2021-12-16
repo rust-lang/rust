@@ -1,3 +1,16 @@
+//! Removes excess indentation on comments in order for the Markdown
+//! to be parsed correctly. This is necessary because the convention for
+//! writing documentation is to provide a space between the /// or //! marker
+//! and the doc text, but Markdown is whitespace-sensitive. For example,
+//! a block of text with four-space indentation is parsed as a code block,
+//! so if we didn't unindent comments, these list items
+//!
+//! /// A list:
+//! ///
+//! ///    - Foo
+//! ///    - Bar
+//!
+//! would be parsed as if they were in a code block, which is likely not what the user intended.
 use std::cmp;
 
 use rustc_span::symbol::kw;

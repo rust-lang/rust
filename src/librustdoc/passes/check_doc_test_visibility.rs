@@ -1,3 +1,5 @@
+//! Looks for items missing (or incorrectly having) doctests.
+//!
 //! This pass is overloaded and runs two different lints.
 //!
 //! - MISSING_DOC_CODE_EXAMPLES: this lint is **UNSTABLE** and looks for public items missing doctests.

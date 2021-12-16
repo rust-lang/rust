@@ -1,3 +1,4 @@
+//! A collection of utility functions for the `strip_*` passes.
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::privacy::AccessLevels;
 use std::mem;

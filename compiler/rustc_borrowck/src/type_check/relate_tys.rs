@@ -51,7 +51,7 @@ struct NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     universe_info: UniverseInfo<'tcx>,
 }
 
-impl NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
+impl<'me, 'bccx, 'tcx> NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     fn new(
         type_checker: &'me mut TypeChecker<'bccx, 'tcx>,
         locations: Locations,
@@ -62,7 +62,7 @@ impl NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
     }
 }
 
-impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
+impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.type_checker.param_env
     }

@@ -1,3 +1,4 @@
+//! Propagates [`#[doc(cfg(...))]`](https://github.com/rust-lang/rust/issues/43781) to child items.
 use std::sync::Arc;
 
 use crate::clean::cfg::Cfg;

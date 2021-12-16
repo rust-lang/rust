@@ -409,7 +409,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Add a note that a type does not implement `Copy`
     pub(super) fn note_type_does_not_implement_copy(
         &self,
-        err: &mut DiagnosticBuilder<'a>,
+        err: &mut DiagnosticBuilder<'_>,
         place_desc: &str,
         ty: Ty<'tcx>,
         span: Option<Span>,
@@ -733,7 +733,7 @@ pub(super) enum BorrowedContentSource<'tcx> {
     OverloadedIndex(Ty<'tcx>),
 }
 
-impl BorrowedContentSource<'tcx> {
+impl<'tcx> BorrowedContentSource<'tcx> {
     pub(super) fn describe_for_unnamed_place(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
             BorrowedContentSource::DerefRawPointer => "a raw pointer".to_string(),
