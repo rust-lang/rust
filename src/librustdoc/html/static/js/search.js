@@ -722,11 +722,15 @@ window.initSearch = function(rawSearchIndex) {
                     if (input === "*") {
                         is_module = true;
                     } else {
-                        var allFound = 0;
-                        for (it = 0, len = inputs.length; allFound === 0 && it < len; it++) {
-                            allFound = checkType(type, inputs[it], true);
+                        var firstNonZeroDistance = 0;
+                        for (it = 0, len = inputs.length; it < len; it++) {
+                            var distance = checkType(type, inputs[it], true);
+                            if (distance > 0) {
+                                firstNonZeroDistance = distance;
+                                break;
+                            }
                         }
-                        in_args = allFound;
+                        in_args = firstNonZeroDistance;
                     }
                     addIntoResults(true, results_in_args, fullId, i, -1, in_args);
                     addIntoResults(true, results_returned, fullId, i, -1, returned);
