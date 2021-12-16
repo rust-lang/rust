@@ -505,7 +505,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         .and_then(|trait_| {
                             ty_to_traits
                                 .get(&ty)
-                                .map(|bounds| bounds.contains(&strip_path_generics(trait_.clone())))
+                                .map(|bounds| bounds.contains(&strip_path_generics(trait_)))
                         })
                         .unwrap_or(false)
                     {

@@ -141,17 +141,12 @@ pub(super) fn external_path(
 }
 
 /// Remove the generic arguments from a path.
-crate fn strip_path_generics(path: Path) -> Path {
-    let segments = path
-        .segments
-        .iter()
-        .map(|s| PathSegment {
-            name: s.name,
-            args: GenericArgs::AngleBracketed { args: vec![], bindings: vec![] },
-        })
-        .collect();
+crate fn strip_path_generics(mut path: Path) -> Path {
+    for ps in path.segments.iter_mut() {
+        ps.args = GenericArgs::AngleBracketed { args: vec![], bindings: vec![] }
+    }
 
-    Path { res: path.res, segments }
+    path
 }
 
 crate fn qpath_to_string(p: &hir::QPath<'_>) -> String {
