@@ -606,6 +606,21 @@ fn non_exhaustive_match<'p, 'tcx>(
                 format!("{}{}{} => todo!()", comma, pre_indentation, pattern),
             ));
         }
+        [.., prev, last] if prev.span.ctxt() == last.span.ctxt() => {
+            if let Ok(snippet) = sm.span_to_snippet(prev.span.between(last.span)) {
+                let comma =
+                    if matches!(last.body.kind, hir::ExprKind::Block(..)) { "" } else { "," };
+                suggestion = Some((
+                    last.span.shrink_to_hi(),
+                    format!(
+                        "{}{}{} => todo!()",
+                        comma,
+                        snippet.strip_prefix(",").unwrap_or(&snippet),
+                        pattern
+                    ),
+                ));
+            }
+        }
         _ => {}
     }
 

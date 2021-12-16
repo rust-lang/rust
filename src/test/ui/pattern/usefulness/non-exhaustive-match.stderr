@@ -67,7 +67,11 @@ LL |     match (T::A, T::A) {
    |           ^^^^^^^^^^^^ patterns `(A, A)` and `(B, B)` not covered
    |
    = note: the matched value is of type `(T, T)`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~       (T::B, T::A) => {}
+LL +       (A, A) | (B, B) => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `B` not covered
   --> $DIR/non-exhaustive-match.rs:22:11
@@ -95,7 +99,11 @@ LL |     match *vec {
    |           ^^^^ pattern `[]` not covered
    |
    = note: the matched value is of type `[Option<isize>]`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         [None] => {}
+LL +         [] => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `[_, _, _, _, ..]` not covered
   --> $DIR/non-exhaustive-match.rs:46:11
@@ -104,7 +112,11 @@ LL |     match *vec {
    |           ^^^^ pattern `[_, _, _, _, ..]` not covered
    |
    = note: the matched value is of type `[f32]`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         [] => (),
+LL +         [_, _, _, _, ..] => todo!()
+   |
 
 error: aborting due to 8 previous errors
 

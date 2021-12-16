@@ -96,7 +96,11 @@ LL |     match 0i8 {
    |           ^^^ pattern `0_i8` not covered
    |
    = note: the matched value is of type `i8`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         1 ..= i8::MAX => {}
+LL +         0_i8 => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `u128::MAX` not covered
   --> $DIR/exhaustiveness.rs:60:8
@@ -144,7 +148,11 @@ LL |     match (0u8, true) {
    |           ^^^^^^^^^^^ pattern `(126_u8..=127_u8, false)` not covered
    |
    = note: the matched value is of type `(u8, bool)`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         (0 ..= 255, true) => {}
+LL +         (126_u8..=127_u8, false) => todo!()
+   |
 
 error: aborting due to 12 previous errors
 

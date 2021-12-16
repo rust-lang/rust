@@ -102,7 +102,11 @@ LL |     match Some(A) {
    |           ^^^^^^^ patterns `Some(B)`, `Some(C)`, `Some(D)` and 2 more not covered
    |
    = note: the matched value is of type `Option<Enum>`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         None => (),
+LL +         _ => todo!()
+   |
 
 error: aborting due to 8 previous errors
 

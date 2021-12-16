@@ -5,7 +5,11 @@ LL |     match Foo::A {
    |           ^^^^^^ pattern `_` not covered
    |
    = note: the matched value is of type `Foo`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         Foo::B => {}
+LL +         _ => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `B` not covered
   --> $DIR/doc-hidden-non-exhaustive.rs:14:11
@@ -19,7 +23,11 @@ LL |     B,
    |     - not covered
    |
    = note: the matched value is of type `Foo`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         Foo::C => {}
+LL +         B => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `B` and `_` not covered
   --> $DIR/doc-hidden-non-exhaustive.rs:20:11
@@ -51,7 +59,11 @@ LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     ---- not covered
    |
    = note: the matched value is of type `Option<Foo>`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         Some(Foo::A) => {}
+LL +         Some(B) | Some(_) => todo!()
+   |
 
 error: aborting due to 4 previous errors
 

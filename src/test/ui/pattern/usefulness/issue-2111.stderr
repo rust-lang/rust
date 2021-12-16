@@ -5,7 +5,11 @@ LL |     match (a, b) {
    |           ^^^^^^ patterns `(None, None)` and `(Some(_), Some(_))` not covered
    |
    = note: the matched value is of type `(Option<usize>, Option<usize>)`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         (Some(_), None) | (None, Some(_)) => {}
+LL +         (None, None) | (Some(_), Some(_)) => todo!()
+   |
 
 error: aborting due to previous error
 

@@ -10,7 +10,11 @@ LL |       match f {
    |             ^ patterns `Bar { bar: C, .. }`, `Bar { bar: D, .. }`, `Bar { bar: E, .. }` and 1 more not covered
    |
    = note: the matched value is of type `Foo`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         Foo::Bar { bar: Bar::B, .. } => (),
+LL ~         _ => todo!(),
+   |
 
 error: aborting due to previous error
 
