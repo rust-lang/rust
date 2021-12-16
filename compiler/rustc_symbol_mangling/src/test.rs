@@ -31,7 +31,7 @@ struct SymbolNamesTest<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl SymbolNamesTest<'tcx> {
+impl SymbolNamesTest<'_> {
     fn process_attrs(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
         for attr in tcx.get_attrs(def_id.to_def_id()).iter() {
@@ -59,7 +59,7 @@ impl SymbolNamesTest<'tcx> {
     }
 }
 
-impl hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'tcx> {
+impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         self.process_attrs(item.def_id);
     }
