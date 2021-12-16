@@ -1,4 +1,4 @@
-//! Codegen of [`asm!`] invocations.
+//! Codegen of `asm!` invocations.
 
 use crate::prelude::*;
 
