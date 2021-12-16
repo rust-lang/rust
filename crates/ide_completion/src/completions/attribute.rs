@@ -6,7 +6,9 @@
 use hir::HasAttrs;
 use ide_db::{
     helpers::{
-        generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS},
+        generated_lints::{
+            Lint, CLIPPY_LINTS, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS,
+        },
         parse_tt_as_comma_sep_paths,
     },
     SymbolKind,
@@ -36,8 +38,13 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             "feature" => lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?, FEATURES),
             "allow" | "warn" | "deny" | "forbid" => {
                 let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
+
+                let clippy_lint_groups: Vec<Lint> =
+                    CLIPPY_LINT_GROUPS.iter().map(|g| g.lint.clone()).collect();
+
                 lint::complete_lint(acc, ctx, &existing_lints, DEFAULT_LINTS);
                 lint::complete_lint(acc, ctx, &existing_lints, CLIPPY_LINTS);
+                lint::complete_lint(acc, ctx, &existing_lints, &clippy_lint_groups);
                 lint::complete_lint(acc, ctx, &existing_lints, RUSTDOC_LINTS);
             }
             "cfg" => {
