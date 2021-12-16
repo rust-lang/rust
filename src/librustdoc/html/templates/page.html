@@ -74,30 +74,26 @@
     {{- layout.external_html.before_content | safe -}}
     <nav class="sidebar"> {#- -#}
         <div class="sidebar-menu" role="button">&#9776;</div> {#- -#}
-        <a class="sidebar-logo" href='{{page.root_path | safe}}{{krate_with_trailing_slash | safe}}index.html'> {#- -#}
-            <div class='logo-container rust-logo'> {#- -#}
-                <img src='
-                    {%- if layout.logo -%}
-                    {{layout.logo}}
-                    {%- else -%}
-                    {{static_root_path | safe}}rust-logo{{page.resource_suffix}}.png
-                    {%- endif -%}
-                    ' alt='logo'> {#- -#}
-            </div> {#- -#}
+        <a class="sidebar-logo" href="{{page.root_path | safe}}{{krate_with_trailing_slash | safe}}index.html"> {#- -#}
+            <div class="logo-container"> {#- -#}
+            {%- if layout.logo -%}
+                <img src="{{layout.logo}}" alt="logo"> {#- -#}
+            {%- else -%}
+                <img class="rust-logo" src="{{static_root_path | safe}}rust-logo{{page.resource_suffix}}.png" alt="logo"> {#- -#}
+            {%- endif -%}
+            </div>
         </a> {#- -#}
         {{- sidebar | safe -}}
     </nav> {#- -#}
     <main> {#- -#}
         <div class="width-limiter"> {#- -#}
             <div class="sub-container"> {#- -#}
-                <a class="sub-logo-container rust-logo" href='{{page.root_path | safe}}{{krate_with_trailing_slash | safe}}index.html'> {#- -#}
-                    <img src='
-                        {%- if layout.logo -%}
-                        {{layout.logo}}
-                        {%- else -%}
-                        {{static_root_path | safe}}rust-logo{{page.resource_suffix}}.png
-                        {%- endif -%}
-                        ' alt='logo'> {#- -#}
+                <a class="sub-logo-container" href="{{page.root_path | safe}}{{krate_with_trailing_slash | safe}}index.html"> {#- -#}
+                    {%- if layout.logo -%}
+                    <img src="{{layout.logo}}" alt="logo">
+                    {%- else -%}
+                    <img class="rust-logo" src="{{static_root_path | safe}}rust-logo{{page.resource_suffix}}.png" alt="logo">
+                    {%- endif -%}
                 </a> {#- -#}
                 <nav class="sub"> {#- -#}
                     <div class="theme-picker"> {#- -#}

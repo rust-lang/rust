@@ -570,7 +570,7 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
     }
 }
 
-impl TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
+impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -678,7 +678,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
     }
 }
 
-impl TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
+impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -1937,14 +1937,14 @@ fn assoc_ty_def(
     }
 }
 
-crate trait ProjectionCacheKeyExt<'tcx>: Sized {
+crate trait ProjectionCacheKeyExt<'cx, 'tcx>: Sized {
     fn from_poly_projection_predicate(
         selcx: &mut SelectionContext<'cx, 'tcx>,
         predicate: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<Self>;
 }
 
-impl<'tcx> ProjectionCacheKeyExt<'tcx> for ProjectionCacheKey<'tcx> {
+impl<'cx, 'tcx> ProjectionCacheKeyExt<'cx, 'tcx> for ProjectionCacheKey<'tcx> {
     fn from_poly_projection_predicate(
         selcx: &mut SelectionContext<'cx, 'tcx>,
         predicate: ty::PolyProjectionPredicate<'tcx>,

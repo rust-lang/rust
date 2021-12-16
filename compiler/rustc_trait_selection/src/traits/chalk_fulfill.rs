@@ -16,7 +16,7 @@ pub struct FulfillmentContext<'tcx> {
     relationships: FxHashMap<ty::TyVid, ty::FoundRelationships>,
 }
 
-impl FulfillmentContext<'tcx> {
+impl FulfillmentContext<'_> {
     crate fn new() -> Self {
         FulfillmentContext {
             obligations: FxIndexSet::default(),
@@ -25,7 +25,7 @@ impl FulfillmentContext<'tcx> {
     }
 }
 
-impl TraitEngine<'tcx> for FulfillmentContext<'tcx> {
+impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     fn normalize_projection_type(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,

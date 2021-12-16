@@ -16,7 +16,6 @@
 #![feature(drain_filter)]
 #![feature(derive_default_enum)]
 #![feature(hash_drain_filter)]
-#![feature(in_band_lifetimes)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(crate_visibility_modifier)]

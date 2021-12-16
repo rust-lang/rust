@@ -252,7 +252,7 @@ struct FulfillProcessor<'a, 'b, 'tcx> {
     register_region_obligations: bool,
 }
 
-fn mk_pending(os: Vec<PredicateObligation<'tcx>>) -> Vec<PendingPredicateObligation<'tcx>> {
+fn mk_pending(os: Vec<PredicateObligation<'_>>) -> Vec<PendingPredicateObligation<'_>> {
     os.into_iter()
         .map(|o| PendingPredicateObligation { obligation: o, stalled_on: vec![] })
         .collect()

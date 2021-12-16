@@ -17,7 +17,7 @@ use std::fmt::Write;
 use std::iter;
 use std::ops::Range;
 
-pub(super) fn mangle(
+pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     instantiating_crate: Option<CrateNum>,
@@ -56,7 +56,7 @@ pub(super) fn mangle(
     std::mem::take(&mut cx.out)
 }
 
-pub(super) fn mangle_typeid_for_fnabi(
+pub(super) fn mangle_typeid_for_fnabi<'tcx>(
     _tcx: TyCtxt<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> String {
@@ -118,7 +118,7 @@ struct SymbolMangler<'tcx> {
     consts: FxHashMap<&'tcx ty::Const<'tcx>, usize>,
 }
 
-impl SymbolMangler<'tcx> {
+impl<'tcx> SymbolMangler<'tcx> {
     fn push(&mut self, s: &str) {
         self.out.push_str(s);
     }
@@ -250,7 +250,7 @@ impl SymbolMangler<'tcx> {
     }
 }
 
-impl Printer<'tcx> for &mut SymbolMangler<'tcx> {
+impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     type Error = !;
 
     type Path = Self;
