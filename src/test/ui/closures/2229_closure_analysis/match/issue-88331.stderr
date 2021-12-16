@@ -10,7 +10,7 @@ note: `Opcode` defined here
 LL | pub struct Opcode(pub u8);
    |            ^^^^^^
    = note: the matched value is of type `Opcode`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         Opcode::OP1 => unimplemented!(),
 LL ~         Opcode(0_u8) | Opcode(2_u8..=u8::MAX) => todo!(),
@@ -28,7 +28,7 @@ note: `Opcode2` defined here
 LL | pub struct Opcode2(Opcode);
    |            ^^^^^^^
    = note: the matched value is of type `Opcode2`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         Opcode2::OP2=> unimplemented!(),
 LL ~         Opcode2(Opcode(0_u8)) | Opcode2(Opcode(2_u8..=u8::MAX)) => todo!(),

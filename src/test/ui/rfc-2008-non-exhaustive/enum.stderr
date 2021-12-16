@@ -10,7 +10,7 @@ note: `EmptyNonExhaustiveEnum` defined here
 LL | pub enum EmptyNonExhaustiveEnum {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: the matched value is of type `EmptyNonExhaustiveEnum`, which is marked as non-exhaustive
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown
    |
 LL ~     match x {
 LL +         _ => todo!(),
@@ -33,7 +33,7 @@ LL | |     Struct { field: u32 },
 LL | | }
    | |_^
    = note: the matched value is of type `NonExhaustiveEnum`, which is marked as non-exhaustive
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         NonExhaustiveEnum::Struct { .. } => "third",
 LL +         _ => todo!()
@@ -55,7 +55,7 @@ LL | |     Struct { field: u32 },
 LL | | }
    | |_^
    = note: the matched value is of type `NonExhaustiveEnum`, which is marked as non-exhaustive
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~     match enum_unit {
 LL +         _ => todo!(),

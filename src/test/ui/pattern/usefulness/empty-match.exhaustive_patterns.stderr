@@ -47,7 +47,7 @@ LL |     match_no_arms!(0u8);
    |                    ^^^
    |
    = note: the matched value is of type `u8`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
 
 error[E0004]: non-exhaustive patterns: type `NonEmptyStruct1` is non-empty
   --> $DIR/empty-match.rs:79:20
@@ -61,7 +61,7 @@ note: `NonEmptyStruct1` defined here
 LL | struct NonEmptyStruct1;
    |        ^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyStruct1`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
 
 error[E0004]: non-exhaustive patterns: type `NonEmptyStruct2` is non-empty
   --> $DIR/empty-match.rs:80:20
@@ -75,7 +75,7 @@ note: `NonEmptyStruct2` defined here
 LL | struct NonEmptyStruct2(bool);
    |        ^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyStruct2`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
 
 error[E0004]: non-exhaustive patterns: type `NonEmptyUnion1` is non-empty
   --> $DIR/empty-match.rs:81:20
@@ -89,7 +89,7 @@ note: `NonEmptyUnion1` defined here
 LL | union NonEmptyUnion1 {
    |       ^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyUnion1`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
 
 error[E0004]: non-exhaustive patterns: type `NonEmptyUnion2` is non-empty
   --> $DIR/empty-match.rs:82:20
@@ -103,7 +103,7 @@ note: `NonEmptyUnion2` defined here
 LL | union NonEmptyUnion2 {
    |       ^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyUnion2`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern
 
 error[E0004]: non-exhaustive patterns: `Foo(_)` not covered
   --> $DIR/empty-match.rs:83:20
@@ -119,7 +119,7 @@ LL | enum NonEmptyEnum1 {
 LL |     Foo(bool),
    |     ^^^ not covered
    = note: the matched value is of type `NonEmptyEnum1`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern
 
 error[E0004]: non-exhaustive patterns: `Foo(_)` and `Bar` not covered
   --> $DIR/empty-match.rs:84:20
@@ -137,7 +137,7 @@ LL |     Foo(bool),
 LL |     Bar,
    |     ^^^ not covered
    = note: the matched value is of type `NonEmptyEnum2`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or multiple match arms
 
 error[E0004]: non-exhaustive patterns: `V1`, `V2`, `V3` and 2 more not covered
   --> $DIR/empty-match.rs:85:20
@@ -151,7 +151,7 @@ note: `NonEmptyEnum5` defined here
 LL | enum NonEmptyEnum5 {
    |      ^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyEnum5`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   = help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or multiple match arms
 
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/empty-match.rs:87:24
@@ -160,7 +160,7 @@ LL |     match_guarded_arm!(0u8);
    |                        ^^^ pattern `_` not covered
    |
    = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             _ if false => {}
 LL +             _ => todo!()
@@ -178,7 +178,7 @@ note: `NonEmptyStruct1` defined here
 LL | struct NonEmptyStruct1;
    |        ^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyStruct1`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             _ if false => {}
 LL +             NonEmptyStruct1 => todo!()
@@ -196,7 +196,7 @@ note: `NonEmptyStruct2` defined here
 LL | struct NonEmptyStruct2(bool);
    |        ^^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyStruct2`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             _ if false => {}
 LL +             NonEmptyStruct2(_) => todo!()
@@ -214,7 +214,7 @@ note: `NonEmptyUnion1` defined here
 LL | union NonEmptyUnion1 {
    |       ^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyUnion1`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             _ if false => {}
 LL +             NonEmptyUnion1 { .. } => todo!()
@@ -232,7 +232,7 @@ note: `NonEmptyUnion2` defined here
 LL | union NonEmptyUnion2 {
    |       ^^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyUnion2`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             _ if false => {}
 LL +             NonEmptyUnion2 { .. } => todo!()
@@ -252,7 +252,7 @@ LL | enum NonEmptyEnum1 {
 LL |     Foo(bool),
    |     ^^^ not covered
    = note: the matched value is of type `NonEmptyEnum1`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~             _ if false => {}
 LL +             Foo(_) => todo!()
@@ -274,7 +274,7 @@ LL |     Foo(bool),
 LL |     Bar,
    |     ^^^ not covered
    = note: the matched value is of type `NonEmptyEnum2`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~             _ if false => {}
 LL +             Foo(_) | Bar => todo!()
@@ -292,7 +292,7 @@ note: `NonEmptyEnum5` defined here
 LL | enum NonEmptyEnum5 {
    |      ^^^^^^^^^^^^^
    = note: the matched value is of type `NonEmptyEnum5`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
    |
 LL ~             _ if false => {}
 LL +             _ => todo!()

@@ -336,7 +336,7 @@ fn check_for_bindings_named_same_as_variants(
                     let ty_path = cx.tcx.def_path_str(edef.did);
                     let mut err = lint.build(&format!(
                         "pattern binding `{}` is named the same as one \
-                                        of the variants of the type `{}`",
+                         of the variants of the type `{}`",
                         ident, ty_path
                     ));
                     err.code(error_code!(E0170));
@@ -508,6 +508,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     // informative.
     let mut err;
     let pattern;
+    let mut patterns_len = 0;
     if is_empty_match && !non_empty_enum {
         err = create_e0004(
             cx.tcx.sess,
@@ -523,6 +524,7 @@ fn non_exhaustive_match<'p, 'tcx>(
             format!("non-exhaustive patterns: {} not covered", joined_patterns),
         );
         err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
+        patterns_len = witnesses.len();
         pattern = if witnesses.len() < 4 {
             witnesses
                 .iter()
@@ -622,12 +624,29 @@ fn non_exhaustive_match<'p, 'tcx>(
         _ => {}
     }
 
-    let msg = "ensure that all possible cases are being handled, possibly by adding wildcards \
-        or more match arms";
+    let msg = format!(
+        "ensure that all possible cases are being handled by adding a match arm with a wildcard \
+         pattern{}{}",
+        if patterns_len > 1 && patterns_len < 4 && suggestion.is_some() {
+            ", a match arm with multiple or-patterns"
+        } else {
+            // we are either not suggesting anything, or suggesting `_`
+            ""
+        },
+        match patterns_len {
+            // non-exhaustive enum case
+            0 if suggestion.is_some() => " as shown",
+            0 => "",
+            1 if suggestion.is_some() => " or an explicit pattern as shown",
+            1 => " or an explicit pattern",
+            _ if suggestion.is_some() => " as shown, or multiple match arms",
+            _ => " or multiple match arms",
+        },
+    );
     if let Some((span, sugg)) = suggestion {
-        err.span_suggestion_verbose(span, msg, sugg, Applicability::HasPlaceholders);
+        err.span_suggestion_verbose(span, &msg, sugg, Applicability::HasPlaceholders);
     } else {
-        err.help(msg);
+        err.help(&msg);
     }
     err.emit();
 }

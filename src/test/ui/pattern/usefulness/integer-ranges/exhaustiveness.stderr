@@ -5,7 +5,7 @@ LL |     m!(0u8, 0..255);
    |        ^^^ pattern `u8::MAX` not covered
    |
    = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         match $s { $($t)+ => {}
 LL ~         u8::MAX => todo!() }
@@ -18,7 +18,7 @@ LL |     m!(0u8, 0..=254);
    |        ^^^ pattern `u8::MAX` not covered
    |
    = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         match $s { $($t)+ => {}
 LL ~         u8::MAX => todo!() }
@@ -31,7 +31,7 @@ LL |     m!(0u8, 1..=255);
    |        ^^^ pattern `0_u8` not covered
    |
    = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         match $s { $($t)+ => {}
 LL ~         0_u8 => todo!() }
@@ -44,7 +44,7 @@ LL |     m!(0u8, 0..42 | 43..=255);
    |        ^^^ pattern `42_u8` not covered
    |
    = note: the matched value is of type `u8`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         match $s { $($t)+ => {}
 LL ~         42_u8 => todo!() }
@@ -57,7 +57,7 @@ LL |     m!(0i8, -128..127);
    |        ^^^ pattern `i8::MAX` not covered
    |
    = note: the matched value is of type `i8`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         match $s { $($t)+ => {}
 LL ~         i8::MAX => todo!() }
@@ -70,7 +70,7 @@ LL |     m!(0i8, -128..=126);
    |        ^^^ pattern `i8::MAX` not covered
    |
    = note: the matched value is of type `i8`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         match $s { $($t)+ => {}
 LL ~         i8::MAX => todo!() }
@@ -83,7 +83,7 @@ LL |     m!(0i8, -127..=127);
    |        ^^^ pattern `i8::MIN` not covered
    |
    = note: the matched value is of type `i8`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         match $s { $($t)+ => {}
 LL ~         i8::MIN => todo!() }
@@ -96,7 +96,7 @@ LL |     match 0i8 {
    |           ^^^ pattern `0_i8` not covered
    |
    = note: the matched value is of type `i8`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         1 ..= i8::MAX => {}
 LL +         0_i8 => todo!()
@@ -109,7 +109,7 @@ LL |     m!(0u128, 0..=ALMOST_MAX);
    |        ^^^^^ pattern `u128::MAX` not covered
    |
    = note: the matched value is of type `u128`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         match $s { $($t)+ => {}
 LL ~         u128::MAX => todo!() }
@@ -122,7 +122,7 @@ LL |     m!(0u128, 0..=4);
    |        ^^^^^ pattern `5_u128..=u128::MAX` not covered
    |
    = note: the matched value is of type `u128`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         match $s { $($t)+ => {}
 LL ~         5_u128..=u128::MAX => todo!() }
@@ -135,7 +135,7 @@ LL |     m!(0u128, 1..=u128::MAX);
    |        ^^^^^ pattern `0_u128` not covered
    |
    = note: the matched value is of type `u128`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         match $s { $($t)+ => {}
 LL ~         0_u128 => todo!() }
@@ -148,7 +148,7 @@ LL |     match (0u8, true) {
    |           ^^^^^^^^^^^ pattern `(126_u8..=127_u8, false)` not covered
    |
    = note: the matched value is of type `(u8, bool)`
-help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
 LL ~         (0 ..= 255, true) => {}
 LL +         (126_u8..=127_u8, false) => todo!()
