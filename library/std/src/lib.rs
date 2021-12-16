@@ -280,6 +280,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
+#![feature(float_next_up_down)]
 #![feature(fn_traits)]
 #![feature(float_minimum_maximum)]
 #![feature(format_args_nl)]
