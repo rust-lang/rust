@@ -37,7 +37,10 @@ LL |     match e2 { E2::A => (), E2::B => () };
    |           ^^ pattern `_` not covered
    |
    = note: the matched value is of type `E2`, which is marked as non-exhaustive
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL |     match e2 { E2::A => (), E2::B => (), _ => todo!() };
+   |                                        ++++++++++++++
 
 error: aborting due to 3 previous errors
 

@@ -5,7 +5,11 @@ LL |     match (l1, l2) {
    |           ^^^^^^^^ pattern `(Some(&[]), Err(_))` not covered
    |
    = note: the matched value is of type `(Option<&[T]>, Result<&[T], ()>)`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         (None, Ok(&[_, _, ..])) => "None, Ok(at least two elements)",
+LL +         (Some(&[]), Err(_)) => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `A(C)` not covered
   --> $DIR/non-exhaustive-match-nested.rs:15:11
@@ -20,7 +24,11 @@ LL |     match x {
    |           ^ pattern `A(C)` not covered
    |
    = note: the matched value is of type `T`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         T::B => { panic!("goodbye"); }
+LL +         A(C) => todo!()
+   |
 
 error: aborting due to 2 previous errors
 

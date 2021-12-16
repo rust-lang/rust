@@ -8,7 +8,11 @@ LL |     match x {
    |           ^ pattern `Foo(_, _)` not covered
    |
    = note: the matched value is of type `Foo`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         Foo(2, b) => println!("{}", b)
+LL +         Foo(_, _) => todo!()
+   |
 
 error: aborting due to previous error
 
