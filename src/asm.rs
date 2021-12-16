@@ -18,30 +18,30 @@ use crate::type_of::LayoutGccExt;
 
 // Rust asm! and GCC Extended Asm semantics differ substantially.
 //
-// 1. Rust asm operands go along as one list of operands. Operands themselves indicate 
-//    if they're "in" or "out". "In" and "out" operands can interleave. One operand can be 
+// 1. Rust asm operands go along as one list of operands. Operands themselves indicate
+//    if they're "in" or "out". "In" and "out" operands can interleave. One operand can be
 //    both "in" and "out" (`inout(reg)`).
 //
-//    GCC asm has two different lists for "in" and "out" operands. In terms of gccjit, 
-//    this means that all "out" operands must go before "in" operands. "In" and "out" operands 
+//    GCC asm has two different lists for "in" and "out" operands. In terms of gccjit,
+//    this means that all "out" operands must go before "in" operands. "In" and "out" operands
 //    cannot interleave.
 //
-// 2. Operand lists in both Rust and GCC are indexed. Index starts from 0. Indexes are important 
+// 2. Operand lists in both Rust and GCC are indexed. Index starts from 0. Indexes are important
 //    because the asm template refers to operands by index.
 //
 //    Mapping from Rust to GCC index would be 1-1 if it wasn't for...
 //
-// 3. Clobbers. GCC has a separate list of clobbers, and clobbers don't have indexes. 
-//    Contrary, Rust expresses clobbers through "out" operands that aren't tied to 
+// 3. Clobbers. GCC has a separate list of clobbers, and clobbers don't have indexes.
+//    Contrary, Rust expresses clobbers through "out" operands that aren't tied to
 //    a variable (`_`),  and such "clobbers" do have index.
 //
-// 4. Furthermore, GCC Extended Asm does not support explicit register constraints 
-//    (like `out("eax")`) directly, offering so-called "local register variables" 
-//    as a workaround. These variables need to be declared and initialized *before* 
-//    the Extended Asm block but *after* normal local variables 
+// 4. Furthermore, GCC Extended Asm does not support explicit register constraints
+//    (like `out("eax")`) directly, offering so-called "local register variables"
+//    as a workaround. These variables need to be declared and initialized *before*
+//    the Extended Asm block but *after* normal local variables
 //    (see comment in `codegen_inline_asm` for explanation).
 //
-// With that in mind, let's see how we translate Rust syntax to GCC 
+// With that in mind, let's see how we translate Rust syntax to GCC
 // (from now on, `CC` stands for "constraint code"):
 //
 // * `out(reg_class) var`   -> translated to output operand: `"=CC"(var)`
@@ -52,18 +52,17 @@ use crate::type_of::LayoutGccExt;
 //
 // * `out("explicit register") _` -> not translated to any operands, register is simply added to clobbers list
 //
-// * `inout(reg_class) in_var => out_var` -> translated to two operands: 
+// * `inout(reg_class) in_var => out_var` -> translated to two operands:
 //                              output: `"=CC"(in_var)`
-//                              input:  `"num"(out_var)` where num is the GCC index 
+//                              input:  `"num"(out_var)` where num is the GCC index
 //                                       of the corresponding output operand
 //
-// * `inout(reg_class) in_var => _` -> same as `inout(reg_class) in_var => tmp`, 
+// * `inout(reg_class) in_var => _` -> same as `inout(reg_class) in_var => tmp`,
 //                                      where "tmp" is a temporary unused variable
 //
-// * `out/in/inout("explicit register") var` -> translated to one or two operands as described above 
-//                                              with `"r"(var)` constraint, 
+// * `out/in/inout("explicit register") var` -> translated to one or two operands as described above
+//                                              with `"r"(var)` constraint,
 //                                              and one register variable assigned to the desired register.
-// 
 
 const ATT_SYNTAX_INS: &str = ".att_syntax noprefix\n\t";
 const INTEL_SYNTAX_INS: &str = "\n\t.intel_syntax noprefix";
@@ -124,7 +123,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let att_dialect = is_x86 && options.contains(InlineAsmOptions::ATT_SYNTAX);
         let intel_dialect = is_x86 && !options.contains(InlineAsmOptions::ATT_SYNTAX);
 
-        // GCC index of an output operand equals its position in the array 
+        // GCC index of an output operand equals its position in the array
         let mut outputs = vec![];
 
         // GCC index of an input operand equals its position in the array
@@ -138,9 +137,9 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let mut constants_len = 0;
 
         // There are rules we must adhere to if we want GCC to do the right thing:
-        // 
+        //
         // * Every local variable that the asm block uses as an output must be declared *before*
-        //   the asm block. 
+        //   the asm block.
         // * There must be no instructions whatsoever between the register variables and the asm.
         //
         // Therefore, the backend must generate the instructions strictly in this order:
@@ -152,7 +151,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // We also must make sure that no input operands are emitted before output operands.
         //
         // This is why we work in passes, first emitting local vars, then local register vars.
-        // Also, we don't emit any asm operands immediately; we save them to 
+        // Also, we don't emit any asm operands immediately; we save them to
         // the one of the buffers to be emitted later.
 
         // 1. Normal variables (and saving operands to buffers).
@@ -165,7 +164,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         (Constraint(constraint), Some(place)) => (constraint, place.layout.gcc_type(self.cx, false)),
                         // When `reg` is a class and not an explicit register but the out place is not specified,
                         // we need to create an unused output variable to assign the output to. This var
-                        // needs to be of a type that's "compatible" with the register class, but specific type 
+                        // needs to be of a type that's "compatible" with the register class, but specific type
                         // doesn't matter.
                         (Constraint(constraint), None) => (constraint, dummy_output_type(self.cx, reg.reg_class())),
                         (Register(_), Some(_)) => {
@@ -193,7 +192,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                     let tmp_var = self.current_func().new_local(None, ty, "output_register");
                     outputs.push(AsmOutOperand {
-                        constraint, 
+                        constraint,
                         rust_idx,
                         late,
                         readwrite: false,
@@ -204,12 +203,12 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 InlineAsmOperandRef::In { reg, value } => {
                     if let ConstraintOrRegister::Constraint(constraint) = reg_to_gcc(reg) {
-                        inputs.push(AsmInOperand { 
-                            constraint: Cow::Borrowed(constraint), 
-                            rust_idx, 
+                        inputs.push(AsmInOperand {
+                            constraint: Cow::Borrowed(constraint),
+                            rust_idx,
                             val: value.immediate()
                         });
-                    } 
+                    }
                     else {
                         // left for the next pass
                         continue
@@ -219,7 +218,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 InlineAsmOperandRef::InOut { reg, late, in_value, out_place } => {
                     let constraint = if let ConstraintOrRegister::Constraint(constraint) = reg_to_gcc(reg) {
                         constraint
-                    } 
+                    }
                     else {
                         // left for the next pass
                         continue
@@ -228,22 +227,22 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     // Rustc frontend guarantees that input and output types are "compatible",
                     // so we can just use input var's type for the output variable.
                     //
-                    // This decision is also backed by the fact that LLVM needs in and out 
-                    // values to be of *exactly the same type*, not just "compatible". 
+                    // This decision is also backed by the fact that LLVM needs in and out
+                    // values to be of *exactly the same type*, not just "compatible".
                     // I'm not sure if GCC is so picky too, but better safe than sorry.
                     let ty = in_value.layout.gcc_type(self.cx, false);
                     let tmp_var = self.current_func().new_local(None, ty, "output_register");
 
                     // If the out_place is None (i.e `inout(reg) _` syntax was used), we translate
-                    // it to one "readwrite (+) output variable", otherwise we translate it to two 
+                    // it to one "readwrite (+) output variable", otherwise we translate it to two
                     // "out and tied in" vars as described above.
                     let readwrite = out_place.is_none();
                     outputs.push(AsmOutOperand {
-                        constraint, 
+                        constraint,
                         rust_idx,
                         late,
                         readwrite,
-                        tmp_var, 
+                        tmp_var,
                         out_place,
                     });
 
@@ -252,8 +251,8 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         let constraint = Cow::Owned(out_gcc_idx.to_string());
 
                         inputs.push(AsmInOperand {
-                            constraint, 
-                            rust_idx, 
+                            constraint,
+                            rust_idx,
                             val: in_value.immediate()
                         });
                     }
@@ -280,7 +279,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     if let ConstraintOrRegister::Register(reg_name) = reg_to_gcc(reg) {
                         let out_place = if let Some(place) = place {
                             place
-                        } 
+                        }
                         else {
                             // processed in the previous pass
                             continue
@@ -291,7 +290,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         tmp_var.set_register_name(reg_name);
 
                         outputs.push(AsmOutOperand {
-                            constraint: "r".into(), 
+                            constraint: "r".into(),
                             rust_idx,
                             late,
                             readwrite: false,
@@ -311,9 +310,9 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         reg_var.set_register_name(reg_name);
                         self.llbb().add_assignment(None, reg_var, value.immediate());
 
-                        inputs.push(AsmInOperand { 
-                            constraint: "r".into(), 
-                            rust_idx, 
+                        inputs.push(AsmInOperand {
+                            constraint: "r".into(),
+                            rust_idx,
                             val: reg_var.to_rvalue()
                         });
                     }
@@ -324,31 +323,23 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 // `inout("explicit register") in_var => out_var`
                 InlineAsmOperandRef::InOut { reg, late, in_value, out_place } => {
                     if let ConstraintOrRegister::Register(reg_name) = reg_to_gcc(reg) {
-                        let out_place = if let Some(place) = out_place {
-                            place
-                        } 
-                        else {
-                            // processed in the previous pass
-                            continue
-                        };
-
                         // See explanation in the first pass.
                         let ty = in_value.layout.gcc_type(self.cx, false);
                         let tmp_var = self.current_func().new_local(None, ty, "output_register");
                         tmp_var.set_register_name(reg_name);
 
                         outputs.push(AsmOutOperand {
-                            constraint: "r".into(), 
+                            constraint: "r".into(),
                             rust_idx,
                             late,
                             readwrite: false,
                             tmp_var,
-                            out_place: Some(out_place)
+                            out_place,
                         });
 
                         let constraint = Cow::Owned((outputs.len() - 1).to_string());
-                        inputs.push(AsmInOperand { 
-                            constraint, 
+                        inputs.push(AsmInOperand {
+                            constraint,
                             rust_idx,
                             val: in_value.immediate()
                         });
@@ -357,8 +348,8 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     // processed in the previous pass
                 }
 
-                InlineAsmOperandRef::Const { .. } 
-                | InlineAsmOperandRef::SymFn { .. } 
+                InlineAsmOperandRef::Const { .. }
+                | InlineAsmOperandRef::SymFn { .. }
                 | InlineAsmOperandRef::SymStatic { .. } => {
                     // processed in the previous pass
                 }
@@ -453,7 +444,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         if !intel_dialect {
             template_str.push_str(INTEL_SYNTAX_INS);
         }
-        
+
         // 4. Generate Extended Asm block
 
         let block = self.llbb();
@@ -472,7 +463,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
 
         if !options.contains(InlineAsmOptions::PRESERVES_FLAGS) {
-            // TODO(@Commeownist): I'm not 100% sure this one clobber is sufficient 
+            // TODO(@Commeownist): I'm not 100% sure this one clobber is sufficient
             // on all architectures. For instance, what about FP stack?
             extended_asm.add_clobber("cc");
         }
@@ -491,10 +482,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             self.call(self.type_void(), builtin_unreachable, &[], None);
         }
 
-        // Write results to outputs. 
+        // Write results to outputs.
         //
         // We need to do this because:
-        //  1. Turning `PlaceRef` into `RValue` is error-prone and has nasty edge cases 
+        //  1. Turning `PlaceRef` into `RValue` is error-prone and has nasty edge cases
         //     (especially with current `rustc_backend_ssa` API).
         //  2. Not every output operand has an `out_place`, and it's required by `add_output_operand`.
         //
@@ -502,7 +493,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // generates `out_place = tmp_var;` assignments if out_place exists.
         for op in &outputs {
             if let Some(place) = op.out_place {
-                OperandValue::Immediate(op.tmp_var.to_rvalue()).store(self, place);                
+                OperandValue::Immediate(op.tmp_var.to_rvalue()).store(self, place);
             }
         }
 

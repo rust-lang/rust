@@ -17,6 +17,16 @@ extern "C" {
     fn add_asm(a: i64, b: i64) -> i64;
 }
 
+pub unsafe fn mem_cpy(dst: *mut u8, src: *const u8, len: usize) {
+    asm!(
+        "rep movsb",
+        inout("rdi") dst => _,
+        inout("rsi") src => _,
+        inout("rcx") len => _,
+        options(preserves_flags, nostack)
+    );
+}
+
 fn main() {
     unsafe {
         asm!("nop");
@@ -62,11 +72,11 @@ fn main() {
     }
     assert_eq!(x, 43);
 
-    // check inout(reg_class) x 
+    // check inout(reg_class) x
     let mut x: u64 = 42;
     unsafe {
         asm!("add {0}, {0}",
-            inout(reg) x 
+            inout(reg) x
         );
     }
     assert_eq!(x, 84);
@@ -75,7 +85,7 @@ fn main() {
     let mut x: u64 = 42;
     unsafe {
         asm!("add r11, r11",
-            inout("r11") x 
+            inout("r11") x
         );
     }
     assert_eq!(x, 84);
@@ -98,12 +108,12 @@ fn main() {
     assert_eq!(res, 7);
     assert_eq!(rem, 2);
 
-    // check const 
+    // check const
     let mut x: u64 = 42;
     unsafe {
         asm!("add {}, {}",
             inout(reg) x,
-            const 1 
+            const 1
         );
     }
     assert_eq!(x, 43);
@@ -150,4 +160,11 @@ fn main() {
     assert_eq!(x, 42);
 
     assert_eq!(unsafe { add_asm(40, 2) }, 42);
+
+    let array1 = [1u8, 2, 3];
+    let mut array2 = [0u8, 0, 0];
+    unsafe {
+        mem_cpy(array2.as_mut_ptr(), array1.as_ptr(), 3);
+    }
+    assert_eq!(array1, array2);
 }
