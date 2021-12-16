@@ -1,3 +1,4 @@
+//! Strip all doc(hidden) items from the output.
 use rustc_span::symbol::sym;
 use std::mem;
 

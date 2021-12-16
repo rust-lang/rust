@@ -1,3 +1,5 @@
+//! Detects links that are not linkified, e.g., in Markdown such as `Go to https://example.com/.`
+//! Suggests wrapping the link with angle brackets: `Go to <https://example.com/>.` to linkify it.
 use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;

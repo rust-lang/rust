@@ -1,3 +1,4 @@
+//! Validates syntax inside Rust code blocks (\`\`\`rust).
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::Emitter, Applicability, Diagnostic, Handler};
 use rustc_middle::lint::LintDiagnosticBuilder;
