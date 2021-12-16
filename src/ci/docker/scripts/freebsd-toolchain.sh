@@ -53,7 +53,7 @@ files_to_extract=(
 for lib in c cxxrt gcc_s m thr util; do
   files_to_extract=("${files_to_extract[@]}" "./lib/lib${lib}.*" "./usr/lib/lib${lib}.*")
 done
-for lib in c++ c_nonshared compiler_rt execinfo gcc pthread rt ssp_nonshared procstat kvm; do
+for lib in c++ c_nonshared compiler_rt execinfo gcc pthread rt ssp_nonshared procstat devstat kvm; do
   files_to_extract=("${files_to_extract[@]}" "./usr/lib/lib${lib}.*")
 done
 
