@@ -34,6 +34,7 @@ pub fn get_rpath_flags(config: &mut RPathConfig<'_>) -> Vec<String> {
 fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
     let mut ret = Vec::with_capacity(rpaths.len()); // the minimum needed capacity
 
+    ret.push(String::from("-Wl,-z,origin"));
     for rpath in rpaths {
         if rpath.contains(',') {
             ret.push("-Wl,-rpath".into());

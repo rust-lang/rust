@@ -1176,6 +1176,7 @@ impl<'a> Builder<'a> {
                 rustflags.arg("-Zosx-rpath-install-name");
                 Some("-Wl,-rpath,@loader_path/../lib")
             } else if !target.contains("windows") {
+                rustflags.arg("-Clink-args=-Wl,-z,origin");
                 Some("-Wl,-rpath,$ORIGIN/../lib")
             } else {
                 None
