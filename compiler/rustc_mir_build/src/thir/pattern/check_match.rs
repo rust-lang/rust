@@ -63,7 +63,9 @@ impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);
         match &ex.kind {
-            hir::ExprKind::Match(scrut, arms, source) => self.check_match(scrut, arms, *source),
+            hir::ExprKind::Match(scrut, arms, source) => {
+                self.check_match(scrut, arms, *source, ex.span)
+            }
             hir::ExprKind::Let(pat, scrut, span) => self.check_let(pat, scrut, *span),
             _ => {}
         }
@@ -160,6 +162,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         scrut: &hir::Expr<'_>,
         hir_arms: &'tcx [hir::Arm<'tcx>],
         source: hir::MatchSource,
+        expr_span: Span,
     ) {
         let mut cx = self.new_cx(scrut.hir_id);
 
@@ -205,7 +208,6 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         }
 
         // Check if the match is exhaustive.
-        let is_empty_match = arms.is_empty();
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
             if source == hir::MatchSource::ForLoopDesugar && hir_arms.len() == 2 {
@@ -213,7 +215,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 let pat = hir_arms[1].pat.for_loop_some().unwrap();
                 self.check_irrefutable(pat, "`for` loop binding", None);
             } else {
-                non_exhaustive_match(&cx, scrut_ty, scrut.span, witnesses, is_empty_match);
+                non_exhaustive_match(&cx, scrut_ty, scrut.span, witnesses, hir_arms, expr_span);
             }
         }
     }
@@ -496,8 +498,10 @@ fn non_exhaustive_match<'p, 'tcx>(
     scrut_ty: Ty<'tcx>,
     sp: Span,
     witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
-    is_empty_match: bool,
+    arms: &[hir::Arm<'tcx>],
+    expr_span: Span,
 ) {
+    let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
         ty::Adt(def, _) => def.is_enum() && !def.variants.is_empty(),
         _ => false,
@@ -505,12 +509,14 @@ fn non_exhaustive_match<'p, 'tcx>(
     // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
     // informative.
     let mut err;
+    let pattern;
     if is_empty_match && !non_empty_enum {
         err = create_e0004(
             cx.tcx.sess,
             sp,
             format!("non-exhaustive patterns: type `{}` is non-empty", scrut_ty),
         );
+        pattern = "_".to_string();
     } else {
         let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
         err = create_e0004(
@@ -519,6 +525,15 @@ fn non_exhaustive_match<'p, 'tcx>(
             format!("non-exhaustive patterns: {} not covered", joined_patterns),
         );
         err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
+        pattern = if witnesses.len() < 4 {
+            witnesses
+                .iter()
+                .map(|witness| witness.to_pat(cx).to_string())
+                .collect::<Vec<String>>()
+                .join(" | ")
+        } else {
+            "_".to_string()
+        };
     };
 
     let is_variant_list_non_exhaustive = match scrut_ty.kind() {
@@ -527,10 +542,6 @@ fn non_exhaustive_match<'p, 'tcx>(
     };
 
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
-    err.help(
-        "ensure that all possible cases are being handled, \
-              possibly by adding wildcards or more match arms",
-    );
     err.note(&format!(
         "the matched value is of type `{}`{}",
         scrut_ty,
@@ -542,14 +553,14 @@ fn non_exhaustive_match<'p, 'tcx>(
         && matches!(witnesses[0].ctor(), Constructor::NonExhaustive)
     {
         err.note(&format!(
-            "`{}` does not have a fixed maximum value, \
-                so a wildcard `_` is necessary to match exhaustively",
+            "`{}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
+             exhaustively",
             scrut_ty,
         ));
         if cx.tcx.sess.is_nightly_build() {
             err.help(&format!(
-                "add `#![feature(precise_pointer_size_matching)]` \
-                    to the crate attributes to enable precise `{}` matching",
+                "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
+                 enable precise `{}` matching",
                 scrut_ty,
             ));
         }
@@ -558,6 +569,37 @@ fn non_exhaustive_match<'p, 'tcx>(
         if cx.tcx.is_ty_uninhabited_from(cx.module, sub_ty, cx.param_env) {
             err.note("references are always considered inhabited");
         }
+    }
+
+    let mut suggestion = None;
+    let sm = cx.tcx.sess.source_map();
+    match arms {
+        [] if sp.ctxt() == expr_span.ctxt() => {
+            // Get the span for the empty match body `{}`.
+            let (indentation, more) = if let Some(snippet) = sm.indentation_before(sp) {
+                (format!("\n{}", snippet), "    ")
+            } else {
+                (" ".to_string(), "")
+            };
+            suggestion = Some((
+                sp.shrink_to_hi().with_hi(expr_span.hi()),
+                format!(
+                    " {{{indentation}{more}{pattern} => todo!(),{indentation}}}",
+                    indentation = indentation,
+                    more = more,
+                    pattern = pattern,
+                ),
+            ));
+        }
+        _ => {}
+    }
+
+    let msg = "ensure that all possible cases are being handled, possibly by adding wildcards \
+        or more match arms";
+    if let Some((span, sugg)) = suggestion {
+        err.span_suggestion_verbose(span, msg, sugg, Applicability::HasPlaceholders);
+    } else {
+        err.help(msg);
     }
     err.emit();
 }

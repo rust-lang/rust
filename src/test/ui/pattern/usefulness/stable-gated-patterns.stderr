@@ -9,8 +9,8 @@ LL |     match Foo::Stable {
 LL |     Stable2,
    |     ------- not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Foo`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/stable-gated-patterns.rs:13:11
@@ -18,8 +18,8 @@ error[E0004]: non-exhaustive patterns: `_` not covered
 LL |     match Foo::Stable {
    |           ^^^^^^^^^^^ pattern `_` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Foo`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to 2 previous errors
 

@@ -7,9 +7,14 @@ LL | enum A {}
 LL |     match a {}
    |           ^
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&A`
    = note: references are always considered inhabited
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~     match a {
+LL +         _ => todo!(),
+LL +     }
+   |
 
 error: aborting due to previous error
 

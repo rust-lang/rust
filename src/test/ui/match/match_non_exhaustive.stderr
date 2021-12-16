@@ -10,8 +10,8 @@ LL | enum L { A, B }
 LL |     match l { L::A => () };
    |           ^ pattern `B` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `L`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `E1` is non-empty
   --> $DIR/match_non_exhaustive.rs:28:11
@@ -19,8 +19,13 @@ error[E0004]: non-exhaustive patterns: type `E1` is non-empty
 LL |     match e1 {};
    |           ^^
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `E1`, which is marked as non-exhaustive
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~     match e1 {
+LL +         _ => todo!(),
+LL ~     };
+   |
 
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/match_non_exhaustive.rs:30:11
@@ -28,8 +33,8 @@ error[E0004]: non-exhaustive patterns: `_` not covered
 LL |     match e2 { E2::A => (), E2::B => () };
    |           ^^ pattern `_` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `E2`, which is marked as non-exhaustive
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to 3 previous errors
 

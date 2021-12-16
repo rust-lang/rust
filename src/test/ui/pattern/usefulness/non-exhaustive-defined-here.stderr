@@ -19,8 +19,8 @@ LL | | }
 LL |       match e1 {
    |             ^^ patterns `B` and `C` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `E`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0005]: refutable pattern in local binding: `B` and `C` not covered
   --> $DIR/non-exhaustive-defined-here.rs:36:9
@@ -72,8 +72,8 @@ LL | | }
 LL |       match e {
    |             ^ patterns `&B` and `&C` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&E`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0005]: refutable pattern in local binding: `&B` and `&C` not covered
   --> $DIR/non-exhaustive-defined-here.rs:44:9
@@ -125,8 +125,8 @@ LL | | }
 LL |       match e {
    |             ^ patterns `&&mut &B` and `&&mut &C` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `&&mut &E`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0005]: refutable pattern in local binding: `&&mut &B` and `&&mut &C` not covered
   --> $DIR/non-exhaustive-defined-here.rs:52:9
@@ -173,8 +173,8 @@ LL | | }
 LL |       match e {
    |             ^ pattern `None` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Opt`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0005]: refutable pattern in local binding: `None` not covered
   --> $DIR/non-exhaustive-defined-here.rs:69:9

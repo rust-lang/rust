@@ -9,8 +9,8 @@ LL |     match Foo::Stable {
 LL |     Unstable,
    |     -------- not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Foo`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to previous error
 

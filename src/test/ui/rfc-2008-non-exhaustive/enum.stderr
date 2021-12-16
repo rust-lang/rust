@@ -4,8 +4,13 @@ error[E0004]: non-exhaustive patterns: type `EmptyNonExhaustiveEnum` is non-empt
 LL |     match x {}
    |           ^
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `EmptyNonExhaustiveEnum`, which is marked as non-exhaustive
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~     match x {
+LL +         _ => todo!(),
+LL ~     }
+   |
 
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/enum.rs:16:11
@@ -13,8 +18,8 @@ error[E0004]: non-exhaustive patterns: `_` not covered
 LL |     match enum_unit {
    |           ^^^^^^^^^ pattern `_` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `NonExhaustiveEnum`, which is marked as non-exhaustive
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/enum.rs:23:11
@@ -22,8 +27,13 @@ error[E0004]: non-exhaustive patterns: `_` not covered
 LL |     match enum_unit {};
    |           ^^^^^^^^^ pattern `_` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `NonExhaustiveEnum`, which is marked as non-exhaustive
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~     match enum_unit {
+LL +         _ => todo!(),
+LL ~     };
+   |
 
 error: aborting due to 3 previous errors
 
