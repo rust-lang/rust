@@ -103,6 +103,12 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         let mut reinit = None;
         match expr.kind {
+            ExprKind::Assign(lhs, rhs, _) => {
+                self.visit_expr(lhs);
+                self.visit_expr(rhs);
+
+                reinit = Some(lhs);
+            }
             ExprKind::If(test, if_true, if_false) => {
                 self.visit_expr(test);
 
@@ -118,17 +124,6 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                 }
 
                 self.drop_ranges.add_control_edge(true_end, self.expr_index + 1);
-            }
-            ExprKind::Assign(lhs, rhs, _) => {
-                self.visit_expr(lhs);
-                self.visit_expr(rhs);
-
-                reinit = Some(lhs);
-            }
-            ExprKind::Loop(body, ..) => {
-                let loop_begin = self.expr_index + 1;
-                self.visit_block(body);
-                self.drop_ranges.add_control_edge(self.expr_index, loop_begin);
             }
             ExprKind::Match(scrutinee, arms, ..) => {
                 self.visit_expr(scrutinee);
@@ -160,12 +155,45 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                     self.drop_ranges.add_control_edge(arm_end, self.expr_index + 1)
                 });
             }
+            ExprKind::Loop(body, ..) => {
+                let loop_begin = self.expr_index + 1;
+                self.visit_block(body);
+                self.drop_ranges.add_control_edge(self.expr_index, loop_begin);
+            }
             ExprKind::Break(hir::Destination { target_id: Ok(target), .. }, ..)
             | ExprKind::Continue(hir::Destination { target_id: Ok(target), .. }, ..) => {
                 self.drop_ranges.add_control_edge_hir_id(self.expr_index, target);
             }
 
-            _ => intravisit::walk_expr(self, expr),
+            ExprKind::AddrOf(..)
+            | ExprKind::Array(..)
+            | ExprKind::AssignOp(..)
+            | ExprKind::Binary(..)
+            | ExprKind::Block(..)
+            | ExprKind::Box(..)
+            | ExprKind::Break(..)
+            | ExprKind::Call(..)
+            | ExprKind::Cast(..)
+            | ExprKind::Closure(..)
+            | ExprKind::ConstBlock(..)
+            | ExprKind::Continue(..)
+            | ExprKind::DropTemps(..)
+            | ExprKind::Err
+            | ExprKind::Field(..)
+            | ExprKind::Index(..)
+            | ExprKind::InlineAsm(..)
+            | ExprKind::Let(..)
+            | ExprKind::Lit(..)
+            | ExprKind::LlvmInlineAsm(..)
+            | ExprKind::MethodCall(..)
+            | ExprKind::Path(..)
+            | ExprKind::Repeat(..)
+            | ExprKind::Ret(..)
+            | ExprKind::Struct(..)
+            | ExprKind::Tup(..)
+            | ExprKind::Type(..)
+            | ExprKind::Unary(..)
+            | ExprKind::Yield(..) => intravisit::walk_expr(self, expr),
         }
 
         self.expr_index = self.expr_index + 1;
