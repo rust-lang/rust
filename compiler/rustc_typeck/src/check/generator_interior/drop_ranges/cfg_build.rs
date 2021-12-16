@@ -157,8 +157,15 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
             }
             ExprKind::Loop(body, ..) => {
                 let loop_begin = self.expr_index + 1;
-                self.visit_block(body);
-                self.drop_ranges.add_control_edge(self.expr_index, loop_begin);
+                if body.stmts.is_empty() && body.expr.is_none() {
+                    // For empty loops we won't have updated self.expr_index after visiting the
+                    // body, meaning we'd get an edge from expr_index to expr_index + 1, but
+                    // instead we want an edge from expr_index + 1 to expr_index + 1.
+                    self.drop_ranges.add_control_edge(loop_begin, loop_begin);
+                } else {
+                    self.visit_block(body);
+                    self.drop_ranges.add_control_edge(self.expr_index, loop_begin);
+                }
             }
             ExprKind::Break(hir::Destination { target_id: Ok(target), .. }, ..)
             | ExprKind::Continue(hir::Destination { target_id: Ok(target), .. }, ..) => {

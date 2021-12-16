@@ -1,5 +1,5 @@
 error: future cannot be sent between threads safely
-  --> $DIR/async-fn-nonsend.rs:50:17
+  --> $DIR/async-fn-nonsend.rs:57:17
    |
 LL |     assert_send(non_send_temporary_in_match());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `non_send_temporary_in_match` is not `Send`
@@ -16,13 +16,13 @@ LL |         Some(_) => fut().await,
 LL | }
    | - `Some(non_send())` is later dropped here
 note: required by a bound in `assert_send`
-  --> $DIR/async-fn-nonsend.rs:46:24
+  --> $DIR/async-fn-nonsend.rs:53:24
    |
 LL | fn assert_send(_: impl Send) {}
    |                        ^^^^ required by this bound in `assert_send`
 
 error: future cannot be sent between threads safely
-  --> $DIR/async-fn-nonsend.rs:52:17
+  --> $DIR/async-fn-nonsend.rs:59:17
    |
 LL |     assert_send(non_sync_with_method_call());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
@@ -40,7 +40,7 @@ LL |     }
 LL | }
    | - `f` is later dropped here
 note: required by a bound in `assert_send`
-  --> $DIR/async-fn-nonsend.rs:46:24
+  --> $DIR/async-fn-nonsend.rs:53:24
    |
 LL | fn assert_send(_: impl Send) {}
    |                        ^^^^ required by this bound in `assert_send`
