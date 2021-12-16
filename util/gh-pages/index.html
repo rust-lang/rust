@@ -36,28 +36,22 @@ Otherwise, have a great day =^.^=
         }
 
         .dropdown-menu .checkbox {
-            width: 100%;
             display: block;
-            clear: both;
-            font-weight: 400;
-            line-height: 1.42857143;
             white-space: nowrap;
             margin: 0;
-         }
-
-         .dropdown-menu .checkbox label {
+        }
+        .dropdown-menu .checkbox label {
             padding: 3px 20px;
             width: 100%;
-         }
+        }
 
-         .dropdown-menu .checkbox input {
-             position: relative;
-             margin: 0 0.5rem 0;
-             padding: 0;
-             vertical-align: middle;
-         }
+        .dropdown-menu .checkbox input {
+            position: relative;
+            margin: 0 0.5rem 0;
+            padding: 0;
+        }
 
-         .dropdown-menu .checkbox:hover {
+        .dropdown-menu .checkbox:hover {
             background-color: var(--theme-hover);
         }
 
@@ -243,7 +237,7 @@ Otherwise, have a great day =^.^=
             display: block;
         }
 
-        .theme-choice>li {
+        .theme-choice > li {
             padding: 5px 10px;
             font-size: 0.8em;
             user-select: none;
@@ -352,11 +346,13 @@ Otherwise, have a great day =^.^=
                             <ul class="dropdown-menu">
                                 <li class="checkbox">
                                     <label ng-click="toggleLevels(true)">
+                                        <input type="checkbox" class="invisible" />
                                         All
                                     </label>
                                 </li>
                                 <li class="checkbox">
                                     <label ng-click="toggleLevels(false)">
+                                        <input type="checkbox" class="invisible" />
                                         None
                                     </label>
                                 </li>
@@ -376,11 +372,13 @@ Otherwise, have a great day =^.^=
                             <ul class="dropdown-menu">
                                 <li class="checkbox">
                                     <label ng-click="toggleGroups(true)">
+                                        <input type="checkbox" class="invisible" />
                                         All
                                     </label>
                                 </li>
                                 <li class="checkbox">
                                     <label ng-click="toggleGroups(false)">
+                                        <input type="checkbox" class="invisible" />
                                         None
                                     </label>
                                 </li>
@@ -428,7 +426,7 @@ Otherwise, have a great day =^.^=
                     </h2>
                 </header>
 
-                <ul class="list-group lint-docs" ng-if="open[lint.id]" ng-class="{collapse: true, in: open[lint.id]}">
+                <div class="list-group lint-docs" ng-if="open[lint.id]" ng-class="{collapse: true, in: open[lint.id]}">
                     <div class="list-group-item lint-doc-md" ng-bind-html="lint.docs | markdown"></div>
                     <div class="lint-additional-info-container">
                         <!-- Applicability -->
@@ -521,46 +519,46 @@ Otherwise, have a great day =^.^=
                 );
             };
         })
-                .directive('themeDropdown', function ($document) {
-                    return {
-                        restrict: 'A',
-                        link: function ($scope, $element, $attr) {
-                            $element.bind('click', function () {
-                                $element.toggleClass('open');
-                                $element.addClass('open-recent');
-                            });
+        .directive('themeDropdown', function ($document) {
+            return {
+                restrict: 'A',
+                link: function ($scope, $element, $attr) {
+                    $element.bind('click', function () {
+                        $element.toggleClass('open');
+                        $element.addClass('open-recent');
+                    });
 
-                            $document.bind('click', function () {
-                                if (!$element.hasClass('open-recent')) {
-                                    $element.removeClass('open');
-                                }
-                                $element.removeClass('open-recent');
-                            })
+                    $document.bind('click', function () {
+                        if (!$element.hasClass('open-recent')) {
+                            $element.removeClass('open');
                         }
-                    }
-                })
-                .directive('filterDropdown', function ($document) {
-                    return {
-                        restrict: 'A',
-                        link: function ($scope, $element, $attr) {
-                            $element.bind('click', function (event) {
-                                if (event.target.closest('button')) {
-                                    $element.toggleClass('open');
-                                } else {
-                                    $element.addClass('open');
-                                }
-                                $element.addClass('open-recent');
-                            });
+                        $element.removeClass('open-recent');
+                    })
+                }
+            }
+        })
+        .directive('filterDropdown', function ($document) {
+            return {
+                restrict: 'A',
+                link: function ($scope, $element, $attr) {
+                    $element.bind('click', function (event) {
+                        if (event.target.closest('button')) {
+                            $element.toggleClass('open');
+                        } else {
+                            $element.addClass('open');
+                        }
+                        $element.addClass('open-recent');
+                    });
 
-                            $document.bind('click', function () {
-                                if (!$element.hasClass('open-recent')) {
-                                    $element.removeClass('open');
-                                }
-                                $element.removeClass('open-recent');
-                            })
+                    $document.bind('click', function () {
+                        if (!$element.hasClass('open-recent')) {
+                            $element.removeClass('open');
                         }
-                    }
-                })
+                        $element.removeClass('open-recent');
+                    })
+                }
+            }
+        })
         .directive('onFinishRender', function ($timeout) {
             return {
                 restrict: 'A',
