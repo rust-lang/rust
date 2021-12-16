@@ -7455,7 +7455,11 @@ public:
           IRBuilder<> Builder2(&call);
           getForwardBuilder(Builder2);
 
-          SmallVector<Value *, 2> args = {orig->getArgOperand(0)};
+          SmallVector<Value *, 2> args;
+          for (unsigned i = 0; i < orig->getNumArgOperands(); ++i) {
+            auto arg = orig->getArgOperand(i);
+            args.push_back(gutils->getNewFromOriginal(arg));
+          }
           CallInst *CI = Builder2.CreateCall(orig->getFunctionType(),
                                              orig->getCalledFunction(), args);
           CI->setAttributes(orig->getAttributes());

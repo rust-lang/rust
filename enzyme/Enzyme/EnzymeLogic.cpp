@@ -3848,7 +3848,9 @@ Function *EnzymeLogic::CreateForwardDiff(
 
   for (size_t i = 0; i < constant_args.size(); ++i) {
     auto arg = constant_args[i];
-    if (arg == DIFFE_TYPE::DUP_ARG) {
+    switch (arg) {
+    case DIFFE_TYPE::DUP_ARG:
+    case DIFFE_TYPE::DUP_NONEED: {
       newArgs += 1;
       auto pri = gutils->oldFunc->arg_begin() + i;
       auto dif = newArgs;
@@ -3857,6 +3859,12 @@ Function *EnzymeLogic::CreateForwardDiff(
       IRBuilder<> Builder(&BB.front());
 
       gutils->setDiffe(pri, dif, Builder);
+      break;
+    }
+    case DIFFE_TYPE::CONSTANT:
+      break;
+    case DIFFE_TYPE::OUT_DIFF:
+      report_fatal_error("unsupported DIFFE_TYPE");
     }
     newArgs += 1;
   }
