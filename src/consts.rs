@@ -20,7 +20,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
         if value.get_type() == self.bool_type.make_pointer() {
             if let Some(pointee) = typ.get_pointee() {
-                if pointee.is_vector().is_some() {
+                if pointee.dyncast_vector().is_some() {
                     panic!()
                 }
             }
@@ -81,7 +81,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             else {
                 value
             };
-        global.global_set_initializer_value(value);
+        global.global_set_initializer_rvalue(value);
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
@@ -180,7 +180,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             };
         // FIXME(antoyo): I think the name coming from generate_local_symbol_name() above cannot be used
         // globally.
-        global.global_set_initializer_value(cv);
+        global.global_set_initializer_rvalue(cv);
         // TODO(antoyo): set unnamed address.
         global.get_address(None)
     }
@@ -375,7 +375,7 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
         real_name.push_str(&sym);
         let global2 = cx.define_global(&real_name, llty, is_tls, attrs.link_section);
         // TODO(antoyo): set linkage.
-        global2.global_set_initializer_value(global1.get_address(None));
+        global2.global_set_initializer_rvalue(global1.get_address(None));
         // TODO(antoyo): use global_set_initializer() when it will work.
         global2
     }
