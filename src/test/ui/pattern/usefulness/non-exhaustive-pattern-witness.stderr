@@ -10,8 +10,8 @@ LL | | }
 LL |       match (Foo { first: true, second: None }) {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo { first: false, second: Some([_, _, _, _]) }` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Foo`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `Red` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:23:11
@@ -27,8 +27,8 @@ LL | | }
 LL |       match Color::Red {
    |             ^^^^^^^^^^ pattern `Red` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Color`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `East`, `South` and `West` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:35:11
@@ -45,8 +45,8 @@ LL | | }
 LL |       match Direction::North {
    |             ^^^^^^^^^^^^^^^^ patterns `East`, `South` and `West` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Direction`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `Second`, `Third`, `Fourth` and 8 more not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:46:11
@@ -59,8 +59,8 @@ LL | | }
 LL |       match ExcessiveEnum::First {
    |             ^^^^^^^^^^^^^^^^^^^^ patterns `Second`, `Third`, `Fourth` and 8 more not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `ExcessiveEnum`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `CustomRGBA { a: true, .. }` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:54:11
@@ -76,8 +76,8 @@ LL | | }
 LL |       match Color::Red {
    |             ^^^^^^^^^^ pattern `CustomRGBA { a: true, .. }` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Color`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `[Second(true), Second(false)]` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:70:11
@@ -85,8 +85,8 @@ error[E0004]: non-exhaustive patterns: `[Second(true), Second(false)]` not cover
 LL |     match *x {
    |           ^^ pattern `[Second(true), Second(false)]` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `[Enum]`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `((), false)` not covered
   --> $DIR/non-exhaustive-pattern-witness.rs:83:11
@@ -94,8 +94,8 @@ error[E0004]: non-exhaustive patterns: `((), false)` not covered
 LL |     match ((), false) {
    |           ^^^^^^^^^^^ pattern `((), false)` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `((), bool)`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to 7 previous errors
 

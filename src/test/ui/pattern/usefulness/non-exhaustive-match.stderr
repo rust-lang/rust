@@ -10,8 +10,8 @@ LL | enum T { A, B }
 LL |     match x { T::B => { } }
    |           ^ pattern `A` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `T`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `false` not covered
   --> $DIR/non-exhaustive-match.rs:8:11
@@ -19,8 +19,8 @@ error[E0004]: non-exhaustive patterns: `false` not covered
 LL |     match true {
    |           ^^^^ pattern `false` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `bool`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
   --> $DIR/non-exhaustive-match.rs:11:11
@@ -33,8 +33,8 @@ LL |     match Some(10) {
 LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
    |     ---- not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `Option<i32>`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `(_, _, i32::MIN..=3_i32)` and `(_, _, 5_i32..=i32::MAX)` not covered
   --> $DIR/non-exhaustive-match.rs:14:11
@@ -42,8 +42,8 @@ error[E0004]: non-exhaustive patterns: `(_, _, i32::MIN..=3_i32)` and `(_, _, 5_
 LL |     match (2, 3, 4) {
    |           ^^^^^^^^^ patterns `(_, _, i32::MIN..=3_i32)` and `(_, _, 5_i32..=i32::MAX)` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `(i32, i32, i32)`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `(A, A)` and `(B, B)` not covered
   --> $DIR/non-exhaustive-match.rs:18:11
@@ -51,8 +51,8 @@ error[E0004]: non-exhaustive patterns: `(A, A)` and `(B, B)` not covered
 LL |     match (T::A, T::A) {
    |           ^^^^^^^^^^^^ patterns `(A, A)` and `(B, B)` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `(T, T)`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `B` not covered
   --> $DIR/non-exhaustive-match.rs:22:11
@@ -66,8 +66,8 @@ LL | enum T { A, B }
 LL |     match T::A {
    |           ^^^^ pattern `B` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `T`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `[]` not covered
   --> $DIR/non-exhaustive-match.rs:33:11
@@ -75,8 +75,8 @@ error[E0004]: non-exhaustive patterns: `[]` not covered
 LL |     match *vec {
    |           ^^^^ pattern `[]` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `[Option<isize>]`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: `[_, _, _, _, ..]` not covered
   --> $DIR/non-exhaustive-match.rs:46:11
@@ -84,8 +84,8 @@ error[E0004]: non-exhaustive patterns: `[_, _, _, _, ..]` not covered
 LL |     match *vec {
    |           ^^^^ pattern `[_, _, _, _, ..]` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    = note: the matched value is of type `[f32]`
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error: aborting due to 8 previous errors
 
