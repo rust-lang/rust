@@ -141,7 +141,7 @@ pub(super) fn borrow_of_local_data(place: Place<'_>) -> bool {
 /// then returns the index of the field being projected. Note that this closure will always
 /// be `self` in the current MIR, because that is the only time we directly access the fields
 /// of a closure type.
-pub(crate) fn is_upvar_field_projection(
+pub(crate) fn is_upvar_field_projection<'tcx>(
     tcx: TyCtxt<'tcx>,
     upvars: &[Upvar<'tcx>],
     place_ref: PlaceRef<'tcx>,
