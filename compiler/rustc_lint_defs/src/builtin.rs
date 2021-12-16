@@ -3066,6 +3066,7 @@ declare_lint_pass! {
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
         DEREF_INTO_DYN_SUPERTRAIT,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
+        DUPLICATE_MACRO_ATTRIBUTES,
     ]
 }
 
@@ -3602,4 +3603,33 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #89460 <https://github.com/rust-lang/rust/issues/89460>",
     };
+}
+
+declare_lint! {
+    /// The `duplicate_macro_attributes` lint detects when a `#[test]`-like built-in macro
+    /// attribute is duplicated on an item. This lint may trigger on `bench`, `cfg_eval`, `test`
+    /// and `test_case`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs --test)
+    /// #[test]
+    /// #[test]
+    /// fn foo() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A duplicated attribute may erroneously originate from a copy-paste and the effect of it
+    /// being duplicated may not be obvious or desireable.
+    ///
+    /// For instance, doubling the `#[test]` attributes registers the test to be run twice with no
+    /// change to its environment.
+    ///
+    /// [issue #90979]: https://github.com/rust-lang/rust/issues/90979
+    pub DUPLICATE_MACRO_ATTRIBUTES,
+    Warn,
+    "duplicated attribute"
 }
