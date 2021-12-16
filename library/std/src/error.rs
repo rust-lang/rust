@@ -857,13 +857,60 @@ impl dyn Error + Send + Sync {
 ///
 /// fn main() {
 ///     match get_super_error() {
-///         Err(e) => {
-///             let report = Report::new(e).pretty(true);
-///             println!("Error: {}", report);
-///         }
+///         Err(e) => println!("Error: {}", Report::new(e)),
 ///         _ => println!("No error"),
 ///     }
 /// }
+/// ```
+///
+/// This example produces the following output:
+///
+/// ```console
+/// Error: SuperError is here!: SuperErrorSideKick is here!
+/// ```
+///
+/// Report prints the same output via `Display` and `Debug`, so it works well with
+/// [`unwrap`]/[`expect`]:
+///
+/// ```should_panic
+/// #![feature(error_reporter)]
+/// use std::error::Report;
+/// # use std::error::Error;
+/// # use std::fmt;
+/// # #[derive(Debug)]
+/// # struct SuperError {
+/// #     source: SuperErrorSideKick,
+/// # }
+/// # impl fmt::Display for SuperError {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperError is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperError {
+/// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+/// #         Some(&self.source)
+/// #     }
+/// # }
+/// # #[derive(Debug)]
+/// # struct SuperErrorSideKick;
+/// # impl fmt::Display for SuperErrorSideKick {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperErrorSideKick is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperErrorSideKick {}
+/// # fn get_super_error() -> Result<(), SuperError> {
+/// #     Err(SuperError { source: SuperErrorSideKick })
+/// # }
+///
+/// get_super_error().map_err(Report::new).unwrap();
+/// ```
+///
+/// This example produces the following output:
+///
+/// ```console
+/// thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: SuperError is here!: SuperErrorSideKick is here!', src/error.rs:34:40
+/// note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 /// ```
 #[unstable(feature = "error_reporter", issue = "90172")]
 pub struct Report<E> {
