@@ -551,6 +551,20 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             let predicate = predicate.subst(tcx, substs);
             debug!(?predicate);
 
+            // Replace all other mentions of the same opaque type with the hidden type,
+            // as the bounds must hold on the hidden type after all.
+            let predicate = predicate.fold_with(&mut BottomUpFolder {
+                tcx,
+                ty_op: |ty| match *ty.kind() {
+                    ty::Opaque(def_id2, substs2) if def_id == def_id2 && substs == substs2 => {
+                        ty_var
+                    }
+                    _ => ty,
+                },
+                lt_op: |lt| lt,
+                ct_op: |ct| ct,
+            });
+
             // We can't normalize associated types from `rustc_infer`, but we can eagerly register inference variables for them.
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
