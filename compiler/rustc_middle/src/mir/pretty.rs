@@ -775,7 +775,9 @@ pub struct RenderAllocation<'a, 'tcx, Tag, Extra> {
     alloc: &'a Allocation<Tag, Extra>,
 }
 
-impl<'a, 'tcx, Tag: Provenance, Extra> std::fmt::Display for RenderAllocation<'a, 'tcx, Tag, Extra> {
+impl<'a, 'tcx, Tag: Provenance, Extra> std::fmt::Display
+    for RenderAllocation<'a, 'tcx, Tag, Extra>
+{
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let RenderAllocation { tcx, alloc } = *self;
         write!(w, "size: {}, align: {})", alloc.size().bytes(), alloc.align.bytes())?;
