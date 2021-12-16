@@ -1,10 +1,10 @@
-error: symbol-name(_RNvMNtCs8dUWfuENynB_11issue_609253fooINtB2_3FooNtNtB4_4llvm3FooE3foo)
+error: symbol-name(_RNvMNtCsCRATE_HASH_11issue_609253fooINtB<REF>_3FooNtNtB<REF>_4llvm3FooE3foo)
   --> $DIR/issue-60925.rs:21:9
    |
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<issue_60925[5fcbb46c6fac4139]::foo::Foo<issue_60925[5fcbb46c6fac4139]::llvm::Foo>>::foo)
+error: demangling(<issue_60925[HASH]::foo::Foo<issue_60925[HASH]::llvm::Foo>>::foo)
   --> $DIR/issue-60925.rs:21:9
    |
 LL |         #[rustc_symbol_name]

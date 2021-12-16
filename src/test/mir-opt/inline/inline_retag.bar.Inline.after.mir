@@ -38,7 +38,7 @@ fn bar() -> bool {
                                          // + val: Unevaluated(bar, [], Some(promoted[1]))
                                          // mir::Constant
                                          // + span: $DIR/inline-retag.rs:12:7: 12:9
-                                         // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:4 ~ inline_retag[a78c]::bar), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[1]) }) }
+                                         // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:4 ~ inline_retag[HASH]::bar), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[1]) }) }
         Retag(_10);                      // scope 1 at $DIR/inline-retag.rs:12:7: 12:9
         _4 = &(*_10);                    // scope 1 at $DIR/inline-retag.rs:12:7: 12:9
         Retag(_4);                       // scope 1 at $DIR/inline-retag.rs:12:7: 12:9
@@ -52,7 +52,7 @@ fn bar() -> bool {
                                          // + val: Unevaluated(bar, [], Some(promoted[0]))
                                          // mir::Constant
                                          // + span: $DIR/inline-retag.rs:12:11: 12:14
-                                         // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:4 ~ inline_retag[a78c]::bar), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
+                                         // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:4 ~ inline_retag[HASH]::bar), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
         Retag(_9);                       // scope 1 at $DIR/inline-retag.rs:12:11: 12:14
         _7 = &(*_9);                     // scope 1 at $DIR/inline-retag.rs:12:11: 12:14
         Retag(_7);                       // scope 1 at $DIR/inline-retag.rs:12:11: 12:14

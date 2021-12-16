@@ -1,10 +1,10 @@
-error: symbol-name(_RNvCsj6j3mjPNGKx_5basic4main)
+error: symbol-name(_RNvCsCRATE_HASH_5basic4main)
   --> $DIR/basic.rs:8:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(basic[de7d5b6b69c71f37]::main)
+error: demangling(basic[HASH]::main)
   --> $DIR/basic.rs:8:1
    |
 LL | #[rustc_symbol_name]

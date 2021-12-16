@@ -113,7 +113,7 @@ fn main() -> () {
         StorageLive(_14);                // scope 1 at $DIR/retag.rs:40:31: 43:6
         _14 = [closure@main::{closure#0}]; // scope 1 at $DIR/retag.rs:40:31: 43:6
                                          // closure
-                                         // + def_id: DefId(0:14 ~ retag[13e7]::main::{closure#0})
+                                         // + def_id: DefId(0:14 ~ retag[HASH]::main::{closure#0})
                                          // + substs: [
                                          //     i8,
                                          //     for<'r> extern "rust-call" fn((&'r i32,)) -> &'r i32,
@@ -153,7 +153,7 @@ fn main() -> () {
                                          // + val: Unevaluated(main, [], Some(promoted[0]))
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:47:21: 47:23
-                                         // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:13 ~ retag[13e7]::main), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
+                                         // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:13 ~ retag[HASH]::main), const_param_did: None }, substs_: Some([]), promoted: Some(promoted[0]) }) }
         Retag(_28);                      // scope 7 at $DIR/retag.rs:47:21: 47:23
         _23 = &(*_28);                   // scope 7 at $DIR/retag.rs:47:21: 47:23
         Retag(_23);                      // scope 7 at $DIR/retag.rs:47:21: 47:23
