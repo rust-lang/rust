@@ -811,7 +811,8 @@ extern "rust-intrinsic" {
     /// The preferred alignment of a type.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_pref_align_of", issue = "none")]
+    /// It's "tracking issue" is [#91971](https://github.com/rust-lang/rust/issues/91971).
+    #[rustc_const_unstable(feature = "const_pref_align_of", issue = "91971")]
     pub fn pref_align_of<T>() -> usize;
 
     /// The size of the referenced value in bytes.
