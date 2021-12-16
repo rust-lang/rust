@@ -82,8 +82,11 @@ fn multi_line_formatting() {
     let error = SuperError { source: SuperErrorSideKick };
     let report = Report::new(&error).pretty(true);
     let actual = report.to_string();
-    let expected =
-        String::from("SuperError is here!\n\nCaused by:\n    SuperErrorSideKick is here!");
+    let expected = String::from("\
+SuperError is here!
+
+Caused by:
+      SuperErrorSideKick is here!");
 
     assert_eq!(expected, actual);
 }
@@ -109,10 +112,11 @@ fn error_with_no_sources_formats_multi_line_correctly() {
 #[test]
 fn error_with_backtrace_outputs_correctly_with_one_source() {
     let trace = Backtrace::force_capture();
-    let expected = format!("The source of the error
+    let expected = format!("\
+The source of the error
 
 Caused by:
-    Error with backtrace
+      Error with backtrace
 
 Stack backtrace:
 {}", trace);
@@ -129,11 +133,12 @@ Stack backtrace:
 #[test]
 fn error_with_backtrace_outputs_correctly_with_two_sources() {
     let trace = Backtrace::force_capture();
-    let expected = format!("Error with two sources
+    let expected = format!("\
+Error with two sources
 
 Caused by:
-    0: The source of the error
-    1: Error with backtrace
+   0: The source of the error
+   1: Error with backtrace
 
 Stack backtrace:
 {}", trace);
@@ -211,7 +216,8 @@ fn error_formats_single_line_with_rude_display_impl() {
     let error = GenericError::new_with_source(MyMessage, error);
     let error = GenericError::new_with_source(MyMessage, error);
     let report = Report::new(error);
-    let expected = r#"line 1
+    let expected = "\
+line 1
 line 2
 line 3
 line 4
@@ -231,7 +237,7 @@ line 2
 line 3
 line 4
 line 5
-line 6"#;
+line 6";
 
     let actual = report.to_string();
     assert_eq!(expected, actual);
@@ -256,7 +262,7 @@ fn error_formats_multi_line_with_rude_display_impl() {
     let error = GenericError::new_with_source(MyMessage, error);
     let error = GenericError::new_with_source(MyMessage, error);
     let report = Report::new(error).pretty(true);
-    let expected = r#"line 1
+    let expected = "line 1
 line 2
 line 3
 line 4
@@ -264,24 +270,24 @@ line 5
 line 6
 
 Caused by:
-    0: line 1
-       line 2
-       line 3
-       line 4
-       line 5
-       line 6
-    1: line 1
-       line 2
-       line 3
-       line 4
-       line 5
-       line 6
-    2: line 1
-       line 2
-       line 3
-       line 4
-       line 5
-       line 6"#;
+   0: line 1
+      line 2
+      line 3
+      line 4
+      line 5
+      line 6
+   1: line 1
+      line 2
+      line 3
+      line 4
+      line 5
+      line 6
+   2: line 1
+      line 2
+      line 3
+      line 4
+      line 5
+      line 6";
 
     let actual = report.to_string();
     assert_eq!(expected, actual);
@@ -302,19 +308,48 @@ fn errors_that_start_with_newline_formats_correctly() {
     let error = GenericError::new_with_source(MyMessage, error);
     let error = GenericError::new_with_source(MyMessage, error);
     let report = Report::new(error).pretty(true);
-    let expected = r#"
+    let expected = "
 The message
 
 
 Caused by:
-    0: 
-       The message
-       
-    1: 
-       The message
-       "#;
+   0: 
+      The message
+      
+   1: 
+      The message
+      ";
 
     let actual = report.to_string();
+    assert_eq!(expected, actual);
+}
+
+#[test]
+fn errors_with_multiple_writes_on_same_line_dont_insert_erroneous_newlines() {
+    #[derive(Debug)]
+    struct MyMessage;
+
+    impl fmt::Display for MyMessage {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("The message")?;
+            f.write_str(" goes on")?;
+            f.write_str(" and on.")
+        }
+    }
+
+    let error = GenericError::new(MyMessage);
+    let error = GenericError::new_with_source(MyMessage, error);
+    let error = GenericError::new_with_source(MyMessage, error);
+    let report = Report::new(error).pretty(true);
+    let expected = "\
+The message goes on and on.
+
+Caused by:
+   0: The message goes on and on.
+   1: The message goes on and on.";
+
+    let actual = report.to_string();
+    println!("{}", actual);
     assert_eq!(expected, actual);
 }
 
@@ -333,10 +368,11 @@ fn errors_with_string_interpolation_formats_correctly() {
     let error = GenericError::new(MyMessage(10));
     let error = GenericError::new_with_source(MyMessage(20), error);
     let report = Report::new(error).pretty(true);
-    let expected = r#"Got an error code: (20). What would you like to do in response?
+    let expected = "\
+Got an error code: (20). What would you like to do in response?
 
 Caused by:
-    Got an error code: (10). What would you like to do in response?"#;
+      Got an error code: (10). What would you like to do in response?";
     let actual = report.to_string();
     assert_eq!(expected, actual);
 }
@@ -356,17 +392,18 @@ fn empty_lines_mid_message() {
     let error = GenericError::new_with_source(MyMessage, error);
     let error = GenericError::new_with_source(MyMessage, error);
     let report = Report::new(error).pretty(true);
-    let expected = r#"line 1
+    let expected = "\
+line 1
 
 line 2
 
 Caused by:
-    0: line 1
-       
-       line 2
-    1: line 1
-       
-       line 2"#;
+   0: line 1
+      
+      line 2
+   1: line 1
+      
+      line 2";
 
     let actual = report.to_string();
     assert_eq!(expected, actual);
@@ -386,12 +423,13 @@ fn only_one_source() {
     let error = GenericError::new(MyMessage);
     let error = GenericError::new_with_source(MyMessage, error);
     let report = Report::new(error).pretty(true);
-    let expected = r#"line 1
+    let expected = "\
+line 1
 line 2
 
 Caused by:
-    line 1
-    line 2"#;
+      line 1
+      line 2";
 
     let actual = report.to_string();
     assert_eq!(expected, actual);

@@ -808,9 +808,11 @@ impl dyn Error + Send + Sync {
     }
 }
 
-/// An error reporter that exposes the entire error chain for printing.
-/// It also exposes options for formatting the error chain, either entirely on a single line,
-/// or in multi-line format with each cause in the error chain on a new line.
+/// An error reporter that print's an error and its sources.
+///
+/// Report also exposes configuration options for formatting the error chain, either entirely on a
+/// single line, or in multi-line format with each cause in the error chain on a new line.
+///
 /// `Report` only requires that the wrapped error implements `Error`. It doesn't require that the
 /// wrapped error be `Send`, `Sync`, or `'static`.
 ///
@@ -818,33 +820,51 @@ impl dyn Error + Send + Sync {
 ///
 /// ```rust
 /// #![feature(error_reporter)]
-/// #![feature(negative_impls)]
-///
 /// use std::error::{Error, Report};
 /// use std::fmt;
 ///
 /// #[derive(Debug)]
-/// struct SuperError<'a> {
-///     side: &'a str,
+/// struct SuperError {
+///     source: SuperErrorSideKick,
 /// }
 ///
-/// impl<'a> fmt::Display for SuperError<'a> {
+/// impl fmt::Display for SuperError {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-///         write!(f, "SuperError is here: {}", self.side)
+///         write!(f, "SuperError is here!")
 ///     }
 /// }
 ///
-/// impl<'a> Error for SuperError<'a> {}
+/// impl Error for SuperError {
+///     fn source(&self) -> Option<&(dyn Error + 'static)> {
+///         Some(&self.source)
+///     }
+/// }
+///
+/// #[derive(Debug)]
+/// struct SuperErrorSideKick;
+///
+/// impl fmt::Display for SuperErrorSideKick {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         write!(f, "SuperErrorSideKick is here!")
+///     }
+/// }
+///
+/// impl Error for SuperErrorSideKick {}
+///
+/// fn get_super_error() -> Result<(), SuperError> {
+///     Err(SuperError { source: SuperErrorSideKick })
+/// }
 ///
 /// fn main() {
-///     let msg = String::from("Huzzah!");
-///     let error = SuperError { side: &msg };
-///     let report = Report::new(&error).pretty(true);
-///
-///     println!("{}", report);
+///     match get_super_error() {
+///         Err(e) => {
+///             let report = Report::new(e).pretty(true);
+///             println!("Error: {}", report);
+///         }
+///         _ => println!("No error"),
+///     }
 /// }
 /// ```
-
 #[unstable(feature = "error_reporter", issue = "90172")]
 pub struct Report<E> {
     /// The error being reported.
@@ -865,14 +885,129 @@ where
         Report { error, show_backtrace: false, pretty: false }
     }
 
-    /// Enable pretty-printing the report.
+    /// Enable pretty-printing the report across multiple lines.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(error_reporter)]
+    /// use std::error::Report;
+    /// # use std::error::Error;
+    /// # use std::fmt;
+    /// # #[derive(Debug)]
+    /// # struct SuperError {
+    /// #     source: SuperErrorSideKick,
+    /// # }
+    /// # impl fmt::Display for SuperError {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "SuperError is here!")
+    /// #     }
+    /// # }
+    /// # impl Error for SuperError {
+    /// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+    /// #         Some(&self.source)
+    /// #     }
+    /// # }
+    /// # #[derive(Debug)]
+    /// # struct SuperErrorSideKick;
+    /// # impl fmt::Display for SuperErrorSideKick {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "SuperErrorSideKick is here!")
+    /// #     }
+    /// # }
+    /// # impl Error for SuperErrorSideKick {}
+    ///
+    /// let error = SuperError { source: SuperErrorSideKick };
+    /// let report = Report::new(error).pretty(true);
+    /// eprintln!("Error: {:?}", report);
+    /// ```
+    ///
+    /// This example produces the following output:
+    ///
+    /// ```console
+    /// Error: SuperError is here!
+    ///
+    /// Caused by:
+    ///       SuperErrorSideKick is here!
+    /// ```
     #[unstable(feature = "error_reporter", issue = "90172")]
     pub fn pretty(mut self, pretty: bool) -> Self {
         self.pretty = pretty;
         self
     }
 
-    /// Enable showing a backtrace for the report.
+    /// Display backtrace if available when using pretty output format.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(error_reporter)]
+    /// #![feature(backtrace)]
+    /// use std::error::{Error, Report};
+    /// use std::backtrace::Backtrace;
+    /// use std::fmt;
+    ///
+    /// #[derive(Debug)]
+    /// struct SuperError {
+    ///     source: SuperErrorSideKick,
+    /// }
+    ///
+    /// impl fmt::Display for SuperError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "SuperError is here!")
+    ///     }
+    /// }
+    ///
+    /// impl Error for SuperError {
+    ///     fn source(&self) -> Option<&(dyn Error + 'static)> {
+    ///         Some(&self.source)
+    ///     }
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct SuperErrorSideKick {
+    ///     backtrace: Backtrace,
+    /// }
+    ///
+    /// impl fmt::Display for SuperErrorSideKick {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "SuperErrorSideKick is here!")
+    ///     }
+    /// }
+    ///
+    /// impl Error for SuperErrorSideKick {
+    ///     fn backtrace(&self) -> Option<&Backtrace> {
+    ///         Some(&self.backtrace)
+    ///     }
+    /// }
+    ///
+    /// let source = SuperErrorSideKick { backtrace: Backtrace::force_capture() };
+    /// let error = SuperError { source };
+    /// let report = Report::new(error).pretty(true).show_backtrace(true);
+    /// eprintln!("Error: {:?}", report);
+    /// ```
+    ///
+    /// This example produces something similar to the following output:
+    ///
+    /// ```console
+    /// Error: SuperError is here!
+    ///
+    /// Caused by:
+    ///       SuperErrorSideKick is here!
+    ///
+    /// Stack backtrace:
+    ///    0: rust_out::main::_doctest_main_src_error_rs_943_0
+    ///    1: rust_out::main
+    ///    2: core::ops::function::FnOnce::call_once
+    ///    3: std::sys_common::backtrace::__rust_begin_short_backtrace
+    ///    4: std::rt::lang_start::{{closure}}
+    ///    5: std::panicking::try
+    ///    6: std::rt::lang_start_internal
+    ///    7: std::rt::lang_start
+    ///    8: main
+    ///    9: __libc_start_main
+    ///   10: _start
+    /// ```
     #[unstable(feature = "error_reporter", issue = "90172")]
     pub fn show_backtrace(mut self, show_backtrace: bool) -> Self {
         self.show_backtrace = show_backtrace;
@@ -922,10 +1057,12 @@ where
                 writeln!(f)?;
                 let mut indented = Indented {
                     inner: f,
-                    number: if multiple { Some(ind) } else { None },
-                    started: false,
                 };
-                write!(indented, "{}", error)?;
+                if multiple {
+                    write!(indented, "{: >4}: {}", ind, error)?;
+                } else {
+                    write!(indented, "      {}", error)?;
+                }
             }
         }
 
@@ -979,8 +1116,6 @@ where
 /// Wrapper type for indenting the inner source.
 struct Indented<'a, D> {
     inner: &'a mut D,
-    number: Option<usize>,
-    started: bool,
 }
 
 impl<T> Write for Indented<'_, T>
@@ -989,19 +1124,9 @@ where
 {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for (i, line) in s.split('\n').enumerate() {
-            if !self.started {
-                self.started = true;
-                match self.number {
-                    Some(number) => write!(self.inner, "{: >5}: ", number)?,
-                    None => self.inner.write_str("    ")?,
-                }
-            } else if i > 0 {
+            if i > 0 {
                 self.inner.write_char('\n')?;
-                if self.number.is_some() {
-                    self.inner.write_str("       ")?;
-                } else {
-                    self.inner.write_str("    ")?;
-                }
+                self.inner.write_str("      ")?;
             }
 
             self.inner.write_str(line)?;
