@@ -1,6 +1,6 @@
 /// The expansion from a test function to the appropriate test struct for libtest
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
-use crate::util::check_builtin_macro_attribute;
+use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 
 use rustc_ast as ast;
 use rustc_ast::attr;
@@ -27,6 +27,7 @@ pub fn expand_test_case(
     anno_item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::test_case);
+    warn_on_duplicate_attribute(&ecx, &anno_item, sym::test_case);
 
     if !ecx.ecfg.should_test {
         return vec![];
@@ -55,6 +56,7 @@ pub fn expand_test(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::test);
+    warn_on_duplicate_attribute(&cx, &item, sym::test);
     expand_test_or_bench(cx, attr_sp, item, false)
 }
 
@@ -65,6 +67,7 @@ pub fn expand_bench(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::bench);
+    warn_on_duplicate_attribute(&cx, &item, sym::bench);
     expand_test_or_bench(cx, attr_sp, item, true)
 }
 
