@@ -9,16 +9,17 @@ impl DropRangesBuilder {
 
         trace!("predecessors: {:#?}", preds.iter_enumerated().collect::<BTreeMap<_, _>>());
 
+        let mut new_state = BitSet::new_empty(self.num_values());
+
         let mut propagate = || {
             let mut changed = false;
             for id in self.nodes.indices() {
-                let old_state = self.nodes[id].drop_state.clone();
-                let mut new_state = if id.index() == 0 {
-                    BitSet::new_empty(self.num_values())
+                if id.index() == 0 {
+                    new_state.clear();
                 } else {
                     // If we are not the start node and we have no predecessors, treat
                     // everything as dropped because there's no way to get here anyway.
-                    BitSet::new_filled(self.num_values())
+                    new_state.insert_all();
                 };
 
                 for pred in &preds[id] {
@@ -34,8 +35,7 @@ impl DropRangesBuilder {
                     new_state.remove(*reinit);
                 }
 
-                changed |= old_state != new_state;
-                self.nodes[id].drop_state = new_state;
+                changed |= self.nodes[id].drop_state.intersect(&new_state);
             }
 
             changed
