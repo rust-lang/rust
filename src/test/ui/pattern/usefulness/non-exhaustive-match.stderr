@@ -1,15 +1,14 @@
 error[E0004]: non-exhaustive patterns: `A` not covered
   --> $DIR/non-exhaustive-match.rs:7:11
    |
-LL | enum T { A, B }
-   | ---------------
-   | |        |
-   | |        not covered
-   | `T` defined here
-...
 LL |     match x { T::B => { } }
    |           ^ pattern `A` not covered
    |
+note: `T` defined here
+  --> $DIR/non-exhaustive-match.rs:3:10
+   |
+LL | enum T { A, B }
+   |      -   ^ not covered
    = note: the matched value is of type `T`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -35,11 +34,18 @@ error[E0004]: non-exhaustive patterns: `Some(_)` not covered
 LL |     match Some(10) {
    |           ^^^^^^^^ pattern `Some(_)` not covered
    |
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
+note: `Option<i32>` defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
    |
-LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ---- not covered
-   |
+LL | / pub enum Option<T> {
+LL | |     /// No value.
+LL | |     #[lang = "None"]
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+...  |
+LL | |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   | |     ^^^^ not covered
+LL | | }
+   | |_-
    = note: the matched value is of type `Option<i32>`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -76,15 +82,14 @@ LL +       (A, A) | (B, B) => todo!()
 error[E0004]: non-exhaustive patterns: `B` not covered
   --> $DIR/non-exhaustive-match.rs:22:11
    |
-LL | enum T { A, B }
-   | ---------------
-   | |           |
-   | |           not covered
-   | `T` defined here
-...
 LL |     match T::A {
    |           ^^^^ pattern `B` not covered
    |
+note: `T` defined here
+  --> $DIR/non-exhaustive-match.rs:3:13
+   |
+LL | enum T { A, B }
+   |      -      ^ not covered
    = note: the matched value is of type `T`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |

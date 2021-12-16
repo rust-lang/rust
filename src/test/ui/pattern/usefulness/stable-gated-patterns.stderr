@@ -4,11 +4,19 @@ error[E0004]: non-exhaustive patterns: `Stable2` and `_` not covered
 LL |     match Foo::Stable {
    |           ^^^^^^^^^^^ patterns `Stable2` and `_` not covered
    |
-  ::: $DIR/auxiliary/unstable.rs:9:5
+note: `Foo` defined here
+  --> $DIR/auxiliary/unstable.rs:9:5
    |
-LL |     Stable2,
-   |     ------- not covered
-   |
+LL | / pub enum Foo {
+LL | |     #[stable(feature = "stable_test_feature", since = "1.0.0")]
+LL | |     Stable,
+LL | |     #[stable(feature = "stable_test_feature", since = "1.0.0")]
+LL | |     Stable2,
+   | |     ^^^^^^^ not covered
+LL | |     #[unstable(feature = "unstable_test_feature", issue = "none")]
+LL | |     Unstable,
+LL | | }
+   | |_-
    = note: the matched value is of type `Foo`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -22,6 +30,17 @@ error[E0004]: non-exhaustive patterns: `_` not covered
 LL |     match Foo::Stable {
    |           ^^^^^^^^^^^ pattern `_` not covered
    |
+note: `Foo` defined here
+  --> $DIR/auxiliary/unstable.rs:5:1
+   |
+LL | / pub enum Foo {
+LL | |     #[stable(feature = "stable_test_feature", since = "1.0.0")]
+LL | |     Stable,
+LL | |     #[stable(feature = "stable_test_feature", since = "1.0.0")]
+...  |
+LL | |     Unstable,
+LL | | }
+   | |_^
    = note: the matched value is of type `Foo`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |

@@ -14,15 +14,14 @@ LL +         (Some(&[]), Err(_)) => todo!()
 error[E0004]: non-exhaustive patterns: `A(C)` not covered
   --> $DIR/non-exhaustive-match-nested.rs:15:11
    |
-LL | enum T { A(U), B }
-   | ------------------
-   | |        |
-   | |        not covered
-   | `T` defined here
-...
 LL |     match x {
    |           ^ pattern `A(C)` not covered
    |
+note: `T` defined here
+  --> $DIR/non-exhaustive-match-nested.rs:1:10
+   |
+LL | enum T { A(U), B }
+   |      -   ^ not covered
    = note: the matched value is of type `T`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |

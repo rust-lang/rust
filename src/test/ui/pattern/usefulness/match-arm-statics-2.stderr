@@ -17,14 +17,21 @@ error[E0004]: non-exhaustive patterns: `Some(Some(West))` not covered
 LL |     match Some(Some(North)) {
    |           ^^^^^^^^^^^^^^^^^ pattern `Some(Some(West))` not covered
    |
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
+note: `Option<Option<Direction>>` defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
    |
-LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ----
-   |     |
-   |     not covered
-   |     not covered
-   |
+LL | / pub enum Option<T> {
+LL | |     /// No value.
+LL | |     #[lang = "None"]
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+...  |
+LL | |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   | |     ^^^^
+   | |     |
+   | |     not covered
+   | |     not covered
+LL | | }
+   | |_-
    = note: the matched value is of type `Option<Option<Direction>>`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
@@ -35,15 +42,14 @@ LL +         Some(Some(West)) => todo!()
 error[E0004]: non-exhaustive patterns: `Foo { bar: Some(North), baz: NewBool(true) }` not covered
   --> $DIR/match-arm-statics-2.rs:48:11
    |
-LL | / struct Foo {
-LL | |     bar: Option<Direction>,
-LL | |     baz: NewBool
-LL | | }
-   | |_- `Foo` defined here
-...
-LL |       match (Foo { bar: Some(North), baz: NewBool(true) }) {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo { bar: Some(North), baz: NewBool(true) }` not covered
+LL |     match (Foo { bar: Some(North), baz: NewBool(true) }) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo { bar: Some(North), baz: NewBool(true) }` not covered
    |
+note: `Foo` defined here
+  --> $DIR/match-arm-statics-2.rs:40:8
+   |
+LL | struct Foo {
+   |        ^^^
    = note: the matched value is of type `Foo`
 help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
    |
