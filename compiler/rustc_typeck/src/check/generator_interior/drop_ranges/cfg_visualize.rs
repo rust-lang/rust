@@ -3,9 +3,9 @@
 
 use rustc_graphviz as dot;
 
-use super::{DropRanges, PostOrderId};
+use super::{DropRangesBuilder, PostOrderId};
 
-impl<'a> dot::GraphWalk<'a> for DropRanges {
+impl<'a> dot::GraphWalk<'a> for DropRangesBuilder {
     type Node = PostOrderId;
 
     type Edge = (PostOrderId, PostOrderId);
@@ -36,7 +36,7 @@ impl<'a> dot::GraphWalk<'a> for DropRanges {
     }
 }
 
-impl<'a> dot::Labeller<'a> for DropRanges {
+impl<'a> dot::Labeller<'a> for DropRangesBuilder {
     type Node = PostOrderId;
 
     type Edge = (PostOrderId, PostOrderId);
@@ -56,7 +56,7 @@ impl<'a> dot::Labeller<'a> for DropRanges {
                 n,
                 self.post_order_map
                     .iter()
-                    .find(|(_hir_id, &post_order_id)| post_order_id == n.index())
+                    .find(|(_hir_id, &post_order_id)| post_order_id == *n)
                     .map_or("<unknown>".into(), |(hir_id, _)| format!(
                         "{}",
                         hir_id.local_id.index()

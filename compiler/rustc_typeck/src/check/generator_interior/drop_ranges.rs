@@ -41,7 +41,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
 
     drop_ranges.propagate_to_fixpoint();
 
-    drop_ranges
+    DropRanges { hir_id_map: drop_ranges.hir_id_map, nodes: drop_ranges.nodes }
 }
 
 /// Applies `f` to consumable portion of a HIR node.
@@ -77,12 +77,59 @@ rustc_index::newtype_index! {
 pub struct DropRanges {
     hir_id_map: HirIdMap<HirIdIndex>,
     nodes: IndexVec<PostOrderId, NodeInfo>,
-    deferred_edges: Vec<(usize, HirId)>,
-    // FIXME: This should only be used for loops and break/continue.
-    post_order_map: HirIdMap<usize>,
 }
 
-impl Debug for DropRanges {
+impl DropRanges {
+    pub fn is_dropped_at(&self, hir_id: HirId, location: usize) -> bool {
+        self.hir_id_map
+            .get(&hir_id)
+            .copied()
+            .map_or(false, |hir_id| self.expect_node(location.into()).drop_state.contains(hir_id))
+    }
+
+    /// Returns a reference to the NodeInfo for a node, panicking if it does not exist
+    fn expect_node(&self, id: PostOrderId) -> &NodeInfo {
+        &self.nodes[id]
+    }
+}
+
+/// Tracks information needed to compute drop ranges.
+struct DropRangesBuilder {
+    /// The core of DropRangesBuilder is a set of nodes, which each represent
+    /// one expression. We primarily refer to them by their index in a
+    /// post-order traversal of the HIR tree,  since this is what
+    /// generator_interior uses to talk about yield positions.
+    ///
+    /// This IndexVec keeps the relevant details for each node. See the
+    /// NodeInfo struct for more details, but this information includes things
+    /// such as the set of control-flow successors, which variables are dropped
+    /// or reinitialized, and whether each variable has been inferred to be
+    /// known-dropped or potentially reintiialized at each point.
+    nodes: IndexVec<PostOrderId, NodeInfo>,
+    /// We refer to values whose drop state we are tracking by the HirId of
+    /// where they are defined. Within a NodeInfo, however, we store the
+    /// drop-state in a bit vector indexed by a HirIdIndex
+    /// (see NodeInfo::drop_state). The hir_id_map field stores the mapping
+    /// from HirIds to the HirIdIndex that is used to represent that value in
+    /// bitvector.
+    hir_id_map: HirIdMap<HirIdIndex>,
+
+    /// When building the control flow graph, we don't always know the
+    /// post-order index of the target node at the point we encounter it.
+    /// For example, this happens with break and continue. In those cases,
+    /// we store a pair of the PostOrderId of the source and the HirId
+    /// of the target. Once we have gathered all of these edges, we make a
+    /// pass over the set of deferred edges (see process_deferred_edges in
+    /// cfg_build.rs), look up the PostOrderId for the target (since now the
+    /// post-order index for all nodes is known), and add missing control flow
+    /// edges.
+    deferred_edges: Vec<(PostOrderId, HirId)>,
+    /// This maps HirIds of expressions to their post-order index. It is
+    /// used in process_deferred_edges to correctly add back-edges.
+    post_order_map: HirIdMap<PostOrderId>,
+}
+
+impl Debug for DropRangesBuilder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DropRanges")
             .field("hir_id_map", &self.hir_id_map)
@@ -98,22 +145,10 @@ impl Debug for DropRanges {
 /// by their index in the post-order traversal. At its core, DropRanges maps
 /// (hir_id, post_order_id) -> bool, where a true value indicates that the value is definitely
 /// dropped at the point of the node identified by post_order_id.
-impl DropRanges {
-    pub fn is_dropped_at(&mut self, hir_id: HirId, location: usize) -> bool {
-        self.hir_id_map
-            .get(&hir_id)
-            .copied()
-            .map_or(false, |hir_id| self.expect_node(location.into()).drop_state.contains(hir_id))
-    }
-
+impl DropRangesBuilder {
     /// Returns the number of values (hir_ids) that are tracked
     fn num_values(&self) -> usize {
         self.hir_id_map.len()
-    }
-
-    /// Returns a reference to the NodeInfo for a node, panicking if it does not exist
-    fn expect_node(&self, id: PostOrderId) -> &NodeInfo {
-        &self.nodes[id]
     }
 
     fn node_mut(&mut self, id: PostOrderId) -> &mut NodeInfo {
@@ -122,8 +157,8 @@ impl DropRanges {
         &mut self.nodes[id]
     }
 
-    fn add_control_edge(&mut self, from: usize, to: usize) {
-        trace!("adding control edge from {} to {}", from, to);
+    fn add_control_edge(&mut self, from: PostOrderId, to: PostOrderId) {
+        trace!("adding control edge from {:?} to {:?}", from, to);
         self.node_mut(from.into()).successors.push(to.into());
     }
 }

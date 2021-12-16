@@ -1,12 +1,10 @@
-use super::{DropRanges, PostOrderId};
+use super::{DropRangesBuilder, PostOrderId};
 use rustc_index::{bit_set::BitSet, vec::IndexVec};
 use std::collections::BTreeMap;
-use std::mem::swap;
 
-impl DropRanges {
+impl DropRangesBuilder {
     pub fn propagate_to_fixpoint(&mut self) {
         trace!("before fixpoint: {:#?}", self);
-        self.process_deferred_edges();
         let preds = self.compute_predecessors();
 
         trace!("predecessors: {:#?}", preds.iter_enumerated().collect::<BTreeMap<_, _>>());
@@ -53,6 +51,11 @@ impl DropRanges {
     fn compute_predecessors(&self) -> IndexVec<PostOrderId, Vec<PostOrderId>> {
         let mut preds = IndexVec::from_fn_n(|_| vec![], self.nodes.len());
         for (id, node) in self.nodes.iter_enumerated() {
+            // If the node has no explicit successors, we assume that control
+            // will from this node into the next one.
+            //
+            // If there are successors listed, then we assume that all
+            // possible successors are given and we do not include the default.
             if node.successors.len() == 0 && id.index() != self.nodes.len() - 1 {
                 preds[id + 1].push(id);
             } else {
@@ -62,19 +65,5 @@ impl DropRanges {
             }
         }
         preds
-    }
-
-    /// Looks up PostOrderId for any control edges added by HirId and adds a proper edge for them.
-    ///
-    /// Should be called after visiting the HIR but before solving the control flow, otherwise some
-    /// edges will be missed.
-    fn process_deferred_edges(&mut self) {
-        let mut edges = vec![];
-        swap(&mut edges, &mut self.deferred_edges);
-        edges.into_iter().for_each(|(from, to)| {
-            let to = *self.post_order_map.get(&to).expect("Expression ID not found");
-            trace!("Adding deferred edge from {} to {}", from, to);
-            self.add_control_edge(from, to)
-        });
     }
 }

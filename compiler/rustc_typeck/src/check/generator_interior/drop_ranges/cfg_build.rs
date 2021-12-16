@@ -1,6 +1,6 @@
 use super::{
-    for_each_consumable, record_consumed_borrow::ConsumedAndBorrowedPlaces, DropRanges, HirIdIndex,
-    NodeInfo,
+    for_each_consumable, record_consumed_borrow::ConsumedAndBorrowedPlaces, DropRangesBuilder,
+    HirIdIndex, NodeInfo, PostOrderId,
 };
 use hir::{
     intravisit::{self, NestedVisitorMap, Visitor},
@@ -9,20 +9,24 @@ use hir::{
 use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
 use rustc_middle::hir::map::Map;
+use std::mem::swap;
 
 /// Traverses the body to find the control flow graph and locations for the
 /// relevant places are dropped or reinitialized.
 ///
 /// The resulting structure still needs to be iterated to a fixed point, which
 /// can be done with propagate_to_fixpoint in cfg_propagate.
-pub fn build_control_flow_graph<'tcx>(
+pub(super) fn build_control_flow_graph<'tcx>(
     hir: Map<'tcx>,
     consumed_borrowed_places: ConsumedAndBorrowedPlaces,
     body: &'tcx Body<'tcx>,
     num_exprs: usize,
-) -> DropRanges {
+) -> DropRangesBuilder {
     let mut drop_range_visitor = DropRangeVisitor::new(hir, consumed_borrowed_places, num_exprs);
     intravisit::walk_body(&mut drop_range_visitor, body);
+
+    drop_range_visitor.drop_ranges.process_deferred_edges();
+
     drop_range_visitor.drop_ranges
 }
 
@@ -35,27 +39,27 @@ pub fn build_control_flow_graph<'tcx>(
 struct DropRangeVisitor<'tcx> {
     hir: Map<'tcx>,
     places: ConsumedAndBorrowedPlaces,
-    drop_ranges: DropRanges,
-    expr_count: usize,
+    drop_ranges: DropRangesBuilder,
+    expr_index: PostOrderId,
 }
 
 impl<'tcx> DropRangeVisitor<'tcx> {
     fn new(hir: Map<'tcx>, places: ConsumedAndBorrowedPlaces, num_exprs: usize) -> Self {
         debug!("consumed_places: {:?}", places.consumed);
-        let drop_ranges = DropRanges::new(
+        let drop_ranges = DropRangesBuilder::new(
             places.consumed.iter().flat_map(|(_, places)| places.iter().copied()),
             hir,
             num_exprs,
         );
-        Self { hir, places, drop_ranges, expr_count: 0 }
+        Self { hir, places, drop_ranges, expr_index: PostOrderId::from_u32(0) }
     }
 
     fn record_drop(&mut self, hir_id: HirId) {
         if self.places.borrowed.contains(&hir_id) {
             debug!("not marking {:?} as dropped because it is borrowed at some point", hir_id);
         } else {
-            debug!("marking {:?} as dropped at {}", hir_id, self.expr_count);
-            let count = self.expr_count;
+            debug!("marking {:?} as dropped at {:?}", hir_id, self.expr_index);
+            let count = self.expr_index;
             self.drop_ranges.drop_at(hir_id, count);
         }
     }
@@ -63,7 +67,7 @@ impl<'tcx> DropRangeVisitor<'tcx> {
     /// ExprUseVisitor's consume callback doesn't go deep enough for our purposes in all
     /// expressions. This method consumes a little deeper into the expression when needed.
     fn consume_expr(&mut self, expr: &hir::Expr<'_>) {
-        debug!("consuming expr {:?}, count={}", expr.hir_id, self.expr_count);
+        debug!("consuming expr {:?}, count={:?}", expr.hir_id, self.expr_index);
         let places = self
             .places
             .consumed
@@ -80,8 +84,8 @@ impl<'tcx> DropRangeVisitor<'tcx> {
             hir::Path { res: hir::def::Res::Local(hir_id), .. },
         )) = expr.kind
         {
-            let location = self.expr_count;
-            debug!("reinitializing {:?} at {}", hir_id, location);
+            let location = self.expr_index;
+            debug!("reinitializing {:?} at {:?}", hir_id, location);
             self.drop_ranges.reinit_at(*hir_id, location);
         } else {
             debug!("reinitializing {:?} is not supported", expr);
@@ -102,18 +106,18 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
             ExprKind::If(test, if_true, if_false) => {
                 self.visit_expr(test);
 
-                let fork = self.expr_count;
+                let fork = self.expr_index;
 
-                self.drop_ranges.add_control_edge(fork, self.expr_count + 1);
+                self.drop_ranges.add_control_edge(fork, self.expr_index + 1);
                 self.visit_expr(if_true);
-                let true_end = self.expr_count;
+                let true_end = self.expr_index;
 
-                self.drop_ranges.add_control_edge(fork, self.expr_count + 1);
+                self.drop_ranges.add_control_edge(fork, self.expr_index + 1);
                 if let Some(if_false) = if_false {
                     self.visit_expr(if_false);
                 }
 
-                self.drop_ranges.add_control_edge(true_end, self.expr_count + 1);
+                self.drop_ranges.add_control_edge(true_end, self.expr_index + 1);
             }
             ExprKind::Assign(lhs, rhs, _) => {
                 self.visit_expr(lhs);
@@ -122,18 +126,18 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                 reinit = Some(lhs);
             }
             ExprKind::Loop(body, ..) => {
-                let loop_begin = self.expr_count + 1;
+                let loop_begin = self.expr_index + 1;
                 self.visit_block(body);
-                self.drop_ranges.add_control_edge(self.expr_count, loop_begin);
+                self.drop_ranges.add_control_edge(self.expr_index, loop_begin);
             }
             ExprKind::Match(scrutinee, arms, ..) => {
                 self.visit_expr(scrutinee);
 
-                let fork = self.expr_count;
+                let fork = self.expr_index;
                 let arm_end_ids = arms
                     .iter()
                     .map(|hir::Arm { pat, body, guard, .. }| {
-                        self.drop_ranges.add_control_edge(fork, self.expr_count + 1);
+                        self.drop_ranges.add_control_edge(fork, self.expr_index + 1);
                         self.visit_pat(pat);
                         match guard {
                             Some(Guard::If(expr)) => self.visit_expr(expr),
@@ -144,23 +148,23 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                             None => (),
                         }
                         self.visit_expr(body);
-                        self.expr_count
+                        self.expr_index
                     })
                     .collect::<Vec<_>>();
                 arm_end_ids.into_iter().for_each(|arm_end| {
-                    self.drop_ranges.add_control_edge(arm_end, self.expr_count + 1)
+                    self.drop_ranges.add_control_edge(arm_end, self.expr_index + 1)
                 });
             }
             ExprKind::Break(hir::Destination { target_id: Ok(target), .. }, ..)
             | ExprKind::Continue(hir::Destination { target_id: Ok(target), .. }, ..) => {
-                self.drop_ranges.add_control_edge_hir_id(self.expr_count, target);
+                self.drop_ranges.add_control_edge_hir_id(self.expr_index, target);
             }
 
             _ => intravisit::walk_expr(self, expr),
         }
 
-        self.expr_count += 1;
-        self.drop_ranges.add_node_mapping(expr.hir_id, self.expr_count);
+        self.expr_index = self.expr_index + 1;
+        self.drop_ranges.add_node_mapping(expr.hir_id, self.expr_index);
         self.consume_expr(expr);
         if let Some(expr) = reinit {
             self.reinit_expr(expr);
@@ -171,11 +175,11 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
         intravisit::walk_pat(self, pat);
 
         // Increment expr_count here to match what InteriorVisitor expects.
-        self.expr_count += 1;
+        self.expr_index = self.expr_index + 1;
     }
 }
 
-impl DropRanges {
+impl DropRangesBuilder {
     fn new(hir_ids: impl Iterator<Item = HirId>, hir: Map<'_>, num_exprs: usize) -> Self {
         let mut hir_id_map = HirIdMap::<HirIdIndex>::default();
         let mut next = <_>::from(0u32);
@@ -204,7 +208,7 @@ impl DropRanges {
     /// Adds an entry in the mapping from HirIds to PostOrderIds
     ///
     /// Needed so that `add_control_edge_hir_id` can work.
-    fn add_node_mapping(&mut self, hir_id: HirId, post_order_id: usize) {
+    fn add_node_mapping(&mut self, hir_id: HirId, post_order_id: PostOrderId) {
         self.post_order_map.insert(hir_id, post_order_id);
     }
 
@@ -212,16 +216,16 @@ impl DropRanges {
     ///
     /// This can be used for branches where we do not know the PostOrderId of the target yet,
     /// such as when handling `break` or `continue`.
-    fn add_control_edge_hir_id(&mut self, from: usize, to: HirId) {
+    fn add_control_edge_hir_id(&mut self, from: PostOrderId, to: HirId) {
         self.deferred_edges.push((from, to));
     }
 
-    fn drop_at(&mut self, value: HirId, location: usize) {
+    fn drop_at(&mut self, value: HirId, location: PostOrderId) {
         let value = self.hidx(value);
         self.node_mut(location.into()).drops.push(value);
     }
 
-    fn reinit_at(&mut self, value: HirId, location: usize) {
+    fn reinit_at(&mut self, value: HirId, location: PostOrderId) {
         let value = match self.hir_id_map.get(&value) {
             Some(value) => *value,
             // If there's no value, this is never consumed and therefore is never dropped. We can
@@ -229,5 +233,19 @@ impl DropRanges {
             None => return,
         };
         self.node_mut(location.into()).reinits.push(value);
+    }
+
+    /// Looks up PostOrderId for any control edges added by HirId and adds a proper edge for them.
+    ///
+    /// Should be called after visiting the HIR but before solving the control flow, otherwise some
+    /// edges will be missed.
+    fn process_deferred_edges(&mut self) {
+        let mut edges = vec![];
+        swap(&mut edges, &mut self.deferred_edges);
+        edges.into_iter().for_each(|(from, to)| {
+            let to = *self.post_order_map.get(&to).expect("Expression ID not found");
+            trace!("Adding deferred edge from {:?} to {:?}", from, to);
+            self.add_control_edge(from, to)
+        });
     }
 }
