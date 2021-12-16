@@ -1063,7 +1063,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     }
 }
 
-trait InferCtxtPrivExt<'tcx> {
+trait InferCtxtPrivExt<'hir, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool;
@@ -1174,7 +1174,7 @@ trait InferCtxtPrivExt<'tcx> {
     ) -> bool;
 }
 
-impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
+impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool {
@@ -2042,7 +2042,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         self.maybe_suggest_unsized_generics(err, span, node);
     }
 
-    fn maybe_suggest_unsized_generics(
+    fn maybe_suggest_unsized_generics<'hir>(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         span: Span,
@@ -2109,7 +2109,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         );
     }
 
-    fn maybe_indirection_for_unsized(
+    fn maybe_indirection_for_unsized<'hir>(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
         item: &'hir Item<'hir>,
@@ -2223,7 +2223,7 @@ impl<'v> Visitor<'v> for FindTypeParam {
 }
 
 pub fn recursive_type_with_infinite_size_error(
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'_>,
     type_def_id: DefId,
     spans: Vec<Span>,
 ) {
