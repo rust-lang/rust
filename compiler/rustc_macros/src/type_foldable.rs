@@ -1,8 +1,13 @@
 use quote::quote;
+use syn::parse_quote;
 
 pub fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     if let syn::Data::Union(_) = s.ast().data {
         panic!("cannot derive on union")
+    }
+
+    if !s.ast().generics.lifetimes().any(|lt| lt.lifetime.ident == "tcx") {
+        s.add_impl_generic(parse_quote! { 'tcx });
     }
 
     s.add_bounds(synstructure::AddBounds::Generics);

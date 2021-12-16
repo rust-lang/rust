@@ -101,7 +101,7 @@ impl<'tcx> fmt::Debug for ObligationCause<'tcx> {
     }
 }
 
-impl Deref for ObligationCause<'tcx> {
+impl<'tcx> Deref for ObligationCause<'tcx> {
     type Target = ObligationCauseData<'tcx>;
 
     #[inline(always)]

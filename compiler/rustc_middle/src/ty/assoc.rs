@@ -139,7 +139,7 @@ impl<'tcx> AssocItems<'tcx> {
     /// Multiple items may have the same name if they are in different `Namespace`s. For example,
     /// an associated type can have the same name as a method. Use one of the `find_by_name_and_*`
     /// methods below if you know which item you are looking for.
-    pub fn filter_by_name(
+    pub fn filter_by_name<'a>(
         &'a self,
         tcx: TyCtxt<'a>,
         ident: Ident,

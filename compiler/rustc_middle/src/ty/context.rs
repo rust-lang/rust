@@ -824,7 +824,7 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
 /// Canonicalized user type annotation.
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
-impl CanonicalUserType<'tcx> {
+impl<'tcx> CanonicalUserType<'tcx> {
     /// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
     /// i.e., each thing is mapped to a canonical variable with the same index.
     pub fn is_identity(&self) -> bool {
@@ -1893,7 +1893,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn debug_stats(self) -> impl std::fmt::Debug + 'tcx {
         struct DebugStats<'tcx>(TyCtxt<'tcx>);
 
-        impl std::fmt::Debug for DebugStats<'tcx> {
+        impl<'tcx> std::fmt::Debug for DebugStats<'tcx> {
             fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 sty_debug_print!(
                     fmt,
@@ -2711,7 +2711,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-impl TyCtxtAt<'tcx> {
+impl<'tcx> TyCtxtAt<'tcx> {
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
     #[track_caller]
     pub fn ty_error(self) -> Ty<'tcx> {

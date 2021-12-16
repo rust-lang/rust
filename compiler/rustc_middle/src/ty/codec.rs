@@ -76,7 +76,7 @@ pub trait RefDecodable<'tcx, D: TyDecoder<'tcx>> {
 }
 
 /// Encode the given value or a previously cached shorthand.
-pub fn encode_with_shorthand<E, T, M>(encoder: &mut E, value: &T, cache: M) -> Result<(), E::Error>
+pub fn encode_with_shorthand<'tcx, E, T, M>(encoder: &mut E, value: &T, cache: M) -> Result<(), E::Error>
 where
     E: TyEncoder<'tcx>,
     M: for<'b> Fn(&'b mut E) -> &'b mut FxHashMap<T, usize>,

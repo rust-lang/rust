@@ -1513,7 +1513,7 @@ pub struct FmtPrinterData<'a, 'tcx, F> {
     pub name_resolver: Option<Box<&'a dyn Fn(ty::TyVid) -> Option<String>>>,
 }
 
-impl<F> Deref for FmtPrinter<'a, 'tcx, F> {
+impl<'a, 'tcx, F> Deref for FmtPrinter<'a, 'tcx, F> {
     type Target = FmtPrinterData<'a, 'tcx, F>;
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -1526,7 +1526,7 @@ impl<F> DerefMut for FmtPrinter<'_, '_, F> {
     }
 }
 
-impl<F> FmtPrinter<'a, 'tcx, F> {
+impl<'a, 'tcx, F> FmtPrinter<'a, 'tcx, F> {
     pub fn new(tcx: TyCtxt<'tcx>, fmt: F, ns: Namespace) -> Self {
         FmtPrinter(Box::new(FmtPrinterData {
             tcx,
@@ -1563,7 +1563,7 @@ fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
     }
 }
 
-impl TyCtxt<'t> {
+impl<'t> TyCtxt<'t> {
     /// Returns a string identifying this `DefId`. This string is
     /// suitable for user output.
     pub fn def_path_str(self, def_id: DefId) -> String {
@@ -1585,7 +1585,7 @@ impl<F: fmt::Write> fmt::Write for FmtPrinter<'_, '_, F> {
     }
 }
 
-impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
+impl<'tcx, F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     type Error = fmt::Error;
 
     type Path = Self;
@@ -1594,7 +1594,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     type DynExistential = Self;
     type Const = Self;
 
-    fn tcx(&'a self) -> TyCtxt<'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1796,7 +1796,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     }
 }
 
-impl<F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
+impl<'tcx, F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
     fn infer_ty_name(&self, id: ty::TyVid) -> Option<String> {
         self.0.name_resolver.as_ref().and_then(|func| func(id))
     }
@@ -2062,7 +2062,7 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
 
 // HACK(eddyb) limited to `FmtPrinter` because of `binder_depth`,
 // `region_index` and `used_region_names`.
-impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
+impl<'tcx, F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
     pub fn name_all_regions<T>(
         mut self,
         value: &ty::Binder<'tcx, T>,
@@ -2316,7 +2316,8 @@ where
 
 macro_rules! forward_display_to_print {
     ($($ty:ty),+) => {
-        $(impl fmt::Display for $ty {
+        // Some of the $ty arguments may not actually use 'tcx
+        $(#[allow(unused_lifetimes)] impl<'tcx> fmt::Display for $ty {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 ty::tls::with(|tcx| {
                     tcx.lift(*self)
@@ -2364,7 +2365,7 @@ impl fmt::Display for ty::RegionKind {
 #[derive(Copy, Clone, TypeFoldable, Lift)]
 pub struct TraitRefPrintOnlyTraitPath<'tcx>(ty::TraitRef<'tcx>);
 
-impl fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
+impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
@@ -2376,13 +2377,13 @@ impl fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
 #[derive(Copy, Clone, TypeFoldable, Lift)]
 pub struct TraitRefPrintOnlyTraitName<'tcx>(ty::TraitRef<'tcx>);
 
-impl fmt::Debug for TraitRefPrintOnlyTraitName<'tcx> {
+impl<'tcx> fmt::Debug for TraitRefPrintOnlyTraitName<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }
 }
 
-impl ty::TraitRef<'tcx> {
+impl<'tcx> ty::TraitRef<'tcx> {
     pub fn print_only_trait_path(self) -> TraitRefPrintOnlyTraitPath<'tcx> {
         TraitRefPrintOnlyTraitPath(self)
     }
@@ -2392,7 +2393,7 @@ impl ty::TraitRef<'tcx> {
     }
 }
 
-impl ty::Binder<'tcx, ty::TraitRef<'tcx>> {
+impl<'tcx> ty::Binder<'tcx, ty::TraitRef<'tcx>> {
     pub fn print_only_trait_path(self) -> ty::Binder<'tcx, TraitRefPrintOnlyTraitPath<'tcx>> {
         self.map_bound(|tr| tr.print_only_trait_path())
     }

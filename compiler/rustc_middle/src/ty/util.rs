@@ -981,7 +981,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
 /// Returns a list of types such that the given type needs drop if and only if
 /// *any* of the returned types need drop. Returns `Err(AlwaysRequiresDrop)` if
 /// this type always needs drop.
-pub fn needs_drop_components(
+pub fn needs_drop_components<'tcx>(
     ty: Ty<'tcx>,
     target_layout: &TargetDataLayout,
 ) -> Result<SmallVec<[Ty<'tcx>; 2]>, AlwaysRequiresDrop> {
@@ -1083,7 +1083,7 @@ pub struct AlwaysRequiresDrop;
 
 /// Normalizes all opaque types in the given value, replacing them
 /// with their underlying types.
-pub fn normalize_opaque_types(
+pub fn normalize_opaque_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     val: &'tcx List<ty::Predicate<'tcx>>,
 ) -> &'tcx List<ty::Predicate<'tcx>> {

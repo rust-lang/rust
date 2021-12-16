@@ -69,7 +69,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
     }
 }
 
-impl GenericArg<'tcx> {
+impl<'tcx> GenericArg<'tcx> {
     /// Iterator that walks `self` and any types reachable from
     /// `self`, in depth-first order. Note that just walks the types
     /// that appear in `self`, it does not descend into the fields of

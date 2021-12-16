@@ -75,7 +75,7 @@ pub struct OriginalQueryValues<'tcx> {
     pub var_values: SmallVec<[GenericArg<'tcx>; 8]>,
 }
 
-impl Default for OriginalQueryValues<'tcx> {
+impl<'tcx> Default for OriginalQueryValues<'tcx> {
     fn default() -> Self {
         let mut universe_map = SmallVec::default();
         universe_map.push(ty::UniverseIndex::ROOT);

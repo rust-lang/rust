@@ -30,7 +30,7 @@ pub enum DefIdForest {
 
 /// Tests whether a slice of roots contains a given DefId.
 #[inline]
-fn slice_contains(tcx: TyCtxt<'tcx>, slice: &[DefId], id: DefId) -> bool {
+fn slice_contains<'tcx>(tcx: TyCtxt<'tcx>, slice: &[DefId], id: DefId) -> bool {
     slice.iter().any(|root_id| tcx.is_descendant_of(id, *root_id))
 }
 

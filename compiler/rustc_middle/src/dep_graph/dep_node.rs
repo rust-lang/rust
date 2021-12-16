@@ -201,7 +201,7 @@ crate fn make_compile_codegen_unit(tcx: TyCtxt<'_>, name: Symbol) -> DepNode {
 
 // WARNING: `construct` is generic and does not know that `CompileMonoItem` takes `MonoItem`s as keys.
 // Be very careful changing this type signature!
-crate fn make_compile_mono_item(tcx: TyCtxt<'tcx>, mono_item: &MonoItem<'tcx>) -> DepNode {
+crate fn make_compile_mono_item<'tcx>(tcx: TyCtxt<'tcx>, mono_item: &MonoItem<'tcx>) -> DepNode {
     DepNode::construct(tcx, DepKind::CompileMonoItem, mono_item)
 }
 
@@ -264,7 +264,7 @@ impl DepNodeExt for DepNode {
     /// DepNode. Condition (2) might not be fulfilled if a DepNode
     /// refers to something from the previous compilation session that
     /// has been removed.
-    fn extract_def_id(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
+    fn extract_def_id<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
         if self.kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash {
             Some(tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into())))
         } else {

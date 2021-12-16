@@ -300,7 +300,7 @@ pub fn reachable<'a, 'tcx>(
 }
 
 /// Returns a `BitSet` containing all basic blocks reachable from the `START_BLOCK`.
-pub fn reachable_as_bitset(body: &Body<'tcx>) -> BitSet<BasicBlock> {
+pub fn reachable_as_bitset<'tcx>(body: &Body<'tcx>) -> BitSet<BasicBlock> {
     let mut iter = preorder(body);
     (&mut iter).for_each(drop);
     iter.visited
