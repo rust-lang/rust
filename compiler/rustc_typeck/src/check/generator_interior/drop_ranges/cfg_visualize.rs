@@ -5,6 +5,15 @@ use rustc_graphviz as dot;
 
 use super::{DropRangesBuilder, PostOrderId};
 
+/// Writes the CFG for DropRangesBuilder to a .dot file for visualization.
+///
+/// It is not normally called, but is kept around to easily add debugging
+/// code when needed.
+#[allow(dead_code)]
+pub(super) fn write_graph_to_file(drop_ranges: &DropRangesBuilder, filename: &str) {
+    dot::render(drop_ranges, &mut std::fs::File::create(filename).unwrap()).unwrap();
+}
+
 impl<'a> dot::GraphWalk<'a> for DropRangesBuilder {
     type Node = PostOrderId;
 

@@ -133,11 +133,10 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
             ExprKind::Match(scrutinee, arms, ..) => {
                 self.visit_expr(scrutinee);
 
-                let fork = self.expr_index;
-                let arm_end_ids = arms
-                    .iter()
-                    .map(|hir::Arm { pat, body, guard, .. }| {
-                        self.drop_ranges.add_control_edge(fork, self.expr_index + 1);
+                let (guard_exit, arm_end_ids) = arms.iter().fold(
+                    (self.expr_index, vec![]),
+                    |(incoming_edge, mut arm_end_ids), hir::Arm { pat, body, guard, .. }| {
+                        self.drop_ranges.add_control_edge(incoming_edge, self.expr_index + 1);
                         self.visit_pat(pat);
                         match guard {
                             Some(Guard::If(expr)) => self.visit_expr(expr),
@@ -147,10 +146,16 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                             }
                             None => (),
                         }
+                        let to_next_arm = self.expr_index;
+                        // The default edge does not get added since we also have an explicit edge,
+                        // so we also need to add an edge to the next node as well.
+                        self.drop_ranges.add_control_edge(self.expr_index, self.expr_index + 1);
                         self.visit_expr(body);
-                        self.expr_index
-                    })
-                    .collect::<Vec<_>>();
+                        arm_end_ids.push(self.expr_index);
+                        (to_next_arm, arm_end_ids)
+                    },
+                );
+                self.drop_ranges.add_control_edge(guard_exit, self.expr_index + 1);
                 arm_end_ids.into_iter().for_each(|arm_end| {
                     self.drop_ranges.add_control_edge(arm_end, self.expr_index + 1)
                 });
