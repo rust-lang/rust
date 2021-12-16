@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use rustc_version::VersionMeta;
 
-const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 22);
+const XARGO_MIN_VERSION: (u32, u32, u32) = (0, 3, 23);
 
 const CARGO_MIRI_HELP: &str = r#"Runs binary crates and tests in Miri
 
