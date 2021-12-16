@@ -5,7 +5,11 @@ LL |     match data {
    |           ^^^^ pattern `&[_, ..]` not covered
    |
    = note: the matched value is of type `&[u8]`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         b"" => 1,
+LL ~         &[_, ..] => todo!(),
+   |
 
 error[E0004]: non-exhaustive patterns: `&[]`, `&[_]`, `&[_, _]` and 1 more not covered
   --> $DIR/type_polymorphic_byte_str_literals.rs:23:11

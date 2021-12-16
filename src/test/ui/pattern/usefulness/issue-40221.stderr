@@ -11,7 +11,11 @@ LL |       match proto {
    |             ^^^^^ pattern `C(QA)` not covered
    |
    = note: the matched value is of type `P`
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+   |
+LL ~         P::C(PC::Q) => (),
+LL ~         C(QA) => todo!(),
+   |
 
 error: aborting due to previous error
 
