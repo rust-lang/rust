@@ -372,34 +372,6 @@ impl<'tcx> Context<'tcx> {
             anchor = anchor
         ))
     }
-
-    fn generate_notable_trait_index(&self, crate_name: &str) -> Result<(), Error> {
-        let notable_traits = self.shared.notable_traits.borrow();
-        if !notable_traits.is_empty() {
-            // This is crate specific.
-            let notable_traits_file = self.dst.join(crate_name).join("notable-traits.js");
-            let out = "window.NOTABLE_TRAITS = [".to_owned();
-
-            // We need to put them back into a vec to sort them by their index.
-            let mut notables = notable_traits.iter().collect::<Vec<_>>();
-            notables.sort_by(|(_, pos1), (_, pos2)| pos1.cmp(pos2));
-
-            let mut out = notables.into_iter().fold(out, |mut acc, ((for_, content), pos)| {
-                if *pos > 0 {
-                    acc.push(',');
-                }
-                acc.push_str(&format!(
-                    "[\"{}\",\"{}\"]",
-                    for_.replace("\"", "\\\""),
-                    content.replace("\\", "\\\\").replace("\"", "\\\""),
-                ));
-                acc
-            });
-            out.push_str("];");
-            self.shared.fs.write(notable_traits_file, out)?;
-        }
-        Ok(())
-    }
 }
 
 /// Generates the documentation for `crate` into the directory `dst`
@@ -585,8 +557,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let crate_name: &str = &*crate_name;
         let final_file = self.dst.join(crate_name).join("all.html");
         let settings_file = self.dst.join("settings.html");
-
-        self.generate_notable_trait_index(crate_name)?;
 
         let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
         if !root_path.ends_with('/') {

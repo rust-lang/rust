@@ -171,6 +171,23 @@ pub(super) fn print_item(
             unreachable!();
         }
     }
+    // We now write down all the notable traits DOM in one place that will be used by JS after.
+    let mut notable_traits = cx.shared.notable_traits.borrow_mut();
+    if !notable_traits.is_empty() {
+        let mut notables = notable_traits.drain().collect::<Vec<_>>();
+        notables.sort_by(|(_, pos1), (_, pos2)| pos1.cmp(pos2));
+        buf.write_str("<div id=\"notable-traits\" class=\"code-header\">");
+        for notable in notables {
+            buf.write_str(&format!(
+                "<div class=\"notable-traits-tooltiptext\">\
+                <div class=\"notable\">Notable traits for {}</div>\
+                <code class=\"content\">{}</code>\
+            </div>",
+                notable.0.0, notable.0.1
+            ));
+        }
+        buf.write_str("</div>");
+    }
 }
 
 /// For large structs, enums, unions, etc, determine whether to hide their fields

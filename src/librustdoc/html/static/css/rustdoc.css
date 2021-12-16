@@ -1268,14 +1268,13 @@ h3.variant {
 	cursor: pointer;
 }
 
-#notable-traits-tooltiptext {
+.notable-traits-tooltiptext {
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
 	margin-left: 5px;
 	z-index: 10;
 	font-size: 16px;
 	cursor: default;
-	position: absolute;
 	border: 1px solid;
 }
 
@@ -1290,17 +1289,22 @@ h3.variant {
 	margin: 0;
 }
 
-#notable-traits-tooltiptext .notable {
+.notable-traits-tooltiptext .notable {
 	margin: 0;
 	margin-bottom: 13px;
 	font-size: 19px;
 	font-weight: 600;
 }
+#notable-traits .notable-traits-tooltiptext {
+	display: none;
+	position: absolute;
+}
 
-#notable-traits-tooltiptext code.content{
+.notable-traits-tooltiptext code.content{
 	margin: 0;
 	padding: 0;
 	font-size: 20px;
+	font-weight: 600;
 }
 
 /* Example code has the "Run" button that needs to be positioned relative to the pre */

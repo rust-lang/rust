@@ -1265,8 +1265,8 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                                 &mut out_for,
                                 "{}",
                                 impl_.for_.print(cx),
-                                //    "<div class=\"notable\">Notable traits for {}</div>\
-                                // <code class=\"content\">",
+                                // "<div class=\"notable\">Notable traits for {}</div>\
+                                //   <code class=\"content\">",
                             );
                         }
 
