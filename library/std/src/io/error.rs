@@ -417,6 +417,33 @@ impl Error {
         Self::_new(kind, error.into())
     }
 
+    /// Creates a new I/O error from an arbitrary error payload.
+    ///
+    /// This function is used to generically create I/O errors which do not
+    /// originate from the OS itself. It is a shortcut for [`Error::new`]
+    /// with [`ErrorKind::Other`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_error_other)]
+    ///
+    /// use std::io::Error;
+    ///
+    /// // errors can be created from strings
+    /// let custom_error = Error::other("oh no!");
+    ///
+    /// // errors can also be created from other errors
+    /// let custom_error2 = Error::other(custom_error);
+    /// ```
+    #[unstable(feature = "io_error_other", issue = "91946")]
+    pub fn other<E>(error: E) -> Error
+    where
+        E: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        Self::_new(ErrorKind::Other, error.into())
+    }
+
     fn _new(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
         Error { repr: Repr::Custom(Box::new(Custom { kind, error })) }
     }
