@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{match_def_path, meets_msrv, msrvs, path_to_local_id, paths, remove_blocks};
+use clippy_utils::{match_def_path, meets_msrv, msrvs, path_to_local_id, paths, peel_blocks};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -53,7 +53,7 @@ pub(super) fn check<'tcx>(
             }),
         hir::ExprKind::Closure(_, _, body_id, _, _) => {
             let closure_body = cx.tcx.hir().body(body_id);
-            let closure_expr = remove_blocks(&closure_body.value);
+            let closure_expr = peel_blocks(&closure_body.value);
 
             match &closure_expr.kind {
                 hir::ExprKind::MethodCall(_, _, args, _) => {

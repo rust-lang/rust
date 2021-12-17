@@ -1,5 +1,5 @@
 error: method `eq` can be confused for the standard trait method `std::cmp::PartialEq::eq`
-  --> $DIR/method_list_2.rs:25:5
+  --> $DIR/method_list_2.rs:26:5
    |
 LL | /     pub fn eq(&self, other: &Self) -> bool {
 LL | |         unimplemented!()
@@ -10,7 +10,7 @@ LL | |     }
    = help: consider implementing the trait `std::cmp::PartialEq` or choosing a less ambiguous method name
 
 error: method `from_iter` can be confused for the standard trait method `std::iter::FromIterator::from_iter`
-  --> $DIR/method_list_2.rs:29:5
+  --> $DIR/method_list_2.rs:30:5
    |
 LL | /     pub fn from_iter<T>(iter: T) -> Self {
 LL | |         unimplemented!()
@@ -20,7 +20,7 @@ LL | |     }
    = help: consider implementing the trait `std::iter::FromIterator` or choosing a less ambiguous method name
 
 error: method `from_str` can be confused for the standard trait method `std::str::FromStr::from_str`
-  --> $DIR/method_list_2.rs:33:5
+  --> $DIR/method_list_2.rs:34:5
    |
 LL | /     pub fn from_str(s: &str) -> Result<Self, Self> {
 LL | |         unimplemented!()
@@ -30,7 +30,7 @@ LL | |     }
    = help: consider implementing the trait `std::str::FromStr` or choosing a less ambiguous method name
 
 error: method `hash` can be confused for the standard trait method `std::hash::Hash::hash`
-  --> $DIR/method_list_2.rs:37:5
+  --> $DIR/method_list_2.rs:38:5
    |
 LL | /     pub fn hash(&self, state: &mut T) {
 LL | |         unimplemented!()
@@ -40,7 +40,7 @@ LL | |     }
    = help: consider implementing the trait `std::hash::Hash` or choosing a less ambiguous method name
 
 error: method `index` can be confused for the standard trait method `std::ops::Index::index`
-  --> $DIR/method_list_2.rs:41:5
+  --> $DIR/method_list_2.rs:42:5
    |
 LL | /     pub fn index(&self, index: usize) -> &Self {
 LL | |         unimplemented!()
@@ -50,7 +50,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Index` or choosing a less ambiguous method name
 
 error: method `index_mut` can be confused for the standard trait method `std::ops::IndexMut::index_mut`
-  --> $DIR/method_list_2.rs:45:5
+  --> $DIR/method_list_2.rs:46:5
    |
 LL | /     pub fn index_mut(&mut self, index: usize) -> &mut Self {
 LL | |         unimplemented!()
@@ -60,7 +60,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::IndexMut` or choosing a less ambiguous method name
 
 error: method `into_iter` can be confused for the standard trait method `std::iter::IntoIterator::into_iter`
-  --> $DIR/method_list_2.rs:49:5
+  --> $DIR/method_list_2.rs:50:5
    |
 LL | /     pub fn into_iter(self) -> Self {
 LL | |         unimplemented!()
@@ -70,7 +70,7 @@ LL | |     }
    = help: consider implementing the trait `std::iter::IntoIterator` or choosing a less ambiguous method name
 
 error: method `mul` can be confused for the standard trait method `std::ops::Mul::mul`
-  --> $DIR/method_list_2.rs:53:5
+  --> $DIR/method_list_2.rs:54:5
    |
 LL | /     pub fn mul(self, rhs: Self) -> Self {
 LL | |         unimplemented!()
@@ -80,7 +80,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Mul` or choosing a less ambiguous method name
 
 error: method `neg` can be confused for the standard trait method `std::ops::Neg::neg`
-  --> $DIR/method_list_2.rs:57:5
+  --> $DIR/method_list_2.rs:58:5
    |
 LL | /     pub fn neg(self) -> Self {
 LL | |         unimplemented!()
@@ -90,7 +90,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Neg` or choosing a less ambiguous method name
 
 error: method `next` can be confused for the standard trait method `std::iter::Iterator::next`
-  --> $DIR/method_list_2.rs:61:5
+  --> $DIR/method_list_2.rs:62:5
    |
 LL | /     pub fn next(&mut self) -> Option<Self> {
 LL | |         unimplemented!()
@@ -100,7 +100,7 @@ LL | |     }
    = help: consider implementing the trait `std::iter::Iterator` or choosing a less ambiguous method name
 
 error: method `not` can be confused for the standard trait method `std::ops::Not::not`
-  --> $DIR/method_list_2.rs:65:5
+  --> $DIR/method_list_2.rs:66:5
    |
 LL | /     pub fn not(self) -> Self {
 LL | |         unimplemented!()
@@ -110,7 +110,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Not` or choosing a less ambiguous method name
 
 error: method `rem` can be confused for the standard trait method `std::ops::Rem::rem`
-  --> $DIR/method_list_2.rs:69:5
+  --> $DIR/method_list_2.rs:70:5
    |
 LL | /     pub fn rem(self, rhs: Self) -> Self {
 LL | |         unimplemented!()
@@ -120,7 +120,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Rem` or choosing a less ambiguous method name
 
 error: method `shl` can be confused for the standard trait method `std::ops::Shl::shl`
-  --> $DIR/method_list_2.rs:73:5
+  --> $DIR/method_list_2.rs:74:5
    |
 LL | /     pub fn shl(self, rhs: Self) -> Self {
 LL | |         unimplemented!()
@@ -130,7 +130,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Shl` or choosing a less ambiguous method name
 
 error: method `shr` can be confused for the standard trait method `std::ops::Shr::shr`
-  --> $DIR/method_list_2.rs:77:5
+  --> $DIR/method_list_2.rs:78:5
    |
 LL | /     pub fn shr(self, rhs: Self) -> Self {
 LL | |         unimplemented!()
@@ -140,7 +140,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Shr` or choosing a less ambiguous method name
 
 error: method `sub` can be confused for the standard trait method `std::ops::Sub::sub`
-  --> $DIR/method_list_2.rs:81:5
+  --> $DIR/method_list_2.rs:82:5
    |
 LL | /     pub fn sub(self, rhs: Self) -> Self {
 LL | |         unimplemented!()

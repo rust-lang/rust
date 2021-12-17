@@ -8,6 +8,11 @@
 //! during any comparison or mapping. (Please take care of this, it's not fun to spend time on such
 //! a simple mistake)
 
+use crate::utils::internal_lints::{extract_clippy_version_value, is_lint_ref_type};
+
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::{match_type, walk_ptrs_ty_depth};
+use clippy_utils::{last_path_segment, match_def_path, match_function_call, match_path, paths};
 use if_chain::if_chain;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
@@ -24,12 +29,6 @@ use std::fmt;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
-
-use crate::utils::internal_lints::{extract_clippy_version_value, is_lint_ref_type};
-use clippy_utils::{
-    diagnostics::span_lint, last_path_segment, match_def_path, match_function_call, match_path, paths, ty::match_type,
-    ty::walk_ptrs_ty_depth,
-};
 
 /// This is the output file of the lint collector.
 const OUTPUT_FILE: &str = "../util/gh-pages/lints.json";

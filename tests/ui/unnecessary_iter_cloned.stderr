@@ -1,0 +1,35 @@
+error: unnecessary use of `copied`
+  --> $DIR/unnecessary_iter_cloned.rs:31:22
+   |
+LL |     for (t, path) in files.iter().copied() {
+   |                      ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
+help: use
+   |
+LL |     for (t, path) in files {
+   |                      ~~~~~
+help: remove this `&`
+   |
+LL -         let other = match get_file_path(&t) {
+LL +         let other = match get_file_path(t) {
+   | 
+
+error: unnecessary use of `copied`
+  --> $DIR/unnecessary_iter_cloned.rs:46:22
+   |
+LL |     for (t, path) in files.iter().copied() {
+   |                      ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL |     for (t, path) in files.iter() {
+   |                      ~~~~~~~~~~~~
+help: remove this `&`
+   |
+LL -         let other = match get_file_path(&t) {
+LL +         let other = match get_file_path(t) {
+   | 
+
+error: aborting due to 2 previous errors
+
