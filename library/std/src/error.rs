@@ -914,106 +914,109 @@ impl dyn Error + Send + Sync {
 /// thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: SuperError is here!: SuperErrorSideKick is here!', src/error.rs:34:40
 /// note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 /// ```
-// /// TODO: Report doesn't yet support return from `main` gracefully, fix in followup (yaahc)
-// /// ## Return from `main`
-// ///
-// /// `Report` also implements `From` for all types that implement [`Error`], this when combined with
-// /// the `Debug` output means `Report` is an ideal starting place for formatting errors returned
-// /// from `main`.
-// ///
-// /// ```
-// /// #![feature(error_reporter)]
-// /// use std::error::Report;
-// /// # use std::error::Error;
-// /// # use std::fmt;
-// /// # #[derive(Debug)]
-// /// # struct SuperError {
-// /// #     source: SuperErrorSideKick,
-// /// # }
-// /// # impl fmt::Display for SuperError {
-// /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-// /// #         write!(f, "SuperError is here!")
-// /// #     }
-// /// # }
-// /// # impl Error for SuperError {
-// /// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
-// /// #         Some(&self.source)
-// /// #     }
-// /// # }
-// /// # #[derive(Debug)]
-// /// # struct SuperErrorSideKick;
-// /// # impl fmt::Display for SuperErrorSideKick {
-// /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-// /// #         write!(f, "SuperErrorSideKick is here!")
-// /// #     }
-// /// # }
-// /// # impl Error for SuperErrorSideKick {}
-// /// # fn get_super_error() -> Result<(), SuperError> {
-// /// #     Err(SuperError { source: SuperErrorSideKick })
-// /// # }
-// ///
-// /// fn main() -> Result<(), Report> {
-// ///     get_super_error()?;
-// /// }
-// /// ```
-// ///
-// /// This example produces the following output:
-// ///
-// /// ```console
-// /// thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: SuperError is here!: SuperErrorSideKick is here!', src/error.rs:34:40
-// /// note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-// /// ```
-// ///
-// /// **Note**: `Report`s constructed via `?` and `From` will be configured to use the single line
-// /// output format, if you want to make sure your `Report`s are pretty printed and include backtrace
-// /// you will need to manually convert and enable those flags.
-// ///
-// /// ```
-// /// #![feature(error_reporter)]
-// /// use std::error::Report;
-// /// # use std::error::Error;
-// /// # use std::fmt;
-// /// # #[derive(Debug)]
-// /// # struct SuperError {
-// /// #     source: SuperErrorSideKick,
-// /// # }
-// /// # impl fmt::Display for SuperError {
-// /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-// /// #         write!(f, "SuperError is here!")
-// /// #     }
-// /// # }
-// /// # impl Error for SuperError {
-// /// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
-// /// #         Some(&self.source)
-// /// #     }
-// /// # }
-// /// # #[derive(Debug)]
-// /// # struct SuperErrorSideKick;
-// /// # impl fmt::Display for SuperErrorSideKick {
-// /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-// /// #         write!(f, "SuperErrorSideKick is here!")
-// /// #     }
-// /// # }
-// /// # impl Error for SuperErrorSideKick {}
-// /// # fn get_super_error() -> Result<(), SuperError> {
-// /// #     Err(SuperError { source: SuperErrorSideKick })
-// /// # }
-// ///
-// /// fn main() -> Result<(), Report> {
-// ///     get_super_error()
-// ///         .map_err(Report::new)
-// ///         .map_err(|r| r.pretty(true).show_backtrace(true))?;
-// /// }
-// /// ```
-// ///
-// /// This example produces the following output:
-// ///
-// /// ```console
-// /// thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: SuperError is here!: SuperErrorSideKick is here!', src/error.rs:34:40
-// /// note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-// /// ```
+///
+/// ## Return from `main`
+///
+/// `Report` also implements `From` for all types that implement [`Error`], this when combined with
+/// the `Debug` output means `Report` is an ideal starting place for formatting errors returned
+/// from `main`.
+///
+/// ```should_panic
+/// #![feature(error_reporter)]
+/// use std::error::Report;
+/// # use std::error::Error;
+/// # use std::fmt;
+/// # #[derive(Debug)]
+/// # struct SuperError {
+/// #     source: SuperErrorSideKick,
+/// # }
+/// # impl fmt::Display for SuperError {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperError is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperError {
+/// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+/// #         Some(&self.source)
+/// #     }
+/// # }
+/// # #[derive(Debug)]
+/// # struct SuperErrorSideKick;
+/// # impl fmt::Display for SuperErrorSideKick {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperErrorSideKick is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperErrorSideKick {}
+/// # fn get_super_error() -> Result<(), SuperError> {
+/// #     Err(SuperError { source: SuperErrorSideKick })
+/// # }
+///
+/// fn main() -> Result<(), Report> {
+///     get_super_error()?;
+///     Ok(())
+/// }
+/// ```
+///
+/// This example produces the following output:
+///
+/// ```console
+/// Error: SuperError is here!: SuperErrorSideKick is here!
+/// ```
+///
+/// **Note**: `Report`s constructed via `?` and `From` will be configured to use the single line
+/// output format, if you want to make sure your `Report`s are pretty printed and include backtrace
+/// you will need to manually convert and enable those flags.
+///
+/// ```should_panic
+/// #![feature(error_reporter)]
+/// use std::error::Report;
+/// # use std::error::Error;
+/// # use std::fmt;
+/// # #[derive(Debug)]
+/// # struct SuperError {
+/// #     source: SuperErrorSideKick,
+/// # }
+/// # impl fmt::Display for SuperError {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperError is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperError {
+/// #     fn source(&self) -> Option<&(dyn Error + 'static)> {
+/// #         Some(&self.source)
+/// #     }
+/// # }
+/// # #[derive(Debug)]
+/// # struct SuperErrorSideKick;
+/// # impl fmt::Display for SuperErrorSideKick {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "SuperErrorSideKick is here!")
+/// #     }
+/// # }
+/// # impl Error for SuperErrorSideKick {}
+/// # fn get_super_error() -> Result<(), SuperError> {
+/// #     Err(SuperError { source: SuperErrorSideKick })
+/// # }
+///
+/// fn main() -> Result<(), Report> {
+///     get_super_error()
+///         .map_err(Report::from)
+///         .map_err(|r| r.pretty(true).show_backtrace(true))?;
+///     Ok(())
+/// }
+/// ```
+///
+/// This example produces the following output:
+///
+/// ```console
+/// Error: SuperError is here!
+///
+/// Caused by:
+///       SuperErrorSideKick is here!
+/// ```
 #[unstable(feature = "error_reporter", issue = "90172")]
-pub struct Report<E> {
+pub struct Report<E = Box<dyn Error>> {
     /// The error being reported.
     error: E,
     /// Whether a backtrace should be included as part of the report.
@@ -1024,14 +1027,16 @@ pub struct Report<E> {
 
 impl<E> Report<E>
 where
-    E: Error,
+    Report<E>: From<E>,
 {
     /// Create a new `Report` from an input error.
     #[unstable(feature = "error_reporter", issue = "90172")]
     pub fn new(error: E) -> Report<E> {
-        Report { error, show_backtrace: false, pretty: false }
+        Self::from(error)
     }
+}
 
+impl<E> Report<E> {
     /// Enable pretty-printing the report across multiple lines.
     ///
     /// # Examples
@@ -1232,7 +1237,81 @@ where
         self.show_backtrace = show_backtrace;
         self
     }
+}
 
+impl<E> Report<E>
+where
+    E: Error,
+{
+    fn backtrace(&self) -> Option<&Backtrace> {
+        // have to grab the backtrace on the first error directly since that error may not be
+        // 'static
+        let backtrace = self.error.backtrace();
+        let backtrace = backtrace.or_else(|| {
+            self.error
+                .source()
+                .map(|source| source.chain().find_map(|source| source.backtrace()))
+                .flatten()
+        });
+        backtrace
+    }
+
+    /// Format the report as a single line.
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    fn fmt_singleline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.error)?;
+
+        let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
+
+        for cause in sources {
+            write!(f, ": {}", cause)?;
+        }
+
+        Ok(())
+    }
+
+    /// Format the report as multiple lines, with each error cause on its own line.
+    #[unstable(feature = "error_reporter", issue = "90172")]
+    fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let error = &self.error;
+
+        write!(f, "{}", error)?;
+
+        if let Some(cause) = error.source() {
+            write!(f, "\n\nCaused by:")?;
+
+            let multiple = cause.source().is_some();
+
+            for (ind, error) in cause.chain().enumerate() {
+                writeln!(f)?;
+                let mut indented = Indented {
+                    inner: f,
+                };
+                if multiple {
+                    write!(indented, "{: >4}: {}", ind, error)?;
+                } else {
+                    write!(indented, "      {}", error)?;
+                }
+            }
+        }
+
+        if self.show_backtrace {
+            let backtrace = self.backtrace();
+
+            if let Some(backtrace) = backtrace {
+                let backtrace = backtrace.to_string();
+
+                f.write_str("\n\nStack backtrace:\n")?;
+                f.write_str(backtrace.trim_end())?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Report<Box<dyn Error>>
+{
     fn backtrace(&self) -> Option<&Backtrace> {
         // have to grab the backtrace on the first error directly since that error may not be
         // 'static
@@ -1306,7 +1385,18 @@ where
     E: Error,
 {
     fn from(error: E) -> Self {
-        Report::new(error)
+        Report { error, show_backtrace: false, pretty: false }
+    }
+}
+
+#[unstable(feature = "error_reporter", issue = "90172")]
+impl<'a, E> From<E> for Report<Box<dyn Error + 'a>>
+where
+    E: Error + 'a,
+{
+    fn from(error: E) -> Self {
+        let error = box error;
+        Report { error, show_backtrace: false, pretty: false }
     }
 }
 
@@ -1320,12 +1410,20 @@ where
     }
 }
 
+#[unstable(feature = "error_reporter", issue = "90172")]
+impl fmt::Display for Report<Box<dyn Error>>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.pretty { self.fmt_multiline(f) } else { self.fmt_singleline(f) }
+    }
+}
+
 // This type intentionally outputs the same format for `Display` and `Debug`for
 // situations where you unwrap a `Report` or return it from main.
 #[unstable(feature = "error_reporter", issue = "90172")]
 impl<E> fmt::Debug for Report<E>
 where
-    E: Error,
+    Report<E>: fmt::Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
