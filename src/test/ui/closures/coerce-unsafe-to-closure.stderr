@@ -10,8 +10,8 @@ LL |     let x: Option<&[u8]> = Some("foo").map(std::mem::transmute);
 note: required by a bound in `Option::<T>::map`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
-LL |     pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {
-   |                      ^^^^^^^^^^^^^^ required by this bound in `Option::<T>::map`
+LL |         F: ~const FnOnce(T) -> U,
+   |            ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Option::<T>::map`
 
 error: aborting due to previous error
 
