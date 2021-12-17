@@ -66,7 +66,7 @@ Current beta (Release January 13 2022)
   [#7850](https://github.com/rust-lang/rust-clippy/pull/7850)
 * [`match_str_case_mismatch`] no longer lints on uncased characters
   [#7865](https://github.com/rust-lang/rust-clippy/pull/7865)
-* [`ptr_arg`] No longer lints references to type aliases
+* [`ptr_arg`] no longer lints references to type aliases
   [#7890](https://github.com/rust-lang/rust-clippy/pull/7890)
 * [`missing_safety_doc`] now also accepts "implementation safety" headers
   [#7856](https://github.com/rust-lang/rust-clippy/pull/7856)
