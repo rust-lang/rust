@@ -16,7 +16,7 @@ pub fn opts(os: &str) -> TargetOptions {
     // TLS is flagged as enabled if it looks to be supported. The architecture
     // only matters for default deployment target which is 11.0 for ARM64 and
     // 10.7 for everything else.
-    let has_elf_tls = macos_deployment_target("x86_64") >= (10, 7);
+    let has_thread_local = macos_deployment_target("x86_64") >= (10, 7);
 
     TargetOptions {
         os: os.to_string(),
@@ -33,7 +33,7 @@ pub fn opts(os: &str) -> TargetOptions {
         has_rpath: true,
         dll_suffix: ".dylib".to_string(),
         archive_format: "darwin".to_string(),
-        has_elf_tls,
+        has_thread_local,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
         eh_frame_header: false,

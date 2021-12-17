@@ -6,7 +6,7 @@ pub fn opts(kernel: &str) -> TargetOptions {
         os: format!("solid_{}", kernel),
         vendor: "kmc".to_string(),
         frame_pointer: FramePointer::NonLeaf,
-        has_elf_tls: true,
+        has_thread_local: true,
         ..Default::default()
     }
 }
