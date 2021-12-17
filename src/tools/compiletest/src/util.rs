@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::env;
 use std::ffi::OsStr;
 use std::path::PathBuf;
+use std::process::Command;
 
 use tracing::*;
 
@@ -217,22 +218,31 @@ pub fn logv(config: &Config, s: String) {
     }
 }
 
-/// Parses the output of `rustc --print cfg` into a [`HashMap`] containing
-/// the cfg values for each name. If the name is present with no value,
-/// it is treated as having a value of "".
-pub fn parse_rustc_cfg(rustc_output: String) -> HashMap<String, Vec<String>> {
-    let mut map = HashMap::new();
+pub fn fetch_cfg_from_rustc_for_target<P: AsRef<OsStr>>(
+    rustc_path: &P,
+    target: &str,
+) -> HashMap<String, Vec<String>> {
+    let mut target_cfg = HashMap::new();
 
-    for line in rustc_output.lines() {
-        if let Some((name, value)) = line.split_once('=') {
-            let normalized_value = value.trim_matches('"');
-            cfg_add(&mut map, name, normalized_value);
-        } else {
-            cfg_add(&mut map, line, "");
+    if !cfg!(test) {
+        let rustc_output = Command::new(&rustc_path)
+            .args(&["--target", &target])
+            .args(&["--print", "cfg"])
+            .output()
+            .unwrap()
+            .stdout;
+        let rustc_output = String::from_utf8(rustc_output).unwrap();
+
+        for line in rustc_output.lines() {
+            if let Some((name, value)) = line.split_once('=') {
+                let normalized_value = value.trim_matches('"');
+                cfg_add(&mut target_cfg, name, normalized_value);
+            } else {
+                cfg_add(&mut target_cfg, line, "");
+            }
         }
     }
-
-    return map;
+    target_cfg
 }
 
 /// Adds the given name and value to the provided cfg [`HashMap`]. If the `name` already

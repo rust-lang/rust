@@ -16,9 +16,12 @@ use crate::{extract_cdb_version, extract_gdb_version};
 #[cfg(test)]
 mod tests;
 
-/// The result of parse_cfg_name_directive.
+/// Whether a given property holds true of this test instance. Usually,
+/// a property is something about the target (e.g. whether the target is Windows),
+/// but it could also be something more general (e.g. whether this test is being
+/// cross-compiled.)
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum ParsedNameDirective {
+enum EvaluatedProp {
     /// No match.
     NoMatch,
     /// Match.
@@ -228,6 +231,10 @@ impl TestProps {
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();
 
+            let mut target = config.target.clone();
+            let mut per_prop_normalize_stdout: Vec<(String, (String, String))> = Vec::new();
+            let mut per_prop_normalize_stderr: Vec<(String, (String, String))> = Vec::new();
+
             iter_header(testfile, file, &mut |revision, ln| {
                 if revision.is_some() && revision != cfg {
                     return;
@@ -340,11 +347,16 @@ impl TestProps {
                     self.ignore_pass = config.parse_ignore_pass(ln);
                 }
 
-                if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
-                    self.normalize_stdout.push(rule);
+                if let Some(target_override) = config.parse_target_override(ln) {
+                    target = target_override;
                 }
+
+                if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
+                    per_prop_normalize_stdout.push(rule);
+                }
+
                 if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
-                    self.normalize_stderr.push(rule);
+                    per_prop_normalize_stderr.push(rule);
                 }
 
                 if let Some(code) = config.parse_failure_status(ln) {
@@ -372,6 +384,17 @@ impl TestProps {
                     self.incremental = config.parse_incremental(ln);
                 }
             });
+            for (prop, normalization) in per_prop_normalize_stdout {
+                if config.evaluate_prop_for_target(&prop, &target) == EvaluatedProp::Match {
+                    self.normalize_stdout.push(normalization);
+                }
+            }
+
+            for (prop, normalization) in per_prop_normalize_stderr {
+                if config.evaluate_prop_for_target(&prop, &target) == EvaluatedProp::Match {
+                    self.normalize_stderr.push(normalization);
+                }
+            }
         }
 
         if self.failure_status == -1 {
@@ -650,14 +673,15 @@ impl Config {
         }
     }
 
-    fn parse_custom_normalization(&self, mut line: &str, prefix: &str) -> Option<(String, String)> {
-        if self.parse_cfg_name_directive(line, prefix) == ParsedNameDirective::Match {
-            let from = parse_normalization_string(&mut line)?;
-            let to = parse_normalization_string(&mut line)?;
-            Some((from, to))
-        } else {
-            None
-        }
+    fn parse_custom_normalization(
+        &self,
+        mut line: &str,
+        prefix: &str,
+    ) -> Option<(String, (String, String))> {
+        let prop = self.parse_prop_directive(line, prefix)?;
+        let from = parse_normalization_string(&mut line)?;
+        let to = parse_normalization_string(&mut line)?;
+        Some((prop, (from, to)))
     }
 
     fn parse_needs_matching_clang(&self, line: &str) -> bool {
@@ -670,7 +694,19 @@ impl Config {
 
     /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
     /// or `normalize-stderr-32bit`.
-    fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> ParsedNameDirective {
+    fn parse_prop_directive(&self, line: &str, prefix: &str) -> Option<String> {
+        if !line.as_bytes().starts_with(prefix.as_bytes()) {
+            return None;
+        }
+        if line.as_bytes().get(prefix.len()) != Some(&b'-') {
+            return None;
+        }
+
+        let config = &line[&prefix.len() + 1..].to_string();
+        Some(config.to_string())
+    }
+
+    fn evaluate_prop_for_target(&self, prop: &str, target: &str) -> EvaluatedProp {
         // This matches optional whitespace, followed by a group containing a series of word
         // characters (including '_' and '-'), followed optionally by a sequence consisting
         // of a colon, optional whitespace, and another group containing word characters.
@@ -697,28 +733,21 @@ impl Config {
             static ref CFG_REGEX: Regex = Regex::new(r"^\s*([\w-]+)(?::\s*([\w-]+))?").unwrap();
         }
 
-        if !line.as_bytes().starts_with(prefix.as_bytes()) {
-            return ParsedNameDirective::NoMatch;
-        }
-        if line.as_bytes().get(prefix.len()) != Some(&b'-') {
-            return ParsedNameDirective::NoMatch;
-        }
-
-        let captures = CFG_REGEX.captures(&line[&prefix.len() + 1..]).unwrap();
+        let captures = CFG_REGEX.captures(&prop).unwrap();
         let name = captures.get(1).unwrap().as_str();
         let maybe_value = captures.get(2).map(|v| v.as_str().trim());
 
         let is_match = name == "test" ||
-            self.target == name ||                              // triple
-            util::matches_os(&self.target, name) ||             // target
-            util::matches_env(&self.target, name) ||            // env
-            self.target.ends_with(name) ||                      // target and env
-            name == util::get_arch(&self.target) ||             // architecture
-            name == util::get_pointer_width(&self.target) ||    // pointer width
+            target == name ||                                   // triple
+            util::matches_os(target, name) ||                   // target
+            util::matches_env(target, name) ||                  // env
+            target.ends_with(name) ||                           // target and env
+            name == util::get_arch(target) ||                   // architecture
+            name == util::get_pointer_width(target) ||          // pointer width
             name == self.stage_id.split('-').next().unwrap() || // stage
             name == self.channel ||                             // channel
-            (self.target != self.host && name == "cross-compile") ||
-            (name == "endian-big" && util::is_big_endian(&self.target)) ||
+            (target != self.host && name == "cross-compile") ||
+            (name == "endian-big" && util::is_big_endian(target)) ||
             (self.remote_test_client.is_some() && name == "remote") ||
             match self.compare_mode {
                 Some(CompareMode::Nll) => name == "compare-mode-nll",
@@ -736,14 +765,17 @@ impl Config {
                 None => false,
             } ||
             match name.strip_prefix("cfg-") {
-                Some(rustc_cfg_name) => util::cfg_has(&self.target_cfg, rustc_cfg_name, maybe_value),
+                Some(rustc_cfg_name) => {
+                    let cfg_data = util::fetch_cfg_from_rustc_for_target(&self.rustc_path, target);
+                    util::cfg_has(&cfg_data, rustc_cfg_name, maybe_value)
+                },
                 None => false
             };
 
-        if is_match { ParsedNameDirective::Match } else { ParsedNameDirective::NoMatch }
+        if is_match { EvaluatedProp::Match } else { EvaluatedProp::NoMatch }
     }
 
-    fn has_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
+    fn has_prop_prefix(&self, line: &str, prefix: &str) -> bool {
         // returns whether this line contains this prefix or not. For prefix
         // "ignore", returns true if line says "ignore-x86_64", "ignore-arch",
         // "ignore-android" etc.
@@ -763,6 +795,21 @@ impl Config {
             let value = line[(colon + 1)..].to_owned();
             debug!("{}: {}", directive, value);
             Some(expand_variables(value, self))
+        } else {
+            None
+        }
+    }
+
+    pub fn parse_target_override(&self, line: &str) -> Option<String> {
+        let flags = self.parse_name_value_directive(line, "compile-flags")?;
+        let (_, tail) = flags.split_once("--target")?;
+        if tail.starts_with(|c: char| c.is_whitespace() || c == '=') {
+            let tail = &tail[1..];
+            let target = match tail.split_once(|c: char| c.is_whitespace()) {
+                Some((target, _)) => target,
+                None => &tail,
+            };
+            Some(target.to_string())
         } else {
             None
         }
@@ -900,6 +947,10 @@ pub fn make_test_description<R: Read>(
     let mut ignore = false;
     let mut should_fail = false;
 
+    let mut target = config.target.clone();
+    let mut ignored_props: Vec<String> = Vec::new();
+    let mut only_test_on_props: Vec<String> = Vec::new();
+
     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
     let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
     let has_asm_support = util::has_asm_support(&config.target);
@@ -908,7 +959,6 @@ pub fn make_test_description<R: Read>(
     let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
-    // for `-Z gcc-ld=lld`
     let has_rust_lld = config
         .compile_lib_path
         .join("rustlib")
@@ -921,15 +971,16 @@ pub fn make_test_description<R: Read>(
         if revision.is_some() && revision != cfg {
             return;
         }
-        ignore = match config.parse_cfg_name_directive(ln, "ignore") {
-            ParsedNameDirective::Match => true,
-            ParsedNameDirective::NoMatch => ignore,
-        };
-        if config.has_cfg_prefix(ln, "only") {
-            ignore = match config.parse_cfg_name_directive(ln, "only") {
-                ParsedNameDirective::Match => ignore,
-                ParsedNameDirective::NoMatch => true,
-            };
+        if let Some(target_override) = config.parse_target_override(ln) {
+            target = target_override;
+        }
+        if let Some(prop) = config.parse_prop_directive(ln, "ignore") {
+            ignored_props.push(prop);
+        }
+        if config.has_prop_prefix(ln, "only") {
+            if let Some(prop) = config.parse_prop_directive(ln, "only") {
+                only_test_on_props.push(prop);
+            }
         }
         ignore |= ignore_llvm(config, ln);
         ignore |=
@@ -953,6 +1004,19 @@ pub fn make_test_description<R: Read>(
         ignore |= !has_rust_lld && config.parse_name_directive(ln, "needs-rust-lld");
         should_fail |= config.parse_name_directive(ln, "should-fail");
     });
+
+    for prop in ignored_props {
+        ignore = match config.evaluate_prop_for_target(&prop, &target) {
+            EvaluatedProp::Match => true,
+            EvaluatedProp::NoMatch => ignore,
+        };
+    }
+    for prop in only_test_on_props {
+        ignore = match config.evaluate_prop_for_target(&prop, &target) {
+            EvaluatedProp::Match => ignore,
+            EvaluatedProp::NoMatch => true,
+        };
+    }
 
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.

@@ -11,7 +11,6 @@ use crate::common::{
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
 use getopts::Options;
-use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -217,18 +216,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         false
     };
 
-    let target_cfg = if cfg!(test) {
-        HashMap::new()
-    } else {
-        let rustc_cfg_data = Command::new(&rustc_path)
-            .args(&["--target", &target])
-            .args(&["--print", "cfg"])
-            .output()
-            .unwrap()
-            .stdout;
-        util::parse_rustc_cfg(String::from_utf8(rustc_cfg_data).unwrap())
-    };
-
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -272,7 +259,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
             Some("abort") => PanicStrategy::Abort,
             _ => panic!("unknown `--target-panic` option `{}` given", mode),
         },
-        target_cfg,
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
