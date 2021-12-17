@@ -155,8 +155,14 @@ fn assignment_suggestions<'tcx>(
     }
 
     let suggestions = assignments
-        .into_iter()
-        .map(|assignment| Some((assignment.span, snippet_opt(cx, assignment.rhs_span)?)))
+        .iter()
+        .map(|assignment| Some((assignment.span.until(assignment.rhs_span), String::new())))
+        .chain(assignments.iter().map(|assignment| {
+            Some((
+                assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()),
+                String::new(),
+            ))
+        }))
         .collect::<Option<Vec<(Span, String)>>>()?;
 
     let applicability = if suggestions.len() > 1 {

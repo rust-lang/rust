@@ -18,19 +18,6 @@ fn main() {
     e = 1;
     e = 2;
 
-    let f;
-    match 1 {
-        1 => f = "three",
-        _ => return,
-    }; // has semi
-
-    let g: usize;
-    if true {
-        g = 5;
-    } else {
-        panic!();
-    }
-
     let h;
     h = format!("{}", e);
 

@@ -57,40 +57,6 @@ LL |     let mut e = 1;
 error: unneeded late initalization
   --> $DIR/needless_late_init_fixable.rs:21:5
    |
-LL |     let f;
-   |     ^^^^^^
-   |
-help: declare `f` here
-   |
-LL |     let f = match 1 {
-   |     +++++++
-help: remove the assignments from the `match` arms
-   |
-LL |         1 => "three",
-   |              ~~~~~~~
-
-error: unneeded late initalization
-  --> $DIR/needless_late_init_fixable.rs:27:5
-   |
-LL |     let g: usize;
-   |     ^^^^^^^^^^^^^
-   |
-help: declare `g` here
-   |
-LL |     let g: usize = if true {
-   |     ++++++++++++++
-help: remove the assignments from the branches
-   |
-LL |         5
-   |
-help: add a semicolon after the `if` expression
-   |
-LL |     };
-   |      +
-
-error: unneeded late initalization
-  --> $DIR/needless_late_init_fixable.rs:34:5
-   |
 LL |     let h;
    |     ^^^^^^
    |
@@ -99,5 +65,5 @@ help: declare `h` here
 LL |     let h = format!("{}", e);
    |     ~~~~~
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 

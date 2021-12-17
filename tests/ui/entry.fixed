@@ -2,8 +2,8 @@
 
 #![allow(unused, clippy::needless_pass_by_value, clippy::collapsible_if)]
 #![warn(clippy::map_entry)]
-#![feature(asm)]
 
+use std::arch::asm;
 use std::collections::HashMap;
 use std::hash::Hash;
 

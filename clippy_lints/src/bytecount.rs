@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(count, _, [count_recv], _) = expr.kind;
-            if count.ident.name == sym!(count);
+            if count.ident.name == sym::count;
             if let ExprKind::MethodCall(filter, _, [filter_recv, filter_arg], _) = count_recv.kind;
             if filter.ident.name == sym!(filter);
             if let ExprKind::Closure(_, _, body_id, _, _) = filter_arg.kind;

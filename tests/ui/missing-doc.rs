@@ -2,9 +2,10 @@
 // When denying at the crate level, be sure to not get random warnings from the
 // injected intrinsics by the compiler.
 #![allow(dead_code)]
-#![feature(global_asm)]
 //! Some garbage docs for the crate here
 #![doc = "More garbage"]
+
+use std::arch::global_asm;
 
 type Typedef = String;
 pub type PubTypedef = String;

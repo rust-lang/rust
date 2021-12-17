@@ -1,6 +1,5 @@
 #![feature(box_patterns)]
 #![feature(in_band_lifetimes)]
-#![feature(iter_zip)]
 #![feature(let_else)]
 #![feature(rustc_private)]
 #![feature(control_flow_enum)]

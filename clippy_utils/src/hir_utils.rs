@@ -348,7 +348,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&QPath::TypeRelative(lty, lseg), &QPath::TypeRelative(rty, rseg)) => {
                 self.eq_ty(lty, rty) && self.eq_path_segment(lseg, rseg)
             },
-            (&QPath::LangItem(llang_item, _), &QPath::LangItem(rlang_item, _)) => llang_item == rlang_item,
+            (&QPath::LangItem(llang_item, ..), &QPath::LangItem(rlang_item, ..)) => llang_item == rlang_item,
             _ => false,
         }
     }
