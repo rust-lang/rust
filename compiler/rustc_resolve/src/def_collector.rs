@@ -92,6 +92,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
         // information we encapsulate into, the better
         let def_data = match &i.kind {
             ItemKind::Impl { .. } => DefPathData::Impl,
+            ItemKind::ForeignMod(..) => DefPathData::ForeignMod,
             ItemKind::Mod(..)
             | ItemKind::Trait(..)
             | ItemKind::TraitAlias(..)
@@ -99,7 +100,6 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
             | ItemKind::Struct(..)
             | ItemKind::Union(..)
             | ItemKind::ExternCrate(..)
-            | ItemKind::ForeignMod(..)
             | ItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) => {
                 DefPathData::ValueNs(i.ident.name)

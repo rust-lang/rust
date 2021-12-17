@@ -5,6 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::definitions::DefPathData;
 use rustc_hir::Node;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::middle::privacy::AccessLevel;
@@ -45,9 +46,8 @@ impl Module<'hir> {
 fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
     let crate_name = tcx.crate_name(did.krate).to_string();
     let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| {
-        // extern blocks have an empty name
-        let s = elem.data.to_string();
-        if !s.is_empty() { Some(s) } else { None }
+        // Filter out extern blocks
+        (elem.data != DefPathData::ForeignMod).then(|| elem.data.to_string())
     });
     std::iter::once(crate_name).chain(relative).collect()
 }

@@ -771,6 +771,10 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error> {
         let ns = match disambiguated_data.data {
+            // FIXME: It shouldn't be necessary to add anything for extern block segments,
+            // but we add 't' for backward compatibility.
+            DefPathData::ForeignMod => 't',
+
             // Uppercase categories are more stable than lowercase ones.
             DefPathData::TypeNs(_) => 't',
             DefPathData::ValueNs(_) => 'v',
