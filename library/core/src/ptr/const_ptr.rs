@@ -913,7 +913,7 @@ impl<T> *const [T] {
     /// The returned value is the number of **elements**, not the number of bytes.
     ///
     /// This function is safe, even when the raw slice cannot be cast to a slice
-    /// reference because the pointer is null or unaligned.
+    /// reference (e.g. because the pointer is null or unaligned).
     ///
     /// # Examples
     ///
@@ -1037,8 +1037,8 @@ impl *const str {
     ///
     /// The returned value is the number of **bytes**, not the number of characters.
     ///
-    /// This function is safe, even when the raw string slice cannot be cast to a slice
-    /// reference because the pointer is null or unaligned.
+    /// This function is safe, even when the raw string slice cannot be cast to a string slice
+    /// reference (e.g. because the pointer is null or unaligned).
     ///
     /// # Examples
     ///
@@ -1084,9 +1084,6 @@ impl *const str {
     /// is *[undefined behavior]* even if the resulting pointer is not used.
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    ///
-    /// Note that calling this function with an index that does not lie on an UTF-8 sequence boundaries
-    /// is safe, but dereferencing the pointer returned by such call is unsound.
     ///
     /// # Examples
     ///

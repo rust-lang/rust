@@ -708,9 +708,6 @@ impl NonNull<str> {
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
-    /// Note that calling this function with an index that does not lie on an UTF-8 sequence boundaries
-    /// is safe, but dereferencing the pointer returned by such call is unsound.
-    ///
     /// # Examples
     ///
     /// ```
