@@ -23,8 +23,8 @@ LL | |     });
 note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
-LL |     pub fn and_then<U, F: FnOnce(T) -> Option<U>>(self, f: F) -> Option<U> {
-   |                           ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Option::<T>::and_then`
+LL |         F: ~const FnOnce(T) -> Option<U>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Option::<T>::and_then`
 
 error: aborting due to 2 previous errors
 

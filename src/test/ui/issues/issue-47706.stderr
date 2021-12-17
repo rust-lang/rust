@@ -12,8 +12,8 @@ LL |         self.foo.map(Foo::new)
 note: required by a bound in `Option::<T>::map`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
-LL |     pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {
-   |                      ^^^^^^^^^^^^^^ required by this bound in `Option::<T>::map`
+LL |         F: ~const FnOnce(T) -> U,
+   |            ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Option::<T>::map`
 
 error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
   --> $DIR/issue-47706.rs:27:9
