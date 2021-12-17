@@ -762,7 +762,6 @@ fn assoc_const(
     w: &mut Buffer,
     it: &clean::Item,
     ty: &clean::Type,
-    _default: Option<&String>,
     link: AssocItemLink<'_>,
     extra: &str,
     cx: &Context<'_>,
@@ -958,15 +957,9 @@ fn render_assoc_item(
         clean::MethodItem(ref m, _) => {
             method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
-        clean::AssocConstItem(ref ty, ref default) => assoc_const(
-            w,
-            item,
-            ty,
-            default.as_ref(),
-            link,
-            if parent == ItemType::Trait { "    " } else { "" },
-            cx,
-        ),
+        clean::AssocConstItem(ref ty, _) => {
+            assoc_const(w, item, ty, link, if parent == ItemType::Trait { "    " } else { "" }, cx)
+        }
         clean::AssocTypeItem(ref bounds, ref default) => assoc_type(
             w,
             item,
@@ -1467,7 +1460,7 @@ fn render_impl(
                 w.write_str("</h4>");
                 w.write_str("</div>");
             }
-            clean::AssocConstItem(ref ty, ref default) => {
+            clean::AssocConstItem(ref ty, _) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
                 write!(
@@ -1482,7 +1475,6 @@ fn render_impl(
                     w,
                     item,
                     ty,
-                    default.as_ref(),
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
                     "",
                     cx,

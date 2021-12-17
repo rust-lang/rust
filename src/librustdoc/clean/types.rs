@@ -670,7 +670,7 @@ crate enum ItemKind {
     MacroItem(Macro),
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
-    AssocConstItem(Type, Option<String>),
+    AssocConstItem(Type, Option<ConstantKind>),
     /// An associated item in a trait or trait impl.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
@@ -2153,7 +2153,21 @@ crate enum ConstantKind {
 
 impl Constant {
     crate fn expr(&self, tcx: TyCtxt<'_>) -> String {
-        match self.kind {
+        self.kind.expr(tcx)
+    }
+
+    crate fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
+        self.kind.value(tcx)
+    }
+
+    crate fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
+        self.kind.is_literal(tcx)
+    }
+}
+
+impl ConstantKind {
+    crate fn expr(&self, tcx: TyCtxt<'_>) -> String {
+        match *self {
             ConstantKind::TyConst { ref expr } => expr.clone(),
             ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
@@ -2163,7 +2177,7 @@ impl Constant {
     }
 
     crate fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        match self.kind {
+        match *self {
             ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
             ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
                 print_evaluated_const(tcx, def_id)
@@ -2172,7 +2186,7 @@ impl Constant {
     }
 
     crate fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
-        match self.kind {
+        match *self {
             ConstantKind::TyConst { .. } => false,
             ConstantKind::Extern { def_id } => def_id.as_local().map_or(false, |def_id| {
                 is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(def_id))
