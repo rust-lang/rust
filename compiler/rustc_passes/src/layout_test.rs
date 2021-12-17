@@ -20,7 +20,7 @@ struct LayoutTest<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
+impl<'tcx> ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
             ItemKind::TyAlias(..)
@@ -42,7 +42,7 @@ impl ItemLikeVisitor<'tcx> for LayoutTest<'tcx> {
     fn visit_foreign_item(&mut self, _: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
-impl LayoutTest<'tcx> {
+impl<'tcx> LayoutTest<'tcx> {
     fn dump_layout_of(&self, item_def_id: LocalDefId, item: &hir::Item<'tcx>, attr: &Attribute) {
         let tcx = self.tcx;
         let param_env = self.tcx.param_env(item_def_id);
@@ -114,7 +114,7 @@ struct UnwrapLayoutCx<'tcx> {
     param_env: ParamEnv<'tcx>,
 }
 
-impl LayoutOfHelpers<'tcx> for UnwrapLayoutCx<'tcx> {
+impl<'tcx> LayoutOfHelpers<'tcx> for UnwrapLayoutCx<'tcx> {
     type LayoutOfResult = TyAndLayout<'tcx>;
 
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
@@ -127,19 +127,19 @@ impl LayoutOfHelpers<'tcx> for UnwrapLayoutCx<'tcx> {
     }
 }
 
-impl HasTyCtxt<'tcx> for UnwrapLayoutCx<'tcx> {
+impl<'tcx> HasTyCtxt<'tcx> for UnwrapLayoutCx<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl HasParamEnv<'tcx> for UnwrapLayoutCx<'tcx> {
+impl<'tcx> HasParamEnv<'tcx> for UnwrapLayoutCx<'tcx> {
     fn param_env(&self) -> ParamEnv<'tcx> {
         self.param_env
     }
 }
 
-impl HasDataLayout for UnwrapLayoutCx<'tcx> {
+impl<'tcx> HasDataLayout for UnwrapLayoutCx<'tcx> {
     fn data_layout(&self) -> &TargetDataLayout {
         self.tcx.data_layout()
     }

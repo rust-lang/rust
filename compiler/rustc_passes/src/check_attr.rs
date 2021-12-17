@@ -58,7 +58,7 @@ struct CheckAttrVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl CheckAttrVisitor<'tcx> {
+impl CheckAttrVisitor<'_> {
     /// Checks any attribute.
     fn check_attributes(
         &self,
@@ -382,7 +382,7 @@ impl CheckAttrVisitor<'tcx> {
         &self,
         hir_id: HirId,
         attr_span: &Span,
-        attrs: &'hir [Attribute],
+        attrs: &[Attribute],
         span: &Span,
         target: Target,
     ) -> bool {
@@ -1481,7 +1481,7 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if the `#[repr]` attributes on `item` are valid.
     fn check_repr(
         &self,
-        attrs: &'hir [Attribute],
+        attrs: &[Attribute],
         span: &Span,
         target: Target,
         item: Option<ItemLike<'_>>,
@@ -1663,7 +1663,7 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_used(&self, attrs: &'hir [Attribute], target: Target) {
+    fn check_used(&self, attrs: &[Attribute], target: Target) {
         for attr in attrs {
             if attr.has_name(sym::used) && target != Target::Static {
                 self.tcx
@@ -1842,7 +1842,7 @@ impl CheckAttrVisitor<'tcx> {
     }
 }
 
-impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

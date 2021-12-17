@@ -62,7 +62,7 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     ty
 }
 
-impl ExprVisitor<'tcx> {
+impl<'tcx> ExprVisitor<'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
         self.tcx.fn_sig(def_id).abi() == RustIntrinsic
             && self.tcx.item_name(def_id) == sym::transmute
@@ -487,7 +487,7 @@ impl ExprVisitor<'tcx> {
     }
 }
 
-impl Visitor<'tcx> for ItemVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for ItemVisitor<'tcx> {
     type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -504,7 +504,7 @@ impl Visitor<'tcx> for ItemVisitor<'tcx> {
     }
 }
 
-impl Visitor<'tcx> for ExprVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for ExprVisitor<'tcx> {
     type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
