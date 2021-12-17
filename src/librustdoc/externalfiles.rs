@@ -1,4 +1,4 @@
-use crate::html::markdown::{ErrorCodes, HeadingOffset, IdMap, Markdown, Playground};
+use crate::html::markdown::{ErrorCodes, HeadingOffset, IdMap, IdPrefix, Markdown, Playground};
 use crate::rustc_span::edition::Edition;
 use std::fs;
 use std::path::Path;
@@ -47,6 +47,7 @@ impl ExternalHtml {
                 edition,
                 playground,
                 heading_offset: HeadingOffset::H2,
+                id_prefix: IdPrefix::without_parent(),
             }
             .into_string()
         );
@@ -63,6 +64,7 @@ impl ExternalHtml {
                 edition,
                 playground,
                 heading_offset: HeadingOffset::H2,
+                id_prefix: IdPrefix::without_parent(),
             }
             .into_string()
         );

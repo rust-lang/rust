@@ -11,7 +11,7 @@ use crate::doctest::{Collector, GlobalTestOptions};
 use crate::html::escape::Escape;
 use crate::html::markdown;
 use crate::html::markdown::{
-    find_testable_code, ErrorCodes, HeadingOffset, IdMap, Markdown, MarkdownWithToc,
+    find_testable_code, ErrorCodes, HeadingOffset, IdMap, IdPrefix, Markdown, MarkdownWithToc,
 };
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
@@ -70,7 +70,8 @@ crate fn render<P: AsRef<Path>>(
     let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(options.unstable_features.is_nightly_build());
     let text = if !options.markdown_no_toc {
-        MarkdownWithToc(text, &mut ids, error_codes, edition, &playground).into_string()
+        MarkdownWithToc(text, &mut ids, error_codes, edition, &playground, IdPrefix::none())
+            .into_string()
     } else {
         Markdown {
             content: text,
@@ -80,6 +81,7 @@ crate fn render<P: AsRef<Path>>(
             edition,
             playground: &playground,
             heading_offset: HeadingOffset::H1,
+            id_prefix: IdPrefix::none(),
         }
         .into_string()
     };

@@ -1,5 +1,7 @@
 use super::{find_testable_code, plain_text_summary, short_markdown_summary};
-use super::{ErrorCodes, HeadingOffset, IdMap, Ignore, LangString, Markdown, MarkdownHtml};
+use super::{
+    ErrorCodes, HeadingOffset, IdMap, IdPrefix, Ignore, LangString, Markdown, MarkdownHtml,
+};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 
 #[test]
@@ -28,8 +30,8 @@ fn test_unique_id() {
         "examples-2",
         "method.into_iter-1",
         "foo-1",
-        "main-content-1",
-        "search-1",
+        "main-content",
+        "search",
         "methods",
         "examples-3",
         "method.into_iter-2",
@@ -38,7 +40,8 @@ fn test_unique_id() {
     ];
 
     let mut map = IdMap::new();
-    let actual: Vec<String> = input.iter().map(|s| map.derive(s.to_string())).collect();
+    let actual: Vec<String> =
+        input.iter().map(|s| map.derive(s.to_string(), IdPrefix::none())).collect();
     assert_eq!(&actual[..], expected);
 }
 
@@ -155,6 +158,7 @@ fn test_header() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            id_prefix: IdPrefix::none(),
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
@@ -197,6 +201,7 @@ fn test_header_ids_multiple_blocks() {
             edition: DEFAULT_EDITION,
             playground: &None,
             heading_offset: HeadingOffset::H2,
+            id_prefix: IdPrefix::none(),
         }
         .into_string();
         assert_eq!(output, expect, "original: {}", input);
@@ -220,7 +225,7 @@ fn test_header_ids_multiple_blocks() {
     t(
         &mut map,
         "# Search",
-        "<h2 id=\"search-1\" class=\"section-header\"><a href=\"#search-1\">Search</a></h2>",
+        "<h2 id=\"search\" class=\"section-header\"><a href=\"#search\">Search</a></h2>",
     );
     t(
         &mut map,
@@ -307,8 +312,15 @@ fn test_plain_text_summary() {
 fn test_markdown_html_escape() {
     fn t(input: &str, expect: &str) {
         let mut idmap = IdMap::new();
-        let output =
-            MarkdownHtml(input, &mut idmap, ErrorCodes::Yes, DEFAULT_EDITION, &None).into_string();
+        let output = MarkdownHtml(
+            input,
+            &mut idmap,
+            ErrorCodes::Yes,
+            DEFAULT_EDITION,
+            &None,
+            IdPrefix::none(),
+        )
+        .into_string();
         assert_eq!(output, expect, "original: {}", input);
     }
 

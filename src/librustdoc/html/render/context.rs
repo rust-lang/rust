@@ -31,7 +31,7 @@ use crate::formats::item_type::ItemType;
 use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
-use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
+use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap, IdPrefix};
 use crate::html::{layout, sources};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
@@ -168,7 +168,7 @@ impl<'tcx> Context<'tcx> {
 
     pub(super) fn derive_id(&self, id: String) -> String {
         let mut map = self.id_map.borrow_mut();
-        map.derive(id)
+        map.derive(id, IdPrefix::none())
     }
 
     /// String representation of how to get back to the root path of the 'doc/'

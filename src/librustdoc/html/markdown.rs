@@ -8,7 +8,7 @@
 //! extern crate rustc_span;
 //!
 //! use rustc_span::edition::Edition;
-//! use rustdoc::html::markdown::{HeadingOffset, IdMap, Markdown, ErrorCodes};
+//! use rustdoc::html::markdown::{HeadingOffset, IdMap, IdPrefix, Markdown, ErrorCodes};
 //!
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();
@@ -20,6 +20,7 @@
 //!     edition: Edition::Edition2015,
 //!     playground: &None,
 //!     heading_offset: HeadingOffset::H2,
+//!     id_prefix: IdPrefix::none(),
 //! };
 //! let html = md.into_string();
 //! // ... something using html
@@ -40,7 +41,7 @@ use std::fmt::Write;
 use std::ops::{ControlFlow, Range};
 use std::str;
 
-use crate::clean::RenderedLink;
+use crate::clean::{self, RenderedLink};
 use crate::doctest;
 use crate::html::escape::Escape;
 use crate::html::format::Buffer;
@@ -101,6 +102,7 @@ pub struct Markdown<'a> {
     /// Offset at which we render headings.
     /// E.g. if `heading_offset: HeadingOffset::H2`, then `# something` renders an `<h2>`.
     pub heading_offset: HeadingOffset,
+    pub id_prefix: IdPrefix<'a>,
 }
 /// A tuple struct like `Markdown` that renders the markdown with a table of contents.
 crate struct MarkdownWithToc<'a>(
@@ -109,6 +111,7 @@ crate struct MarkdownWithToc<'a>(
     crate ErrorCodes,
     crate Edition,
     crate &'a Option<Playground>,
+    crate IdPrefix<'a>,
 );
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags.
 crate struct MarkdownHtml<'a>(
@@ -117,6 +120,7 @@ crate struct MarkdownHtml<'a>(
     crate ErrorCodes,
     crate Edition,
     crate &'a Option<Playground>,
+    crate IdPrefix<'a>,
 );
 /// A tuple struct like `Markdown` that renders only the first paragraph.
 crate struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
@@ -508,27 +512,36 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for TableWrapper<'a, I> {
 type SpannedEvent<'a> = (Event<'a>, Range<usize>);
 
 /// Make headings links with anchor IDs and build up TOC.
-struct HeadingLinks<'a, 'b, 'ids, I> {
+struct HeadingLinks<'a, 'b, 'ids, 'c, I> {
     inner: I,
     toc: Option<&'b mut TocBuilder>,
     buf: VecDeque<SpannedEvent<'a>>,
     id_map: &'ids mut IdMap,
     heading_offset: HeadingOffset,
+    id_prefix: IdPrefix<'c>,
 }
 
-impl<'a, 'b, 'ids, I> HeadingLinks<'a, 'b, 'ids, I> {
+impl<'a, 'b, 'ids, 'c, I> HeadingLinks<'a, 'b, 'ids, 'c, I> {
     fn new(
         iter: I,
         toc: Option<&'b mut TocBuilder>,
         ids: &'ids mut IdMap,
         heading_offset: HeadingOffset,
+        id_prefix: IdPrefix<'c>,
     ) -> Self {
-        HeadingLinks { inner: iter, toc, buf: VecDeque::new(), id_map: ids, heading_offset }
+        HeadingLinks {
+            inner: iter,
+            toc,
+            buf: VecDeque::new(),
+            id_map: ids,
+            heading_offset,
+            id_prefix,
+        }
     }
 }
 
-impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
-    for HeadingLinks<'a, 'b, 'ids, I>
+impl<'a, 'b, 'ids, 'c, I: Iterator<Item = SpannedEvent<'a>>> Iterator
+    for HeadingLinks<'a, 'b, 'ids, 'c, I>
 {
     type Item = SpannedEvent<'a>;
 
@@ -551,7 +564,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
                     _ => self.buf.push_back(event),
                 }
             }
-            let id = self.id_map.derive(id);
+            let id = self.id_map.derive(id, self.id_prefix);
 
             if let Some(ref mut builder) = self.toc {
                 let mut html_header = String::new();
@@ -1044,6 +1057,7 @@ impl Markdown<'_> {
             edition,
             playground,
             heading_offset,
+            id_prefix,
         } = self;
 
         // This is actually common enough to special-case
@@ -1062,7 +1076,7 @@ impl Markdown<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids, heading_offset);
+        let p = HeadingLinks::new(p, None, &mut ids, heading_offset, id_prefix);
         let p = Footnotes::new(p);
         let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
         let p = TableWrapper::new(p);
@@ -1075,7 +1089,7 @@ impl Markdown<'_> {
 
 impl MarkdownWithToc<'_> {
     crate fn into_string(self) -> String {
-        let MarkdownWithToc(md, mut ids, codes, edition, playground) = self;
+        let MarkdownWithToc(md, mut ids, codes, edition, playground, id_prefix) = self;
 
         let p = Parser::new_ext(md, main_body_opts()).into_offset_iter();
 
@@ -1084,7 +1098,7 @@ impl MarkdownWithToc<'_> {
         let mut toc = TocBuilder::new();
 
         {
-            let p = HeadingLinks::new(p, Some(&mut toc), &mut ids, HeadingOffset::H1);
+            let p = HeadingLinks::new(p, Some(&mut toc), &mut ids, HeadingOffset::H1, id_prefix);
             let p = Footnotes::new(p);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
             let p = CodeBlocks::new(p, codes, edition, playground);
@@ -1097,7 +1111,7 @@ impl MarkdownWithToc<'_> {
 
 impl MarkdownHtml<'_> {
     crate fn into_string(self) -> String {
-        let MarkdownHtml(md, mut ids, codes, edition, playground) = self;
+        let MarkdownHtml(md, mut ids, codes, edition, playground, id_prefix) = self;
 
         // This is actually common enough to special-case
         if md.is_empty() {
@@ -1113,7 +1127,7 @@ impl MarkdownHtml<'_> {
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let p = HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1);
+        let p = HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1, id_prefix);
         let p = Footnotes::new(p);
         let p = TableWrapper::new(p.map(|(ev, _)| ev));
         let p = CodeBlocks::new(p, codes, edition, playground);
@@ -1325,7 +1339,8 @@ crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
     // There's no need to thread an IdMap through to here because
     // the IDs generated aren't going to be emitted anywhere.
     let mut ids = IdMap::new();
-    let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1));
+    let iter =
+        Footnotes::new(HeadingLinks::new(p, None, &mut ids, HeadingOffset::H1, IdPrefix::none()));
 
     for ev in iter {
         if let Event::Start(Tag::Link(kind, dest, _)) = ev.0 {
@@ -1430,68 +1445,70 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
     code_blocks
 }
 
+/// This wrapper exists only to allow the error_index_generator tool to use it.
+#[derive(Debug, Clone, Copy)]
+pub struct IdPrefix<'a>(IdPrefixInner<'a>);
+
+impl<'a> IdPrefix<'a> {
+    crate fn without_parent() -> Self {
+        Self(IdPrefixInner::WithoutParent)
+    }
+
+    pub fn none() -> Self {
+        Self(IdPrefixInner::None)
+    }
+
+    crate fn some(item: &'a clean::Item) -> Self {
+        Self(IdPrefixInner::Some(item))
+    }
+}
+
+/// Depending if we're generating a link for a markdown file or on a Rust type, we don't want the
+/// same behaviour:
+///
+/// In Rust, to reduce the number of "conflict" between HTML IDs, we add a prefix to them based on
+/// their parent. However, it is useless if rustdoc is used to render a markdown file.
+#[derive(Debug, Clone, Copy)]
+crate enum IdPrefixInner<'a> {
+    /// Contains the "parent" of the ID. It's used to generate the prefix.
+    Some(&'a clean::Item),
+    /// This is used in case markdown is inserted using `--markdown-before-content` or using
+    /// `--markdown-after-content`.
+    WithoutParent,
+    None,
+}
+
 #[derive(Clone, Default, Debug)]
 pub struct IdMap {
     map: FxHashMap<String, usize>,
 }
 
-fn init_id_map() -> FxHashMap<String, usize> {
-    let mut map = FxHashMap::default();
-    // This is the list of IDs used in Javascript.
-    map.insert("help".to_owned(), 1);
-    // This is the list of IDs used in HTML generated in Rust (including the ones
-    // used in tera template files).
-    map.insert("mainThemeStyle".to_owned(), 1);
-    map.insert("themeStyle".to_owned(), 1);
-    map.insert("theme-picker".to_owned(), 1);
-    map.insert("theme-choices".to_owned(), 1);
-    map.insert("settings-menu".to_owned(), 1);
-    map.insert("help-button".to_owned(), 1);
-    map.insert("main-content".to_owned(), 1);
-    map.insert("search".to_owned(), 1);
-    map.insert("crate-search".to_owned(), 1);
-    map.insert("render-detail".to_owned(), 1);
-    map.insert("toggle-all-docs".to_owned(), 1);
-    map.insert("all-types".to_owned(), 1);
-    map.insert("default-settings".to_owned(), 1);
-    map.insert("rustdoc-vars".to_owned(), 1);
-    map.insert("sidebar-vars".to_owned(), 1);
-    map.insert("copy-path".to_owned(), 1);
-    map.insert("TOC".to_owned(), 1);
-    // This is the list of IDs used by rustdoc sections (but still generated by
-    // rustdoc).
-    map.insert("fields".to_owned(), 1);
-    map.insert("variants".to_owned(), 1);
-    map.insert("implementors-list".to_owned(), 1);
-    map.insert("synthetic-implementors-list".to_owned(), 1);
-    map.insert("foreign-impls".to_owned(), 1);
-    map.insert("implementations".to_owned(), 1);
-    map.insert("trait-implementations".to_owned(), 1);
-    map.insert("synthetic-implementations".to_owned(), 1);
-    map.insert("blanket-implementations".to_owned(), 1);
-    map.insert("associated-types".to_owned(), 1);
-    map.insert("associated-const".to_owned(), 1);
-    map.insert("required-methods".to_owned(), 1);
-    map.insert("provided-methods".to_owned(), 1);
-    map.insert("implementors".to_owned(), 1);
-    map.insert("synthetic-implementors".to_owned(), 1);
-    map.insert("trait-implementations-list".to_owned(), 1);
-    map.insert("synthetic-implementations-list".to_owned(), 1);
-    map.insert("blanket-implementations-list".to_owned(), 1);
-    map.insert("deref-methods".to_owned(), 1);
-    map
-}
-
 impl IdMap {
     pub fn new() -> Self {
-        IdMap { map: init_id_map() }
+        IdMap { map: FxHashMap::default() }
     }
 
-    crate fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
-        let id = match self.map.get_mut(candidate.as_ref()) {
-            None => candidate.to_string(),
+    crate fn derive<S: AsRef<str> + ToString>(
+        &mut self,
+        candidate: S,
+        id_prefix: IdPrefix<'_>,
+    ) -> String {
+        let candidate = match id_prefix.0 {
+            IdPrefixInner::None => candidate.to_string(),
+            IdPrefixInner::WithoutParent => format!("top.{}", candidate.as_ref()),
+            IdPrefixInner::Some(item) => {
+                let prefix = if let Some(name) = item.name {
+                    format!("{}.{}", item.type_(), name)
+                } else {
+                    format!("{}.unknown", item.type_())
+                };
+                format!("{}.{}", prefix, candidate.as_ref())
+            }
+        };
+        let id = match self.map.get_mut(&candidate) {
+            None => candidate,
             Some(a) => {
-                let id = format!("{}-{}", candidate.as_ref(), *a);
+                let id = format!("{}-{}", candidate, *a);
                 *a += 1;
                 id
             }

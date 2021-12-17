@@ -74,7 +74,7 @@ use crate::html::format::{
     print_generic_bounds, print_where_clause, Buffer, HrefError, PrintWithSpace,
 };
 use crate::html::highlight;
-use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::markdown::{HeadingOffset, IdPrefix, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
 use crate::scrape_examples::{CallData, CallLocation};
 use crate::try_none;
@@ -493,6 +493,7 @@ fn render_markdown(
     md_text: &str,
     links: Vec<RenderedLink>,
     heading_offset: HeadingOffset,
+    item: &clean::Item,
 ) {
     let mut ids = cx.id_map.borrow_mut();
     write!(
@@ -506,6 +507,7 @@ fn render_markdown(
             edition: cx.shared.edition(),
             playground: &cx.shared.playground,
             heading_offset,
+            id_prefix: IdPrefix::some(item),
         }
         .into_string()
     )
@@ -576,10 +578,10 @@ fn document_full_inner(
                      <span>Expand description</span>\
                 </summary>",
             );
-            render_markdown(w, cx, &s, item.links(cx), heading_offset);
+            render_markdown(w, cx, &s, item.links(cx), heading_offset, item);
             w.write_str("</details>");
         } else {
-            render_markdown(w, cx, &s, item.links(cx), heading_offset);
+            render_markdown(w, cx, &s, item.links(cx), heading_offset, item);
         }
     }
 
@@ -663,6 +665,7 @@ fn short_item_info(
                 error_codes,
                 cx.shared.edition(),
                 &cx.shared.playground,
+                IdPrefix::some(item),
             );
             message.push_str(&format!(": {}", html.into_string()));
         }
@@ -1624,7 +1627,8 @@ fn render_impl(
                     error_codes: cx.shared.codes,
                     edition: cx.shared.edition(),
                     playground: &cx.shared.playground,
-                    heading_offset: HeadingOffset::H4
+                    heading_offset: HeadingOffset::H4,
+                    id_prefix: IdPrefix::some(&i.impl_item),
                 }
                 .into_string()
             );
@@ -2570,7 +2574,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
     };
 
     // Generate a unique ID so users can link to this section for a given method
-    let id = cx.id_map.borrow_mut().derive("scraped-examples");
+    let id = cx.id_map.borrow_mut().derive("scraped-examples", IdPrefix::some(item));
     write!(
         w,
         "<div class=\"docblock scraped-example-list\">\
