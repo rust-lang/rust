@@ -9,11 +9,6 @@ set(ENZYME_TEST_DEPS LLVMEnzyme-${LLVM_VERSION_MAJOR} BCPass-${LLVM_VERSION_MAJO
 
 add_subdirectory(ActivityAnalysis)
 add_subdirectory(TypeAnalysis)
-add_subdirectory(Enzyme/ReverseMode)
-add_subdirectory(Enzyme/ForwardMode)
-add_subdirectory(Integration/ReverseMode)
-add_subdirectory(Integration/ForwardMode)
+add_subdirectory(Enzyme)
+add_subdirectory(Integration)
 add_subdirectory(BCLoader)
-
-add_custom_target(check-enzyme DEPENDS check-enzyme-reverse check-enzyme-forward)
-add_custom_target(check-enzyme-integration DEPENDS check-enzyme-integration-reverse check-enzyme-integration-forward)
