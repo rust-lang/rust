@@ -174,7 +174,7 @@ fn edit_tuple_assignment(
 
     // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
     if in_sub_pattern {
-        let text = format!(" @ {}", tuple_pat.to_string());
+        let text = format!(" @ {}", tuple_pat);
         match ctx.config.snippet_cap {
             Some(cap) => {
                 let snip = add_cursor(&text);

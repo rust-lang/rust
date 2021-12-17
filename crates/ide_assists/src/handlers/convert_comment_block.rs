@@ -96,8 +96,7 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
             let block_prefix =
                 CommentKind { shape: CommentShape::Block, ..comment.kind() }.prefix();
 
-            let output =
-                format!("{}\n{}\n{}*/", block_prefix, block_comment_body, indentation.to_string());
+            let output = format!("{}\n{}\n{}*/", block_prefix, block_comment_body, indentation);
 
             edit.replace(target, output)
         },

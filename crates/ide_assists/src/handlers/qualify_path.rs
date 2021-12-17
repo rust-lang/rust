@@ -121,7 +121,7 @@ impl QualifyCandidate<'_> {
             }
             QualifyCandidate::UnqualifiedName(generics) => {
                 let generics = generics.as_ref().map_or_else(String::new, ToString::to_string);
-                replacer(format!("{}{}", import.to_string(), generics));
+                replacer(format!("{}{}", import, generics));
             }
             QualifyCandidate::TraitAssocItem(qualifier, segment) => {
                 replacer(format!("<{} as {}>::{}", qualifier, import, segment));

@@ -147,7 +147,7 @@ impl Fixture {
                 if line.starts_with("// ")
                     && line.contains(':')
                     && !line.contains("::")
-                    && !line.contains(".")
+                    && !line.contains('.')
                     && line.chars().all(|it| !it.is_uppercase())
                 {
                     panic!("looks like invalid metadata line: {:?}", line);
