@@ -849,13 +849,5 @@ pub fn expected_found<R, T>(relation: &mut R, a: T, b: T) -> ExpectedFound<T>
 where
     R: TypeRelation<'tcx>,
 {
-    expected_found_bool(relation.a_is_expected(), a, b)
-}
-
-pub fn expected_found_bool<T>(a_is_expected: bool, a: T, b: T) -> ExpectedFound<T> {
-    if a_is_expected {
-        ExpectedFound { expected: a, found: b }
-    } else {
-        ExpectedFound { expected: b, found: a }
-    }
+    ExpectedFound::new(relation.a_is_expected(), a, b)
 }
