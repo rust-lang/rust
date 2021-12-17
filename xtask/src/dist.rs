@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::Result;
 use flate2::{write::GzEncoder, Compression};
-use xshell::{cmd, mkdir_p, pushd, pushenv, read_file, rm_rf, write_file};
+use xshell::{cmd, cp, mkdir_p, pushd, pushenv, read_file, rm_rf, write_file};
 
 use crate::{date_iso, flags, project_root};
 
@@ -16,9 +16,14 @@ impl flags::Dist {
         let stable =
             std::env::var("GITHUB_REF").unwrap_or_default().as_str() == "refs/heads/release";
 
-        let dist = project_root().join("dist");
+        let project_root = project_root();
+        let target = Target::get(&project_root);
+        let dist = project_root.join("dist");
         rm_rf(&dist)?;
         mkdir_p(&dist)?;
+
+        let release_channel = if stable { "stable" } else { "nightly" };
+        dist_server(release_channel, &target)?;
 
         if let Some(patch_version) = self.client_patch_version {
             let version = if stable {
@@ -28,20 +33,24 @@ impl flags::Dist {
                 format!("0.3.{}", patch_version)
             };
             let release_tag = if stable { date_iso()? } else { "nightly".to_string() };
-            dist_client(&version, &release_tag)?;
+            dist_client(&version, &release_tag, &target)?;
         }
-        let release_channel = if stable { "stable" } else { "nightly" };
-        dist_server(release_channel)?;
         Ok(())
     }
 }
 
-fn dist_client(version: &str, release_tag: &str) -> Result<()> {
+fn dist_client(version: &str, release_tag: &str, target: &Target) -> Result<()> {
+    let bundle_path = Path::new("editors").join("code").join("server");
+    mkdir_p(&bundle_path)?;
+    cp(&target.server_path, &bundle_path)?;
+    if let Some(symbols_path) = &target.symbols_path {
+        cp(symbols_path, &bundle_path)?;
+    }
+
     let _d = pushd("./editors/code")?;
     let nightly = release_tag == "nightly";
 
     let mut patch = Patch::new("./package.json")?;
-
     patch
         .replace(r#""version": "0.4.0-dev""#, &format!(r#""version": "{}""#, version))
         .replace(r#""releaseTag": null"#, &format!(r#""releaseTag": "{}""#, release_tag))
@@ -59,12 +68,10 @@ fn dist_client(version: &str, release_tag: &str) -> Result<()> {
     }
     patch.commit()?;
 
-    cmd!("npm ci").run()?;
-    cmd!("npx vsce package -o ../../dist/rust-analyzer.vsix").run()?;
     Ok(())
 }
 
-fn dist_server(release_channel: &str) -> Result<()> {
+fn dist_server(release_channel: &str, target: &Target) -> Result<()> {
     let _e = pushenv("RUST_ANALYZER_CHANNEL", release_channel);
     let _e = pushenv("CARGO_PROFILE_RELEASE_LTO", "thin");
 
@@ -73,45 +80,17 @@ fn dist_server(release_channel: &str) -> Result<()> {
     //   * on Linux, this blows up the binary size from 8MB to 43MB, which is unreasonable.
     // let _e = pushenv("CARGO_PROFILE_RELEASE_DEBUG", "1");
 
-    let target = get_target();
-    if target.contains("-linux-gnu") || target.contains("-linux-musl") {
+    if target.name.contains("-linux-") {
         env::set_var("CC", "clang");
     }
 
-    cmd!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target} --release").run()?;
+    let target_name = &target.name;
+    cmd!("cargo build --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} --release").run()?;
 
-    let suffix = exe_suffix(&target);
-    let src =
-        Path::new("target").join(&target).join("release").join(format!("rust-analyzer{}", suffix));
-    let dst = Path::new("dist").join(format!("rust-analyzer-{}{}", target, suffix));
-    gzip(&src, &dst.with_extension("gz"))?;
+    let dst = Path::new("dist").join(&target.artifact_name);
+    gzip(&target.server_path, &dst.with_extension("gz"))?;
 
     Ok(())
-}
-
-fn get_target() -> String {
-    match env::var("RA_TARGET") {
-        Ok(target) => target,
-        _ => {
-            if cfg!(target_os = "linux") {
-                "x86_64-unknown-linux-gnu".to_string()
-            } else if cfg!(target_os = "windows") {
-                "x86_64-pc-windows-msvc".to_string()
-            } else if cfg!(target_os = "macos") {
-                "x86_64-apple-darwin".to_string()
-            } else {
-                panic!("Unsupported OS, maybe try setting RA_TARGET")
-            }
-        }
-    }
-}
-
-fn exe_suffix(target: &str) -> String {
-    if target.contains("-windows-") {
-        ".exe".into()
-    } else {
-        "".into()
-    }
 }
 
 fn gzip(src_path: &Path, dest_path: &Path) -> Result<()> {
@@ -120,6 +99,41 @@ fn gzip(src_path: &Path, dest_path: &Path) -> Result<()> {
     io::copy(&mut input, &mut encoder)?;
     encoder.finish()?;
     Ok(())
+}
+
+struct Target {
+    name: String,
+    server_path: PathBuf,
+    symbols_path: Option<PathBuf>,
+    artifact_name: String,
+}
+
+impl Target {
+    fn get(project_root: &Path) -> Self {
+        let name = match env::var("RA_TARGET") {
+            Ok(target) => target,
+            _ => {
+                if cfg!(target_os = "linux") {
+                    "x86_64-unknown-linux-gnu".to_string()
+                } else if cfg!(target_os = "windows") {
+                    "x86_64-pc-windows-msvc".to_string()
+                } else if cfg!(target_os = "macos") {
+                    "x86_64-apple-darwin".to_string()
+                } else {
+                    panic!("Unsupported OS, maybe try setting RA_TARGET")
+                }
+            }
+        };
+        let out_path = project_root.join("target").join(&name).join("release");
+        let (exe_suffix, symbols_path) = if name.contains("-windows-") {
+            (".exe".into(), Some(out_path.join("rust_analyzer.pdb")))
+        } else {
+            (String::new(), None)
+        };
+        let server_path = out_path.join(format!("rust-analyzer{}", exe_suffix));
+        let artifact_name = format!("rust-analyzer-{}{}", name, exe_suffix);
+        Self { name, server_path, symbols_path, artifact_name }
+    }
 }
 
 struct Patch {
@@ -149,6 +163,8 @@ impl Patch {
 
 impl Drop for Patch {
     fn drop(&mut self) {
-        write_file(&self.path, &self.original_contents).unwrap();
+        // FIXME: find a way to bring this back
+        let _ = &self.original_contents;
+        // write_file(&self.path, &self.original_contents).unwrap();
     }
 }
