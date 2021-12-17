@@ -1055,11 +1055,11 @@ pub fn compile_unit_metadata(
     let work_dir = tcx.sess.opts.working_dir.to_string_lossy(FileNameDisplayPreference::Remapped);
     let flags = "\0";
     let output_filenames = tcx.output_filenames(());
-    let out_dir = &output_filenames.out_directory;
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
         output_filenames
             .split_dwarf_path(tcx.sess.split_debuginfo(), Some(codegen_unit_name))
-            .map(|f| out_dir.join(f))
+            // We get a path relative to the working directory from split_dwarf_path
+            .map(|f| tcx.sess.source_map().path_mapping().map_prefix(f).0)
     } else {
         None
     }
