@@ -204,30 +204,35 @@ fn cmp_default() {
     assert_eq!(Fool(false), Fool(true));
 }
 
-struct S(i32);
+#[cfg(not(bootstrap))]
+mod const_cmp {
+    use super::*;
 
-impl const PartialEq for S {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+    struct S(i32);
+
+    impl const PartialEq for S {
+        fn eq(&self, other: &Self) -> bool {
+            self.0 == other.0
+        }
     }
-}
 
-impl const PartialOrd for S {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        let ret = match (self.0, other.0) {
-            (a, b) if a > b => Ordering::Greater,
-            (a, b) if a < b => Ordering::Less,
-            _ => Ordering::Equal,
-        };
+    impl const PartialOrd for S {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            let ret = match (self.0, other.0) {
+                (a, b) if a > b => Ordering::Greater,
+                (a, b) if a < b => Ordering::Less,
+                _ => Ordering::Equal,
+            };
 
-        Some(ret)
+            Some(ret)
+        }
     }
+
+    const _: () = assert!(S(1) == S(1));
+    const _: () = assert!(S(0) != S(1));
+
+    const _: () = assert!(S(1) <= S(1));
+    const _: () = assert!(S(1) >= S(1));
+    const _: () = assert!(S(0) < S(1));
+    const _: () = assert!(S(1) > S(0));
 }
-
-const _: () = assert!(S(1) == S(1));
-const _: () = assert!(S(0) != S(1));
-
-const _: () = assert!(S(1) <= S(1));
-const _: () = assert!(S(1) >= S(1));
-const _: () = assert!(S(0) <  S(1));
-const _: () = assert!(S(1) >  S(0));
