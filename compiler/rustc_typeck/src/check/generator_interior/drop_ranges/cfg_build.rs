@@ -8,7 +8,10 @@ use hir::{
 };
 use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
-use rustc_middle::hir::map::Map;
+use rustc_middle::{
+    hir::map::Map,
+    ty::{TyCtxt, TypeckResults},
+};
 use std::mem::swap;
 
 /// Traverses the body to find the control flow graph and locations for the
@@ -18,11 +21,14 @@ use std::mem::swap;
 /// can be done with propagate_to_fixpoint in cfg_propagate.
 pub(super) fn build_control_flow_graph<'tcx>(
     hir: Map<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    typeck_results: &TypeckResults<'tcx>,
     consumed_borrowed_places: ConsumedAndBorrowedPlaces,
     body: &'tcx Body<'tcx>,
     num_exprs: usize,
 ) -> DropRangesBuilder {
-    let mut drop_range_visitor = DropRangeVisitor::new(hir, consumed_borrowed_places, num_exprs);
+    let mut drop_range_visitor =
+        DropRangeVisitor::new(hir, tcx, typeck_results, consumed_borrowed_places, num_exprs);
     intravisit::walk_body(&mut drop_range_visitor, body);
 
     drop_range_visitor.drop_ranges.process_deferred_edges();
@@ -36,22 +42,30 @@ pub(super) fn build_control_flow_graph<'tcx>(
 /// We are interested in points where a variables is dropped or initialized, and the control flow
 /// of the code. We identify locations in code by their post-order traversal index, so it is
 /// important for this traversal to match that in `RegionResolutionVisitor` and `InteriorVisitor`.
-struct DropRangeVisitor<'tcx> {
+struct DropRangeVisitor<'a, 'tcx> {
     hir: Map<'tcx>,
     places: ConsumedAndBorrowedPlaces,
     drop_ranges: DropRangesBuilder,
     expr_index: PostOrderId,
+    tcx: TyCtxt<'tcx>,
+    typeck_results: &'a TypeckResults<'tcx>,
 }
 
-impl<'tcx> DropRangeVisitor<'tcx> {
-    fn new(hir: Map<'tcx>, places: ConsumedAndBorrowedPlaces, num_exprs: usize) -> Self {
+impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
+    fn new(
+        hir: Map<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        typeck_results: &'a TypeckResults<'tcx>,
+        places: ConsumedAndBorrowedPlaces,
+        num_exprs: usize,
+    ) -> Self {
         debug!("consumed_places: {:?}", places.consumed);
         let drop_ranges = DropRangesBuilder::new(
             places.consumed.iter().flat_map(|(_, places)| places.iter().copied()),
             hir,
             num_exprs,
         );
-        Self { hir, places, drop_ranges, expr_index: PostOrderId::from_u32(0) }
+        Self { hir, places, drop_ranges, expr_index: PostOrderId::from_u32(0), typeck_results, tcx }
     }
 
     fn record_drop(&mut self, hir_id: HirId) {
@@ -91,9 +105,23 @@ impl<'tcx> DropRangeVisitor<'tcx> {
             debug!("reinitializing {:?} is not supported", expr);
         }
     }
+
+    /// For an expression with an uninhabited return type (e.g. a function that returns !),
+    /// this adds a self edge to to the CFG to model the fact that the function does not
+    /// return.
+    fn handle_uninhabited_return(&mut self, expr: &Expr<'tcx>) {
+        let ty = self.typeck_results.expr_ty(expr);
+        let ty = self.tcx.erase_regions(ty);
+        let m = self.tcx.parent_module(expr.hir_id).to_def_id();
+        let param_env = self.tcx.param_env(m.expect_local());
+        if self.tcx.is_ty_uninhabited_from(m, ty, param_env) {
+            // This function will not return. We model this fact as an infinite loop.
+            self.drop_ranges.add_control_edge(self.expr_index + 1, self.expr_index + 1);
+        }
+    }
 }
 
-impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
     type Map = intravisit::ErasedMap<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -109,6 +137,7 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
 
                 reinit = Some(lhs);
             }
+
             ExprKind::If(test, if_true, if_false) => {
                 self.visit_expr(test);
 
@@ -155,6 +184,7 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                     self.drop_ranges.add_control_edge(arm_end, self.expr_index + 1)
                 });
             }
+
             ExprKind::Loop(body, ..) => {
                 let loop_begin = self.expr_index + 1;
                 if body.stmts.is_empty() && body.expr.is_none() {
@@ -172,6 +202,22 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
                 self.drop_ranges.add_control_edge_hir_id(self.expr_index, target);
             }
 
+            ExprKind::Call(f, args) => {
+                self.visit_expr(f);
+                for arg in args {
+                    self.visit_expr(arg);
+                }
+
+                self.handle_uninhabited_return(expr);
+            }
+            ExprKind::MethodCall(_, _, exprs, _) => {
+                for expr in exprs {
+                    self.visit_expr(expr);
+                }
+
+                self.handle_uninhabited_return(expr);
+            }
+
             ExprKind::AddrOf(..)
             | ExprKind::Array(..)
             | ExprKind::AssignOp(..)
@@ -179,7 +225,6 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
             | ExprKind::Block(..)
             | ExprKind::Box(..)
             | ExprKind::Break(..)
-            | ExprKind::Call(..)
             | ExprKind::Cast(..)
             | ExprKind::Closure(..)
             | ExprKind::ConstBlock(..)
@@ -192,7 +237,6 @@ impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
             | ExprKind::Let(..)
             | ExprKind::Lit(..)
             | ExprKind::LlvmInlineAsm(..)
-            | ExprKind::MethodCall(..)
             | ExprKind::Path(..)
             | ExprKind::Repeat(..)
             | ExprKind::Ret(..)
