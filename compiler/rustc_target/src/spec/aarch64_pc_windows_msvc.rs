@@ -3,7 +3,6 @@ use crate::spec::Target;
 pub fn target() -> Target {
     let mut base = super::windows_msvc_base::opts();
     base.max_atomic_width = Some(64);
-    base.has_elf_tls = true;
     base.features = "+neon,+fp-armv8".to_string();
 
     Target {
