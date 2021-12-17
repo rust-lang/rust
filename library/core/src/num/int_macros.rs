@@ -2602,8 +2602,6 @@ macro_rules! int_impl {
         /// When starting from a slice rather than an array, fallible conversion APIs can be used:
         ///
         /// ```
-        /// use std::convert::TryInto;
-        ///
         #[doc = concat!("fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {")]
         #[doc = concat!("    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());")]
         ///     *input = rest;
@@ -2633,8 +2631,6 @@ macro_rules! int_impl {
         /// When starting from a slice rather than an array, fallible conversion APIs can be used:
         ///
         /// ```
-        /// use std::convert::TryInto;
-        ///
         #[doc = concat!("fn read_le_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {")]
         #[doc = concat!("    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());")]
         ///     *input = rest;
@@ -2675,8 +2671,6 @@ macro_rules! int_impl {
         /// When starting from a slice rather than an array, fallible conversion APIs can be used:
         ///
         /// ```
-        /// use std::convert::TryInto;
-        ///
         #[doc = concat!("fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {")]
         #[doc = concat!("    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());")]
         ///     *input = rest;
