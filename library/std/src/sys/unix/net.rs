@@ -408,12 +408,12 @@ impl Socket {
         Ok(raw != 0)
     }
 
-    #[cfg(any(target_os = "android", target_os = "linux", target_os = "dragonfly",))]
+    #[cfg(any(target_os = "android", target_os = "linux",))]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int)
     }
 
-    #[cfg(any(target_os = "android", target_os = "linux", target_os = "dragonfly",))]
+    #[cfg(any(target_os = "android", target_os = "linux",))]
     pub fn passcred(&self) -> io::Result<bool> {
         let passcred: libc::c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED)?;
         Ok(passcred != 0)
