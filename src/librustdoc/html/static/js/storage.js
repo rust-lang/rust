@@ -55,6 +55,12 @@ function removeClass(elem, className) {
     elem.classList.remove(className);
 }
 
+/**
+ * Run a callback for every element of an Array.
+ * @param {Array<?>}    arr        - The array to iterate over
+ * @param {function(?)} func       - The callback
+ * @param {boolean}     [reversed] - Whether to iterate in reverse
+ */
 function onEach(arr, func, reversed) {
     if (arr && arr.length > 0 && func) {
         var length = arr.length;
@@ -76,6 +82,16 @@ function onEach(arr, func, reversed) {
     return false;
 }
 
+/**
+ * Turn an HTMLCollection or a NodeList into an Array, then run a callback
+ * for every element. This is useful because iterating over an HTMLCollection
+ * or a "live" NodeList while modifying it can be very slow.
+ * https://developer.mozilla.org/en-US/docs/Web/API/HTMLCollection
+ * https://developer.mozilla.org/en-US/docs/Web/API/NodeList
+ * @param {NodeList<?>|HTMLCollection<?>} lazyArray  - An array to iterate over
+ * @param {function(?)}                   func       - The callback
+ * @param {boolean}                       [reversed] - Whether to iterate in reverse
+ */
 function onEachLazy(lazyArray, func, reversed) {
     return onEach(
         Array.prototype.slice.call(lazyArray),
