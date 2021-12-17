@@ -78,7 +78,7 @@ fn highlight_references(
     token: SyntaxToken,
     file_id: FileId,
 ) -> Option<Vec<HighlightedRange>> {
-    let defs = find_defs(sema, token.clone());
+    let defs = find_defs(sema, token);
     let usages = defs
         .iter()
         .filter_map(|&d| {

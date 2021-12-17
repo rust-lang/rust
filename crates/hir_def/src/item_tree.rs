@@ -148,7 +148,7 @@ impl ItemTree {
         let loc = db.lookup_intern_block(block);
         let block = loc.ast_id.to_node(db.upcast());
         let hygiene = Hygiene::new(db.upcast(), loc.ast_id.file_id);
-        let ctx = lower::Ctx::new(db, hygiene.clone(), loc.ast_id.file_id);
+        let ctx = lower::Ctx::new(db, hygiene, loc.ast_id.file_id);
         Arc::new(ctx.lower_block(&block))
     }
 

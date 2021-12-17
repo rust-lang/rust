@@ -151,7 +151,7 @@ fn extract_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Modul
     let mut body_items: Vec<ast::Item> = node
         .children()
         .filter_map(|child| {
-            if let Some(item) = ast::Item::cast(child.clone()) {
+            if let Some(item) = ast::Item::cast(child) {
                 if selection_range.contains_range(item.syntax().text_range()) {
                     return Some(item);
                 }
@@ -312,20 +312,20 @@ impl Module {
             get_replacements_for_visibilty_change(self.body_items.clone(), false);
 
         let impl_items = impls.into_iter().fold(Vec::new(), |mut impl_items, x| {
-            let this_impl_items =
+            let mut this_impl_items =
                 x.syntax().descendants().fold(Vec::new(), |mut this_impl_items, x| {
-                    if let Some(item) = ast::Item::cast(x.clone()) {
+                    if let Some(item) = ast::Item::cast(x) {
                         this_impl_items.push(item);
                     }
                     return this_impl_items;
                 });
 
-            impl_items.append(&mut this_impl_items.clone());
+            impl_items.append(&mut this_impl_items);
             return impl_items;
         });
 
         let (_, mut impl_item_replacements, _, _) =
-            get_replacements_for_visibilty_change(impl_items.clone(), true);
+            get_replacements_for_visibilty_change(impl_items, true);
 
         replacements.append(&mut impl_item_replacements);
 
@@ -337,7 +337,7 @@ impl Module {
                     .find(|x| x.to_string() == desc.to_string())
                     .is_some();
                 if is_record_field_present {
-                    replacements.push((desc.visibility().clone(), desc.syntax().clone()));
+                    replacements.push((desc.visibility(), desc.syntax().clone()));
                 }
             });
         });
@@ -472,7 +472,7 @@ impl Module {
                 (&x.1).into_iter().for_each(|x| {
                     let node_opt: Option<ast::Use> = find_node_at_range(file.syntax(), x.range);
                     if let Some(node) = node_opt {
-                        use_opt = Some(node.clone());
+                        use_opt = Some(node);
                     }
                 });
             }
@@ -529,7 +529,7 @@ impl Module {
         }
 
         if let Some(use_tree_str) = use_tree_str_opt {
-            let mut use_tree_str = use_tree_str.clone();
+            let mut use_tree_str = use_tree_str;
             use_tree_str.reverse();
             if use_tree_str[0].to_string().contains("super") {
                 let super_path = make::ext::ident_path("super");
@@ -776,42 +776,24 @@ fn get_replacements_for_visibilty_change(
         body_items.push(item.clone());
         //Use stmts are ignored
         match item {
-            ast::Item::Const(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()))
-            }
-            ast::Item::Enum(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()))
-            }
-            ast::Item::ExternCrate(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()))
-            }
-            ast::Item::Fn(it) => replacements.push((it.visibility().clone(), it.syntax().clone())),
+            ast::Item::Const(it) => replacements.push((it.visibility(), it.syntax().clone())),
+            ast::Item::Enum(it) => replacements.push((it.visibility(), it.syntax().clone())),
+            ast::Item::ExternCrate(it) => replacements.push((it.visibility(), it.syntax().clone())),
+            ast::Item::Fn(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Impl(it) => impls.push(it),
-            ast::Item::MacroRules(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()))
-            }
-            ast::Item::MacroDef(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()))
-            }
-            ast::Item::Module(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()))
-            }
-            ast::Item::Static(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()))
-            }
+            ast::Item::MacroRules(it) => replacements.push((it.visibility(), it.syntax().clone())),
+            ast::Item::MacroDef(it) => replacements.push((it.visibility(), it.syntax().clone())),
+            ast::Item::Module(it) => replacements.push((it.visibility(), it.syntax().clone())),
+            ast::Item::Static(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Struct(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()));
-                record_field_parents.push((it.visibility().clone(), it.syntax().clone()));
+                replacements.push((it.visibility(), it.syntax().clone()));
+                record_field_parents.push((it.visibility(), it.syntax().clone()));
             }
-            ast::Item::Trait(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()))
-            }
-            ast::Item::TypeAlias(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()))
-            }
+            ast::Item::Trait(it) => replacements.push((it.visibility(), it.syntax().clone())),
+            ast::Item::TypeAlias(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Union(it) => {
-                replacements.push((it.visibility().clone(), it.syntax().clone()));
-                record_field_parents.push((it.visibility().clone(), it.syntax().clone()));
+                replacements.push((it.visibility(), it.syntax().clone()));
+                record_field_parents.push((it.visibility(), it.syntax().clone()));
             }
             _ => (),
         }
@@ -825,7 +807,7 @@ fn get_use_tree_paths_from_path(
     use_tree_str: &mut Vec<ast::Path>,
 ) -> Option<&mut Vec<ast::Path>> {
     path.syntax().ancestors().filter(|x| x.to_string() != path.to_string()).find_map(|x| {
-        if let Some(use_tree) = ast::UseTree::cast(x.clone()) {
+        if let Some(use_tree) = ast::UseTree::cast(x) {
             if let Some(upper_tree_path) = use_tree.path() {
                 if upper_tree_path.to_string() != path.to_string() {
                     use_tree_str.push(upper_tree_path.clone());
