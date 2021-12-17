@@ -10,10 +10,28 @@ impl DropRangesBuilder {
         trace!("predecessors: {:#?}", preds.iter_enumerated().collect::<BTreeMap<_, _>>());
 
         let mut new_state = BitSet::new_empty(self.num_values());
+        let mut changed_nodes = BitSet::new_empty(self.nodes.len());
+        let mut unchanged_mask = BitSet::new_filled(self.nodes.len());
+        changed_nodes.insert(0u32.into());
 
         let mut propagate = || {
             let mut changed = false;
+            unchanged_mask.insert_all();
             for id in self.nodes.indices() {
+                trace!("processing {:?}, changed_nodes: {:?}", id, changed_nodes);
+                // Check if any predecessor has changed, and if not then short-circuit.
+                //
+                // We handle the start node specially, since it doesn't have any predecessors,
+                // but we need to start somewhere.
+                if match id.index() {
+                    0 => !changed_nodes.contains(id),
+                    _ => !preds[id].iter().any(|pred| changed_nodes.contains(*pred)),
+                } {
+                    trace!("short-circuiting because none of {:?} have changed", preds[id]);
+                    unchanged_mask.remove(id);
+                    continue;
+                }
+
                 if id.index() == 0 {
                     new_state.clear();
                 } else {
@@ -23,8 +41,7 @@ impl DropRangesBuilder {
                 };
 
                 for pred in &preds[id] {
-                    let state = &self.nodes[*pred].drop_state;
-                    new_state.intersect(state);
+                    new_state.intersect(&self.nodes[*pred].drop_state);
                 }
 
                 for drop in &self.nodes[id].drops {
@@ -35,9 +52,15 @@ impl DropRangesBuilder {
                     new_state.remove(*reinit);
                 }
 
-                changed |= self.nodes[id].drop_state.intersect(&new_state);
+                if self.nodes[id].drop_state.intersect(&new_state) {
+                    changed_nodes.insert(id);
+                    changed = true;
+                } else {
+                    unchanged_mask.remove(id);
+                }
             }
 
+            changed_nodes.intersect(&unchanged_mask);
             changed
         };
 
