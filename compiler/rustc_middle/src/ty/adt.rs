@@ -20,7 +20,7 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
-use std::{ptr, str};
+use std::str;
 
 use super::{
     Destructor, FieldDef, GenericPredicates, ReprOptions, Ty, TyCtxt, VariantDef, VariantDiscr,
@@ -117,7 +117,7 @@ impl PartialEq for AdtDef {
     // `AdtDef`s are always interned, and this is part of `TyS` equality.
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        ptr::eq(self, other)
+        self.did == other.did
     }
 }
 
@@ -126,7 +126,7 @@ impl Eq for AdtDef {}
 impl Hash for AdtDef {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        (self as *const AdtDef).hash(s)
+        self.did.hash(s)
     }
 }
 
