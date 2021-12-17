@@ -109,6 +109,19 @@ fn pattern_to_vec(pattern: &str) -> Vec<String> {
         .collect::<Vec<_>>()
 }
 
+enum DummyEnum {
+    One(u8),
+    Two,
+}
+
+// should not warn since there is a compled complex subpat
+// see #7991
+fn complex_subpat() -> DummyEnum {
+    let x = Some(DummyEnum::One(1));
+    let _ = if let Some(_one @ DummyEnum::One(..)) = x { 1 } else { 2 };
+    DummyEnum::Two
+}
+
 fn main() {
     let optional = Some(5);
     let _ = if let Some(x) = optional { x + 2 } else { 5 };
@@ -188,4 +201,5 @@ fn main() {
     }
 
     let _ = pattern_to_vec("hello world");
+    let _ = complex_subpat();
 }

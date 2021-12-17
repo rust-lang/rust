@@ -162,7 +162,8 @@ define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
 
 You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
 
-*   the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy::all)]`)
+*   the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy::all)]`).
+    Note that `rustc` has additional [lint groups](https://doc.rust-lang.org/rustc/lints/groups.html).
 
 *   all lints using both the `clippy` and `clippy::pedantic` lint groups (`#![deny(clippy::all)]`,
     `#![deny(clippy::pedantic)]`). Note that `clippy::pedantic` contains some very aggressive

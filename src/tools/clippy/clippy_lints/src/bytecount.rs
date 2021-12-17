@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::match_type;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{path_to_local_id, paths, peel_ref_operators, remove_blocks, strip_pat_refs};
+use clippy_utils::{path_to_local_id, paths, peel_blocks, peel_ref_operators, strip_pat_refs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PatKind};
@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(count, _, [count_recv], _) = expr.kind;
-            if count.ident.name == sym!(count);
+            if count.ident.name == sym::count;
             if let ExprKind::MethodCall(filter, _, [filter_recv, filter_arg], _) = count_recv.kind;
             if filter.ident.name == sym!(filter);
             if let ExprKind::Closure(_, _, body_id, _, _) = filter_arg.kind;
@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for ByteCount {
                        cx.typeck_results().expr_ty(filter_recv).peel_refs(),
                        &paths::SLICE_ITER);
             let operand_is_arg = |expr| {
-                let expr = peel_ref_operators(cx, remove_blocks(expr));
+                let expr = peel_ref_operators(cx, peel_blocks(expr));
                 path_to_local_id(expr, arg_id)
             };
             let needle = if operand_is_arg(l) {

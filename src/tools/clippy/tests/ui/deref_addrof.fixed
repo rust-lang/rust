@@ -1,4 +1,5 @@
 // run-rustfix
+#![allow(clippy::return_self_not_must_use)]
 #![warn(clippy::deref_addrof)]
 
 fn get_number() -> usize {

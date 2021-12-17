@@ -39,6 +39,19 @@ fn main() {
         e = format!("{}", c);
     }
 
+    let f;
+    match 1 {
+        1 => f = "three",
+        _ => return,
+    }; // has semi
+
+    let g: usize;
+    if true {
+        g = 5;
+    } else {
+        panic!();
+    }
+
     println!("{}", a);
 }
 

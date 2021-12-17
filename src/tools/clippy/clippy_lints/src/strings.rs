@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::SpanlessEq;
 use clippy_utils::{get_parent_expr, is_lint_allowed, match_function_call, method_calls, paths};
+use clippy_utils::{peel_blocks, SpanlessEq};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, QPath};
@@ -201,7 +201,7 @@ fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 }
 
 fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
-    match src.kind {
+    match peel_blocks(src).kind {
         ExprKind::Binary(
             Spanned {
                 node: BinOpKind::Add, ..
@@ -209,9 +209,6 @@ fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
             left,
             _,
         ) => SpanlessEq::new(cx).eq_expr(target, left),
-        ExprKind::Block(block, _) => {
-            block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| is_add(cx, expr, target))
-        },
         _ => false,
     }
 }

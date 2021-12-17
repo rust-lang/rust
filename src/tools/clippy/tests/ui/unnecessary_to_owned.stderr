@@ -1,0 +1,495 @@
+error: redundant clone
+  --> $DIR/unnecessary_to_owned.rs:150:64
+   |
+LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
+   |                                                                ^^^^^^^^^^^ help: remove this
+   |
+   = note: `-D clippy::redundant-clone` implied by `-D warnings`
+note: this value is dropped without further use
+  --> $DIR/unnecessary_to_owned.rs:150:20
+   |
+LL |     require_c_str(&CString::from_vec_with_nul(vec![0]).unwrap().to_owned());
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant clone
+  --> $DIR/unnecessary_to_owned.rs:151:40
+   |
+LL |     require_os_str(&OsString::from("x").to_os_string());
+   |                                        ^^^^^^^^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/unnecessary_to_owned.rs:151:21
+   |
+LL |     require_os_str(&OsString::from("x").to_os_string());
+   |                     ^^^^^^^^^^^^^^^^^^^
+
+error: redundant clone
+  --> $DIR/unnecessary_to_owned.rs:152:48
+   |
+LL |     require_path(&std::path::PathBuf::from("x").to_path_buf());
+   |                                                ^^^^^^^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/unnecessary_to_owned.rs:152:19
+   |
+LL |     require_path(&std::path::PathBuf::from("x").to_path_buf());
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: redundant clone
+  --> $DIR/unnecessary_to_owned.rs:153:35
+   |
+LL |     require_str(&String::from("x").to_string());
+   |                                   ^^^^^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> $DIR/unnecessary_to_owned.rs:153:18
+   |
+LL |     require_str(&String::from("x").to_string());
+   |                  ^^^^^^^^^^^^^^^^^
+
+error: unnecessary use of `into_owned`
+  --> $DIR/unnecessary_to_owned.rs:59:36
+   |
+LL |     require_c_str(&Cow::from(c_str).into_owned());
+   |                                    ^^^^^^^^^^^^^ help: remove this
+   |
+   = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:60:19
+   |
+LL |     require_c_str(&c_str.to_owned());
+   |                   ^^^^^^^^^^^^^^^^^ help: use: `c_str`
+
+error: unnecessary use of `to_os_string`
+  --> $DIR/unnecessary_to_owned.rs:62:20
+   |
+LL |     require_os_str(&os_str.to_os_string());
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ help: use: `os_str`
+
+error: unnecessary use of `into_owned`
+  --> $DIR/unnecessary_to_owned.rs:63:38
+   |
+LL |     require_os_str(&Cow::from(os_str).into_owned());
+   |                                      ^^^^^^^^^^^^^ help: remove this
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:64:20
+   |
+LL |     require_os_str(&os_str.to_owned());
+   |                    ^^^^^^^^^^^^^^^^^^ help: use: `os_str`
+
+error: unnecessary use of `to_path_buf`
+  --> $DIR/unnecessary_to_owned.rs:66:18
+   |
+LL |     require_path(&path.to_path_buf());
+   |                  ^^^^^^^^^^^^^^^^^^^ help: use: `path`
+
+error: unnecessary use of `into_owned`
+  --> $DIR/unnecessary_to_owned.rs:67:34
+   |
+LL |     require_path(&Cow::from(path).into_owned());
+   |                                  ^^^^^^^^^^^^^ help: remove this
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:68:18
+   |
+LL |     require_path(&path.to_owned());
+   |                  ^^^^^^^^^^^^^^^^ help: use: `path`
+
+error: unnecessary use of `to_string`
+  --> $DIR/unnecessary_to_owned.rs:70:17
+   |
+LL |     require_str(&s.to_string());
+   |                 ^^^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `into_owned`
+  --> $DIR/unnecessary_to_owned.rs:71:30
+   |
+LL |     require_str(&Cow::from(s).into_owned());
+   |                              ^^^^^^^^^^^^^ help: remove this
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:72:17
+   |
+LL |     require_str(&s.to_owned());
+   |                 ^^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_string`
+  --> $DIR/unnecessary_to_owned.rs:73:17
+   |
+LL |     require_str(&x_ref.to_string());
+   |                 ^^^^^^^^^^^^^^^^^^ help: use: `x_ref.as_ref()`
+
+error: unnecessary use of `to_vec`
+  --> $DIR/unnecessary_to_owned.rs:75:19
+   |
+LL |     require_slice(&slice.to_vec());
+   |                   ^^^^^^^^^^^^^^^ help: use: `slice`
+
+error: unnecessary use of `into_owned`
+  --> $DIR/unnecessary_to_owned.rs:76:36
+   |
+LL |     require_slice(&Cow::from(slice).into_owned());
+   |                                    ^^^^^^^^^^^^^ help: remove this
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:77:19
+   |
+LL |     require_slice(&array.to_owned());
+   |                   ^^^^^^^^^^^^^^^^^ help: use: `array.as_ref()`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:78:19
+   |
+LL |     require_slice(&array_ref.to_owned());
+   |                   ^^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref.as_ref()`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:79:19
+   |
+LL |     require_slice(&slice.to_owned());
+   |                   ^^^^^^^^^^^^^^^^^ help: use: `slice`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:80:19
+   |
+LL |     require_slice(&x_ref.to_owned());
+   |                   ^^^^^^^^^^^^^^^^^ help: use: `x_ref`
+
+error: unnecessary use of `into_owned`
+  --> $DIR/unnecessary_to_owned.rs:82:42
+   |
+LL |     require_x(&Cow::<X>::Owned(x.clone()).into_owned());
+   |                                          ^^^^^^^^^^^^^ help: remove this
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:83:15
+   |
+LL |     require_x(&x_ref.to_owned());
+   |               ^^^^^^^^^^^^^^^^^ help: use: `x_ref`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:85:25
+   |
+LL |     require_deref_c_str(c_str.to_owned());
+   |                         ^^^^^^^^^^^^^^^^ help: use: `c_str`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:86:26
+   |
+LL |     require_deref_os_str(os_str.to_owned());
+   |                          ^^^^^^^^^^^^^^^^^ help: use: `os_str`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:87:24
+   |
+LL |     require_deref_path(path.to_owned());
+   |                        ^^^^^^^^^^^^^^^ help: use: `path`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:88:23
+   |
+LL |     require_deref_str(s.to_owned());
+   |                       ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:89:25
+   |
+LL |     require_deref_slice(slice.to_owned());
+   |                         ^^^^^^^^^^^^^^^^ help: use: `slice`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:91:30
+   |
+LL |     require_impl_deref_c_str(c_str.to_owned());
+   |                              ^^^^^^^^^^^^^^^^ help: use: `c_str`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:92:31
+   |
+LL |     require_impl_deref_os_str(os_str.to_owned());
+   |                               ^^^^^^^^^^^^^^^^^ help: use: `os_str`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:93:29
+   |
+LL |     require_impl_deref_path(path.to_owned());
+   |                             ^^^^^^^^^^^^^^^ help: use: `path`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:94:28
+   |
+LL |     require_impl_deref_str(s.to_owned());
+   |                            ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:95:30
+   |
+LL |     require_impl_deref_slice(slice.to_owned());
+   |                              ^^^^^^^^^^^^^^^^ help: use: `slice`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:97:29
+   |
+LL |     require_deref_str_slice(s.to_owned(), slice.to_owned());
+   |                             ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:97:43
+   |
+LL |     require_deref_str_slice(s.to_owned(), slice.to_owned());
+   |                                           ^^^^^^^^^^^^^^^^ help: use: `slice`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:98:29
+   |
+LL |     require_deref_slice_str(slice.to_owned(), s.to_owned());
+   |                             ^^^^^^^^^^^^^^^^ help: use: `slice`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:98:47
+   |
+LL |     require_deref_slice_str(slice.to_owned(), s.to_owned());
+   |                                               ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:100:26
+   |
+LL |     require_as_ref_c_str(c_str.to_owned());
+   |                          ^^^^^^^^^^^^^^^^ help: use: `c_str`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:101:27
+   |
+LL |     require_as_ref_os_str(os_str.to_owned());
+   |                           ^^^^^^^^^^^^^^^^^ help: use: `os_str`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:102:25
+   |
+LL |     require_as_ref_path(path.to_owned());
+   |                         ^^^^^^^^^^^^^^^ help: use: `path`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:103:24
+   |
+LL |     require_as_ref_str(s.to_owned());
+   |                        ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:104:24
+   |
+LL |     require_as_ref_str(x.to_owned());
+   |                        ^^^^^^^^^^^^ help: use: `&x`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:105:26
+   |
+LL |     require_as_ref_slice(array.to_owned());
+   |                          ^^^^^^^^^^^^^^^^ help: use: `array`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:106:26
+   |
+LL |     require_as_ref_slice(array_ref.to_owned());
+   |                          ^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:107:26
+   |
+LL |     require_as_ref_slice(slice.to_owned());
+   |                          ^^^^^^^^^^^^^^^^ help: use: `slice`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:109:31
+   |
+LL |     require_impl_as_ref_c_str(c_str.to_owned());
+   |                               ^^^^^^^^^^^^^^^^ help: use: `c_str`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:110:32
+   |
+LL |     require_impl_as_ref_os_str(os_str.to_owned());
+   |                                ^^^^^^^^^^^^^^^^^ help: use: `os_str`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:111:30
+   |
+LL |     require_impl_as_ref_path(path.to_owned());
+   |                              ^^^^^^^^^^^^^^^ help: use: `path`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:112:29
+   |
+LL |     require_impl_as_ref_str(s.to_owned());
+   |                             ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:113:29
+   |
+LL |     require_impl_as_ref_str(x.to_owned());
+   |                             ^^^^^^^^^^^^ help: use: `&x`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:114:31
+   |
+LL |     require_impl_as_ref_slice(array.to_owned());
+   |                               ^^^^^^^^^^^^^^^^ help: use: `array`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:115:31
+   |
+LL |     require_impl_as_ref_slice(array_ref.to_owned());
+   |                               ^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:116:31
+   |
+LL |     require_impl_as_ref_slice(slice.to_owned());
+   |                               ^^^^^^^^^^^^^^^^ help: use: `slice`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:118:30
+   |
+LL |     require_as_ref_str_slice(s.to_owned(), array.to_owned());
+   |                              ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:118:44
+   |
+LL |     require_as_ref_str_slice(s.to_owned(), array.to_owned());
+   |                                            ^^^^^^^^^^^^^^^^ help: use: `array`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:119:30
+   |
+LL |     require_as_ref_str_slice(s.to_owned(), array_ref.to_owned());
+   |                              ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:119:44
+   |
+LL |     require_as_ref_str_slice(s.to_owned(), array_ref.to_owned());
+   |                                            ^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:120:30
+   |
+LL |     require_as_ref_str_slice(s.to_owned(), slice.to_owned());
+   |                              ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:120:44
+   |
+LL |     require_as_ref_str_slice(s.to_owned(), slice.to_owned());
+   |                                            ^^^^^^^^^^^^^^^^ help: use: `slice`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:121:30
+   |
+LL |     require_as_ref_slice_str(array.to_owned(), s.to_owned());
+   |                              ^^^^^^^^^^^^^^^^ help: use: `array`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:121:48
+   |
+LL |     require_as_ref_slice_str(array.to_owned(), s.to_owned());
+   |                                                ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:122:30
+   |
+LL |     require_as_ref_slice_str(array_ref.to_owned(), s.to_owned());
+   |                              ^^^^^^^^^^^^^^^^^^^^ help: use: `array_ref`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:122:52
+   |
+LL |     require_as_ref_slice_str(array_ref.to_owned(), s.to_owned());
+   |                                                    ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:123:30
+   |
+LL |     require_as_ref_slice_str(slice.to_owned(), s.to_owned());
+   |                              ^^^^^^^^^^^^^^^^ help: use: `slice`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:123:48
+   |
+LL |     require_as_ref_slice_str(slice.to_owned(), s.to_owned());
+   |                                                ^^^^^^^^^^^^ help: use: `s`
+
+error: unnecessary use of `to_string`
+  --> $DIR/unnecessary_to_owned.rs:125:20
+   |
+LL |     let _ = x.join(&x_ref.to_string());
+   |                    ^^^^^^^^^^^^^^^^^^ help: use: `x_ref`
+
+error: unnecessary use of `to_vec`
+  --> $DIR/unnecessary_to_owned.rs:127:13
+   |
+LL |     let _ = slice.to_vec().into_iter();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:128:13
+   |
+LL |     let _ = slice.to_owned().into_iter();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
+
+error: unnecessary use of `to_vec`
+  --> $DIR/unnecessary_to_owned.rs:129:13
+   |
+LL |     let _ = [std::path::PathBuf::new()][..].to_vec().into_iter();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[std::path::PathBuf::new()][..].iter().cloned()`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:130:13
+   |
+LL |     let _ = [std::path::PathBuf::new()][..].to_owned().into_iter();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[std::path::PathBuf::new()][..].iter().cloned()`
+
+error: unnecessary use of `to_vec`
+  --> $DIR/unnecessary_to_owned.rs:132:13
+   |
+LL |     let _ = IntoIterator::into_iter(slice.to_vec());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:133:13
+   |
+LL |     let _ = IntoIterator::into_iter(slice.to_owned());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `slice.iter().copied()`
+
+error: unnecessary use of `to_vec`
+  --> $DIR/unnecessary_to_owned.rs:134:13
+   |
+LL |     let _ = IntoIterator::into_iter([std::path::PathBuf::new()][..].to_vec());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[std::path::PathBuf::new()][..].iter().cloned()`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned.rs:135:13
+   |
+LL |     let _ = IntoIterator::into_iter([std::path::PathBuf::new()][..].to_owned());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[std::path::PathBuf::new()][..].iter().cloned()`
+
+error: unnecessary use of `to_vec`
+  --> $DIR/unnecessary_to_owned.rs:196:14
+   |
+LL |     for t in file_types.to_vec() {
+   |              ^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL |     for t in file_types {
+   |              ~~~~~~~~~~
+help: remove this `&`
+   |
+LL -         let path = match get_file_path(&t) {
+LL +         let path = match get_file_path(t) {
+   | 
+
+error: aborting due to 76 previous errors
+

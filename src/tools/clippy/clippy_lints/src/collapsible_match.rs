@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{is_lang_ctor, is_unit_expr, path_to_local, peel_ref_operators, SpanlessEq};
+use clippy_utils::{is_lang_ctor, is_unit_expr, path_to_local, peel_blocks_with_stmt, peel_ref_operators, SpanlessEq};
 use if_chain::if_chain;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind, StmtKind};
+use rustc_hir::{Arm, Expr, Guard, HirId, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{MultiSpan, Span};
@@ -75,7 +75,7 @@ fn check_arm<'tcx>(
     outer_guard: Option<&'tcx Guard<'tcx>>,
     outer_else_body: Option<&'tcx Expr<'tcx>>,
 ) {
-    let inner_expr = strip_singleton_blocks(outer_then_body);
+    let inner_expr = peel_blocks_with_stmt(outer_then_body);
     if_chain! {
         if let Some(inner) = IfLetOrMatch::parse(cx, inner_expr);
         if let Some((inner_scrutinee, inner_then_pat, inner_else_body)) = match inner {
@@ -136,20 +136,6 @@ fn check_arm<'tcx>(
             );
         }
     }
-}
-
-fn strip_singleton_blocks<'hir>(mut expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
-    while let ExprKind::Block(block, _) = expr.kind {
-        match (block.stmts, block.expr) {
-            ([stmt], None) => match stmt.kind {
-                StmtKind::Expr(e) | StmtKind::Semi(e) => expr = e,
-                _ => break,
-            },
-            ([], Some(e)) => expr = e,
-            _ => break,
-        }
-    }
-    expr
 }
 
 /// A "wild-like" arm has a wild (`_`) or `None` pattern and no guard. Such arms can be "collapsed"

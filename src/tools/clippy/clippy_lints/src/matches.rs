@@ -9,7 +9,7 @@ use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, pe
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
     get_parent_expr, is_expn_of, is_lang_ctor, is_lint_allowed, is_refutable, is_unit_expr, is_wild, meets_msrv, msrvs,
-    path_to_local, path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns, remove_blocks,
+    path_to_local, path_to_local_id, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns,
     strip_pat_refs,
 };
 use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
@@ -658,7 +658,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 QPath::Resolved(None, variant_name), args, _) = arms[0].pat.kind;
             if args.len() == 1;
             if let PatKind::Binding(_, arg, ..) = strip_pat_refs(&args[0]).kind;
-            let body = remove_blocks(arms[0].body);
+            let body = peel_blocks(arms[0].body);
             if path_to_local_id(body, arg);
 
             then {
@@ -723,7 +723,7 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
             return;
         }
         let els = arms[1].body;
-        let els = if is_unit_expr(remove_blocks(els)) {
+        let els = if is_unit_expr(peel_blocks(els)) {
             None
         } else if let ExprKind::Block(Block { stmts, expr: block_expr, .. }, _) = els.kind {
             if stmts.len() == 1 && block_expr.is_none() || stmts.is_empty() && block_expr.is_some() {
@@ -1481,7 +1481,7 @@ fn check_match_single_binding<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[A
 
     let matched_vars = ex.span;
     let bind_names = arms[0].pat.span;
-    let match_body = remove_blocks(arms[0].body);
+    let match_body = peel_blocks(arms[0].body);
     let mut snippet_body = if match_body.span.from_expansion() {
         Sugg::hir_with_macro_callsite(cx, match_body, "..").to_string()
     } else {
@@ -1678,7 +1678,7 @@ fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<BindingAnnotat
         if is_lang_ctor(cx, qpath, OptionSome);
         if let PatKind::Binding(rb, .., ident, _) = first_pat.kind;
         if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
-        if let ExprKind::Call(e, args) = remove_blocks(arm.body).kind;
+        if let ExprKind::Call(e, args) = peel_blocks(arm.body).kind;
         if let ExprKind::Path(ref some_path) = e.kind;
         if is_lang_ctor(cx, some_path, OptionSome) && args.len() == 1;
         if let ExprKind::Path(QPath::Resolved(_, path2)) = args[0].kind;
