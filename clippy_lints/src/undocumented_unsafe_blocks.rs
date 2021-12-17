@@ -15,7 +15,7 @@ use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `unsafe` blocks without a `// Safety: ` comment
+    /// Checks for `unsafe` blocks without a `// SAFETY: ` comment
     /// explaining why the unsafe operations performed inside
     /// the block are safe.
     ///
@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// use std::ptr::NonNull;
     /// let a = &mut 42;
     ///
-    /// // Safety: references are guaranteed to be non-null.
+    /// // SAFETY: references are guaranteed to be non-null.
     /// let ptr = unsafe { NonNull::new_unchecked(a) };
     /// ```
     #[clippy::version = "1.58.0"]
@@ -213,7 +213,7 @@ impl UndocumentedUnsafeBlocks {
             );
         } else {
             let block_indent = indent_of(cx, span);
-            let suggestion = format!("// Safety: ...\n{}", snippet(cx, span, ".."));
+            let suggestion = format!("// SAFETY: ...\n{}", snippet(cx, span, ".."));
 
             span_lint_and_sugg(
                 cx,

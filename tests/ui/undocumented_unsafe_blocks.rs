@@ -5,7 +5,7 @@
 fn nested_local() {
     let _ = {
         let _ = {
-            // Safety:
+            // SAFETY:
             let _ = unsafe {};
         };
     };
@@ -14,7 +14,7 @@ fn nested_local() {
 fn deep_nest() {
     let _ = {
         let _ = {
-            // Safety:
+            // SAFETY:
             let _ = unsafe {};
 
             // Safety:
@@ -28,7 +28,7 @@ fn deep_nest() {
                                 // Safety:
                                 let _ = unsafe {};
 
-                                // Safety:
+                                // SAFETY:
                                 unsafe {};
                             };
                         };
@@ -44,7 +44,7 @@ fn deep_nest() {
         unsafe {};
     };
 
-    // Safety:
+    // SAFETY:
     unsafe {};
 }
 
@@ -59,7 +59,7 @@ fn line_comment() {
 }
 
 fn line_comment_newlines() {
-    // Safety:
+    // SAFETY:
 
     unsafe {}
 }
@@ -84,7 +84,7 @@ fn block_comment() {
 }
 
 fn block_comment_newlines() {
-    /* Safety: */
+    /* SAFETY: */
 
     unsafe {}
 }
@@ -96,7 +96,7 @@ fn inline_block_comment() {
 
 fn block_comment_with_extras() {
     /* This is a description
-     * Safety:
+     * SAFETY:
      */
     unsafe {}
 }
@@ -122,7 +122,7 @@ fn buried_safety() {
 }
 
 fn safety_with_prepended_text() {
-    // This is a test. Safety:
+    // This is a test. safety:
     unsafe {}
 }
 
@@ -132,7 +132,7 @@ fn local_line_comment() {
 }
 
 fn local_block_comment() {
-    /* Safety: */
+    /* SAFETY: */
     let _ = unsafe {};
 }
 
@@ -142,18 +142,18 @@ fn comment_array() {
 }
 
 fn comment_tuple() {
-    // Safety:
+    // sAFETY:
     let _ = (42, unsafe {}, "test", unsafe {});
 }
 
 fn comment_unary() {
-    // Safety:
+    // SAFETY:
     let _ = *unsafe { &42 };
 }
 
 #[allow(clippy::match_single_binding)]
 fn comment_match() {
-    // Safety:
+    // SAFETY:
     let _ = match unsafe {} {
         _ => {},
     };
@@ -177,7 +177,7 @@ fn comment_macro_call() {
     }
 
     t!(
-        // Safety:
+        // SAFETY:
         unsafe {}
     );
 }
@@ -194,18 +194,18 @@ fn comment_macro_def() {
 }
 
 fn non_ascii_comment() {
-    // ॐ᧻໒ Safety: ௵∰
+    // ॐ᧻໒ SaFeTy: ௵∰
     unsafe {};
 }
 
 fn local_commented_block() {
     let _ =
-        // Safety:
+        // safety:
         unsafe {};
 }
 
 fn local_nest() {
-    // Safety:
+    // safety:
     let _ = [(42, unsafe {}, unsafe {}), (52, unsafe {}, unsafe {})];
 }
 
@@ -267,17 +267,17 @@ fn no_comment_macro_def() {
 }
 
 fn trailing_comment() {
-    unsafe {} // Safety:
+    unsafe {} // SAFETY:
 }
 
 fn internal_comment() {
     unsafe {
-        // Safety:
+        // SAFETY:
     }
 }
 
 fn interference() {
-    // Safety
+    // SAFETY
 
     let _ = 42;
 
