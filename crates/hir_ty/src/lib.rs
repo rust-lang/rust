@@ -175,6 +175,7 @@ pub fn make_canonical<T: HasInterner<Interner = Interner>>(
 pub struct CallableSig {
     params_and_return: Arc<[Ty]>,
     is_varargs: bool,
+    legacy_const_generics_indices: Arc<[u32]>,
 }
 
 has_interner!(CallableSig);
@@ -185,7 +186,11 @@ pub type PolyFnSig = Binders<CallableSig>;
 impl CallableSig {
     pub fn from_params_and_return(mut params: Vec<Ty>, ret: Ty, is_varargs: bool) -> CallableSig {
         params.push(ret);
-        CallableSig { params_and_return: params.into(), is_varargs }
+        CallableSig {
+            params_and_return: params.into(),
+            is_varargs,
+            legacy_const_generics_indices: Arc::new([]),
+        }
     }
 
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
@@ -202,7 +207,12 @@ impl CallableSig {
                 .map(|arg| arg.assert_ty_ref(&Interner).clone())
                 .collect(),
             is_varargs: fn_ptr.sig.variadic,
+            legacy_const_generics_indices: Arc::new([]),
         }
+    }
+
+    pub fn set_legacy_const_generics_indices(&mut self, indices: &[u32]) {
+        self.legacy_const_generics_indices = indices.into();
     }
 
     pub fn to_fn_ptr(&self) -> FnPointer {
@@ -238,7 +248,11 @@ impl Fold<Interner> for CallableSig {
     {
         let vec = self.params_and_return.to_vec();
         let folded = vec.fold_with(folder, outer_binder)?;
-        Ok(CallableSig { params_and_return: folded.into(), is_varargs: self.is_varargs })
+        Ok(CallableSig {
+            params_and_return: folded.into(),
+            is_varargs: self.is_varargs,
+            legacy_const_generics_indices: self.legacy_const_generics_indices,
+        })
     }
 }
 

@@ -1286,7 +1286,11 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
         .with_type_param_mode(TypeParamLoweringMode::Variable);
     let ret = ctx_ret.lower_ty(&data.ret_type);
     let generics = generics(db.upcast(), def.into());
-    make_binders(&generics, CallableSig::from_params_and_return(params, ret, data.is_varargs()))
+    let mut sig = CallableSig::from_params_and_return(params, ret, data.is_varargs());
+    if !data.legacy_const_generics_indices.is_empty() {
+        sig.set_legacy_const_generics_indices(&data.legacy_const_generics_indices);
+    }
+    make_binders(&generics, sig)
 }
 
 /// Build the declared type of a function. This should not need to look at the
