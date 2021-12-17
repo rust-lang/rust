@@ -54,6 +54,7 @@
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(min_specialization)]
 #![feature(numfmt)]
+#![feature(num_midpoint)]
 #![feature(step_trait)]
 #![feature(str_internals)]
 #![feature(std_internals)]

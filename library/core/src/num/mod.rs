@@ -95,6 +95,57 @@ depending on the target pointer size.
     };
 }
 
+macro_rules! midpoint_impl {
+    ($SelfT:ty, unsigned) => {
+        /// Calculates the middle point of `self` and `rhs`.
+        ///
+        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
+        /// sufficiently-large signed integral type. This implies that the result is
+        /// always rounded towards negative infinity and that no overflow will ever occur.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(num_midpoint)]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
+        /// ```
+        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
+            // Use the well known branchless algorthim from Hacker's Delight to compute
+            // `(a + b) / 2` without overflowing: `((a ^ b) >> 1) + (a & b)`.
+            ((self ^ rhs) >> 1) + (self & rhs)
+        }
+    };
+    ($SelfT:ty, $WideT:ty, unsigned) => {
+        /// Calculates the middle point of `self` and `rhs`.
+        ///
+        /// `midpoint(a, b)` is `(a + b) >> 1` as if it were performed in a
+        /// sufficiently-large signed integral type. This implies that the result is
+        /// always rounded towards negative infinity and that no overflow will ever occur.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(num_midpoint)]
+        #[doc = concat!("assert_eq!(0", stringify!($SelfT), ".midpoint(4), 2);")]
+        #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".midpoint(4), 2);")]
+        /// ```
+        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[rustc_const_unstable(feature = "const_num_midpoint", issue = "110840")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
+            ((self as $WideT + rhs as $WideT) / 2) as $SelfT
+        }
+    };
+}
+
 macro_rules! widening_impl {
     ($SelfT:ty, $WideT:ty, $BITS:literal, unsigned) => {
         /// Calculates the complete product `self * rhs` without the possibility to overflow.
@@ -455,6 +506,7 @@ impl u8 {
         bound_condition = "",
     }
     widening_impl! { u8, u16, 8, unsigned }
+    midpoint_impl! { u8, u16, unsigned }
 
     /// Checks if the value is within the ASCII range.
     ///
@@ -1057,6 +1109,7 @@ impl u16 {
         bound_condition = "",
     }
     widening_impl! { u16, u32, 16, unsigned }
+    midpoint_impl! { u16, u32, unsigned }
 
     /// Checks if the value is a Unicode surrogate code point, which are disallowed values for [`char`].
     ///
@@ -1105,6 +1158,7 @@ impl u32 {
         bound_condition = "",
     }
     widening_impl! { u32, u64, 32, unsigned }
+    midpoint_impl! { u32, u64, unsigned }
 }
 
 impl u64 {
@@ -1128,6 +1182,7 @@ impl u64 {
         bound_condition = "",
     }
     widening_impl! { u64, u128, 64, unsigned }
+    midpoint_impl! { u64, u128, unsigned }
 }
 
 impl u128 {
@@ -1152,6 +1207,7 @@ impl u128 {
         from_xe_bytes_doc = "",
         bound_condition = "",
     }
+    midpoint_impl! { u128, unsigned }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -1176,6 +1232,7 @@ impl usize {
         bound_condition = " on 16-bit targets",
     }
     widening_impl! { usize, u32, 16, unsigned }
+    midpoint_impl! { usize, u32, unsigned }
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -1200,6 +1257,7 @@ impl usize {
         bound_condition = " on 32-bit targets",
     }
     widening_impl! { usize, u64, 32, unsigned }
+    midpoint_impl! { usize, u64, unsigned }
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -1224,6 +1282,7 @@ impl usize {
         bound_condition = " on 64-bit targets",
     }
     widening_impl! { usize, u128, 64, unsigned }
+    midpoint_impl! { usize, u128, unsigned }
 }
 
 impl usize {

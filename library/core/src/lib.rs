@@ -132,6 +132,7 @@
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_maybe_uninit_uninit_array)]
 #![feature(const_nonnull_new)]
+#![feature(const_num_midpoint)]
 #![feature(const_option)]
 #![feature(const_option_ext)]
 #![feature(const_pin)]
