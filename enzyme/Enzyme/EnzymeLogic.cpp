@@ -3757,8 +3757,6 @@ Function *EnzymeLogic::CreateForwardDiff(
     }
   }
 
-  assert(!todiff->empty());
-
   if (hasMetadata(todiff, "enzyme_derivative") && !hasconstant) {
     auto md = todiff->getMetadata("enzyme_derivative");
     if (!isa<MDTuple>(md)) {
@@ -3774,6 +3772,9 @@ Function *EnzymeLogic::CreateForwardDiff(
 
     return foundcalled;
   }
+  if (todiff->empty())
+    llvm::errs() << *todiff << "\n";
+  assert(!todiff->empty());
 
   bool retActive = retType != DIFFE_TYPE::CONSTANT;
 

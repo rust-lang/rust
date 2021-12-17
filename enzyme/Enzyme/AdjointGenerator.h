@@ -2231,7 +2231,13 @@ public:
       IRBuilder<> Builder2(&MTI);
       getForwardBuilder(Builder2);
       auto ddst = gutils->invertPointerM(orig_dst, Builder2);
+      if (ddst->getType()->isIntegerTy())
+        ddst = Builder2.CreateIntToPtr(ddst,
+                                       Type::getInt8PtrTy(ddst->getContext()));
       auto dsrc = gutils->invertPointerM(orig_src, Builder2);
+      if (dsrc->getType()->isIntegerTy())
+        dsrc = Builder2.CreateIntToPtr(dsrc,
+                                       Type::getInt8PtrTy(dsrc->getContext()));
 
       auto call =
           Builder2.CreateMemCpy(ddst, dstAlign, dsrc, srcAlign, new_size);
@@ -6059,59 +6065,21 @@ public:
       subretType = DIFFE_TYPE::OUT_DIFF;
     }
 
-    auto found = customCallHandlers.find(funcName.str());
-    if (found != customCallHandlers.end()) {
-      IRBuilder<> Builder2(call.getParent());
-      if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined)
-        getReverseBuilder(Builder2);
-
-      Value *invertedReturn = nullptr;
-      bool hasNonReturnUse = false;
-      auto ifound = gutils->invertedPointers.find(orig);
-      if (ifound != gutils->invertedPointers.end()) {
-        //! We only need the shadow pointer for non-forward Mode if it is used
-        //! in a non return setting
-        hasNonReturnUse = subretType == DIFFE_TYPE::DUP_ARG;
-        if (hasNonReturnUse)
+    if (Mode == DerivativeMode::ForwardMode) {
+      auto found = customFwdCallHandlers.find(funcName.str());
+      if (found != customFwdCallHandlers.end()) {
+        Value *invertedReturn = nullptr;
+        auto ifound = gutils->invertedPointers.find(orig);
+        if (ifound != gutils->invertedPointers.end()) {
           invertedReturn = cast<PHINode>(&*ifound->second);
-      }
-
-      Value *normalReturn = subretused ? newCall : nullptr;
-
-      Value *tape = nullptr;
-
-      if (Mode == DerivativeMode::ReverseModePrimal ||
-          Mode == DerivativeMode::ReverseModeCombined) {
-        found->second.first(BuilderZ, orig, *gutils, normalReturn,
-                            invertedReturn, tape);
-        if (tape)
-          gutils->cacheForReverse(BuilderZ, tape,
-                                  getIndex(orig, CacheType::Tape));
-      }
-
-      if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined) {
-        if (Mode == DerivativeMode::ReverseModeGradient &&
-            augmentedReturn->tapeIndices.find(std::make_pair(
-                orig, CacheType::Tape)) != augmentedReturn->tapeIndices.end()) {
-          tape = BuilderZ.CreatePHI(Type::getInt32Ty(orig->getContext()), 0);
-          tape = gutils->cacheForReverse(BuilderZ, tape,
-                                         getIndex(orig, CacheType::Tape),
-                                         /*ignoreType*/ true);
         }
-        if (tape)
-          tape = gutils->lookupM(tape, Builder2);
-        found->second.second(Builder2, orig, *(DiffeGradientUtils *)gutils,
-                             tape);
-      }
 
-      if (ifound != gutils->invertedPointers.end()) {
-        auto placeholder = cast<PHINode>(&*ifound->second);
-        if (!hasNonReturnUse) {
-          gutils->invertedPointers.erase(ifound);
-          gutils->erase(placeholder);
-        } else {
+        Value *normalReturn = subretused ? newCall : nullptr;
+
+        found->second(BuilderZ, orig, *gutils, normalReturn, invertedReturn);
+
+        if (ifound != gutils->invertedPointers.end()) {
+          auto placeholder = cast<PHINode>(&*ifound->second);
           if (invertedReturn && invertedReturn != placeholder) {
             if (invertedReturn->getType() != orig->getType()) {
               llvm::errs() << " o: " << *orig << "\n";
@@ -6126,50 +6094,143 @@ public:
             assert(invertedReturn->getType() == orig->getType());
             placeholder->replaceAllUsesWith(invertedReturn);
             gutils->erase(placeholder);
-          } else
-            invertedReturn = placeholder;
-
-          invertedReturn = gutils->cacheForReverse(
-              BuilderZ, invertedReturn, getIndex(orig, CacheType::Shadow));
-
-          gutils->invertedPointers.insert(std::make_pair(
-              (const Value *)orig, InvertedPointerVH(gutils, invertedReturn)));
+            gutils->invertedPointers.insert(
+                std::make_pair((const Value *)orig,
+                               InvertedPointerVH(gutils, invertedReturn)));
+          } else {
+            gutils->invertedPointers.erase(orig);
+            gutils->erase(placeholder);
+          }
         }
-      }
 
-      bool primalNeededInReverse;
-
-      if (gutils->knownRecomputeHeuristic.count(orig)) {
-        primalNeededInReverse = !gutils->knownRecomputeHeuristic[orig];
-      } else {
-        std::map<UsageKey, bool> Seen;
-        for (auto pair : gutils->knownRecomputeHeuristic)
-          if (!pair.second)
-            Seen[UsageKey(pair.first, ValueType::Primal)] = false;
-        primalNeededInReverse = is_value_needed_in_reverse<ValueType::Primal>(
-            TR, gutils, orig, Mode, Seen, oldUnreachable);
-      }
-      if (subretused && primalNeededInReverse) {
-        if (normalReturn != newCall) {
-          assert(normalReturn->getType() == newCall->getType());
-          gutils->replaceAWithB(newCall, normalReturn);
-          BuilderZ.SetInsertPoint(newCall->getNextNode());
-          gutils->erase(newCall);
-        }
-        normalReturn = gutils->cacheForReverse(BuilderZ, normalReturn,
-                                               getIndex(orig, CacheType::Self));
-      } else {
         if (normalReturn && normalReturn != newCall) {
           assert(normalReturn->getType() == newCall->getType());
           assert(Mode != DerivativeMode::ReverseModeGradient);
           gutils->replaceAWithB(newCall, normalReturn);
-          BuilderZ.SetInsertPoint(newCall->getNextNode());
           gutils->erase(newCall);
-        } else if (!orig->mayWriteToMemory() ||
-                   Mode == DerivativeMode::ReverseModeGradient)
-          eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+        }
+        eraseIfUnused(*orig);
+        return;
       }
-      return;
+    }
+
+    if (Mode == DerivativeMode::ReverseModePrimal ||
+        Mode == DerivativeMode::ReverseModeCombined ||
+        Mode == DerivativeMode::ReverseModeGradient) {
+      auto found = customCallHandlers.find(funcName.str());
+      if (found != customCallHandlers.end()) {
+        IRBuilder<> Builder2(call.getParent());
+        if (Mode == DerivativeMode::ReverseModeGradient ||
+            Mode == DerivativeMode::ReverseModeCombined)
+          getReverseBuilder(Builder2);
+
+        Value *invertedReturn = nullptr;
+        bool hasNonReturnUse = false;
+        auto ifound = gutils->invertedPointers.find(orig);
+        if (ifound != gutils->invertedPointers.end()) {
+          //! We only need the shadow pointer for non-forward Mode if it is used
+          //! in a non return setting
+          hasNonReturnUse = subretType == DIFFE_TYPE::DUP_ARG;
+          if (hasNonReturnUse)
+            invertedReturn = cast<PHINode>(&*ifound->second);
+        }
+
+        Value *normalReturn = subretused ? newCall : nullptr;
+
+        Value *tape = nullptr;
+
+        if (Mode == DerivativeMode::ReverseModePrimal ||
+            Mode == DerivativeMode::ReverseModeCombined) {
+          found->second.first(BuilderZ, orig, *gutils, normalReturn,
+                              invertedReturn, tape);
+          if (tape)
+            gutils->cacheForReverse(BuilderZ, tape,
+                                    getIndex(orig, CacheType::Tape));
+        }
+
+        if (Mode == DerivativeMode::ReverseModeGradient ||
+            Mode == DerivativeMode::ReverseModeCombined) {
+          if (Mode == DerivativeMode::ReverseModeGradient &&
+              augmentedReturn->tapeIndices.find(
+                  std::make_pair(orig, CacheType::Tape)) !=
+                  augmentedReturn->tapeIndices.end()) {
+            tape = BuilderZ.CreatePHI(Type::getInt32Ty(orig->getContext()), 0);
+            tape = gutils->cacheForReverse(BuilderZ, tape,
+                                           getIndex(orig, CacheType::Tape),
+                                           /*ignoreType*/ true);
+          }
+          if (tape)
+            tape = gutils->lookupM(tape, Builder2);
+          found->second.second(Builder2, orig, *(DiffeGradientUtils *)gutils,
+                               tape);
+        }
+
+        if (ifound != gutils->invertedPointers.end()) {
+          auto placeholder = cast<PHINode>(&*ifound->second);
+          if (!hasNonReturnUse) {
+            gutils->invertedPointers.erase(ifound);
+            gutils->erase(placeholder);
+          } else {
+            if (invertedReturn && invertedReturn != placeholder) {
+              if (invertedReturn->getType() != orig->getType()) {
+                llvm::errs() << " o: " << *orig << "\n";
+                llvm::errs() << " ot: " << *orig->getType() << "\n";
+                llvm::errs() << " ir: " << *invertedReturn << "\n";
+                llvm::errs() << " irt: " << *invertedReturn->getType() << "\n";
+                llvm::errs() << " p: " << *placeholder << "\n";
+                llvm::errs() << " PT: " << *placeholder->getType() << "\n";
+                llvm::errs() << " newCall: " << *newCall << "\n";
+                llvm::errs() << " newCallT: " << *newCall->getType() << "\n";
+              }
+              assert(invertedReturn->getType() == orig->getType());
+              placeholder->replaceAllUsesWith(invertedReturn);
+              gutils->erase(placeholder);
+            } else
+              invertedReturn = placeholder;
+
+            invertedReturn = gutils->cacheForReverse(
+                BuilderZ, invertedReturn, getIndex(orig, CacheType::Shadow));
+
+            gutils->invertedPointers.insert(
+                std::make_pair((const Value *)orig,
+                               InvertedPointerVH(gutils, invertedReturn)));
+          }
+        }
+
+        bool primalNeededInReverse;
+
+        if (gutils->knownRecomputeHeuristic.count(orig)) {
+          primalNeededInReverse = !gutils->knownRecomputeHeuristic[orig];
+        } else {
+          std::map<UsageKey, bool> Seen;
+          for (auto pair : gutils->knownRecomputeHeuristic)
+            if (!pair.second)
+              Seen[UsageKey(pair.first, ValueType::Primal)] = false;
+          primalNeededInReverse = is_value_needed_in_reverse<ValueType::Primal>(
+              TR, gutils, orig, Mode, Seen, oldUnreachable);
+        }
+        if (subretused && primalNeededInReverse) {
+          if (normalReturn != newCall) {
+            assert(normalReturn->getType() == newCall->getType());
+            gutils->replaceAWithB(newCall, normalReturn);
+            BuilderZ.SetInsertPoint(newCall->getNextNode());
+            gutils->erase(newCall);
+          }
+          normalReturn = gutils->cacheForReverse(
+              BuilderZ, normalReturn, getIndex(orig, CacheType::Self));
+        } else {
+          if (normalReturn && normalReturn != newCall) {
+            assert(normalReturn->getType() == newCall->getType());
+            assert(Mode != DerivativeMode::ReverseModeGradient);
+            gutils->replaceAWithB(newCall, normalReturn);
+            BuilderZ.SetInsertPoint(newCall->getNextNode());
+            gutils->erase(newCall);
+          } else if (!orig->mayWriteToMemory() ||
+                     Mode == DerivativeMode::ReverseModeGradient)
+            eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+        }
+        return;
+      }
     }
 
     if (Mode != DerivativeMode::ReverseModePrimal && called) {
@@ -7875,6 +7936,9 @@ public:
           argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
         }
       }
+      if (!called)
+        llvm::errs() << *called << "\n";
+      assert(called);
 
       auto newcalled = gutils->Logic.CreateForwardDiff(
           cast<Function>(called), subretType, argsInverted, gutils->TLI,

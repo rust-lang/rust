@@ -88,6 +88,12 @@ extern std::map<
                                  DiffeGradientUtils &, llvm::Value *)>>>
     customCallHandlers;
 
+extern std::map<
+    std::string,
+    std::function<void(llvm::IRBuilder<> &, llvm::CallInst *, GradientUtils &,
+                       llvm::Value *&, llvm::Value *&)>>
+    customFwdCallHandlers;
+
 extern "C" {
 extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
 extern llvm::cl::opt<bool> EnzymeFreeInternalAllocations;

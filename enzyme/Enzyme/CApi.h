@@ -175,7 +175,11 @@ class DiffeGradientUtils;
 
 typedef void (*CustomFunctionForward)(LLVMBuilderRef, LLVMValueRef,
                                       GradientUtils *, LLVMValueRef *,
-                                      LLVMValueRef *, LLVMValueRef *);
+                                      LLVMValueRef *);
+
+typedef void (*CustomAugmentedFunctionForward)(LLVMBuilderRef, LLVMValueRef,
+                                               GradientUtils *, LLVMValueRef *,
+                                               LLVMValueRef *, LLVMValueRef *);
 
 typedef void (*CustomFunctionReverse)(LLVMBuilderRef, LLVMValueRef,
                                       DiffeGradientUtils *, LLVMValueRef);

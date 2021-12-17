@@ -59,6 +59,10 @@ std::map<
                                  DiffeGradientUtils &, Value *)>>>
     customCallHandlers;
 
+std::map<std::string, std::function<void(IRBuilder<> &, CallInst *,
+                                         GradientUtils &, Value *&, Value *&)>>
+    customFwdCallHandlers;
+
 extern "C" {
 llvm::cl::opt<bool>
     EnzymeNewCache("enzyme-new-cache", cl::init(true), cl::Hidden,
