@@ -216,7 +216,7 @@ impl ItemTree {
         self.attrs.get(&of).unwrap_or(&RawAttrs::EMPTY)
     }
 
-    pub fn attrs(&self, db: &dyn DefDatabase, krate: CrateId, of: AttrOwner) -> Attrs {
+    pub(crate) fn attrs(&self, db: &dyn DefDatabase, krate: CrateId, of: AttrOwner) -> Attrs {
         self.raw_attrs(of).clone().filter(db, krate)
     }
 

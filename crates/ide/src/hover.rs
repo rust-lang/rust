@@ -94,10 +94,11 @@ pub(crate) fn hover(
     let sema = &hir::Semantics::new(db);
     let file = sema.parse(file_id).syntax().clone();
 
-    if !range.is_empty() {
+    let offset = if !range.is_empty() {
         return hover_ranged(&file, range, sema, config);
-    }
-    let offset = range.start();
+    } else {
+        range.start()
+    };
 
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] => 3,

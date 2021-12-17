@@ -283,7 +283,11 @@ fn attr_on_type_alias() {
 #[test]
 fn attr_on_struct() {
     check(
-        r#"#[$0] struct Foo;"#,
+        r#"
+//- minicore:derive
+#[$0]
+struct Foo;
+"#,
         expect![[r#"
             at allow(…)
             at cfg(…)
@@ -303,6 +307,8 @@ fn attr_on_struct() {
             kw self
             kw super
             kw crate
+            md core
+            at derive           pub macro derive
         "#]],
     );
 }
