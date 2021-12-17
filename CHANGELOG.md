@@ -10,7 +10,7 @@ document.
 
 ## Rust 1.58 (beta)
 
-Current beta (Release January 13 2022)
+Current beta, release 2022-01-13
 
 [b7f3f7f..e181011](https://github.com/rust-lang/rust-clippy/compare/b7f3f7f..e181011)
 
