@@ -1276,6 +1276,24 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     {
         Ty::ty_and_layout_pointee_info_at(self, cx, offset)
     }
+
+    pub fn is_single_fp_element<C>(self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C>,
+        C: HasDataLayout,
+    {
+        match self.abi {
+            Abi::Scalar(scalar) => scalar.value.is_float(),
+            Abi::Aggregate { .. } => {
+                if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
+                    self.field(cx, 0).is_single_fp_element(cx)
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
