@@ -589,7 +589,7 @@ impl<T> Option<T> {
     #[must_use]
     #[inline]
     #[unstable(feature = "option_result_contains", issue = "62358")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn contains<U>(&self, x: &U) -> bool
     where
         U: ~const PartialEq<T>,
@@ -661,7 +661,7 @@ impl<T> Option<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn as_pin_ref(self: Pin<&Self>) -> Option<Pin<&T>> {
         match Pin::get_ref(self).as_ref() {
             // SAFETY: `x` is guaranteed to be pinned because it comes from `self`
@@ -677,7 +677,7 @@ impl<T> Option<T> {
     #[inline]
     #[must_use]
     #[stable(feature = "pin", since = "1.33.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn as_pin_mut(self: Pin<&mut Self>) -> Option<Pin<&mut T>> {
         // SAFETY: `get_unchecked_mut` is never used to move the `Option` inside `self`.
         // `x` is guaranteed to be pinned because it comes from `self` which is pinned.
@@ -775,7 +775,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn unwrap_or(self, default: T) -> T
     where
         T: ~const Drop,
@@ -797,7 +797,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn unwrap_or_else<F>(self, f: F) -> T
     where
         F: ~const FnOnce() -> T,
@@ -832,7 +832,7 @@ impl<T> Option<T> {
     #[inline]
     #[track_caller]
     #[stable(feature = "option_result_unwrap_unchecked", since = "1.58.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const unsafe fn unwrap_unchecked(self) -> T {
         debug_assert!(self.is_some());
         match self {
@@ -863,7 +863,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn map<U, F>(self, f: F) -> Option<U>
     where
         F: ~const FnOnce(T) -> U,
@@ -892,7 +892,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable(feature = "result_option_inspect", issue = "91345")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn inspect<F>(self, f: F) -> Self
     where
         F: ~const FnOnce(&T),
@@ -925,7 +925,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn map_or<U, F>(self, default: U, f: F) -> U
     where
         F: ~const FnOnce(T) -> U,
@@ -954,7 +954,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn map_or_else<U, D, F>(self, default: D, f: F) -> U
     where
         D: ~const FnOnce() -> U,
@@ -991,7 +991,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn ok_or<E>(self, err: E) -> Result<T, E>
     where
         E: ~const Drop,
@@ -1020,7 +1020,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn ok_or_else<E, F>(self, err: F) -> Result<T, E>
     where
         F: ~const FnOnce() -> E,
@@ -1102,7 +1102,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn and<U>(self, optb: Option<U>) -> Option<U>
     where
         T: ~const Drop,
@@ -1132,7 +1132,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn and_then<U, F>(self, f: F) -> Option<U>
     where
         F: ~const FnOnce(T) -> Option<U>,
@@ -1170,7 +1170,7 @@ impl<T> Option<T> {
     /// [`Some(t)`]: Some
     #[inline]
     #[stable(feature = "option_filter", since = "1.27.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn filter<P>(self, predicate: P) -> Self
     where
         T: ~const Drop,
@@ -1214,7 +1214,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn or(self, optb: Option<T>) -> Option<T>
     where
         T: ~const Drop,
@@ -1240,7 +1240,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn or_else<F>(self, f: F) -> Option<T>
     where
         F: ~const FnOnce() -> Option<T>,
@@ -1275,7 +1275,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_xor", since = "1.37.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn xor(self, optb: Option<T>) -> Option<T>
     where
         T: ~const Drop,
@@ -1313,7 +1313,7 @@ impl<T> Option<T> {
     #[must_use = "if you intended to set a value, consider assignment instead"]
     #[inline]
     #[stable(feature = "option_insert", since = "1.53.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn insert(&mut self, value: T) -> &mut T
     where
         T: ~const Drop,
@@ -1346,7 +1346,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn get_or_insert(&mut self, value: T) -> &mut T
     where
         T: ~const Drop,
@@ -1381,7 +1381,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable(feature = "option_get_or_insert_default", issue = "82901")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn get_or_insert_default(&mut self) -> &mut T
     where
         T: ~const Default,
@@ -1413,7 +1413,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn get_or_insert_with<F>(&mut self, f: F) -> &mut T
     where
         F: ~const FnOnce() -> T,
@@ -1497,7 +1497,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.zip(z), None);
     /// ```
     #[stable(feature = "option_zip_option", since = "1.46.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn zip<U>(self, other: Option<U>) -> Option<(T, U)>
     where
         T: ~const Drop,
@@ -1538,7 +1538,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.zip_with(None, Point::new), None);
     /// ```
     #[unstable(feature = "option_zip", issue = "70086")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn zip_with<U, F, R>(self, other: Option<U>, f: F) -> Option<R>
     where
         F: ~const FnOnce(T, U) -> R,
@@ -1621,7 +1621,7 @@ impl<T: Copy> Option<&mut T> {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn copied(self) -> Option<T> {
         match self {
             Some(&mut t) => Some(t),
@@ -1713,7 +1713,7 @@ impl<T: Default> Option<T> {
     /// [`FromStr`]: crate::str::FromStr
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn unwrap_or_default(self) -> T
     where
         T: ~const Default,
@@ -1741,7 +1741,7 @@ impl<T: Deref> Option<T> {
     /// assert_eq!(x.as_deref(), None);
     /// ```
     #[stable(feature = "option_deref", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn as_deref(&self) -> Option<&T::Target>
     where
         T: ~const Deref,
@@ -1769,7 +1769,7 @@ impl<T: DerefMut> Option<T> {
     /// }), Some("HEY".to_owned().as_mut_str()));
     /// ```
     #[stable(feature = "option_deref", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn as_deref_mut(&mut self) -> Option<&mut T::Target>
     where
         T: ~const DerefMut,
