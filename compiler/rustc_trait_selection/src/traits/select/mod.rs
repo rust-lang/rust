@@ -723,6 +723,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // out the param env and get better caching.
             debug!("in global");
             obligation.param_env = obligation.param_env.without_caller_bounds();
+        } else if !self.intercrate
+            && obligation.predicate.is_global(self.tcx())
+            && obligation.param_env.has_free_regions(self.tcx())
+        {
+            // Strip out bounds that only reference regions
+            let new_bounds: Vec<_> = obligation
+                .param_env
+                .caller_bounds()
+                .iter()
+                .filter(|bound| match bound.kind().skip_binder() {
+                    ty::PredicateKind::RegionOutlives(_) | ty::PredicateKind::TypeOutlives(_) => {
+                        false
+                    }
+                    _ => true,
+                })
+                .collect();
+            obligation.param_env = ty::ParamEnv::new(
+                self.tcx().intern_predicates(&new_bounds),
+                obligation.param_env.reveal(),
+                obligation.param_env.constness(),
+            );
         }
 
         let stack = self.push_stack(previous_stack, &obligation);
