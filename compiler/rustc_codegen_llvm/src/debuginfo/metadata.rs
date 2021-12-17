@@ -1036,14 +1036,25 @@ pub fn compile_unit_metadata(
         None => PathBuf::from(&*tcx.crate_name(LOCAL_CRATE).as_str()),
     };
 
-    // The OSX linker has an idiosyncrasy where it will ignore some debuginfo
-    // if multiple object files with the same `DW_AT_name` are linked together.
-    // As a workaround we generate unique names for each object file. Those do
-    // not correspond to an actual source file but that is harmless.
-    if tcx.sess.target.is_like_osx {
-        name_in_debuginfo.push("@");
-        name_in_debuginfo.push(codegen_unit_name);
-    }
+    // To avoid breaking split DWARF, we need to ensure that each codegen unit
+    // has a unique `DW_AT_name`. This is because there's a remote chance that
+    // different codegen units for the same module will have entirely
+    // identical DWARF entries for the purpose of the DWO ID, which would
+    // violate Appendix F ("Split Dwarf Object Files") of the DWARF 5
+    // specification. LLVM uses the algorithm specified in section 7.32 "Type
+    // Signature Computation" to compute the DWO ID, which does not include
+    // any fields that would distinguish compilation units. So we must embed
+    // the codegen unit name into the `DW_AT_name`. (Issue #88521.)
+    //
+    // Additionally, the OSX linker has an idiosyncrasy where it will ignore
+    // some debuginfo if multiple object files with the same `DW_AT_name` are
+    // linked together.
+    //
+    // As a workaround for these two issues, we generate unique names for each
+    // object file. Those do not correspond to an actual source file but that
+    // is harmless.
+    name_in_debuginfo.push("@");
+    name_in_debuginfo.push(codegen_unit_name);
 
     debug!("compile_unit_metadata: {:?}", name_in_debuginfo);
     let rustc_producer =
