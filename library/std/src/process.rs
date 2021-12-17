@@ -1600,7 +1600,6 @@ impl ExitStatusError {
     /// ```
     /// #![feature(exit_status_error)]
     /// # if cfg!(unix) {
-    /// use std::convert::TryFrom;
     /// use std::num::NonZeroI32;
     /// use std::process::Command;
     ///
