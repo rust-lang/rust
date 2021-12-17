@@ -309,4 +309,36 @@ fn main() {
             "#,
         )
     }
+
+    #[test]
+    fn legacy_const_generics() {
+        check_diagnostics(
+            r#"
+#[rustc_legacy_const_generics(1, 3)]
+fn mixed<const N1: &'static str, const N2: bool>(
+    a: u8,
+    b: i8,
+) {}
+
+fn f() {
+    mixed(0, "", -1, true);
+    mixed::<"", true>(0, -1);
+}
+
+#[rustc_legacy_const_generics(1, 3)]
+fn b<const N1: u8, const N2: u8>(
+    a: u8,
+    b: u8,
+) {}
+
+fn g() {
+    b(0, 1, 2, 3);
+    b::<1, 3>(0, 2);
+
+    b(0, 1, 2);
+           //^ error: expected 4 arguments, found 3
+}
+            "#,
+        )
+    }
 }

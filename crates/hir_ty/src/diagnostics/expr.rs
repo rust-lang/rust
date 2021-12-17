@@ -235,20 +235,33 @@ impl ExprValidator {
             return;
         }
 
-        let params = sig.params();
+        if sig.legacy_const_generics_indices.is_empty() {
+            let mut param_count = sig.params().len();
 
-        let mut param_count = params.len();
-
-        if arg_count != param_count {
-            if is_method_call {
-                param_count -= 1;
-                arg_count -= 1;
+            if arg_count != param_count {
+                if is_method_call {
+                    param_count -= 1;
+                    arg_count -= 1;
+                }
+                self.diagnostics.push(BodyValidationDiagnostic::MismatchedArgCount {
+                    call_expr: call_id,
+                    expected: param_count,
+                    found: arg_count,
+                });
             }
-            self.diagnostics.push(BodyValidationDiagnostic::MismatchedArgCount {
-                call_expr: call_id,
-                expected: param_count,
-                found: arg_count,
-            });
+        } else {
+            // With `#[rustc_legacy_const_generics]` there are basically two parameter counts that
+            // are allowed.
+            let count_non_legacy = sig.params().len();
+            let count_legacy = sig.params().len() + sig.legacy_const_generics_indices.len();
+            if arg_count != count_non_legacy && arg_count != count_legacy {
+                self.diagnostics.push(BodyValidationDiagnostic::MismatchedArgCount {
+                    call_expr: call_id,
+                    // Since most users will use the legacy way to call them, report against that.
+                    expected: count_legacy,
+                    found: arg_count,
+                });
+            }
         }
     }
 

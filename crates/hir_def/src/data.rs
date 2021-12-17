@@ -26,6 +26,7 @@ pub struct FunctionData {
     pub attrs: Attrs,
     pub visibility: RawVisibility,
     pub abi: Option<Interned<str>>,
+    pub legacy_const_generics_indices: Vec<u32>,
     flags: FnFlags,
 }
 
@@ -58,6 +59,14 @@ impl FunctionData {
             flags.bits |= FnFlags::IS_IN_EXTERN_BLOCK;
         }
 
+        let legacy_const_generics_indices = item_tree
+            .attrs(db, krate, ModItem::from(loc.id.value).into())
+            .by_key("rustc_legacy_const_generics")
+            .tt_values()
+            .next()
+            .map(|arg| parse_rustc_legacy_const_generics(arg))
+            .unwrap_or_default();
+
         Arc::new(FunctionData {
             name: func.name.clone(),
             params: enabled_params
@@ -72,6 +81,7 @@ impl FunctionData {
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),
             visibility: item_tree[func.visibility].clone(),
             abi: func.abi.clone(),
+            legacy_const_generics_indices,
             flags,
         })
     }
@@ -109,6 +119,28 @@ impl FunctionData {
     pub fn is_varargs(&self) -> bool {
         self.flags.bits & FnFlags::IS_VARARGS != 0
     }
+}
+
+fn parse_rustc_legacy_const_generics(tt: &tt::Subtree) -> Vec<u32> {
+    let mut indices = Vec::new();
+    for args in tt.token_trees.chunks(2) {
+        match &args[0] {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => match lit.text.parse() {
+                Ok(index) => indices.push(index),
+                Err(_) => break,
+            },
+            _ => break,
+        }
+
+        if let Some(comma) = args.get(1) {
+            match comma {
+                tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if punct.char == ',' => {}
+                _ => break,
+            }
+        }
+    }
+
+    indices
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
