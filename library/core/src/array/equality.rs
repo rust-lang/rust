@@ -1,3 +1,4 @@
+use crate::convert::TryInto;
 use crate::num::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize};
 use crate::num::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 
@@ -23,11 +24,19 @@ where
 {
     #[inline]
     fn eq(&self, other: &[B]) -> bool {
-        self[..] == other[..]
+        let b: Result<&[B; N], _> = other.try_into();
+        match b {
+            Ok(b) => *self == *b,
+            Err(_) => false,
+        }
     }
     #[inline]
     fn ne(&self, other: &[B]) -> bool {
-        self[..] != other[..]
+        let b: Result<&[B; N], _> = other.try_into();
+        match b {
+            Ok(b) => *self != *b,
+            Err(_) => true,
+        }
     }
 }
 
@@ -38,11 +47,19 @@ where
 {
     #[inline]
     fn eq(&self, other: &[A; N]) -> bool {
-        self[..] == other[..]
+        let b: Result<&[B; N], _> = self.try_into();
+        match b {
+            Ok(b) => *b == *other,
+            Err(_) => false,
+        }
     }
     #[inline]
     fn ne(&self, other: &[A; N]) -> bool {
-        self[..] != other[..]
+        let b: Result<&[B; N], _> = self.try_into();
+        match b {
+            Ok(b) => *b != *other,
+            Err(_) => true,
+        }
     }
 }
 
@@ -53,11 +70,11 @@ where
 {
     #[inline]
     fn eq(&self, other: &&[B]) -> bool {
-        self[..] == other[..]
+        *self == **other
     }
     #[inline]
     fn ne(&self, other: &&[B]) -> bool {
-        self[..] != other[..]
+        *self != **other
     }
 }
 
@@ -68,11 +85,11 @@ where
 {
     #[inline]
     fn eq(&self, other: &[A; N]) -> bool {
-        self[..] == other[..]
+        **self == *other
     }
     #[inline]
     fn ne(&self, other: &[A; N]) -> bool {
-        self[..] != other[..]
+        **self != *other
     }
 }
 
@@ -83,11 +100,11 @@ where
 {
     #[inline]
     fn eq(&self, other: &&mut [B]) -> bool {
-        self[..] == other[..]
+        *self == **other
     }
     #[inline]
     fn ne(&self, other: &&mut [B]) -> bool {
-        self[..] != other[..]
+        *self != **other
     }
 }
 
@@ -98,11 +115,11 @@ where
 {
     #[inline]
     fn eq(&self, other: &[A; N]) -> bool {
-        self[..] == other[..]
+        **self == *other
     }
     #[inline]
     fn ne(&self, other: &[A; N]) -> bool {
-        self[..] != other[..]
+        **self != *other
     }
 }
 
