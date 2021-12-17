@@ -58,14 +58,20 @@ pub fn contains_adt_constructor<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, adt: &'tc
 pub fn get_iterator_item_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     cx.tcx
         .get_diagnostic_item(sym::Iterator)
-        .and_then(|iter_did| {
-            cx.tcx.associated_items(iter_did).find_by_name_and_kind(
-                cx.tcx,
-                Ident::from_str("Item"),
-                ty::AssocKind::Type,
-                iter_did,
-            )
-        })
+        .and_then(|iter_did| get_associated_type(cx, ty, iter_did, "Item"))
+}
+
+/// Returns the associated type `name` for `ty` as an implementation of `trait_id`.
+/// Do not invoke without first verifying that the type implements the trait.
+pub fn get_associated_type<'tcx>(
+    cx: &LateContext<'tcx>,
+    ty: Ty<'tcx>,
+    trait_id: DefId,
+    name: &str,
+) -> Option<Ty<'tcx>> {
+    cx.tcx
+        .associated_items(trait_id)
+        .find_by_name_and_kind(cx.tcx, Ident::from_str(name), ty::AssocKind::Type, trait_id)
         .map(|assoc| {
             let proj = cx.tcx.mk_projection(assoc.def_id, cx.tcx.mk_substs_trait(ty, &[]));
             cx.tcx.normalize_erasing_regions(cx.param_env, proj)

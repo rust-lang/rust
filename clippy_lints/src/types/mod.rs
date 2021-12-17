@@ -350,16 +350,28 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         match item.kind {
-            ImplItemKind::Const(ty, _) | ImplItemKind::TyAlias(ty) => self.check_ty(
-                cx,
-                ty,
-                CheckTyContext {
-                    is_in_trait_impl: true,
-                    ..CheckTyContext::default()
-                },
-            ),
-            // methods are covered by check_fn
-            ImplItemKind::Fn(..) => (),
+            ImplItemKind::Const(ty, _) => {
+                let is_in_trait_impl = if let Some(hir::Node::Item(item)) =
+                    cx.tcx.hir().find(cx.tcx.hir().get_parent_item(item.hir_id()))
+                {
+                    matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
+                } else {
+                    false
+                };
+
+                self.check_ty(
+                    cx,
+                    ty,
+                    CheckTyContext {
+                        is_in_trait_impl,
+                        ..CheckTyContext::default()
+                    },
+                );
+            },
+            // Methods are covered by check_fn.
+            // Type aliases are ignored because oftentimes it's impossible to
+            // make type alias declaration in trait simpler, see #1013
+            ImplItemKind::Fn(..) | ImplItemKind::TyAlias(..) => (),
         }
     }
 
@@ -417,6 +429,14 @@ impl Types {
     }
 
     fn check_fn_decl(&mut self, cx: &LateContext<'_>, decl: &FnDecl<'_>, context: CheckTyContext) {
+        // Ignore functions in trait implementations as they are usually forced by the trait definition.
+        //
+        // FIXME: idially we would like to warn *if the compicated type can be simplified*, but it's hard to
+        // check.
+        if context.is_in_trait_impl {
+            return;
+        }
+
         for input in decl.inputs {
             self.check_ty(cx, input, context);
         }
@@ -435,12 +455,12 @@ impl Types {
             return;
         }
 
-        if !context.is_nested_call && type_complexity::check(cx, hir_ty, self.type_complexity_threshold) {
+        // Skip trait implementations; see issue #605.
+        if context.is_in_trait_impl {
             return;
         }
 
-        // Skip trait implementations; see issue #605.
-        if context.is_in_trait_impl {
+        if !context.is_nested_call && type_complexity::check(cx, hir_ty, self.type_complexity_threshold) {
             return;
         }
 

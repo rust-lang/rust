@@ -73,19 +73,19 @@ LL |     fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:33:15
+  --> $DIR/type_complexity.rs:42:15
    |
 LL | fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:37:14
+  --> $DIR/type_complexity.rs:46:14
    |
 LL | fn test2(_x: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: very complex type used. Consider factoring parts into `type` definitions
-  --> $DIR/type_complexity.rs:40:13
+  --> $DIR/type_complexity.rs:49:13
    |
 LL |     let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

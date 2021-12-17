@@ -1,86 +1,86 @@
-error: this implementation is unsound, as some fields in `NoGeneric` are `!Send`
+error: some fields in `NoGeneric` are not safe to be sent to another thread
   --> $DIR/test.rs:11:1
    |
 LL | unsafe impl Send for NoGeneric {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::non-send-fields-in-send-ty` implied by `-D warnings`
-note: the type of field `rc_is_not_send` is `!Send`
+note: it is not safe to send field `rc_is_not_send` to another thread
   --> $DIR/test.rs:8:5
    |
 LL |     rc_is_not_send: Rc<String>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
 
-error: this implementation is unsound, as some fields in `MultiField<T>` are `!Send`
+error: some fields in `MultiField<T>` are not safe to be sent to another thread
   --> $DIR/test.rs:19:1
    |
 LL | unsafe impl<T> Send for MultiField<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the type of field `field1` is `!Send`
+note: it is not safe to send field `field1` to another thread
   --> $DIR/test.rs:14:5
    |
 LL |     field1: T,
    |     ^^^^^^^^^
    = help: add `T: Send` bound in `Send` impl
-note: the type of field `field2` is `!Send`
+note: it is not safe to send field `field2` to another thread
   --> $DIR/test.rs:15:5
    |
 LL |     field2: T,
    |     ^^^^^^^^^
    = help: add `T: Send` bound in `Send` impl
-note: the type of field `field3` is `!Send`
+note: it is not safe to send field `field3` to another thread
   --> $DIR/test.rs:16:5
    |
 LL |     field3: T,
    |     ^^^^^^^^^
    = help: add `T: Send` bound in `Send` impl
 
-error: this implementation is unsound, as some fields in `MyOption<T>` are `!Send`
+error: some fields in `MyOption<T>` are not safe to be sent to another thread
   --> $DIR/test.rs:26:1
    |
 LL | unsafe impl<T> Send for MyOption<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the type of field `0` is `!Send`
+note: it is not safe to send field `0` to another thread
   --> $DIR/test.rs:22:12
    |
 LL |     MySome(T),
    |            ^
    = help: add `T: Send` bound in `Send` impl
 
-error: this implementation is unsound, as some fields in `HeuristicTest` are `!Send`
+error: some fields in `HeuristicTest` are not safe to be sent to another thread
   --> $DIR/test.rs:41:1
    |
 LL | unsafe impl Send for HeuristicTest {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the type of field `field1` is `!Send`
+note: it is not safe to send field `field1` to another thread
   --> $DIR/test.rs:34:5
    |
 LL |     field1: Vec<*const NonSend>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
-note: the type of field `field2` is `!Send`
+note: it is not safe to send field `field2` to another thread
   --> $DIR/test.rs:35:5
    |
 LL |     field2: [*const NonSend; 3],
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
-note: the type of field `field3` is `!Send`
+note: it is not safe to send field `field3` to another thread
   --> $DIR/test.rs:36:5
    |
 LL |     field3: (*const NonSend, *const NonSend, *const NonSend),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
-note: the type of field `field4` is `!Send`
+note: it is not safe to send field `field4` to another thread
   --> $DIR/test.rs:37:5
    |
 LL |     field4: (*const NonSend, Rc<u8>),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use a thread-safe type that implements `Send`
-note: the type of field `field5` is `!Send`
+note: it is not safe to send field `field5` to another thread
   --> $DIR/test.rs:38:5
    |
 LL |     field5: Vec<Vec<*const NonSend>>,

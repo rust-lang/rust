@@ -1,7 +1,7 @@
 use super::{contains_return, BIND_INSTEAD_OF_MAP};
 use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_macro_callsite};
-use clippy_utils::{remove_blocks, visitors::find_all_ret_expressions};
+use clippy_utils::{peel_blocks, visitors::find_all_ret_expressions};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -152,7 +152,7 @@ pub(crate) trait BindInsteadOfMap {
         match arg.kind {
             hir::ExprKind::Closure(_, _, body_id, closure_args_span, _) => {
                 let closure_body = cx.tcx.hir().body(body_id);
-                let closure_expr = remove_blocks(&closure_body.value);
+                let closure_expr = peel_blocks(&closure_body.value);
 
                 if Self::lint_closure_autofixable(cx, expr, recv, closure_expr, closure_args_span) {
                     true

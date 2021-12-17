@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_trait_method;
-use clippy_utils::remove_blocks;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
+use clippy_utils::{is_trait_method, peel_blocks};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -60,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = args[1].kind;
             then {
                 let closure_body = cx.tcx.hir().body(body_id);
-                let closure_expr = remove_blocks(&closure_body.value);
+                let closure_expr = peel_blocks(&closure_body.value);
                 match closure_body.params[0].pat.kind {
                     hir::PatKind::Ref(inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
                         hir::BindingAnnotation::Unannotated, .., name, None

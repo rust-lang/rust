@@ -153,13 +153,13 @@ LL | |             }
    | |_____________^ help: try: `s.find('.').map_or_else(|| vec![s.to_string()], |idx| vec![s[..idx].to_string(), s[idx..].to_string()])`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:114:13
+  --> $DIR/option_if_let_else.rs:127:13
    |
 LL |     let _ = if let Some(x) = optional { x + 2 } else { 5 };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `optional.map_or(5, |x| x + 2)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:123:13
+  --> $DIR/option_if_let_else.rs:136:13
    |
 LL |       let _ = if let Some(x) = Some(0) {
    |  _____________^
@@ -181,13 +181,13 @@ LL ~         });
    |
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:151:13
+  --> $DIR/option_if_let_else.rs:164:13
    |
 LL |     let _ = if let Some(x) = Some(0) { s.len() + x } else { s.len() };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(0).map_or(s.len(), |x| s.len() + x)`
 
 error: use Option::map_or instead of an if let/else
-  --> $DIR/option_if_let_else.rs:155:13
+  --> $DIR/option_if_let_else.rs:168:13
    |
 LL |       let _ = if let Some(x) = Some(0) {
    |  _____________^
