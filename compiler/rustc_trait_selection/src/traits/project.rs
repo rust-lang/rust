@@ -10,7 +10,6 @@ use super::PredicateObligation;
 use super::Selection;
 use super::SelectionContext;
 use super::SelectionError;
-use super::TraitQueryMode;
 use super::{
     ImplSourceClosureData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
     ImplSourceGeneratorData, ImplSourcePointeeData, ImplSourceUserDefinedData,
@@ -946,27 +945,11 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             };
 
             let mut deduped: SsoHashSet<_> = Default::default();
-            let mut canonical =
-                SelectionContext::with_query_mode(selcx.infcx(), TraitQueryMode::Canonical);
-
             result.obligations.drain_filter(|projected_obligation| {
                 if !deduped.insert(projected_obligation.clone()) {
                     return true;
                 }
-                // If any global obligations always apply, considering regions, then we don't
-                // need to include them. The `is_global` check rules out inference variables,
-                // so there's no need for the caller of `opt_normalize_projection_type`
-                // to evaluate them.
-                // Note that we do *not* discard obligations that evaluate to
-                // `EvaluatedtoOkModuloRegions`. Evaluating these obligations
-                // inside of a query (e.g. `evaluate_obligation`) can change
-                // the result to `EvaluatedToOkModuloRegions`, while an
-                // `EvaluatedToOk` obligation will never change the result.
-                // See #85360 for more details
-                projected_obligation.is_global(canonical.tcx())
-                    && canonical
-                        .evaluate_root_obligation(projected_obligation)
-                        .map_or(false, |res| res.must_apply_considering_regions())
+                false
             });
 
             if use_cache {
