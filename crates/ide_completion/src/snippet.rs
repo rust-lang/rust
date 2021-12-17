@@ -52,8 +52,56 @@ use std::ops::Deref;
 // These placeholders take the form of `$number` or `${number:placeholder_text}` which can be traversed as tabstop in ascending order starting from 1,
 // with `$0` being a special case that always comes last.
 //
-// There is also a special placeholder, `${receiver}`, which will be replaced by the receiver expression for postfix snippets, or nothing in case of normal snippets.
-// It does not act as a tabstop.
+// There is also a special placeholder, `${receiver}`, which will be replaced by the receiver expression for postfix snippets, or a `$0` tabstop in case of normal snippets.
+// This replacement for normal snippets allows you to reuse a snippet for both post- and prefix in a single definition.
+//
+// For the VSCode editor, rust-analyzer also ships with a small set of defaults which can be removed
+// by overwriting the settings object mentioned above, the defaults are:
+// [source,json]
+// ----
+// {
+//     "Arc::new": {
+//         "postfix": "arc",
+//         "body": "Arc::new(${receiver})",
+//         "requires": "std::sync::Arc",
+//         "description": "Put the expression into an `Arc`",
+//         "scope": "expr"
+//     },
+//     "Rc::new": {
+//         "postfix": "rc",
+//         "body": "Rc::new(${receiver})",
+//         "requires": "std::rc::Rc",
+//         "description": "Put the expression into an `Rc`",
+//         "scope": "expr"
+//     },
+//     "Box::pin": {
+//         "postfix": "pinbox",
+//         "body": "Box::pin(${receiver})",
+//         "requires": "std::boxed::Box",
+//         "description": "Put the expression into a pinned `Box`",
+//         "scope": "expr"
+//     },
+//     "Ok": {
+//         "postfix": "ok",
+//         "body": "Ok(${receiver})",
+//         "description": "Wrap the expression in a `Result::Ok`",
+//         "scope": "expr"
+//     },
+//     "Err": {
+//         "postfix": "err",
+//         "body": "Err(${receiver})",
+//         "description": "Wrap the expression in a `Result::Err`",
+//         "scope": "expr"
+//     },
+//     "Some": {
+//         "postfix": "some",
+//         "body": "Some(${receiver})",
+//         "description": "Wrap the expression in an `Option::Some`",
+//         "scope": "expr"
+//     }
+// }
+// ----
+
 use ide_db::helpers::{import_assets::LocatedImport, insert_use::ImportScope};
 use itertools::Itertools;
 use syntax::{ast, AstNode, GreenNode, SyntaxNode};
@@ -117,7 +165,7 @@ impl Snippet {
     }
 
     pub fn snippet(&self) -> String {
-        self.snippet.replace("${receiver}", "")
+        self.snippet.replace("${receiver}", "$0")
     }
 
     pub fn postfix_snippet(&self, receiver: &str) -> String {

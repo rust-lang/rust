@@ -163,9 +163,6 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
     }
 
     postfix_snippet("box", "Box::new(expr)", &format!("Box::new({})", receiver_text)).add_to(acc);
-    postfix_snippet("ok", "Ok(expr)", &format!("Ok({})", receiver_text)).add_to(acc);
-    postfix_snippet("err", "Err(expr)", &format!("Err({})", receiver_text)).add_to(acc);
-    postfix_snippet("some", "Some(expr)", &format!("Some({})", receiver_text)).add_to(acc);
     postfix_snippet("dbg", "dbg!(expr)", &format!("dbg!({})", receiver_text)).add_to(acc);
     postfix_snippet("dbgr", "dbg!(&expr)", &format!("dbg!(&{})", receiver_text)).add_to(acc);
     postfix_snippet("call", "function(expr)", &format!("${{1}}({})", receiver_text)).add_to(acc);
@@ -295,9 +292,6 @@ fn main() {
                 sn refm  &mut expr
                 sn match match expr {}
                 sn box   Box::new(expr)
-                sn ok    Ok(expr)
-                sn err   Err(expr)
-                sn some  Some(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
                 sn call  function(expr)
@@ -328,9 +322,6 @@ fn main() {
                 sn refm  &mut expr
                 sn match match expr {}
                 sn box   Box::new(expr)
-                sn ok    Ok(expr)
-                sn err   Err(expr)
-                sn some  Some(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
                 sn call  function(expr)
@@ -352,9 +343,6 @@ fn main() {
                 sn refm  &mut expr
                 sn match match expr {}
                 sn box   Box::new(expr)
-                sn ok    Ok(expr)
-                sn err   Err(expr)
-                sn some  Some(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
                 sn call  function(expr)
@@ -381,9 +369,6 @@ fn main() {
                 sn refm  &mut expr
                 sn match match expr {}
                 sn box   Box::new(expr)
-                sn ok    Ok(expr)
-                sn err   Err(expr)
-                sn some  Some(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
                 sn call  function(expr)

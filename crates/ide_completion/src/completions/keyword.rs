@@ -229,9 +229,6 @@ fn foo(a: A) { a.$0 }
                 sn refm  &mut expr
                 sn match match expr {}
                 sn box   Box::new(expr)
-                sn ok    Ok(expr)
-                sn err   Err(expr)
-                sn some  Some(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
                 sn call  function(expr)
@@ -255,9 +252,6 @@ fn foo() {
                 sn refm  &mut expr
                 sn match match expr {}
                 sn box   Box::new(expr)
-                sn ok    Ok(expr)
-                sn err   Err(expr)
-                sn some  Some(expr)
                 sn dbg   dbg!(expr)
                 sn dbgr  dbg!(&expr)
                 sn call  function(expr)
