@@ -616,19 +616,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     match self.size_and_align_of(metadata, &field)? {
                         Some(size_and_align) => size_and_align,
                         None => {
-                            // A field with extern type.  If this field is at offset 0, we behave
-                            // like the underlying extern type.
-                            // FIXME: Once we have made decisions for how to handle size and alignment
-                            // of `extern type`, this should be adapted.  It is just a temporary hack
-                            // to get some code to work that probably ought to work.
-                            if sized_size == Size::ZERO {
-                                return Ok(None);
-                            } else {
-                                span_bug!(
-                                    self.cur_span(),
-                                    "Fields cannot be extern types, unless they are at offset 0"
-                                )
-                            }
+                            // A field with an extern type. We don't know the actual dynamic size
+                            // or the alignment.
+                            return Ok(None);
                         }
                     };
 
