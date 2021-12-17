@@ -2,8 +2,8 @@
 //!
 //! This module uses a bit of static metadata to provide completions
 //! for built-in attributes.
+//! Non-builtin attribute(excluding derives attributes) completions are done in [`super::unqualified_path`].
 
-use hir::HasAttrs;
 use ide_db::{
     helpers::{
         generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS},
@@ -93,23 +93,6 @@ fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attrib
         None if is_inner => ATTRIBUTES.iter().for_each(add_completion),
         None => ATTRIBUTES.iter().filter(|compl| !compl.prefer_inner).for_each(add_completion),
     }
-
-    // FIXME: write a test for this when we can
-    ctx.scope.process_all_names(&mut |name, scope_def| {
-        if let hir::ScopeDef::MacroDef(mac) = scope_def {
-            if mac.kind() == hir::MacroKind::Attr {
-                let mut item = CompletionItem::new(
-                    SymbolKind::Attribute,
-                    ctx.source_range(),
-                    name.to_smol_str(),
-                );
-                if let Some(docs) = mac.docs(ctx.sema.db) {
-                    item.documentation(docs);
-                }
-                item.add_to(acc);
-            }
-        }
-    });
 }
 
 struct AttrCompletion {
