@@ -105,7 +105,43 @@ LL |     };
    |      +
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:50:5
+  --> $DIR/needless_late_init.rs:42:5
+   |
+LL |     let f;
+   |     ^^^^^^
+   |
+help: declare `f` here
+   |
+LL |     let f = match 1 {
+   |     +++++++
+help: remove the assignments from the `match` arms
+   |
+LL -         1 => f = "three",
+LL +         1 => "three",
+   | 
+
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:48:5
+   |
+LL |     let g: usize;
+   |     ^^^^^^^^^^^^^
+   |
+help: declare `g` here
+   |
+LL |     let g: usize = if true {
+   |     ++++++++++++++
+help: remove the assignments from the branches
+   |
+LL -         g = 5;
+LL +         5
+   | 
+help: add a semicolon after the `if` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initalization
+  --> $DIR/needless_late_init.rs:63:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -126,7 +162,7 @@ LL |     };
    |      +
 
 error: unneeded late initalization
-  --> $DIR/needless_late_init.rs:67:5
+  --> $DIR/needless_late_init.rs:80:5
    |
 LL |     let a;
    |     ^^^^^^
@@ -146,5 +182,5 @@ help: add a semicolon after the `match` expression
 LL |     };
    |      +
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 
