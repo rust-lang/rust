@@ -6,7 +6,7 @@ LL | fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a,
    |                     |
    |                     hidden type `Ordinary<'b>` captures the lifetime `'b` as defined here
    |
-help: to declare that the `impl Trait` captures 'b, you can add an explicit `'b` lifetime bound
+help: to declare that the `impl Trait` captures `'b`, you can add an explicit `'b` lifetime bound
    |
 LL | fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b> + 'b
    |                                                                                 ++++

@@ -275,7 +275,7 @@ pub fn unexpected_hidden_region_diagnostic(
                     fn_returns,
                     hidden_region.to_string(),
                     None,
-                    format!("captures {}", hidden_region),
+                    format!("captures `{}`", hidden_region),
                     None,
                 )
             }
