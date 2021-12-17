@@ -270,7 +270,7 @@
 //! let mut bt = BTreeMap::new();
 //! bt.insert(20u8, "foo");
 //! bt.insert(42u8, "bar");
-//! let res = vec![0u8, 1, 11, 200, 22]
+//! let res = [0u8, 1, 11, 200, 22]
 //!     .into_iter()
 //!     .map(|x| {
 //!         // `checked_sub()` returns `None` on error
@@ -390,10 +390,10 @@
 //! [impl-FromIterator]: Option#impl-FromIterator%3COption%3CA%3E%3E
 //!
 //! ```
-//! let v = vec![Some(2), Some(4), None, Some(8)];
+//! let v = [Some(2), Some(4), None, Some(8)];
 //! let res: Option<Vec<_>> = v.into_iter().collect();
 //! assert_eq!(res, None);
-//! let v = vec![Some(2), Some(4), Some(8)];
+//! let v = [Some(2), Some(4), Some(8)];
 //! let res: Option<Vec<_>> = v.into_iter().collect();
 //! assert_eq!(res, Some(vec![2, 4, 8]));
 //! ```
@@ -407,10 +407,10 @@
 //! [impl-Sum]: Option#impl-Sum%3COption%3CU%3E%3E
 //!
 //! ```
-//! let v = vec![None, Some(1), Some(2), Some(3)];
+//! let v = [None, Some(1), Some(2), Some(3)];
 //! let res: Option<i32> = v.into_iter().sum();
 //! assert_eq!(res, None);
-//! let v = vec![Some(1), Some(2), Some(21)];
+//! let v = [Some(1), Some(2), Some(21)];
 //! let res: Option<i32> = v.into_iter().product();
 //! assert_eq!(res, Some(42));
 //! ```

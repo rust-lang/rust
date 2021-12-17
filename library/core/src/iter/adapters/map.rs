@@ -19,7 +19,7 @@ use crate::ops::Try;
 /// you can also [`map`] backwards:
 ///
 /// ```rust
-/// let v: Vec<i32> = vec![1, 2, 3].into_iter().map(|x| x + 1).rev().collect();
+/// let v: Vec<i32> = [1, 2, 3].into_iter().map(|x| x + 1).rev().collect();
 ///
 /// assert_eq!(v, [4, 3, 2]);
 /// ```
@@ -32,7 +32,7 @@ use crate::ops::Try;
 /// ```rust
 /// let mut c = 0;
 ///
-/// for pair in vec!['a', 'b', 'c'].into_iter()
+/// for pair in ['a', 'b', 'c'].into_iter()
 ///                                .map(|letter| { c += 1; (letter, c) }) {
 ///     println!("{:?}", pair);
 /// }
@@ -49,7 +49,7 @@ use crate::ops::Try;
 /// ```rust
 /// let mut c = 0;
 ///
-/// for pair in vec!['a', 'b', 'c'].into_iter()
+/// for pair in ['a', 'b', 'c'].into_iter()
 ///                                .map(|letter| { c += 1; (letter, c) })
 ///                                .rev() {
 ///     println!("{:?}", pair);

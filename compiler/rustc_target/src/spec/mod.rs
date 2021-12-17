@@ -574,15 +574,15 @@ impl ToJson for StackProbeType {
     fn to_json(&self) -> Json {
         Json::Object(match self {
             StackProbeType::None => {
-                vec![(String::from("kind"), "none".to_json())].into_iter().collect()
+                [(String::from("kind"), "none".to_json())].into_iter().collect()
             }
             StackProbeType::Inline => {
-                vec![(String::from("kind"), "inline".to_json())].into_iter().collect()
+                [(String::from("kind"), "inline".to_json())].into_iter().collect()
             }
             StackProbeType::Call => {
-                vec![(String::from("kind"), "call".to_json())].into_iter().collect()
+                [(String::from("kind"), "call".to_json())].into_iter().collect()
             }
-            StackProbeType::InlineOrCall { min_llvm_version_for_inline } => vec![
+            StackProbeType::InlineOrCall { min_llvm_version_for_inline } => [
                 (String::from("kind"), "inline-or-call".to_json()),
                 (
                     String::from("min-llvm-version-for-inline"),

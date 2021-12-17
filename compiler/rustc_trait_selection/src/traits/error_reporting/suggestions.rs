@@ -1226,7 +1226,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .returns
                     .iter()
                     .flat_map(|expr| {
-                        vec![
+                        [
                             (expr.span.shrink_to_lo(), "Box::new(".to_string()),
                             (expr.span.shrink_to_hi(), ")".to_string()),
                         ]

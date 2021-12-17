@@ -540,8 +540,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // error[E0284]: type annotations needed
             //  --> file.rs:2:5
             //   |
-            // 2 |     vec![Ok(2)].into_iter().collect()?;
-            //   |                             ^^^^^^^ cannot infer type
+            // 2 |     [Ok(2)].into_iter().collect()?;
+            //   |                         ^^^^^^^ cannot infer type
             //   |
             //   = note: cannot resolve `<_ as std::ops::Try>::Ok == _`
             if span.contains(*call_span) { *call_span } else { span }

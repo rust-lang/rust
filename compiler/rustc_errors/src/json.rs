@@ -455,7 +455,7 @@ impl DiagnosticSpan {
         let backtrace_step = backtrace.next().map(|bt| {
             let call_site = Self::from_span_full(bt.call_site, false, None, None, backtrace, je);
             let def_site_span =
-                Self::from_span_full(bt.def_site, false, None, None, vec![].into_iter(), je);
+                Self::from_span_full(bt.def_site, false, None, None, [].into_iter(), je);
             Box::new(DiagnosticSpanMacroExpansion {
                 span: call_site,
                 macro_decl_name: bt.kind.descr(),
