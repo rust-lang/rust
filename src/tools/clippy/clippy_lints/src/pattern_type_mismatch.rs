@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{
-    intravisit, Body, Expr, ExprKind, FnDecl, HirId, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind,
+    intravisit, Body, Expr, ExprKind, FnDecl, HirId, Let, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -104,8 +104,8 @@ impl<'tcx> LateLintPass<'tcx> for PatternTypeMismatch {
                 }
             }
         }
-        if let ExprKind::Let(let_pat, ..) = expr.kind {
-            apply_lint(cx, let_pat, DerefPossible::Possible);
+        if let ExprKind::Let(Let { pat, .. }) = expr.kind {
+            apply_lint(cx, pat, DerefPossible::Possible);
         }
     }
 

@@ -870,8 +870,8 @@ pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind 
                         capture_expr_ty = e;
                     }
                 },
-                ExprKind::Let(pat, ..) => {
-                    let mutability = match pat_capture_kind(cx, pat) {
+                ExprKind::Let(let_expr) => {
+                    let mutability = match pat_capture_kind(cx, let_expr.pat) {
                         CaptureKind::Value => Mutability::Not,
                         CaptureKind::Ref(m) => m,
                     };

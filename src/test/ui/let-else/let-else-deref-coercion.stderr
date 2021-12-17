@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/let-else-deref-coercion.rs:37:13
+   |
+LL |         let Bar::Present(z) = self else {
+   |             ^^^^^^^^^^^^^^^   ---- this expression has type `&mut Foo`
+   |             |
+   |             expected struct `Foo`, found enum `Bar`
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-deref-coercion.rs:68:13
+   |
+LL |         let Bar(z) = x;
+   |             ^^^^^^   - this expression has type `&mut irrefutable::Foo`
+   |             |
+   |             expected struct `irrefutable::Foo`, found struct `irrefutable::Bar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

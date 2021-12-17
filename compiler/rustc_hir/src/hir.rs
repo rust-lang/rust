@@ -1160,10 +1160,24 @@ pub struct Arm<'hir> {
     pub body: &'hir Expr<'hir>,
 }
 
+/// Represents a `let <pat>[: <ty>] = <expr>` expression (not a Local), occurring in an `if-let` or
+/// `let-else`, evaluating to a boolean. Typically the pattern is refutable.
+///
+/// In an if-let, imagine it as `if (let <pat> = <expr>) { ... }`; in a let-else, it is part of the
+/// desugaring to if-let. Only let-else supports the type annotation at present.
+#[derive(Debug, HashStable_Generic)]
+pub struct Let<'hir> {
+    pub hir_id: HirId,
+    pub span: Span,
+    pub pat: &'hir Pat<'hir>,
+    pub ty: Option<&'hir Ty<'hir>>,
+    pub init: &'hir Expr<'hir>,
+}
+
 #[derive(Debug, HashStable_Generic)]
 pub enum Guard<'hir> {
     If(&'hir Expr<'hir>),
-    // FIXME use ExprKind::Let for this.
+    // FIXME use hir::Let for this.
     IfLet(&'hir Pat<'hir>, &'hir Expr<'hir>),
 }
 
@@ -1680,7 +1694,7 @@ pub enum ExprKind<'hir> {
     ///
     /// These are not `Local` and only occur as expressions.
     /// The `let Some(x) = foo()` in `if let Some(x) = foo()` is an example of `Let(..)`.
-    Let(&'hir Pat<'hir>, &'hir Expr<'hir>, Span),
+    Let(&'hir Let<'hir>),
     /// An `if` block, with an optional else block.
     ///
     /// I.e., `if <expr> { <expr> } else { <expr> }`.

@@ -50,7 +50,7 @@ impl LateLintPass<'_> for ManualAssert {
                 ..
             } = &expr;
             if is_expn_of(stmt.span, "panic").is_some();
-            if !matches!(cond.kind, ExprKind::Let(_, _, _));
+            if !matches!(cond.kind, ExprKind::Let(_));
             if let StmtKind::Semi(semi) = stmt.kind;
             if !cx.tcx.sess.source_map().is_multiline(cond.span);
 

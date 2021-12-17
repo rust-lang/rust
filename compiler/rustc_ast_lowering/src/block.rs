@@ -2,7 +2,6 @@ use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 use rustc_ast::{AttrVec, Block, BlockCheckMode, Expr, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::Ident;
 use rustc_span::{sym, DesugaringKind};
 
 use smallvec::SmallVec;
@@ -39,8 +38,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     let hir_id = self.lower_node_id(s.id);
                     match &local.kind {
                         LocalKind::InitElse(init, els) => {
-                            let (s, e) = self.lower_let_else(hir_id, local, init, els, tail);
-                            stmts.push(s);
+                            let e = self.lower_let_else(hir_id, local, init, els, tail);
                             expr = Some(e);
                             // remaining statements are in let-else expression
                             break;
@@ -125,36 +123,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         init: &Expr,
         els: &Block,
         tail: &[Stmt],
-    ) -> (hir::Stmt<'hir>, &'hir hir::Expr<'hir>) {
+    ) -> &'hir hir::Expr<'hir> {
         let ty = local
             .ty
             .as_ref()
             .map(|t| self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Binding)));
         let span = self.lower_span(local.span);
         let span = self.mark_span_with_reason(DesugaringKind::LetElse, span, None);
-        let init = Some(self.lower_expr(init));
-        let val = Ident::with_dummy_span(sym::val);
-        let (pat, val_id) =
-            self.pat_ident_binding_mode(span, val, hir::BindingAnnotation::Unannotated);
+        let init = self.lower_expr(init);
         let local_hir_id = self.lower_node_id(local.id);
         self.lower_attrs(local_hir_id, &local.attrs);
-        // first statement which basically exists for the type annotation
-        let stmt = {
-            let local = self.arena.alloc(hir::Local {
+        let let_expr = {
+            let lex = self.arena.alloc(hir::Let {
                 hir_id: local_hir_id,
+                pat: self.lower_pat(&local.pat),
                 ty,
-                pat,
                 init,
                 span,
-                source: hir::LocalSource::Normal,
             });
-            let kind = hir::StmtKind::Local(local);
-            hir::Stmt { hir_id: stmt_hir_id, kind, span }
-        };
-        let let_expr = {
-            let scrutinee = self.expr_ident(span, val, val_id);
-            let let_kind = hir::ExprKind::Let(self.lower_pat(&local.pat), scrutinee, span);
-            self.arena.alloc(self.expr(span, let_kind, AttrVec::new()))
+            self.arena.alloc(self.expr(span, hir::ExprKind::Let(lex), AttrVec::new()))
         };
         let then_expr = {
             let (stmts, expr) = self.lower_stmts(tail);
@@ -165,9 +152,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let block = self.lower_block(els, false);
             self.arena.alloc(self.expr_block(block, AttrVec::new()))
         };
+        self.alias_attrs(let_expr.hir_id, local_hir_id);
         self.alias_attrs(else_expr.hir_id, local_hir_id);
         let if_expr = self.arena.alloc(hir::Expr {
-            hir_id: self.next_id(),
+            hir_id: stmt_hir_id,
             span,
             kind: hir::ExprKind::If(let_expr, then_expr, Some(else_expr)),
         });
@@ -180,6 +168,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             )
             .emit();
         }
-        (stmt, if_expr)
+        if_expr
     }
 }

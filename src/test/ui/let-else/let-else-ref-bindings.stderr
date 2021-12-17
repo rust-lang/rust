@@ -1,0 +1,75 @@
+error[E0308]: mismatched types
+  --> $DIR/let-else-ref-bindings.rs:16:38
+   |
+LL |     let Some(ref a): Option<&[u8]> = some else { return };
+   |                                      ^^^^ expected `&[u8]`, found struct `Vec`
+   |
+   = note: expected enum `Option<&[u8]>`
+              found enum `Option<Vec<u8>>`
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-ref-bindings.rs:20:38
+   |
+LL |     let Some(ref a): Option<&[u8]> = &some else { return };
+   |                                      ^^^^^ expected enum `Option`, found `&Option<Vec<u8>>`
+   |
+   = note:   expected enum `Option<&[u8]>`
+           found reference `&Option<Vec<u8>>`
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-ref-bindings.rs:24:34
+   |
+LL |     let Some(a): Option<&[u8]> = some else { return };
+   |                                  ^^^^ expected `&[u8]`, found struct `Vec`
+   |
+   = note: expected enum `Option<&[u8]>`
+              found enum `Option<Vec<u8>>`
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-ref-bindings.rs:27:34
+   |
+LL |     let Some(a): Option<&[u8]> = &some else { return };
+   |                                  ^^^^^ expected enum `Option`, found `&Option<Vec<u8>>`
+   |
+   = note:   expected enum `Option<&[u8]>`
+           found reference `&Option<Vec<u8>>`
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-ref-bindings.rs:44:46
+   |
+LL |     let Some(ref mut a): Option<&mut [u8]> = some else { return };
+   |                                              ^^^^ expected `&mut [u8]`, found struct `Vec`
+   |
+   = note: expected enum `Option<&mut [u8]>`
+              found enum `Option<Vec<u8>>`
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-ref-bindings.rs:48:46
+   |
+LL |     let Some(ref mut a): Option<&mut [u8]> = &mut some else { return };
+   |                                              ^^^^^^^^^ expected enum `Option`, found mutable reference
+   |
+   = note:           expected enum `Option<&mut [u8]>`
+           found mutable reference `&mut Option<Vec<u8>>`
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-ref-bindings.rs:52:38
+   |
+LL |     let Some(a): Option<&mut [u8]> = some else { return };
+   |                                      ^^^^ expected `&mut [u8]`, found struct `Vec`
+   |
+   = note: expected enum `Option<&mut [u8]>`
+              found enum `Option<Vec<u8>>`
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-ref-bindings.rs:55:38
+   |
+LL |     let Some(a): Option<&mut [u8]> = &mut some else { return };
+   |                                      ^^^^^^^^^ expected enum `Option`, found mutable reference
+   |
+   = note:           expected enum `Option<&mut [u8]>`
+           found mutable reference `&mut Option<Vec<u8>>`
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

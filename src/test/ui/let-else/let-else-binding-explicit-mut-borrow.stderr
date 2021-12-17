@@ -1,0 +1,9 @@
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/let-else-binding-explicit-mut-borrow.rs:7:37
+   |
+LL |     let Some(n): &mut Option<i32> = &mut &Some(5i32) else {
+   |                                     ^^^^^^^^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

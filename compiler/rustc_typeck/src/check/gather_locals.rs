@@ -7,6 +7,31 @@ use rustc_middle::ty::Ty;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
+/// A declaration is an abstraction of [hir::Local] and [hir::Let].
+///
+/// It must have a hir_id, as this is how we connect gather_locals to the check functions.
+pub(super) struct Declaration<'a> {
+    pub hir_id: hir::HirId,
+    pub pat: &'a hir::Pat<'a>,
+    pub ty: Option<&'a hir::Ty<'a>>,
+    pub span: Span,
+    pub init: Option<&'a hir::Expr<'a>>,
+}
+
+impl<'a> From<&'a hir::Local<'a>> for Declaration<'a> {
+    fn from(local: &'a hir::Local<'a>) -> Self {
+        let hir::Local { hir_id, pat, ty, span, init, .. } = *local;
+        Declaration { hir_id, pat, ty, span, init }
+    }
+}
+
+impl<'a> From<&'a hir::Let<'a>> for Declaration<'a> {
+    fn from(let_expr: &'a hir::Let<'a>) -> Self {
+        let hir::Let { hir_id, pat, ty, span, init } = *let_expr;
+        Declaration { hir_id, pat, ty, span, init: Some(init) }
+    }
+}
+
 pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     // parameters are special cases of patterns, but we want to handle them as
@@ -41,18 +66,12 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
             }
         }
     }
-}
 
-impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
-    // Add explicitly-declared locals.
-    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
-        let local_ty = match local.ty {
+    /// Allocates a [LocalTy] for a declaration, which may have a type annotation. If it does have
+    /// a type annotation, then the LocalTy stored will be the resolved type. This may be found
+    /// again during type checking by querying [FnCtxt::local_ty] for the same hir_id.
+    fn declare(&mut self, decl: Declaration<'tcx>) {
+        let local_ty = match decl.ty {
             Some(ref ty) => {
                 let o_ty = self.fcx.to_ty(&ty);
 
@@ -68,14 +87,32 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
             }
             None => None,
         };
-        self.assign(local.span, local.hir_id, local_ty);
+        self.assign(decl.span, decl.hir_id, local_ty);
 
         debug!(
             "local variable {:?} is assigned type {}",
-            local.pat,
-            self.fcx.ty_to_string(&*self.fcx.locals.borrow().get(&local.hir_id).unwrap().decl_ty)
+            decl.pat,
+            self.fcx.ty_to_string(&*self.fcx.locals.borrow().get(&decl.hir_id).unwrap().decl_ty)
         );
+    }
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
+    type Map = intravisit::ErasedMap<'tcx>;
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+
+    // Add explicitly-declared locals.
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
+        self.declare(local.into());
         intravisit::walk_local(self, local);
+    }
+
+    fn visit_let_expr(&mut self, let_expr: &'tcx hir::Let<'tcx>) {
+        self.declare(let_expr.into());
+        intravisit::walk_let_expr(self, let_expr);
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
