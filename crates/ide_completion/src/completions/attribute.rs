@@ -2,7 +2,7 @@
 //!
 //! This module uses a bit of static metadata to provide completions
 //! for built-in attributes.
-//! Non-builtin attribute(excluding derives attributes) completions are done in [`super::unqualified_path`].
+//! Non-built-in attribute (excluding derives attributes) completions are done in [`super::unqualified_path`].
 
 use ide_db::{
     helpers::{
