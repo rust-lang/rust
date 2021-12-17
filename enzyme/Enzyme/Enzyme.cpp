@@ -405,10 +405,11 @@ public:
 
     bool freeMemory = true;
 
-    bool differentialReturn =
-        mode != DerivativeMode::ForwardMode &&
-        mode != DerivativeMode::ReverseModePrimal &&
-        cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
+    DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType(), mode);
+
+    bool differentialReturn = mode != DerivativeMode::ForwardMode &&
+                              mode != DerivativeMode::ReverseModePrimal &&
+                              (retType == DIFFE_TYPE::OUT_DIFF);
 
     std::map<int, Type *> byVal;
     llvm::Value *differet = nullptr;
@@ -652,8 +653,6 @@ public:
       ++truei;
     }
 
-    DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType(), mode);
-
     std::map<Argument *, bool> volatile_args;
     FnTypeInfo type_args(cast<Function>(fn));
     for (auto &a : type_args.Function->args()) {
@@ -776,9 +775,17 @@ public:
     if (differentialReturn) {
       if (differet)
         args.push_back(differet);
-      else
+      else if (cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy())
         args.push_back(
             ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
+      else if (auto ST =
+                   dyn_cast<StructType>(cast<Function>(fn)->getReturnType())) {
+        SmallVector<Constant *, 2> csts;
+        for (auto e : ST->elements()) {
+          csts.push_back(ConstantFP::get(e, 1.0));
+        }
+        args.push_back(ConstantStruct::get(ST, csts));
+      }
     }
 
     if (mode == DerivativeMode::ReverseModeGradient && tape && tapeType) {

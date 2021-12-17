@@ -249,6 +249,17 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
     return val != CI->getOperand(0);
   }
 
+  // The relerr argument is inactive
+  if (Name == "Faddeeva_erf" || Name == "Faddeeva_erfc" ||
+      Name == "Faddeeva_erfcx" || Name == "Faddeeva_erfi" ||
+      Name == "Faddeeva_dawson") {
+    for (size_t i = 0; i < CI->getNumArgOperands() - 1; i++) {
+      if (val == CI->getOperand(i))
+        return false;
+    }
+    return true;
+  }
+
   // only the buffer is active for mpi send/recv
   if (Name == "MPI_Recv" || Name == "PMPI_Recv" || Name == "MPI_Send" ||
       Name == "PMPI_Send") {
@@ -318,6 +329,14 @@ static inline void propagateArgumentInformation(
 
     if (Name == "frexp" || Name == "frexpf" || Name == "frexpl") {
       propagateFromOperand(CI.getOperand(0));
+      return;
+    }
+    if (Name == "Faddeeva_erf" || Name == "Faddeeva_erfc" ||
+        Name == "Faddeeva_erfcx" || Name == "Faddeeva_erfi" ||
+        Name == "Faddeeva_dawson") {
+      for (size_t i = 0; i < CI.getNumArgOperands() - 1; i++) {
+        propagateFromOperand(CI.getOperand(i));
+      }
       return;
     }
   }

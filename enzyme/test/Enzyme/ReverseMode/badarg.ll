@@ -5,11 +5,11 @@
 
 define void @caller(%Matrix* %W, %Matrix* %Wp, %Base* %M, %Base* %Mp) {
 entry:
-  %call11 = call fast double @__enzyme_autodiff(i8* bitcast (double (%Matrix*, %Base*)* @todiff to i8*), %Matrix* %W, %Matrix* %Wp, %Base* %M, %Base* %Mp)
+  %call11 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (double (%Matrix*, %Base*)* @todiff to i8*), %Matrix* %W, %Matrix* %Wp, metadata !"enzyme_dup", %Base* %M, %Base* %Mp)
   ret void
 }
 
-declare dso_local double @__enzyme_autodiff(i8*, %Matrix*, %Matrix*, %Base*, %Base*)
+declare dso_local double @__enzyme_autodiff(i8*, ...)
 
 define linkonce_odr dso_local double @todiff(%Matrix* %dst, %Base* %lhs) {
 entry:

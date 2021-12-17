@@ -344,7 +344,8 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
 
     auto ty = DIFFE_TYPE::CONSTANT;
     for (unsigned i = 0; i < st->getNumElements(); ++i) {
-      switch (whatType(st->getElementType(i), mode, seen)) {
+      auto midTy = whatType(st->getElementType(i), mode, seen);
+      switch (midTy) {
       case DIFFE_TYPE::OUT_DIFF:
         switch (ty) {
         case DIFFE_TYPE::OUT_DIFF:
@@ -357,6 +358,7 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
         case DIFFE_TYPE::DUP_NONEED:
           llvm_unreachable("impossible case");
         }
+        break;
       case DIFFE_TYPE::CONSTANT:
         switch (ty) {
         case DIFFE_TYPE::OUT_DIFF:
@@ -370,19 +372,19 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
         case DIFFE_TYPE::DUP_NONEED:
           llvm_unreachable("impossible case");
         }
+        break;
       case DIFFE_TYPE::DUP_ARG:
         return DIFFE_TYPE::DUP_ARG;
       case DIFFE_TYPE::DUP_NONEED:
         llvm_unreachable("impossible case");
       }
     }
-
     return ty;
   } else if (arg->isIntOrIntVectorTy() || arg->isFunctionTy()) {
     return DIFFE_TYPE::CONSTANT;
   } else if (arg->isFPOrFPVectorTy()) {
-    return mode == DerivativeMode::ForwardMode ? DIFFE_TYPE::DUP_ARG
-                                               : DIFFE_TYPE::OUT_DIFF;
+    return (mode == DerivativeMode::ForwardMode) ? DIFFE_TYPE::DUP_ARG
+                                                 : DIFFE_TYPE::OUT_DIFF;
   } else {
     assert(arg);
     llvm::errs() << "arg: " << *arg << "\n";

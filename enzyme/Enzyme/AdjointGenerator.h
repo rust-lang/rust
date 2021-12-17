@@ -6822,7 +6822,9 @@ public:
       }
 
       if (called) {
-        if (funcName == "erf") {
+        if (funcName == "erf" || funcName == "erfi" || funcName == "erfc" ||
+            funcName == "Faddeeva_erf" || funcName == "Faddeeva_erfi" ||
+            funcName == "Faddeeva_erfc") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -6835,166 +6837,136 @@ public:
             return;
 
           switch (Mode) {
-          case DerivativeMode::ForwardMode: {
-            IRBuilder<> Builder2(&call);
-            getForwardBuilder(Builder2);
-            Value *x = gutils->getNewFromOriginal(orig->getArgOperand(0));
-
-            Value *sq = Builder2.CreateFNeg(Builder2.CreateFMul(x, x));
-            Type *tys[] = {sq->getType()};
-            Function *ExpF = Intrinsic::getDeclaration(
-                gutils->oldFunc->getParent(), Intrinsic::exp, tys);
-            Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
-
-            cal = Builder2.CreateFMul(
-                cal, ConstantFP::get(
-                         sq->getType(),
-                         1.1283791670955125738961589031215451716881012586580));
-            cal = Builder2.CreateFMul(cal,
-                                      diffe(orig->getArgOperand(0), Builder2));
-            setDiffe(orig, cal, Builder2);
-            return;
-          }
-          case DerivativeMode::ReverseModeGradient:
-          case DerivativeMode::ReverseModeCombined: {
-            IRBuilder<> Builder2(call.getParent());
-            getReverseBuilder(Builder2);
-            Value *x = lookup(
-                gutils->getNewFromOriginal(orig->getArgOperand(0)), Builder2);
-
-            Value *sq = Builder2.CreateFNeg(Builder2.CreateFMul(x, x));
-            Type *tys[] = {sq->getType()};
-            Function *ExpF = Intrinsic::getDeclaration(
-                gutils->oldFunc->getParent(), Intrinsic::exp, tys);
-            Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
-
-            cal = Builder2.CreateFMul(
-                cal, ConstantFP::get(
-                         sq->getType(),
-                         1.1283791670955125738961589031215451716881012586580));
-            cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
-            setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
-            addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
-            return;
-          }
-          case DerivativeMode::ReverseModePrimal: {
-            return;
-          }
-          }
-        }
-        if (funcName == "erfi") {
-          if (gutils->knownRecomputeHeuristic.find(orig) !=
-              gutils->knownRecomputeHeuristic.end()) {
-            if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ, newCall,
-                                      getIndex(orig, CacheType::Self));
-            }
-          }
-          eraseIfUnused(*orig);
-          if (gutils->isConstantInstruction(orig))
-            return;
-
-          switch (Mode) {
-          case DerivativeMode::ForwardMode: {
-            IRBuilder<> Builder2(&call);
-            getForwardBuilder(Builder2);
-            Value *x = gutils->getNewFromOriginal(orig->getArgOperand(0));
-
-            Value *sq = Builder2.CreateFMul(x, x);
-            Type *tys[] = {sq->getType()};
-            Function *ExpF = Intrinsic::getDeclaration(
-                gutils->oldFunc->getParent(), Intrinsic::exp, tys);
-            Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
-
-            cal = Builder2.CreateFMul(
-                cal, ConstantFP::get(
-                         sq->getType(),
-                         1.1283791670955125738961589031215451716881012586580));
-            cal = Builder2.CreateFMul(cal,
-                                      diffe(orig->getArgOperand(0), Builder2));
-            setDiffe(orig, cal, Builder2);
-            return;
-          }
-          case DerivativeMode::ReverseModeGradient:
-          case DerivativeMode::ReverseModeCombined: {
-            IRBuilder<> Builder2(call.getParent());
-            getReverseBuilder(Builder2);
-            Value *x = lookup(
-                gutils->getNewFromOriginal(orig->getArgOperand(0)), Builder2);
-
-            Value *sq = Builder2.CreateFMul(x, x);
-            Type *tys[] = {sq->getType()};
-            Function *ExpF = Intrinsic::getDeclaration(
-                gutils->oldFunc->getParent(), Intrinsic::exp, tys);
-            Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
-
-            cal = Builder2.CreateFMul(
-                cal, ConstantFP::get(
-                         sq->getType(),
-                         1.1283791670955125738961589031215451716881012586580));
-            cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
-            setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
-            addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
-            return;
-          }
+          default:
+            llvm_unreachable("unhandled mode");
           case DerivativeMode::ReverseModePrimal:
             return;
-          }
-        }
-        if (funcName == "erfc") {
-          if (gutils->knownRecomputeHeuristic.find(orig) !=
-              gutils->knownRecomputeHeuristic.end()) {
-            if (!gutils->knownRecomputeHeuristic[orig]) {
-              gutils->cacheForReverse(BuilderZ, newCall,
-                                      getIndex(orig, CacheType::Self));
-            }
-          }
-          eraseIfUnused(*orig);
-          if (gutils->isConstantInstruction(orig))
-            return;
-
-          switch (Mode) {
-          case DerivativeMode::ForwardMode: {
-            IRBuilder<> Builder2(&call);
-            getForwardBuilder(Builder2);
-            Value *x = gutils->getNewFromOriginal(orig->getArgOperand(0));
-            Value *sq = Builder2.CreateFNeg(Builder2.CreateFMul(x, x));
-            Type *tys[] = {sq->getType()};
-            Function *ExpF = Intrinsic::getDeclaration(
-                gutils->oldFunc->getParent(), Intrinsic::exp, tys);
-            Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
-
-            cal = Builder2.CreateFMul(
-                cal, ConstantFP::get(
-                         sq->getType(),
-                         -1.1283791670955125738961589031215451716881012586580));
-            cal = Builder2.CreateFMul(cal,
-                                      diffe(orig->getArgOperand(0), Builder2));
-            setDiffe(orig, cal, Builder2);
-            return;
-          }
+          case DerivativeMode::ForwardMode:
           case DerivativeMode::ReverseModeGradient:
           case DerivativeMode::ReverseModeCombined: {
-            IRBuilder<> Builder2(call.getParent());
-            getReverseBuilder(Builder2);
-            Value *x = lookup(
-                gutils->getNewFromOriginal(orig->getArgOperand(0)), Builder2);
+            IRBuilder<> Builder2(&call);
+            if (Mode == DerivativeMode::ForwardMode)
+              getForwardBuilder(Builder2);
+            else
+              getReverseBuilder(Builder2);
 
-            Value *sq = Builder2.CreateFNeg(Builder2.CreateFMul(x, x));
-            Type *tys[] = {sq->getType()};
+            Value *x = gutils->getNewFromOriginal(orig->getArgOperand(0));
+            if (Mode != DerivativeMode::ForwardMode)
+              x = lookup(x, Builder2);
+
+            Value *sq;
+            Type *tys[1];
+            if (funcName.startswith("Faddeeva")) {
+              Value *re = Builder2.CreateExtractValue(x, 0);
+              Value *im = Builder2.CreateExtractValue(x, 1);
+              sq = UndefValue::get(x->getType());
+              sq = Builder2.CreateInsertValue(
+                  sq,
+                  Builder2.CreateFSub(Builder2.CreateFMul(re, re),
+                                      Builder2.CreateFMul(im, im)),
+                  0);
+              Value *p = Builder2.CreateFMul(re, im);
+              sq = Builder2.CreateInsertValue(sq, Builder2.CreateFAdd(p, p), 1);
+              tys[0] = re->getType();
+            } else {
+              sq = Builder2.CreateFMul(x, x);
+              tys[0] = sq->getType();
+            }
+
+            if (funcName == "erf" || funcName == "erfc") {
+              sq = Builder2.CreateFNeg(sq);
+            } else if (funcName == "Faddeeva_erf" ||
+                       funcName == "Faddeeva_erfc") {
+              Value *re = Builder2.CreateExtractValue(sq, 0);
+              Value *im = Builder2.CreateExtractValue(sq, 1);
+              sq = UndefValue::get(x->getType());
+              sq = Builder2.CreateInsertValue(sq, Builder2.CreateFNeg(re), 0);
+              sq = Builder2.CreateInsertValue(sq, Builder2.CreateFNeg(im), 1);
+            }
+
             Function *ExpF = Intrinsic::getDeclaration(
                 gutils->oldFunc->getParent(), Intrinsic::exp, tys);
-            Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
 
-            cal = Builder2.CreateFMul(
-                cal, ConstantFP::get(
-                         sq->getType(),
-                         -1.1283791670955125738961589031215451716881012586580));
-            cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
-            setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
-            addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
-          }
-          case DerivativeMode::ReverseModePrimal: {
+            Value *cal;
+
+            if (funcName.startswith("Faddeeva")) {
+              Value *re = Builder2.CreateExtractValue(sq, 0);
+              Value *im = Builder2.CreateExtractValue(sq, 1);
+              Value *reexp =
+                  Builder2.CreateCall(ExpF, std::vector<Value *>({re}));
+
+              Function *CosF = Intrinsic::getDeclaration(
+                  gutils->oldFunc->getParent(), Intrinsic::cos, tys);
+              Function *SinF = Intrinsic::getDeclaration(
+                  gutils->oldFunc->getParent(), Intrinsic::sin, tys);
+
+              cal = UndefValue::get(x->getType());
+              cal = Builder2.CreateInsertValue(
+                  cal,
+                  Builder2.CreateFMul(
+                      reexp,
+                      Builder2.CreateCall(CosF, std::vector<Value *>({im}))),
+                  0);
+              cal = Builder2.CreateInsertValue(
+                  cal,
+                  Builder2.CreateFMul(
+                      reexp,
+                      Builder2.CreateCall(SinF, std::vector<Value *>({im}))),
+                  1);
+            } else {
+              cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
+            }
+
+            Value *factor = ConstantFP::get(
+                tys[0],
+                (funcName == "erfc" || funcName == "Faddeeva_erfc")
+                    ? -1.1283791670955125738961589031215451716881012586580
+                    : 1.1283791670955125738961589031215451716881012586580);
+
+            if (funcName.startswith("Faddeeva")) {
+              Value *re = Builder2.CreateExtractValue(cal, 0);
+              Value *im = Builder2.CreateExtractValue(cal, 1);
+              cal = UndefValue::get(x->getType());
+              cal = Builder2.CreateInsertValue(
+                  cal, Builder2.CreateFMul(re, factor), 0);
+              cal = Builder2.CreateInsertValue(
+                  cal, Builder2.CreateFMul(im, factor), 1);
+            } else {
+              cal = Builder2.CreateFMul(cal, factor);
+            }
+
+            Value *dfactor = (Mode == DerivativeMode::ForwardMode)
+                                 ? diffe(orig->getArgOperand(0), Builder2)
+                                 : diffe(orig, Builder2);
+
+            if (funcName.startswith("Faddeeva")) {
+              Value *re = Builder2.CreateExtractValue(cal, 0);
+              Value *im = Builder2.CreateExtractValue(cal, 1);
+
+              Value *fac_re = Builder2.CreateExtractValue(dfactor, 0);
+              Value *fac_im = Builder2.CreateExtractValue(dfactor, 1);
+
+              cal = UndefValue::get(x->getType());
+              cal = Builder2.CreateInsertValue(
+                  cal,
+                  Builder2.CreateFSub(Builder2.CreateFMul(re, fac_re),
+                                      Builder2.CreateFMul(im, fac_im)),
+                  0);
+              cal = Builder2.CreateInsertValue(
+                  cal,
+                  Builder2.CreateFAdd(Builder2.CreateFMul(im, fac_re),
+                                      Builder2.CreateFMul(re, fac_im)),
+                  1);
+            } else {
+              cal = Builder2.CreateFMul(cal, dfactor);
+            }
+
+            if (Mode == DerivativeMode::ForwardMode) {
+              setDiffe(orig, cal, Builder2);
+            } else {
+              setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+              addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
+            }
             return;
           }
           }

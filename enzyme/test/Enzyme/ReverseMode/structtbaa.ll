@@ -9,11 +9,11 @@ target triple = "x86_64-unknown-linux-gnu"
 
 define i32 @caller(%"struct.std::array.6"* dereferenceable(16) %arr, %"struct.std::array.6"* dereferenceable(16) %darr) {
 entry:
-  %call86 = call double @__enzyme_autodiff(i8* bitcast (void (%"struct.std::array.6"*, i64)* @todiff to i8*), %"struct.std::array.6"* dereferenceable(16) %arr, %"struct.std::array.6"* dereferenceable(16) %darr, i64 1)
+  %call86 = call double (i8*, ...) @__enzyme_autodiff(i8* bitcast (void (%"struct.std::array.6"*, i64)* @todiff to i8*), metadata !"enzyme_dup", %"struct.std::array.6"* dereferenceable(16) %arr, %"struct.std::array.6"* dereferenceable(16) %darr, i64 1)
   ret i32 0
 }
 
-declare dso_local double @__enzyme_autodiff(i8*, %"struct.std::array.6"*, %"struct.std::array.6"*, i64)
+declare dso_local double @__enzyme_autodiff(i8*, ...)
 
 define void @todiff(%"struct.std::array.6"* dereferenceable(16) %arr, i64 %identity) {
 entry:

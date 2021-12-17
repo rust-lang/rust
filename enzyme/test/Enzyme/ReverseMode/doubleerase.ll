@@ -642,11 +642,11 @@ declare nonnull i8* @_Znwm(i64) local_unnamed_addr #4
 
 define void @caller(%"class.Kripke::Core::DataStore"* nonnull %i59, %"class.Kripke::Core::DataStore"* nonnull %i60) local_unnamed_addr {
 bb:
-  call void @_Z17__enzyme_autodiffIJPN6Kripke4Core9DataStoreES3_mbEEvPvDpT_(i8* bitcast (void (%"class.Kripke::Core::DataStore"*)* @_ZN6Kripke6Kernel10scatteringERNS_4Core9DataStoreE to i8*), %"class.Kripke::Core::DataStore"* nonnull %i59, %"class.Kripke::Core::DataStore"* nonnull %i60)
+  call void (i8*, ...) @_Z17__enzyme_autodiffIJPN6Kripke4Core9DataStoreES3_mbEEvPvDpT_(i8* bitcast (void (%"class.Kripke::Core::DataStore"*)* @_ZN6Kripke6Kernel10scatteringERNS_4Core9DataStoreE to i8*), metadata !"enzyme_dup", %"class.Kripke::Core::DataStore"* nonnull %i59, %"class.Kripke::Core::DataStore"* nonnull %i60)
   ret void
 }
 
-declare void @_Z17__enzyme_autodiffIJPN6Kripke4Core9DataStoreES3_mbEEvPvDpT_(i8*, %"class.Kripke::Core::DataStore"*, %"class.Kripke::Core::DataStore"*) local_unnamed_addr
+declare void @_Z17__enzyme_autodiffIJPN6Kripke4Core9DataStoreES3_mbEEvPvDpT_(i8*, ...)
 
 ; Function Attrs: argmemonly nofree nounwind readonly willreturn
 declare i32 @memcmp(i8* nocapture, i8* nocapture, i64) local_unnamed_addr #5

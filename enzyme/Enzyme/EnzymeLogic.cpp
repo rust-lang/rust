@@ -3374,7 +3374,6 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           rb.CreateStore(gutils->invertPointerM(orig->getReturnValue(), rb),
                          dretAlloca);
         }
-
         if (key.retType == DIFFE_TYPE::OUT_DIFF) {
           assert(orig->getReturnValue());
           assert(differetval);
