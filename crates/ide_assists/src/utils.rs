@@ -431,7 +431,7 @@ fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str
     buf.push_str("\n\n");
     adt.attrs()
         .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false))
-        .for_each(|attr| buf.push_str(format!("{}\n", attr.to_string()).as_str()));
+        .for_each(|attr| buf.push_str(format!("{}\n", attr).as_str()));
     buf.push_str("impl");
     if let Some(generic_params) = &generic_params {
         let lifetimes = generic_params.lifetime_params().map(|lt| format!("{}", lt.syntax()));

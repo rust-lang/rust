@@ -59,9 +59,8 @@ pub(crate) fn generate_documentation_template(
         "Generate a documentation template",
         text_range,
         |builder| {
-            let mut doc_lines = Vec::new();
             // Introduction / short function description before the sections
-            doc_lines.push(introduction_builder(&ast_func, ctx));
+            let mut doc_lines = vec![introduction_builder(&ast_func, ctx)];
             // Then come the sections
             if let Some(mut lines) = examples_builder(&ast_func, ctx) {
                 doc_lines.push("".into());
@@ -303,7 +302,7 @@ fn arguments_from_params(param_list: &ast::ParamList) -> String {
         // instance `TuplePat`) could be managed later.
         Some(ast::Pat::IdentPat(ident_pat)) => match ident_pat.name() {
             Some(name) => match is_a_ref_mut_param(&param) {
-                true => format!("&mut {}", name.to_string()),
+                true => format!("&mut {}", name),
                 false => name.to_string(),
             },
             None => "_".to_string(),

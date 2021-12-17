@@ -298,7 +298,7 @@ impl Module {
                 if let Some(name_ref) = ast::NameRef::cast(desc) {
                     return Some((
                         name_ref.syntax().text_range(),
-                        format!("{}::{}", self.name, name_ref.to_string()),
+                        format!("{}::{}", self.name, name_ref),
                     ));
                 }
             }
