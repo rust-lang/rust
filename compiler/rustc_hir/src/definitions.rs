@@ -267,6 +267,8 @@ pub enum DefPathData {
     // Different kinds of items and item-like things:
     /// An impl.
     Impl,
+    /// An `extern` block.
+    ForeignMod,
     /// Something in the type namespace.
     TypeNs(Symbol),
     /// Something in the value namespace.
@@ -469,7 +471,9 @@ impl DefPathData {
         match *self {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
-            Impl | CrateRoot | Misc | ClosureExpr | Ctor | AnonConst | ImplTrait => None,
+            Impl | ForeignMod | CrateRoot | Misc | ClosureExpr | Ctor | AnonConst | ImplTrait => {
+                None
+            }
         }
     }
 
@@ -482,6 +486,7 @@ impl DefPathData {
             // Note that this does not show up in user print-outs.
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
             Impl => DefPathDataName::Anon { namespace: kw::Impl },
+            ForeignMod => DefPathDataName::Anon { namespace: kw::Extern },
             Misc => DefPathDataName::Anon { namespace: sym::misc },
             ClosureExpr => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
