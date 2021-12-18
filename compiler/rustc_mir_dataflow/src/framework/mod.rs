@@ -214,7 +214,11 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     ///     .iterate_to_fixpoint()
     ///     .into_results_cursor(body);
     /// ```
-    fn into_engine(self, tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Engine<'mir, 'tcx, Self>
+    fn into_engine<'mir>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+    ) -> Engine<'mir, 'tcx, Self>
     where
         Self: Sized,
     {
@@ -296,7 +300,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     }
 }
 
-impl<A> Analysis<'tcx> for A
+impl<'tcx, A> Analysis<'tcx> for A
 where
     A: GenKillAnalysis<'tcx>,
     A::Domain: GenKill<A::Idx> + BorrowMut<BitSet<A::Idx>>,
@@ -368,7 +372,11 @@ where
 
     /* Extension methods */
 
-    fn into_engine(self, tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Engine<'mir, 'tcx, Self>
+    fn into_engine<'mir>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        body: &'mir mir::Body<'tcx>,
+    ) -> Engine<'mir, 'tcx, Self>
     where
         Self: Sized,
     {

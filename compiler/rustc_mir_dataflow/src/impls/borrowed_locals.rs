@@ -45,7 +45,7 @@ impl MaybeBorrowedLocals {
     }
 }
 
-impl AnalysisDomain<'tcx> for MaybeBorrowedLocals {
+impl<'tcx> AnalysisDomain<'tcx> for MaybeBorrowedLocals {
     type Domain = BitSet<Local>;
     const NAME: &'static str = "maybe_borrowed_locals";
 
@@ -59,7 +59,7 @@ impl AnalysisDomain<'tcx> for MaybeBorrowedLocals {
     }
 }
 
-impl GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
+impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
     type Idx = Local;
 
     fn statement_effect(
@@ -95,7 +95,7 @@ struct TransferFunction<'a, T> {
     ignore_borrow_on_drop: bool,
 }
 
-impl<T> Visitor<'tcx> for TransferFunction<'a, T>
+impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
 where
     T: GenKill<Local>,
 {

@@ -18,7 +18,7 @@ pub trait Direction {
     /// Applies all effects between the given `EffectIndex`s.
     ///
     /// `effects.start()` must precede or equal `effects.end()` in this direction.
-    fn apply_effects_in_range<A>(
+    fn apply_effects_in_range<'tcx, A>(
         analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
@@ -27,7 +27,7 @@ pub trait Direction {
     ) where
         A: Analysis<'tcx>;
 
-    fn apply_effects_in_block<A>(
+    fn apply_effects_in_block<'tcx, A>(
         analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
@@ -35,7 +35,7 @@ pub trait Direction {
     ) where
         A: Analysis<'tcx>;
 
-    fn gen_kill_effects_in_block<A>(
+    fn gen_kill_effects_in_block<'tcx, A>(
         analysis: &A,
         trans: &mut GenKillSet<A::Idx>,
         block: BasicBlock,
@@ -43,7 +43,7 @@ pub trait Direction {
     ) where
         A: GenKillAnalysis<'tcx>;
 
-    fn visit_results_in_block<F, R>(
+    fn visit_results_in_block<'mir, 'tcx, F, R>(
         state: &mut F,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
@@ -52,7 +52,7 @@ pub trait Direction {
     ) where
         R: ResultsVisitable<'tcx, FlowState = F>;
 
-    fn join_state_into_successors_of<A>(
+    fn join_state_into_successors_of<'tcx, A>(
         analysis: &A,
         tcx: TyCtxt<'tcx>,
         body: &mir::Body<'tcx>,
@@ -72,7 +72,7 @@ impl Direction for Backward {
         false
     }
 
-    fn apply_effects_in_block<A>(
+    fn apply_effects_in_block<'tcx, A>(
         analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
@@ -92,7 +92,7 @@ impl Direction for Backward {
         }
     }
 
-    fn gen_kill_effects_in_block<A>(
+    fn gen_kill_effects_in_block<'tcx, A>(
         analysis: &A,
         trans: &mut GenKillSet<A::Idx>,
         block: BasicBlock,
@@ -112,7 +112,7 @@ impl Direction for Backward {
         }
     }
 
-    fn apply_effects_in_range<A>(
+    fn apply_effects_in_range<'tcx, A>(
         analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
@@ -189,7 +189,7 @@ impl Direction for Backward {
         analysis.apply_statement_effect(state, statement, location);
     }
 
-    fn visit_results_in_block<F, R>(
+    fn visit_results_in_block<'mir, 'tcx, F, R>(
         state: &mut F,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
@@ -221,7 +221,7 @@ impl Direction for Backward {
         vis.visit_block_start(state, block_data, block);
     }
 
-    fn join_state_into_successors_of<A>(
+    fn join_state_into_successors_of<'tcx, A>(
         analysis: &A,
         _tcx: TyCtxt<'tcx>,
         body: &mir::Body<'tcx>,
@@ -294,7 +294,7 @@ impl Direction for Forward {
         true
     }
 
-    fn apply_effects_in_block<A>(
+    fn apply_effects_in_block<'tcx, A>(
         analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
@@ -314,7 +314,7 @@ impl Direction for Forward {
         analysis.apply_terminator_effect(state, terminator, location);
     }
 
-    fn gen_kill_effects_in_block<A>(
+    fn gen_kill_effects_in_block<'tcx, A>(
         analysis: &A,
         trans: &mut GenKillSet<A::Idx>,
         block: BasicBlock,
@@ -334,7 +334,7 @@ impl Direction for Forward {
         analysis.terminator_effect(trans, terminator, location);
     }
 
-    fn apply_effects_in_range<A>(
+    fn apply_effects_in_range<'tcx, A>(
         analysis: &A,
         state: &mut A::Domain,
         block: BasicBlock,
@@ -407,7 +407,7 @@ impl Direction for Forward {
         }
     }
 
-    fn visit_results_in_block<F, R>(
+    fn visit_results_in_block<'mir, 'tcx, F, R>(
         state: &mut F,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
@@ -438,7 +438,7 @@ impl Direction for Forward {
         vis.visit_block_end(state, block_data, block);
     }
 
-    fn join_state_into_successors_of<A>(
+    fn join_state_into_successors_of<'tcx, A>(
         analysis: &A,
         _tcx: TyCtxt<'tcx>,
         _body: &mir::Body<'tcx>,
@@ -591,7 +591,7 @@ where
 //
 // FIXME: Figure out how to express this using `Option::clone_from`, or maybe lift it into the
 // standard library?
-fn opt_clone_from_or_clone<T: Clone>(opt: &'a mut Option<T>, val: &T) -> &'a mut T {
+fn opt_clone_from_or_clone<'a, T: Clone>(opt: &'a mut Option<T>, val: &T) -> &'a mut T {
     if opt.is_some() {
         let ret = opt.as_mut().unwrap();
         ret.clone_from(val);

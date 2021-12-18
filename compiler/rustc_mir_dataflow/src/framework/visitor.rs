@@ -4,7 +4,7 @@ use super::{Analysis, Direction, Results};
 
 /// Calls the corresponding method in `ResultsVisitor` for every location in a `mir::Body` with the
 /// dataflow state at that location.
-pub fn visit_results<F, V>(
+pub fn visit_results<'mir, 'tcx, F, V>(
     body: &'mir mir::Body<'tcx>,
     blocks: impl IntoIterator<Item = BasicBlock>,
     results: &V,
