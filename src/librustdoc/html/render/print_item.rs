@@ -388,7 +388,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let stab = myitem.stability_class(cx.tcx());
                 let add = if stab.is_some() { " " } else { "" };
 
-                let doc_value = myitem.doc_value().unwrap_or_default();
+                let doc_value = myitem.doc_value();
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 write!(
                     w,

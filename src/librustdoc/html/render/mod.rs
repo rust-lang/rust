@@ -525,10 +525,11 @@ fn document_short(
     if !show_def_docs {
         return;
     }
-    if let Some(s) = item.doc_value() {
-        let mut summary_html = MarkdownSummaryLine(&s, &item.links(cx)).into_string();
+    let dox = &item.doc_value();
+    if !dox.is_empty() {
+        let mut summary_html = MarkdownSummaryLine(dox, &item.links(cx)).into_string();
 
-        if s.contains('\n') {
+        if dox.contains('\n') {
             let link = format!(r#" <a href="{}">Read more</a>"#, naive_assoc_href(item, link, cx));
 
             if let Some(idx) = summary_html.rfind("</p>") {
@@ -1363,7 +1364,7 @@ fn render_impl(
                     if let Some(it) = t.items.iter().find(|i| i.name == item.name) {
                         // We need the stability of the item from the trait
                         // because impls can't have a stability.
-                        if item.doc_value().is_some() {
+                        if !item.doc_value().is_empty() {
                             document_item_info(&mut info_buffer, cx, it, Some(parent));
                             document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
                             short_documented = false;

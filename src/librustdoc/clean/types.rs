@@ -414,7 +414,7 @@ impl Item {
 
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
-    crate fn doc_value(&self) -> Option<String> {
+    crate fn doc_value(&self) -> String {
         self.attrs.doc_value()
     }
 
@@ -1081,10 +1081,13 @@ impl Attributes {
 
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
-    crate fn doc_value(&self) -> Option<String> {
+    crate fn doc_value(&self) -> String {
         let mut iter = self.doc_strings.iter();
 
-        let ori = iter.next()?;
+        let ori = match iter.next() {
+            Some(s) => s,
+            None => return String::new(),
+        };
         let mut out = String::new();
         add_doc_fragment(&mut out, ori);
         for new_frag in iter {
@@ -1093,7 +1096,7 @@ impl Attributes {
             }
             add_doc_fragment(&mut out, new_frag);
         }
-        if out.is_empty() { None } else { Some(out) }
+        out
     }
 
     /// Return the doc-comments on this item, grouped by the module they came from.

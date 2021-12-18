@@ -183,8 +183,8 @@ impl<'tcx> Context<'tcx> {
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
-        let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(doc));
-        let desc = if let Some(desc) = desc {
+        let desc = plain_text_summary(&it.doc_value());
+        let desc = if !desc.is_empty() {
             desc
         } else if it.is_crate() {
             format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
@@ -265,10 +265,9 @@ impl<'tcx> Context<'tcx> {
                 Some(ref s) => s.to_string(),
             };
             let short = short.to_string();
-            map.entry(short).or_default().push((
-                myname,
-                Some(item.doc_value().map_or_else(String::new, |s| plain_text_summary(&s))),
-            ));
+            map.entry(short)
+                .or_default()
+                .push((myname, Some(plain_text_summary(&item.doc_value()))));
         }
 
         if self.shared.sort_modules_alphabetically {

@@ -294,9 +294,8 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     // which should not be indexed. The crate-item itself is
                     // inserted later on when serializing the search-index.
                     if item.def_id.index().map_or(false, |idx| idx != CRATE_DEF_INDEX) {
-                        let desc = item.doc_value().map_or_else(String::new, |x| {
-                            short_markdown_summary(x.as_str(), &item.link_names(self.cache))
-                        });
+                        let desc =
+                            short_markdown_summary(&item.doc_value(), &item.link_names(self.cache));
                         self.cache.search_index.push(IndexItem {
                             ty: item.type_(),
                             name: s.to_string(),
