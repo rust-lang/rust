@@ -655,7 +655,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     // stable (assuming they have not inherited instability from their parent).
 }
 
-fn stability_index(tcx: TyCtxt<'tcx>, (): ()) -> Index<'tcx> {
+fn stability_index<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> Index<'tcx> {
     let is_staged_api =
         tcx.sess.opts.debugging_opts.force_unstable_if_unmarked || tcx.features().staged_api;
     let mut staged_api = FxHashMap::default();
@@ -737,7 +737,7 @@ struct Checker<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl Visitor<'tcx> for Checker<'tcx> {
+impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
     type Map = Map<'tcx>;
 
     /// Because stability levels are scoped lexically, we want to walk
@@ -866,7 +866,7 @@ struct CheckTraitImplStable<'tcx> {
     fully_stable: bool,
 }
 
-impl Visitor<'tcx> for CheckTraitImplStable<'tcx> {
+impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
