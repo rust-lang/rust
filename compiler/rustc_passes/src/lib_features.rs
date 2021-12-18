@@ -23,7 +23,7 @@ pub struct LibFeatureCollector<'tcx> {
     lib_features: LibFeatures,
 }
 
-impl LibFeatureCollector<'tcx> {
+impl<'tcx> LibFeatureCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> LibFeatureCollector<'tcx> {
         LibFeatureCollector { tcx, lib_features: new_lib_features() }
     }
@@ -110,7 +110,7 @@ impl LibFeatureCollector<'tcx> {
     }
 }
 
-impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
+impl<'tcx> Visitor<'tcx> for LibFeatureCollector<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

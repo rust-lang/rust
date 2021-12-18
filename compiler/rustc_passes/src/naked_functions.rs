@@ -37,7 +37,7 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
 
     fn visit_fn(
         &mut self,
-        fk: FnKind<'v>,
+        fk: FnKind<'_>,
         _fd: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
         span: Span,
