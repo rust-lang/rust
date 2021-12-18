@@ -347,10 +347,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
-        // `ReprOptions.layout_seed` is a deterministic seed that we can use to
-        // randomize field ordering with
-        let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed);
-
         let optimize = !repr.inhibit_struct_field_reordering_opt();
         if optimize {
             let end =
@@ -364,6 +360,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             // the field ordering to try and catch some code making assumptions about layouts
             // we don't guarantee
             if repr.can_randomize_type_layout() {
+                // `ReprOptions.layout_seed` is a deterministic seed that we can use to
+                // randomize field ordering with
+                let mut rng = Xoshiro128StarStar::seed_from_u64(repr.field_shuffle_seed);
+
                 // Shuffle the ordering of the fields
                 optimizing.shuffle(&mut rng);
 
