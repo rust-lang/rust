@@ -1,0 +1,11 @@
+error: expected one of `async`, `extern`, `fn`, or `unsafe`, found keyword `pub`
+  --> $DIR/issue-87694-misplaced-pub.rs:1:7
+   |
+LL | const pub fn test() {}
+   | ------^^^
+   | |     |
+   | |     expected one of `async`, `extern`, `fn`, or `unsafe`
+   | help: visibility `pub` must come before `const`: `pub const`
+
+error: aborting due to previous error
+

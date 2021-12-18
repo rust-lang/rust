@@ -7,10 +7,16 @@ LL |     pub pub fn foo();
    |         ^^^
    |         |
    |         expected one of 9 possible tokens
-   |         help: visibility `pub` must come before `pub pub`: `pub pub pub`
-LL |
+   |         help: there is already a visibility modifier, remove one
+...
 LL | }
    | - the item list ends here
+   |
+note: explicit visibility first seen here
+  --> $DIR/duplicate-visibility.rs:4:5
+   |
+LL |     pub pub fn foo();
+   |     ^^^
 
 error: aborting due to previous error
 

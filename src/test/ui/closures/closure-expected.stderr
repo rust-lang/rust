@@ -11,8 +11,8 @@ LL |     let y = x.or_else(4);
 note: required by a bound in `Option::<T>::or_else`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
-LL |     pub fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Option<T> {
-   |                       ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Option::<T>::or_else`
+LL |         F: ~const FnOnce() -> Option<T>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Option::<T>::or_else`
 
 error: aborting due to previous error
 

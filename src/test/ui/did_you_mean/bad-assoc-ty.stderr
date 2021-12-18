@@ -41,13 +41,13 @@ LL | type G = dyn 'static + (Send)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `<dyn 'static + (Send)>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:44:10
+  --> $DIR/bad-assoc-ty.rs:46:10
    |
 LL | type I = ty!()::AssocTy;
    |          ^^^^^^^^^^^^^^ help: try: `<ty!()>::AssocTy`
 
 error: missing angle brackets in associated item path
-  --> $DIR/bad-assoc-ty.rs:37:19
+  --> $DIR/bad-assoc-ty.rs:39:19
    |
 LL |     ($ty: ty) => ($ty::AssocTy);
    |                   ^^^^^^^^^^^^ help: try: `<$ty>::AssocTy`
@@ -99,6 +99,20 @@ error[E0223]: ambiguous associated type
 LL | type G = dyn 'static + (Send)::AssocTy;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(dyn Send + 'static) as Trait>::AssocTy`
 
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/bad-assoc-ty.rs:33:10
+   |
+LL | type H = Fn(u8) -> (u8)::Output;
+   |          ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL | type H = <dyn Fn(u8) -> (u8)>::Output;
+   |          ++++               +
+
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:33:10
    |
@@ -106,7 +120,7 @@ LL | type H = Fn(u8) -> (u8)::Output;
    |          ^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(dyn Fn(u8) -> u8 + 'static) as Trait>::Output`
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:37:19
+  --> $DIR/bad-assoc-ty.rs:39:19
    |
 LL |     ($ty: ty) => ($ty::AssocTy);
    |                   ^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
@@ -117,13 +131,13 @@ LL | type J = ty!(u8);
    = note: this error originates in the macro `ty` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0223]: ambiguous associated type
-  --> $DIR/bad-assoc-ty.rs:44:10
+  --> $DIR/bad-assoc-ty.rs:46:10
    |
 LL | type I = ty!()::AssocTy;
    |          ^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<u8 as Trait>::AssocTy`
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:49:13
+  --> $DIR/bad-assoc-ty.rs:51:13
    |
 LL | fn foo<X: K<_, _>>(x: X) {}
    |             ^  ^ not allowed in type signatures
@@ -136,7 +150,7 @@ LL | fn foo<X: K<T, T>, T>(x: X) {}
    |             ~  ~ +++
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:52:34
+  --> $DIR/bad-assoc-ty.rs:54:34
    |
 LL | fn bar<F>(_: F) where F: Fn() -> _ {}
    |                                  ^ not allowed in type signatures
@@ -147,7 +161,7 @@ LL | fn bar<F, T>(_: F) where F: Fn() -> T {}
    |         +++                         ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:55:19
+  --> $DIR/bad-assoc-ty.rs:57:19
    |
 LL | fn baz<F: Fn() -> _>(_: F) {}
    |                   ^ not allowed in type signatures
@@ -158,7 +172,7 @@ LL | fn baz<F: Fn() -> T, T>(_: F) {}
    |                   ~+++
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for structs
-  --> $DIR/bad-assoc-ty.rs:58:33
+  --> $DIR/bad-assoc-ty.rs:60:33
    |
 LL | struct L<F>(F) where F: Fn() -> _;
    |                                 ^ not allowed in type signatures
@@ -169,7 +183,7 @@ LL | struct L<F, T>(F) where F: Fn() -> T;
    |           +++                      ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for structs
-  --> $DIR/bad-assoc-ty.rs:60:30
+  --> $DIR/bad-assoc-ty.rs:62:30
    |
 LL | struct M<F> where F: Fn() -> _ {
    |                              ^ not allowed in type signatures
@@ -180,7 +194,7 @@ LL | struct M<F, T> where F: Fn() -> T {
    |           +++                   ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for enums
-  --> $DIR/bad-assoc-ty.rs:64:28
+  --> $DIR/bad-assoc-ty.rs:66:28
    |
 LL | enum N<F> where F: Fn() -> _ {
    |                            ^ not allowed in type signatures
@@ -191,7 +205,7 @@ LL | enum N<F, T> where F: Fn() -> T {
    |         +++                   ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for unions
-  --> $DIR/bad-assoc-ty.rs:69:29
+  --> $DIR/bad-assoc-ty.rs:71:29
    |
 LL | union O<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
@@ -202,7 +216,7 @@ LL | union O<F, T> where F: Fn() -> T {
    |          +++                   ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for traits
-  --> $DIR/bad-assoc-ty.rs:74:29
+  --> $DIR/bad-assoc-ty.rs:76:29
    |
 LL | trait P<F> where F: Fn() -> _ {
    |                             ^ not allowed in type signatures
@@ -213,7 +227,7 @@ LL | trait P<F, T> where F: Fn() -> T {
    |          +++                   ~
 
 error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/bad-assoc-ty.rs:79:38
+  --> $DIR/bad-assoc-ty.rs:81:38
    |
 LL |     fn foo<F>(_: F) where F: Fn() -> _ {}
    |                                      ^ not allowed in type signatures
@@ -223,7 +237,7 @@ help: use type parameters instead
 LL |     fn foo<F, T>(_: F) where F: Fn() -> T {}
    |             +++                         ~
 
-error: aborting due to 28 previous errors
+error: aborting due to 28 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0121, E0223.
 For more information about an error, try `rustc --explain E0121`.

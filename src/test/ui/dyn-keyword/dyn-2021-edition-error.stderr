@@ -1,15 +1,4 @@
 error[E0782]: trait objects must include the `dyn` keyword
-  --> $DIR/dyn-2021-edition-error.rs:6:14
-   |
-LL |     let _x: &SomeTrait = todo!();
-   |              ^^^^^^^^^
-   |
-help: add `dyn` keyword before this trait
-   |
-LL |     let _x: &dyn SomeTrait = todo!();
-   |              +++
-
-error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/dyn-2021-edition-error.rs:3:17
    |
 LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
@@ -17,8 +6,9 @@ LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    |
 help: add `dyn` keyword before this trait
    |
-LL | fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
-   |                 +++
+LL - fn function(x: &SomeTrait, y: Box<SomeTrait>) {
+LL + fn function(x: &dyn SomeTrait, y: Box<SomeTrait>) {
+   | 
 
 error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/dyn-2021-edition-error.rs:3:35
@@ -28,9 +18,10 @@ LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    |
 help: add `dyn` keyword before this trait
    |
-LL | fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
-   |                                   +++
+LL - fn function(x: &SomeTrait, y: Box<SomeTrait>) {
+LL + fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
+   | 
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0782`.

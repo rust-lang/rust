@@ -169,7 +169,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
         }
 
         if !(type_permits_lack_of_use || fn_warned || op_warned) {
-            cx.struct_span_lint(UNUSED_RESULTS, s.span, |lint| lint.build("unused result").emit());
+            cx.struct_span_lint(UNUSED_RESULTS, s.span, |lint| {
+                lint.build(&format!("unused result of type `{}`", ty)).emit()
+            });
         }
 
         // Returns whether an error has been emitted (and thus another does not need to be later).

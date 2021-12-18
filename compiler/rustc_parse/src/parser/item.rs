@@ -223,7 +223,7 @@ impl<'a> Parser<'a> {
             (Ident::empty(), ItemKind::Use(tree))
         } else if self.check_fn_front_matter(def_final) {
             // FUNCTION ITEM
-            let (ident, sig, generics, body) = self.parse_fn(attrs, fn_parse_mode, lo)?;
+            let (ident, sig, generics, body) = self.parse_fn(attrs, fn_parse_mode, lo, vis)?;
             (ident, ItemKind::Fn(Box::new(Fn { defaultness: def(), sig, generics, body })))
         } else if self.eat_keyword(kw::Extern) {
             if self.eat_keyword(kw::Crate) {
@@ -1511,9 +1511,16 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err()?;
         if !is_raw && ident.is_reserved() {
             let err = if self.check_fn_front_matter(false) {
+                let inherited_vis = Visibility {
+                    span: rustc_span::DUMMY_SP,
+                    kind: VisibilityKind::Inherited,
+                    tokens: None,
+                };
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode = FnParseMode { req_name: |_| true, req_body: true };
-                if let Err(mut db) = self.parse_fn(&mut Vec::new(), fn_parse_mode, lo) {
+                if let Err(mut db) =
+                    self.parse_fn(&mut Vec::new(), fn_parse_mode, lo, &inherited_vis)
+                {
                     db.delay_as_bug();
                 }
                 let mut err = self.struct_span_err(
@@ -1793,8 +1800,9 @@ impl<'a> Parser<'a> {
         attrs: &mut Vec<Attribute>,
         fn_parse_mode: FnParseMode,
         sig_lo: Span,
+        vis: &Visibility,
     ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
-        let header = self.parse_fn_front_matter()?; // `const ... fn`
+        let header = self.parse_fn_front_matter(vis)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
         let mut generics = self.parse_generics()?; // `<'a, T, ...>`
         let decl =
@@ -1903,12 +1911,15 @@ impl<'a> Parser<'a> {
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
     /// up to and including the `fn` keyword. The formal grammar is:
     ///
-    /// ```
+    /// ```text
     /// Extern = "extern" StringLit? ;
     /// FnQual = "const"? "async"? "unsafe"? Extern? ;
     /// FnFrontMatter = FnQual "fn" ;
     /// ```
-    pub(super) fn parse_fn_front_matter(&mut self) -> PResult<'a, FnHeader> {
+    ///
+    /// `vis` represents the visibility that was already parsed, if any. Use
+    /// `Visibility::Inherited` when no visibility is known.
+    pub(super) fn parse_fn_front_matter(&mut self, orig_vis: &Visibility) -> PResult<'a, FnHeader> {
         let sp_start = self.token.span;
         let constness = self.parse_constness();
 
@@ -1934,51 +1945,94 @@ impl<'a> Parser<'a> {
                 Ok(false) => unreachable!(),
                 Err(mut err) => {
                     // Qualifier keywords ordering check
+                    enum WrongKw {
+                        Duplicated(Span),
+                        Misplaced(Span),
+                    }
 
-                    // This will allow the machine fix to directly place the keyword in the correct place
-                    let current_qual_sp = if self.check_keyword(kw::Const) {
-                        Some(async_start_sp)
+                    // This will allow the machine fix to directly place the keyword in the correct place or to indicate
+                    // that the keyword is already present and the second instance should be removed.
+                    let wrong_kw = if self.check_keyword(kw::Const) {
+                        match constness {
+                            Const::Yes(sp) => Some(WrongKw::Duplicated(sp)),
+                            Const::No => Some(WrongKw::Misplaced(async_start_sp)),
+                        }
                     } else if self.check_keyword(kw::Async) {
-                        Some(unsafe_start_sp)
+                        match asyncness {
+                            Async::Yes { span, .. } => Some(WrongKw::Duplicated(span)),
+                            Async::No => Some(WrongKw::Misplaced(unsafe_start_sp)),
+                        }
                     } else if self.check_keyword(kw::Unsafe) {
-                        Some(ext_start_sp)
+                        match unsafety {
+                            Unsafe::Yes(sp) => Some(WrongKw::Duplicated(sp)),
+                            Unsafe::No => Some(WrongKw::Misplaced(ext_start_sp)),
+                        }
                     } else {
                         None
                     };
 
-                    if let Some(current_qual_sp) = current_qual_sp {
-                        let current_qual_sp = current_qual_sp.to(self.prev_token.span);
-                        if let Ok(current_qual) = self.span_to_snippet(current_qual_sp) {
-                            let invalid_qual_sp = self.token.uninterpolated_span();
-                            let invalid_qual = self.span_to_snippet(invalid_qual_sp).unwrap();
+                    // The keyword is already present, suggest removal of the second instance
+                    if let Some(WrongKw::Duplicated(original_sp)) = wrong_kw {
+                        let original_kw = self
+                            .span_to_snippet(original_sp)
+                            .expect("Span extracted directly from keyword should always work");
+
+                        err.span_suggestion(
+                            self.token.uninterpolated_span(),
+                            &format!("`{}` already used earlier, remove this one", original_kw),
+                            "".to_string(),
+                            Applicability::MachineApplicable,
+                        )
+                        .span_note(original_sp, &format!("`{}` first seen here", original_kw));
+                    }
+                    // The keyword has not been seen yet, suggest correct placement in the function front matter
+                    else if let Some(WrongKw::Misplaced(correct_pos_sp)) = wrong_kw {
+                        let correct_pos_sp = correct_pos_sp.to(self.prev_token.span);
+                        if let Ok(current_qual) = self.span_to_snippet(correct_pos_sp) {
+                            let misplaced_qual_sp = self.token.uninterpolated_span();
+                            let misplaced_qual = self.span_to_snippet(misplaced_qual_sp).unwrap();
 
                             err.span_suggestion(
-                                current_qual_sp.to(invalid_qual_sp),
-                                &format!("`{}` must come before `{}`", invalid_qual, current_qual),
-                                format!("{} {}", invalid_qual, current_qual),
-                                Applicability::MachineApplicable,
-                            ).note("keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`");
+                                    correct_pos_sp.to(misplaced_qual_sp),
+                                    &format!("`{}` must come before `{}`", misplaced_qual, current_qual),
+                                    format!("{} {}", misplaced_qual, current_qual),
+                                    Applicability::MachineApplicable,
+                                ).note("keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`");
                         }
                     }
-                    // Recover incorrect visibility order such as `async pub`.
+                    // Recover incorrect visibility order such as `async pub`
                     else if self.check_keyword(kw::Pub) {
                         let sp = sp_start.to(self.prev_token.span);
                         if let Ok(snippet) = self.span_to_snippet(sp) {
-                            let vis = match self.parse_visibility(FollowedByType::No) {
+                            let current_vis = match self.parse_visibility(FollowedByType::No) {
                                 Ok(v) => v,
                                 Err(mut d) => {
                                     d.cancel();
                                     return Err(err);
                                 }
                             };
-                            let vs = pprust::vis_to_string(&vis);
+                            let vs = pprust::vis_to_string(&current_vis);
                             let vs = vs.trim_end();
-                            err.span_suggestion(
-                                sp_start.to(self.prev_token.span),
-                                &format!("visibility `{}` must come before `{}`", vs, snippet),
-                                format!("{} {}", vs, snippet),
-                                Applicability::MachineApplicable,
-                            );
+
+                            // There was no explicit visibility
+                            if matches!(orig_vis.kind, VisibilityKind::Inherited) {
+                                err.span_suggestion(
+                                    sp_start.to(self.prev_token.span),
+                                    &format!("visibility `{}` must come before `{}`", vs, snippet),
+                                    format!("{} {}", vs, snippet),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                            // There was an explicit visibility
+                            else {
+                                err.span_suggestion(
+                                    current_vis.span,
+                                    "there is already a visibility modifier, remove one",
+                                    "".to_string(),
+                                    Applicability::MachineApplicable,
+                                )
+                                .span_note(orig_vis.span, "explicit visibility first seen here");
+                            }
                         }
                     }
                     return Err(err);

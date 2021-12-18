@@ -18,7 +18,7 @@ LL |     foo::<MustUseMsg>();
    |
    = note: some message
 
-error: unused result
+error: unused result of type `isize`
   --> $DIR/unused-result.rs:34:5
    |
 LL |     foo::<isize>();

@@ -6,7 +6,6 @@ use crate::check::callee::{self, DeferredCallResolution};
 use crate::check::method::{self, MethodCallee, SelfSource};
 use crate::check::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
 
-use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorReported};
@@ -14,7 +13,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, GenericArg, Node, QPath, TyKind};
+use rustc_hir::{ExprKind, GenericArg, Node, QPath};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc_infer::infer::{InferOk, InferResult};
@@ -28,8 +27,6 @@ use rustc_middle::ty::{
     Ty, UserType,
 };
 use rustc_session::lint;
-use rustc_session::lint::builtin::BARE_TRAIT_OBJECTS;
-use rustc_span::edition::Edition;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -855,7 +852,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // to be object-safe.
                 // We manually call `register_wf_obligation` in the success path
                 // below.
-                (<dyn AstConv<'_>>::ast_ty_to_ty(self, qself), qself, segment)
+                (<dyn AstConv<'_>>::ast_ty_to_ty_in_path(self, qself), qself, segment)
             }
             QPath::LangItem(..) => {
                 bug!("`resolve_ty_and_res_fully_qualified_call` called on `LangItem`")
@@ -901,7 +898,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
 
         if result.is_ok() {
-            self.maybe_lint_bare_trait(qpath, hir_id, span);
             self.register_wf_obligation(ty.into(), qself.span, traits::WellFormed(None));
         }
 
@@ -912,56 +908,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(ty),
             slice::from_ref(&**item_segment),
         )
-    }
-
-    fn maybe_lint_bare_trait(&self, qpath: &QPath<'_>, hir_id: hir::HirId, span: Span) {
-        if let QPath::TypeRelative(self_ty, _) = qpath {
-            if let TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
-                self_ty.kind
-            {
-                let msg = "trait objects without an explicit `dyn` are deprecated";
-                let (sugg, app) = match self.tcx.sess.source_map().span_to_snippet(self_ty.span) {
-                    Ok(s) if poly_trait_ref.trait_ref.path.is_global() => {
-                        (format!("dyn ({})", s), Applicability::MachineApplicable)
-                    }
-                    Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
-                    Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
-                };
-                // Wrap in `<..>` if it isn't already.
-                let sugg = match self.tcx.sess.source_map().span_to_snippet(span) {
-                    Ok(s) if s.starts_with('<') => sugg,
-                    _ => format!("<{}>", sugg),
-                };
-                let sugg_label = "use `dyn`";
-                if self.sess().edition() >= Edition::Edition2021 {
-                    let mut err = rustc_errors::struct_span_err!(
-                        self.sess(),
-                        self_ty.span,
-                        E0782,
-                        "{}",
-                        msg,
-                    );
-                    err.span_suggestion(
-                        self_ty.span,
-                        sugg_label,
-                        sugg,
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
-                } else {
-                    self.tcx.struct_span_lint_hir(
-                        BARE_TRAIT_OBJECTS,
-                        hir_id,
-                        self_ty.span,
-                        |lint| {
-                            let mut db = lint.build(msg);
-                            db.span_suggestion(self_ty.span, sugg_label, sugg, app);
-                            db.emit()
-                        },
-                    );
-                }
-            }
-        }
     }
 
     /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.

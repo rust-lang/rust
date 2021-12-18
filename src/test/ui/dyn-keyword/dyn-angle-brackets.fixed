@@ -15,8 +15,6 @@ impl fmt::Display for Foo {
         <dyn fmt::Debug>::fmt(self, f)
         //~^ ERROR trait objects without an explicit `dyn` are deprecated
         //~| WARNING this is accepted in the current edition
-        //~| ERROR trait objects without an explicit `dyn` are deprecated
-        //~| WARNING this is accepted in the current edition
     }
 }
 

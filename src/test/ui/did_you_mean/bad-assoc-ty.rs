@@ -32,6 +32,8 @@ type G = dyn 'static + (Send)::AssocTy;
 // Recovery should not apply in this context.
 type H = Fn(u8) -> (u8)::Output;
 //~^ ERROR ambiguous associated type
+//~| WARN trait objects without an explicit `dyn` are deprecated
+//~| WARN this is accepted in the current edition
 
 macro_rules! ty {
     ($ty: ty) => ($ty::AssocTy);

@@ -2,11 +2,44 @@ warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/allowed-group-warn-by-default-lint.rs:10:25
    |
 LL | pub fn function(_x: Box<SomeTrait>) {}
-   |                         ^^^^^^^^^ help: use `dyn`: `dyn SomeTrait`
+   |                         ^^^^^^^^^
    |
    = note: requested on the command line with `--force-warn bare-trait-objects`
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL - pub fn function(_x: Box<SomeTrait>) {}
+LL + pub fn function(_x: Box<dyn SomeTrait>) {}
+   | 
 
-warning: 1 warning emitted
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/allowed-group-warn-by-default-lint.rs:10:25
+   |
+LL | pub fn function(_x: Box<SomeTrait>) {}
+   |                         ^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL - pub fn function(_x: Box<SomeTrait>) {}
+LL + pub fn function(_x: Box<dyn SomeTrait>) {}
+   | 
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/allowed-group-warn-by-default-lint.rs:10:25
+   |
+LL | pub fn function(_x: Box<SomeTrait>) {}
+   |                         ^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL - pub fn function(_x: Box<SomeTrait>) {}
+LL + pub fn function(_x: Box<dyn SomeTrait>) {}
+   | 
+
+warning: 3 warnings emitted
 

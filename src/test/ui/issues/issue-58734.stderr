@@ -1,9 +1,23 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-58734.rs:20:5
+   |
+LL |     Trait::nonexistent(());
+   |     ^^^^^
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     <dyn Trait>::nonexistent(());
+   |     ++++      +
+
 error[E0599]: no function or associated item named `nonexistent` found for trait object `dyn Trait` in the current scope
   --> $DIR/issue-58734.rs:20:12
    |
 LL |     Trait::nonexistent(());
    |            ^^^^^^^^^^^ function or associated item not found in `dyn Trait`
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0599`.
