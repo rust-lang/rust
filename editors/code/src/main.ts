@@ -221,9 +221,18 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     );
     if (userResponse !== "Update") return;
 
-    const artifact = latestNightlyRelease.assets.find(artifact => artifact.name === "rust-analyzer.vsix");
-    assert(!!artifact, `Bad release: ${JSON.stringify(latestNightlyRelease)}`);
+    let arch = process.arch;
+    if (arch === "ia32") {
+        arch = "x64";
+    }
+    let platform = process.platform as string;
+    if (platform === "linux" && isMusl()) {
+        platform = "alpine";
+    }
+    const artifactName = `rust-analyzer-${platform}-${arch}.vsix`;
 
+    const artifact = latestNightlyRelease.assets.find(artifact => artifact.name === artifactName);
+    assert(!!artifact, `Bad release: ${JSON.stringify(latestNightlyRelease)}`);
     const dest = vscode.Uri.joinPath(config.globalStorageUri, "rust-analyzer.vsix");
 
     await downloadWithRetryDialog(state, async () => {
