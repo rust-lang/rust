@@ -1304,20 +1304,11 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &'b Item) {
         let orig_module_scope = self.parent_scope.module;
         self.parent_scope.macro_rules = match item.kind {
-            ItemKind::MacroDef(..) => {
-                let macro_rules_scope = self.define_macro(item);
-                visit::walk_item(self, item);
-                macro_rules_scope
-            }
-            ItemKind::MacCall(..) => {
-                let macro_rules_scope = self.visit_invoc_in_module(item.id);
-                visit::walk_item(self, item);
-                macro_rules_scope
-            }
+            ItemKind::MacroDef(..) => self.define_macro(item),
+            ItemKind::MacCall(..) => self.visit_invoc_in_module(item.id),
             _ => {
                 let orig_macro_rules_scope = self.parent_scope.macro_rules;
                 self.build_reduced_graph_for_item(item);
-                visit::walk_item(self, item);
                 match item.kind {
                     ItemKind::Mod(..) if self.contains_macro_use(&item.attrs) => {
                         self.parent_scope.macro_rules
@@ -1326,6 +1317,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
                 }
             }
         };
+        visit::walk_item(self, item);
         self.parent_scope.module = orig_module_scope;
     }
 
