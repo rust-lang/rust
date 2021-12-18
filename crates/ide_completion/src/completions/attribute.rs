@@ -6,7 +6,9 @@
 
 use ide_db::{
     helpers::{
-        generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS},
+        generated_lints::{
+            Lint, CLIPPY_LINTS, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS,
+        },
         parse_tt_as_comma_sep_paths,
     },
     SymbolKind,
@@ -36,9 +38,17 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             "feature" => lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?, FEATURES),
             "allow" | "warn" | "deny" | "forbid" => {
                 let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
-                lint::complete_lint(acc, ctx, &existing_lints, DEFAULT_LINTS);
-                lint::complete_lint(acc, ctx, &existing_lints, CLIPPY_LINTS);
-                lint::complete_lint(acc, ctx, &existing_lints, RUSTDOC_LINTS);
+
+                let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
+                    .iter()
+                    .map(|g| &g.lint)
+                    .chain(DEFAULT_LINTS.iter())
+                    .chain(CLIPPY_LINTS.iter())
+                    .chain(RUSTDOC_LINTS)
+                    .cloned()
+                    .collect();
+
+                lint::complete_lint(acc, ctx, &existing_lints, &lints);
             }
             "cfg" => {
                 cfg::complete_cfg(acc, ctx);

@@ -18,6 +18,7 @@ fn sourcegen_lint_completions() {
 
     let mut contents = String::from(
         r"
+#[derive(Clone)]
 pub struct Lint {
     pub label: &'static str,
     pub description: &'static str,
