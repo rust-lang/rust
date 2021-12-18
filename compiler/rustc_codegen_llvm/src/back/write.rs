@@ -46,7 +46,7 @@ pub fn llvm_err(handler: &rustc_errors::Handler, msg: &str) -> FatalError {
     }
 }
 
-pub fn write_output_file(
+pub fn write_output_file<'ll>(
     handler: &rustc_errors::Handler,
     target: &'ll llvm::TargetMachine,
     pm: &llvm::PassManager<'ll>,

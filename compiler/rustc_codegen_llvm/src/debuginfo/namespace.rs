@@ -17,7 +17,7 @@ pub fn mangled_name_of_instance<'a, 'tcx>(
     tcx.symbol_name(instance)
 }
 
-pub fn item_namespace(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
+pub fn item_namespace<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DIScope {
     if let Some(&scope) = debug_context(cx).namespace_map.borrow().get(&def_id) {
         return scope;
     }

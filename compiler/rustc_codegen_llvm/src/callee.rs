@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, Instance, TypeFoldable};
 ///
 /// - `cx`: the crate context
 /// - `instance`: the instance to be instantiated
-pub fn get_fn(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value {
+pub fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) -> &'ll Value {
     let tcx = cx.tcx();
 
     debug!("get_fn(instance={:?})", instance);
