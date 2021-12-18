@@ -38,10 +38,9 @@ macro_rules! error {
     ($e:expr, $s:expr) => {
         match $e {
             Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
-            Err(ref err) => assert!(
-                err.raw_os_error() == Some($s),
-                format!("`{}` did not have a code of `{}`", err, $s)
-            ),
+            Err(ref err) => {
+                assert!(err.raw_os_error() == Some($s), "`{}` did not have a code of `{}`", err, $s)
+            }
         }
     };
 }
@@ -58,7 +57,7 @@ macro_rules! error_contains {
         match $e {
             Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
             Err(ref err) => {
-                assert!(err.to_string().contains($s), format!("`{}` did not contain `{}`", err, $s))
+                assert!(err.to_string().contains($s), "`{}` did not contain `{}`", err, $s)
             }
         }
     };
