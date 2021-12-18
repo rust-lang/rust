@@ -28,7 +28,7 @@ struct LanguageItemCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
+impl<'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         self.check_for_lang(Target::from_item(item), item.hir_id());
 
@@ -50,7 +50,7 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     fn visit_foreign_item(&mut self, _: &hir::ForeignItem<'_>) {}
 }
 
-impl LanguageItemCollector<'tcx> {
+impl<'tcx> LanguageItemCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> LanguageItemCollector<'tcx> {
         LanguageItemCollector { tcx, items: LanguageItems::new() }
     }

@@ -11,7 +11,7 @@ use rustc_middle::mir::{self, Local};
 pub struct AlwaysLiveLocals(BitSet<Local>);
 
 impl AlwaysLiveLocals {
-    pub fn new(body: &mir::Body<'tcx>) -> Self {
+    pub fn new(body: &mir::Body<'_>) -> Self {
         let mut always_live_locals = AlwaysLiveLocals(BitSet::new_filled(body.local_decls.len()));
 
         for block in body.basic_blocks() {

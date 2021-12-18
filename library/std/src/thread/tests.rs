@@ -1,6 +1,7 @@
 use super::Builder;
 use crate::any::Any;
 use crate::mem;
+use crate::panic::panic_any;
 use crate::result;
 use crate::sync::{
     mpsc::{channel, Sender},
@@ -183,7 +184,7 @@ fn test_simple_newsched_spawn() {
 }
 
 #[test]
-fn test_try_panic_message_static_str() {
+fn test_try_panic_message_string_literal() {
     match thread::spawn(move || {
         panic!("static string");
     })
@@ -199,9 +200,9 @@ fn test_try_panic_message_static_str() {
 }
 
 #[test]
-fn test_try_panic_message_owned_str() {
+fn test_try_panic_any_message_owned_str() {
     match thread::spawn(move || {
-        panic!("owned string".to_string());
+        panic_any("owned string".to_string());
     })
     .join()
     {
@@ -215,9 +216,9 @@ fn test_try_panic_message_owned_str() {
 }
 
 #[test]
-fn test_try_panic_message_any() {
+fn test_try_panic_any_message_any() {
     match thread::spawn(move || {
-        panic!(box 413u16 as Box<dyn Any + Send>);
+        panic_any(box 413u16 as Box<dyn Any + Send>);
     })
     .join()
     {
@@ -233,10 +234,10 @@ fn test_try_panic_message_any() {
 }
 
 #[test]
-fn test_try_panic_message_unit_struct() {
+fn test_try_panic_any_message_unit_struct() {
     struct Juju;
 
-    match thread::spawn(move || panic!(Juju)).join() {
+    match thread::spawn(move || panic_any(Juju)).join() {
         Err(ref e) if e.is::<Juju>() => {}
         Err(_) | Ok(()) => panic!(),
     }

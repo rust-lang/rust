@@ -150,7 +150,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn check_for_self_assign(&mut self, assign: &'tcx hir::Expr<'tcx>) {
-        fn check_for_self_assign_helper(
+        fn check_for_self_assign_helper<'tcx>(
             tcx: TyCtxt<'tcx>,
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
             lhs: &'tcx hir::Expr<'tcx>,
@@ -600,7 +600,7 @@ struct DeadVisitor<'tcx> {
     live_symbols: FxHashSet<LocalDefId>,
 }
 
-impl DeadVisitor<'tcx> {
+impl<'tcx> DeadVisitor<'tcx> {
     fn should_warn_about_item(&mut self, item: &hir::Item<'_>) -> bool {
         let should_warn = matches!(
             item.kind,
@@ -672,7 +672,7 @@ impl DeadVisitor<'tcx> {
     }
 }
 
-impl Visitor<'tcx> for DeadVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
     type Map = Map<'tcx>;
 
     /// Walk nested items in place so that we don't report dead-code

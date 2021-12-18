@@ -704,7 +704,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
 ///
 /// If the basic block matches this pattern, this function returns the place corresponding to the
 /// enum (`_1` in the example above) as well as the `AdtDef` of that enum.
-fn switch_on_enum_discriminant(
+fn switch_on_enum_discriminant<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &'mir mir::Body<'tcx>,
     block: &'mir mir::BasicBlockData<'tcx>,

@@ -36,7 +36,7 @@ where
     style: OutputStyle,
 }
 
-impl<A> Formatter<'a, 'tcx, A>
+impl<'a, 'tcx, A> Formatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -52,7 +52,7 @@ pub struct CfgEdge {
     index: usize,
 }
 
-fn dataflow_successors(body: &Body<'tcx>, bb: BasicBlock) -> Vec<CfgEdge> {
+fn dataflow_successors(body: &Body<'_>, bb: BasicBlock) -> Vec<CfgEdge> {
     body[bb]
         .terminator()
         .successors()
@@ -61,7 +61,7 @@ fn dataflow_successors(body: &Body<'tcx>, bb: BasicBlock) -> Vec<CfgEdge> {
         .collect()
 }
 
-impl<A> dot::Labeller<'_> for Formatter<'a, 'tcx, A>
+impl<'tcx, A> dot::Labeller<'_> for Formatter<'_, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -100,7 +100,7 @@ where
     }
 }
 
-impl<A> dot::GraphWalk<'a> for Formatter<'a, 'tcx, A>
+impl<'a, 'tcx, A> dot::GraphWalk<'a> for Formatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -138,7 +138,7 @@ where
     style: OutputStyle,
 }
 
-impl<A> BlockFormatter<'a, 'tcx, A>
+impl<'a, 'tcx, A> BlockFormatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -491,7 +491,7 @@ where
     after: Vec<String>,
 }
 
-impl<A> StateDiffCollector<'a, 'tcx, A>
+impl<'a, 'tcx, A> StateDiffCollector<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -514,7 +514,7 @@ where
     }
 }
 
-impl<A> ResultsVisitor<'a, 'tcx> for StateDiffCollector<'a, 'tcx, A>
+impl<'a, 'tcx, A> ResultsVisitor<'a, 'tcx> for StateDiffCollector<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -524,7 +524,7 @@ where
     fn visit_block_start(
         &mut self,
         state: &Self::FlowState,
-        _block_data: &'mir mir::BasicBlockData<'tcx>,
+        _block_data: &mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
     ) {
         if A::Direction::is_forward() {
@@ -535,7 +535,7 @@ where
     fn visit_block_end(
         &mut self,
         state: &Self::FlowState,
-        _block_data: &'mir mir::BasicBlockData<'tcx>,
+        _block_data: &mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
     ) {
         if A::Direction::is_backward() {
@@ -546,7 +546,7 @@ where
     fn visit_statement_before_primary_effect(
         &mut self,
         state: &Self::FlowState,
-        _statement: &'mir mir::Statement<'tcx>,
+        _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
         if let Some(before) = self.before.as_mut() {
@@ -558,7 +558,7 @@ where
     fn visit_statement_after_primary_effect(
         &mut self,
         state: &Self::FlowState,
-        _statement: &'mir mir::Statement<'tcx>,
+        _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
         self.after.push(diff_pretty(state, &self.prev_state, self.analysis));
@@ -568,7 +568,7 @@ where
     fn visit_terminator_before_primary_effect(
         &mut self,
         state: &Self::FlowState,
-        _terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
         if let Some(before) = self.before.as_mut() {
@@ -580,7 +580,7 @@ where
     fn visit_terminator_after_primary_effect(
         &mut self,
         state: &Self::FlowState,
-        _terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
         self.after.push(diff_pretty(state, &self.prev_state, self.analysis));
