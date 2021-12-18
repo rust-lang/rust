@@ -85,7 +85,7 @@ struct MockAnalysis<'tcx, D> {
     dir: PhantomData<D>,
 }
 
-impl<D: Direction> MockAnalysis<'tcx, D> {
+impl<D: Direction> MockAnalysis<'_, D> {
     const BASIC_BLOCK_OFFSET: usize = 100;
 
     /// The entry set for each `BasicBlock` is the ID of that block offset by a fixed amount to
@@ -160,7 +160,7 @@ impl<D: Direction> MockAnalysis<'tcx, D> {
     }
 }
 
-impl<D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
+impl<'tcx, D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
     type Domain = BitSet<usize>;
     type Direction = D;
 
@@ -175,7 +175,7 @@ impl<D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
     }
 }
 
-impl<D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
+impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     fn apply_statement_effect(
         &self,
         state: &mut Self::Domain,
@@ -260,7 +260,7 @@ impl SeekTarget {
     }
 }
 
-fn test_cursor<D: Direction>(analysis: MockAnalysis<'tcx, D>) {
+fn test_cursor<D: Direction>(analysis: MockAnalysis<'_, D>) {
     let body = analysis.body;
 
     let mut cursor =

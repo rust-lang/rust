@@ -48,12 +48,12 @@ use crate::{AnalysisDomain, Backward, CallReturnPlaces, GenKill, GenKillAnalysis
 pub struct MaybeLiveLocals;
 
 impl MaybeLiveLocals {
-    fn transfer_function<T>(&self, trans: &'a mut T) -> TransferFunction<'a, T> {
+    fn transfer_function<'a, T>(&self, trans: &'a mut T) -> TransferFunction<'a, T> {
         TransferFunction(trans)
     }
 }
 
-impl AnalysisDomain<'tcx> for MaybeLiveLocals {
+impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
     type Domain = BitSet<Local>;
     type Direction = Backward;
 
@@ -69,7 +69,7 @@ impl AnalysisDomain<'tcx> for MaybeLiveLocals {
     }
 }
 
-impl GenKillAnalysis<'tcx> for MaybeLiveLocals {
+impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
     type Idx = Local;
 
     fn statement_effect(
