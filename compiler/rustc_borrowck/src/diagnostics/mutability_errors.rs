@@ -237,7 +237,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     err.span_suggestion_verbose(
                         span,
                         "consider changing this to be mutable",
-                        "mut ".into(),
+                        " mut ".into(),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -1059,12 +1059,12 @@ fn is_closure_or_generator(ty: Ty<'_>) -> bool {
     ty.is_closure() || ty.is_generator()
 }
 
-/// Given a field that needs to be mutuable, returns a span where the mut could go.
+/// Given a field that needs to be mutable, returns a span where the " mut " could go.
 /// This function expects the local to be a reference to a struct in order to produce a span.
 ///
 /// ```text
-/// LL |     s: &'a String
-///    |            ^ returns a span pointing here
+/// LL |     s: &'a   String
+///    |           ^^^ returns a span taking up the space here
 /// ```
 fn get_mut_span_in_struct_field<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -1081,12 +1081,10 @@ fn get_mut_span_in_struct_field<'tcx>(
             // Now we're dealing with the actual struct that we're going to suggest a change to,
             // we can expect a field that is an immutable reference to a type.
             if let hir::Node::Field(field) = node {
-                if let hir::TyKind::Rptr(lifetime, hir::MutTy { mutbl: hir::Mutability::Not, .. }) =
+                if let hir::TyKind::Rptr(lifetime, hir::MutTy { mutbl: hir::Mutability::Not, ty }) =
                     field.ty.kind
                 {
-                    return Some(
-                        lifetime.span.with_hi(lifetime.span.hi() + BytePos(1)).shrink_to_hi(),
-                    );
+                    return Some(lifetime.span.between(ty.span));
                 }
             }
         }

@@ -17,7 +17,7 @@ LL |         self.longer_name.push(13);
    |
 help: consider changing this to be mutable
    |
-LL |     longer_name:   &   'a mut     Vec<u8>
+LL |     longer_name:   &   'a mut Vec<u8>
    |                           +++
 
 error: aborting due to 2 previous errors
