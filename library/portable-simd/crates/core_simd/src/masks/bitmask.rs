@@ -105,18 +105,14 @@ where
     #[must_use = "method returns a new vector and does not mutate the original value"]
     pub fn to_int(self) -> Simd<T, LANES> {
         unsafe {
-            crate::intrinsics::simd_select_bitmask(
-                self.0,
-                Simd::splat(T::TRUE),
-                Simd::splat(T::FALSE),
-            )
+            intrinsics::simd_select_bitmask(self.0, Simd::splat(T::TRUE), Simd::splat(T::FALSE))
         }
     }
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub unsafe fn from_int_unchecked(value: Simd<T, LANES>) -> Self {
-        unsafe { Self(crate::intrinsics::simd_bitmask(value), PhantomData) }
+        unsafe { Self(intrinsics::simd_bitmask(value), PhantomData) }
     }
 
     #[cfg(feature = "generic_const_exprs")]
