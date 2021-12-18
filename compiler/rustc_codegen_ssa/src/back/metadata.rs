@@ -257,9 +257,9 @@ pub fn create_compressed_metadata_file(
         return compressed.to_vec();
     };
     let section = file.add_section(
-        file.segment_name(StandardSegment::Data).to_vec(),
+        file.segment_name(StandardSegment::Debug).to_vec(),
         b".rustc".to_vec(),
-        SectionKind::Data,
+        SectionKind::Debug,
     );
     let offset = file.append_section_data(section, &compressed, 1);
 
