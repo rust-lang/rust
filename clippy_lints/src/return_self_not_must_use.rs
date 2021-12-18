@@ -5,7 +5,7 @@ use rustc_hir::{Body, FnDecl, HirId, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -86,6 +86,8 @@ impl<'tcx> LateLintPass<'tcx> for ReturnSelfNotMustUse {
             // We are only interested in methods, not in functions or associated functions.
             if matches!(kind, FnKind::Method(_, _, _));
             if let Some(fn_def) = cx.tcx.hir().opt_local_def_id(hir_id);
+            // We don't want to emit this lint if the `#[must_use]` attribute is already there.
+            if !cx.tcx.hir().attrs(hir_id).iter().any(|attr| attr.has_name(sym::must_use));
             if let Some(impl_def) = cx.tcx.impl_of_method(fn_def.to_def_id());
             // We don't want this method to be te implementation of a trait because the
             // `#[must_use]` should be put on the trait definition directly.
