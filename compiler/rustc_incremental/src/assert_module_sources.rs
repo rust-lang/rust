@@ -56,7 +56,7 @@ struct AssertModuleSource<'tcx> {
     available_cgus: BTreeSet<String>,
 }
 
-impl AssertModuleSource<'tcx> {
+impl<'tcx> AssertModuleSource<'tcx> {
     fn check_attr(&self, attr: &ast::Attribute) {
         let (expected_reuse, comp_kind) = if attr.has_name(sym::rustc_partition_reused) {
             (CguReuse::PreLto, ComparisonKind::AtLeast)
