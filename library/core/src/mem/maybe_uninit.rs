@@ -972,8 +972,8 @@ impl<T> MaybeUninit<T> {
     #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub const unsafe fn slice_assume_init_ref(slice: &[Self]) -> &[T] {
-        // SAFETY: casting slice to a `*const [T]` is safe since the caller guarantees that
-        // `slice` is initialized, and`MaybeUninit` is guaranteed to have the same layout as `T`.
+        // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
+        // `slice` is initialized, and `MaybeUninit` is guaranteed to have the same layout as `T`.
         // The pointer obtained is valid since it refers to memory owned by `slice` which is a
         // reference and thus guaranteed to be valid for reads.
         unsafe { &*(slice as *const [Self] as *const [T]) }
