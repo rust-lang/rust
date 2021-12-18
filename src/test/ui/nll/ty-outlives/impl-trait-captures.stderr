@@ -6,7 +6,7 @@ LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
    |                  |
    |                  hidden type `&ReFree(DefId(0:8 ~ impl_trait_captures[HASH]::foo), BrAnon(0)) T` captures the anonymous lifetime defined here
    |
-help: to declare that the `impl Trait` captures ReFree(DefId(0:8 ~ impl_trait_captures[HASH]::foo), BrAnon(0)), you can add an explicit `ReFree(DefId(0:8 ~ impl_trait_captures[HASH]::foo), BrAnon(0))` lifetime bound
+help: to declare that the `impl Trait` captures `ReFree(DefId(0:8 ~ impl_trait_captures[HASH]::foo), BrAnon(0))`, you can add an explicit `ReFree(DefId(0:8 ~ impl_trait_captures[HASH]::foo), BrAnon(0))` lifetime bound
    |
 LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + ReFree(DefId(0:8 ~ impl_trait_captures[HASH]::foo), BrAnon(0)) {
    |                                      ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

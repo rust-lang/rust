@@ -16,7 +16,7 @@ LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<
    |                                    |
    |                                    hidden type `(&'a u8, &'b u8)` captures the lifetime `'b` as defined here
    |
-help: to declare that the `impl Trait` captures 'b, you can add an explicit `'b` lifetime bound
+help: to declare that the `impl Trait` captures `'b`, you can add an explicit `'b` lifetime bound
    |
 LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + 'b {
    |                                                                                ++++

@@ -6,7 +6,7 @@ LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a {
    |                 |
    |                 hidden type `&'a mut &'b T` captures the lifetime `'b` as defined here
    |
-help: to declare that the `impl Trait` captures 'b, you can add an explicit `'b` lifetime bound
+help: to declare that the `impl Trait` captures `'b`, you can add an explicit `'b` lifetime bound
    |
 LL | fn hide_ref<'a, 'b, T: 'static>(x: &'a mut &'b T) -> impl Swap + 'a + 'b {
    |                                                                     ++++
@@ -19,7 +19,7 @@ LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl S
    |                        |
    |                        hidden type `Rc<RefCell<&'b T>>` captures the lifetime `'b` as defined here
    |
-help: to declare that the `impl Trait` captures 'b, you can add an explicit `'b` lifetime bound
+help: to declare that the `impl Trait` captures `'b`, you can add an explicit `'b` lifetime bound
    |
 LL | fn hide_rc_refcell<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a + 'b {
    |                                                                                     ++++

@@ -6,7 +6,7 @@ LL | fn elided(x: &i32) -> impl Copy { x }
    |              |
    |              hidden type `&i32` captures the anonymous lifetime defined here
    |
-help: to declare that the `impl Trait` captures '_, you can add an explicit `'_` lifetime bound
+help: to declare that the `impl Trait` captures `'_`, you can add an explicit `'_` lifetime bound
    |
 LL | fn elided(x: &i32) -> impl Copy + '_ { x }
    |                                 ++++
@@ -19,7 +19,7 @@ LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
    |             |
    |             hidden type `&'a i32` captures the lifetime `'a` as defined here
    |
-help: to declare that the `impl Trait` captures 'a, you can add an explicit `'a` lifetime bound
+help: to declare that the `impl Trait` captures `'a`, you can add an explicit `'a` lifetime bound
    |
 LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
    |                                          ++++
@@ -74,7 +74,7 @@ LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32
    |                              |
    |                              hidden type `[closure@$DIR/must_outlive_least_region_or_bound.rs:35:5: 35:31]` captures the lifetime `'b` as defined here
    |
-help: to declare that the `impl Trait` captures 'b, you can add an explicit `'b` lifetime bound
+help: to declare that the `impl Trait` captures `'b`, you can add an explicit `'b` lifetime bound
    |
 LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) + 'b {
    |                                                                              ++++
