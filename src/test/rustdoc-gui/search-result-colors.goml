@@ -1,7 +1,11 @@
 goto: file://|DOC_PATH|/test_docs/index.html
 // We set the theme so we're sure that the correct values will be used, whatever the computer
 // this test is running on.
-local-storage: {"rustdoc-theme": "dark", "rustdoc-preferred-dark-theme": "dark", "rustdoc-use-system-theme": "false"}
+local-storage: {
+    "rustdoc-theme": "dark",
+    "rustdoc-preferred-dark-theme": "dark",
+    "rustdoc-use-system-theme": "false",
+}
 // If the text isn't displayed, the browser doesn't compute color style correctly...
 show-text: true
 // We reload the page so the local storage settings are being used.

@@ -11,7 +11,11 @@ assert-property: (".top-doc .docblock table", {"scrollWidth": "1573"})
 // Checking it works on other doc blocks as well...
 
 // Logically, the ".docblock" and the "<p>" should have the same scroll width.
-compare-elements-property: ("#implementations + details .docblock", "#implementations + details .docblock > p", ["scrollWidth"])
+compare-elements-property: (
+    "#implementations + details .docblock",
+    "#implementations + details .docblock > p",
+    ["scrollWidth"],
+)
 assert-property: ("#implementations + details .docblock", {"scrollWidth": "816"})
 // However, since there is overflow in the <table>, its scroll width is bigger.
 assert-property: ("#implementations + details .docblock table", {"scrollWidth": "1573"})
