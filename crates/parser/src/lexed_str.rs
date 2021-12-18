@@ -1,7 +1,7 @@
 //! Lexing `&str` into a sequence of Rust tokens.
 //!
 //! Note that strictly speaking the parser in this crate is not required to work
-//! on tokens which originated from text. Macros, eg, can synthesize tokes out
+//! on tokens which originated from text. Macros, eg, can synthesize tokens out
 //! of thin air. So, ideally, lexer should be an orthogonal crate. It is however
 //! convenient to include a text-based lexer here!
 //!
