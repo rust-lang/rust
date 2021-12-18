@@ -6,7 +6,7 @@ LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
    |                          |
    |                          hidden type `Pin<&Foo>` captures the lifetime `'_` as defined here
    |
-help: to declare that the `impl Trait` captures '_, you can add an explicit `'_` lifetime bound
+help: to declare that the `impl Trait` captures `'_`, you can add an explicit `'_` lifetime bound
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
    |                                                ++++

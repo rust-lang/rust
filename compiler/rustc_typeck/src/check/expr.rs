@@ -36,8 +36,8 @@ use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
+use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::error::TypeError::{FieldMisMatch, Sorts};
-use rustc_middle::ty::relate::expected_found_bool;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TypeFoldable};
 use rustc_session::parse::feature_err;
@@ -1493,7 +1493,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         &self.misc(base_expr.span),
                                         adt_ty,
                                         base_ty,
-                                        Sorts(expected_found_bool(true, adt_ty, base_ty)),
+                                        Sorts(ExpectedFound::new(true, adt_ty, base_ty)),
                                     )
                                     .emit();
                             }

@@ -1,5 +1,4 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(control_flow_enum)]
 #![feature(try_blocks)]
@@ -310,7 +309,7 @@ struct PubRestrictedVisitor<'tcx> {
     has_pub_restricted: bool,
 }
 
-impl Visitor<'tcx> for PubRestrictedVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for PubRestrictedVisitor<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -432,7 +431,7 @@ struct ReachEverythingInTheInterfaceVisitor<'a, 'tcx> {
     ev: &'a mut EmbargoVisitor<'tcx>,
 }
 
-impl EmbargoVisitor<'tcx> {
+impl<'tcx> EmbargoVisitor<'tcx> {
     fn get(&self, def_id: LocalDefId) -> Option<AccessLevel> {
         self.access_levels.map.get(&def_id).copied()
     }
@@ -674,7 +673,7 @@ impl EmbargoVisitor<'tcx> {
     }
 }
 
-impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
     type Map = Map<'tcx>;
 
     /// We want to visit items in the context of their containing
@@ -944,7 +943,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
     }
 }
 
-impl ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
+impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     fn generics(&mut self) -> &mut Self {
         for param in &self.ev.tcx.generics_of(self.item_def_id).params {
             match param.kind {
@@ -983,7 +982,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
     }
 }
 
-impl DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
+impl<'tcx> DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.ev.tcx
     }
@@ -1413,7 +1412,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
     }
 }
 
-impl DefIdVisitor<'tcx> for TypePrivacyVisitor<'tcx> {
+impl<'tcx> DefIdVisitor<'tcx> for TypePrivacyVisitor<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -1800,7 +1799,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
     in_assoc_ty: bool,
 }
 
-impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
+impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn generics(&mut self) -> &mut Self {
         for param in &self.tcx.generics_of(self.item_def_id).params {
             match param.kind {
@@ -1921,7 +1920,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
     }
 }
 
-impl DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
+impl<'tcx> DefIdVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

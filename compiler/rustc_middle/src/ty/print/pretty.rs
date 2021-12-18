@@ -1740,30 +1740,26 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 
-        // Skip `::{{constructor}}` on tuple/unit structs.
-        if let DefPathData::Ctor = disambiguated_data.data {
+        // Skip `::{{extern}}` blocks and `::{{constructor}}` on tuple/unit structs.
+        if let DefPathData::ForeignMod | DefPathData::Ctor = disambiguated_data.data {
             return Ok(self);
         }
 
-        // FIXME(eddyb) `name` should never be empty, but it
-        // currently is for `extern { ... }` "foreign modules".
         let name = disambiguated_data.data.name();
-        if name != DefPathDataName::Named(kw::Empty) {
-            if !self.empty_path {
-                write!(self, "::")?;
-            }
-
-            if let DefPathDataName::Named(name) = name {
-                if Ident::with_dummy_span(name).is_raw_guess() {
-                    write!(self, "r#")?;
-                }
-            }
-
-            let verbose = self.tcx.sess.verbose();
-            disambiguated_data.fmt_maybe_verbose(&mut self, verbose)?;
-
-            self.empty_path = false;
+        if !self.empty_path {
+            write!(self, "::")?;
         }
+
+        if let DefPathDataName::Named(name) = name {
+            if Ident::with_dummy_span(name).is_raw_guess() {
+                write!(self, "r#")?;
+            }
+        }
+
+        let verbose = self.tcx.sess.verbose();
+        disambiguated_data.fmt_maybe_verbose(&mut self, verbose)?;
+
+        self.empty_path = false;
 
         Ok(self)
     }

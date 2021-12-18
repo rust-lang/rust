@@ -31,7 +31,7 @@ impl<'tcx> std::ops::Deref for QueryCtxt<'tcx> {
     }
 }
 
-impl HasDepContext for QueryCtxt<'tcx> {
+impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
     type DepKind = rustc_middle::dep_graph::DepKind;
     type DepContext = TyCtxt<'tcx>;
 
@@ -41,7 +41,7 @@ impl HasDepContext for QueryCtxt<'tcx> {
     }
 }
 
-impl QueryContext for QueryCtxt<'tcx> {
+impl QueryContext for QueryCtxt<'_> {
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>> {
         tls::with_related_context(**self, |icx| icx.query)
     }
@@ -130,7 +130,7 @@ impl<'tcx> QueryCtxt<'tcx> {
 
     pub(super) fn encode_query_results(
         self,
-        encoder: &mut on_disk_cache::CacheEncoder<'a, 'tcx, opaque::FileEncoder>,
+        encoder: &mut on_disk_cache::CacheEncoder<'_, 'tcx, opaque::FileEncoder>,
         query_result_index: &mut on_disk_cache::EncodedDepNodeIndex,
     ) -> opaque::FileEncodeResult {
         macro_rules! encode_queries {
@@ -511,7 +511,7 @@ macro_rules! define_queries_struct {
             }
         }
 
-        impl QueryEngine<'tcx> for Queries<'tcx> {
+        impl<'tcx> QueryEngine<'tcx> for Queries<'tcx> {
             fn as_any(&'tcx self) -> &'tcx dyn std::any::Any {
                 let this = unsafe { std::mem::transmute::<&Queries<'_>, &Queries<'_>>(self) };
                 this as _

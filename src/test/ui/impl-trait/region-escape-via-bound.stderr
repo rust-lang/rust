@@ -7,7 +7,7 @@ LL |
 LL | where 'x: 'y
    |       -- hidden type `Cell<&'x u32>` captures the lifetime `'x` as defined here
    |
-help: to declare that the `impl Trait` captures 'x, you can add an explicit `'x` lifetime bound
+help: to declare that the `impl Trait` captures `'x`, you can add an explicit `'x` lifetime bound
    |
 LL | fn foo(x: Cell<&'x u32>) -> impl Trait<'y> + 'x
    |                                            ++++
