@@ -4,48 +4,55 @@
 //! on tokens which originated from text. Macros, eg, can synthesize tokes out
 //! of thin air. So, ideally, lexer should be an orthogonal crate. It is however
 //! convenient to include a text-based lexer here!
+//!
+//! Note that these tokens, unlike the tokens we feed into the parser, do
+//! include info about comments and whitespace. 
 
 use crate::{
     SyntaxKind::{self, *},
     T,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LexerToken {
-    pub kind: SyntaxKind,
-    pub len: usize,
-    pub error: Option<String>,
+pub struct LexedStr<'a> {
+    text: &'a str,
+    kind: Vec<SyntaxKind>,
+    start: Vec<u32>,
+    error: Vec<LexError>,
 }
 
-impl LexerToken {
-    pub fn new(kind: SyntaxKind, len: usize) -> Self {
-        Self { kind, len, error: None }
-    }
+struct LexError {
+    msg: String,
+    token: u32,
+}
 
-    /// Lexes text as a sequence of tokens.
-    pub fn tokenize(text: &str) -> Vec<LexerToken> {
-        let mut res = Vec::new();
+impl<'a> LexedStr<'a> {
+    pub fn new(text: &'a str) -> LexedStr<'a> {
+        let mut res = LexedStr { text, kind: Vec::new(), start: Vec::new(), error: Vec::new() };
+
         let mut offset = 0;
-
         if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
-            res.push(LexerToken::new(SHEBANG, shebang_len));
+            res.push(SHEBANG, offset);
             offset = shebang_len
         };
-
         for token in rustc_lexer::tokenize(&text[offset..]) {
             let token_text = &text[offset..][..token.len];
-            offset += token.len;
 
             let (kind, err) = from_rustc(&token.kind, token_text);
-            let mut token = LexerToken::new(kind, token.len);
-            token.error = err.map(|it| it.to_string());
-            res.push(token);
+            res.push(kind, offset);
+            offset += token.len;
+
+            if let Some(err) = err {
+                let token = res.len() as u32;
+                let msg = err.to_string();
+                res.error.push(LexError { msg, token });
+            }
         }
+        res.push(EOF, offset);
 
         res
     }
-    /// Lexes text as a single token. Returns `None` if there's leftover text.
-    pub fn from_str(text: &str) -> Option<LexerToken> {
+
+    pub fn single_token(text: &'a str) -> Option<SyntaxKind> {
         if text.is_empty() {
             return None;
         }
@@ -56,10 +63,40 @@ impl LexerToken {
         }
 
         let (kind, err) = from_rustc(&token.kind, text);
+        if err.is_some() {
+            return None;
+        }
 
-        let mut token = LexerToken::new(kind, token.len);
-        token.error = err.map(|it| it.to_string());
-        Some(token)
+        Some(kind)
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.text
+    }
+
+    pub fn len(&self) -> usize {
+        self.kind.len() - 1
+    }
+
+    pub fn kind(&self, i: usize) -> SyntaxKind {
+        assert!(i < self.len());
+        self.kind[i]
+    }
+    pub fn text(&self, i: usize) -> &str {
+        assert!(i < self.len());
+        let lo = self.start[i] as usize;
+        let hi = self.start[i + 1] as usize;
+        &self.text[lo..hi]
+    }
+    pub fn error(&self, i: usize) -> Option<&str> {
+        assert!(i < self.len());
+        let err = self.error.binary_search_by_key(&(i as u32), |i| i.token).ok()?;
+        Some(self.error[err].msg.as_str())
+    }
+
+    fn push(&mut self, kind: SyntaxKind, offset: usize) {
+        self.kind.push(kind);
+        self.start.push(offset as u32);
     }
 }
 

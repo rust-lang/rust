@@ -6,7 +6,7 @@ use std::{
 
 use expect_test::expect_file;
 
-use crate::LexerToken;
+use crate::LexedStr;
 
 #[test]
 fn valid_lexes_input() {
@@ -25,13 +25,16 @@ fn invalid_lexes_input() {
 }
 
 fn lex(text: &str) -> String {
+    let lexed = LexedStr::new(text);
+
     let mut res = String::new();
-    let mut offset = 0;
-    for token in LexerToken::tokenize(text) {
-        let token_text = &text[offset..][..token.len];
-        offset += token.len;
-        let err = token.error.map(|err| format!(" error: {}", err)).unwrap_or_default();
-        writeln!(res, "{:?} {:?}{}", token.kind, token_text, err).unwrap();
+    for i in 0..lexed.len() {
+        let kind = lexed.kind(i);
+        let text = lexed.text(i);
+        let error = lexed.error(i);
+
+        let error = error.map(|err| format!(" error: {}", err)).unwrap_or_default();
+        writeln!(res, "{:?} {:?}{}", kind, text, error).unwrap();
     }
     res
 }
