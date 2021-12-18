@@ -37,7 +37,7 @@ use crate::traits::{Obligation, PredicateObligations};
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeFoldable};
@@ -790,7 +790,7 @@ pub fn const_unification_error<'tcx>(
     a_is_expected: bool,
     (a, b): (&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>),
 ) -> TypeError<'tcx> {
-    TypeError::ConstMismatch(ty::relate::expected_found_bool(a_is_expected, a, b))
+    TypeError::ConstMismatch(ExpectedFound::new(a_is_expected, a, b))
 }
 
 fn int_unification_error<'tcx>(
@@ -798,7 +798,7 @@ fn int_unification_error<'tcx>(
     v: (ty::IntVarValue, ty::IntVarValue),
 ) -> TypeError<'tcx> {
     let (a, b) = v;
-    TypeError::IntMismatch(ty::relate::expected_found_bool(a_is_expected, a, b))
+    TypeError::IntMismatch(ExpectedFound::new(a_is_expected, a, b))
 }
 
 fn float_unification_error<'tcx>(
@@ -806,7 +806,7 @@ fn float_unification_error<'tcx>(
     v: (ty::FloatVarValue, ty::FloatVarValue),
 ) -> TypeError<'tcx> {
     let (ty::FloatVarValue(a), ty::FloatVarValue(b)) = v;
-    TypeError::FloatMismatch(ty::relate::expected_found_bool(a_is_expected, a, b))
+    TypeError::FloatMismatch(ExpectedFound::new(a_is_expected, a, b))
 }
 
 struct ConstInferUnifier<'cx, 'tcx> {
