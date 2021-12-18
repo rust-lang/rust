@@ -229,15 +229,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             } => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
 
-                if let Some((span, message)) = annotate_struct_field(
+                if let Some(span) = get_mut_span_in_struct_field(
                     self.infcx.tcx,
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty,
                     field,
                 ) {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         span,
                         "consider changing this to be mutable",
-                        message,
+                        " mut ".into(),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -1059,18 +1059,18 @@ fn is_closure_or_generator(ty: Ty<'_>) -> bool {
     ty.is_closure() || ty.is_generator()
 }
 
-/// Adds a suggestion to a struct definition given a field access to a local.
-/// This function expects the local to be a reference to a struct in order to produce a suggestion.
+/// Given a field that needs to be mutable, returns a span where the " mut " could go.
+/// This function expects the local to be a reference to a struct in order to produce a span.
 ///
 /// ```text
-/// LL |     s: &'a String
-///    |        ---------- use `&'a mut String` here to make mutable
+/// LL |     s: &'a   String
+///    |           ^^^ returns a span taking up the space here
 /// ```
-fn annotate_struct_field<'tcx>(
+fn get_mut_span_in_struct_field<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     field: &mir::Field,
-) -> Option<(Span, String)> {
+) -> Option<Span> {
     // Expect our local to be a reference to a struct of some kind.
     if let ty::Ref(_, ty, _) = ty.kind() {
         if let ty::Adt(def, _) = ty.kind() {
@@ -1081,25 +1081,10 @@ fn annotate_struct_field<'tcx>(
             // Now we're dealing with the actual struct that we're going to suggest a change to,
             // we can expect a field that is an immutable reference to a type.
             if let hir::Node::Field(field) = node {
-                if let hir::TyKind::Rptr(
-                    lifetime,
-                    hir::MutTy { mutbl: hir::Mutability::Not, ref ty },
-                ) = field.ty.kind
+                if let hir::TyKind::Rptr(lifetime, hir::MutTy { mutbl: hir::Mutability::Not, ty }) =
+                    field.ty.kind
                 {
-                    // Get the snippets in two parts - the named lifetime (if there is one) and
-                    // type being referenced, that way we can reconstruct the snippet without loss
-                    // of detail.
-                    let type_snippet = tcx.sess.source_map().span_to_snippet(ty.span).ok()?;
-                    let lifetime_snippet = if !lifetime.is_elided() {
-                        format!("{} ", tcx.sess.source_map().span_to_snippet(lifetime.span).ok()?)
-                    } else {
-                        String::new()
-                    };
-
-                    return Some((
-                        field.ty.span,
-                        format!("&{}mut {}", lifetime_snippet, &*type_snippet,),
-                    ));
+                    return Some(lifetime.span.between(ty.span));
                 }
             }
         }
