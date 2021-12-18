@@ -39,13 +39,16 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             "allow" | "warn" | "deny" | "forbid" => {
                 let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
 
-                let clippy_lint_groups: Vec<Lint> =
-                    CLIPPY_LINT_GROUPS.iter().map(|g| g.lint.clone()).collect();
+                let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
+                    .iter()
+                    .map(|g| &g.lint)
+                    .chain(DEFAULT_LINTS.iter())
+                    .chain(CLIPPY_LINTS.iter())
+                    .chain(RUSTDOC_LINTS)
+                    .cloned()
+                    .collect();
 
-                lint::complete_lint(acc, ctx, &existing_lints, DEFAULT_LINTS);
-                lint::complete_lint(acc, ctx, &existing_lints, CLIPPY_LINTS);
-                lint::complete_lint(acc, ctx, &existing_lints, &clippy_lint_groups);
-                lint::complete_lint(acc, ctx, &existing_lints, RUSTDOC_LINTS);
+                lint::complete_lint(acc, ctx, &existing_lints, &lints);
             }
             "cfg" => {
                 cfg::complete_cfg(acc, ctx);
