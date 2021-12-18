@@ -1,7 +1,8 @@
 //! Input for the parser -- a sequence of tokens.
 //!
 //! As of now, parser doesn't have access to the *text* of the tokens, and makes
-//! decisions based solely on their classification.
+//! decisions based solely on their classification. Unlike `LexerToken`, the
+//! `Tokens` doesn't include whitespace and comments.
 
 use crate::SyntaxKind;
 

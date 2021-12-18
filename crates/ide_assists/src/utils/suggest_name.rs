@@ -135,7 +135,7 @@ fn normalize(name: &str) -> Option<String> {
 }
 
 fn is_valid_name(name: &str) -> bool {
-    match syntax::lex_single_syntax_kind(name) {
+    match parser::LexedStr::single_token(name) {
         Some((syntax::SyntaxKind::IDENT, _error)) => true,
         _ => false,
     }

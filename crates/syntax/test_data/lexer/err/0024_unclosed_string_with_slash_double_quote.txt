@@ -1,2 +1,0 @@
-STRING 3 "\"\\\""
-> error0..3 token("\"\\\"") msg(Missing trailing `"` symbol to terminate the string literal)

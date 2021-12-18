@@ -18,6 +18,7 @@
 //! [`Parser`]: crate::parser::Parser
 #![allow(rustdoc::private_intra_doc_links)]
 
+mod lexed_str;
 mod token_set;
 mod syntax_kind;
 mod event;
@@ -25,9 +26,12 @@ mod parser;
 mod grammar;
 mod tokens;
 
+#[cfg(test)]
+mod tests;
+
 pub(crate) use token_set::TokenSet;
 
-pub use crate::{syntax_kind::SyntaxKind, tokens::Tokens};
+pub use crate::{lexed_str::LexedStr, syntax_kind::SyntaxKind, tokens::Tokens};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParseError(pub Box<String>);

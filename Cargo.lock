@@ -609,6 +609,7 @@ dependencies = [
  "hir",
  "ide_db",
  "itertools",
+ "parser",
  "profile",
  "rustc-hash",
  "sourcegen",
@@ -654,6 +655,7 @@ dependencies = [
  "itertools",
  "limit",
  "once_cell",
+ "parser",
  "profile",
  "rayon",
  "rustc-hash",
@@ -695,6 +697,7 @@ dependencies = [
  "hir",
  "ide_db",
  "itertools",
+ "parser",
  "rustc-hash",
  "syntax",
  "test_utils",
@@ -1066,7 +1069,9 @@ name = "parser"
 version = "0.0.0"
 dependencies = [
  "drop_bomb",
+ "expect-test",
  "limit",
+ "rustc-ap-rustc_lexer",
 ]
 
 [[package]]

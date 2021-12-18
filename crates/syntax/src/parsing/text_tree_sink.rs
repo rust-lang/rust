@@ -2,25 +2,22 @@
 
 use std::mem;
 
-use parser::{ParseError, TreeSink};
+use parser::{LexedStr, ParseError, TreeSink};
 
 use crate::{
     ast,
-    parsing::Token,
     syntax_node::GreenNode,
     SyntaxError,
     SyntaxKind::{self, *},
-    SyntaxTreeBuilder, TextRange, TextSize,
+    SyntaxTreeBuilder, TextRange,
 };
 
 /// Bridges the parser with our specific syntax tree representation.
 ///
 /// `TextTreeSink` also handles attachment of trivia (whitespace) to nodes.
 pub(crate) struct TextTreeSink<'a> {
-    text: &'a str,
-    tokens: &'a [Token],
-    text_pos: TextSize,
-    token_pos: usize,
+    lexed: LexedStr<'a>,
+    pos: usize,
     state: State,
     inner: SyntaxTreeBuilder,
 }
@@ -39,12 +36,7 @@ impl<'a> TreeSink for TextTreeSink<'a> {
             State::Normal => (),
         }
         self.eat_trivias();
-        let n_tokens = n_tokens as usize;
-        let len = self.tokens[self.token_pos..self.token_pos + n_tokens]
-            .iter()
-            .map(|it| it.len)
-            .sum::<TextSize>();
-        self.do_token(kind, len, n_tokens);
+        self.do_token(kind, n_tokens as usize);
     }
 
     fn start_node(&mut self, kind: SyntaxKind) {
@@ -60,20 +52,12 @@ impl<'a> TreeSink for TextTreeSink<'a> {
         }
 
         let n_trivias =
-            self.tokens[self.token_pos..].iter().take_while(|it| it.kind.is_trivia()).count();
-        let leading_trivias = &self.tokens[self.token_pos..self.token_pos + n_trivias];
-        let mut trivia_end =
-            self.text_pos + leading_trivias.iter().map(|it| it.len).sum::<TextSize>();
-
-        let n_attached_trivias = {
-            let leading_trivias = leading_trivias.iter().rev().map(|it| {
-                let next_end = trivia_end - it.len;
-                let range = TextRange::new(next_end, trivia_end);
-                trivia_end = next_end;
-                (it.kind, &self.text[range])
-            });
-            n_attached_trivias(kind, leading_trivias)
-        };
+            (self.pos..self.lexed.len()).take_while(|&it| self.lexed.kind(it).is_trivia()).count();
+        let leading_trivias = self.pos..self.pos + n_trivias;
+        let n_attached_trivias = n_attached_trivias(
+            kind,
+            leading_trivias.rev().map(|it| (self.lexed.kind(it), self.lexed.text(it))),
+        );
         self.eat_n_trivias(n_trivias - n_attached_trivias);
         self.inner.start_node(kind);
         self.eat_n_trivias(n_attached_trivias);
@@ -88,20 +72,14 @@ impl<'a> TreeSink for TextTreeSink<'a> {
     }
 
     fn error(&mut self, error: ParseError) {
-        self.inner.error(error, self.text_pos);
+        let text_pos = self.lexed.text_start(self.pos).try_into().unwrap();
+        self.inner.error(error, text_pos);
     }
 }
 
 impl<'a> TextTreeSink<'a> {
-    pub(super) fn new(text: &'a str, tokens: &'a [Token]) -> Self {
-        Self {
-            text,
-            tokens,
-            text_pos: 0.into(),
-            token_pos: 0,
-            state: State::PendingStart,
-            inner: SyntaxTreeBuilder::default(),
-        }
+    pub(super) fn new(lexed: parser::LexedStr<'a>) -> Self {
+        Self { lexed, pos: 0, state: State::PendingStart, inner: SyntaxTreeBuilder::default() }
     }
 
     pub(super) fn finish_eof(mut self) -> (GreenNode, Vec<SyntaxError>, bool) {
@@ -113,8 +91,17 @@ impl<'a> TextTreeSink<'a> {
             State::PendingStart | State::Normal => unreachable!(),
         }
 
-        let (node, errors) = self.inner.finish_raw();
-        let is_eof = self.token_pos == self.tokens.len();
+        let (node, mut errors) = self.inner.finish_raw();
+        for (i, err) in self.lexed.errors() {
+            let text_range = self.lexed.text_range(i);
+            let text_range = TextRange::new(
+                text_range.start.try_into().unwrap(),
+                text_range.end.try_into().unwrap(),
+            );
+            errors.push(SyntaxError::new(err, text_range))
+        }
+
+        let is_eof = self.pos == self.lexed.len();
 
         (node, errors, is_eof)
     }
@@ -125,27 +112,26 @@ impl<'a> TextTreeSink<'a> {
     }
 
     fn eat_trivias(&mut self) {
-        while let Some(&token) = self.tokens.get(self.token_pos) {
-            if !token.kind.is_trivia() {
+        while self.pos < self.lexed.len() {
+            let kind = self.lexed.kind(self.pos);
+            if !kind.is_trivia() {
                 break;
             }
-            self.do_token(token.kind, token.len, 1);
+            self.do_token(kind, 1);
         }
     }
 
     fn eat_n_trivias(&mut self, n: usize) {
         for _ in 0..n {
-            let token = self.tokens[self.token_pos];
-            assert!(token.kind.is_trivia());
-            self.do_token(token.kind, token.len, 1);
+            let kind = self.lexed.kind(self.pos);
+            assert!(kind.is_trivia());
+            self.do_token(kind, 1);
         }
     }
 
-    fn do_token(&mut self, kind: SyntaxKind, len: TextSize, n_tokens: usize) {
-        let range = TextRange::at(self.text_pos, len);
-        let text = &self.text[range];
-        self.text_pos += len;
-        self.token_pos += n_tokens;
+    fn do_token(&mut self, kind: SyntaxKind, n_tokens: usize) {
+        let text = &self.lexed.range_text(self.pos..self.pos + n_tokens);
+        self.pos += n_tokens;
         self.inner.token(kind, text);
     }
 }

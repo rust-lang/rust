@@ -16,6 +16,7 @@ itertools = "0.10.0"
 either = "1.6.1"
 
 stdx = { path = "../stdx", version = "0.0.0" }
+parser = { path = "../parser", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
 text_edit = { path = "../text_edit", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }

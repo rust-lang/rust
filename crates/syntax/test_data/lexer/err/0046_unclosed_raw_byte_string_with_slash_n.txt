@@ -1,2 +1,0 @@
-BYTE_STRING 7 "br##\"\\n"
-> error0..7 token("br##\"\\n") msg(Missing trailing `"` with `#` symbols to terminate the raw byte string literal)

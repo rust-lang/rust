@@ -1,7 +1,6 @@
 //! Lexing, bridging to parser (which does the actual parsing) and
 //! incremental reparsing.
 
-pub(crate) mod lexer;
 mod text_tree_sink;
 mod reparsing;
 
@@ -10,18 +9,17 @@ use text_tree_sink::TextTreeSink;
 
 use crate::{syntax_node::GreenNode, AstNode, SyntaxError, SyntaxNode};
 
-pub(crate) use crate::parsing::{lexer::*, reparsing::incremental_reparse};
+pub(crate) use crate::parsing::reparsing::incremental_reparse;
 
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
-    let (lexer_tokens, lexer_errors) = tokenize(text);
-    let parser_tokens = to_parser_tokens(text, &lexer_tokens);
+    let lexed = parser::LexedStr::new(text);
+    let parser_tokens = lexed.to_tokens();
 
-    let mut tree_sink = TextTreeSink::new(text, &lexer_tokens);
+    let mut tree_sink = TextTreeSink::new(lexed);
 
     parser::parse_source_file(&parser_tokens, &mut tree_sink);
 
-    let (tree, mut parser_errors) = tree_sink.finish();
-    parser_errors.extend(lexer_errors);
+    let (tree, parser_errors) = tree_sink.finish();
 
     (tree, parser_errors)
 }
@@ -31,14 +29,13 @@ pub(crate) fn parse_text_as<T: AstNode>(
     text: &str,
     entry_point: parser::ParserEntryPoint,
 ) -> Result<T, ()> {
-    let (lexer_tokens, lexer_errors) = tokenize(text);
-    if !lexer_errors.is_empty() {
+    let lexed = parser::LexedStr::new(text);
+    if lexed.errors().next().is_some() {
         return Err(());
     }
+    let parser_tokens = lexed.to_tokens();
 
-    let parser_tokens = to_parser_tokens(text, &lexer_tokens);
-
-    let mut tree_sink = TextTreeSink::new(text, &lexer_tokens);
+    let mut tree_sink = TextTreeSink::new(lexed);
 
     // TextTreeSink assumes that there's at least some root node to which it can attach errors and
     // tokens. We arbitrarily give it a SourceFile.
@@ -53,30 +50,4 @@ pub(crate) fn parse_text_as<T: AstNode>(
     }
 
     SyntaxNode::new_root(tree).first_child().and_then(T::cast).ok_or(())
-}
-
-pub(crate) fn to_parser_tokens(text: &str, lexer_tokens: &[lexer::Token]) -> ::parser::Tokens {
-    let mut off = 0;
-    let mut res = parser::Tokens::default();
-    let mut was_joint = false;
-    for t in lexer_tokens {
-        if t.kind.is_trivia() {
-            was_joint = false;
-        } else {
-            if t.kind == SyntaxKind::IDENT {
-                let token_text = &text[off..][..usize::from(t.len)];
-                let contextual_kw =
-                    SyntaxKind::from_contextual_keyword(token_text).unwrap_or(SyntaxKind::IDENT);
-                res.push_ident(contextual_kw);
-            } else {
-                if was_joint {
-                    res.was_joint();
-                }
-                res.push(t.kind);
-            }
-            was_joint = true;
-        }
-        off += usize::from(t.len);
-    }
-    res
 }
