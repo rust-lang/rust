@@ -136,11 +136,11 @@ impl ArgAttributesExt for ArgAttributes {
 }
 
 pub trait LlvmType {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type;
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type;
 }
 
 impl LlvmType for Reg {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
         match self.kind {
             RegKind::Integer => cx.type_ix(self.size.bits()),
             RegKind::Float => match self.size.bits() {
@@ -154,7 +154,7 @@ impl LlvmType for Reg {
 }
 
 impl LlvmType for CastTarget {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
         let rest_ll_unit = self.rest.unit.llvm_type(cx);
         let (rest_count, rem_bytes) = if self.rest.unit.size.bytes() == 0 {
             (0, 0)
@@ -212,7 +212,7 @@ pub trait ArgAbiExt<'ll, 'tcx> {
     );
 }
 
-impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
+impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     /// Gets the LLVM type for a place of the original Rust type of
     /// this argument/return, i.e., the result of `type_of::type_of`.
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
@@ -287,7 +287,7 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
 
     fn store_fn_arg(
         &self,
-        bx: &mut Builder<'a, 'll, 'tcx>,
+        bx: &mut Builder<'_, 'll, 'tcx>,
         idx: &mut usize,
         dst: PlaceRef<'tcx, &'ll Value>,
     ) {
@@ -314,7 +314,7 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     }
 }
 
-impl ArgAbiMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+impl<'ll, 'tcx> ArgAbiMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn store_fn_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
@@ -336,15 +336,15 @@ impl ArgAbiMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-pub trait FnAbiLlvmExt<'tcx> {
+pub trait FnAbiLlvmExt<'ll, 'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value);
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value);
 }
 
-impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
+impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.
@@ -505,7 +505,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value) {
         if self.ret.layout.abi.is_uninhabited() {
             llvm::Attribute::NoReturn.apply_callsite(llvm::AttributePlace::Function, callsite);
         }
@@ -610,7 +610,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 }
 
-impl AbiBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+impl<'tcx> AbiBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
     fn apply_attrs_callsite(&mut self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, callsite: Self::Value) {
         fn_abi.apply_attrs_callsite(self, callsite)
     }

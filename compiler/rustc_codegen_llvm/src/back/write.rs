@@ -46,7 +46,7 @@ pub fn llvm_err(handler: &rustc_errors::Handler, msg: &str) -> FatalError {
     }
 }
 
-pub fn write_output_file(
+pub fn write_output_file<'ll>(
     handler: &rustc_errors::Handler,
     target: &'ll llvm::TargetMachine,
     pm: &llvm::PassManager<'ll>,
@@ -205,8 +205,11 @@ pub fn target_machine_factory(
     let use_init_array =
         !sess.opts.debugging_opts.use_ctors_section.unwrap_or(sess.target.use_ctors_section);
 
+    let path_mapping = sess.source_map().path_mapping().clone();
+
     Arc::new(move |config: TargetMachineFactoryConfig| {
-        let split_dwarf_file = config.split_dwarf_file.unwrap_or_default();
+        let split_dwarf_file =
+            path_mapping.map_prefix(config.split_dwarf_file.unwrap_or_default()).0;
         let split_dwarf_file = CString::new(split_dwarf_file.to_str().unwrap()).unwrap();
 
         let tm = unsafe {

@@ -24,7 +24,7 @@ use rustc_target::abi::{
 use std::ops::Range;
 use tracing::debug;
 
-pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
+pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
     let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
@@ -127,7 +127,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
     cx.const_struct(&llvals, true)
 }
 
-pub fn codegen_static_initializer(
+pub fn codegen_static_initializer<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
 ) -> Result<(&'ll Value, &'tcx Allocation), ErrorHandled> {
@@ -135,7 +135,7 @@ pub fn codegen_static_initializer(
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
 
-fn set_global_alignment(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Align) {
+fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Align) {
     // The target may require greater alignment for globals than the type does.
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller.  Rust doesn't support this yet.
@@ -152,7 +152,7 @@ fn set_global_alignment(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align: Alig
     }
 }
 
-fn check_and_apply_linkage(
+fn check_and_apply_linkage<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
@@ -206,11 +206,11 @@ fn check_and_apply_linkage(
     }
 }
 
-pub fn ptrcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+pub fn ptrcast<'ll>(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
     unsafe { llvm::LLVMConstPointerCast(val, ty) }
 }
 
-impl CodegenCx<'ll, 'tcx> {
+impl<'ll> CodegenCx<'ll, '_> {
     crate fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMConstBitCast(val, ty) }
     }
@@ -344,7 +344,7 @@ impl CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl StaticMethods for CodegenCx<'ll, 'tcx> {
+impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
     fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
         if let Some(&gv) = self.const_globals.borrow().get(&cv) {
             unsafe {

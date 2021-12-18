@@ -964,7 +964,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
     }
 }
 
-impl EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_def_ids(&mut self) {
         if self.is_proc_macro {
             return;
@@ -1894,7 +1894,7 @@ impl EncodeContext<'a, 'tcx> {
 }
 
 // FIXME(eddyb) make metadata encoding walk over all definitions, instead of HIR.
-impl Visitor<'tcx> for EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for EncodeContext<'a, 'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -1927,7 +1927,7 @@ impl Visitor<'tcx> for EncodeContext<'a, 'tcx> {
     }
 }
 
-impl EncodeContext<'a, 'tcx> {
+impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_fields(&mut self, adt_def: &ty::AdtDef) {
         for (variant_index, variant) in adt_def.variants.iter_enumerated() {
             for (field_index, _field) in variant.fields.iter().enumerate() {

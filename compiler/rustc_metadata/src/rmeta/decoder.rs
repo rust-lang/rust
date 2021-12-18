@@ -628,7 +628,7 @@ where
 
 implement_ty_decoder!(DecodeContext<'a, 'tcx>);
 
-impl MetadataBlob {
+impl<'tcx> MetadataBlob {
     crate fn new(metadata_ref: MetadataRef) -> MetadataBlob {
         MetadataBlob(Lrc::new(metadata_ref))
     }
@@ -697,7 +697,7 @@ impl CrateRoot<'_> {
         &self.triple
     }
 
-    crate fn decode_crate_deps(
+    crate fn decode_crate_deps<'a>(
         &self,
         metadata: &'a MetadataBlob,
     ) -> impl ExactSizeIterator<Item = CrateDep> + Captures<'a> {

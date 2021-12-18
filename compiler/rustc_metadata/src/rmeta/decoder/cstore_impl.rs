@@ -83,7 +83,7 @@ impl IntoArgs for (CrateNum, DefId) {
     }
 }
 
-impl IntoArgs for ty::InstanceDef<'tcx> {
+impl<'tcx> IntoArgs for ty::InstanceDef<'tcx> {
     fn into_args(self) -> (DefId, DefId) {
         (self.def_id(), self.def_id())
     }

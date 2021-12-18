@@ -38,7 +38,7 @@ impl fmt::Debug for Type {
     }
 }
 
-impl CodegenCx<'ll, 'tcx> {
+impl<'ll> CodegenCx<'ll, '_> {
     crate fn type_named_struct(&self, name: &str) -> &'ll Type {
         let name = SmallCStr::new(name);
         unsafe { llvm::LLVMStructCreateNamed(self.llcx, name.as_ptr()) }
@@ -133,7 +133,7 @@ impl CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn type_i1(&self) -> &'ll Type {
         unsafe { llvm::LLVMInt1TypeInContext(self.llcx) }
     }
@@ -252,7 +252,7 @@ impl Type {
     }
 }
 
-impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn backend_type(&self, layout: TyAndLayout<'tcx>) -> &'ll Type {
         layout.llvm_type(self)
     }

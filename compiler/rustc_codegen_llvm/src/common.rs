@@ -65,7 +65,7 @@ pub struct Funclet<'ll> {
     operand: OperandBundleDef<'ll>,
 }
 
-impl Funclet<'ll> {
+impl<'ll> Funclet<'ll> {
     pub fn new(cleanuppad: &'ll Value) -> Self {
         Funclet { cleanuppad, operand: OperandBundleDef::new("funclet", &[cleanuppad]) }
     }
@@ -79,7 +79,7 @@ impl Funclet<'ll> {
     }
 }
 
-impl BackendTypes for CodegenCx<'ll, 'tcx> {
+impl<'ll> BackendTypes for CodegenCx<'ll, '_> {
     type Value = &'ll Value;
     // FIXME(eddyb) replace this with a `Function` "subclass" of `Value`.
     type Function = &'ll Value;
@@ -93,7 +93,7 @@ impl BackendTypes for CodegenCx<'ll, 'tcx> {
     type DIVariable = &'ll llvm::debuginfo::DIVariable;
 }
 
-impl CodegenCx<'ll, 'tcx> {
+impl<'ll> CodegenCx<'ll, '_> {
     pub fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
         unsafe { llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint) }
     }
@@ -145,7 +145,7 @@ impl CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn const_null(&self, t: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMConstNull(t) }
     }
@@ -327,14 +327,18 @@ pub fn val_ty(v: &Value) -> &Type {
     unsafe { llvm::LLVMTypeOf(v) }
 }
 
-pub fn bytes_in_context(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+pub fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
         llvm::LLVMConstStringInContext(llcx, ptr, bytes.len() as c_uint, True)
     }
 }
 
-pub fn struct_in_context(llcx: &'a llvm::Context, elts: &[&'a Value], packed: bool) -> &'a Value {
+pub fn struct_in_context<'ll>(
+    llcx: &'ll llvm::Context,
+    elts: &[&'ll Value],
+    packed: bool,
+) -> &'ll Value {
     unsafe {
         llvm::LLVMConstStructInContext(llcx, elts.as_ptr(), elts.len() as c_uint, packed as Bool)
     }

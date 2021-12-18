@@ -13,7 +13,7 @@ use rustc_session::config::CrateType;
 use rustc_target::spec::RelocModel;
 use tracing::debug;
 
-impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn predefine_static(
         &self,
         def_id: DefId,
@@ -92,7 +92,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl CodegenCx<'ll, 'tcx> {
+impl CodegenCx<'_, '_> {
     /// Whether a definition or declaration can be assumed to be local to a group of
     /// libraries that form a single DSO or executable.
     pub(crate) unsafe fn should_assume_dso_local(

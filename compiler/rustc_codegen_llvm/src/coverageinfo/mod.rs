@@ -56,7 +56,7 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
     }
 }
 
-impl CoverageInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> CoverageInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn coverageinfo_finalize(&self) {
         mapgen::finalize(self)
     }
@@ -96,7 +96,7 @@ impl CoverageInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
     fn set_function_source_hash(
         &mut self,
         instance: Instance<'tcx>,
@@ -184,7 +184,7 @@ impl CoverageInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx> {
+fn declare_unused_fn<'tcx>(cx: &CodegenCx<'_, 'tcx>, def_id: &DefId) -> Instance<'tcx> {
     let tcx = cx.tcx;
 
     let instance = Instance::new(
@@ -220,7 +220,7 @@ fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx
     instance
 }
 
-fn codegen_unused_fn_and_counter(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) {
+fn codegen_unused_fn_and_counter<'tcx>(cx: &CodegenCx<'_, 'tcx>, instance: Instance<'tcx>) {
     let llfn = cx.get_fn(instance);
     let llbb = Builder::append_block(cx, llfn, "unused_function");
     let mut bx = Builder::build(cx, llbb);
@@ -237,8 +237,8 @@ fn codegen_unused_fn_and_counter(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'
     bx.ret_void();
 }
 
-fn add_unused_function_coverage(
-    cx: &CodegenCx<'ll, 'tcx>,
+fn add_unused_function_coverage<'tcx>(
+    cx: &CodegenCx<'_, 'tcx>,
     instance: Instance<'tcx>,
     def_id: DefId,
 ) {
@@ -268,7 +268,7 @@ fn add_unused_function_coverage(
 /// required by LLVM InstrProf source-based coverage instrumentation. Use
 /// `bx.get_pgo_func_name_var()` to ensure the variable is only created once per
 /// `Instance`.
-fn create_pgo_func_name_var(
+fn create_pgo_func_name_var<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
 ) -> &'ll llvm::Value {

@@ -32,7 +32,7 @@ use cc::windows_registry;
 use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::lazy::OnceCell;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
@@ -504,17 +504,19 @@ fn escape_stdout_stderr_string(s: &[u8]) -> String {
 
 const LLVM_DWP_EXECUTABLE: &'static str = "rust-llvm-dwp";
 
-/// Invoke `llvm-dwp` (shipped alongside rustc) to link `dwo` files from Split DWARF into a `dwp`
+/// Invoke `llvm-dwp` (shipped alongside rustc) to link debuginfo in object files into a `dwp`
 /// file.
-fn link_dwarf_object<'a>(sess: &'a Session, executable_out_filename: &Path) {
+fn link_dwarf_object<'a, I>(sess: &'a Session, executable_out_filename: &Path, object_files: I)
+where
+    I: IntoIterator<Item: AsRef<OsStr>>,
+{
     info!("preparing dwp to {}.dwp", executable_out_filename.to_str().unwrap());
 
     let dwp_out_filename = executable_out_filename.with_extension("dwp");
     let mut cmd = Command::new(LLVM_DWP_EXECUTABLE);
-    cmd.arg("-e");
-    cmd.arg(executable_out_filename);
     cmd.arg("-o");
     cmd.arg(&dwp_out_filename);
+    cmd.args(object_files);
 
     let mut new_path = sess.get_tools_search_paths(false);
     if let Some(path) = env::var_os("PATH") {
@@ -898,7 +900,14 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         SplitDebuginfo::Packed if sess.target.is_like_msvc => {}
 
         // ... and otherwise we're processing a `*.dwp` packed dwarf file.
-        SplitDebuginfo::Packed => link_dwarf_object(sess, &out_filename),
+        // We cannot rely on the .o paths in the exectuable because they may have been
+        // remapped by --remap-path-prefix and therefore invalid. So we need to provide
+        // the .o paths explicitly
+        SplitDebuginfo::Packed => link_dwarf_object(
+            sess,
+            &out_filename,
+            codegen_results.modules.iter().filter_map(|m| m.object.as_ref()),
+        ),
     }
 
     let strip = strip_value(sess);
