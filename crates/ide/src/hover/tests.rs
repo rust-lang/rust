@@ -3383,6 +3383,30 @@ mod return_keyword {}
 }
 
 #[test]
+fn hover_keyword_as_primitive() {
+    check(
+        r#"
+//- /main.rs crate:main deps:std
+type F = f$0n(i32) -> i32;
+//- /libstd.rs crate:std
+/// Docs for prim_fn
+mod prim_fn {}
+"#,
+        expect![[r#"
+                *fn*
+
+                ```rust
+                fn
+                ```
+
+                ---
+
+                Docs for prim_fn
+            "#]],
+    );
+}
+
+#[test]
 fn hover_builtin() {
     check(
         r#"

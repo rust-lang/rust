@@ -237,9 +237,15 @@ pub(super) fn keyword(
     if !token.kind().is_keyword() || !config.documentation.is_some() {
         return None;
     }
-    let famous_defs = FamousDefs(sema, sema.scope(&token.parent()?).krate());
-    // std exposes {}_keyword modules with docstrings on the root to document keywords
-    let keyword_mod = format!("{}_keyword", token.text());
+    let parent = token.parent()?;
+    let famous_defs = FamousDefs(sema, sema.scope(&parent).krate());
+    let keyword_mod = if token.kind() == T![fn] && ast::FnPtrType::cast(parent).is_some() {
+        // treat fn keyword inside function pointer type as primitive
+        format!("prim_{}", token.text())
+    } else {
+        // std exposes {}_keyword modules with docstrings on the root to document keywords
+        format!("{}_keyword", token.text())
+    };
     let doc_owner = find_std_module(&famous_defs, &keyword_mod)?;
     let docs = doc_owner.attrs(sema.db).docs()?;
     let markup = process_markup(
