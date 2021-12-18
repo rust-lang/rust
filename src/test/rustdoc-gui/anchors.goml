@@ -16,7 +16,7 @@ assert-css: (".fqn .in-band a:nth-of-type(2)", {"color": "rgb(173, 68, 142)"})
 assert-css: (".srclink", {"color": "rgb(0, 0, 0)"})
 assert-css: (".srclink", {"color": "rgb(0, 0, 0)"})
 
-assert-css: ("#top-doc-prose-title", {"color": "rgb(0, 0, 0)"})
+assert-css: ("#struct\.HeavilyDocumentedStruct\.top-doc-prose-title", {"color": "rgb(0, 0, 0)"})
 
 assert-css: (".sidebar a", {"color": "rgb(0, 0, 0)"})
 assert-css: (".in-band a", {"color": "rgb(0, 0, 0)"})
@@ -48,19 +48,19 @@ assert-css: (".top-doc .docblock .section-header:not(:first-child)", {"margin-le
 
 // Now let's check some other docblock headings...
 // First the impl block docs.
-move-cursor-to: "#title-for-struct-impl-doc"
+move-cursor-to: "#impl\.unknown\.title-for-struct-impl-doc"
 assert-css: (
-    "#title-for-struct-impl-doc > a::before",
+    "#impl\.unknown\.title-for-struct-impl-doc > a::before",
     {"left": "-25px", "padding-right": "10px"},
 )
-assert-css: ("#title-for-struct-impl-doc", {"margin-left": "0px"})
+assert-css: ("#impl\.unknown\.title-for-struct-impl-doc", {"margin-left": "0px"})
 // Now a method docs.
-move-cursor-to: "#title-for-struct-impl-item-doc"
+move-cursor-to: "#method\.do_nothing\.title-for-struct-impl-item-doc"
 assert-css: (
-    "#title-for-struct-impl-item-doc > a::before",
+    "#method\.do_nothing\.title-for-struct-impl-item-doc > a::before",
     {"left": "-25px", "padding-right": "10px"},
 )
-assert-css: ("#title-for-struct-impl-item-doc", {"margin-left": "0px"})
+assert-css: ("#method\.do_nothing\.title-for-struct-impl-item-doc", {"margin-left": "0px"})
 
 // Finally, we want to ensure that if the first element of the doc block isn't a heading,
 // if there is a heading afterwards, it won't have the indent.
