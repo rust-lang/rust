@@ -312,6 +312,7 @@
 #![feature(once_cell)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
+#![feature(panic_can_unwind)]
 #![feature(panic_unwind)]
 #![feature(pin_static_ref)]
 #![feature(portable_simd)]
