@@ -1728,7 +1728,7 @@ impl Suggestion {
                 }
                 sugg
             }
-            Self::RemoveDisambiguator => return vec![(sp, path_str.into())],
+            Self::RemoveDisambiguator => vec![(sp, path_str.into())],
         }
     }
 }
