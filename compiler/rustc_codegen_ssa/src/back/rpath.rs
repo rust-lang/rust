@@ -23,9 +23,12 @@ pub fn get_rpath_flags(config: &mut RPathConfig<'_>) -> Vec<String> {
     let rpaths = get_rpaths(config);
     let mut flags = rpaths_to_flags(&rpaths);
 
-    // Use DT_RUNPATH instead of DT_RPATH if available
     if config.linker_is_gnu {
+        // Use DT_RUNPATH instead of DT_RPATH if available
         flags.push("-Wl,--enable-new-dtags".to_owned());
+
+        // Set DF_ORIGIN for substitute $ORIGIN
+        flags.push("-Wl,-z,origin".to_owned());
     }
 
     flags
