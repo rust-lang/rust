@@ -170,7 +170,7 @@ where
 /// clone_on_write.values.to_mut().push(3);
 /// println!("clone_on_write = {:?}", clone_on_write.values);
 ///
-/// // The data was mutated. Let check it out.
+/// // The data was mutated. Let's check it out.
 /// match clone_on_write {
 ///     Items { values: Cow::Owned(_) } => println!("clone_on_write contains owned data"),
 ///     _ => panic!("expect owned data"),
