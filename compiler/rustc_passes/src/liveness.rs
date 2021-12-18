@@ -198,7 +198,7 @@ struct IrMaps<'tcx> {
     lnks: IndexVec<LiveNode, LiveNodeKind>,
 }
 
-impl IrMaps<'tcx> {
+impl<'tcx> IrMaps<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> IrMaps<'tcx> {
         IrMaps {
             tcx,

@@ -6,7 +6,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(crate_visibility_modifier)]
-#![feature(in_band_lifetimes)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(nll)]

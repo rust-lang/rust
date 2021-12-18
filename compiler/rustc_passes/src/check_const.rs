@@ -78,7 +78,7 @@ impl<'tcx> CheckConstTraitVisitor<'tcx> {
 impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for CheckConstTraitVisitor<'tcx> {
     /// check for const trait impls, and errors if the impl uses provided/default functions
     /// of the trait being implemented; as those provided functions can be non-const.
-    fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
+    fn visit_item<'hir>(&mut self, item: &'hir hir::Item<'hir>) {
         let _: Option<_> = try {
             if let hir::ItemKind::Impl(ref imp) = item.kind {
                 if let hir::Constness::Const = imp.constness {
@@ -134,11 +134,11 @@ impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for CheckConstTraitVisitor<
         };
     }
 
-    fn visit_trait_item(&mut self, _: &'hir hir::TraitItem<'hir>) {}
+    fn visit_trait_item<'hir>(&mut self, _: &'hir hir::TraitItem<'hir>) {}
 
-    fn visit_impl_item(&mut self, _: &'hir hir::ImplItem<'hir>) {}
+    fn visit_impl_item<'hir>(&mut self, _: &'hir hir::ImplItem<'hir>) {}
 
-    fn visit_foreign_item(&mut self, _: &'hir hir::ForeignItem<'hir>) {}
+    fn visit_foreign_item<'hir>(&mut self, _: &'hir hir::ForeignItem<'hir>) {}
 }
 
 #[derive(Copy, Clone)]
