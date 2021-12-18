@@ -315,11 +315,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
-                    _ => bug!(
-                        "while adjusting {:?}, can't compose {:?} and {:?}",
-                        expr,
-                        entry.get(),
-                        adj
+                    _ => self.tcx.sess.delay_span_bug(
+                        expr.span,
+                        &format!(
+                            "while adjusting {:?}, can't compose {:?} and {:?}",
+                            expr,
+                            entry.get(),
+                            adj
+                        ),
                     ),
                 };
                 *entry.get_mut() = adj;
