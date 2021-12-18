@@ -176,16 +176,13 @@ window.initSearch = function(rawSearchIndex) {
             var ar = [];
             for (var entry in results) {
                 if (hasOwnPropertyRustdoc(results, entry)) {
-                    ar.push(results[entry]);
+                    var result = results[entry];
+                    result.word = searchWords[result.id];
+                    result.item = searchIndex[result.id] || {};
+                    ar.push(result);
                 }
             }
             results = ar;
-            var i, len, result;
-            for (i = 0, len = results.length; i < len; ++i) {
-                result = results[i];
-                result.word = searchWords[result.id];
-                result.item = searchIndex[result.id] || {};
-            }
             // if there are no results then return to default and fail
             if (results.length === 0) {
                 return [];
@@ -258,7 +255,7 @@ window.initSearch = function(rawSearchIndex) {
                 return 0;
             });
 
-            for (i = 0, len = results.length; i < len; ++i) {
+            for (var i = 0, len = results.length; i < len; ++i) {
                 result = results[i];
 
                 // this validation does not make sense when searching by types
@@ -344,7 +341,17 @@ window.initSearch = function(rawSearchIndex) {
             return MAX_LEV_DISTANCE + 1;
         }
 
-        // Check for type name and type generics (if any).
+        /**
+          * This function checks if the object (`obj`) matches the given type (`val`) and its
+          * generics (if any).
+          *
+          * @param {Object} obj
+          * @param {string} val
+          * @param {boolean} literalSearch
+          *
+          * @return {integer} - Returns a Levenshtein distance to the best match. If there is
+          *                     no match, returns `MAX_LEV_DISTANCE + 1`.
+          */
         function checkType(obj, val, literalSearch) {
             var lev_distance = MAX_LEV_DISTANCE + 1;
             var tmp_lev = MAX_LEV_DISTANCE + 1;
@@ -363,24 +370,23 @@ window.initSearch = function(rawSearchIndex) {
                                 elems[obj[GENERICS_DATA][x][NAME]] += 1;
                             }
 
-                            var allFound = true;
                             len = val.generics.length;
                             for (x = 0; x < len; ++x) {
                                 firstGeneric = val.generics[x];
                                 if (elems[firstGeneric]) {
                                     elems[firstGeneric] -= 1;
                                 } else {
-                                    allFound = false;
-                                    break;
+                                    // Something wasn't found and this is a literal search so
+                                    // abort and return a "failing" distance.
+                                    return MAX_LEV_DISTANCE + 1;
                                 }
                             }
-                            if (allFound) {
-                                return true;
-                            }
+                            // Everything was found, success!
+                            return 0;
                         }
-                        return false;
+                        return MAX_LEV_DISTANCE + 1;
                     }
-                    return true;
+                    return 0;
                 } else {
                     // If the type has generics but don't match, then it won't return at this point.
                     // Otherwise, `checkGenerics` will return 0 and it'll return.
@@ -392,14 +398,15 @@ window.initSearch = function(rawSearchIndex) {
                     }
                 }
             } else if (literalSearch) {
+                var found = false;
                 if ((!val.generics || val.generics.length === 0) &&
                       obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
-                    return obj[GENERICS_DATA].some(
+                    found = obj[GENERICS_DATA].some(
                         function(gen) {
                             return gen[NAME] === val.name;
                         });
                 }
-                return false;
+                return found ? 0 : MAX_LEV_DISTANCE + 1;
             }
             lev_distance = Math.min(levenshtein(obj[NAME], val.name), lev_distance);
             if (lev_distance <= MAX_LEV_DISTANCE) {
@@ -430,6 +437,17 @@ window.initSearch = function(rawSearchIndex) {
             return Math.min(lev_distance, tmp_lev) + 1;
         }
 
+        /**
+         * This function checks if the object (`obj`) has an argument with the given type (`val`).
+         *
+         * @param {Object} obj
+         * @param {string} val
+         * @param {boolean} literalSearch
+         * @param {integer} typeFilter
+         *
+         * @return {integer} - Returns a Levenshtein distance to the best match. If there is no
+         *                      match, returns `MAX_LEV_DISTANCE + 1`.
+         */
         function findArg(obj, val, literalSearch, typeFilter) {
             var lev_distance = MAX_LEV_DISTANCE + 1;
 
@@ -441,19 +459,15 @@ window.initSearch = function(rawSearchIndex) {
                         continue;
                     }
                     tmp = checkType(tmp, val, literalSearch);
-                    if (literalSearch) {
-                        if (tmp) {
-                            return true;
-                        }
+                    if (tmp === 0) {
+                        return 0;
+                    } else if (literalSearch) {
                         continue;
                     }
                     lev_distance = Math.min(tmp, lev_distance);
-                    if (lev_distance === 0) {
-                        return 0;
-                    }
                 }
             }
-            return literalSearch ? false : lev_distance;
+            return literalSearch ? MAX_LEV_DISTANCE + 1 : lev_distance;
         }
 
         function checkReturned(obj, val, literalSearch, typeFilter) {
@@ -470,19 +484,15 @@ window.initSearch = function(rawSearchIndex) {
                         continue;
                     }
                     tmp = checkType(tmp, val, literalSearch);
-                    if (literalSearch) {
-                        if (tmp) {
-                            return true;
-                        }
+                    if (tmp === 0) {
+                        return 0;
+                    } else if (literalSearch) {
                         continue;
                     }
                     lev_distance = Math.min(tmp, lev_distance);
-                    if (lev_distance === 0) {
-                        return 0;
-                    }
                 }
             }
-            return literalSearch ? false : lev_distance;
+            return literalSearch ? MAX_LEV_DISTANCE + 1 : lev_distance;
         }
 
         function checkPath(contains, lastElem, ty) {
@@ -612,6 +622,44 @@ window.initSearch = function(rawSearchIndex) {
             onEach(crateAliases, pushFunc);
         }
 
+        /**
+         * This function adds the given result into the provided `res` map if it matches the
+         * following condition:
+         *
+         * * If it is a "literal search" (`isExact`), then `lev` must be 0.
+         * * If it is not a "literal search", `lev` must be <= `MAX_LEV_DISTANCE`.
+         *
+         * The `res` map contains information which will be used to sort the search results:
+         *
+         * * `fullId` is a `string`` used as the key of the object we use for the `res` map.
+         * * `id` is the index in both `searchWords` and `searchIndex` arrays for this element.
+         * * `index` is an `integer`` used to sort by the position of the word in the item's name.
+         * * `lev` is the main metric used to sort the search results.
+         *
+         * @param {boolean} isExact
+         * @param {Object} res
+         * @param {string} fullId
+         * @param {integer} id
+         * @param {integer} index
+         * @param {integer} lev
+         */
+        function addIntoResults(isExact, res, fullId, id, index, lev) {
+            if (lev === 0 || (!isExact && lev <= MAX_LEV_DISTANCE)) {
+                if (res[fullId] !== undefined) {
+                    var result = res[fullId];
+                    if (result.dontValidate || result.lev <= lev) {
+                        return;
+                    }
+                }
+                res[fullId] = {
+                    id: id,
+                    index: index,
+                    dontValidate: isExact,
+                    lev: lev,
+                };
+            }
+        }
+
         // quoted values mean literal search
         var nSearchWords = searchWords.length;
         var i, it;
@@ -634,28 +682,11 @@ window.initSearch = function(rawSearchIndex) {
                 fullId = ty.id;
 
                 if (searchWords[i] === val.name
-                    && typePassesFilter(typeFilter, searchIndex[i].ty)
-                    && results[fullId] === undefined) {
-                    results[fullId] = {
-                        id: i,
-                        index: -1,
-                        dontValidate: true,
-                    };
+                    && typePassesFilter(typeFilter, searchIndex[i].ty)) {
+                    addIntoResults(true, results, fullId, i, -1, 0);
                 }
-                if (in_args && results_in_args[fullId] === undefined) {
-                    results_in_args[fullId] = {
-                        id: i,
-                        index: -1,
-                        dontValidate: true,
-                    };
-                }
-                if (returned && results_returned[fullId] === undefined) {
-                    results_returned[fullId] = {
-                        id: i,
-                        index: -1,
-                        dontValidate: true,
-                    };
-                }
+                addIntoResults(true, results_in_args, fullId, i, -1, in_args);
+                addIntoResults(true, results_returned, fullId, i, -1, returned);
             }
             query.inputs = [val];
             query.output = val;
@@ -684,39 +715,27 @@ window.initSearch = function(rawSearchIndex) {
                 fullId = ty.id;
 
                 returned = checkReturned(ty, output, true, NO_TYPE_FILTER);
-                if (output.name === "*" || returned) {
+                if (output.name === "*" || returned === 0) {
                     in_args = false;
                     var is_module = false;
 
                     if (input === "*") {
                         is_module = true;
                     } else {
-                        var allFound = true;
-                        for (it = 0, len = inputs.length; allFound && it < len; it++) {
-                            allFound = checkType(type, inputs[it], true);
+                        var firstNonZeroDistance = 0;
+                        for (it = 0, len = inputs.length; it < len; it++) {
+                            var distance = checkType(type, inputs[it], true);
+                            if (distance > 0) {
+                                firstNonZeroDistance = distance;
+                                break;
+                            }
                         }
-                        in_args = allFound;
+                        in_args = firstNonZeroDistance;
                     }
-                    if (in_args) {
-                        results_in_args[fullId] = {
-                            id: i,
-                            index: -1,
-                            dontValidate: true,
-                        };
-                    }
-                    if (returned) {
-                        results_returned[fullId] = {
-                            id: i,
-                            index: -1,
-                            dontValidate: true,
-                        };
-                    }
+                    addIntoResults(true, results_in_args, fullId, i, -1, in_args);
+                    addIntoResults(true, results_returned, fullId, i, -1, returned);
                     if (is_module) {
-                        results[fullId] = {
-                            id: i,
-                            index: -1,
-                            dontValidate: true,
-                        };
+                        addIntoResults(true, results, fullId, i, -1, 0);
                     }
                 }
             }
@@ -788,41 +807,14 @@ window.initSearch = function(rawSearchIndex) {
                         lev = 0;
                     }
                 }
-                if (in_args <= MAX_LEV_DISTANCE) {
-                    if (results_in_args[fullId] === undefined) {
-                        results_in_args[fullId] = {
-                            id: j,
-                            index: index,
-                            lev: in_args,
-                        };
-                    }
-                    results_in_args[fullId].lev =
-                        Math.min(results_in_args[fullId].lev, in_args);
-                }
-                if (returned <= MAX_LEV_DISTANCE) {
-                    if (results_returned[fullId] === undefined) {
-                        results_returned[fullId] = {
-                            id: j,
-                            index: index,
-                            lev: returned,
-                        };
-                    }
-                    results_returned[fullId].lev =
-                        Math.min(results_returned[fullId].lev, returned);
-                }
+                addIntoResults(false, results_in_args, fullId, j, index, in_args);
+                addIntoResults(false, results_returned, fullId, j, index, returned);
                 if (typePassesFilter(typeFilter, ty.ty) &&
                         (index !== -1 || lev <= MAX_LEV_DISTANCE)) {
                     if (index !== -1 && paths.length < 2) {
                         lev = 0;
                     }
-                    if (results[fullId] === undefined) {
-                        results[fullId] = {
-                            id: j,
-                            index: index,
-                            lev: lev,
-                        };
-                    }
-                    results[fullId].lev = Math.min(results[fullId].lev, lev);
+                    addIntoResults(false, results, fullId, j, index, lev);
                 }
             }
         }
