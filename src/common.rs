@@ -359,10 +359,6 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         crate::constant::codegen_const_value(self, const_loc, self.tcx.caller_location_ty())
     }
 
-    pub(crate) fn triple(&self) -> &target_lexicon::Triple {
-        self.module.isa().triple()
-    }
-
     pub(crate) fn anonymous_str(&mut self, msg: &str) -> Value {
         let mut data_ctx = DataContext::new();
         data_ctx.define(msg.as_bytes().to_vec().into_boxed_slice());

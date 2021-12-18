@@ -1067,7 +1067,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         kw.Try, (v f, v data, v _catch_fn) {
             // FIXME once unwinding is supported, change this to actually catch panics
             let f_sig = fx.bcx.func.import_signature(Signature {
-                call_conv: CallConv::triple_default(fx.triple()),
+                call_conv: fx.target_config.default_call_conv,
                 params: vec![AbiParam::new(fx.bcx.func.dfg.value_type(data))],
                 returns: vec![],
             });
