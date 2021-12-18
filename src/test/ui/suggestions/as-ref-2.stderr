@@ -11,8 +11,8 @@ LL |     let _y = foo;
 note: this function takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
    |
-LL |     pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {
-   |                                      ^^^^
+LL |     pub const fn map<U, F>(self, f: F) -> Option<U>
+   |                            ^^^^
 help: consider calling `.as_ref()` to borrow the type's contents
    |
 LL |     let _x: Option<Struct> = foo.as_ref().map(|s| bar(&s));
