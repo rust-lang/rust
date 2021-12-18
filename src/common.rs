@@ -1,3 +1,4 @@
+use cranelift_codegen::isa::TargetFrontendConfig;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
@@ -235,6 +236,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) cx: &'clif mut crate::CodegenCx<'tcx>,
     pub(crate) module: &'m mut dyn Module,
     pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) target_config: TargetFrontendConfig, // Cached from module
     pub(crate) pointer_type: Type, // Cached from module
     pub(crate) constants_cx: ConstantCx,
 

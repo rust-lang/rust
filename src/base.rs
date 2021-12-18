@@ -49,13 +49,15 @@ pub(crate) fn codegen_fn<'tcx>(
         (0..mir.basic_blocks().len()).map(|_| bcx.create_block()).collect();
 
     // Make FunctionCx
-    let pointer_type = module.target_config().pointer_type();
+    let target_config = module.target_config();
+    let pointer_type = target_config.pointer_type();
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
     let mut fx = FunctionCx {
         cx,
         module,
         tcx,
+        target_config,
         pointer_type,
         constants_cx: ConstantCx::new(),
 
@@ -676,7 +678,7 @@ fn codegen_stmt<'tcx>(
                         // FIXME use emit_small_memset where possible
                         let addr = lval.to_ptr().get_addr(fx);
                         let val = operand.load_scalar(fx);
-                        fx.bcx.call_memset(fx.module.target_config(), addr, val, times);
+                        fx.bcx.call_memset(fx.target_config, addr, val, times);
                     } else {
                         let loop_block = fx.bcx.create_block();
                         let loop_block2 = fx.bcx.create_block();
@@ -797,7 +799,7 @@ fn codegen_stmt<'tcx>(
             let elem_size: u64 = pointee.size.bytes();
             let bytes =
                 if elem_size != 1 { fx.bcx.ins().imul_imm(count, elem_size as i64) } else { count };
-            fx.bcx.call_memcpy(fx.module.target_config(), dst, src, bytes);
+            fx.bcx.call_memcpy(fx.target_config, dst, src, bytes);
         }
     }
 }
