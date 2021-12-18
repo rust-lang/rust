@@ -345,7 +345,20 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     }
     const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
     const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer-${platform}${ext}`);
-    const exists = await vscode.workspace.fs.stat(dest).then(() => true, () => false);
+    const bundled = vscode.Uri.joinPath(config.installUri, "server", `rust-analyzer${ext}`);
+    const bundledExists = await vscode.workspace.fs.stat(bundled).then(() => true, () => false);
+    let exists = await vscode.workspace.fs.stat(dest).then(() => true, () => false);
+    if (bundledExists) {
+        await state.updateServerVersion(config.package.version);
+        if (!await isNixOs()) {
+            return bundled.fsPath;
+        }
+        if (!exists) {
+            await vscode.workspace.fs.copy(bundled, dest);
+            await patchelf(dest);
+            exists = true;
+        }
+    }
     if (!exists) {
         await state.updateServerVersion(undefined);
     }

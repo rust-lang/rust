@@ -10,4 +10,5 @@
 !package-lock.json
 !package.json
 !ra_syntax_tree.tmGrammar.json
+!server
 !README.md
