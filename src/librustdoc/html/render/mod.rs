@@ -567,8 +567,10 @@ fn document_full_inner(
     is_collapsible: bool,
     heading_offset: HeadingOffset,
 ) {
-    if let Some(s) = item.collapsed_doc_value() {
-        debug!("Doc block: =====\n{}\n=====", s);
+    // NOTE: "collapsed" here is unrelated to `is_collapsible`, it just combines `#[doc]` and sugared attributes
+    let docs = item.collapsed_doc_value();
+    if !docs.is_empty() {
+        debug!("Doc block: =====\n{}\n=====", docs);
         if is_collapsible {
             w.write_str(
                 "<details class=\"rustdoc-toggle top-doc\" open>\
@@ -576,10 +578,10 @@ fn document_full_inner(
                      <span>Expand description</span>\
                 </summary>",
             );
-            render_markdown(w, cx, &s, item.links(cx), heading_offset);
+            render_markdown(w, cx, &docs, item.links(cx), heading_offset);
             w.write_str("</details>");
         } else {
-            render_markdown(w, cx, &s, item.links(cx), heading_offset);
+            render_markdown(w, cx, &docs, item.links(cx), heading_offset);
         }
     }
 
@@ -1612,7 +1614,8 @@ fn render_impl(
             write!(w, "</summary>")
         }
 
-        if let Some(ref dox) = i.impl_item.collapsed_doc_value() {
+        let dox = i.impl_item.collapsed_doc_value();
+        if !dox.is_empty() {
             let mut ids = cx.id_map.borrow_mut();
             write!(
                 w,

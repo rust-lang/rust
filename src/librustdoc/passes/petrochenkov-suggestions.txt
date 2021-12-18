@@ -1,0 +1,3 @@
+- use rustc's map instead of separate traits in scope
+- have a map from def id + link index to resolved DefId
+- need to have all 3 namespaces in case the link doesn't resolve

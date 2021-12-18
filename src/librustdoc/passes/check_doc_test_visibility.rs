@@ -35,9 +35,7 @@ crate fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Cra
 
 impl<'a, 'tcx> DocVisitor for DocTestVisibilityLinter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
-
-        look_for_tests(self.cx, &dox, &item);
+        look_for_tests(self.cx, &item.attrs.collapsed_doc_value(), &item);
 
         self.visit_item_recur(item)
     }

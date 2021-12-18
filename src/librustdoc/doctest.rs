@@ -1123,9 +1123,9 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         }
 
         attrs.unindent_doc_comments();
-        // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
-        // anything else, this will combine them for us.
-        if let Some(doc) = attrs.collapsed_doc_value() {
+        // `doc_value()` doesn't combine sugared/raw doc attributes, this will combine them for us.
+        let docs = attrs.collapsed_doc_value();
+        if !docs.is_empty() {
             // Use the outermost invocation, so that doctest names come from where the docs were written.
             let span = ast_attrs
                 .span()
@@ -1133,7 +1133,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
                 .unwrap_or(DUMMY_SP);
             self.collector.set_position(span);
             markdown::find_testable_code(
-                &doc,
+                &docs,
                 self.collector,
                 self.codes,
                 self.collector.enable_per_target_ignores,

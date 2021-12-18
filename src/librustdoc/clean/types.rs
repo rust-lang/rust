@@ -468,7 +468,7 @@ impl Item {
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
-    crate fn collapsed_doc_value(&self) -> Option<String> {
+    crate fn collapsed_doc_value(&self) -> String {
         self.attrs.collapsed_doc_value()
     }
 
@@ -956,16 +956,6 @@ fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
     }
 }
 
-/// Collapse a collection of [`DocFragment`]s into one string,
-/// handling indentation and newlines as needed.
-crate fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
-    let mut acc = String::new();
-    for frag in doc_strings {
-        add_doc_fragment(&mut acc, frag);
-    }
-    acc
-}
-
 /// A link that has not yet been rendered.
 ///
 /// This link will be turned into a rendered link by [`Item::links`].
@@ -1104,12 +1094,15 @@ impl Attributes {
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
-    crate fn collapsed_doc_value(&self) -> Option<String> {
-        if self.doc_strings.is_empty() {
-            None
-        } else {
-            Some(collapse_doc_fragments(&self.doc_strings))
+    ///
+    /// Unlike `doc_value`, this does not stop processing lines when switching between `#[doc]` and
+    /// sugared syntax.
+    crate fn collapsed_doc_value(&self) -> String {
+        let mut acc = String::new();
+        for frag in &self.doc_strings {
+            add_doc_fragment(&mut acc, frag);
         }
+        acc
     }
 
     crate fn get_doc_aliases(&self) -> Box<[Symbol]> {

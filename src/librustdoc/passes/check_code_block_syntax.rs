@@ -145,7 +145,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> DocVisitor for SyntaxChecker<'a, 'tcx> {
     fn visit_item(&mut self, item: &clean::Item) {
-        if let Some(dox) = &item.attrs.collapsed_doc_value() {
+        let dox = &item.attrs.collapsed_doc_value();
+        if !dox.is_empty() {
             let sp = item.attr_span(self.cx.tcx);
             let extra = crate::html::markdown::ExtraInfo::new_did(
                 self.cx.tcx,
