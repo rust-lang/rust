@@ -74,6 +74,8 @@ The server binary is stored in:
 * macOS: `~/Library/Application\ Support/Code/User/globalStorage/matklad.rust-analyzer`
 * Windows: `%APPDATA%\Code\User\globalStorage\matklad.rust-analyzer`
 
+However, if you are using a version of the extension with a bundled server binary and you are not running NixOS, the server binary might be instead running from: `~/.vscode/extensions/matklad.rust-analyzer-VERSION`.
+
 Note that we only support two most recent versions of VS Code.
 
 ==== Updates
