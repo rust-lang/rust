@@ -1,29 +1,95 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/unspecified-self-in-trait-ref.rs:10:13
+   |
+LL |     let a = Foo::lol();
+   |             ^^^
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     let a = <dyn Foo>::lol();
+   |             ++++    +
+
 error[E0599]: no function or associated item named `lol` found for trait object `dyn Foo<_>` in the current scope
   --> $DIR/unspecified-self-in-trait-ref.rs:10:18
    |
 LL |     let a = Foo::lol();
    |                  ^^^ function or associated item not found in `dyn Foo<_>`
 
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/unspecified-self-in-trait-ref.rs:14:13
+   |
+LL |     let b = Foo::<_>::lol();
+   |             ^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     let b = <dyn Foo::<_>>::lol();
+   |             ++++         +
+
 error[E0599]: no function or associated item named `lol` found for trait object `dyn Foo<_>` in the current scope
-  --> $DIR/unspecified-self-in-trait-ref.rs:12:23
+  --> $DIR/unspecified-self-in-trait-ref.rs:14:23
    |
 LL |     let b = Foo::<_>::lol();
    |                       ^^^ function or associated item not found in `dyn Foo<_>`
 
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/unspecified-self-in-trait-ref.rs:18:13
+   |
+LL |     let c = Bar::lol();
+   |             ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     let c = <dyn Bar>::lol();
+   |             ++++    +
+
 error[E0599]: no function or associated item named `lol` found for trait object `dyn Bar<_, _>` in the current scope
-  --> $DIR/unspecified-self-in-trait-ref.rs:14:18
+  --> $DIR/unspecified-self-in-trait-ref.rs:18:18
    |
 LL |     let c = Bar::lol();
    |                  ^^^ function or associated item not found in `dyn Bar<_, _>`
 
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/unspecified-self-in-trait-ref.rs:22:13
+   |
+LL |     let d = Bar::<usize, _>::lol();
+   |             ^^^^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     let d = <dyn Bar::<usize, _>>::lol();
+   |             ++++                +
+
 error[E0599]: no function or associated item named `lol` found for trait object `dyn Bar<usize, _>` in the current scope
-  --> $DIR/unspecified-self-in-trait-ref.rs:16:30
+  --> $DIR/unspecified-self-in-trait-ref.rs:22:30
    |
 LL |     let d = Bar::<usize, _>::lol();
    |                              ^^^ function or associated item not found in `dyn Bar<usize, _>`
 
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/unspecified-self-in-trait-ref.rs:26:13
+   |
+LL |     let e = Bar::<usize>::lol();
+   |             ^^^^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     let e = <dyn Bar::<usize>>::lol();
+   |             ++++             +
+
 error[E0393]: the type parameter `A` must be explicitly specified
-  --> $DIR/unspecified-self-in-trait-ref.rs:18:13
+  --> $DIR/unspecified-self-in-trait-ref.rs:26:13
    |
 LL | / pub trait Bar<X=usize, A=Self> {
 LL | |     fn foo(&self);
@@ -35,7 +101,7 @@ LL |       let e = Bar::<usize>::lol();
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 
-error: aborting due to 5 previous errors
+error: aborting due to 5 previous errors; 5 warnings emitted
 
 Some errors have detailed explanations: E0393, E0599.
 For more information about an error, try `rustc --explain E0393`.

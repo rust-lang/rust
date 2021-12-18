@@ -3,10 +3,10 @@
 trait Foo<T> {}
 
 impl<T> dyn Foo<T> {
-    fn hi(_x: T)  {}
+    fn hi(_x: T) {}
 }
 
 fn main() {
     Foo::hi(123);
-    //~^ ERROR trait objects without an explicit `dyn` are deprecated
+    //~^ ERROR trait objects must include the `dyn` keyword
 }

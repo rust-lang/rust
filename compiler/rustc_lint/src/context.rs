@@ -633,16 +633,6 @@ pub trait LintContext: Sized {
                     }
                 },
                 BuiltinLintDiagnostics::Normal => (),
-                BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
-                    let (sugg, app) = match sess.source_map().span_to_snippet(span) {
-                        Ok(s) if is_global => {
-                            (format!("dyn ({})", s), Applicability::MachineApplicable)
-                        }
-                        Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
-                        Err(_) => ("dyn <type>".to_string(), Applicability::HasPlaceholders),
-                    };
-                    db.span_suggestion(span, "use `dyn`", sugg, app);
-                }
                 BuiltinLintDiagnostics::AbsPathWithModule(span) => {
                     let (sugg, app) = match sess.source_map().span_to_snippet(span) {
                         Ok(ref s) => {

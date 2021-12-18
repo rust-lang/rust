@@ -18,11 +18,16 @@ warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-86756.rs:5:15
    |
 LL |     eq::<dyn, Foo>
-   |               ^^^ help: use `dyn`: `dyn Foo`
+   |               ^^^
    |
    = note: `#[warn(bare_trait_objects)]` on by default
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL -     eq::<dyn, Foo>
+LL +     eq::<dyn, dyn Foo>
+   | 
 
 error[E0107]: missing generics for trait `Foo`
   --> $DIR/issue-86756.rs:5:15

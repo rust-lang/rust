@@ -1,8 +1,13 @@
-error[E0782]: trait objects without an explicit `dyn` are deprecated
+error[E0782]: trait objects must include the `dyn` keyword
   --> $DIR/dyn-trait-sugg-2021.rs:10:5
    |
 LL |     Foo::hi(123);
-   |     ^^^ help: use `dyn`: `<dyn Foo>`
+   |     ^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL |     <dyn Foo>::hi(123);
+   |     ++++    +
 
 error: aborting due to previous error
 

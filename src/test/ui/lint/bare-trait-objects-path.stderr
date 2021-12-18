@@ -1,3 +1,17 @@
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/bare-trait-objects-path.rs:23:12
+   |
+LL |     let _: Dyn::Ty;
+   |            ^^^
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     let _: <dyn Dyn>::Ty;
+   |            ++++    +
+
 error[E0223]: ambiguous associated type
   --> $DIR/bare-trait-objects-path.rs:23:12
    |
@@ -8,30 +22,41 @@ warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/bare-trait-objects-path.rs:14:5
    |
 LL |     Dyn::func();
-   |     ^^^ help: use `dyn`: `<dyn Dyn>`
+   |     ^^^
    |
-   = note: `#[warn(bare_trait_objects)]` on by default
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     <dyn Dyn>::func();
+   |     ++++    +
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/bare-trait-objects-path.rs:17:5
    |
 LL |     ::Dyn::func();
-   |     ^^^^^ help: use `dyn`: `<dyn (::Dyn)>`
+   |     ^^^^^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     <dyn (::Dyn)>::func();
+   |     ++++++     ++
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/bare-trait-objects-path.rs:20:5
    |
 LL |     Dyn::CONST;
-   |     ^^^ help: use `dyn`: `<dyn Dyn>`
+   |     ^^^
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: use `dyn`
+   |
+LL |     <dyn Dyn>::CONST;
+   |     ++++    +
 
-error: aborting due to previous error; 3 warnings emitted
+error: aborting due to previous error; 4 warnings emitted
 
 For more information about this error, try `rustc --explain E0223`.
