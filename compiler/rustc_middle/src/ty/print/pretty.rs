@@ -2615,7 +2615,9 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
                         collect_fn(&child.ident, ns, def_id);
                     }
 
-                    if seen_defs.insert(def_id) {
+                    if matches!(defkind, DefKind::Mod | DefKind::Enum | DefKind::Trait)
+                        && seen_defs.insert(def_id)
+                    {
                         queue.push(def_id);
                     }
                 }

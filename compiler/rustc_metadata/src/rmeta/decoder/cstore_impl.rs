@@ -4,7 +4,7 @@ use crate::native_libs;
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_map::FxHashMap;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::hir::exports::Export;
@@ -309,28 +309,33 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 bfs_queue.push_back(DefId { krate: cnum, index: CRATE_DEF_INDEX });
             }
 
-            let mut add_child = |bfs_queue: &mut VecDeque<_>, export: &Export, parent: DefId| {
-                if !export.vis.is_public() {
+            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &Export, parent: DefId| {
+                if !child.vis.is_public() {
                     return;
                 }
 
-                if let Some(child) = export.res.opt_def_id() {
-                    if export.ident.name == kw::Underscore {
-                        fallback_map.insert(child, parent);
+                if let Some(def_id) = child.res.opt_def_id() {
+                    if child.ident.name == kw::Underscore {
+                        fallback_map.insert(def_id, parent);
                         return;
                     }
 
-                    match visible_parent_map.entry(child) {
+                    match visible_parent_map.entry(def_id) {
                         Entry::Occupied(mut entry) => {
                             // If `child` is defined in crate `cnum`, ensure
                             // that it is mapped to a parent in `cnum`.
-                            if child.is_local() && entry.get().is_local() {
+                            if def_id.is_local() && entry.get().is_local() {
                                 entry.insert(parent);
                             }
                         }
                         Entry::Vacant(entry) => {
                             entry.insert(parent);
-                            bfs_queue.push_back(child);
+                            if matches!(
+                                child.res,
+                                Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, _)
+                            ) {
+                                bfs_queue.push_back(def_id);
+                            }
                         }
                     }
                 }

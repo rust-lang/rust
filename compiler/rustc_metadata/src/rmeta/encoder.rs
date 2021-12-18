@@ -1104,7 +1104,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         record!(self.tables.kind[def_id] <- EntryKind::Mod(reexports));
         if self.is_proc_macro {
-            record!(self.tables.children[def_id] <- &[]);
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));
         } else {

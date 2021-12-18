@@ -1075,15 +1075,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    /// Iterates over each child of the given item.
+    /// Iterates over all named children of the given module,
+    /// including both proper items and reexports.
+    /// Module here is understood in name resolution sense - it can be a `mod` item,
+    /// or a crate root, or an enum, or a trait.
     fn each_child_of_item(&self, id: DefIndex, mut callback: impl FnMut(Export), sess: &Session) {
         if let Some(data) = &self.root.proc_macro_data {
-            /* If we are loading as a proc macro, we want to return the view of this crate
-             * as a proc macro crate.
-             */
+            // If we are loading as a proc macro, we want to return
+            // the view of this crate as a proc macro crate.
             if id == CRATE_DEF_INDEX {
-                let macros = data.macros.decode(self);
-                for def_index in macros {
+                for def_index in data.macros.decode(self) {
                     let raw_macro = self.raw_proc_macro(def_index);
                     let res = Res::Def(
                         DefKind::Macro(macro_kind(raw_macro)),
@@ -1095,12 +1096,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
             return;
         }
-
-        // Find the item.
-        let kind = match self.maybe_kind(id) {
-            None => return,
-            Some(kind) => kind,
-        };
 
         // Iterate over all children.
         if let Some(children) = self.root.tables.children.get(self, id) {
@@ -1162,10 +1157,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         }
 
-        if let EntryKind::Mod(exports) = kind {
-            for exp in exports.decode((self, sess)) {
-                callback(exp);
+        match self.kind(id) {
+            EntryKind::Mod(exports) => {
+                for exp in exports.decode((self, sess)) {
+                    callback(exp);
+                }
             }
+            EntryKind::Enum(..) | EntryKind::Trait(..) => {}
+            _ => bug!("`each_child_of_item` is called on a non-module: {:?}", self.def_kind(id)),
         }
     }
 
