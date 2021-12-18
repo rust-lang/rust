@@ -4,10 +4,9 @@ use parser::{ParseError, TreeSink};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
-    tokenize, AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
+    AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, Token as RawToken, WalkEvent,
-    T,
+    SyntaxNode, SyntaxToken, SyntaxTreeBuilder, TextRange, TextSize, WalkEvent, T,
 };
 use tt::buffer::{Cursor, TokenBuffer};
 
@@ -69,15 +68,14 @@ pub fn token_tree_to_syntax_node(
 
 /// Convert a string to a `TokenTree`
 pub fn parse_to_token_tree(text: &str) -> Option<(tt::Subtree, TokenMap)> {
-    let (tokens, errors) = tokenize(text);
-    if !errors.is_empty() {
+    let lexed = parser::LexedStr::new(text);
+    if lexed.errors().next().is_some() {
         return None;
     }
 
     let mut conv = RawConvertor {
-        text,
-        offset: TextSize::default(),
-        inner: tokens.iter(),
+        lexed: lexed,
+        pos: 0,
         id_alloc: TokenIdAlloc {
             map: Default::default(),
             global_offset: TextSize::default(),
@@ -146,7 +144,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             Some(it) => it,
         };
 
-        let k: SyntaxKind = token.kind();
+        let k: SyntaxKind = token.kind(&conv);
         if k == COMMENT {
             if let Some(tokens) = conv.convert_doc_comment(&token) {
                 // FIXME: There has to be a better way to do this
@@ -199,19 +197,19 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             } else {
                 let spacing = match conv.peek() {
                     Some(next)
-                        if next.kind().is_trivia()
-                            || next.kind() == T!['[']
-                            || next.kind() == T!['{']
-                            || next.kind() == T!['('] =>
+                        if next.kind(&conv).is_trivia()
+                            || next.kind(&conv) == T!['[']
+                            || next.kind(&conv) == T!['{']
+                            || next.kind(&conv) == T!['('] =>
                     {
                         tt::Spacing::Alone
                     }
-                    Some(next) if next.kind().is_punct() && next.kind() != UNDERSCORE => {
+                    Some(next) if next.kind(&conv).is_punct() && next.kind(&conv) != UNDERSCORE => {
                         tt::Spacing::Joint
                     }
                     _ => tt::Spacing::Alone,
                 };
-                let char = match token.to_char() {
+                let char = match token.to_char(&conv) {
                     Some(c) => c,
                     None => {
                         panic!("Token from lexer must be single char: token = {:#?}", token);
@@ -222,7 +220,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
         } else {
             macro_rules! make_leaf {
                 ($i:ident) => {
-                    tt::$i { id: conv.id_alloc().alloc(range), text: token.to_text() }.into()
+                    tt::$i { id: conv.id_alloc().alloc(range), text: token.to_text(conv) }.into()
                 };
             }
             let leaf: tt::Leaf = match k {
@@ -243,7 +241,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
 
                     let r = TextRange::at(range.start() + char_unit, range.len() - char_unit);
                     let ident = tt::Leaf::from(tt::Ident {
-                        text: SmolStr::new(&token.to_text()[1..]),
+                        text: SmolStr::new(&token.to_text(conv)[1..]),
                         id: conv.id_alloc().alloc(r),
                     });
                     result.push(ident.into());
@@ -392,22 +390,21 @@ impl TokenIdAlloc {
 
 /// A Raw Token (straightly from lexer) convertor
 struct RawConvertor<'a> {
-    text: &'a str,
-    offset: TextSize,
+    lexed: parser::LexedStr<'a>,
+    pos: usize,
     id_alloc: TokenIdAlloc,
-    inner: std::slice::Iter<'a, RawToken>,
 }
 
-trait SrcToken: std::fmt::Debug {
-    fn kind(&self) -> SyntaxKind;
+trait SrcToken<Ctx>: std::fmt::Debug {
+    fn kind(&self, ctx: &Ctx) -> SyntaxKind;
 
-    fn to_char(&self) -> Option<char>;
+    fn to_char(&self, ctx: &Ctx) -> Option<char>;
 
-    fn to_text(&self) -> SmolStr;
+    fn to_text(&self, ctx: &Ctx) -> SmolStr;
 }
 
-trait TokenConvertor {
-    type Token: SrcToken;
+trait TokenConvertor: Sized {
+    type Token: SrcToken<Self>;
 
     fn convert_doc_comment(&self, token: &Self::Token) -> Option<Vec<tt::TokenTree>>;
 
@@ -418,42 +415,45 @@ trait TokenConvertor {
     fn id_alloc(&mut self) -> &mut TokenIdAlloc;
 }
 
-impl<'a> SrcToken for (&'a RawToken, &'a str) {
-    fn kind(&self) -> SyntaxKind {
-        self.0.kind
+impl<'a> SrcToken<RawConvertor<'a>> for usize {
+    fn kind(&self, ctx: &RawConvertor<'a>) -> SyntaxKind {
+        ctx.lexed.kind(*self)
     }
 
-    fn to_char(&self) -> Option<char> {
-        self.1.chars().next()
+    fn to_char(&self, ctx: &RawConvertor<'a>) -> Option<char> {
+        ctx.lexed.text(*self).chars().next()
     }
 
-    fn to_text(&self) -> SmolStr {
-        self.1.into()
+    fn to_text(&self, ctx: &RawConvertor<'_>) -> SmolStr {
+        ctx.lexed.text(*self).into()
     }
 }
 
 impl<'a> TokenConvertor for RawConvertor<'a> {
-    type Token = (&'a RawToken, &'a str);
+    type Token = usize;
 
-    fn convert_doc_comment(&self, token: &Self::Token) -> Option<Vec<tt::TokenTree>> {
-        convert_doc_comment(&doc_comment(token.1))
+    fn convert_doc_comment(&self, token: &usize) -> Option<Vec<tt::TokenTree>> {
+        let text = self.lexed.text(*token);
+        convert_doc_comment(&doc_comment(text))
     }
 
     fn bump(&mut self) -> Option<(Self::Token, TextRange)> {
-        let token = self.inner.next()?;
-        let range = TextRange::at(self.offset, token.len);
-        self.offset += token.len;
+        if self.pos == self.lexed.len() {
+            return None;
+        }
+        let token = self.pos;
+        self.pos += 1;
+        let range = self.lexed.text_range(token);
+        let range = TextRange::new(range.start.try_into().unwrap(), range.end.try_into().unwrap());
 
-        Some(((token, &self.text[range]), range))
+        Some((token, range))
     }
 
     fn peek(&self) -> Option<Self::Token> {
-        let token = self.inner.as_slice().get(0);
-
-        token.map(|it| {
-            let range = TextRange::at(self.offset, it.len);
-            (it, &self.text[range])
-        })
+        if self.pos == self.lexed.len() {
+            return None;
+        }
+        Some(self.pos)
     }
 
     fn id_alloc(&mut self) -> &mut TokenIdAlloc {
@@ -523,17 +523,17 @@ impl SynToken {
     }
 }
 
-impl SrcToken for SynToken {
-    fn kind(&self) -> SyntaxKind {
+impl<'a> SrcToken<Convertor<'a>> for SynToken {
+    fn kind(&self, _ctx: &Convertor<'a>) -> SyntaxKind {
         self.token().kind()
     }
-    fn to_char(&self) -> Option<char> {
+    fn to_char(&self, _ctx: &Convertor<'a>) -> Option<char> {
         match self {
             SynToken::Ordinary(_) => None,
             SynToken::Punch(it, i) => it.text().chars().nth((*i).into()),
         }
     }
-    fn to_text(&self) -> SmolStr {
+    fn to_text(&self, _ctx: &Convertor<'a>) -> SmolStr {
         self.token().text().into()
     }
 }

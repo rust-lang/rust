@@ -10,11 +10,7 @@ use parser::Reparser;
 use text_edit::Indel;
 
 use crate::{
-    parsing::{
-        lexer::{lex_single_syntax_kind, tokenize, Token},
-        text_tree_sink::TextTreeSink,
-        to_parser_tokens,
-    },
+    parsing::text_tree_sink::TextTreeSink,
     syntax_node::{GreenNode, GreenToken, NodeOrToken, SyntaxElement, SyntaxNode},
     SyntaxError,
     SyntaxKind::*,
@@ -53,7 +49,7 @@ fn reparse_token(
             }
 
             let mut new_text = get_text_after_edit(prev_token.clone().into(), edit);
-            let (new_token_kind, new_err) = lex_single_syntax_kind(&new_text)?;
+            let (new_token_kind, new_err) = parser::LexedStr::single_token(&new_text)?;
 
             if new_token_kind != prev_token_kind
                 || (new_token_kind == IDENT && is_contextual_kw(&new_text))
@@ -66,7 +62,7 @@ fn reparse_token(
             // `b` no longer remains an identifier, but becomes a part of byte string literal
             if let Some(next_char) = root.text().char_at(prev_token.text_range().end()) {
                 new_text.push(next_char);
-                let token_with_next_char = lex_single_syntax_kind(&new_text);
+                let token_with_next_char = parser::LexedStr::single_token(&new_text);
                 if let Some((_kind, _error)) = token_with_next_char {
                     return None;
                 }
@@ -74,9 +70,10 @@ fn reparse_token(
             }
 
             let new_token = GreenToken::new(rowan::SyntaxKind(prev_token_kind.into()), &new_text);
+            let range = TextRange::up_to(TextSize::of(&new_text));
             Some((
                 prev_token.replace_with(new_token),
-                new_err.into_iter().collect(),
+                new_err.into_iter().map(|msg| SyntaxError::new(msg, range)).collect(),
                 prev_token.text_range(),
             ))
         }
@@ -91,17 +88,17 @@ fn reparse_block(
     let (node, reparser) = find_reparsable_node(root, edit.delete)?;
     let text = get_text_after_edit(node.clone().into(), edit);
 
-    let (lexer_tokens, new_lexer_errors) = tokenize(&text);
-    if !is_balanced(&lexer_tokens) {
+    let lexed = parser::LexedStr::new(text.as_str());
+    let parser_tokens = lexed.to_tokens();
+    if !is_balanced(&lexed) {
         return None;
     }
-    let parser_tokens = to_parser_tokens(&text, &lexer_tokens);
 
-    let mut tree_sink = TextTreeSink::new(&text, &lexer_tokens);
+    let mut tree_sink = TextTreeSink::new(lexed);
+
     reparser.parse(&parser_tokens, &mut tree_sink);
 
-    let (green, mut new_parser_errors) = tree_sink.finish();
-    new_parser_errors.extend(new_lexer_errors);
+    let (green, new_parser_errors) = tree_sink.finish();
 
     Some((node.replace_with(green), new_parser_errors, node.text_range()))
 }
@@ -131,16 +128,13 @@ fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(SyntaxNo
     })
 }
 
-fn is_balanced(tokens: &[Token]) -> bool {
-    if tokens.is_empty()
-        || tokens.first().unwrap().kind != T!['{']
-        || tokens.last().unwrap().kind != T!['}']
-    {
+fn is_balanced(lexed: &parser::LexedStr<'_>) -> bool {
+    if lexed.is_empty() || lexed.kind(0) != T!['{'] || lexed.kind(lexed.len() - 1) != T!['}'] {
         return false;
     }
     let mut balance = 0usize;
-    for t in &tokens[1..tokens.len() - 1] {
-        match t.kind {
+    for i in 1..lexed.len() - 1 {
+        match lexed.kind(i) {
             T!['{'] => balance += 1,
             T!['}'] => {
                 balance = match balance.checked_sub(1) {

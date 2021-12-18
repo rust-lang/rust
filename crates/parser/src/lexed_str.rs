@@ -8,6 +8,8 @@
 //! Note that these tokens, unlike the tokens we feed into the parser, do
 //! include info about comments and whitespace.
 
+use std::ops;
+
 use crate::{
     SyntaxKind::{self, *},
     T,
@@ -52,7 +54,7 @@ impl<'a> LexedStr<'a> {
         res
     }
 
-    pub fn single_token(text: &'a str) -> Option<SyntaxKind> {
+    pub fn single_token(text: &'a str) -> Option<(SyntaxKind, Option<String>)> {
         if text.is_empty() {
             return None;
         }
@@ -63,11 +65,7 @@ impl<'a> LexedStr<'a> {
         }
 
         let (kind, err) = from_rustc(&token.kind, text);
-        if err.is_some() {
-            return None;
-        }
-
-        Some(kind)
+        Some((kind, err.map(|it| it.to_owned())))
     }
 
     pub fn as_str(&self) -> &str {
@@ -78,22 +76,50 @@ impl<'a> LexedStr<'a> {
         self.kind.len() - 1
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn kind(&self, i: usize) -> SyntaxKind {
         assert!(i < self.len());
         self.kind[i]
     }
 
     pub fn text(&self, i: usize) -> &str {
+        self.range_text(i..i + 1)
+    }
+    pub fn range_text(&self, r: ops::Range<usize>) -> &str {
+        assert!(r.start < r.end && r.end <= self.len());
+        let lo = self.start[r.start] as usize;
+        let hi = self.start[r.end] as usize;
+        &self.text[lo..hi]
+    }
+
+    // Naming is hard.
+    pub fn text_range(&self, i: usize) -> ops::Range<usize> {
         assert!(i < self.len());
         let lo = self.start[i] as usize;
         let hi = self.start[i + 1] as usize;
-        &self.text[lo..hi]
+        lo..hi
+    }
+    pub fn text_start(&self, i: usize) -> usize {
+        assert!(i <= self.len());
+        self.start[i] as usize
+    }
+    pub fn text_len(&self, i: usize) -> usize {
+        assert!(i < self.len());
+        let r = self.text_range(i);
+        r.end - r.start
     }
 
     pub fn error(&self, i: usize) -> Option<&str> {
         assert!(i < self.len());
         let err = self.error.binary_search_by_key(&(i as u32), |i| i.token).ok()?;
         Some(self.error[err].msg.as_str())
+    }
+
+    pub fn errors(&self) -> impl Iterator<Item = (usize, &str)> + '_ {
+        self.error.iter().map(|it| (it.token as usize, it.msg.as_str()))
     }
 
     pub fn to_tokens(&self) -> crate::Tokens {

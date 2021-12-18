@@ -28,7 +28,7 @@ use hir::{AsAssocItem, FieldSource, HasSource, InFile, ModuleSource, Semantics};
 use stdx::never;
 use syntax::{
     ast::{self, HasName},
-    lex_single_syntax_kind, AstNode, SyntaxKind, TextRange, T,
+    AstNode, SyntaxKind, TextRange, T,
 };
 use text_edit::{TextEdit, TextEditBuilder};
 
@@ -490,7 +490,7 @@ pub enum IdentifierKind {
 
 impl IdentifierKind {
     pub fn classify(new_name: &str) -> Result<IdentifierKind> {
-        match lex_single_syntax_kind(new_name) {
+        match parser::LexedStr::single_token(new_name) {
             Some(res) => match res {
                 (SyntaxKind::IDENT, _) => Ok(IdentifierKind::Ident),
                 (T![_], _) => Ok(IdentifierKind::Underscore),

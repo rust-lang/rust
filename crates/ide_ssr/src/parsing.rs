@@ -256,19 +256,13 @@ fn validate_rule(rule: &SsrRule) -> Result<(), SsrError> {
 }
 
 fn tokenize(source: &str) -> Result<Vec<Token>, SsrError> {
-    let mut start = 0;
-    let (raw_tokens, errors) = syntax::tokenize(source);
-    if let Some(first_error) = errors.first() {
+    let lexed = parser::LexedStr::new(source);
+    if let Some((_, first_error)) = lexed.errors().next() {
         bail!("Failed to parse pattern: {}", first_error);
     }
     let mut tokens: Vec<Token> = Vec::new();
-    for raw_token in raw_tokens {
-        let token_len = usize::from(raw_token.len);
-        tokens.push(Token {
-            kind: raw_token.kind,
-            text: SmolStr::new(&source[start..start + token_len]),
-        });
-        start += token_len;
+    for i in 0..lexed.len() {
+        tokens.push(Token { kind: lexed.kind(i), text: lexed.text(i).into() });
     }
     Ok(tokens)
 }

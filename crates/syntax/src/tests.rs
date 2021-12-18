@@ -3,7 +3,6 @@ mod sourcegen_ast;
 mod ast_src;
 
 use std::{
-    fmt::Write,
     fs,
     path::{Path, PathBuf},
 };
@@ -13,25 +12,7 @@ use expect_test::expect_file;
 use rayon::prelude::*;
 use test_utils::{bench, bench_fixture, project_root};
 
-use crate::{ast, fuzz, tokenize, AstNode, SourceFile, SyntaxError, TextRange, TextSize, Token};
-
-#[test]
-fn lexer_tests() {
-    // FIXME:
-    // * Add tests for unicode escapes in byte-character and [raw]-byte-string literals
-    // * Add tests for unescape errors
-
-    dir_tests(&test_data_dir(), &["lexer/ok"], "txt", |text, path| {
-        let (tokens, errors) = tokenize(text);
-        assert_errors_are_absent(&errors, path);
-        dump_tokens_and_errors(&tokens, &errors, text)
-    });
-    dir_tests(&test_data_dir(), &["lexer/err"], "txt", |text, path| {
-        let (tokens, errors) = tokenize(text);
-        assert_errors_are_present(&errors, path);
-        dump_tokens_and_errors(&tokens, &errors, text)
-    });
-}
+use crate::{ast, fuzz, AstNode, SourceFile, SyntaxError};
 
 #[test]
 fn parse_smoke_test() {
@@ -204,22 +185,6 @@ fn assert_errors_are_absent(errors: &[SyntaxError], path: &Path) {
         "There should be no errors in the file {:?}",
         path.display(),
     );
-}
-
-fn dump_tokens_and_errors(tokens: &[Token], errors: &[SyntaxError], text: &str) -> String {
-    let mut acc = String::new();
-    let mut offset: TextSize = 0.into();
-    for token in tokens {
-        let token_len = token.len;
-        let token_text = &text[TextRange::at(offset, token.len)];
-        offset += token.len;
-        writeln!(acc, "{:?} {:?} {:?}", token.kind, token_len, token_text).unwrap();
-    }
-    for err in errors {
-        writeln!(acc, "> error{:?} token({:?}) msg({})", err.range(), &text[err.range()], err)
-            .unwrap();
-    }
-    acc
 }
 
 fn fragment_parser_dir_test<T, F>(ok_paths: &[&str], err_paths: &[&str], f: F)

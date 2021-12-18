@@ -1,7 +1,7 @@
 //! Convert macro-by-example tokens which are specific to macro expansion into a
 //! format that works for our parser.
 
-use syntax::{lex_single_syntax_kind, SyntaxKind, SyntaxKind::*, T};
+use syntax::{SyntaxKind, SyntaxKind::*, T};
 use tt::buffer::TokenBuffer;
 
 pub(crate) fn to_parser_tokens(buffer: &TokenBuffer) -> parser::Tokens {
@@ -35,7 +35,7 @@ pub(crate) fn to_parser_tokens(buffer: &TokenBuffer) -> parser::Tokens {
                         let is_negated = lit.text.starts_with('-');
                         let inner_text = &lit.text[if is_negated { 1 } else { 0 }..];
 
-                        let kind = lex_single_syntax_kind(inner_text)
+                        let kind = parser::LexedStr::single_token(inner_text)
                             .map(|(kind, _error)| kind)
                             .filter(|kind| {
                                 kind.is_literal()
