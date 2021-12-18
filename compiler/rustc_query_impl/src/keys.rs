@@ -151,7 +151,7 @@ impl Key for (DefId, DefId) {
     }
 }
 
-impl Key for (ty::Instance<'tcx>, LocalDefId) {
+impl<'tcx> Key for (ty::Instance<'tcx>, LocalDefId) {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
