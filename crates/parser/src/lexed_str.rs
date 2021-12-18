@@ -6,7 +6,7 @@
 //! convenient to include a text-based lexer here!
 //!
 //! Note that these tokens, unlike the tokens we feed into the parser, do
-//! include info about comments and whitespace. 
+//! include info about comments and whitespace.
 
 use crate::{
     SyntaxKind::{self, *},
@@ -82,16 +82,43 @@ impl<'a> LexedStr<'a> {
         assert!(i < self.len());
         self.kind[i]
     }
+
     pub fn text(&self, i: usize) -> &str {
         assert!(i < self.len());
         let lo = self.start[i] as usize;
         let hi = self.start[i + 1] as usize;
         &self.text[lo..hi]
     }
+
     pub fn error(&self, i: usize) -> Option<&str> {
         assert!(i < self.len());
         let err = self.error.binary_search_by_key(&(i as u32), |i| i.token).ok()?;
         Some(self.error[err].msg.as_str())
+    }
+
+    pub fn to_tokens(&self) -> crate::Tokens {
+        let mut res = crate::Tokens::default();
+        let mut was_joint = false;
+        for i in 0..self.len() {
+            let kind = self.kind(i);
+            if kind.is_trivia() {
+                was_joint = false
+            } else {
+                if kind == SyntaxKind::IDENT {
+                    let token_text = self.text(i);
+                    let contextual_kw = SyntaxKind::from_contextual_keyword(token_text)
+                        .unwrap_or(SyntaxKind::IDENT);
+                    res.push_ident(contextual_kw);
+                } else {
+                    if was_joint {
+                        res.was_joint();
+                    }
+                    res.push(kind);
+                }
+                was_joint = true;
+            }
+        }
+        res
     }
 
     fn push(&mut self, kind: SyntaxKind, offset: usize) {
