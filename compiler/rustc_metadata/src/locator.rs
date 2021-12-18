@@ -734,7 +734,7 @@ impl<'a> CrateLocator<'a> {
     }
 }
 
-fn get_metadata_section(
+fn get_metadata_section<'p>(
     target: &Target,
     flavor: CrateFlavor,
     filename: &'p Path,

@@ -275,7 +275,7 @@ macro_rules! define_tables {
             $($name: TableBuilder<$IDX, $T>),+
         }
 
-        impl TableBuilders<'tcx> {
+        impl<'tcx> TableBuilders<'tcx> {
             fn encode(&self, buf: &mut Encoder) -> LazyTables<'tcx> {
                 LazyTables {
                     $($name: self.$name.encode(buf)),+

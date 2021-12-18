@@ -11,7 +11,7 @@ crate enum DefPathHashMapRef<'tcx> {
     BorrowedFromTcx(&'tcx DefPathHashMap),
 }
 
-impl DefPathHashMapRef<'tcx> {
+impl DefPathHashMapRef<'_> {
     #[inline]
     pub fn def_path_hash_to_def_index(&self, def_path_hash: &DefPathHash) -> DefIndex {
         match *self {
