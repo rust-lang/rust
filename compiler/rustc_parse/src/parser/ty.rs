@@ -474,7 +474,13 @@ impl<'a> Parser<'a> {
         params: Vec<GenericParam>,
         recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, TyKind> {
-        let ast::FnHeader { ext, unsafety, constness, asyncness } = self.parse_fn_front_matter()?;
+        let inherited_vis = rustc_ast::Visibility {
+            span: rustc_span::DUMMY_SP,
+            kind: rustc_ast::VisibilityKind::Inherited,
+            tokens: None,
+        };
+        let ast::FnHeader { ext, unsafety, constness, asyncness } =
+            self.parse_fn_front_matter(&inherited_vis)?;
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
         let whole_span = lo.to(self.prev_token.span);
         if let ast::Const::Yes(span) = constness {
