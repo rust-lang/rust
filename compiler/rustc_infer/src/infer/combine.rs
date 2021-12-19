@@ -533,7 +533,7 @@ struct Generalization<'tcx> {
     needs_wf: bool,
 }
 
-impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
+impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -827,7 +827,7 @@ struct ConstInferUnifier<'cx, 'tcx> {
 // We use `TypeRelation` here to propagate `RelateResult` upwards.
 //
 // Both inputs are expected to be the same.
-impl TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
+impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }

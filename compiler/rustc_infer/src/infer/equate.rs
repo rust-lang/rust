@@ -23,7 +23,7 @@ impl<'combine, 'infcx, 'tcx> Equate<'combine, 'infcx, 'tcx> {
     }
 }
 
-impl TypeRelation<'tcx> for Equate<'combine, 'infcx, 'tcx> {
+impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
     fn tag(&self) -> &'static str {
         "Equate"
     }

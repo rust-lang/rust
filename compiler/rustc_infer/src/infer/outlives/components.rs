@@ -49,7 +49,7 @@ pub enum Component<'tcx> {
 
 /// Push onto `out` all the things that must outlive `'a` for the condition
 /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
-pub fn push_outlives_components(
+pub fn push_outlives_components<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty0: Ty<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,
@@ -59,7 +59,7 @@ pub fn push_outlives_components(
     debug!("components({:?}) = {:?}", ty0, out);
 }
 
-fn compute_components(
+fn compute_components<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,
@@ -190,7 +190,7 @@ fn compute_components(
         }
 }
 
-fn compute_components_recursive(
+fn compute_components_recursive<'tcx>(
     tcx: TyCtxt<'tcx>,
     parent: GenericArg<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,

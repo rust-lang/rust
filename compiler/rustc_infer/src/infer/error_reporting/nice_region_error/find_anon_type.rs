@@ -20,7 +20,7 @@ use rustc_middle::ty::{self, Region, TyCtxt};
 /// ```
 /// The function returns the nested type corresponding to the anonymous region
 /// for e.g., `&u8` and `Vec<&u8>`.
-pub(crate) fn find_anon_type(
+pub(crate) fn find_anon_type<'tcx>(
     tcx: TyCtxt<'tcx>,
     region: Region<'tcx>,
     br: &ty::BoundRegionKind,
@@ -50,7 +50,7 @@ pub(crate) fn find_anon_type(
 
 // This method creates a FindNestedTypeVisitor which returns the type corresponding
 // to the anonymous region.
-fn find_component_for_bound_region(
+fn find_component_for_bound_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     arg: &'tcx hir::Ty<'tcx>,
     br: &ty::BoundRegionKind,
@@ -83,7 +83,7 @@ struct FindNestedTypeVisitor<'tcx> {
     current_index: ty::DebruijnIndex,
 }
 
-impl Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -207,7 +207,7 @@ struct TyPathVisitor<'tcx> {
     current_index: ty::DebruijnIndex,
 }
 
-impl Visitor<'tcx> for TyPathVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Map<'tcx>> {

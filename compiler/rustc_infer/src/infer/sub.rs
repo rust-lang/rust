@@ -31,7 +31,7 @@ impl<'combine, 'infcx, 'tcx> Sub<'combine, 'infcx, 'tcx> {
     }
 }
 
-impl TypeRelation<'tcx> for Sub<'combine, 'infcx, 'tcx> {
+impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     fn tag(&self) -> &'static str {
         "Sub"
     }

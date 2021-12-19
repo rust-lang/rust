@@ -1,0 +1,23 @@
+error: expected at least one digit in exponent
+  --> $DIR/issue-91434.rs:2:11
+   |
+LL |     [9; [[9E; h]]];
+   |           ^^
+
+error[E0425]: cannot find value `h` in this scope
+  --> $DIR/issue-91434.rs:2:15
+   |
+LL |     [9; [[9E; h]]];
+   |               ^ not found in this scope
+
+error: constant expression depends on a generic parameter
+  --> $DIR/issue-91434.rs:2:9
+   |
+LL |     [9; [[9E; h]]];
+   |         ^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

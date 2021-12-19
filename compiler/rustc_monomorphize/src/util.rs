@@ -7,7 +7,7 @@ use std::io::prelude::*;
 ///
 /// During the same compile all closures dump the information in the same file
 /// "closure_profile_XXXXX.csv", which is created in the directory where the compiler is invoked.
-crate fn dump_closure_profile(tcx: TyCtxt<'tcx>, closure_instance: Instance<'tcx>) {
+crate fn dump_closure_profile<'tcx>(tcx: TyCtxt<'tcx>, closure_instance: Instance<'tcx>) {
     let mut file = if let Ok(file) = OpenOptions::new()
         .create(true)
         .append(true)

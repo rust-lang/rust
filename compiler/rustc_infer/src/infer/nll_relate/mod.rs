@@ -407,7 +407,7 @@ trait VidValuePair<'tcx>: Debug {
     /// Extract the scopes that apply to whichever side of the tuple
     /// the vid was found on.  See the comment where this is called
     /// for more details on why we want them.
-    fn vid_scopes<D: TypeRelatingDelegate<'tcx>>(
+    fn vid_scopes<'r, D: TypeRelatingDelegate<'tcx>>(
         &self,
         relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>;
@@ -424,7 +424,7 @@ trait VidValuePair<'tcx>: Debug {
         D: TypeRelatingDelegate<'tcx>;
 }
 
-impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
+impl<'tcx> VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
     fn vid(&self) -> ty::TyVid {
         self.0
     }
@@ -433,7 +433,7 @@ impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
         self.1
     }
 
-    fn vid_scopes<D>(
+    fn vid_scopes<'r, D>(
         &self,
         relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>
@@ -456,7 +456,7 @@ impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
 }
 
 // In this case, the "vid" is the "b" type.
-impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
+impl<'tcx> VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
     fn vid(&self) -> ty::TyVid {
         self.1
     }
@@ -465,7 +465,7 @@ impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
         self.0
     }
 
-    fn vid_scopes<D>(
+    fn vid_scopes<'r, D>(
         &self,
         relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>
@@ -487,7 +487,7 @@ impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
     }
 }
 
-impl<D> TypeRelation<'tcx> for TypeRelating<'me, 'tcx, D>
+impl<'tcx, D> TypeRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
@@ -841,7 +841,7 @@ where
     universe: ty::UniverseIndex,
 }
 
-impl<D> TypeRelation<'tcx> for TypeGeneralizer<'me, 'tcx, D>
+impl<'tcx, D> TypeRelation<'tcx> for TypeGeneralizer<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
