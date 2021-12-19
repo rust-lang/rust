@@ -6,7 +6,7 @@ use syntax::{
     AstNode, SyntaxKind, TextRange, T,
 };
 
-use crate::{utils::unwrap_trivial_block, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: unwrap_block
 //
@@ -88,9 +88,8 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         _ => return None,
     };
 
-    let unwrapped = unwrap_trivial_block(block);
     acc.add(assist_id, assist_label, target, |builder| {
-        builder.replace(parent.syntax().text_range(), update_expr_string(unwrapped.to_string()));
+        builder.replace(parent.syntax().text_range(), update_expr_string(block.to_string()));
     })
 }
 
@@ -671,6 +670,48 @@ fn main() {
             r#"
 fn main() {
     /* foo */ foo()
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn if_single_statement() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    if true {$0
+        return 3;
+    }
+}
+"#,
+            r#"
+fn main() {
+    return 3;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn multiple_statements() {
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() -> i32 {
+    if 2 > 1 {$0
+        let a = 5;
+        return 3;
+    }
+    5
+}
+"#,
+            r#"
+fn main() -> i32 {
+    let a = 5;
+    return 3;
+    5
 }
 "#,
         );
