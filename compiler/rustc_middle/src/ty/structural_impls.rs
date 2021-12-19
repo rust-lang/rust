@@ -47,19 +47,19 @@ impl fmt::Debug for ty::UpvarId {
     }
 }
 
-impl fmt::Debug for ty::UpvarBorrow<'tcx> {
+impl<'tcx> fmt::Debug for ty::UpvarBorrow<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "UpvarBorrow({:?}, {:?})", self.kind, self.region)
     }
 }
 
-impl fmt::Debug for ty::ExistentialTraitRef<'tcx> {
+impl<'tcx> fmt::Debug for ty::ExistentialTraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
     }
 }
 
-impl fmt::Debug for ty::adjustment::Adjustment<'tcx> {
+impl<'tcx> fmt::Debug for ty::adjustment::Adjustment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?} -> {}", self.kind, self.target)
     }
@@ -111,7 +111,7 @@ impl fmt::Debug for ty::FreeRegion {
     }
 }
 
-impl fmt::Debug for ty::FnSig<'tcx> {
+impl<'tcx> fmt::Debug for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({:?}; c_variadic: {})->{:?}", self.inputs(), self.c_variadic, self.output())
     }
@@ -129,13 +129,13 @@ impl fmt::Debug for ty::RegionVid {
     }
 }
 
-impl fmt::Debug for ty::TraitRef<'tcx> {
+impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
     }
 }
 
-impl fmt::Debug for Ty<'tcx> {
+impl<'tcx> fmt::Debug for Ty<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
     }
@@ -153,7 +153,7 @@ impl fmt::Debug for ty::ParamConst {
     }
 }
 
-impl fmt::Debug for ty::TraitPredicate<'tcx> {
+impl<'tcx> fmt::Debug for ty::TraitPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let ty::BoundConstness::ConstIfConst = self.constness {
             write!(f, "~const ")?;
@@ -162,19 +162,19 @@ impl fmt::Debug for ty::TraitPredicate<'tcx> {
     }
 }
 
-impl fmt::Debug for ty::ProjectionPredicate<'tcx> {
+impl<'tcx> fmt::Debug for ty::ProjectionPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ProjectionPredicate({:?}, {:?})", self.projection_ty, self.ty)
     }
 }
 
-impl fmt::Debug for ty::Predicate<'tcx> {
+impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.kind())
     }
 }
 
-impl fmt::Debug for ty::PredicateKind<'tcx> {
+impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ty::PredicateKind::Trait(ref a) => a.fmt(f),

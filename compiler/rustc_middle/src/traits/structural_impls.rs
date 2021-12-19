@@ -74,7 +74,7 @@ impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceBuiltinData<N> {
     }
 }
 
-impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitUpcastingData<'tcx, N> {
+impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitUpcastingData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

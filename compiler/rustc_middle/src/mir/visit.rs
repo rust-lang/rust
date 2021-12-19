@@ -965,7 +965,7 @@ macro_rules! visit_place_fns {
             }
         }
 
-        fn process_projection(
+        fn process_projection<'a>(
             &mut self,
             projection: &'a [PlaceElem<'tcx>],
             location: Location,

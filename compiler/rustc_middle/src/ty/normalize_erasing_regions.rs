@@ -183,7 +183,7 @@ impl<'tcx> NormalizeAfterErasingRegionsFolder<'tcx> {
     }
 }
 
-impl TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
+impl<'tcx> TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -228,7 +228,7 @@ impl<'tcx> TryNormalizeAfterErasingRegionsFolder<'tcx> {
     }
 }
 
-impl TypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
+impl<'tcx> TypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
     type Error = NormalizationError<'tcx>;
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -236,7 +236,7 @@ impl TypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
     }
 }
 
-impl FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
+impl<'tcx> FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'tcx> {
     fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match self.try_normalize_generic_arg_after_erasing_regions(ty.into()) {
             Ok(t) => Ok(t.expect_ty()),

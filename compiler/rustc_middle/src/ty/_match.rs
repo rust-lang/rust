@@ -23,13 +23,13 @@ pub struct Match<'tcx> {
     param_env: ty::ParamEnv<'tcx>,
 }
 
-impl Match<'tcx> {
+impl<'tcx> Match<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Match<'tcx> {
         Match { tcx, param_env }
     }
 }
 
-impl TypeRelation<'tcx> for Match<'tcx> {
+impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     fn tag(&self) -> &'static str {
         "Match"
     }

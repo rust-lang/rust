@@ -132,7 +132,7 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
     }
 }
 
-pub fn relate_substs<R: TypeRelation<'tcx>>(
+pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     variances: Option<&[ty::Variance]>,
     a_subst: SubstsRef<'tcx>,
@@ -353,7 +353,7 @@ impl<'tcx> Relate<'tcx> for Ty<'tcx> {
 /// The main "type relation" routine. Note that this does not handle
 /// inference artifacts, so you should filter those out before calling
 /// it.
-pub fn super_relate_tys<R: TypeRelation<'tcx>>(
+pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     a: Ty<'tcx>,
     b: Ty<'tcx>,
@@ -526,7 +526,7 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
 /// The main "const relation" routine. Note that this does not handle
 /// inference artifacts, so you should filter those out before calling
 /// it.
-pub fn super_relate_consts<R: TypeRelation<'tcx>>(
+pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     a: &'tcx ty::Const<'tcx>,
     b: &'tcx ty::Const<'tcx>,
@@ -599,7 +599,7 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     if is_match { Ok(a) } else { Err(TypeError::ConstMismatch(expected_found(relation, a, b))) }
 }
 
-fn check_const_value_eq<R: TypeRelation<'tcx>>(
+fn check_const_value_eq<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     a_val: ConstValue<'tcx>,
     b_val: ConstValue<'tcx>,
@@ -832,7 +832,7 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Error handling
 
-pub fn expected_found<R, T>(relation: &mut R, a: T, b: T) -> ExpectedFound<T>
+pub fn expected_found<'tcx, R, T>(relation: &mut R, a: T, b: T) -> ExpectedFound<T>
 where
     R: TypeRelation<'tcx>,
 {

@@ -156,7 +156,7 @@ pub struct CapturedPlace<'tcx> {
     pub mutability: hir::Mutability,
 }
 
-impl CapturedPlace<'tcx> {
+impl<'tcx> CapturedPlace<'tcx> {
     pub fn to_string(&self, tcx: TyCtxt<'tcx>) -> String {
         place_to_string_for_capture(tcx, &self.place)
     }
@@ -328,7 +328,7 @@ pub struct CaptureInfo<'tcx> {
     pub capture_kind: UpvarCapture<'tcx>,
 }
 
-pub fn place_to_string_for_capture(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {
+pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {
     let mut curr_string: String = match place.base {
         HirPlaceBase::Upvar(upvar_id) => tcx.hir().name(upvar_id.var_path.hir_id).to_string(),
         _ => bug!("Capture_information should only contain upvars"),

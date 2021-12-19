@@ -63,7 +63,7 @@ impl fmt::Display for InterpErrorInfo<'_> {
     }
 }
 
-impl InterpErrorInfo<'tcx> {
+impl<'tcx> InterpErrorInfo<'tcx> {
     pub fn print_backtrace(&self) {
         if let Some(backtrace) = self.0.backtrace.as_ref() {
             print_backtrace(backtrace);

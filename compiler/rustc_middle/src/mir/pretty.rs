@@ -167,8 +167,8 @@ fn dump_matched_mir_node<'tcx, F>(
 
 /// Returns the file basename portion (without extension) of a filename path
 /// where we should dump a MIR representation output files.
-fn dump_file_basename(
-    tcx: TyCtxt<'_>,
+fn dump_file_basename<'tcx>(
+    tcx: TyCtxt<'tcx>,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
     disambiguator: &dyn Display,
@@ -251,8 +251,8 @@ fn create_dump_file_with_basename(
 /// bit of MIR-related data. Used by `mir-dump`, but also by other
 /// bits of code (e.g., NLL inference) that dump graphviz data or
 /// other things, and hence takes the extension as an argument.
-pub fn create_dump_file(
-    tcx: TyCtxt<'_>,
+pub fn create_dump_file<'tcx>(
+    tcx: TyCtxt<'tcx>,
     extension: &str,
     pass_num: Option<&dyn Display>,
     pass_name: &str,
@@ -419,7 +419,7 @@ struct ExtraComments<'tcx> {
     comments: Vec<String>,
 }
 
-impl ExtraComments<'tcx> {
+impl<'tcx> ExtraComments<'tcx> {
     fn push(&mut self, lines: &str) {
         for line in lines.split('\n') {
             self.comments.push(line.to_string());
@@ -427,7 +427,7 @@ impl ExtraComments<'tcx> {
     }
 }
 
-fn use_verbose(ty: &&TyS<'tcx>, fn_def: bool) -> bool {
+fn use_verbose<'tcx>(ty: &&TyS<'tcx>, fn_def: bool) -> bool {
     match ty.kind() {
         ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
         // Unit type
@@ -439,7 +439,7 @@ fn use_verbose(ty: &&TyS<'tcx>, fn_def: bool) -> bool {
     }
 }
 
-impl Visitor<'tcx> for ExtraComments<'tcx> {
+impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Constant { span, user_ty, literal } = constant;
@@ -762,7 +762,7 @@ pub fn write_allocations<'tcx>(
 /// After the hex dump, an ascii dump follows, replacing all unprintable characters (control
 /// characters or characters whose value is larger than 127) with a `.`
 /// This also prints relocations adequately.
-pub fn display_allocation<Tag, Extra>(
+pub fn display_allocation<'a, 'tcx, Tag, Extra>(
     tcx: TyCtxt<'tcx>,
     alloc: &'a Allocation<Tag, Extra>,
 ) -> RenderAllocation<'a, 'tcx, Tag, Extra> {
@@ -775,7 +775,9 @@ pub struct RenderAllocation<'a, 'tcx, Tag, Extra> {
     alloc: &'a Allocation<Tag, Extra>,
 }
 
-impl<Tag: Provenance, Extra> std::fmt::Display for RenderAllocation<'a, 'tcx, Tag, Extra> {
+impl<'a, 'tcx, Tag: Provenance, Extra> std::fmt::Display
+    for RenderAllocation<'a, 'tcx, Tag, Extra>
+{
     fn fmt(&self, w: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let RenderAllocation { tcx, alloc } = *self;
         write!(w, "size: {}, align: {})", alloc.size().bytes(), alloc.align.bytes())?;
@@ -818,7 +820,7 @@ fn write_allocation_newline(
 /// The `prefix` argument allows callers to add an arbitrary prefix before each line (even if there
 /// is only one line). Note that your prefix should contain a trailing space as the lines are
 /// printed directly after it.
-fn write_allocation_bytes<Tag: Provenance, Extra>(
+fn write_allocation_bytes<'tcx, Tag: Provenance, Extra>(
     tcx: TyCtxt<'tcx>,
     alloc: &Allocation<Tag, Extra>,
     w: &mut dyn std::fmt::Write,

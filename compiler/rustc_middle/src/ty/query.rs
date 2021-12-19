@@ -69,7 +69,7 @@ pub struct TyCtxtAt<'tcx> {
     pub span: Span,
 }
 
-impl Deref for TyCtxtAt<'tcx> {
+impl<'tcx> Deref for TyCtxtAt<'tcx> {
     type Target = TyCtxt<'tcx>;
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
@@ -82,7 +82,7 @@ pub struct TyCtxtEnsure<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
-impl TyCtxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
     /// are executed instead of just returning their results.
     #[inline(always)]
@@ -207,7 +207,7 @@ macro_rules! define_callbacks {
             $($(#[$attr])* pub $name: QueryCacheStore<query_storage::$name<$tcx>>,)*
         }
 
-        impl TyCtxtEnsure<$tcx> {
+        impl<$tcx> TyCtxtEnsure<$tcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
@@ -225,7 +225,7 @@ macro_rules! define_callbacks {
             })*
         }
 
-        impl TyCtxt<$tcx> {
+        impl<$tcx> TyCtxt<$tcx> {
             $($(#[$attr])*
             #[inline(always)]
             #[must_use]
@@ -235,7 +235,7 @@ macro_rules! define_callbacks {
             })*
         }
 
-        impl TyCtxtAt<$tcx> {
+        impl<$tcx> TyCtxtAt<$tcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
@@ -357,7 +357,7 @@ mod sealed {
 
 use sealed::IntoQueryParam;
 
-impl TyCtxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind(self, def_id: impl IntoQueryParam<DefId>) -> DefKind {
         let def_id = def_id.into_query_param();
         self.opt_def_kind(def_id)
@@ -365,7 +365,7 @@ impl TyCtxt<'tcx> {
     }
 }
 
-impl TyCtxtAt<'tcx> {
+impl<'tcx> TyCtxtAt<'tcx> {
     pub fn def_kind(self, def_id: impl IntoQueryParam<DefId>) -> DefKind {
         let def_id = def_id.into_query_param();
         self.opt_def_kind(def_id)

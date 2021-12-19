@@ -164,7 +164,7 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
 
 impl<'tcx> EqUnifyValue for &'tcx ty::Const<'tcx> {}
 
-pub fn replace_if_possible<V, L>(
+pub fn replace_if_possible<'tcx, V, L>(
     table: &mut UnificationTable<InPlace<ty::ConstVid<'tcx>, V, L>>,
     c: &'tcx ty::Const<'tcx>,
 ) -> &'tcx ty::Const<'tcx>

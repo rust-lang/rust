@@ -431,7 +431,7 @@ pub struct CodegenUnitNameBuilder<'tcx> {
     cache: FxHashMap<CrateNum, String>,
 }
 
-impl CodegenUnitNameBuilder<'tcx> {
+impl<'tcx> CodegenUnitNameBuilder<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         CodegenUnitNameBuilder { tcx, cache: Default::default() }
     }

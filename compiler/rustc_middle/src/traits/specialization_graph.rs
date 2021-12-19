@@ -216,7 +216,7 @@ impl<'tcx> Ancestors<'tcx> {
 ///
 /// Returns `Err` if an error was reported while building the specialization
 /// graph.
-pub fn ancestors(
+pub fn ancestors<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     start_from_impl: DefId,

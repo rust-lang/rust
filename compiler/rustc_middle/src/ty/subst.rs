@@ -67,7 +67,7 @@ impl<'tcx> GenericArgKind<'tcx> {
     }
 }
 
-impl fmt::Debug for GenericArg<'tcx> {
+impl<'tcx> fmt::Debug for GenericArg<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.unpack() {
             GenericArgKind::Lifetime(lt) => lt.fmt(f),

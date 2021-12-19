@@ -83,7 +83,7 @@ pub struct Adjustment<'tcx> {
     pub target: Ty<'tcx>,
 }
 
-impl Adjustment<'tcx> {
+impl<'tcx> Adjustment<'tcx> {
     pub fn is_region_borrow(&self) -> bool {
         matches!(self.kind, Adjust::Borrow(AutoBorrow::Ref(..)))
     }
