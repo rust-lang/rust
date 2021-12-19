@@ -986,6 +986,46 @@ where
         }
     }
 
+    /// Gets the given key's corresponding entry by reference in the map for in-place manipulation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut words: HashMap<String, usize> = HashMap::new();
+    /// let source = ["poneyland", "horseyland", "poneyland", "poneyland"];
+    /// for (i, &s) in source.iter().enumerate() {
+    ///     let counter = words.entry_ref(s).or_insert(0);
+    ///     *counter += 1;
+    /// }
+    ///
+    /// assert_eq!(words["poneyland"], 3);
+    /// assert_eq!(words["horseyland"], 1);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn entry_ref<'a, 'b, Q: ?Sized>(&'a mut self, key: &'b Q) -> EntryRef<'a, 'b, K, Q, V, S, A>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        let hash = make_hash::<K, Q, S>(&self.hash_builder, key);
+        if let Some(elem) = self.table.find(hash, equivalent_key(key)) {
+            EntryRef::Occupied(OccupiedEntryRef {
+                hash,
+                key: Some(KeyOrRef::Borrowed(key)),
+                elem,
+                table: self,
+            })
+        } else {
+            EntryRef::Vacant(VacantEntryRef {
+                hash,
+                key: KeyOrRef::Borrowed(key),
+                table: self,
+            })
+        }
+    }
+
     /// Returns a reference to the value corresponding to the key.
     ///
     /// The key may be any borrowed form of the map's key type, but
@@ -2740,6 +2780,119 @@ impl<K: Debug, V, S, A: Allocator + Clone> Debug for VacantEntry<'_, K, V, S, A>
     }
 }
 
+/// A view into a single entry in a map, which may either be vacant or occupied.
+///
+/// This `enum` is constructed from the [`entry_ref`] method on [`HashMap`].
+///
+/// [`HashMap`]: struct.HashMap.html
+/// [`entry_ref`]: struct.HashMap.html#method.entry_ref
+pub enum EntryRef<'a, 'b, K, Q: ?Sized, V, S, A = Global>
+where
+    A: Allocator + Clone,
+{
+    /// An occupied entry.
+    Occupied(OccupiedEntryRef<'a, 'b, K, Q, V, S, A>),
+
+    /// A vacant entry.
+    Vacant(VacantEntryRef<'a, 'b, K, Q, V, S, A>),
+}
+
+impl<K: Borrow<Q>, Q: ?Sized + Debug, V: Debug, S, A: Allocator + Clone> Debug
+    for EntryRef<'_, '_, K, Q, V, S, A>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            EntryRef::Vacant(ref v) => f.debug_tuple("EntryRef").field(v).finish(),
+            EntryRef::Occupied(ref o) => f.debug_tuple("EntryRef").field(o).finish(),
+        }
+    }
+}
+
+enum KeyOrRef<'a, K, Q: ?Sized> {
+    Borrowed(&'a Q),
+    Owned(K),
+}
+
+impl<'a, K, Q: ?Sized> KeyOrRef<'a, K, Q> {
+    fn into_owned(self) -> K
+    where
+        K: From<&'a Q>,
+    {
+        match self {
+            Self::Borrowed(borrowed) => borrowed.into(),
+            Self::Owned(owned) => owned,
+        }
+    }
+}
+
+impl<'a, K: Borrow<Q>, Q: ?Sized> AsRef<Q> for KeyOrRef<'a, K, Q> {
+    fn as_ref(&self) -> &Q {
+        match self {
+            Self::Borrowed(borrowed) => borrowed,
+            Self::Owned(owned) => owned.borrow(),
+        }
+    }
+}
+
+/// A view into an occupied entry in a `HashMap`.
+/// It is part of the [`EntryRef`] enum.
+///
+/// [`EntryRef`]: enum.EntryRef.html
+pub struct OccupiedEntryRef<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone = Global> {
+    hash: u64,
+    key: Option<KeyOrRef<'b, K, Q>>,
+    elem: Bucket<(K, V)>,
+    table: &'a mut HashMap<K, V, S, A>,
+}
+
+unsafe impl<'a, 'b, K, Q, V, S, A> Send for OccupiedEntryRef<'a, 'b, K, Q, V, S, A>
+where
+    K: Send,
+    Q: Sync + ?Sized,
+    V: Send,
+    S: Send,
+    A: Send + Allocator + Clone,
+{
+}
+unsafe impl<'a, 'b, K, Q, V, S, A> Sync for OccupiedEntryRef<'a, 'b, K, Q, V, S, A>
+where
+    K: Sync,
+    Q: Sync + ?Sized,
+    V: Sync,
+    S: Sync,
+    A: Sync + Allocator + Clone,
+{
+}
+
+impl<K: Borrow<Q>, Q: ?Sized + Debug, V: Debug, S, A: Allocator + Clone> Debug
+    for OccupiedEntryRef<'_, '_, K, Q, V, S, A>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OccupiedEntryRef")
+            .field("key", &self.key())
+            .field("value", &self.get())
+            .finish()
+    }
+}
+
+/// A view into a vacant entry in a `HashMap`.
+/// It is part of the [`EntryRef`] enum.
+///
+/// [`EntryRef`]: enum.EntryRef.html
+pub struct VacantEntryRef<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone = Global> {
+    hash: u64,
+    key: KeyOrRef<'b, K, Q>,
+    table: &'a mut HashMap<K, V, S, A>,
+}
+
+impl<K: Borrow<Q>, Q: ?Sized + Debug, V, S, A: Allocator + Clone> Debug
+    for VacantEntryRef<'_, '_, K, Q, V, S, A>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("VacantEntryRef").field(&self.key()).finish()
+    }
+}
+
 /// The error returned by [`try_insert`](HashMap::try_insert) when the key already exists.
 ///
 /// Contains the occupied entry, and the value that was not inserted.
@@ -3689,6 +3842,689 @@ impl<'a, K, V, S, A: Allocator + Clone> VacantEntry<'a, K, V, S, A> {
     }
 }
 
+impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> EntryRef<'a, 'b, K, Q, V, S, A> {
+    /// Sets the value of the entry, and returns an OccupiedEntryRef.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// let entry = map.entry_ref("horseyland").insert(37);
+    ///
+    /// assert_eq!(entry.key(), "horseyland");
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn insert(self, value: V) -> OccupiedEntryRef<'a, 'b, K, Q, V, S, A>
+    where
+        K: Hash + From<&'b Q>,
+        S: BuildHasher,
+    {
+        match self {
+            EntryRef::Occupied(mut entry) => {
+                entry.insert(value);
+                entry
+            }
+            EntryRef::Vacant(entry) => entry.insert_entry(value),
+        }
+    }
+
+    /// Ensures a value is in the entry by inserting the default if empty, and returns
+    /// a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    ///
+    /// map.entry_ref("poneyland").or_insert(3);
+    /// assert_eq!(map["poneyland"], 3);
+    ///
+    /// *map.entry_ref("poneyland").or_insert(10) *= 2;
+    /// assert_eq!(map["poneyland"], 6);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn or_insert(self, default: V) -> &'a mut V
+    where
+        K: Hash + From<&'b Q>,
+        S: BuildHasher,
+    {
+        match self {
+            EntryRef::Occupied(entry) => entry.into_mut(),
+            EntryRef::Vacant(entry) => entry.insert(default),
+        }
+    }
+
+    /// Ensures a value is in the entry by inserting the result of the default function if empty,
+    /// and returns a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<String, String> = HashMap::new();
+    /// let s = "hoho".to_string();
+    ///
+    /// map.entry_ref("poneyland").or_insert_with(|| s);
+    ///
+    /// assert_eq!(map["poneyland"], "hoho".to_string());
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V
+    where
+        K: Hash + From<&'b Q>,
+        S: BuildHasher,
+    {
+        match self {
+            EntryRef::Occupied(entry) => entry.into_mut(),
+            EntryRef::Vacant(entry) => entry.insert(default()),
+        }
+    }
+
+    /// Ensures a value is in the entry by inserting, if empty, the result of the default function.
+    /// This method allows for generating key-derived values for insertion by providing the default
+    /// function a reference to the key that was moved during the `.entry_ref(key)` method call.
+    ///
+    /// The reference to the moved key is provided so that cloning or copying the key is
+    /// unnecessary, unlike with `.or_insert_with(|| ... )`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<String, usize> = HashMap::new();
+    ///
+    /// map.entry_ref("poneyland").or_insert_with_key(|key| key.chars().count());
+    ///
+    /// assert_eq!(map["poneyland"], 9);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn or_insert_with_key<F: FnOnce(&Q) -> V>(self, default: F) -> &'a mut V
+    where
+        K: Hash + Borrow<Q> + From<&'b Q>,
+        S: BuildHasher,
+    {
+        match self {
+            EntryRef::Occupied(entry) => entry.into_mut(),
+            EntryRef::Vacant(entry) => {
+                let value = default(entry.key.as_ref());
+                entry.insert(value)
+            }
+        }
+    }
+
+    /// Returns a reference to this entry's key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// assert_eq!(map.entry_ref("poneyland").key(), "poneyland");
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn key(&self) -> &Q
+    where
+        K: Borrow<Q>,
+    {
+        match *self {
+            EntryRef::Occupied(ref entry) => entry.key(),
+            EntryRef::Vacant(ref entry) => entry.key(),
+        }
+    }
+
+    /// Provides in-place mutable access to an occupied entry before any
+    /// potential inserts into the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    ///
+    /// map.entry_ref("poneyland")
+    ///    .and_modify(|e| { *e += 1 })
+    ///    .or_insert(42);
+    /// assert_eq!(map["poneyland"], 42);
+    ///
+    /// map.entry_ref("poneyland")
+    ///    .and_modify(|e| { *e += 1 })
+    ///    .or_insert(42);
+    /// assert_eq!(map["poneyland"], 43);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn and_modify<F>(self, f: F) -> Self
+    where
+        F: FnOnce(&mut V),
+    {
+        match self {
+            EntryRef::Occupied(mut entry) => {
+                f(entry.get_mut());
+                EntryRef::Occupied(entry)
+            }
+            EntryRef::Vacant(entry) => EntryRef::Vacant(entry),
+        }
+    }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// an occupied entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::EntryRef;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    ///
+    /// let entry = map
+    ///     .entry_ref("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| panic!());
+    ///
+    /// match entry {
+    ///     EntryRef::Vacant(e) => {
+    ///         assert_eq!(e.key(), "poneyland");
+    ///     }
+    ///     EntryRef::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// map.insert("poneyland".to_string(), 42);
+    ///
+    /// let entry = map
+    ///     .entry_ref("poneyland")
+    ///     .and_replace_entry_with(|k, v| {
+    ///         assert_eq!(k, "poneyland");
+    ///         assert_eq!(v, 42);
+    ///         Some(v + 1)
+    ///     });
+    ///
+    /// match entry {
+    ///     EntryRef::Occupied(e) => {
+    ///         assert_eq!(e.key(), "poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     }
+    ///     EntryRef::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// let entry = map
+    ///     .entry_ref("poneyland")
+    ///     .and_replace_entry_with(|_k, _v| None);
+    ///
+    /// match entry {
+    ///     EntryRef::Vacant(e) => assert_eq!(e.key(), "poneyland"),
+    ///     EntryRef::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn and_replace_entry_with<F>(self, f: F) -> Self
+    where
+        F: FnOnce(&Q, V) -> Option<V>,
+        K: Borrow<Q>,
+    {
+        match self {
+            EntryRef::Occupied(entry) => entry.replace_entry_with(f),
+            EntryRef::Vacant(_) => self,
+        }
+    }
+}
+
+impl<'a, 'b, K, Q: ?Sized, V: Default, S, A: Allocator + Clone> EntryRef<'a, 'b, K, Q, V, S, A> {
+    /// Ensures a value is in the entry by inserting the default value if empty,
+    /// and returns a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<&str, Option<u32>> = HashMap::new();
+    /// map.entry("poneyland").or_default();
+    ///
+    /// assert_eq!(map["poneyland"], None);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn or_default(self) -> &'a mut V
+    where
+        K: Hash + From<&'b Q>,
+        S: BuildHasher,
+    {
+        match self {
+            EntryRef::Occupied(entry) => entry.into_mut(),
+            EntryRef::Vacant(entry) => entry.insert(Default::default()),
+        }
+    }
+}
+
+impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> OccupiedEntryRef<'a, 'b, K, Q, V, S, A> {
+    /// Gets a reference to the key in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.entry_ref("poneyland").or_insert(12);
+    /// assert_eq!(map.entry_ref("poneyland").key(), "poneyland");
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn key(&self) -> &Q
+    where
+        K: Borrow<Q>,
+    {
+        unsafe { &self.elem.as_ref().0 }.borrow()
+    }
+
+    /// Take the ownership of the key and value from the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::EntryRef;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.entry_ref("poneyland").or_insert(12);
+    ///
+    /// if let EntryRef::Occupied(o) = map.entry_ref("poneyland") {
+    ///     // We delete the entry from the map.
+    ///     o.remove_entry();
+    /// }
+    ///
+    /// assert_eq!(map.contains_key("poneyland"), false);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn remove_entry(self) -> (K, V) {
+        unsafe { self.table.table.remove(self.elem) }
+    }
+
+    /// Gets a reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::EntryRef;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.entry_ref("poneyland").or_insert(12);
+    ///
+    /// if let EntryRef::Occupied(o) = map.entry_ref("poneyland") {
+    ///     assert_eq!(o.get(), &12);
+    /// }
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn get(&self) -> &V {
+        unsafe { &self.elem.as_ref().1 }
+    }
+
+    /// Gets a mutable reference to the value in the entry.
+    ///
+    /// If you need a reference to the `OccupiedEntryRef` which may outlive the
+    /// destruction of the `EntryRef` value, see [`into_mut`].
+    ///
+    /// [`into_mut`]: #method.into_mut
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::EntryRef;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.entry_ref("poneyland").or_insert(12);
+    ///
+    /// assert_eq!(map["poneyland"], 12);
+    /// if let EntryRef::Occupied(mut o) = map.entry_ref("poneyland") {
+    ///     *o.get_mut() += 10;
+    ///     assert_eq!(*o.get(), 22);
+    ///
+    ///     // We can use the same Entry multiple times.
+    ///     *o.get_mut() += 2;
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 24);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn get_mut(&mut self) -> &mut V {
+        unsafe { &mut self.elem.as_mut().1 }
+    }
+
+    /// Converts the OccupiedEntryRef into a mutable reference to the value in the entry
+    /// with a lifetime bound to the map itself.
+    ///
+    /// If you need multiple references to the `OccupiedEntryRef`, see [`get_mut`].
+    ///
+    /// [`get_mut`]: #method.get_mut
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::EntryRef;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.entry_ref("poneyland").or_insert(12);
+    ///
+    /// assert_eq!(map["poneyland"], 12);
+    /// if let EntryRef::Occupied(o) = map.entry_ref("poneyland") {
+    ///     *o.into_mut() += 10;
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 22);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn into_mut(self) -> &'a mut V {
+        unsafe { &mut self.elem.as_mut().1 }
+    }
+
+    /// Sets the value of the entry, and returns the entry's old value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::EntryRef;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.entry_ref("poneyland").or_insert(12);
+    ///
+    /// if let EntryRef::Occupied(mut o) = map.entry_ref("poneyland") {
+    ///     assert_eq!(o.insert(15), 12);
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 15);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn insert(&mut self, mut value: V) -> V {
+        let old_value = self.get_mut();
+        mem::swap(&mut value, old_value);
+        value
+    }
+
+    /// Takes the value out of the entry, and returns it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::EntryRef;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.entry_ref("poneyland").or_insert(12);
+    ///
+    /// if let EntryRef::Occupied(o) = map.entry_ref("poneyland") {
+    ///     assert_eq!(o.remove(), 12);
+    /// }
+    ///
+    /// assert_eq!(map.contains_key("poneyland"), false);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn remove(self) -> V {
+        self.remove_entry().1
+    }
+
+    /// Replaces the entry, returning the old key and value. The new key in the hash map will be
+    /// the key used to create this entry.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if this OccupiedEntry was created through [`EntryRef::insert`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{EntryRef, HashMap};
+    /// use std::rc::Rc;
+    ///
+    /// let mut map: HashMap<Rc<str>, u32> = HashMap::new();
+    /// map.insert(Rc::from("Stringthing"), 15);
+    ///
+    /// if let EntryRef::Occupied(entry) = map.entry_ref("Stringthing") {
+    ///     // Also replace the key with a handle to our other key.
+    ///     let (old_key, old_value): (Rc<str>, u32) = entry.replace_entry(16);
+    /// }
+    ///
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_entry(self, value: V) -> (K, V)
+    where
+        K: From<&'b Q>,
+    {
+        let entry = unsafe { self.elem.as_mut() };
+
+        let old_key = mem::replace(&mut entry.0, self.key.unwrap().into_owned());
+        let old_value = mem::replace(&mut entry.1, value);
+
+        (old_key, old_value)
+    }
+
+    /// Replaces the key in the hash map with the key used to create this entry.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if this OccupiedEntry was created through [`Entry::insert`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::hash_map::{EntryRef, HashMap};
+    /// use std::rc::Rc;
+    ///
+    /// let mut map: HashMap<Rc<str>, u32> = HashMap::new();
+    /// let mut known_strings: Vec<Rc<str>> = Vec::new();
+    ///
+    /// // Initialise known strings, run program, etc.
+    ///
+    /// reclaim_memory(&mut map, &known_strings);
+    ///
+    /// fn reclaim_memory(map: &mut HashMap<Rc<str>, u32>, known_strings: &[Rc<str>] ) {
+    ///     for s in known_strings {
+    ///         if let EntryRef::Occupied(entry) = map.entry_ref(s.as_ref()) {
+    ///             // Replaces the entry's key with our version of it in `known_strings`.
+    ///             entry.replace_key();
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_key(self) -> K
+    where
+        K: From<&'b Q>,
+    {
+        let entry = unsafe { self.elem.as_mut() };
+        mem::replace(&mut entry.0, self.key.unwrap().into_owned())
+    }
+
+    /// Provides shared access to the key and owned access to the value of
+    /// the entry and allows to replace or remove it based on the
+    /// value of the returned option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::EntryRef;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.insert("poneyland".to_string(), 42);
+    ///
+    /// let entry = match map.entry_ref("poneyland") {
+    ///     EntryRef::Occupied(e) => {
+    ///         e.replace_entry_with(|k, v| {
+    ///             assert_eq!(k, "poneyland");
+    ///             assert_eq!(v, 42);
+    ///             Some(v + 1)
+    ///         })
+    ///     }
+    ///     EntryRef::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     EntryRef::Occupied(e) => {
+    ///         assert_eq!(e.key(), "poneyland");
+    ///         assert_eq!(e.get(), &43);
+    ///     }
+    ///     EntryRef::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// assert_eq!(map["poneyland"], 43);
+    ///
+    /// let entry = match map.entry_ref("poneyland") {
+    ///     EntryRef::Occupied(e) => e.replace_entry_with(|_k, _v| None),
+    ///     EntryRef::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     EntryRef::Vacant(e) => {
+    ///         assert_eq!(e.key(), "poneyland");
+    ///     }
+    ///     EntryRef::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// assert!(!map.contains_key("poneyland"));
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_entry_with<F>(self, f: F) -> EntryRef<'a, 'b, K, Q, V, S, A>
+    where
+        F: FnOnce(&Q, V) -> Option<V>,
+        K: Borrow<Q>,
+    {
+        unsafe {
+            let mut spare_key = None;
+
+            self.table
+                .table
+                .replace_bucket_with(self.elem.clone(), |(key, value)| {
+                    if let Some(new_value) = f(key.borrow(), value) {
+                        Some((key, new_value))
+                    } else {
+                        spare_key = Some(KeyOrRef::Owned(key));
+                        None
+                    }
+                });
+
+            if let Some(key) = spare_key {
+                EntryRef::Vacant(VacantEntryRef {
+                    hash: self.hash,
+                    key,
+                    table: self.table,
+                })
+            } else {
+                EntryRef::Occupied(self)
+            }
+        }
+    }
+}
+
+impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone> VacantEntryRef<'a, 'b, K, Q, V, S, A> {
+    /// Gets a reference to the key that would be used when inserting a value
+    /// through the `VacantEntryRef`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// let key: &str = "poneyland";
+    /// assert_eq!(map.entry_ref(key).key(), "poneyland");
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn key(&self) -> &Q
+    where
+        K: Borrow<Q>,
+    {
+        self.key.as_ref()
+    }
+
+    /// Take ownership of the key.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::EntryRef;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// let key: &str = "poneyland";
+    ///
+    /// if let EntryRef::Vacant(v) = map.entry_ref(key) {
+    ///     v.into_key();
+    /// }
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn into_key(self) -> K
+    where
+        K: From<&'b Q>,
+    {
+        self.key.into_owned()
+    }
+
+    /// Sets the value of the entry with the VacantEntryRef's key,
+    /// and returns a mutable reference to it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::EntryRef;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// let key: &str = "poneyland";
+    ///
+    /// if let EntryRef::Vacant(o) = map.entry_ref(key) {
+    ///     o.insert(37);
+    /// }
+    /// assert_eq!(map["poneyland"], 37);
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn insert(self, value: V) -> &'a mut V
+    where
+        K: Hash + From<&'b Q>,
+        S: BuildHasher,
+    {
+        let table = &mut self.table.table;
+        let entry = table.insert_entry(
+            self.hash,
+            (self.key.into_owned(), value),
+            make_hasher::<K, _, V, S>(&self.table.hash_builder),
+        );
+        &mut entry.1
+    }
+
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn insert_entry(self, value: V) -> OccupiedEntryRef<'a, 'b, K, Q, V, S, A>
+    where
+        K: Hash + From<&'b Q>,
+        S: BuildHasher,
+    {
+        let elem = self.table.table.insert(
+            self.hash,
+            (self.key.into_owned(), value),
+            make_hasher::<K, _, V, S>(&self.table.hash_builder),
+        );
+        OccupiedEntryRef {
+            hash: self.hash,
+            key: None,
+            elem,
+            table: self.table,
+        }
+    }
+}
+
 impl<K, V, S, A> FromIterator<(K, V)> for HashMap<K, V, S, A>
 where
     K: Eq + Hash,
@@ -3827,6 +4663,7 @@ fn assert_covariance() {
 mod test_map {
     use super::DefaultHashBuilder;
     use super::Entry::{Occupied, Vacant};
+    use super::EntryRef;
     use super::{HashMap, RawEntryMut};
     use rand::{rngs::SmallRng, Rng, SeedableRng};
     use std::borrow::ToOwned;
@@ -4084,6 +4921,17 @@ mod test_map {
             Vacant(_) => {}
         }
         assert!(*m.entry(0).or_insert(true));
+        assert_eq!(m.len(), 1);
+    }
+
+    #[test]
+    fn test_empty_entry_ref() {
+        let mut m: HashMap<std::string::String, bool> = HashMap::new();
+        match m.entry_ref("poneyland") {
+            EntryRef::Occupied(_) => panic!(),
+            EntryRef::Vacant(_) => {}
+        }
+        assert!(*m.entry_ref("poneyland").or_insert(true));
         assert_eq!(m.len(), 1);
     }
 
@@ -4624,6 +5472,63 @@ mod test_map {
     }
 
     #[test]
+    fn test_entry_ref() {
+        let xs = [
+            ("One".to_owned(), 10),
+            ("Two".to_owned(), 20),
+            ("Three".to_owned(), 30),
+            ("Four".to_owned(), 40),
+            ("Five".to_owned(), 50),
+            ("Six".to_owned(), 60),
+        ];
+
+        let mut map: HashMap<_, _> = xs.iter().cloned().collect();
+
+        // Existing key (insert)
+        match map.entry_ref("One") {
+            EntryRef::Vacant(_) => unreachable!(),
+            EntryRef::Occupied(mut view) => {
+                assert_eq!(view.get(), &10);
+                assert_eq!(view.insert(100), 10);
+            }
+        }
+        assert_eq!(map.get("One").unwrap(), &100);
+        assert_eq!(map.len(), 6);
+
+        // Existing key (update)
+        match map.entry_ref("Two") {
+            EntryRef::Vacant(_) => unreachable!(),
+            EntryRef::Occupied(mut view) => {
+                let v = view.get_mut();
+                let new_v = (*v) * 10;
+                *v = new_v;
+            }
+        }
+        assert_eq!(map.get("Two").unwrap(), &200);
+        assert_eq!(map.len(), 6);
+
+        // Existing key (take)
+        match map.entry_ref("Three") {
+            EntryRef::Vacant(_) => unreachable!(),
+            EntryRef::Occupied(view) => {
+                assert_eq!(view.remove(), 30);
+            }
+        }
+        assert_eq!(map.get("Three"), None);
+        assert_eq!(map.len(), 5);
+
+        // Inexistent key (insert)
+        match map.entry_ref("Ten") {
+            EntryRef::Occupied(_) => unreachable!(),
+            EntryRef::Vacant(view) => {
+                assert_eq!(*view.insert(1000), 1000);
+            }
+        }
+        assert_eq!(map.get("Ten").unwrap(), &1000);
+        assert_eq!(map.len(), 6);
+    }
+
+    #[test]
     fn test_entry_take_doesnt_corrupt() {
         #![allow(deprecated)] //rand
                               // Test for #19292
@@ -4651,6 +5556,44 @@ mod test_map {
             match m.entry(x) {
                 Vacant(_) => {}
                 Occupied(e) => {
+                    e.remove();
+                }
+            }
+
+            check(&m);
+        }
+    }
+
+    #[test]
+    fn test_entry_ref_take_doesnt_corrupt() {
+        #![allow(deprecated)] //rand
+                              // Test for #19292
+        fn check(m: &HashMap<std::string::String, ()>) {
+            for k in m.keys() {
+                assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+            }
+        }
+
+        let mut m = HashMap::new();
+
+        let mut rng = {
+            let seed = u64::from_le_bytes(*b"testseed");
+            SmallRng::seed_from_u64(seed)
+        };
+
+        // Populate the map with some items.
+        for _ in 0..50 {
+            let mut x = std::string::String::with_capacity(1);
+            x.push(rng.gen_range('a'..='z'));
+            m.insert(x, ());
+        }
+
+        for _ in 0..1000 {
+            let mut x = std::string::String::with_capacity(1);
+            x.push(rng.gen_range('a'..='z'));
+            match m.entry_ref(x.as_str()) {
+                EntryRef::Vacant(_) => {}
+                EntryRef::Occupied(e) => {
                     e.remove();
                 }
             }
@@ -4719,6 +5662,24 @@ mod test_map {
     }
 
     #[test]
+    fn test_occupied_entry_ref_key() {
+        let mut a = HashMap::new();
+        let key = "hello there";
+        let value = "value goes here";
+        assert!(a.is_empty());
+        a.insert(key.to_owned(), value);
+        assert_eq!(a.len(), 1);
+        assert_eq!(a[key], value);
+
+        match a.entry_ref(key) {
+            EntryRef::Vacant(_) => panic!(),
+            EntryRef::Occupied(e) => assert_eq!(key, e.key()),
+        }
+        assert_eq!(a.len(), 1);
+        assert_eq!(a[key], value);
+    }
+
+    #[test]
     fn test_vacant_entry_key() {
         let mut a = HashMap::new();
         let key = "hello there";
@@ -4729,6 +5690,24 @@ mod test_map {
             Occupied(_) => panic!(),
             Vacant(e) => {
                 assert_eq!(key, *e.key());
+                e.insert(value);
+            }
+        }
+        assert_eq!(a.len(), 1);
+        assert_eq!(a[key], value);
+    }
+
+    #[test]
+    fn test_vacant_entry_ref_key() {
+        let mut a: HashMap<std::string::String, &str> = HashMap::new();
+        let key = "hello there";
+        let value = "value goes here";
+
+        assert!(a.is_empty());
+        match a.entry_ref(key) {
+            EntryRef::Occupied(_) => panic!(),
+            EntryRef::Vacant(e) => {
+                assert_eq!(key, e.key());
                 e.insert(value);
             }
         }
@@ -4780,6 +5759,49 @@ mod test_map {
     }
 
     #[test]
+    fn test_occupied_entry_ref_replace_entry_with() {
+        let mut a: HashMap<std::string::String, &str> = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        let entry = a.entry_ref(key).insert(value).replace_entry_with(|k, v| {
+            assert_eq!(k, key);
+            assert_eq!(v, value);
+            Some(new_value)
+        });
+
+        match entry {
+            EntryRef::Occupied(e) => {
+                assert_eq!(e.key(), key);
+                assert_eq!(e.get(), &new_value);
+            }
+            EntryRef::Vacant(_) => panic!(),
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        let entry = match a.entry_ref(key) {
+            EntryRef::Occupied(e) => e.replace_entry_with(|k, v| {
+                assert_eq!(k, key);
+                assert_eq!(v, new_value);
+                None
+            }),
+            EntryRef::Vacant(_) => panic!(),
+        };
+
+        match entry {
+            EntryRef::Vacant(e) => assert_eq!(e.key(), key),
+            EntryRef::Occupied(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
     fn test_entry_and_replace_entry_with() {
         let mut a = HashMap::new();
 
@@ -4822,6 +5844,55 @@ mod test_map {
         match entry {
             Vacant(e) => assert_eq!(e.key(), &key),
             Occupied(_) => panic!(),
+        }
+
+        assert!(!a.contains_key(key));
+        assert_eq!(a.len(), 0);
+    }
+
+    #[test]
+    fn test_entry_ref_and_replace_entry_with() {
+        let mut a = HashMap::new();
+
+        let key = "a key";
+        let value = "an initial value";
+        let new_value = "a new value";
+
+        let entry = a.entry_ref(key).and_replace_entry_with(|_, _| panic!());
+
+        match entry {
+            EntryRef::Vacant(e) => assert_eq!(e.key(), key),
+            EntryRef::Occupied(_) => panic!(),
+        }
+
+        a.insert(key.to_owned(), value);
+
+        let entry = a.entry_ref(key).and_replace_entry_with(|k, v| {
+            assert_eq!(k, key);
+            assert_eq!(v, value);
+            Some(new_value)
+        });
+
+        match entry {
+            EntryRef::Occupied(e) => {
+                assert_eq!(e.key(), key);
+                assert_eq!(e.get(), &new_value);
+            }
+            EntryRef::Vacant(_) => panic!(),
+        }
+
+        assert_eq!(a[key], new_value);
+        assert_eq!(a.len(), 1);
+
+        let entry = a.entry_ref(key).and_replace_entry_with(|k, v| {
+            assert_eq!(k, key);
+            assert_eq!(v, new_value);
+            None
+        });
+
+        match entry {
+            EntryRef::Vacant(e) => assert_eq!(e.key(), key),
+            EntryRef::Occupied(_) => panic!(),
         }
 
         assert!(!a.contains_key(key));
@@ -4959,6 +6030,38 @@ mod test_map {
         for _ in 0..1000 {
             let x = rng.gen_range(-10..10);
             m.entry(x).and_replace_entry_with(|_, _| None);
+            check(&m);
+        }
+    }
+
+    #[test]
+    fn test_replace_entry_ref_with_doesnt_corrupt() {
+        #![allow(deprecated)] //rand
+                              // Test for #19292
+        fn check(m: &HashMap<std::string::String, ()>) {
+            for k in m.keys() {
+                assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+            }
+        }
+
+        let mut m = HashMap::new();
+
+        let mut rng = {
+            let seed = u64::from_le_bytes(*b"testseed");
+            SmallRng::seed_from_u64(seed)
+        };
+
+        // Populate the map with some items.
+        for _ in 0..50 {
+            let mut x = std::string::String::with_capacity(1);
+            x.push(rng.gen_range('a'..='z'));
+            m.insert(x, ());
+        }
+
+        for _ in 0..1000 {
+            let mut x = std::string::String::with_capacity(1);
+            x.push(rng.gen_range('a'..='z'));
+            m.entry_ref(x.as_str()).and_replace_entry_with(|_, _| None);
             check(&m);
         }
     }
