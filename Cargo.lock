@@ -87,7 +87,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "miniz_oxide",
- "object",
+ "object 0.27.1",
  "rustc-demangle",
 ]
 
@@ -1028,6 +1028,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "object"
+version = "0.28.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ce8b38d41f9f3618fc23f908faae61510f8d8ce2d99cbe910641e8f1971f084"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1139,7 +1148,7 @@ name = "proc_macro_api"
 version = "0.0.0"
 dependencies = [
  "memmap2",
- "object",
+ "object 0.28.1",
  "paths",
  "profile",
  "serde",
@@ -1158,7 +1167,7 @@ dependencies = [
  "libloading",
  "mbe",
  "memmap2",
- "object",
+ "object 0.28.1",
  "paths",
  "proc_macro_api",
  "proc_macro_test",
