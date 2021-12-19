@@ -378,7 +378,7 @@ fn fallback_cgu_name(name_builder: &mut CodegenUnitNameBuilder<'_>) -> Symbol {
     name_builder.build_cgu_name(LOCAL_CRATE, &["fallback"], Some("cgu"))
 }
 
-fn mono_item_linkage_and_visibility(
+fn mono_item_linkage_and_visibility<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
@@ -393,7 +393,7 @@ fn mono_item_linkage_and_visibility(
 
 type CguNameCache = FxHashMap<(DefId, bool), Symbol>;
 
-fn mono_item_visibility(
+fn mono_item_visibility<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
