@@ -510,9 +510,6 @@ crate fn run_global_ctxt(
 
     krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
 
-    // The main crate doc comments are always collapsed.
-    krate.collapsed = true;
-
     (krate, ctxt.render_options, ctxt.cache)
 }
 
