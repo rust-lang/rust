@@ -12,7 +12,7 @@ use crate::ptr;
 
 /// When dropped, copies from `src` into `dest`.
 struct CopyOnDrop<T> {
-    src: *mut T,
+    src: *const T,
     dest: *mut T,
 }
 
@@ -54,9 +54,9 @@ where
             // Read the first element into a stack-allocated variable. If a following comparison
             // operation panics, `hole` will get dropped and automatically write the element back
             // into the slice.
-            let mut tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(0)));
+            let tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(0)));
             let v = v.as_mut_ptr();
-            let mut hole = CopyOnDrop { src: &mut *tmp, dest: v.add(1) };
+            let mut hole = CopyOnDrop { src: &*tmp, dest: v.add(1) };
             ptr::copy_nonoverlapping(v.add(1), v.add(0), 1);
 
             for i in 2..len {
@@ -100,9 +100,9 @@ where
             // Read the last element into a stack-allocated variable. If a following comparison
             // operation panics, `hole` will get dropped and automatically write the element back
             // into the slice.
-            let mut tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(len - 1)));
+            let tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(len - 1)));
             let v = v.as_mut_ptr();
-            let mut hole = CopyOnDrop { src: &mut *tmp, dest: v.add(len - 2) };
+            let mut hole = CopyOnDrop { src: &*tmp, dest: v.add(len - 2) };
             ptr::copy_nonoverlapping(v.add(len - 2), v.add(len - 1), 1);
 
             for i in (0..len - 2).rev() {
@@ -498,8 +498,8 @@ where
         // operation panics, the pivot will be automatically written back into the slice.
 
         // SAFETY: `pivot` is a reference to the first element of `v`, so `ptr::read` is safe.
-        let mut tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
-        let _pivot_guard = CopyOnDrop { src: &mut *tmp, dest: pivot };
+        let tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
+        let _pivot_guard = CopyOnDrop { src: &*tmp, dest: pivot };
         let pivot = &*tmp;
 
         // Find the first pair of out-of-order elements.
@@ -551,8 +551,8 @@ where
     // Read the pivot into a stack-allocated variable for efficiency. If a following comparison
     // operation panics, the pivot will be automatically written back into the slice.
     // SAFETY: The pointer here is valid because it is obtained from a reference to a slice.
-    let mut tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
-    let _pivot_guard = CopyOnDrop { src: &mut *tmp, dest: pivot };
+    let tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
+    let _pivot_guard = CopyOnDrop { src: &*tmp, dest: pivot };
     let pivot = &*tmp;
 
     // Now partition the slice.

@@ -892,7 +892,7 @@ where
             //    performance than with the 2nd method.
             //
             // All methods were benchmarked, and the 3rd showed best results. So we chose that one.
-            let mut tmp = mem::ManuallyDrop::new(ptr::read(&v[0]));
+            let tmp = mem::ManuallyDrop::new(ptr::read(&v[0]));
 
             // Intermediate state of the insertion process is always tracked by `hole`, which
             // serves two purposes:
@@ -904,7 +904,7 @@ where
             // If `is_less` panics at any point during the process, `hole` will get dropped and
             // fill the hole in `v` with `tmp`, thus ensuring that `v` still holds every object it
             // initially held exactly once.
-            let mut hole = InsertionHole { src: &mut *tmp, dest: &mut v[1] };
+            let mut hole = InsertionHole { src: &*tmp, dest: &mut v[1] };
             ptr::copy_nonoverlapping(&v[1], &mut v[0], 1);
 
             for i in 2..v.len() {
@@ -920,7 +920,7 @@ where
 
     // When dropped, copies from `src` into `dest`.
     struct InsertionHole<T> {
-        src: *mut T,
+        src: *const T,
         dest: *mut T,
     }
 
