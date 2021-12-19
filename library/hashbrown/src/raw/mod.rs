@@ -1031,8 +1031,18 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     }
 }
 
-unsafe impl<T, A: Allocator + Clone> Send for RawTable<T, A> where T: Send {}
-unsafe impl<T, A: Allocator + Clone> Sync for RawTable<T, A> where T: Sync {}
+unsafe impl<T, A: Allocator + Clone> Send for RawTable<T, A>
+where
+    T: Send,
+    A: Send,
+{
+}
+unsafe impl<T, A: Allocator + Clone> Sync for RawTable<T, A>
+where
+    T: Sync,
+    A: Sync,
+{
+}
 
 impl<A> RawTableInner<A> {
     #[inline]
@@ -2156,8 +2166,18 @@ impl<T, A: Allocator + Clone> RawIntoIter<T, A> {
     }
 }
 
-unsafe impl<T, A: Allocator + Clone> Send for RawIntoIter<T, A> where T: Send {}
-unsafe impl<T, A: Allocator + Clone> Sync for RawIntoIter<T, A> where T: Sync {}
+unsafe impl<T, A: Allocator + Clone> Send for RawIntoIter<T, A>
+where
+    T: Send,
+    A: Send,
+{
+}
+unsafe impl<T, A: Allocator + Clone> Sync for RawIntoIter<T, A>
+where
+    T: Sync,
+    A: Sync,
+{
+}
 
 #[cfg(feature = "nightly")]
 unsafe impl<#[may_dangle] T, A: Allocator + Clone> Drop for RawIntoIter<T, A> {
@@ -2229,8 +2249,18 @@ impl<T, A: Allocator + Clone> RawDrain<'_, T, A> {
     }
 }
 
-unsafe impl<T, A: Allocator + Copy> Send for RawDrain<'_, T, A> where T: Send {}
-unsafe impl<T, A: Allocator + Copy> Sync for RawDrain<'_, T, A> where T: Sync {}
+unsafe impl<T, A: Allocator + Copy> Send for RawDrain<'_, T, A>
+where
+    T: Send,
+    A: Send,
+{
+}
+unsafe impl<T, A: Allocator + Copy> Sync for RawDrain<'_, T, A>
+where
+    T: Sync,
+    A: Sync,
+{
+}
 
 impl<T, A: Allocator + Clone> Drop for RawDrain<'_, T, A> {
     #[cfg_attr(feature = "inline-more", inline)]

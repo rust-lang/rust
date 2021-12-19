@@ -87,7 +87,7 @@ impl<T, A: Allocator + Clone> RawIntoParIter<T, A> {
     }
 }
 
-impl<T: Send, A: Allocator + Clone> ParallelIterator for RawIntoParIter<T, A> {
+impl<T: Send, A: Allocator + Clone + Send> ParallelIterator for RawIntoParIter<T, A> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -116,7 +116,7 @@ pub struct RawParDrain<'a, T, A: Allocator + Clone = Global> {
     marker: PhantomData<&'a RawTable<T, A>>,
 }
 
-unsafe impl<T, A: Allocator + Clone> Send for RawParDrain<'_, T, A> {}
+unsafe impl<T: Send, A: Allocator + Clone> Send for RawParDrain<'_, T, A> {}
 
 impl<T, A: Allocator + Clone> RawParDrain<'_, T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
