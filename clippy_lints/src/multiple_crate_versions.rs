@@ -48,7 +48,7 @@ impl LateLintPass<'_> for MultipleCrateVersions {
         }
 
         let metadata = unwrap_cargo_metadata!(cx, MULTIPLE_CRATE_VERSIONS, true);
-        let local_name = cx.tcx.crate_name(LOCAL_CRATE).as_str();
+        let local_name = cx.tcx.crate_name(LOCAL_CRATE);
         let mut packages = metadata.packages;
         packages.sort_by(|a, b| a.name.cmp(&b.name));
 
@@ -56,7 +56,7 @@ impl LateLintPass<'_> for MultipleCrateVersions {
             if let Some(resolve) = &metadata.resolve;
             if let Some(local_id) = packages
                 .iter()
-                .find_map(|p| if p.name == *local_name { Some(&p.id) } else { None });
+                .find_map(|p| if p.name == local_name.as_str() { Some(&p.id) } else { None });
             then {
                 for (name, group) in &packages.iter().group_by(|p| p.name.clone()) {
                     let group: Vec<&Package> = group.collect();

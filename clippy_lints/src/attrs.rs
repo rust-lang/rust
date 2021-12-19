@@ -17,7 +17,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
-use rustc_span::symbol::{Symbol, SymbolStr};
+use rustc_span::symbol::Symbol;
 use semver::Version;
 
 static UNIX_SYSTEMS: &[&str] = &[
@@ -310,8 +310,8 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
-                                            || extract_clippy_lint(lint).map_or(false, |s| s == "wildcard_imports")
-                                            || extract_clippy_lint(lint).map_or(false, |s| s == "enum_glob_use")
+                                            || extract_clippy_lint(lint).map_or(false, |s| s.as_str() == "wildcard_imports")
+                                            || extract_clippy_lint(lint).map_or(false, |s| s.as_str() == "enum_glob_use")
                                         {
                                             return;
                                         }
@@ -370,7 +370,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
 }
 
 /// Returns the lint name if it is clippy lint.
-fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
+fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<Symbol> {
     if_chain! {
         if let Some(meta_item) = lint.meta_item();
         if meta_item.path.segments.len() > 1;
@@ -378,7 +378,7 @@ fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
         if tool_name.name == sym::clippy;
         then {
             let lint_name = meta_item.path.segments.last().unwrap().ident.name;
-            return Some(lint_name.as_str());
+            return Some(lint_name);
         }
     }
     None
@@ -387,7 +387,7 @@ fn extract_clippy_lint(lint: &NestedMetaItem) -> Option<SymbolStr> {
 fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem]) {
     for lint in items {
         if let Some(lint_name) = extract_clippy_lint(lint) {
-            if lint_name == "restriction" && name != sym::allow {
+            if lint_name.as_str() == "restriction" && name != sym::allow {
                 span_lint_and_help(
                     cx,
                     BLANKET_CLIPPY_RESTRICTION_LINTS,
@@ -486,7 +486,7 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribut
 
 fn check_semver(cx: &LateContext<'_>, span: Span, lit: &Lit) {
     if let LitKind::Str(is, _) = lit.kind {
-        if Version::parse(&is.as_str()).is_ok() {
+        if Version::parse(is.as_str()).is_ok() {
             return;
         }
     }
@@ -619,7 +619,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                     MetaItemKind::Word => {
                         if_chain! {
                             if let Some(ident) = meta.ident();
-                            if let Some(os) = find_os(&*ident.name.as_str());
+                            if let Some(os) = find_os(ident.name.as_str());
                             then {
                                 mismatched.push((os, ident.span));
                             }

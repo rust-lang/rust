@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for DurationSubsec {
             if match_type(cx, cx.typeck_results().expr_ty(&args[0]).peel_refs(), &paths::DURATION);
             if let Some((Constant::Int(divisor), _)) = constant(cx, cx.typeck_results(), right);
             then {
-                let suggested_fn = match (method_path.ident.as_str().as_ref(), divisor) {
+                let suggested_fn = match (method_path.ident.as_str(), divisor) {
                     ("subsec_micros", 1_000) | ("subsec_nanos", 1_000_000) => "subsec_millis",
                     ("subsec_nanos", 1_000) => "subsec_micros",
                     _ => return,

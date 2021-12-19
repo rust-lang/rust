@@ -80,7 +80,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::SymbolStr;
+use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 use rustc_typeck::hir_ty_to_ty;
 
@@ -1997,21 +1997,21 @@ impl_lint_pass!(Methods => [
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
-fn method_call<'tcx>(recv: &'tcx hir::Expr<'tcx>) -> Option<(SymbolStr, &'tcx [hir::Expr<'tcx>], Span)> {
+fn method_call<'tcx>(recv: &'tcx hir::Expr<'tcx>) -> Option<(Symbol, &'tcx [hir::Expr<'tcx>], Span)> {
     if let ExprKind::MethodCall(path, span, args, _) = recv.kind {
         if !args.iter().any(|e| e.span.from_expansion()) {
-            return Some((path.ident.name.as_str(), args, span));
+            return Some((path.ident.name, args, span));
         }
     }
     None
 }
 
-/// Same as `method_call` but the `SymbolStr` is dereferenced into a temporary `&str`
+/// Same as `method_call` but the `Symbol` is dereferenced into a temporary `&str`
 macro_rules! method_call {
     ($expr:expr) => {
         method_call($expr)
             .as_ref()
-            .map(|&(ref name, args, span)| (&**name, args, span))
+            .map(|&(ref name, args, span)| (name.as_str(), args, span))
     };
 }
 
@@ -2028,8 +2028,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
             },
             hir::ExprKind::MethodCall(method_call, ref method_span, args, _) => {
-                or_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
-                expect_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
+                or_fun_call::check(cx, expr, *method_span, method_call.ident.as_str(), args);
+                expect_fun_call::check(cx, expr, *method_span, method_call.ident.as_str(), args);
                 clone_on_copy::check(cx, expr, method_call.ident.name, args);
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, args);
                 inefficient_to_string::check(cx, expr, method_call.ident.name, args);
@@ -2184,7 +2184,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty().skip_binder();
                 wrong_self_convention::check(
                     cx,
-                    &item.ident.name.as_str(),
+                    item.ident.name.as_str(),
                     self_ty,
                     first_arg_ty,
                     first_arg_span,

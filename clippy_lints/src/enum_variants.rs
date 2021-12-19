@@ -153,7 +153,7 @@ fn check_variant(
             );
         }
     }
-    let first = &def.variants[0].ident.name.as_str();
+    let first = def.variants[0].ident.name.as_str();
     let mut pre = &first[..str_utils::camel_case_until(&*first).byte_index];
     let mut post = &first[str_utils::camel_case_start(&*first).byte_index..];
     for var in def.variants {
