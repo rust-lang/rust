@@ -5,6 +5,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(let_else)]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]

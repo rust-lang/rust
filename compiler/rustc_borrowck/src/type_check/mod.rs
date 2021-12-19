@@ -17,6 +17,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
+use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
     InferCtxt, InferOk, LateBoundRegionConversionTime, NllRegionVariableOrigin,
@@ -39,9 +40,11 @@ use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::type_op;
+use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
+use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use rustc_trait_selection::traits::query::Fallible;
-use rustc_trait_selection::traits::{self, ObligationCause};
+use rustc_trait_selection::traits::{self, ObligationCause, PredicateObligation};
 
 use rustc_const_eval::transform::{
     check_consts::ConstCx, promote_consts::is_const_fn_in_array_repeat_expression,
@@ -2635,5 +2638,34 @@ impl NormalizeLocation for Locations {
 impl NormalizeLocation for Location {
     fn to_locations(self) -> Locations {
         Locations::Single(self)
+    }
+}
+
+/// Runs `infcx.instantiate_opaque_types`. Unlike other `TypeOp`s,
+/// this is not canonicalized - it directly affects the main `InferCtxt`
+/// that we use during MIR borrowchecking.
+#[derive(Debug)]
+pub(super) struct InstantiateOpaqueType<'tcx> {
+    pub base_universe: Option<ty::UniverseIndex>,
+    pub region_constraints: Option<RegionConstraintData<'tcx>>,
+    pub obligation: PredicateObligation<'tcx>,
+}
+
+impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
+    type Output = ();
+    /// We use this type itself to store the information used
+    /// when reporting errors. Since this is not a query, we don't
+    /// re-run anything during error reporting - we just use the information
+    /// we saved to help extract an error from the already-existing region
+    /// constraints in our `InferCtxt`
+    type ErrorInfo = InstantiateOpaqueType<'tcx>;
+
+    fn fully_perform(mut self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
+        let (mut output, region_constraints) = scrape_region_constraints(infcx, || {
+            Ok(InferOk { value: (), obligations: vec![self.obligation.clone()] })
+        })?;
+        self.region_constraints = Some(region_constraints);
+        output.error_info = Some(self);
+        Ok(output)
     }
 }
