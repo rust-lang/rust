@@ -4,7 +4,6 @@
 #![allow(unused_features)]
 #![deny(rust_2018_idioms)]
 #![feature(
-    asm,
     custom_inner_attributes,
     link_llvm_intrinsics,
     platform_intrinsics,

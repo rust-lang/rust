@@ -17,7 +17,6 @@
 #![deny(rust_2018_idioms)]
 #![allow(clippy::shadow_reuse)]
 #![deny(clippy::missing_inline_in_public_items)]
-#![cfg_attr(all(target_os = "freebsd", target_arch = "aarch64"), feature(asm))]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(feature = "std_detect_file_io", feature(vec_spare_capacity))]
 #![no_std]
