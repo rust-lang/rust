@@ -4,6 +4,7 @@ use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
 use rustc_errors::ErrorReported;
+use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
@@ -20,12 +21,14 @@ use super::wf;
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
+use super::EvaluationResult;
 use super::Unimplemented;
 use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
 use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::project::PolyProjectionObligation;
+use crate::traits::project::ProjectionCacheKeyExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
@@ -709,6 +712,20 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if self.selcx.infcx().predicate_must_hold_considering_regions(obligation) {
+                if let Some(key) = ProjectionCacheKey::from_poly_projection_predicate(
+                    &mut self.selcx,
+                    project_obligation.predicate,
+                ) {
+                    // If `predicate_must_hold_considering_regions` succeeds, then we've
+                    // evaluated all sub-obligations. We can therefore mark the 'root'
+                    // obligation as complete, and skip evaluating sub-obligations.
+                    self.selcx
+                        .infcx()
+                        .inner
+                        .borrow_mut()
+                        .projection_cache()
+                        .complete(key, EvaluationResult::EvaluatedToOk);
+                }
                 return ProcessResult::Changed(vec![]);
             } else {
                 tracing::debug!("Does NOT hold: {:?}", obligation);

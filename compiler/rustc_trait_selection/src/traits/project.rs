@@ -889,7 +889,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             debug!("recur cache");
             return Err(InProgress);
         }
-        Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
+        Err(ProjectionCacheEntry::NormalizedTy { ty, complete: _ }) => {
             // This is the hottest path in this function.
             //
             // If we find the value in the cache, then return it along
