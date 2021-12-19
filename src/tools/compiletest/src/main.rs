@@ -201,7 +201,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
     let llvm_version =
         matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
 
-    let rustc_path = opt_path(matches, "rustc-path");
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
@@ -215,12 +214,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         // Avoid spawning an external command when we know tidy won't be used.
         false
     };
-
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
-        rustc_path: rustc_path,
+        rustc_path: opt_path(matches, "rustc-path"),
         rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
         rust_demangler_path: matches.opt_str("rust-demangler-path").map(PathBuf::from),
         lldb_python: matches.opt_str("lldb-python").unwrap(),

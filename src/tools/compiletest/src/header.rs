@@ -4,10 +4,9 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use lazy_static::lazy_static;
-use regex::Regex;
-use tracing::*;
+use tracing::{self, *};
 
 use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PanicStrategy, PassMode};
 use crate::util;
@@ -707,35 +706,9 @@ impl Config {
     }
 
     fn evaluate_prop_for_target(&self, prop: &str, target: &str) -> EvaluatedProp {
-        // This matches optional whitespace, followed by a group containing a series of word
-        // characters (including '_' and '-'), followed optionally by a sequence consisting
-        // of a colon, optional whitespace, and another group containing word characters.
-        //
-        // Matches in full:
-        //   cfg-target-has-atomic: 128
-        //   cfg-target-has-atomic:128
-        //   cfg-target-has-atomic
-        //
-        // Matches up to the first space (exclusive):
-        //   ignore-test - This test really shouldn't ever be run
-        //
-        // Matches up to the second space (exclusive):
-        //   cfg-target-has-atomic: 128 - this requires fancy newfangled atomics
-        //
-        // Matches up to the second colon (exclusive)
-        //   cfg-target-has-atomic:128: I put an extra colon here to confuse other programmers!
-        //
-        // Does not match:
-        //   (a line consisting solely of whitespace)
-        //   &*#$ cfg-target-has-atomic
-        //
-        lazy_static! {
-            static ref CFG_REGEX: Regex = Regex::new(r"^\s*([\w-]+)(?::\s*([\w-]+))?").unwrap();
-        }
-
-        let captures = CFG_REGEX.captures(&prop).unwrap();
-        let name = captures.get(1).unwrap().as_str();
-        let maybe_value = captures.get(2).map(|v| v.as_str().trim());
+        let mut iter = prop.split(&[':', ' '][..]);
+        let name = iter.next().unwrap();
+        let maybe_value = iter.find(|s| !s.is_empty());
 
         let is_match = name == "test" ||
             target == name ||                                   // triple
@@ -763,16 +736,28 @@ impl Config {
                 Some(Debugger::Gdb) => name == "gdb",
                 Some(Debugger::Lldb) => name == "lldb",
                 None => false,
-            } ||
-            match name.strip_prefix("cfg-") {
-                Some(rustc_cfg_name) => {
-                    let cfg_data = util::fetch_cfg_from_rustc_for_target(&self.rustc_path, target);
-                    util::cfg_has(&cfg_data, rustc_cfg_name, maybe_value)
-                },
-                None => false
-            };
+            } || name == "cfg" && self.cfg_matches_for_target(maybe_value.unwrap(), target);
 
         if is_match { EvaluatedProp::Match } else { EvaluatedProp::NoMatch }
+    }
+
+    fn cfg_matches_for_target(&self, value: &str, target: &str) -> bool {
+        let whitespace_or_double_quote = |c: char| c.is_whitespace() || c == '"';
+
+        let value = value.replace(whitespace_or_double_quote, "");
+
+        let cfg_data = Command::new(&self.rustc_path)
+            .args(&["--target", &target])
+            .args(&["--print", "cfg"])
+            .output()
+            .unwrap()
+            .stdout;
+        let cfg_data = String::from_utf8(cfg_data).unwrap();
+        let cfg_data = cfg_data.replace('"', "");
+
+        let matches_value = |line: &str| line == value || line.split('=').next().unwrap() == value;
+
+        cfg_data.lines().any(matches_value)
     }
 
     fn has_prop_prefix(&self, line: &str, prefix: &str) -> bool {

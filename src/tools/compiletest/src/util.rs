@@ -1,10 +1,7 @@
 use crate::common::Config;
-
-use std::collections::HashMap;
 use std::env;
 use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::process::Command;
 
 use tracing::*;
 
@@ -215,64 +212,6 @@ pub fn logv(config: &Config, s: String) {
     debug!("{}", s);
     if config.verbose {
         println!("{}", s);
-    }
-}
-
-pub fn fetch_cfg_from_rustc_for_target<P: AsRef<OsStr>>(
-    rustc_path: &P,
-    target: &str,
-) -> HashMap<String, Vec<String>> {
-    let mut target_cfg = HashMap::new();
-
-    if !cfg!(test) {
-        let rustc_output = Command::new(&rustc_path)
-            .args(&["--target", &target])
-            .args(&["--print", "cfg"])
-            .output()
-            .unwrap()
-            .stdout;
-        let rustc_output = String::from_utf8(rustc_output).unwrap();
-
-        for line in rustc_output.lines() {
-            if let Some((name, value)) = line.split_once('=') {
-                let normalized_value = value.trim_matches('"');
-                cfg_add(&mut target_cfg, name, normalized_value);
-            } else {
-                cfg_add(&mut target_cfg, line, "");
-            }
-        }
-    }
-    target_cfg
-}
-
-/// Adds the given name and value to the provided cfg [`HashMap`]. If the `name` already
-/// points to a vector, this adds `value` to the vector. If `name` does not point
-/// to a vector, this adds a new vector containing only `value` to the [`HashMap`].
-fn cfg_add(map: &mut HashMap<String, Vec<String>>, name: &str, value: &str) {
-    let name = name.to_string();
-    let value = value.to_string();
-
-    if let Some(values) = map.get_mut(&name) {
-        values.push(value.to_string());
-    } else {
-        map.insert(name, vec![value.to_string()]);
-    }
-}
-
-/// Checks if the cfg HashMap has the given `name`. If the `required_value` is
-/// `Some(value)`, this will only return `true` if `name` is associated with `value`.
-pub fn cfg_has(
-    map: &HashMap<String, Vec<String>>,
-    name: &str,
-    required_value: Option<&str>,
-) -> bool {
-    let name = name.replace("-", "_");
-    let required_value = required_value.map(str::trim).map(str::to_string);
-
-    match (map.get(&name), required_value) {
-        (None, _) => false,
-        (Some(_), None) => true,
-        (Some(values), Some(required_value)) => values.contains(&required_value),
     }
 }
 
