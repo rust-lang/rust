@@ -259,8 +259,15 @@ pub fn create_compressed_metadata_file(
     let section = file.add_section(
         file.segment_name(StandardSegment::Data).to_vec(),
         b".rustc".to_vec(),
-        SectionKind::Data,
+        SectionKind::ReadOnlyData,
     );
+    match file.format() {
+        BinaryFormat::Elf => {
+            // Explicitly set no flags to avoid SHF_ALLOC default for data section.
+            file.section_mut(section).flags = SectionFlags::Elf { sh_flags: 0 };
+        }
+        _ => {}
+    };
     let offset = file.append_section_data(section, &compressed, 1);
 
     // For MachO and probably PE this is necessary to prevent the linker from throwing away the
