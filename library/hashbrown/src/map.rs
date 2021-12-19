@@ -2113,6 +2113,7 @@ unsafe impl<K, V, S, A> Send for RawOccupiedEntryMut<'_, K, V, S, A>
 where
     K: Send,
     V: Send,
+    S: Send,
     A: Send + Allocator + Clone,
 {
 }
@@ -2120,7 +2121,8 @@ unsafe impl<K, V, S, A> Sync for RawOccupiedEntryMut<'_, K, V, S, A>
 where
     K: Sync,
     V: Sync,
-    A: Send + Allocator + Clone,
+    S: Sync,
+    A: Sync + Allocator + Clone,
 {
 }
 
