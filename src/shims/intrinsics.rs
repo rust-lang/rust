@@ -32,7 +32,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // All supported intrinsics have a return place.
-        let intrinsic_name = &*this.tcx.item_name(instance.def_id()).as_str();
+        let intrinsic_name = this.tcx.item_name(instance.def_id());
+        let intrinsic_name = intrinsic_name.as_str();
         let (dest, ret) = match ret {
             None => throw_unsup_format!("unimplemented (diverging) intrinsic: {}", intrinsic_name),
             Some(p) => p,
