@@ -1608,9 +1608,9 @@ bitflags! {
         // the seed stored in `ReprOptions.layout_seed`
         const RANDOMIZE_LAYOUT   = 1 << 5;
         // Any of these flags being set prevent field reordering optimisation.
-        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits |
-                                   ReprFlags::IS_SIMD.bits |
-                                   ReprFlags::IS_LINEAR.bits;
+        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits
+                                 | ReprFlags::IS_SIMD.bits
+                                 | ReprFlags::IS_LINEAR.bits;
     }
 }
 
@@ -1640,7 +1640,14 @@ impl ReprOptions {
 
         // Generate a deterministically-derived seed from the item's path hash
         // to allow for cross-crate compilation to actually work
-        let field_shuffle_seed = tcx.def_path_hash(did).0.to_smaller_hash();
+        let mut field_shuffle_seed = tcx.def_path_hash(did).0.to_smaller_hash();
+
+        // If the user defined a custom seed for layout randomization, xor the item's
+        // path hash with the user defined seed, this will allowing determinism while
+        // still allowing users to further randomize layout generation for e.g. fuzzing
+        if let Some(user_seed) = tcx.sess.opts.debugging_opts.layout_seed {
+            field_shuffle_seed ^= user_seed;
+        }
 
         for attr in tcx.get_attrs(did).iter() {
             for r in attr::find_repr_attrs(&tcx.sess, attr) {

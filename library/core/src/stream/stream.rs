@@ -95,13 +95,13 @@ impl<S: ?Sized + Stream + Unpin> Stream for &mut S {
 #[unstable(feature = "async_stream", issue = "79024")]
 impl<P> Stream for Pin<P>
 where
-    P: DerefMut + Unpin,
+    P: DerefMut,
     P::Target: Stream,
 {
     type Item = <P::Target as Stream>::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.get_mut().as_mut().poll_next(cx)
+        <P::Target as Stream>::poll_next(self.as_deref_mut(), cx)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

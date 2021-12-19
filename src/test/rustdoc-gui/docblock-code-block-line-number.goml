@@ -16,7 +16,7 @@ wait-for: "pre.line-number"
 assert-css: ("pre.line-number", {
     "margin": "0px",
     "padding": "13px 8px",
-    "text-align": "right"
+    "text-align": "right",
 })
 // The first code block has two lines so let's check its `<pre>` elements lists both of them.
 assert-text: ("pre.line-number", "1\n2")
