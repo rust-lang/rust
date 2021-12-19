@@ -1029,12 +1029,6 @@ impl Attributes {
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
 
-        fn update_need_backline(doc_strings: &mut Vec<DocFragment>) {
-            if let Some(prev) = doc_strings.last_mut() {
-                prev.need_backline = true;
-            }
-        }
-
         let clean_attr = |(attr, parent_module): (&ast::Attribute, Option<DefId>)| {
             if let Some(value) = attr.doc_str() {
                 trace!("got doc_str={:?}", value);
@@ -1054,7 +1048,9 @@ impl Attributes {
                     indent: 0,
                 };
 
-                update_need_backline(&mut doc_strings);
+                if let Some(prev) = doc_strings.last_mut() {
+                    prev.need_backline = true;
+                }
 
                 doc_strings.push(frag);
 
