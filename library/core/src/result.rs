@@ -1500,14 +1500,14 @@ impl<T, E> Result<&T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_copied)]
     /// let val = 12;
     /// let x: Result<&i32, i32> = Ok(&val);
     /// assert_eq!(x, Ok(&12));
     /// let copied = x.copied();
     /// assert_eq!(copied, Ok(12));
     /// ```
-    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
+    #[inline]
+    #[stable(feature = "result_copied", since = "1.59.0")]
     pub fn copied(self) -> Result<T, E>
     where
         T: Copy,
@@ -1521,14 +1521,14 @@ impl<T, E> Result<&T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_cloned)]
     /// let val = 12;
     /// let x: Result<&i32, i32> = Ok(&val);
     /// assert_eq!(x, Ok(&12));
     /// let cloned = x.cloned();
     /// assert_eq!(cloned, Ok(12));
     /// ```
-    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
+    #[inline]
+    #[stable(feature = "result_cloned", since = "1.59.0")]
     pub fn cloned(self) -> Result<T, E>
     where
         T: Clone,
@@ -1544,14 +1544,14 @@ impl<T, E> Result<&mut T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_copied)]
     /// let mut val = 12;
     /// let x: Result<&mut i32, i32> = Ok(&mut val);
     /// assert_eq!(x, Ok(&mut 12));
     /// let copied = x.copied();
     /// assert_eq!(copied, Ok(12));
     /// ```
-    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
+    #[inline]
+    #[stable(feature = "result_copied", since = "1.59.0")]
     pub fn copied(self) -> Result<T, E>
     where
         T: Copy,
@@ -1565,14 +1565,14 @@ impl<T, E> Result<&mut T, E> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_cloned)]
     /// let mut val = 12;
     /// let x: Result<&mut i32, i32> = Ok(&mut val);
     /// assert_eq!(x, Ok(&mut 12));
     /// let cloned = x.cloned();
     /// assert_eq!(cloned, Ok(12));
     /// ```
-    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
+    #[inline]
+    #[stable(feature = "result_cloned", since = "1.59.0")]
     pub fn cloned(self) -> Result<T, E>
     where
         T: Clone,
