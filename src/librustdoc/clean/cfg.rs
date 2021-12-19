@@ -466,7 +466,7 @@ impl<'a> fmt::Display for Display<'a> {
                     (sym::unix, None) => "Unix",
                     (sym::windows, None) => "Windows",
                     (sym::debug_assertions, None) => "debug-assertions enabled",
-                    (sym::target_os, Some(os)) => match &*os.as_str() {
+                    (sym::target_os, Some(os)) => match os.as_str() {
                         "android" => "Android",
                         "dragonfly" => "DragonFly BSD",
                         "emscripten" => "Emscripten",
@@ -487,7 +487,7 @@ impl<'a> fmt::Display for Display<'a> {
                         "windows" => "Windows",
                         _ => "",
                     },
-                    (sym::target_arch, Some(arch)) => match &*arch.as_str() {
+                    (sym::target_arch, Some(arch)) => match arch.as_str() {
                         "aarch64" => "AArch64",
                         "arm" => "ARM",
                         "asmjs" => "JavaScript",
@@ -504,14 +504,14 @@ impl<'a> fmt::Display for Display<'a> {
                         "x86_64" => "x86-64",
                         _ => "",
                     },
-                    (sym::target_vendor, Some(vendor)) => match &*vendor.as_str() {
+                    (sym::target_vendor, Some(vendor)) => match vendor.as_str() {
                         "apple" => "Apple",
                         "pc" => "PC",
                         "sun" => "Sun",
                         "fortanix" => "Fortanix",
                         _ => "",
                     },
-                    (sym::target_env, Some(env)) => match &*env.as_str() {
+                    (sym::target_env, Some(env)) => match env.as_str() {
                         "gnu" => "GNU",
                         "msvc" => "MSVC",
                         "musl" => "musl",
@@ -545,14 +545,14 @@ impl<'a> fmt::Display for Display<'a> {
                         write!(
                             fmt,
                             r#"<code>{}="{}"</code>"#,
-                            Escape(&name.as_str()),
-                            Escape(&v.as_str())
+                            Escape(name.as_str()),
+                            Escape(v.as_str())
                         )
                     } else {
                         write!(fmt, r#"`{}="{}"`"#, name, v)
                     }
                 } else if self.1.is_html() {
-                    write!(fmt, "<code>{}</code>", Escape(&name.as_str()))
+                    write!(fmt, "<code>{}</code>", Escape(name.as_str()))
                 } else {
                     write!(fmt, "`{}`", name)
                 }

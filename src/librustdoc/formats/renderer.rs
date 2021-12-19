@@ -90,7 +90,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
         // FIXME: checking `item.name.is_some()` is very implicit and leads to lots of special
         // cases. Use an explicit match instead.
         } else if item.name.is_some() && !item.is_extern_crate() {
-            prof.generic_activity_with_arg("render_item", &*item.name.unwrap_or(unknown).as_str())
+            prof.generic_activity_with_arg("render_item", item.name.unwrap_or(unknown).as_str())
                 .run(|| cx.item(item))?;
         }
     }

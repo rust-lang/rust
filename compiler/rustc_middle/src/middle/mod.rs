@@ -21,7 +21,7 @@ pub mod lib_features {
                 .map(|(f, s)| (*f, Some(*s)))
                 .chain(self.unstable.iter().map(|f| (*f, None)))
                 .collect();
-            all_features.sort_unstable_by_key(|f| f.0.as_str());
+            all_features.sort_unstable_by(|a, b| a.0.as_str().partial_cmp(b.0.as_str()).unwrap());
             all_features
         }
     }

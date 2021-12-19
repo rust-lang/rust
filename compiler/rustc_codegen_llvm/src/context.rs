@@ -320,7 +320,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
             let dctx = debuginfo::CrateDebugContext::new(llmod);
-            debuginfo::metadata::compile_unit_metadata(tcx, &codegen_unit.name().as_str(), &dctx);
+            debuginfo::metadata::compile_unit_metadata(tcx, codegen_unit.name().as_str(), &dctx);
             Some(dctx)
         } else {
             None

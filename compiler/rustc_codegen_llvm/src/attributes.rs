@@ -326,7 +326,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         .target_features
         .iter()
         .flat_map(|f| {
-            let feature = &f.as_str();
+            let feature = f.as_str();
             llvm_util::to_llvm_feature(cx.tcx.sess, feature)
                 .into_iter()
                 .map(|f| format!("+{}", f))
@@ -351,7 +351,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
 
             let name =
                 codegen_fn_attrs.link_name.unwrap_or_else(|| cx.tcx.item_name(instance.def_id()));
-            let name = CString::new(&name.as_str()[..]).unwrap();
+            let name = CString::new(name.as_str()).unwrap();
             llvm::AddFunctionAttrStringValue(
                 llfn,
                 llvm::AttributePlace::Function,

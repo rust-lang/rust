@@ -2252,8 +2252,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             .map(|p| p.name.as_str()),
                     );
                 }
-                let lts = lts_names.iter().map(|s| -> &str { &*s }).collect::<Vec<_>>();
-                possible.find(|candidate| !lts.contains(&candidate.as_str()))
+                possible.find(|candidate| !lts_names.contains(&&candidate[..]))
             })
             .unwrap_or("'lt".to_string());
         let add_lt_sugg = generics

@@ -3,7 +3,7 @@ use std::cmp;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder};
-use rustc_span::symbol::{Symbol, SymbolStr};
+use rustc_span::symbol::Symbol;
 
 use super::PartitioningCx;
 use crate::partitioning::PreInliningPartitioning;
@@ -24,11 +24,11 @@ pub fn merge_codegen_units<'tcx>(
     // smallest into each other) we're sure to start off with a deterministic
     // order (sorted by name). This'll mean that if two cgus have the same size
     // the stable sort below will keep everything nice and deterministic.
-    codegen_units.sort_by_cached_key(|cgu| cgu.name().as_str());
+    codegen_units.sort_by(|a, b| a.name().as_str().partial_cmp(b.name().as_str()).unwrap());
 
     // This map keeps track of what got merged into what.
-    let mut cgu_contents: FxHashMap<Symbol, Vec<SymbolStr>> =
-        codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name().as_str()])).collect();
+    let mut cgu_contents: FxHashMap<Symbol, Vec<Symbol>> =
+        codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name()])).collect();
 
     // Merge the two smallest codegen units until the target size is reached.
     while codegen_units.len() > cx.target_cgu_count {
@@ -69,7 +69,7 @@ pub fn merge_codegen_units<'tcx>(
             // were actually modified by merging.
             .filter(|(_, cgu_contents)| cgu_contents.len() > 1)
             .map(|(current_cgu_name, cgu_contents)| {
-                let mut cgu_contents: Vec<&str> = cgu_contents.iter().map(|s| &s[..]).collect();
+                let mut cgu_contents: Vec<&str> = cgu_contents.iter().map(|s| s.as_str()).collect();
 
                 // Sort the names, so things are deterministic and easy to
                 // predict.

@@ -1038,7 +1038,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             .collect();
 
         // Sort them by the name so we have a stable result.
-        names.sort_by_cached_key(|n| n.as_str());
+        names.sort_by(|a, b| a.as_str().partial_cmp(b.as_str()).unwrap());
         names
     }
 
@@ -1908,7 +1908,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .associated_items(def_id)
                     .in_definition_order()
                     .filter(|x| {
-                        let dist = lev_distance(&*name.as_str(), &x.ident.as_str());
+                        let dist = lev_distance(name.as_str(), x.ident.as_str());
                         x.kind.namespace() == Namespace::ValueNS && dist > 0 && dist <= max_dist
                     })
                     .copied()

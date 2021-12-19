@@ -595,7 +595,7 @@ fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>
             return method_name_a.as_str() == method_name_b.as_str() &&
                 args_a.len() == args_b.len() &&
                 (
-                    ["ln", "log2", "log10"].contains(&&*method_name_a.as_str()) ||
+                    ["ln", "log2", "log10"].contains(&method_name_a.as_str()) ||
                     method_name_a.as_str() == "log" && args_a.len() == 2 && eq_expr_value(cx, &args_a[1], &args_b[1])
                 );
         }
@@ -692,7 +692,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
             let recv_ty = cx.typeck_results().expr_ty(&args[0]);
 
             if recv_ty.is_floating_point() {
-                match &*path.ident.name.as_str() {
+                match path.ident.name.as_str() {
                     "ln" => check_ln1p(cx, expr, args),
                     "log" => check_log_base(cx, expr, args),
                     "powf" => check_powf(cx, expr, args),

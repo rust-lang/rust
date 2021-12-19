@@ -224,14 +224,14 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             match existing_name.len.cmp(&count) {
                 Ordering::Greater => {
                     if existing_name.len - count != 1
-                        || levenstein_not_1(&interned_name, &existing_name.interned.as_str())
+                        || levenstein_not_1(&interned_name, existing_name.interned.as_str())
                     {
                         continue;
                     }
                 },
                 Ordering::Less => {
                     if count - existing_name.len != 1
-                        || levenstein_not_1(&existing_name.interned.as_str(), &interned_name)
+                        || levenstein_not_1(existing_name.interned.as_str(), &interned_name)
                     {
                         continue;
                     }

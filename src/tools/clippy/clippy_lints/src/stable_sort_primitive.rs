@@ -89,7 +89,7 @@ fn detect_stable_sort_primitive(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option
     if_chain! {
         if let ExprKind::MethodCall(method_name, _, args, _) = &expr.kind;
         if let Some(slice) = &args.get(0);
-        if let Some(method) = SortingKind::from_stable_name(&method_name.ident.name.as_str());
+        if let Some(method) = SortingKind::from_stable_name(method_name.ident.name.as_str());
         if let Some(slice_type) = is_slice_of_primitives(cx, slice);
         then {
             let args_str = args.iter().skip(1).map(|arg| Sugg::hir(cx, arg, "..").to_string()).collect::<Vec<String>>().join(", ");

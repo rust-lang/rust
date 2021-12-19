@@ -1639,7 +1639,7 @@ impl<'a> Parser<'a> {
                     next_token.kind
                 {
                     if self.token.span.hi() == next_token.span.lo() {
-                        let s = String::from("0.") + &symbol.as_str();
+                        let s = String::from("0.") + symbol.as_str();
                         let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
                         return Some(Token::new(kind, self.token.span.to(next_token.span)));
                     }
@@ -1710,7 +1710,8 @@ impl<'a> Parser<'a> {
                 );
             }
             LitError::InvalidIntSuffix => {
-                let suf = suffix.expect("suffix error with no suffix").as_str();
+                let suf = suffix.expect("suffix error with no suffix");
+                let suf = suf.as_str();
                 if looks_like_width_suffix(&['i', 'u'], &suf) {
                     // If it looks like a width, try to be helpful.
                     let msg = format!("invalid width `{}` for integer literal", &suf[1..]);
@@ -1726,8 +1727,9 @@ impl<'a> Parser<'a> {
                 }
             }
             LitError::InvalidFloatSuffix => {
-                let suf = suffix.expect("suffix error with no suffix").as_str();
-                if looks_like_width_suffix(&['f'], &suf) {
+                let suf = suffix.expect("suffix error with no suffix");
+                let suf = suf.as_str();
+                if looks_like_width_suffix(&['f'], suf) {
                     // If it looks like a width, try to be helpful.
                     let msg = format!("invalid width `{}` for float literal", &suf[1..]);
                     self.struct_span_err(span, &msg).help("valid widths are 32 and 64").emit();

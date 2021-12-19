@@ -29,7 +29,7 @@ pub fn expand_concat_idents<'cx>(
         } else {
             if let TokenTree::Token(token) = e {
                 if let Some((ident, _)) = token.ident() {
-                    res_str.push_str(&ident.name.as_str());
+                    res_str.push_str(ident.name.as_str());
                     continue;
                 }
             }

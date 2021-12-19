@@ -133,7 +133,7 @@ fn to_camel_case(s: &str) -> String {
 
 impl NonCamelCaseTypes {
     fn check_case(&self, cx: &EarlyContext<'_>, sort: &str, ident: &Ident) {
-        let name = &ident.name.as_str();
+        let name = ident.name.as_str();
 
         if !is_camel_case(name) {
             cx.struct_span_lint(NON_CAMEL_CASE_TYPES, ident.span, |lint| {
@@ -276,7 +276,7 @@ impl NonSnakeCase {
             })
         }
 
-        let name = &ident.name.as_str();
+        let name = ident.name.as_str();
 
         if !is_snake_case(name) {
             cx.struct_span_lint(NON_SNAKE_CASE, ident.span, |lint| {
@@ -484,7 +484,7 @@ declare_lint_pass!(NonUpperCaseGlobals => [NON_UPPER_CASE_GLOBALS]);
 
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_>, sort: &str, ident: &Ident) {
-        let name = &ident.name.as_str();
+        let name = ident.name.as_str();
         if name.chars().any(|c| c.is_lowercase()) {
             cx.struct_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, |lint| {
                 let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();

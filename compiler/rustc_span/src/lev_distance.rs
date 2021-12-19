@@ -55,7 +55,7 @@ pub fn find_best_match_for_name(
     lookup: Symbol,
     dist: Option<usize>,
 ) -> Option<Symbol> {
-    let lookup = &lookup.as_str();
+    let lookup = lookup.as_str();
     let max_dist = dist.unwrap_or_else(|| cmp::max(lookup.len(), 3) / 3);
 
     // Priority of matches:
@@ -70,7 +70,7 @@ pub fn find_best_match_for_name(
     let levenshtein_match = name_vec
         .iter()
         .filter_map(|&name| {
-            let dist = lev_distance(lookup, &name.as_str());
+            let dist = lev_distance(lookup, name.as_str());
             if dist <= max_dist { Some((name, dist)) } else { None }
         })
         // Here we are collecting the next structure:
@@ -88,7 +88,7 @@ pub fn find_best_match_for_name(
 
 fn find_match_by_sorted_words(iter_names: &[Symbol], lookup: &str) -> Option<Symbol> {
     iter_names.iter().fold(None, |result, candidate| {
-        if sort_by_words(&candidate.as_str()) == sort_by_words(lookup) {
+        if sort_by_words(candidate.as_str()) == sort_by_words(lookup) {
             Some(*candidate)
         } else {
             result

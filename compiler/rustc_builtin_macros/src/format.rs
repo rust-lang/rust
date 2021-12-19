@@ -955,7 +955,7 @@ pub fn expand_preparsed_format_args(
         ast::StrStyle::Raw(raw) => Some(raw as usize),
     };
 
-    let fmt_str = &fmt_str.as_str(); // for the suggestions below
+    let fmt_str = fmt_str.as_str(); // for the suggestions below
     let fmt_snippet = ecx.source_map().span_to_snippet(fmt_sp).ok();
     let mut parser = parse::Parser::new(
         fmt_str,

@@ -82,7 +82,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let loc_details = &self.tcx.sess.opts.debugging_opts.location_detail;
         let file = if loc_details.file {
-            self.allocate_str(&filename.as_str(), MemoryKind::CallerLocation, Mutability::Not)
+            self.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not)
         } else {
             // FIXME: This creates a new allocation each time. It might be preferable to
             // perform this allocation only once, and re-use the `MPlaceTy`.

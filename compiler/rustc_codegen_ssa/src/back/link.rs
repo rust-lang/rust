@@ -88,7 +88,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                 sess,
                 crate_type,
                 outputs,
-                &codegen_results.crate_info.local_crate_name.as_str(),
+                codegen_results.crate_info.local_crate_name.as_str(),
             );
             match crate_type {
                 CrateType::Rlib => {

@@ -3181,7 +3181,7 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
         } = expr
         {
             for (template_sym, template_snippet, template_span) in template_strs.iter() {
-                let template_str = &template_sym.as_str();
+                let template_str = template_sym.as_str();
                 let find_label_span = |needle: &str| -> Option<Span> {
                     if let Some(template_snippet) = template_snippet {
                         let snippet = template_snippet.as_str();

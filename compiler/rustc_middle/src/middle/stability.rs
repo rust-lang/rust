@@ -131,8 +131,7 @@ pub fn report_unstable(
 /// deprecated (i.e., whether X is not greater than the current rustc version).
 pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
     let is_since_rustc_version = depr.is_since_rustc_version;
-    let since = depr.since.map(Symbol::as_str);
-    let since = since.as_deref();
+    let since = depr.since.as_ref().map(Symbol::as_str);
 
     fn parse_version(ver: &str) -> Vec<u32> {
         // We ignore non-integer components of the version (e.g., "nightly").
@@ -197,7 +196,7 @@ fn deprecation_message(
     let message = if is_in_effect {
         format!("use of deprecated {} `{}`", kind, path)
     } else {
-        let since = since.map(Symbol::as_str);
+        let since = since.as_ref().map(Symbol::as_str);
 
         if since.as_deref() == Some("TBD") {
             format!("use of {} `{}` that will be deprecated in a future Rust version", kind, path)

@@ -689,11 +689,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         hir_id: hir::HirId,
     ) {
         let name = match fk {
-            intravisit::FnKind::ItemFn(id, _, _, _) => id.as_str(),
-            intravisit::FnKind::Method(id, _, _) => id.as_str(),
-            intravisit::FnKind::Closure => Symbol::intern("closure").as_str(),
+            intravisit::FnKind::ItemFn(id, _, _, _) => id.name,
+            intravisit::FnKind::Method(id, _, _) => id.name,
+            intravisit::FnKind::Closure => sym::closure,
         };
-        let name: &str = &name;
+        let name = name.as_str();
         let span = span!(Level::DEBUG, "visit_fn", name);
         let _enter = span.enter();
         match fk {

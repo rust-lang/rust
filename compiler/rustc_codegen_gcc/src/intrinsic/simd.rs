@@ -52,7 +52,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
     let sig =
         tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), callee_ty.fn_sig(tcx));
     let arg_tys = sig.inputs();
-    let name_str = &*name.as_str();
+    let name_str = name.as_str();
 
     // every intrinsic below takes a SIMD vector as its first argument
     require_simd!(arg_tys[0], "input");

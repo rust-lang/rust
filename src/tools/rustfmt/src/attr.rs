@@ -337,7 +337,7 @@ impl Rewrite for ast::Attribute {
         } else {
             let should_skip = self
                 .ident()
-                .map(|s| context.skip_context.skip_attribute(&s.name.as_str()))
+                .map(|s| context.skip_context.skip_attribute(s.name.as_str()))
                 .unwrap_or(false);
             let prefix = attr_prefix(self);
 
@@ -356,7 +356,7 @@ impl Rewrite for ast::Attribute {
 
                         let literal_str = literal.as_str();
                         let doc_comment_formatter =
-                            DocCommentFormatter::new(&*literal_str, comment_style);
+                            DocCommentFormatter::new(literal_str, comment_style);
                         let doc_comment = format!("{}", doc_comment_formatter);
                         return rewrite_doc_comment(
                             &doc_comment,

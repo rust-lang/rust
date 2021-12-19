@@ -616,7 +616,7 @@ impl<'hir> Sig for hir::Generics<'hir> {
             if let hir::GenericParamKind::Const { .. } = param.kind {
                 param_text.push_str("const ");
             }
-            param_text.push_str(&param.name.ident().as_str());
+            param_text.push_str(param.name.ident().as_str());
             defs.push(SigElement {
                 id: id_from_hir_id(param.hir_id, scx),
                 start: offset + text.len(),

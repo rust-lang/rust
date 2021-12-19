@@ -1512,9 +1512,12 @@ impl Ident {
         Ident::new(self.name, self.span.normalize_to_macro_rules())
     }
 
-    /// Convert the name to a `SymbolStr`. This is a slowish operation because
-    /// it requires locking the symbol interner.
-    pub fn as_str(self) -> SymbolStr {
+    /// Access the underlying string. This is a slowish operation because it
+    /// requires locking the symbol interner.
+    ///
+    /// Note that the lifetime of the return value is a lie. See
+    /// `Symbol::as_str()` for details.
+    pub fn as_str(&self) -> &str {
         self.name.as_str()
     }
 }
@@ -1650,12 +1653,17 @@ impl Symbol {
         with_session_globals(|session_globals| session_globals.symbol_interner.intern(string))
     }
 
-    /// Convert to a `SymbolStr`. This is a slowish operation because it
+    /// Access the underlying string. This is a slowish operation because it
     /// requires locking the symbol interner.
-    pub fn as_str(self) -> SymbolStr {
-        with_session_globals(|session_globals| {
-            let symbol_str = session_globals.symbol_interner.get(self);
-            unsafe { SymbolStr { string: std::mem::transmute::<&str, &str>(symbol_str) } }
+    ///
+    /// Note that the lifetime of the return value is a lie. It's not the same
+    /// as `&self`, but actually tied to the lifetime of the underlying
+    /// interner. Interners are long-lived, and there are very few of them, and
+    /// this function is typically used for short-lived things, so in practice
+    /// it works out ok.
+    pub fn as_str(&self) -> &str {
+        with_session_globals(|session_globals| unsafe {
+            std::mem::transmute::<&str, &str>(session_globals.symbol_interner.get(*self))
         })
     }
 
@@ -1678,19 +1686,19 @@ impl Symbol {
 
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.as_str(), f)
+        fmt::Debug::fmt(self.as_str(), f)
     }
 }
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.as_str(), f)
+        fmt::Display::fmt(self.as_str(), f)
     }
 }
 
 impl<S: Encoder> Encodable<S> for Symbol {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.as_str())
+        s.emit_str(self.as_str())
     }
 }
 
@@ -1709,11 +1717,10 @@ impl<CTX> HashStable<CTX> for Symbol {
 }
 
 impl<CTX> ToStableHashKey<CTX> for Symbol {
-    type KeyType = SymbolStr;
-
+    type KeyType = String;
     #[inline]
-    fn to_stable_hash_key(&self, _: &CTX) -> SymbolStr {
-        self.as_str()
+    fn to_stable_hash_key(&self, _: &CTX) -> String {
+        self.as_str().to_string()
     }
 }
 
@@ -1903,72 +1910,5 @@ impl Ident {
     /// How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
-    }
-}
-
-/// An alternative to [`Symbol`], useful when the chars within the symbol need to
-/// be accessed. It deliberately has limited functionality and should only be
-/// used for temporary values.
-///
-/// Because the interner outlives any thread which uses this type, we can
-/// safely treat `string` which points to interner data, as an immortal string,
-/// as long as this type never crosses between threads.
-//
-// FIXME: ensure that the interner outlives any thread which uses `SymbolStr`,
-// by creating a new thread right after constructing the interner.
-#[derive(Clone, Eq, PartialOrd, Ord)]
-pub struct SymbolStr {
-    string: &'static str,
-}
-
-// This impl allows a `SymbolStr` to be directly equated with a `String` or
-// `&str`.
-impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for SymbolStr {
-    fn eq(&self, other: &T) -> bool {
-        self.string == other.deref()
-    }
-}
-
-impl !Send for SymbolStr {}
-impl !Sync for SymbolStr {}
-
-/// This impl means that if `ss` is a `SymbolStr`:
-/// - `*ss` is a `str`;
-/// - `&*ss` is a `&str` (and `match &*ss { ... }` is a common pattern).
-/// - `&ss as &str` is a `&str`, which means that `&ss` can be passed to a
-///   function expecting a `&str`.
-impl std::ops::Deref for SymbolStr {
-    type Target = str;
-    #[inline]
-    fn deref(&self) -> &str {
-        self.string
-    }
-}
-
-impl fmt::Debug for SymbolStr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self.string, f)
-    }
-}
-
-impl fmt::Display for SymbolStr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.string, f)
-    }
-}
-
-impl<CTX> HashStable<CTX> for SymbolStr {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.string.hash_stable(hcx, hasher)
-    }
-}
-
-impl<CTX> ToStableHashKey<CTX> for SymbolStr {
-    type KeyType = SymbolStr;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &CTX) -> SymbolStr {
-        self.clone()
     }
 }

@@ -319,7 +319,7 @@ pub fn struct_lint_level<'s, 'd>(
             }
             LintLevelSource::Node(lint_attr_name, src, reason) => {
                 if let Some(rationale) = reason {
-                    err.note(&rationale.as_str());
+                    err.note(rationale.as_str());
                 }
                 sess.diag_span_note_once(
                     &mut err,

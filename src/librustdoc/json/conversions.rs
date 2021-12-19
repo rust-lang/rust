@@ -609,7 +609,7 @@ impl FromWithTcx<clean::Import> for Import {
             },
             Glob => Import {
                 source: import.source.path.whole_name(),
-                name: import.source.path.last_name().to_string(),
+                name: import.source.path.last().to_string(),
                 id: import.source.did.map(ItemId::from).map(from_item_id),
                 glob: true,
             },

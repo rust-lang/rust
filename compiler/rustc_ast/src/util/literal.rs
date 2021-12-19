@@ -35,12 +35,12 @@ impl LitKind {
                 LitKind::Bool(symbol == kw::True)
             }
             token::Byte => {
-                return unescape_byte(&symbol.as_str())
+                return unescape_byte(symbol.as_str())
                     .map(LitKind::Byte)
                     .map_err(|_| LitError::LexerError);
             }
             token::Char => {
-                return unescape_char(&symbol.as_str())
+                return unescape_char(symbol.as_str())
                     .map(LitKind::Char)
                     .map_err(|_| LitError::LexerError);
             }

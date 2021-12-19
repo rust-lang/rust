@@ -208,7 +208,7 @@ pub fn partition<'tcx>(
         internalization_candidates: _,
     } = post_inlining;
 
-    result.sort_by_cached_key(|cgu| cgu.name().as_str());
+    result.sort_by(|a, b| a.name().as_str().partial_cmp(b.name().as_str()).unwrap());
 
     result
 }
@@ -366,7 +366,7 @@ fn collect_and_partition_mono_items<'tcx>(
         for cgu in codegen_units {
             tcx.prof.artifact_size(
                 "codegen_unit_size_estimate",
-                &cgu.name().as_str()[..],
+                cgu.name().as_str(),
                 cgu.size_estimate() as u64,
             );
         }
@@ -401,7 +401,7 @@ fn collect_and_partition_mono_items<'tcx>(
                 cgus.dedup();
                 for &(ref cgu_name, (linkage, _)) in cgus.iter() {
                     output.push(' ');
-                    output.push_str(&cgu_name.as_str());
+                    output.push_str(cgu_name.as_str());
 
                     let linkage_abbrev = match linkage {
                         Linkage::External => "External",

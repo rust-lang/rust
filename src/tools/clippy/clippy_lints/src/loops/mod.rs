@@ -659,7 +659,7 @@ fn check_for_loop_arg(cx: &LateContext<'_>, pat: &Pat<'_>, arg: &Expr<'_>) {
     let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
 
     if let ExprKind::MethodCall(method, _, [self_arg], _) = arg.kind {
-        let method_name = &*method.ident.as_str();
+        let method_name = method.ident.as_str();
         // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
         match method_name {
             "iter" | "iter_mut" => explicit_iter_loop::check(cx, self_arg, arg, method_name),

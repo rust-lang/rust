@@ -82,7 +82,7 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
                 _ => Argument::Unknown,
             };
 
-            match &*path.ident.as_str() {
+            match path.ident.as_str() {
                 "create" => {
                     options.push((OpenOption::Create, argument_option));
                 },

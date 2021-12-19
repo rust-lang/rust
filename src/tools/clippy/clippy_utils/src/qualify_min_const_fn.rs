@@ -372,7 +372,7 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<&RustcVersion>) -> b
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
                 crate::meets_msrv(
                     msrv,
-                    &RustcVersion::parse(&since.as_str())
+                    &RustcVersion::parse(since.as_str())
                         .expect("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted"),
                 )
             } else {

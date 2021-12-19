@@ -607,7 +607,7 @@ impl CheckAttrVisitor<'_> {
             return err_fn(meta.span(), &format!("isn't allowed on {}", err));
         }
         let item_name = self.tcx.hir().name(hir_id);
-        if &*item_name.as_str() == doc_alias {
+        if item_name.as_str() == doc_alias {
             return err_fn(meta.span(), "is the same as the item's name");
         }
         let span = meta.span();
@@ -636,7 +636,7 @@ impl CheckAttrVisitor<'_> {
                         LitKind::Str(s, _) => {
                             if !self.check_doc_alias_value(
                                 v,
-                                &s.as_str(),
+                                s.as_str(),
                                 hir_id,
                                 target,
                                 true,

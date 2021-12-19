@@ -175,7 +175,7 @@ impl clean::GenericParamDef {
                 Ok(())
             }
             clean::GenericParamDefKind::Type { bounds, default, .. } => {
-                f.write_str(&*self.name.as_str())?;
+                f.write_str(self.name.as_str())?;
 
                 if !bounds.is_empty() {
                     if f.alternate() {
@@ -638,7 +638,7 @@ fn resolved_path<'cx>(
                 last.name.to_string()
             }
         } else {
-            anchor(did, &*last.name.as_str(), cx).to_string()
+            anchor(did, last.name.as_str(), cx).to_string()
         };
         write!(w, "{}{}", path, last.args.print(cx))?;
     }
@@ -667,20 +667,18 @@ fn primitive_link(
                 needs_termination = true;
             }
             Some(&def_id) => {
-                let cname_str;
+                let cname_sym;
                 let loc = match m.extern_locations[&def_id.krate] {
                     ExternalLocation::Remote(ref s) => {
-                        cname_str =
-                            ExternalCrate { crate_num: def_id.krate }.name(cx.tcx()).as_str();
-                        Some(vec![s.trim_end_matches('/'), &cname_str[..]])
+                        cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
+                        Some(vec![s.trim_end_matches('/'), cname_sym.as_str()])
                     }
                     ExternalLocation::Local => {
-                        cname_str =
-                            ExternalCrate { crate_num: def_id.krate }.name(cx.tcx()).as_str();
-                        Some(if cx.current.first().map(|x| &x[..]) == Some(&cname_str[..]) {
+                        cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
+                        Some(if cx.current.first().map(|x| &x[..]) == Some(cname_sym.as_str()) {
                             iter::repeat("..").take(cx.current.len() - 1).collect()
                         } else {
-                            let cname = iter::once(&cname_str[..]);
+                            let cname = iter::once(cname_sym.as_str());
                             iter::repeat("..").take(cx.current.len()).chain(cname).collect()
                         })
                     }
@@ -775,7 +773,7 @@ fn fmt_type<'cx>(
         clean::Primitive(clean::PrimitiveType::Never) => {
             primitive_link(f, PrimitiveType::Never, "!", cx)
         }
-        clean::Primitive(prim) => primitive_link(f, prim, &*prim.as_sym().as_str(), cx),
+        clean::Primitive(prim) => primitive_link(f, prim, prim.as_sym().as_str(), cx),
         clean::BareFunction(ref decl) => {
             if f.alternate() {
                 write!(
@@ -1271,7 +1269,7 @@ impl clean::Visibility {
                     debug!("path={:?}", path);
                     // modified from `resolved_path()` to work with `DefPathData`
                     let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                    let anchor = anchor(vis_did, &last_name.as_str(), cx).to_string();
+                    let anchor = anchor(vis_did, last_name.as_str(), cx).to_string();
 
                     let mut s = "pub(in ".to_owned();
                     for seg in &path.data[..path.data.len() - 1] {
@@ -1402,9 +1400,9 @@ impl clean::ImportSource {
                 for seg in &self.path.segments[..self.path.segments.len() - 1] {
                     write!(f, "{}::", seg.name)?;
                 }
-                let name = self.path.last_name();
+                let name = self.path.last();
                 if let hir::def::Res::PrimTy(p) = self.path.res {
-                    primitive_link(f, PrimitiveType::from(p), &*name, cx)?;
+                    primitive_link(f, PrimitiveType::from(p), name.as_str(), cx)?;
                 } else {
                     write!(f, "{}", name)?;
                 }
@@ -1420,7 +1418,7 @@ impl clean::TypeBinding {
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
-            f.write_str(&*self.name.as_str())?;
+            f.write_str(self.name.as_str())?;
             match self.kind {
                 clean::TypeBindingKind::Equality { ref ty } => {
                     if f.alternate() {

@@ -103,10 +103,10 @@ crate fn mod_dir_path(
             if let DirOwnership::Owned { relative } = &mut dir_ownership {
                 if let Some(ident) = relative.take() {
                     // Remove the relative offset.
-                    dir_path.push(&*ident.as_str());
+                    dir_path.push(ident.as_str());
                 }
             }
-            dir_path.push(&*ident.as_str());
+            dir_path.push(ident.as_str());
 
             (dir_path, dir_ownership)
         }
@@ -170,8 +170,8 @@ fn mod_file_path_from_attr(
 ) -> Option<PathBuf> {
     // Extract path string from first `#[path = "path_string"]` attribute.
     let first_path = attrs.iter().find(|at| at.has_name(sym::path))?;
-    let path_string = match first_path.value_str() {
-        Some(s) => s.as_str(),
+    let path_sym = match first_path.value_str() {
+        Some(s) => s,
         None => {
             // This check is here mainly to catch attempting to use a macro,
             // such as #[path = concat!(...)]. This isn't currently supported
@@ -189,14 +189,16 @@ fn mod_file_path_from_attr(
         }
     };
 
+    let path_str = path_sym.as_str();
+
     // On windows, the base path might have the form
     // `\\?\foo\bar` in which case it does not tolerate
     // mixed `/` and `\` separators, so canonicalize
     // `/` to `\`.
     #[cfg(windows)]
-    let path_string = path_string.replace("/", "\\");
+    let path_str = path_str.replace("/", "\\");
 
-    Some(dir_path.join(&*path_string))
+    Some(dir_path.join(path_str))
 }
 
 /// Returns a path to a module.

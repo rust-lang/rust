@@ -609,7 +609,7 @@ fn check_must_not_suspend_def(
                     // Add optional reason note
                     if let Some(note) = attr.value_str() {
                         // FIXME(guswynn): consider formatting this better
-                        err.span_note(data.source_span, &note.as_str());
+                        err.span_note(data.source_span, note.as_str());
                     }
 
                     // Add some quick suggestions on what to do

@@ -136,7 +136,7 @@ pub(super) fn print_item(
         page: page,
         static_root_path: page.get_static_root_path(),
         typ: typ,
-        name: &item.name.as_ref().unwrap().as_str(),
+        name: item.name.as_ref().unwrap().as_str(),
         item_type: &item.type_().to_string(),
         path_components: path_components,
         stability_since_raw: &stability_since_raw,
@@ -239,9 +239,9 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 (true, false) => return Ordering::Greater,
             }
         }
-        let lhs = i1.name.unwrap_or(kw::Empty).as_str();
-        let rhs = i2.name.unwrap_or(kw::Empty).as_str();
-        compare_names(&lhs, &rhs)
+        let lhs = i1.name.unwrap_or(kw::Empty);
+        let rhs = i2.name.unwrap_or(kw::Empty);
+        compare_names(lhs.as_str(), rhs.as_str())
     }
 
     if cx.shared.sort_modules_alphabetically {
@@ -315,7 +315,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {} as {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
-                        anchor(myitem.def_id.expect_def_id(), &*src.as_str(), cx),
+                        anchor(myitem.def_id.expect_def_id(), src.as_str(), cx),
                         myitem.name.as_ref().unwrap(),
                     ),
                     None => write!(
@@ -324,7 +324,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         myitem.visibility.print_with_space(myitem.def_id, cx),
                         anchor(
                             myitem.def_id.expect_def_id(),
-                            &*myitem.name.as_ref().unwrap().as_str(),
+                            myitem.name.as_ref().unwrap().as_str(),
                             cx
                         ),
                     ),
@@ -405,7 +405,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     add = add,
                     stab = stab.unwrap_or_default(),
                     unsafety_flag = unsafety_flag,
-                    href = item_path(myitem.type_(), &myitem.name.unwrap().as_str()),
+                    href = item_path(myitem.type_(), myitem.name.unwrap().as_str()),
                     title = [full_path(cx, myitem), myitem.type_().to_string()]
                         .iter()
                         .filter_map(|s| if !s.is_empty() { Some(s.as_str()) } else { None })
@@ -1308,7 +1308,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             document_non_exhaustive(w, it);
             for (index, (field, ty)) in fields.enumerate() {
                 let field_name =
-                    field.name.map_or_else(|| index.to_string(), |sym| (*sym.as_str()).to_string());
+                    field.name.map_or_else(|| index.to_string(), |sym| sym.as_str().to_string());
                 let id = cx.derive_id(format!("{}.{}", ItemType::StructField, field_name));
                 write!(
                     w,
@@ -1410,7 +1410,7 @@ crate fn compare_names(mut lhs: &str, mut rhs: &str) -> Ordering {
 pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     let mut s = cx.current.join("::");
     s.push_str("::");
-    s.push_str(&item.name.unwrap().as_str());
+    s.push_str(item.name.unwrap().as_str());
     s
 }
 

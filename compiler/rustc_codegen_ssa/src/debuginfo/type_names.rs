@@ -516,7 +516,7 @@ fn push_unqualified_item_name(
 ) {
     match disambiguated_data.data {
         DefPathData::CrateRoot => {
-            output.push_str(&tcx.crate_name(def_id.krate).as_str());
+            output.push_str(tcx.crate_name(def_id.krate).as_str());
         }
         DefPathData::ClosureExpr if tcx.generator_kind(def_id).is_some() => {
             // Generators look like closures, but we want to treat them differently
@@ -529,7 +529,7 @@ fn push_unqualified_item_name(
         }
         _ => match disambiguated_data.data.name() {
             DefPathDataName::Named(name) => {
-                output.push_str(&name.as_str());
+                output.push_str(name.as_str());
             }
             DefPathDataName::Anon { namespace } => {
                 if cpp_like_names(tcx) {

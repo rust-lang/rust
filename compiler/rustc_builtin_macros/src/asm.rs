@@ -573,7 +573,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             template_snippet.as_ref().map(|s| Symbol::intern(s)),
             template_sp,
         ));
-        let template_str = &template_str.as_str();
+        let template_str = template_str.as_str();
 
         if let Some(InlineAsmArch::X86 | InlineAsmArch::X86_64) = ecx.sess.asm_arch {
             let find_span = |needle: &str| -> Span {

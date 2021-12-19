@@ -1037,7 +1037,7 @@ pub fn compile_unit_metadata<'ll, 'tcx>(
 ) -> &'ll DIDescriptor {
     let mut name_in_debuginfo = match tcx.sess.local_crate_source_file {
         Some(ref path) => path.clone(),
-        None => PathBuf::from(&*tcx.crate_name(LOCAL_CRATE).as_str()),
+        None => PathBuf::from(tcx.crate_name(LOCAL_CRATE).as_str()),
     };
 
     // To avoid breaking split DWARF, we need to ensure that each codegen unit
@@ -1371,7 +1371,7 @@ fn closure_saved_names_of_captured_variables(tcx: TyCtxt<'_>, def_id: DefId) -> 
                 _ => return None,
             };
             let prefix = if is_ref { "_ref__" } else { "" };
-            Some(prefix.to_owned() + &var.name.as_str())
+            Some(prefix.to_owned() + var.name.as_str())
         })
         .collect::<Vec<_>>()
 }
@@ -1949,7 +1949,7 @@ enum VariantInfo<'a, 'tcx> {
 impl<'tcx> VariantInfo<'_, 'tcx> {
     fn map_struct_name<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         match self {
-            VariantInfo::Adt(variant) => f(&variant.ident.as_str()),
+            VariantInfo::Adt(variant) => f(variant.ident.as_str()),
             VariantInfo::Generator { variant_index, .. } => {
                 f(&GeneratorSubsts::variant_name(*variant_index))
             }
@@ -2114,8 +2114,8 @@ fn prepare_enum_metadata<'ll, 'tcx>(
                 let item_name;
                 let discriminant_name = match enum_type.kind() {
                     ty::Adt(..) => {
-                        item_name = tcx.item_name(enum_def_id).as_str();
-                        &*item_name
+                        item_name = tcx.item_name(enum_def_id);
+                        item_name.as_str()
                     }
                     ty::Generator(..) => enum_name.as_str(),
                     _ => bug!(),
@@ -2448,7 +2448,7 @@ fn compute_type_parameters<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -
                             cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                         let actual_type_metadata =
                             type_metadata(cx, actual_type, rustc_span::DUMMY_SP);
-                        let name = &name.as_str();
+                        let name = name.as_str();
                         Some(unsafe {
                             Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                                 DIB(cx),
@@ -2590,7 +2590,8 @@ pub fn create_global_var_metadata<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, g
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
     let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, ty::ParamEnv::reveal_all());
     let type_metadata = type_metadata(cx, variable_type, span);
-    let var_name = tcx.item_name(def_id).as_str();
+    let var_name = tcx.item_name(def_id);
+    let var_name = var_name.as_str();
     let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id)).name;
     // When empty, linkage_name field is omitted,
     // which is what we want for no_mangle statics

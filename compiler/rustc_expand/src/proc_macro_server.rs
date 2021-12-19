@@ -331,9 +331,9 @@ pub struct Ident {
 
 impl Ident {
     fn new(sess: &ParseSess, sym: Symbol, is_raw: bool, span: Span) -> Ident {
-        let sym = nfc_normalize(&sym.as_str());
+        let sym = nfc_normalize(sym.as_str());
         let string = sym.as_str();
-        if !rustc_lexer::is_ident(&string) {
+        if !rustc_lexer::is_ident(string) {
             panic!("`{:?}` is not a valid identifier", string)
         }
         if is_raw && !sym.can_be_raw() {

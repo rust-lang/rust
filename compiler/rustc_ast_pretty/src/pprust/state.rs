@@ -204,7 +204,7 @@ pub fn literal_to_string(lit: token::Lit) -> String {
     };
 
     if let Some(suffix) = suffix {
-        out.push_str(&suffix.as_str())
+        out.push_str(suffix.as_str())
     }
 
     out
@@ -384,7 +384,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_symbol(&mut self, sym: Symbol, style: ast::StrStyle) {
-        self.print_string(&sym.as_str(), style);
+        self.print_string(sym.as_str(), style);
     }
 
     fn print_inner_attributes(&mut self, attrs: &[ast::Attribute]) {

@@ -292,7 +292,7 @@ impl<'a> CrateLoader<'a> {
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
             let source = self.cstore.get_crate_data(cnum).cdata.source();
-            if let Some(entry) = self.sess.opts.externs.get(&name.as_str()) {
+            if let Some(entry) = self.sess.opts.externs.get(name.as_str()) {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
                 if let Some(mut files) = entry.files() {
                     if files.any(|l| {
@@ -381,7 +381,7 @@ impl<'a> CrateLoader<'a> {
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
 
         let private_dep =
-            self.sess.opts.externs.get(&name.as_str()).map_or(false, |e| e.is_private_dep);
+            self.sess.opts.externs.get(name.as_str()).map_or(false, |e| e.is_private_dep);
 
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();
@@ -997,7 +997,7 @@ impl<'a> CrateLoader<'a> {
                 );
                 let name = match orig_name {
                     Some(orig_name) => {
-                        validate_crate_name(self.sess, &orig_name.as_str(), Some(item.span));
+                        validate_crate_name(self.sess, orig_name.as_str(), Some(item.span));
                         orig_name
                     }
                     None => item.ident.name,

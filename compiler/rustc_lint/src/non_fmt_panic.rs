@@ -9,7 +9,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_span::edition::Edition;
-use rustc_span::{hygiene, sym, symbol::kw, symbol::SymbolStr, InnerSpan, Span, Symbol};
+use rustc_span::{hygiene, sym, symbol::kw, InnerSpan, Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 declare_lint! {
@@ -71,14 +71,14 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
     if let hir::ExprKind::Lit(lit) = &arg.kind {
         if let ast::LitKind::Str(sym, _) = lit.node {
             // The argument is a string literal.
-            check_panic_str(cx, f, arg, &sym.as_str());
+            check_panic_str(cx, f, arg, sym.as_str());
             return;
         }
     }
 
     // The argument is *not* a string literal.
 
-    let (span, panic, symbol_str) = panic_call(cx, f);
+    let (span, panic, symbol) = panic_call(cx, f);
 
     if in_external_macro(cx.sess(), span) {
         // Nothing that can be done about it in the current crate.
@@ -103,7 +103,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
     cx.struct_span_lint(NON_FMT_PANICS, arg_span, |lint| {
         let mut l = lint.build("panic message is not a string literal");
-        l.note(&format!("this usage of {}!() is deprecated; it will be a hard error in Rust 2021", symbol_str));
+        l.note(&format!("this usage of {}!() is deprecated; it will be a hard error in Rust 2021", symbol));
         l.note("for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>");
         if !is_arg_inside_call(arg_span, span) {
             // No clue where this argument is coming from.
@@ -112,7 +112,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         }
         if arg_macro.map_or(false, |id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
-            l.note(format!("the {}!() macro supports formatting, so there's no need for the format!() macro here", symbol_str).as_str());
+            l.note(format!("the {}!() macro supports formatting, so there's no need for the format!() macro here", symbol).as_str());
             if let Some((open, close, _)) = find_delimiters(cx, arg_span) {
                 l.multipart_suggestion(
                     "remove the `format!(..)` macro call",
@@ -301,7 +301,7 @@ fn find_delimiters<'tcx>(cx: &LateContext<'tcx>, span: Span) -> Option<(Span, Sp
     ))
 }
 
-fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, Symbol, SymbolStr) {
+fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, Symbol, Symbol) {
     let mut expn = f.span.ctxt().outer_expn_data();
 
     let mut panic_macro = kw::Empty;
@@ -328,7 +328,7 @@ fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, 
 
     let macro_symbol =
         if let hygiene::ExpnKind::Macro(_, symbol) = expn.kind { symbol } else { sym::panic };
-    (expn.call_site, panic_macro, macro_symbol.as_str())
+    (expn.call_site, panic_macro, macro_symbol)
 }
 
 fn is_arg_inside_call(arg: Span, call: Span) -> bool {

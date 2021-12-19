@@ -218,8 +218,7 @@ impl EarlyLintPass for NonAsciiIdents {
                             cx.struct_span_lint(CONFUSABLE_IDENTS, sp, |lint| {
                                 lint.build(&format!(
                                     "identifier pair considered confusable between `{}` and `{}`",
-                                    existing_symbol.as_str(),
-                                    symbol.as_str()
+                                    existing_symbol, symbol
                                 ))
                                 .span_label(
                                     *existing_span,

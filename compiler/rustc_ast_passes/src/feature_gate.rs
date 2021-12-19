@@ -61,7 +61,7 @@ impl<'a> PostExpansionVisitor<'a> {
     fn check_abi(&self, abi: ast::StrLit) {
         let ast::StrLit { symbol_unescaped, span, .. } = abi;
 
-        match &*symbol_unescaped.as_str() {
+        match symbol_unescaped.as_str() {
             // Stable
             "Rust" | "C" | "cdecl" | "stdcall" | "fastcall" | "aapcs" | "win64" | "sysv64"
             | "system" => {}
