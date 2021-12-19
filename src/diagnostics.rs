@@ -7,6 +7,7 @@ use log::trace;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, Span, SpanData, Symbol};
 
+use crate::stacked_borrows::{AccessKind, SbTag};
 use crate::*;
 
 /// Details of premature program termination.
@@ -58,7 +59,9 @@ impl MachineStopType for TerminationInfo {}
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {
     CreatedPointerTag(NonZeroU64),
-    PoppedPointerTag(Item),
+    /// This `Item` was popped from the borrow stack, either due to a grant of
+    /// `AccessKind` to `SbTag` or a deallocation when the second argument is `None`.
+    PoppedPointerTag(Item, Option<(SbTag, AccessKind)>),
     CreatedCallId(CallId),
     CreatedAlloc(AllocId),
     FreedAlloc(AllocId),
@@ -321,7 +324,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 use NonHaltingDiagnostic::*;
                 let msg = match e {
                     CreatedPointerTag(tag) => format!("created tag {:?}", tag),
-                    PoppedPointerTag(item) => format!("popped tracked tag for item {:?}", item),
+                    PoppedPointerTag(item, tag) =>
+                        match tag {
+                            None =>
+                                format!(
+                                    "popped tracked tag for item {:?} due to deallocation",
+                                    item
+                                ),
+                            Some((tag, access)) => {
+                                format!(
+                                    "popped tracked tag for item {:?} due to {:?} access for {:?}",
+                                    item, access, tag
+                                )
+                            }
+                        },
                     CreatedCallId(id) => format!("function call with id {}", id),
                     CreatedAlloc(AllocId(id)) => format!("created allocation with id {}", id),
                     FreedAlloc(AllocId(id)) => format!("freed allocation with id {}", id),
