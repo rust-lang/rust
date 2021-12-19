@@ -939,7 +939,13 @@ crate enum DocFragmentKind {
 //   `need_backline` field).
 fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
     let s = frag.doc.as_str();
-    let mut iter = s.lines().peekable();
+    let mut iter = s.lines();
+    if s == "" {
+        if frag.need_backline {
+            out.push('\n');
+        }
+        return;
+    }
     while let Some(line) = iter.next() {
         if line.chars().any(|c| !c.is_whitespace()) {
             assert!(line.len() >= frag.indent);
@@ -947,12 +953,10 @@ fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
         } else {
             out.push_str(line);
         }
-        if iter.peek().is_some() {
-            out.push('\n');
-        }
-    }
-    if frag.need_backline {
         out.push('\n');
+    }
+    if !frag.need_backline {
+        out.pop();
     }
 }
 
