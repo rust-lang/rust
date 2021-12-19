@@ -6,8 +6,8 @@ use std::path::Path;
 
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
-    elf, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection, SectionFlags,
-    SectionKind, SymbolFlags, SymbolKind, SymbolScope,
+    elf, pe, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
+    SectionFlags, SectionKind, SymbolFlags, SymbolKind, SymbolScope,
 };
 
 use snap::write::FrameEncoder;
@@ -216,13 +216,12 @@ pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> Vec<u8> {
     );
     match file.format() {
         BinaryFormat::Coff => {
-            const IMAGE_SCN_LNK_REMOVE: u32 = 0;
             file.section_mut(section).flags =
-                SectionFlags::Coff { characteristics: IMAGE_SCN_LNK_REMOVE };
+                SectionFlags::Coff { characteristics: pe::IMAGE_SCN_LNK_REMOVE };
         }
         BinaryFormat::Elf => {
-            const SHF_EXCLUDE: u64 = 0x80000000;
-            file.section_mut(section).flags = SectionFlags::Elf { sh_flags: SHF_EXCLUDE };
+            file.section_mut(section).flags =
+                SectionFlags::Elf { sh_flags: elf::SHF_EXCLUDE as u64 };
         }
         _ => {}
     };
