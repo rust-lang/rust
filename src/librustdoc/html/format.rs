@@ -27,6 +27,8 @@ use crate::html::escape::Escape;
 use crate::html::render::cache::ExternalLocation;
 use crate::html::render::Context;
 
+use super::url_parts_builder::UrlPartsBuilder;
+
 crate trait Print {
     fn print(self, buffer: &mut Buffer);
 }
@@ -544,9 +546,9 @@ crate fn href_with_root_path(
                         ExternalLocation::Remote(ref s) => {
                             is_remote = true;
                             let s = s.trim_end_matches('/');
-                            let mut s = vec![s];
-                            s.extend(module_fqp[..].iter().map(String::as_str));
-                            s
+                            let mut builder = UrlPartsBuilder::singleton(s);
+                            builder.extend(module_fqp.iter().map(String::as_str));
+                            builder
                         }
                         ExternalLocation::Local => href_relative_parts(module_fqp, relative_to),
                         ExternalLocation::Unknown => return Err(HrefError::DocumentationNotBuilt),
@@ -560,22 +562,21 @@ crate fn href_with_root_path(
     if !is_remote {
         if let Some(root_path) = root_path {
             let root = root_path.trim_end_matches('/');
-            url_parts.insert(0, root);
+            url_parts.push_front(root);
         }
     }
     debug!(?url_parts);
     let last = &fqp.last().unwrap()[..];
-    let filename;
     match shortty {
         ItemType::Module => {
             url_parts.push("index.html");
         }
         _ => {
-            filename = format!("{}.{}.html", shortty.as_str(), last);
+            let filename = format!("{}.{}.html", shortty.as_str(), last);
             url_parts.push(&filename);
         }
     }
-    Ok((url_parts.join("/"), shortty, fqp.to_vec()))
+    Ok((url_parts.finish(), shortty, fqp.to_vec()))
 }
 
 crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<String>), HrefError> {
@@ -585,7 +586,7 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<Str
 /// Both paths should only be modules.
 /// This is because modules get their own directories; that is, `std::vec` and `std::vec::Vec` will
 /// both need `../iter/trait.Iterator.html` to get at the iterator trait.
-crate fn href_relative_parts<'a>(fqp: &'a [String], relative_to_fqp: &'a [String]) -> Vec<&'a str> {
+crate fn href_relative_parts(fqp: &[String], relative_to_fqp: &[String]) -> UrlPartsBuilder {
     for (i, (f, r)) in fqp.iter().zip(relative_to_fqp.iter()).enumerate() {
         // e.g. linking to std::iter from std::vec (`dissimilar_part_count` will be 1)
         if f != r {
@@ -603,7 +604,7 @@ crate fn href_relative_parts<'a>(fqp: &'a [String], relative_to_fqp: &'a [String
         iter::repeat("..").take(dissimilar_part_count).collect()
     // linking to the same module
     } else {
-        Vec::new()
+        UrlPartsBuilder::new()
     }
 }
 
