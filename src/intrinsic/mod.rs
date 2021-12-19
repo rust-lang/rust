@@ -88,7 +88,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let arg_tys = sig.inputs();
         let ret_ty = sig.output();
         let name = tcx.item_name(def_id);
-        let name_str = &*name.as_str();
+        let name_str = name.as_str();
 
         let llret_ty = self.layout_of(ret_ty).gcc_type(self, true);
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
