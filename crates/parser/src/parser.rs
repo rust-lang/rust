@@ -8,7 +8,6 @@ use limit::Limit;
 use crate::{
     event::Event,
     tokens::Tokens,
-    ParseError,
     SyntaxKind::{self, EOF, ERROR, TOMBSTONE},
     TokenSet, T,
 };
@@ -196,7 +195,7 @@ impl<'t> Parser<'t> {
     /// structured errors with spans and notes, like rustc
     /// does.
     pub(crate) fn error<T: Into<String>>(&mut self, message: T) {
-        let msg = ParseError(Box::new(message.into()));
+        let msg = message.into();
         self.push_event(Event::Error { msg });
     }
 

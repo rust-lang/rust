@@ -25,31 +25,19 @@ mod event;
 mod parser;
 mod grammar;
 mod tokens;
+mod tree_traversal;
 
 #[cfg(test)]
 mod tests;
 
 pub(crate) use token_set::TokenSet;
 
-pub use crate::{lexed_str::LexedStr, syntax_kind::SyntaxKind, tokens::Tokens};
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParseError(pub Box<String>);
-
-/// `TreeSink` abstracts details of a particular syntax tree implementation.
-pub trait TreeSink {
-    /// Adds new token to the current branch.
-    fn token(&mut self, kind: SyntaxKind, n_tokens: u8);
-
-    /// Start new branch and make it current.
-    fn start_node(&mut self, kind: SyntaxKind);
-
-    /// Finish current branch and restore previous
-    /// branch as current.
-    fn finish_node(&mut self);
-
-    fn error(&mut self, error: ParseError);
-}
+pub use crate::{
+    lexed_str::LexedStr,
+    syntax_kind::SyntaxKind,
+    tokens::Tokens,
+    tree_traversal::{TraversalStep, TreeTraversal},
+};
 
 /// rust-analyzer parser allows you to choose one of the possible entry points.
 ///
@@ -74,11 +62,11 @@ pub enum ParserEntryPoint {
 }
 
 /// Parse given tokens into the given sink as a rust file.
-pub fn parse_source_file(tokens: &Tokens, tree_sink: &mut dyn TreeSink) {
-    parse(tokens, tree_sink, ParserEntryPoint::SourceFile);
+pub fn parse_source_file(tokens: &Tokens) -> TreeTraversal {
+    parse(tokens, ParserEntryPoint::SourceFile)
 }
 
-pub fn parse(tokens: &Tokens, tree_sink: &mut dyn TreeSink, entry_point: ParserEntryPoint) {
+pub fn parse(tokens: &Tokens, entry_point: ParserEntryPoint) -> TreeTraversal {
     let entry_point: fn(&'_ mut parser::Parser) = match entry_point {
         ParserEntryPoint::SourceFile => grammar::entry_points::source_file,
         ParserEntryPoint::Path => grammar::entry_points::path,
@@ -99,7 +87,7 @@ pub fn parse(tokens: &Tokens, tree_sink: &mut dyn TreeSink, entry_point: ParserE
     let mut p = parser::Parser::new(tokens);
     entry_point(&mut p);
     let events = p.finish();
-    event::process(tree_sink, events);
+    event::process(events)
 }
 
 /// A parsing function for a specific braced-block.
@@ -119,11 +107,11 @@ impl Reparser {
     ///
     /// Tokens must start with `{`, end with `}` and form a valid brace
     /// sequence.
-    pub fn parse(self, tokens: &Tokens, tree_sink: &mut dyn TreeSink) {
+    pub fn parse(self, tokens: &Tokens) -> TreeTraversal {
         let Reparser(r) = self;
         let mut p = parser::Parser::new(tokens);
         r(&mut p);
         let events = p.finish();
-        event::process(tree_sink, events);
+        event::process(events)
     }
 }

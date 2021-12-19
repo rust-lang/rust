@@ -3,9 +3,8 @@
 
 use crate::{to_parser_tokens::to_parser_tokens, ExpandError, ExpandResult, ParserEntryPoint};
 
-use parser::TreeSink;
 use syntax::SyntaxKind;
-use tt::buffer::{Cursor, TokenBuffer};
+use tt::buffer::TokenBuffer;
 
 macro_rules! err {
     () => {
@@ -94,34 +93,28 @@ impl<'a> TtIter<'a> {
         &mut self,
         entry_point: ParserEntryPoint,
     ) -> ExpandResult<Option<tt::TokenTree>> {
-        struct OffsetTokenSink<'a> {
-            cursor: Cursor<'a>,
-            error: bool,
-        }
-
-        impl<'a> TreeSink for OffsetTokenSink<'a> {
-            fn token(&mut self, kind: SyntaxKind, mut n_tokens: u8) {
-                if kind == SyntaxKind::LIFETIME_IDENT {
-                    n_tokens = 2;
-                }
-                for _ in 0..n_tokens {
-                    self.cursor = self.cursor.bump_subtree();
-                }
-            }
-            fn start_node(&mut self, _kind: SyntaxKind) {}
-            fn finish_node(&mut self) {}
-            fn error(&mut self, _error: parser::ParseError) {
-                self.error = true;
-            }
-        }
-
         let buffer = TokenBuffer::from_tokens(self.inner.as_slice());
         let parser_tokens = to_parser_tokens(&buffer);
-        let mut sink = OffsetTokenSink { cursor: buffer.begin(), error: false };
+        let tree_traversal = parser::parse(&parser_tokens, entry_point);
 
-        parser::parse(&parser_tokens, &mut sink, entry_point);
+        let mut cursor = buffer.begin();
+        let mut error = false;
+        for step in tree_traversal.iter() {
+            match step {
+                parser::TraversalStep::Token { kind, mut n_raw_tokens } => {
+                    if kind == SyntaxKind::LIFETIME_IDENT {
+                        n_raw_tokens = 2;
+                    }
+                    for _ in 0..n_raw_tokens {
+                        cursor = cursor.bump_subtree();
+                    }
+                }
+                parser::TraversalStep::EnterNode { .. } | parser::TraversalStep::LeaveNode => (),
+                parser::TraversalStep::Error { .. } => error = true,
+            }
+        }
 
-        let mut err = if !sink.cursor.is_root() || sink.error {
+        let mut err = if !cursor.is_root() || error {
             Some(err!("expected {:?}", entry_point))
         } else {
             None
@@ -130,8 +123,8 @@ impl<'a> TtIter<'a> {
         let mut curr = buffer.begin();
         let mut res = vec![];
 
-        if sink.cursor.is_root() {
-            while curr != sink.cursor {
+        if cursor.is_root() {
+            while curr != cursor {
                 if let Some(token) = curr.token_tree() {
                     res.push(token);
                 }

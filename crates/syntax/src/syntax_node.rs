@@ -69,7 +69,7 @@ impl SyntaxTreeBuilder {
         self.inner.finish_node();
     }
 
-    pub fn error(&mut self, error: parser::ParseError, text_pos: TextSize) {
-        self.errors.push(SyntaxError::new_at_offset(*error.0, text_pos));
+    pub fn error(&mut self, error: String, text_pos: TextSize) {
+        self.errors.push(SyntaxError::new_at_offset(error, text_pos));
     }
 }

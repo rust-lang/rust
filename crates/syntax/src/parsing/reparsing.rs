@@ -10,7 +10,7 @@ use parser::Reparser;
 use text_edit::Indel;
 
 use crate::{
-    parsing::text_tree_sink::TextTreeSink,
+    parsing::text_tree_sink::build_tree,
     syntax_node::{GreenNode, GreenToken, NodeOrToken, SyntaxElement, SyntaxNode},
     SyntaxError,
     SyntaxKind::*,
@@ -94,11 +94,9 @@ fn reparse_block(
         return None;
     }
 
-    let mut tree_sink = TextTreeSink::new(lexed);
+    let tree_traversal = reparser.parse(&parser_tokens);
 
-    reparser.parse(&parser_tokens, &mut tree_sink);
-
-    let (green, new_parser_errors) = tree_sink.finish();
+    let (green, new_parser_errors, _eof) = build_tree(lexed, tree_traversal, false);
 
     Some((node.replace_with(green), new_parser_errors, node.text_range()))
 }

@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use parser::{LexedStr, ParseError, TreeSink};
+use parser::{LexedStr, TreeTraversal};
 
 use crate::{
     ast,
@@ -11,6 +11,36 @@ use crate::{
     SyntaxKind::{self, *},
     SyntaxTreeBuilder, TextRange,
 };
+
+pub(crate) fn build_tree(
+    lexed: LexedStr<'_>,
+    tree_traversal: TreeTraversal,
+    synthetic_root: bool,
+) -> (GreenNode, Vec<SyntaxError>, bool) {
+    let mut builder = TextTreeSink::new(lexed);
+
+    if synthetic_root {
+        builder.start_node(SyntaxKind::SOURCE_FILE);
+    }
+
+    for event in tree_traversal.iter() {
+        match event {
+            parser::TraversalStep::Token { kind, n_raw_tokens } => {
+                builder.token(kind, n_raw_tokens)
+            }
+            parser::TraversalStep::EnterNode { kind } => builder.start_node(kind),
+            parser::TraversalStep::LeaveNode => builder.finish_node(),
+            parser::TraversalStep::Error { msg } => {
+                let text_pos = builder.lexed.text_start(builder.pos).try_into().unwrap();
+                builder.inner.error(msg.to_string(), text_pos);
+            }
+        }
+    }
+    if synthetic_root {
+        builder.finish_node()
+    }
+    builder.finish_eof()
+}
 
 /// Bridges the parser with our specific syntax tree representation.
 ///
@@ -28,7 +58,7 @@ enum State {
     PendingFinish,
 }
 
-impl<'a> TreeSink for TextTreeSink<'a> {
+impl<'a> TextTreeSink<'a> {
     fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingStart => unreachable!(),
@@ -70,11 +100,6 @@ impl<'a> TreeSink for TextTreeSink<'a> {
             State::Normal => (),
         }
     }
-
-    fn error(&mut self, error: ParseError) {
-        let text_pos = self.lexed.text_start(self.pos).try_into().unwrap();
-        self.inner.error(error, text_pos);
-    }
 }
 
 impl<'a> TextTreeSink<'a> {
@@ -104,11 +129,6 @@ impl<'a> TextTreeSink<'a> {
         let is_eof = self.pos == self.lexed.len();
 
         (node, errors, is_eof)
-    }
-
-    pub(super) fn finish(self) -> (GreenNode, Vec<SyntaxError>) {
-        let (node, errors, _eof) = self.finish_eof();
-        (node, errors)
     }
 
     fn eat_trivias(&mut self) {
