@@ -9,7 +9,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
-        has_elf_tls: true,
+        has_thread_local: true,
         crt_static_respected: true,
         ..Default::default()
     }

@@ -8,7 +8,7 @@ pub fn target() -> Target {
     base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-mx32".to_string());
     // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
     base.stack_probes = StackProbeType::Call;
-    base.has_elf_tls = false;
+    base.has_thread_local = false;
     // BUG(GabrielMajeri): disabling the PLT on x86_64 Linux with x32 ABI
     // breaks code gen. See LLVM bug 36743
     base.needs_plt = true;

@@ -27,6 +27,7 @@ pub fn opts() -> TargetOptions {
         // linking some libraries which require a specific agreement, so it may
         // not ever be possible for us to pass this flag.
         no_default_libraries: false,
+        has_thread_local: true,
 
         ..base
     }

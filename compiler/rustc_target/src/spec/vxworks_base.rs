@@ -11,7 +11,7 @@ pub fn opts() -> TargetOptions {
         executables: true,
         families: vec!["unix".to_string()],
         has_rpath: true,
-        has_elf_tls: true,
+        has_thread_local: true,
         crt_static_default: true,
         crt_static_respected: true,
         crt_static_allows_dylibs: true,

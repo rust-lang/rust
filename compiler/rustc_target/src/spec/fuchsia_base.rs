@@ -35,7 +35,7 @@ pub fn opts() -> TargetOptions {
             (LinkOutputKind::StaticPicExe, &["Scrt1.o"]),
         ]),
         position_independent_executables: true,
-        has_elf_tls: true,
+        has_thread_local: true,
         ..Default::default()
     }
 }
