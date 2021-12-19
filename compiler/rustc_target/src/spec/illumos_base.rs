@@ -45,7 +45,7 @@ pub fn opts() -> TargetOptions {
         // (see src/libstd/sys/unix/fast_thread_local.rs) that is currently
         // missing in illumos.  For now at least, we must fallback to using
         // pthread_{get,set}specific.
-        //has_elf_tls: true,
+        //has_thread_local: true,
 
         // FIXME: Currently, rust is invoking cc to link, which ends up
         // causing these to get included twice.  We should eventually transition

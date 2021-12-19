@@ -198,7 +198,7 @@ pub enum TyKind<'tcx> {
     Error(DelaySpanBugEmitted),
 }
 
-impl TyKind<'tcx> {
+impl<'tcx> TyKind<'tcx> {
     #[inline]
     pub fn is_primitive(&self) -> bool {
         matches!(self, Bool | Char | Int(_) | Uint(_) | Float(_))

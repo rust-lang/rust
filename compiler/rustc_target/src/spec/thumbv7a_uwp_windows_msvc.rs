@@ -9,7 +9,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+vfp3,+neon".to_string(),
             max_atomic_width: Some(64),
-            has_elf_tls: true,
             // FIXME(jordanrh): use PanicStrategy::Unwind when SEH is
             // implemented for windows/arm in LLVM
             panic_strategy: PanicStrategy::Abort,

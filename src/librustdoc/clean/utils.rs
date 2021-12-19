@@ -72,7 +72,7 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
         }));
     }
 
-    Crate { module, primitives, external_traits: cx.external_traits.clone(), collapsed: false }
+    Crate { module, primitives, external_traits: cx.external_traits.clone() }
 }
 
 fn external_generic_args(

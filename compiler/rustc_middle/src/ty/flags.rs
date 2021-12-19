@@ -22,7 +22,7 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_predicate(binder: ty::Binder<'tcx, ty::PredicateKind<'_>>) -> FlagComputation {
+    pub fn for_predicate<'tcx>(binder: ty::Binder<'tcx, ty::PredicateKind<'_>>) -> FlagComputation {
         let mut result = FlagComputation::new();
         result.add_predicate(binder);
         result
@@ -216,7 +216,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_predicate(&mut self, binder: ty::Binder<'tcx, ty::PredicateKind<'_>>) {
+    fn add_predicate(&mut self, binder: ty::Binder<'_, ty::PredicateKind<'_>>) {
         self.bound_computation(binder, |computation, atom| computation.add_predicate_atom(atom));
     }
 
@@ -310,7 +310,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_unevaluated_const<P>(&mut self, ct: ty::Unevaluated<'tcx, P>) {
+    fn add_unevaluated_const<P>(&mut self, ct: ty::Unevaluated<'_, P>) {
         // The generic arguments of unevaluated consts are a bit special,
         // see the `rustc-dev-guide` for more information.
         //

@@ -115,7 +115,7 @@ where
     pub fn to_bitmask(self) -> [u8; LaneCount::<LANES>::BITMASK_LEN] {
         unsafe {
             let mut bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN] =
-                crate::intrinsics::simd_bitmask(self.0);
+                intrinsics::simd_bitmask(self.0);
 
             // There is a bug where LLVM appears to implement this operation with the wrong
             // bit order.
@@ -144,7 +144,7 @@ where
                 }
             }
 
-            Self::from_int_unchecked(crate::intrinsics::simd_select_bitmask(
+            Self::from_int_unchecked(intrinsics::simd_select_bitmask(
                 bitmask,
                 Self::splat(true).to_int(),
                 Self::splat(false).to_int(),

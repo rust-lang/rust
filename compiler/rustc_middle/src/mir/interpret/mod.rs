@@ -145,7 +145,7 @@ pub struct GlobalId<'tcx> {
     pub promoted: Option<mir::Promoted>,
 }
 
-impl GlobalId<'tcx> {
+impl<'tcx> GlobalId<'tcx> {
     pub fn display(self, tcx: TyCtxt<'tcx>) -> String {
         let instance_name = with_no_trimmed_paths(|| tcx.def_path_str(self.instance.def.def_id()));
         if let Some(promoted) = self.promoted {
@@ -273,7 +273,7 @@ pub struct AllocDecodingSession<'s> {
 
 impl<'s> AllocDecodingSession<'s> {
     /// Decodes an `AllocId` in a thread-safe way.
-    pub fn decode_alloc_id<D>(&self, decoder: &mut D) -> Result<AllocId, D::Error>
+    pub fn decode_alloc_id<'tcx, D>(&self, decoder: &mut D) -> Result<AllocId, D::Error>
     where
         D: TyDecoder<'tcx>,
     {
@@ -390,7 +390,7 @@ pub enum GlobalAlloc<'tcx> {
     Memory(&'tcx Allocation),
 }
 
-impl GlobalAlloc<'tcx> {
+impl<'tcx> GlobalAlloc<'tcx> {
     /// Panics if the `GlobalAlloc` does not refer to an `GlobalAlloc::Memory`
     #[track_caller]
     #[inline]

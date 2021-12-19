@@ -2033,7 +2033,7 @@ impl SourceScope {
     /// Finds the original HirId this MIR item came from.
     /// This is necessary after MIR optimizations, as otherwise we get a HirId
     /// from the function that was inlined instead of the function call site.
-    pub fn lint_root(
+    pub fn lint_root<'tcx>(
         self,
         source_scopes: &IndexVec<SourceScope, SourceScopeData<'tcx>>,
     ) -> Option<HirId> {
@@ -2543,7 +2543,7 @@ pub enum ConstantKind<'tcx> {
     Val(interpret::ConstValue<'tcx>, Ty<'tcx>),
 }
 
-impl Constant<'tcx> {
+impl<'tcx> Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
         match self.literal.const_for_ty()?.val.try_to_scalar() {
             Some(Scalar::Ptr(ptr, _size)) => match tcx.global_alloc(ptr.provenance) {
@@ -2562,14 +2562,14 @@ impl Constant<'tcx> {
     }
 }
 
-impl From<&'tcx ty::Const<'tcx>> for ConstantKind<'tcx> {
+impl<'tcx> From<&'tcx ty::Const<'tcx>> for ConstantKind<'tcx> {
     #[inline]
     fn from(ct: &'tcx ty::Const<'tcx>) -> Self {
         Self::Ty(ct)
     }
 }
 
-impl ConstantKind<'tcx> {
+impl<'tcx> ConstantKind<'tcx> {
     /// Returns `None` if the constant is not trivially safe for use in the type system.
     pub fn const_for_ty(&self) -> Option<&'tcx ty::Const<'tcx>> {
         match self {
@@ -2851,7 +2851,7 @@ impl<'tcx> Display for ConstantKind<'tcx> {
     }
 }
 
-fn pretty_print_const(
+fn pretty_print_const<'tcx>(
     c: &ty::Const<'tcx>,
     fmt: &mut Formatter<'_>,
     print_types: bool,
@@ -2866,7 +2866,7 @@ fn pretty_print_const(
     })
 }
 
-fn pretty_print_const_value(
+fn pretty_print_const_value<'tcx>(
     val: interpret::ConstValue<'tcx>,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
@@ -2913,12 +2913,12 @@ impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
     type Iter = iter::Cloned<Successors<'b>>;
 }
 
-impl graph::GraphPredecessors<'graph> for Body<'tcx> {
+impl<'tcx, 'graph> graph::GraphPredecessors<'graph> for Body<'tcx> {
     type Item = BasicBlock;
     type Iter = std::iter::Copied<std::slice::Iter<'graph, BasicBlock>>;
 }
 
-impl graph::WithPredecessors for Body<'tcx> {
+impl<'tcx> graph::WithPredecessors for Body<'tcx> {
     #[inline]
     fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
         self.predecessors()[node].iter().copied()

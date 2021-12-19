@@ -168,7 +168,7 @@ impl PrimitiveExt for Primitive {
     /// Return an *integer* type matching this primitive.
     /// Useful in particular when dealing with enum discriminants.
     #[inline]
-    fn to_int_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+    fn to_int_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
             Pointer => tcx.types.usize,
@@ -2195,9 +2195,9 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
     }
 }
 
-impl<C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
+impl<'tcx, C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
 
-impl LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
+impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     #[inline]
@@ -2206,7 +2206,7 @@ impl LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
     }
 }
 
-impl LayoutOfHelpers<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
+impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
     type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
 
     #[inline]
@@ -2282,7 +2282,7 @@ where
             TyAndLayout(TyAndLayout<'tcx>),
         }
 
-        fn field_ty_or_layout(
+        fn field_ty_or_layout<'tcx>(
             this: TyAndLayout<'tcx>,
             cx: &(impl HasTyCtxt<'tcx> + HasParamEnv<'tcx>),
             i: usize,
@@ -2724,7 +2724,7 @@ impl<'tcx> ty::Instance<'tcx> {
 /// with `-Cpanic=abort` will look like they can't unwind when in fact they
 /// might (from a foreign exception or similar).
 #[inline]
-pub fn fn_can_unwind(
+pub fn fn_can_unwind<'tcx>(
     tcx: TyCtxt<'tcx>,
     codegen_fn_attr_flags: CodegenFnAttrFlags,
     abi: SpecAbi,
@@ -2842,7 +2842,7 @@ pub enum FnAbiError<'tcx> {
     AdjustForForeignAbi(call::AdjustForForeignAbiError),
 }
 
-impl From<LayoutError<'tcx>> for FnAbiError<'tcx> {
+impl<'tcx> From<LayoutError<'tcx>> for FnAbiError<'tcx> {
     fn from(err: LayoutError<'tcx>) -> Self {
         Self::Layout(err)
     }
@@ -2942,7 +2942,7 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
     }
 }
 
-impl<C: FnAbiOfHelpers<'tcx>> FnAbiOf<'tcx> for C {}
+impl<'tcx, C: FnAbiOfHelpers<'tcx>> FnAbiOf<'tcx> for C {}
 
 fn fn_abi_of_fn_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,

@@ -53,7 +53,7 @@ pub fn opts(os: &str, arch: Arch) -> TargetOptions {
         dynamic_linking: false,
         executables: true,
         link_env_remove: link_env_remove(arch),
-        has_elf_tls: false,
+        has_thread_local: false,
         ..super::apple_base::opts(os)
     }
 }

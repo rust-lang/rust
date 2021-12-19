@@ -27,7 +27,7 @@ pub enum ValTree<'tcx> {
     Branch(&'tcx [ValTree<'tcx>]),
 }
 
-impl ValTree<'tcx> {
+impl<'tcx> ValTree<'tcx> {
     pub fn zst() -> Self {
         Self::Branch(&[])
     }

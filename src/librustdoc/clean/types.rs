@@ -122,12 +122,11 @@ crate struct Crate {
     crate primitives: ThinVec<(DefId, PrimitiveType)>,
     /// Only here so that they can be filtered through the rustdoc passes.
     crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
-    crate collapsed: bool,
 }
 
 // `Crate` is frequently moved by-value. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Crate, 80);
+rustc_data_structures::static_assert_size!(Crate, 72);
 
 impl Crate {
     crate fn name(&self, tcx: TyCtxt<'_>) -> Symbol {
@@ -1030,12 +1029,6 @@ impl Attributes {
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
 
-        fn update_need_backline(doc_strings: &mut Vec<DocFragment>) {
-            if let Some(prev) = doc_strings.last_mut() {
-                prev.need_backline = true;
-            }
-        }
-
         let clean_attr = |(attr, parent_module): (&ast::Attribute, Option<DefId>)| {
             if let Some(value) = attr.doc_str() {
                 trace!("got doc_str={:?}", value);
@@ -1055,7 +1048,9 @@ impl Attributes {
                     indent: 0,
                 };
 
-                update_need_backline(&mut doc_strings);
+                if let Some(prev) = doc_strings.last_mut() {
+                    prev.need_backline = true;
+                }
 
                 doc_strings.push(frag);
 

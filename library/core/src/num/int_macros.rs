@@ -2025,17 +2025,17 @@ macro_rules! int_impl {
         #[doc = concat!("let a: ", stringify!($SelfT)," = 8;")]
         /// let b = 3;
         ///
-        /// assert_eq!(a.unstable_div_floor(b), 2);
-        /// assert_eq!(a.unstable_div_floor(-b), -3);
-        /// assert_eq!((-a).unstable_div_floor(b), -3);
-        /// assert_eq!((-a).unstable_div_floor(-b), 2);
+        /// assert_eq!(a.div_floor(b), 2);
+        /// assert_eq!(a.div_floor(-b), -3);
+        /// assert_eq!((-a).div_floor(b), -3);
+        /// assert_eq!((-a).div_floor(-b), 2);
         /// ```
         #[unstable(feature = "int_roundings", issue = "88581")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub const fn unstable_div_floor(self, rhs: Self) -> Self {
+        pub const fn div_floor(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
             if (r > 0 && rhs < 0) || (r < 0 && rhs > 0) {
@@ -2060,17 +2060,17 @@ macro_rules! int_impl {
         #[doc = concat!("let a: ", stringify!($SelfT)," = 8;")]
         /// let b = 3;
         ///
-        /// assert_eq!(a.unstable_div_ceil(b), 3);
-        /// assert_eq!(a.unstable_div_ceil(-b), -2);
-        /// assert_eq!((-a).unstable_div_ceil(b), -2);
-        /// assert_eq!((-a).unstable_div_ceil(-b), 3);
+        /// assert_eq!(a.div_ceil(b), 3);
+        /// assert_eq!(a.div_ceil(-b), -2);
+        /// assert_eq!((-a).div_ceil(b), -2);
+        /// assert_eq!((-a).div_ceil(-b), 3);
         /// ```
         #[unstable(feature = "int_roundings", issue = "88581")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub const fn unstable_div_ceil(self, rhs: Self) -> Self {
+        pub const fn div_ceil(self, rhs: Self) -> Self {
             let d = self / rhs;
             let r = self % rhs;
             if (r > 0 && rhs > 0) || (r < 0 && rhs < 0) {
@@ -2095,21 +2095,21 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(int_roundings)]
-        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".unstable_next_multiple_of(8), 16);")]
-        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".unstable_next_multiple_of(8), 24);")]
-        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".unstable_next_multiple_of(-8), 16);")]
-        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".unstable_next_multiple_of(-8), 16);")]
-        #[doc = concat!("assert_eq!((-16_", stringify!($SelfT), ").unstable_next_multiple_of(8), -16);")]
-        #[doc = concat!("assert_eq!((-23_", stringify!($SelfT), ").unstable_next_multiple_of(8), -16);")]
-        #[doc = concat!("assert_eq!((-16_", stringify!($SelfT), ").unstable_next_multiple_of(-8), -16);")]
-        #[doc = concat!("assert_eq!((-23_", stringify!($SelfT), ").unstable_next_multiple_of(-8), -24);")]
+        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".next_multiple_of(8), 16);")]
+        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".next_multiple_of(8), 24);")]
+        #[doc = concat!("assert_eq!(16_", stringify!($SelfT), ".next_multiple_of(-8), 16);")]
+        #[doc = concat!("assert_eq!(23_", stringify!($SelfT), ".next_multiple_of(-8), 16);")]
+        #[doc = concat!("assert_eq!((-16_", stringify!($SelfT), ").next_multiple_of(8), -16);")]
+        #[doc = concat!("assert_eq!((-23_", stringify!($SelfT), ").next_multiple_of(8), -16);")]
+        #[doc = concat!("assert_eq!((-16_", stringify!($SelfT), ").next_multiple_of(-8), -16);")]
+        #[doc = concat!("assert_eq!((-23_", stringify!($SelfT), ").next_multiple_of(-8), -24);")]
         /// ```
         #[unstable(feature = "int_roundings", issue = "88581")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub const fn unstable_next_multiple_of(self, rhs: Self) -> Self {
+        pub const fn next_multiple_of(self, rhs: Self) -> Self {
             // This would otherwise fail when calculating `r` when self == T::MIN.
             if rhs == -1 {
                 return self;

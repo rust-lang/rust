@@ -2683,11 +2683,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// let mut v = vec![1, 2, 3];
-    /// let new = [7, 8];
-    /// let u: Vec<_> = v.splice(..2, new).collect();
-    /// assert_eq!(v, &[7, 8, 3]);
-    /// assert_eq!(u, &[1, 2]);
+    /// let mut v = vec![1, 2, 3, 4];
+    /// let new = [7, 8, 9];
+    /// let u: Vec<_> = v.splice(1..3, new).collect();
+    /// assert_eq!(v, &[1, 7, 8, 9, 4]);
+    /// assert_eq!(u, &[2, 3]);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]

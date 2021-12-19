@@ -44,7 +44,6 @@
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
-#![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]

@@ -852,7 +852,7 @@ pub trait ToPredicate<'tcx> {
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx>;
 }
 
-impl ToPredicate<'tcx> for Binder<'tcx, PredicateKind<'tcx>> {
+impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, PredicateKind<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(self)
@@ -1418,7 +1418,7 @@ impl<'tcx> ParamEnv<'tcx> {
 
 // FIXME(ecstaticmorse): Audit all occurrences of `without_const().to_predicate(tcx)` to ensure that
 // the constness of trait bounds is being propagated correctly.
-impl PolyTraitRef<'tcx> {
+impl<'tcx> PolyTraitRef<'tcx> {
     #[inline]
     pub fn with_constness(self, constness: BoundConstness) -> PolyTraitPredicate<'tcx> {
         self.map_bound(|trait_ref| ty::TraitPredicate {

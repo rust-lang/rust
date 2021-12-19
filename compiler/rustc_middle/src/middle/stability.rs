@@ -228,7 +228,7 @@ pub fn deprecation_message_and_lint(
     )
 }
 
-pub fn early_report_deprecation(
+pub fn early_report_deprecation<'a>(
     lint_buffer: &'a mut LintBuffer,
     message: &str,
     suggestion: Option<Symbol>,

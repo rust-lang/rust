@@ -212,7 +212,7 @@ pub fn struct_lint_level<'s, 'd>(
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
-    fn struct_lint_level_impl(
+    fn struct_lint_level_impl<'s, 'd>(
         sess: &'s Session,
         lint: &'static Lint,
         level: Level,

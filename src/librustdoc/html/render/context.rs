@@ -88,8 +88,6 @@ crate struct SharedContext<'tcx> {
     crate local_sources: FxHashMap<PathBuf, String>,
     /// Show the memory layout of types in the docs.
     pub(super) show_type_layout: bool,
-    /// Whether the collapsed pass ran
-    collapsed: bool,
     /// The base-URL of the issue tracker for when an item has been tagged with
     /// an issue number.
     pub(super) issue_tracker_base_url: Option<String>,
@@ -140,12 +138,6 @@ impl SharedContext<'_> {
         }
 
         Ok(())
-    }
-
-    /// Returns the `collapsed_doc_value` of the given item if this is the main crate, otherwise
-    /// returns the `doc_value`.
-    crate fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<String> {
-        if self.collapsed { item.collapsed_doc_value() } else { item.doc_value() }
     }
 
     crate fn edition(&self) -> Edition {
@@ -472,7 +464,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let (sender, receiver) = channel();
         let mut scx = SharedContext {
             tcx,
-            collapsed: krate.collapsed,
             src_root,
             local_sources,
             issue_tracker_base_url,

@@ -12,7 +12,7 @@ pub fn opts() -> TargetOptions {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         linker: Some("rust-lld".to_owned()),
         executables: true,
-        has_elf_tls: true,
+        has_thread_local: true,
         pre_link_args,
         panic_strategy: PanicStrategy::Abort,
         position_independent_executables: true,

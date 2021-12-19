@@ -199,7 +199,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 }
 
-impl TypeFoldable<'tcx> for hir::Constness {
+impl<'tcx> TypeFoldable<'tcx> for hir::Constness {
     fn try_super_fold_with<F: TypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
         Ok(self)
     }
@@ -1060,13 +1060,13 @@ struct Shifter<'tcx> {
     amount: u32,
 }
 
-impl Shifter<'tcx> {
+impl<'tcx> Shifter<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, amount: u32) -> Self {
         Shifter { tcx, current_index: ty::INNERMOST, amount }
     }
 }
 
-impl TypeFolder<'tcx> for Shifter<'tcx> {
+impl<'tcx> TypeFolder<'tcx> for Shifter<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -1257,7 +1257,7 @@ struct HasTypeFlagsVisitor<'tcx> {
     flags: ty::TypeFlags,
 }
 
-impl std::fmt::Debug for HasTypeFlagsVisitor<'tcx> {
+impl<'tcx> std::fmt::Debug for HasTypeFlagsVisitor<'tcx> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.flags.fmt(fmt)
     }
@@ -1454,7 +1454,7 @@ struct LateBoundRegionsCollector<'tcx> {
     just_constrained: bool,
 }
 
-impl LateBoundRegionsCollector<'tcx> {
+impl<'tcx> LateBoundRegionsCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, just_constrained: bool) -> Self {
         LateBoundRegionsCollector {
             tcx,

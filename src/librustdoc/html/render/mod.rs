@@ -567,7 +567,7 @@ fn document_full_inner(
     is_collapsible: bool,
     heading_offset: HeadingOffset,
 ) {
-    if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
+    if let Some(s) = item.collapsed_doc_value() {
         debug!("Doc block: =====\n{}\n=====", s);
         if is_collapsible {
             w.write_str(
@@ -1612,7 +1612,7 @@ fn render_impl(
             write!(w, "</summary>")
         }
 
-        if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
+        if let Some(ref dox) = i.impl_item.collapsed_doc_value() {
             let mut ids = cx.id_map.borrow_mut();
             write!(
                 w,
