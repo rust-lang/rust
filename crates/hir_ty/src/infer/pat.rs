@@ -35,7 +35,7 @@ impl<'a> InferenceContext<'a> {
         self.unify(&ty, expected);
 
         let substs =
-            ty.as_adt().map(|(_, s)| s.clone()).unwrap_or_else(|| Substitution::empty(&Interner));
+            ty.as_adt().map(|(_, s)| s.clone()).unwrap_or_else(|| Substitution::empty(Interner));
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         let (pre, post) = match ellipsis {
@@ -51,7 +51,7 @@ impl<'a> InferenceContext<'a> {
                 .as_ref()
                 .and_then(|d| d.field(&Name::new_tuple_field(i)))
                 .map_or(self.err_ty(), |field| {
-                    field_tys[field].clone().substitute(&Interner, &substs)
+                    field_tys[field].clone().substitute(Interner, &substs)
                 });
             let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat, &expected_ty, default_bm);
@@ -77,13 +77,13 @@ impl<'a> InferenceContext<'a> {
         self.unify(&ty, expected);
 
         let substs =
-            ty.as_adt().map(|(_, s)| s.clone()).unwrap_or_else(|| Substitution::empty(&Interner));
+            ty.as_adt().map(|(_, s)| s.clone()).unwrap_or_else(|| Substitution::empty(Interner));
 
         let field_tys = def.map(|it| self.db.field_types(it)).unwrap_or_default();
         for subpat in subpats {
             let matching_field = var_data.as_ref().and_then(|it| it.field(&subpat.name));
             let expected_ty = matching_field.map_or(self.err_ty(), |field| {
-                field_tys[field].clone().substitute(&Interner, &substs)
+                field_tys[field].clone().substitute(Interner, &substs)
             });
             let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat.pat, &expected_ty, default_bm);
@@ -134,7 +134,7 @@ impl<'a> InferenceContext<'a> {
         let ty = match &body[pat] {
             Pat::Tuple { args, ellipsis } => {
                 let expectations = match expected.as_tuple() {
-                    Some(parameters) => &*parameters.as_slice(&Interner),
+                    Some(parameters) => &*parameters.as_slice(Interner),
                     _ => &[],
                 };
 
@@ -146,7 +146,7 @@ impl<'a> InferenceContext<'a> {
                 };
                 let err_ty = self.err_ty();
                 let mut expectations_iter =
-                    expectations.iter().map(|a| a.assert_ty_ref(&Interner)).chain(repeat(&err_ty));
+                    expectations.iter().map(|a| a.assert_ty_ref(Interner)).chain(repeat(&err_ty));
                 let mut infer_pat = |(&pat, ty)| self.infer_pat(pat, ty, default_bm);
 
                 let mut inner_tys = Vec::with_capacity(n_uncovered_patterns + args.len());
@@ -154,8 +154,8 @@ impl<'a> InferenceContext<'a> {
                 inner_tys.extend(expectations_iter.by_ref().take(n_uncovered_patterns).cloned());
                 inner_tys.extend(post.iter().zip(expectations_iter).map(infer_pat));
 
-                TyKind::Tuple(inner_tys.len(), Substitution::from_iter(&Interner, inner_tys))
-                    .intern(&Interner)
+                TyKind::Tuple(inner_tys.len(), Substitution::from_iter(Interner, inner_tys))
+                    .intern(Interner)
             }
             Pat::Or(pats) => {
                 if let Some((first_pat, rest)) = pats.split_first() {
@@ -180,7 +180,7 @@ impl<'a> InferenceContext<'a> {
                     _ => self.result.standard_types.unknown.clone(),
                 };
                 let subty = self.infer_pat(*pat, &expectation, default_bm);
-                TyKind::Ref(mutability, static_lifetime(), subty).intern(&Interner)
+                TyKind::Ref(mutability, static_lifetime(), subty).intern(Interner)
             }
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self.infer_tuple_struct_pat(
                 p.as_deref(),
@@ -213,7 +213,7 @@ impl<'a> InferenceContext<'a> {
                 let bound_ty = match mode {
                     BindingMode::Ref(mutability) => {
                         TyKind::Ref(mutability, static_lifetime(), inner_ty.clone())
-                            .intern(&Interner)
+                            .intern(Interner)
                     }
                     BindingMode::Move => inner_ty.clone(),
                 };
@@ -221,7 +221,7 @@ impl<'a> InferenceContext<'a> {
                 return inner_ty;
             }
             Pat::Slice { prefix, slice, suffix } => {
-                let elem_ty = match expected.kind(&Interner) {
+                let elem_ty = match expected.kind(Interner) {
                     TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
                     _ => self.err_ty(),
                 };
@@ -230,11 +230,11 @@ impl<'a> InferenceContext<'a> {
                     self.infer_pat(pat_id, &elem_ty, default_bm);
                 }
 
-                let pat_ty = match expected.kind(&Interner) {
+                let pat_ty = match expected.kind(Interner) {
                     TyKind::Array(_, const_) => TyKind::Array(elem_ty, const_.clone()),
                     _ => TyKind::Slice(elem_ty),
                 }
-                .intern(&Interner);
+                .intern(Interner);
                 if let &Some(slice_pat_id) = slice {
                     self.infer_pat(slice_pat_id, &pat_ty, default_bm);
                 }
@@ -251,8 +251,8 @@ impl<'a> InferenceContext<'a> {
                 Some(box_adt) => {
                     let (inner_ty, alloc_ty) = match expected.as_adt() {
                         Some((adt, subst)) if adt == box_adt => (
-                            subst.at(&Interner, 0).assert_ty_ref(&Interner).clone(),
-                            subst.as_slice(&Interner).get(1).and_then(|a| a.ty(&Interner).cloned()),
+                            subst.at(Interner, 0).assert_ty_ref(Interner).clone(),
+                            subst.as_slice(Interner).get(1).and_then(|a| a.ty(Interner).cloned()),
                         ),
                         _ => (self.result.standard_types.unknown.clone(), None),
                     };

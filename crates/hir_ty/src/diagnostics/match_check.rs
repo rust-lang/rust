@@ -130,7 +130,7 @@ impl<'a> PatCtxt<'a> {
             }
 
             hir_def::expr::Pat::Tuple { ref args, ellipsis } => {
-                let arity = match *ty.kind(&Interner) {
+                let arity = match *ty.kind(Interner) {
                     TyKind::Tuple(arity, _) => arity,
                     _ => panic!("unexpected type for tuple pattern: {:?}", ty),
                 };
@@ -139,7 +139,7 @@ impl<'a> PatCtxt<'a> {
             }
 
             hir_def::expr::Pat::Bind { subpat, .. } => {
-                if let TyKind::Ref(.., rty) = ty.kind(&Interner) {
+                if let TyKind::Ref(.., rty) = ty.kind(Interner) {
                     ty = rty;
                 }
                 PatKind::Binding { subpattern: self.lower_opt_pattern(subpat) }
@@ -224,7 +224,7 @@ impl<'a> PatCtxt<'a> {
         let kind = match self.infer.variant_resolution_for_pat(pat) {
             Some(variant_id) => {
                 if let VariantId::EnumVariantId(enum_variant) = variant_id {
-                    let substs = match ty.kind(&Interner) {
+                    let substs = match ty.kind(Interner) {
                         TyKind::Adt(_, substs) | TyKind::FnDef(_, substs) => substs.clone(),
                         TyKind::Error => {
                             return PatKind::Wild;

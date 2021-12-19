@@ -224,7 +224,7 @@ impl ExprValidator {
                     Some(it) => it,
                     None => return,
                 };
-                let sig = db.callable_item_signature(callee.into()).substitute(&Interner, &subst);
+                let sig = db.callable_item_signature(callee.into()).substitute(Interner, &subst);
 
                 (sig, args.len() + 1)
             }
@@ -389,7 +389,7 @@ impl ExprValidator {
             _ => return,
         };
 
-        let (params, required) = match mismatch.expected.kind(&Interner) {
+        let (params, required) = match mismatch.expected.kind(Interner) {
             TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), parameters)
                 if *enum_id == core_result_enum =>
             {
@@ -403,8 +403,7 @@ impl ExprValidator {
             _ => return,
         };
 
-        if params.len(&Interner) > 0
-            && params.at(&Interner, 0).ty(&Interner) == Some(&mismatch.actual)
+        if params.len(Interner) > 0 && params.at(Interner, 0).ty(Interner) == Some(&mismatch.actual)
         {
             self.diagnostics
                 .push(BodyValidationDiagnostic::MissingOkOrSomeInTailExpr { expr: id, required });
@@ -520,8 +519,8 @@ fn check_missing_refs(
         (None, Some((referenced_ty, _, mutability))) if referenced_ty == arg_ty => {
             Some((arg, Mutability::from_mutable(matches!(mutability, chalk_ir::Mutability::Mut))))
         }
-        (None, Some((referenced_ty, _, mutability))) => match referenced_ty.kind(&Interner) {
-            TyKind::Slice(subst) if matches!(arg_ty.kind(&Interner), TyKind::Array(arr_subst, _) if arr_subst == subst) => {
+        (None, Some((referenced_ty, _, mutability))) => match referenced_ty.kind(Interner) {
+            TyKind::Slice(subst) if matches!(arg_ty.kind(Interner), TyKind::Array(arr_subst, _) if arr_subst == subst) => {
                 Some((
                     arg,
                     Mutability::from_mutable(matches!(mutability, chalk_ir::Mutability::Mut)),

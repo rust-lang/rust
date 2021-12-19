@@ -140,9 +140,9 @@ struct InternedStandardTypes {
 impl Default for InternedStandardTypes {
     fn default() -> Self {
         InternedStandardTypes {
-            unknown: TyKind::Error.intern(&Interner),
-            bool_: TyKind::Scalar(Scalar::Bool).intern(&Interner),
-            unit: TyKind::Tuple(0, Substitution::empty(&Interner)).intern(&Interner),
+            unknown: TyKind::Error.intern(Interner),
+            bool_: TyKind::Scalar(Scalar::Bool).intern(Interner),
+            unit: TyKind::Tuple(0, Substitution::empty(Interner)).intern(Interner),
         }
     }
 }
@@ -378,7 +378,7 @@ impl<'a> InferenceContext<'a> {
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(db, trait_env.clone()),
             trait_env,
-            return_ty: TyKind::Error.intern(&Interner), // set in collect_fn_signature
+            return_ty: TyKind::Error.intern(Interner), // set in collect_fn_signature
             db,
             owner,
             body: db.body(owner),
@@ -472,7 +472,7 @@ impl<'a> InferenceContext<'a> {
 
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
-        match ty.kind(&Interner) {
+        match ty.kind(Interner) {
             TyKind::Error => self.table.new_type_var(),
             TyKind::InferenceVar(..) => {
                 let ty_resolved = self.resolve_ty_shallow(&ty);
@@ -495,7 +495,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn push_obligation(&mut self, o: DomainGoal) {
-        self.table.register_obligation(o.cast(&Interner));
+        self.table.register_obligation(o.cast(Interner));
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
@@ -535,8 +535,8 @@ impl<'a> InferenceContext<'a> {
                     }),
                     ty: ty.clone(),
                 };
-                self.push_obligation(trait_ref.cast(&Interner));
-                self.push_obligation(alias_eq.cast(&Interner));
+                self.push_obligation(trait_ref.cast(Interner));
+                self.push_obligation(alias_eq.cast(Interner));
                 ty
             }
             None => self.err_ty(),
@@ -568,13 +568,13 @@ impl<'a> InferenceContext<'a> {
                     ValueNs::EnumVariantId(var) => {
                         let substs = ctx.substs_from_path(path, var.into(), true);
                         let ty = self.db.ty(var.parent.into());
-                        let ty = self.insert_type_vars(ty.substitute(&Interner, &substs));
+                        let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                         return (ty, Some(var.into()));
                     }
                     ValueNs::StructId(strukt) => {
                         let substs = ctx.substs_from_path(path, strukt.into(), true);
                         let ty = self.db.ty(strukt.into());
-                        let ty = self.insert_type_vars(ty.substitute(&Interner, &substs));
+                        let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                         return (ty, Some(strukt.into()));
                     }
                     _ => return (self.err_ty(), None),
@@ -592,25 +592,25 @@ impl<'a> InferenceContext<'a> {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
                 let substs = ctx.substs_from_path(path, strukt.into(), true);
                 let ty = self.db.ty(strukt.into());
-                let ty = self.insert_type_vars(ty.substitute(&Interner, &substs));
+                let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(strukt.into())), unresolved)
             }
             TypeNs::AdtId(AdtId::UnionId(u)) => {
                 let substs = ctx.substs_from_path(path, u.into(), true);
                 let ty = self.db.ty(u.into());
-                let ty = self.insert_type_vars(ty.substitute(&Interner, &substs));
+                let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(u.into())), unresolved)
             }
             TypeNs::EnumVariantId(var) => {
                 let substs = ctx.substs_from_path(path, var.into(), true);
                 let ty = self.db.ty(var.parent.into());
-                let ty = self.insert_type_vars(ty.substitute(&Interner, &substs));
+                let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)
             }
             TypeNs::SelfType(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
                 let substs = generics.type_params_subst(self.db);
-                let ty = self.db.impl_self_ty(impl_id).substitute(&Interner, &substs);
+                let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
                 self.resolve_variant_on_alias(ty, unresolved, path)
             }
             TypeNs::TypeAliasId(it) => {
@@ -641,7 +641,7 @@ impl<'a> InferenceContext<'a> {
                 result
             } else {
                 // FIXME diagnostic
-                (TyKind::Error.intern(&Interner), None)
+                (TyKind::Error.intern(Interner), None)
             }
         }
     }
@@ -854,7 +854,7 @@ impl Expectation {
     /// for examples of where this comes up,.
     fn rvalue_hint(table: &mut unify::InferenceTable, ty: Ty) -> Self {
         // FIXME: do struct_tail_without_normalization
-        match table.resolve_ty_shallow(&ty).kind(&Interner) {
+        match table.resolve_ty_shallow(&ty).kind(Interner) {
             TyKind::Slice(_) | TyKind::Str | TyKind::Dyn(_) => Expectation::RValueLikeUnsized(ty),
             _ => Expectation::has_type(ty),
         }

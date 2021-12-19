@@ -54,7 +54,7 @@ impl TyFingerprint {
     /// an `impl S`, but not `impl &S`. Hence, this will return `None` for
     /// reference types and such.
     pub fn for_inherent_impl(ty: &Ty) -> Option<TyFingerprint> {
-        let fp = match ty.kind(&Interner) {
+        let fp = match ty.kind(Interner) {
             TyKind::Str => TyFingerprint::Str,
             TyKind::Never => TyFingerprint::Never,
             TyKind::Slice(..) => TyFingerprint::Slice,
@@ -71,7 +71,7 @@ impl TyFingerprint {
 
     /// Creates a TyFingerprint for looking up a trait impl.
     pub fn for_trait_impl(ty: &Ty) -> Option<TyFingerprint> {
-        let fp = match ty.kind(&Interner) {
+        let fp = match ty.kind(Interner) {
             TyKind::Str => TyFingerprint::Str,
             TyKind::Never => TyFingerprint::Never,
             TyKind::Slice(..) => TyFingerprint::Slice,
@@ -83,7 +83,7 @@ impl TyFingerprint {
             TyKind::Dyn(_) => ty.dyn_trait().map(TyFingerprint::Dyn)?,
             TyKind::Ref(_, _, ty) => return TyFingerprint::for_trait_impl(ty),
             TyKind::Tuple(_, subst) => {
-                let first_ty = subst.interned().get(0).map(|arg| arg.assert_ty_ref(&Interner));
+                let first_ty = subst.interned().get(0).map(|arg| arg.assert_ty_ref(Interner));
                 match first_ty {
                     Some(ty) => return TyFingerprint::for_trait_impl(ty),
                     None => TyFingerprint::Unit,
@@ -96,7 +96,7 @@ impl TyFingerprint {
             | TyKind::Generator(..)
             | TyKind::GeneratorWitness(..) => TyFingerprint::Unnameable,
             TyKind::Function(fn_ptr) => {
-                TyFingerprint::Function(fn_ptr.substitution.0.len(&Interner) as u32)
+                TyFingerprint::Function(fn_ptr.substitution.0.len(Interner) as u32)
             }
             TyKind::Alias(_)
             | TyKind::Placeholder(_)
@@ -384,7 +384,7 @@ pub fn def_crates(
 
     let mod_to_crate_ids = |module: ModuleId| Some(iter::once(module.krate()).collect());
 
-    let lang_item_targets = match ty.kind(&Interner) {
+    let lang_item_targets = match ty.kind(Interner) {
         TyKind::Adt(AdtId(def_id), _) => {
             return mod_to_crate_ids(def_id.module(db.upcast()));
         }
@@ -603,7 +603,7 @@ fn iterate_method_candidates_with_autoref(
     let refed = Canonical {
         binders: receiver_ty.binders.clone(),
         value: TyKind::Ref(Mutability::Not, static_lifetime(), receiver_ty.value.clone())
-            .intern(&Interner),
+            .intern(Interner),
     };
 
     iterate_method_candidates_by_receiver(
@@ -620,7 +620,7 @@ fn iterate_method_candidates_with_autoref(
 
     let ref_muted = Canonical {
         binders: receiver_ty.binders,
-        value: TyKind::Ref(Mutability::Mut, static_lifetime(), receiver_ty.value).intern(&Interner),
+        value: TyKind::Ref(Mutability::Mut, static_lifetime(), receiver_ty.value).intern(Interner),
     };
 
     iterate_method_candidates_by_receiver(
@@ -712,11 +712,11 @@ fn iterate_trait_method_candidates(
     receiver_ty: Option<&Canonical<Ty>>,
     callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
-    let receiver_is_array = matches!(self_ty.value.kind(&Interner), chalk_ir::TyKind::Array(..));
+    let receiver_is_array = matches!(self_ty.value.kind(Interner), chalk_ir::TyKind::Array(..));
     // if ty is `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait =
         self_ty.value.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
-    let env_traits = matches!(self_ty.value.kind(&Interner), TyKind::Placeholder(_))
+    let env_traits = matches!(self_ty.value.kind(Interner), TyKind::Placeholder(_))
         // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
         .then(|| {
             env.traits_in_scope_from_clauses(self_ty.value.clone())
@@ -754,7 +754,7 @@ fn iterate_trait_method_candidates(
             }
             if !known_implemented {
                 let goal = generic_implements_goal(db, env.clone(), t, self_ty.clone());
-                if db.trait_solve(krate, goal.cast(&Interner)).is_none() {
+                if db.trait_solve(krate, goal.cast(Interner)).is_none() {
                     continue 'traits;
                 }
             }
@@ -773,12 +773,12 @@ fn filter_inherent_impls_for_self_ty<'i>(
     // inherent methods on arrays are fingerprinted as [T; {unknown}], so we must also consider them when
     // resolving a method call on an array with a known len
     let array_impls = {
-        match self_ty.kind(&Interner) {
+        match self_ty.kind(Interner) {
             TyKind::Array(parameters, array_len) if !array_len.is_unknown() => {
                 let unknown_array_len_ty =
                     TyKind::Array(parameters.clone(), consteval::usize_const(None));
 
-                Some(impls.for_self_ty(&unknown_array_len_ty.intern(&Interner)))
+                Some(impls.for_self_ty(&unknown_array_len_ty.intern(Interner)))
             }
             _ => None,
         }
@@ -890,7 +890,7 @@ pub fn resolve_indexing_op(
     let deref_chain = autoderef_method_receiver(db, krate, ty);
     for ty in deref_chain {
         let goal = generic_implements_goal(db, env.clone(), index_trait, ty.clone());
-        if db.trait_solve(krate, goal.cast(&Interner)).is_some() {
+        if db.trait_solve(krate, goal.cast(Interner)).is_some() {
             return Some(ty);
         }
     }
@@ -905,7 +905,7 @@ fn is_transformed_receiver_ty_equal(transformed_receiver_ty: &Ty, receiver_ty: &
     // a transformed receiver may be considered equal (and a valid method call candidate) if it is an array
     // with an unknown (i.e. generic) length, and the receiver is an array with the same item type but a known len,
     // this allows inherent methods on arrays to be considered valid resolution candidates
-    match (transformed_receiver_ty.kind(&Interner), receiver_ty.kind(&Interner)) {
+    match (transformed_receiver_ty.kind(Interner), receiver_ty.kind(Interner)) {
         (
             TyKind::Array(transformed_array_ty, transformed_array_len),
             TyKind::Array(receiver_array_ty, receiver_array_len),
@@ -974,21 +974,21 @@ pub(crate) fn inherent_impl_substs(
 ) -> Option<Substitution> {
     // we create a var for each type parameter of the impl; we need to keep in
     // mind here that `self_ty` might have vars of its own
-    let self_ty_vars = self_ty.binders.len(&Interner);
+    let self_ty_vars = self_ty.binders.len(Interner);
     let vars = TyBuilder::subst_for_def(db, impl_id)
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, self_ty_vars)
         .build();
-    let self_ty_with_vars = db.impl_self_ty(impl_id).substitute(&Interner, &vars);
+    let self_ty_with_vars = db.impl_self_ty(impl_id).substitute(Interner, &vars);
     let mut kinds = self_ty.binders.interned().to_vec();
     kinds.extend(
         iter::repeat(chalk_ir::WithKind::new(
             chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
             UniverseIndex::ROOT,
         ))
-        .take(vars.len(&Interner)),
+        .take(vars.len(Interner)),
     );
     let tys = Canonical {
-        binders: CanonicalVarKinds::from_iter(&Interner, kinds),
+        binders: CanonicalVarKinds::from_iter(Interner, kinds),
         value: (self_ty_with_vars, self_ty.value.clone()),
     };
     let substs = super::infer::unify(db, env, &tys)?;
@@ -998,7 +998,7 @@ pub(crate) fn inherent_impl_substs(
     // Unknown, and in that case we want the result to contain Unknown in those
     // places again.
     let suffix =
-        Substitution::from_iter(&Interner, substs.iter(&Interner).cloned().skip(self_ty_vars));
+        Substitution::from_iter(Interner, substs.iter(Interner).cloned().skip(self_ty_vars));
     Some(fallback_bound_vars(suffix, self_ty_vars))
 }
 
@@ -1007,9 +1007,9 @@ pub(crate) fn inherent_impl_substs(
 fn fallback_bound_vars(s: Substitution, num_vars_to_keep: usize) -> Substitution {
     crate::fold_free_vars(s, |bound, binders| {
         if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
-            TyKind::Error.intern(&Interner)
+            TyKind::Error.intern(Interner)
         } else {
-            bound.shifted_in_from(binders).to_ty(&Interner)
+            bound.shifted_in_from(binders).to_ty(Interner)
         }
     })
 }
@@ -1036,7 +1036,7 @@ fn transform_receiver_ty(
         ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => unreachable!(),
     };
     let sig = db.callable_item_signature(function_id.into());
-    Some(sig.map(|s| s.params()[0].clone()).substitute(&Interner, &substs))
+    Some(sig.map(|s| s.params()[0].clone()).substitute(Interner, &substs))
 }
 
 pub fn implements_trait(
@@ -1047,7 +1047,7 @@ pub fn implements_trait(
     trait_: TraitId,
 ) -> bool {
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
-    let solution = db.trait_solve(krate, goal.cast(&Interner));
+    let solution = db.trait_solve(krate, goal.cast(Interner));
 
     solution.is_some()
 }
@@ -1060,7 +1060,7 @@ pub fn implements_trait_unique(
     trait_: TraitId,
 ) -> bool {
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
-    let solution = db.trait_solve(krate, goal.cast(&Interner));
+    let solution = db.trait_solve(krate, goal.cast(Interner));
 
     matches!(solution, Some(crate::Solution::Unique(_)))
 }
@@ -1083,11 +1083,11 @@ fn generic_implements_goal(
             chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
             UniverseIndex::ROOT,
         ))
-        .take(trait_ref.substitution.len(&Interner) - 1),
+        .take(trait_ref.substitution.len(Interner) - 1),
     );
-    let obligation = trait_ref.cast(&Interner);
+    let obligation = trait_ref.cast(Interner);
     Canonical {
-        binders: CanonicalVarKinds::from_iter(&Interner, kinds),
+        binders: CanonicalVarKinds::from_iter(Interner, kinds),
         value: InEnvironment::new(&env.env, obligation),
     }
 }
@@ -1099,11 +1099,10 @@ fn autoderef_method_receiver(
 ) -> Vec<Canonical<Ty>> {
     let mut deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty).collect();
     // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
-    if let Some(TyKind::Array(parameters, _)) =
-        deref_chain.last().map(|ty| ty.value.kind(&Interner))
+    if let Some(TyKind::Array(parameters, _)) = deref_chain.last().map(|ty| ty.value.kind(Interner))
     {
         let kinds = deref_chain.last().unwrap().binders.clone();
-        let unsized_ty = TyKind::Slice(parameters.clone()).intern(&Interner);
+        let unsized_ty = TyKind::Slice(parameters.clone()).intern(Interner);
         deref_chain.push(Canonical { value: unsized_ty, binders: kinds })
     }
     deref_chain

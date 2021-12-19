@@ -28,9 +28,9 @@ impl InferenceContext<'_> {
         let _ = self.coerce(Some(closure_expr), closure_ty, &expected_ty);
 
         // Deduction based on the expected `dyn Fn` is done separately.
-        if let TyKind::Dyn(dyn_ty) = expected_ty.kind(&Interner) {
+        if let TyKind::Dyn(dyn_ty) = expected_ty.kind(Interner) {
             if let Some(sig) = self.deduce_sig_from_dyn_ty(dyn_ty) {
-                let expected_sig_ty = TyKind::Function(sig).intern(&Interner);
+                let expected_sig_ty = TyKind::Function(sig).intern(Interner);
 
                 self.unify(sig_ty, &expected_sig_ty);
             }
@@ -45,9 +45,9 @@ impl InferenceContext<'_> {
                 .map(to_chalk_trait_id)
                 .collect();
 
-        let self_ty = TyKind::Error.intern(&Interner);
-        let bounds = dyn_ty.bounds.clone().substitute(&Interner, &[self_ty.cast(&Interner)]);
-        for bound in bounds.iter(&Interner) {
+        let self_ty = TyKind::Error.intern(Interner);
+        let bounds = dyn_ty.bounds.clone().substitute(Interner, &[self_ty.cast(Interner)]);
+        for bound in bounds.iter(Interner) {
             // NOTE(skip_binders): the extracted types are rebound by the returned `FnPointer`
             if let WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection), ty }) =
                 bound.skip_binders()
@@ -58,20 +58,20 @@ impl InferenceContext<'_> {
                 }
 
                 // Skip `Self`, get the type argument.
-                let arg = projection.substitution.as_slice(&Interner).get(1)?;
-                if let Some(subst) = arg.ty(&Interner)?.as_tuple() {
-                    let generic_args = subst.as_slice(&Interner);
+                let arg = projection.substitution.as_slice(Interner).get(1)?;
+                if let Some(subst) = arg.ty(Interner)?.as_tuple() {
+                    let generic_args = subst.as_slice(Interner);
                     let mut sig_tys = Vec::new();
                     for arg in generic_args {
-                        sig_tys.push(arg.ty(&Interner)?.clone());
+                        sig_tys.push(arg.ty(Interner)?.clone());
                     }
                     sig_tys.push(ty.clone());
 
                     cov_mark::hit!(dyn_fn_param_informs_call_site_closure_signature);
                     return Some(FnPointer {
-                        num_binders: bound.len(&Interner),
+                        num_binders: bound.len(Interner),
                         sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
-                        substitution: FnSubst(Substitution::from_iter(&Interner, sig_tys)),
+                        substitution: FnSubst(Substitution::from_iter(Interner, sig_tys)),
                     });
                 }
             }

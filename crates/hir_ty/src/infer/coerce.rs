@@ -71,7 +71,7 @@ impl CoerceMany {
         // Special case: two function types. Try to coerce both to
         // pointers to have a chance at getting a match. See
         // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
-        let sig = match (self.expected_ty.kind(&Interner), expr_ty.kind(&Interner)) {
+        let sig = match (self.expected_ty.kind(Interner), expr_ty.kind(Interner)) {
             (TyKind::FnDef(..) | TyKind::Closure(..), TyKind::FnDef(..) | TyKind::Closure(..)) => {
                 // FIXME: we're ignoring safety here. To be more correct, if we have one FnDef and one Closure,
                 // we should be coercing the closure to a fn pointer of the safety of the FnDef
@@ -83,7 +83,7 @@ impl CoerceMany {
             _ => None,
         };
         if let Some(sig) = sig {
-            let target_ty = TyKind::Function(sig.to_fn_ptr()).intern(&Interner);
+            let target_ty = TyKind::Function(sig.to_fn_ptr()).intern(Interner);
             let result1 = ctx.coerce_inner(self.expected_ty.clone(), &target_ty);
             let result2 = ctx.coerce_inner(expr_ty.clone(), &target_ty);
             if let (Ok(result1), Ok(result2)) = (result1, result2) {
@@ -153,7 +153,7 @@ impl<'a> InferenceContext<'a> {
             //     let _: Option<?T> = Some({ return; });
             //
             // here, we would coerce from `!` to `?T`.
-            if let TyKind::InferenceVar(tv, TyVariableKind::General) = to_ty.kind(&Interner) {
+            if let TyKind::InferenceVar(tv, TyVariableKind::General) = to_ty.kind(Interner) {
                 self.table.set_diverging(*tv, true);
             }
             return success(simple(Adjust::NeverToAny)(to_ty.clone()), to_ty.clone(), vec![]);
@@ -165,13 +165,13 @@ impl<'a> InferenceContext<'a> {
         }
 
         // Examine the supertype and consider auto-borrowing.
-        match to_ty.kind(&Interner) {
+        match to_ty.kind(Interner) {
             TyKind::Raw(mt, _) => return self.coerce_ptr(from_ty, to_ty, *mt),
             TyKind::Ref(mt, _, _) => return self.coerce_ref(from_ty, to_ty, *mt),
             _ => {}
         }
 
-        match from_ty.kind(&Interner) {
+        match from_ty.kind(Interner) {
             TyKind::FnDef(..) => {
                 // Function items are coercible to any closure
                 // type; function pointers are not (that would
@@ -209,7 +209,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn coerce_ptr(&mut self, from_ty: Ty, to_ty: &Ty, to_mt: Mutability) -> CoerceResult {
-        let (is_ref, from_mt, from_inner) = match from_ty.kind(&Interner) {
+        let (is_ref, from_mt, from_inner) = match from_ty.kind(Interner) {
             TyKind::Ref(mt, _, ty) => (true, mt, ty),
             TyKind::Raw(mt, ty) => (false, mt, ty),
             _ => return self.unify_and(&from_ty, to_ty, identity),
@@ -218,7 +218,7 @@ impl<'a> InferenceContext<'a> {
         coerce_mutabilities(*from_mt, to_mt)?;
 
         // Check that the types which they point at are compatible.
-        let from_raw = TyKind::Raw(to_mt, from_inner.clone()).intern(&Interner);
+        let from_raw = TyKind::Raw(to_mt, from_inner.clone()).intern(Interner);
 
         // Although references and unsafe ptrs have the same
         // representation, we still register an Adjust::DerefRef so that
@@ -245,7 +245,7 @@ impl<'a> InferenceContext<'a> {
     /// To match `A` with `B`, autoderef will be performed,
     /// calling `deref`/`deref_mut` where necessary.
     fn coerce_ref(&mut self, from_ty: Ty, to_ty: &Ty, to_mt: Mutability) -> CoerceResult {
-        let from_mt = match from_ty.kind(&Interner) {
+        let from_mt = match from_ty.kind(Interner) {
             &TyKind::Ref(mt, _, _) => {
                 coerce_mutabilities(mt, to_mt)?;
                 mt
@@ -303,7 +303,7 @@ impl<'a> InferenceContext<'a> {
             // mutability [1], since it may be that we are coercing
             // from `&mut T` to `&U`.
             let lt = static_lifetime(); // FIXME: handle lifetimes correctly, see rustc
-            let derefd_from_ty = TyKind::Ref(to_mt, lt, referent_ty).intern(&Interner);
+            let derefd_from_ty = TyKind::Ref(to_mt, lt, referent_ty).intern(Interner);
             match self.table.try_unify(&derefd_from_ty, to_ty) {
                 Ok(result) => {
                     found = Some(result.map(|()| derefd_from_ty));
@@ -370,7 +370,7 @@ impl<'a> InferenceContext<'a> {
 
     /// Attempts to coerce from the type of a Rust function item into a function pointer.
     fn coerce_from_fn_item(&mut self, from_ty: Ty, to_ty: &Ty) -> CoerceResult {
-        match to_ty.kind(&Interner) {
+        match to_ty.kind(Interner) {
             TyKind::Function(_) => {
                 let from_sig = from_ty.callable_sig(self.db).expect("FnDef had no sig");
 
@@ -380,7 +380,7 @@ impl<'a> InferenceContext<'a> {
                 // FIXME rustc normalizes assoc types in the sig here, not sure if necessary
 
                 let from_sig = from_sig.to_fn_ptr();
-                let from_fn_pointer = TyKind::Function(from_sig.clone()).intern(&Interner);
+                let from_fn_pointer = TyKind::Function(from_sig.clone()).intern(Interner);
                 let ok = self.coerce_from_safe_fn(
                     from_fn_pointer.clone(),
                     &from_sig,
@@ -433,12 +433,12 @@ impl<'a> InferenceContext<'a> {
         F: FnOnce(Ty) -> Vec<Adjustment>,
         G: FnOnce(Ty) -> Vec<Adjustment>,
     {
-        if let TyKind::Function(to_fn_ptr) = to_ty.kind(&Interner) {
+        if let TyKind::Function(to_fn_ptr) = to_ty.kind(Interner) {
             if let (chalk_ir::Safety::Safe, chalk_ir::Safety::Unsafe) =
                 (from_fn_ptr.sig.safety, to_fn_ptr.sig.safety)
             {
                 let from_unsafe =
-                    TyKind::Function(safe_to_unsafe_fn_ty(from_fn_ptr.clone())).intern(&Interner);
+                    TyKind::Function(safe_to_unsafe_fn_ty(from_fn_ptr.clone())).intern(Interner);
                 return self.unify_and(&from_unsafe, to_ty, to_unsafe);
             }
         }
@@ -453,7 +453,7 @@ impl<'a> InferenceContext<'a> {
         from_substs: &Substitution,
         to_ty: &Ty,
     ) -> CoerceResult {
-        match to_ty.kind(&Interner) {
+        match to_ty.kind(Interner) {
             // if from_substs is non-capturing (FIXME)
             TyKind::Function(fn_ty) => {
                 // We coerce the closure, which has fn type
@@ -507,7 +507,7 @@ impl<'a> InferenceContext<'a> {
         }
 
         // Handle reborrows before trying to solve `Source: CoerceUnsized<Target>`.
-        let reborrow = match (from_ty.kind(&Interner), to_ty.kind(&Interner)) {
+        let reborrow = match (from_ty.kind(Interner), to_ty.kind(Interner)) {
             (TyKind::Ref(from_mt, _, from_inner), &TyKind::Ref(to_mt, _, _)) => {
                 coerce_mutabilities(*from_mt, to_mt)?;
 
@@ -516,7 +516,7 @@ impl<'a> InferenceContext<'a> {
                     Adjustment { kind: Adjust::Deref(None), target: from_inner.clone() },
                     Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(to_mt)),
-                        target: TyKind::Ref(to_mt, lt, from_inner.clone()).intern(&Interner),
+                        target: TyKind::Ref(to_mt, lt, from_inner.clone()).intern(Interner),
                     },
                 ))
             }
@@ -527,7 +527,7 @@ impl<'a> InferenceContext<'a> {
                     Adjustment { kind: Adjust::Deref(None), target: from_inner.clone() },
                     Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::RawPtr(to_mt)),
-                        target: TyKind::Raw(to_mt, from_inner.clone()).intern(&Interner),
+                        target: TyKind::Raw(to_mt, from_inner.clone()).intern(Interner),
                     },
                 ))
             }
@@ -553,7 +553,7 @@ impl<'a> InferenceContext<'a> {
         };
 
         let goal: InEnvironment<DomainGoal> =
-            InEnvironment::new(&self.trait_env.env, coerce_unsized_tref.cast(&Interner));
+            InEnvironment::new(&self.trait_env.env, coerce_unsized_tref.cast(Interner));
 
         let canonicalized = self.canonicalize(goal);
 
@@ -563,7 +563,7 @@ impl<'a> InferenceContext<'a> {
         // Need to find out in what cases this is necessary
         let solution = self
             .db
-            .trait_solve(krate, canonicalized.value.clone().cast(&Interner))
+            .trait_solve(krate, canonicalized.value.clone().cast(Interner))
             .ok_or(TypeError)?;
 
         match solution {
@@ -593,15 +593,15 @@ impl<'a> InferenceContext<'a> {
 }
 
 fn coerce_closure_fn_ty(closure_substs: &Substitution, safety: chalk_ir::Safety) -> Ty {
-    let closure_sig = closure_substs.at(&Interner, 0).assert_ty_ref(&Interner).clone();
-    match closure_sig.kind(&Interner) {
+    let closure_sig = closure_substs.at(Interner, 0).assert_ty_ref(Interner).clone();
+    match closure_sig.kind(Interner) {
         TyKind::Function(fn_ty) => TyKind::Function(FnPointer {
             num_binders: fn_ty.num_binders,
             sig: FnSig { safety, ..fn_ty.sig },
             substitution: fn_ty.substitution.clone(),
         })
-        .intern(&Interner),
-        _ => TyKind::Error.intern(&Interner),
+        .intern(Interner),
+        _ => TyKind::Error.intern(Interner),
     }
 }
 

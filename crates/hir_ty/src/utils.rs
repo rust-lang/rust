@@ -90,13 +90,13 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
                 // FIXME: how to correctly handle higher-ranked bounds here?
                 WhereClause::Implemented(tr) => Some(
                     tr.clone()
-                        .shifted_out_to(&Interner, DebruijnIndex::ONE)
+                        .shifted_out_to(Interner, DebruijnIndex::ONE)
                         .expect("FIXME unexpected higher-ranked trait bound"),
                 ),
                 _ => None,
             })
         })
-        .map(|pred| pred.substitute(&Interner, &trait_ref.substitution))
+        .map(|pred| pred.substitute(Interner, &trait_ref.substitution))
         .collect()
 }
 
@@ -270,19 +270,19 @@ impl Generics {
     /// Returns a Substitution that replaces each parameter by a bound variable.
     pub(crate) fn bound_vars_subst(&self, debruijn: DebruijnIndex) -> Substitution {
         Substitution::from_iter(
-            &Interner,
+            Interner,
             self.iter()
                 .enumerate()
-                .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(&Interner)),
+                .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(Interner)),
         )
     }
 
     /// Returns a Substitution that replaces each parameter by itself (i.e. `Ty::Param`).
     pub(crate) fn type_params_subst(&self, db: &dyn HirDatabase) -> Substitution {
         Substitution::from_iter(
-            &Interner,
+            Interner,
             self.iter().map(|(id, _)| {
-                TyKind::Placeholder(crate::to_placeholder_idx(db, id)).intern(&Interner)
+                TyKind::Placeholder(crate::to_placeholder_idx(db, id)).intern(Interner)
             }),
         )
     }

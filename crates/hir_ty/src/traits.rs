@@ -51,7 +51,7 @@ impl TraitEnvironment {
         TraitEnvironment {
             krate,
             traits_from_clauses: Vec::new(),
-            env: chalk_ir::Environment::new(&Interner),
+            env: chalk_ir::Environment::new(Interner),
         }
     }
 
@@ -71,7 +71,7 @@ pub(crate) fn trait_solve_query(
     krate: CrateId,
     goal: Canonical<InEnvironment<Goal>>,
 ) -> Option<Solution> {
-    let _p = profile::span("trait_solve_query").detail(|| match &goal.value.goal.data(&Interner) {
+    let _p = profile::span("trait_solve_query").detail(|| match &goal.value.goal.data(Interner) {
         GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => {
             db.trait_data(it.hir_trait_id()).name.to_string()
         }
@@ -83,9 +83,9 @@ pub(crate) fn trait_solve_query(
     if let GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(AliasEq {
         alias: AliasTy::Projection(projection_ty),
         ..
-    }))) = &goal.value.goal.data(&Interner)
+    }))) = &goal.value.goal.data(Interner)
     {
-        if let TyKind::BoundVar(_) = projection_ty.self_type_parameter(&Interner).kind(&Interner) {
+        if let TyKind::BoundVar(_) = projection_ty.self_type_parameter(Interner).kind(Interner) {
             // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
             return Some(Solution::Ambig(Guidance::Unknown));
         }

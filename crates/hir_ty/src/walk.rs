@@ -16,14 +16,14 @@ pub trait TypeWalk {
 
 impl TypeWalk for Ty {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        match self.kind(&Interner) {
+        match self.kind(Interner) {
             TyKind::Alias(AliasTy::Projection(p_ty)) => {
-                for t in p_ty.substitution.iter(&Interner) {
+                for t in p_ty.substitution.iter(Interner) {
                     t.walk(f);
                 }
             }
             TyKind::Alias(AliasTy::Opaque(o_ty)) => {
-                for t in o_ty.substitution.iter(&Interner) {
+                for t in o_ty.substitution.iter(Interner) {
                     t.walk(f);
                 }
             }
@@ -94,7 +94,7 @@ impl TypeWalk for GenericArg {
 
 impl TypeWalk for Substitution {
     fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        for t in self.iter(&Interner) {
+        for t in self.iter(Interner) {
             t.walk(f);
         }
     }

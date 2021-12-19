@@ -821,7 +821,7 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
         let (func, subst) = self.analyze(call.syntax()).resolve_method_call(self.db, call)?;
-        let ty = self.db.value_ty(func.into()).substitute(&Interner, &subst);
+        let ty = self.db.value_ty(func.into()).substitute(Interner, &subst);
         let resolver = self.analyze(call.syntax()).resolver;
         let ty = Type::new_with_resolver(self.db, &resolver, ty)?;
         let mut res = ty.as_callable(self.db)?;

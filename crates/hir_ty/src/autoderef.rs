@@ -122,7 +122,7 @@ pub(crate) fn deref(
 }
 
 fn builtin_deref(ty: &Ty) -> Option<&Ty> {
-    match ty.kind(&Interner) {
+    match ty.kind(Interner) {
         TyKind::Ref(.., ty) => Some(ty),
         TyKind::Raw(.., ty) => Some(ty),
         _ => None,
@@ -158,7 +158,7 @@ fn deref_by_trait(
     let implements_goal = Canonical {
         binders: ty.goal.binders.clone(),
         value: InEnvironment {
-            goal: trait_ref.cast(&Interner),
+            goal: trait_ref.cast(Interner),
             environment: ty.environment.clone(),
         },
     };
@@ -171,18 +171,18 @@ fn deref_by_trait(
         alias: AliasTy::Projection(projection),
         ty: TyKind::BoundVar(BoundVar::new(
             DebruijnIndex::INNERMOST,
-            ty.goal.binders.len(&Interner),
+            ty.goal.binders.len(Interner),
         ))
-        .intern(&Interner),
+        .intern(Interner),
     };
 
-    let in_env = InEnvironment { goal: alias_eq.cast(&Interner), environment: ty.environment };
+    let in_env = InEnvironment { goal: alias_eq.cast(Interner), environment: ty.environment };
 
     let canonical = Canonical {
         value: in_env,
         binders: CanonicalVarKinds::from_iter(
-            &Interner,
-            ty.goal.binders.iter(&Interner).cloned().chain(Some(chalk_ir::WithKind::new(
+            Interner,
+            ty.goal.binders.iter(Interner).cloned().chain(Some(chalk_ir::WithKind::new(
                 VariableKind::Ty(chalk_ir::TyVariableKind::General),
                 chalk_ir::UniverseIndex::ROOT,
             ))),
@@ -209,8 +209,8 @@ fn deref_by_trait(
             // assumptions will be broken. We would need to properly introduce
             // new variables in that case
 
-            for i in 1..binders.len(&Interner) {
-                if subst.at(&Interner, i - 1).assert_ty_ref(&Interner).kind(&Interner)
+            for i in 1..binders.len(Interner) {
+                if subst.at(Interner, i - 1).assert_ty_ref(Interner).kind(Interner)
                     != &TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i - 1))
                 {
                     warn!("complex solution for derefing {:?}: {:?}, ignoring", ty.goal, solution);
@@ -220,10 +220,7 @@ fn deref_by_trait(
             // FIXME: we remove lifetime variables here since they can confuse
             // the method resolution code later
             Some(fixup_lifetime_variables(Canonical {
-                value: subst
-                    .at(&Interner, subst.len(&Interner) - 1)
-                    .assert_ty_ref(&Interner)
-                    .clone(),
+                value: subst.at(Interner, subst.len(Interner) - 1).assert_ty_ref(Interner).clone(),
                 binders: binders.clone(),
             }))
         }
@@ -240,25 +237,25 @@ fn fixup_lifetime_variables<T: Fold<Interner, Result = T> + HasInterner<Interner
     // Removes lifetime variables from the Canonical, replacing them by static lifetimes.
     let mut i = 0;
     let subst = Substitution::from_iter(
-        &Interner,
-        c.binders.iter(&Interner).map(|vk| match vk.kind {
+        Interner,
+        c.binders.iter(Interner).map(|vk| match vk.kind {
             VariableKind::Ty(_) => {
                 let index = i;
                 i += 1;
-                BoundVar::new(DebruijnIndex::INNERMOST, index).to_ty(&Interner).cast(&Interner)
+                BoundVar::new(DebruijnIndex::INNERMOST, index).to_ty(Interner).cast(Interner)
             }
-            VariableKind::Lifetime => static_lifetime().cast(&Interner),
+            VariableKind::Lifetime => static_lifetime().cast(Interner),
             VariableKind::Const(_) => unimplemented!(),
         }),
     );
     let binders = CanonicalVarKinds::from_iter(
-        &Interner,
-        c.binders.iter(&Interner).filter(|vk| match vk.kind {
+        Interner,
+        c.binders.iter(Interner).filter(|vk| match vk.kind {
             VariableKind::Ty(_) => true,
             VariableKind::Lifetime => false,
             VariableKind::Const(_) => true,
         }),
     );
-    let value = subst.apply(c.value, &Interner);
+    let value = subst.apply(c.value, Interner);
     Canonical { binders, value }
 }

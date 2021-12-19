@@ -44,10 +44,10 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
     /// this method is wrong and shouldn't exist
     pub(super) fn decanonicalize_ty(&self, table: &mut InferenceTable, ty: Canonical<Ty>) -> Ty {
         let mut vars = self.free_vars.clone();
-        while ty.binders.len(&Interner) > vars.len() {
-            vars.push(table.new_type_var().cast(&Interner));
+        while ty.binders.len(Interner) > vars.len() {
+            vars.push(table.new_type_var().cast(Interner));
         }
-        chalk_ir::Substitute::apply(&vars, ty.value, &Interner)
+        chalk_ir::Substitute::apply(&vars, ty.value, Interner)
     }
 
     pub(super) fn apply_solution(
@@ -57,25 +57,25 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
     ) {
         // the solution may contain new variables, which we need to convert to new inference vars
         let new_vars = Substitution::from_iter(
-            &Interner,
-            solution.binders.iter(&Interner).map(|k| match k.kind {
-                VariableKind::Ty(TyVariableKind::General) => ctx.new_type_var().cast(&Interner),
-                VariableKind::Ty(TyVariableKind::Integer) => ctx.new_integer_var().cast(&Interner),
-                VariableKind::Ty(TyVariableKind::Float) => ctx.new_float_var().cast(&Interner),
+            Interner,
+            solution.binders.iter(Interner).map(|k| match k.kind {
+                VariableKind::Ty(TyVariableKind::General) => ctx.new_type_var().cast(Interner),
+                VariableKind::Ty(TyVariableKind::Integer) => ctx.new_integer_var().cast(Interner),
+                VariableKind::Ty(TyVariableKind::Float) => ctx.new_float_var().cast(Interner),
                 // Chalk can sometimes return new lifetime variables. We just use the static lifetime everywhere
-                VariableKind::Lifetime => static_lifetime().cast(&Interner),
+                VariableKind::Lifetime => static_lifetime().cast(Interner),
                 _ => panic!("const variable in solution"),
             }),
         );
-        for (i, v) in solution.value.iter(&Interner).enumerate() {
+        for (i, v) in solution.value.iter(Interner).enumerate() {
             let var = self.free_vars[i].clone();
-            if let Some(ty) = v.ty(&Interner) {
+            if let Some(ty) = v.ty(Interner) {
                 // eagerly replace projections in the type; we may be getting types
                 // e.g. from where clauses where this hasn't happened yet
-                let ty = ctx.normalize_associated_types_in(new_vars.apply(ty.clone(), &Interner));
-                ctx.unify(var.assert_ty_ref(&Interner), &ty);
+                let ty = ctx.normalize_associated_types_in(new_vars.apply(ty.clone(), Interner));
+                ctx.unify(var.assert_ty_ref(Interner), &ty);
             } else {
-                let _ = ctx.try_unify(&var, &new_vars.apply(v.clone(), &Interner));
+                let _ = ctx.try_unify(&var, &new_vars.apply(v.clone(), Interner));
             }
         }
     }
@@ -96,39 +96,39 @@ pub(crate) fn unify(
 ) -> Option<Substitution> {
     let mut table = InferenceTable::new(db, env);
     let vars = Substitution::from_iter(
-        &Interner,
+        Interner,
         tys.binders
-            .iter(&Interner)
+            .iter(Interner)
             // we always use type vars here because we want everything to
             // fallback to Unknown in the end (kind of hacky, as below)
             .map(|_| table.new_type_var()),
     );
-    let ty1_with_vars = vars.apply(tys.value.0.clone(), &Interner);
-    let ty2_with_vars = vars.apply(tys.value.1.clone(), &Interner);
+    let ty1_with_vars = vars.apply(tys.value.0.clone(), Interner);
+    let ty2_with_vars = vars.apply(tys.value.1.clone(), Interner);
     if !table.unify(&ty1_with_vars, &ty2_with_vars) {
         return None;
     }
     // default any type vars that weren't unified back to their original bound vars
     // (kind of hacky)
     let find_var = |iv| {
-        vars.iter(&Interner).position(|v| match v.interned() {
-            chalk_ir::GenericArgData::Ty(ty) => ty.inference_var(&Interner),
-            chalk_ir::GenericArgData::Lifetime(lt) => lt.inference_var(&Interner),
-            chalk_ir::GenericArgData::Const(c) => c.inference_var(&Interner),
+        vars.iter(Interner).position(|v| match v.interned() {
+            chalk_ir::GenericArgData::Ty(ty) => ty.inference_var(Interner),
+            chalk_ir::GenericArgData::Lifetime(lt) => lt.inference_var(Interner),
+            chalk_ir::GenericArgData::Const(c) => c.inference_var(Interner),
         } == Some(iv))
     };
     let fallback = |iv, kind, default, binder| match kind {
         chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv)
-            .map_or(default, |i| BoundVar::new(binder, i).to_ty(&Interner).cast(&Interner)),
+            .map_or(default, |i| BoundVar::new(binder, i).to_ty(Interner).cast(Interner)),
         chalk_ir::VariableKind::Lifetime => find_var(iv)
-            .map_or(default, |i| BoundVar::new(binder, i).to_lifetime(&Interner).cast(&Interner)),
+            .map_or(default, |i| BoundVar::new(binder, i).to_lifetime(Interner).cast(Interner)),
         chalk_ir::VariableKind::Const(ty) => find_var(iv)
-            .map_or(default, |i| BoundVar::new(binder, i).to_const(&Interner, ty).cast(&Interner)),
+            .map_or(default, |i| BoundVar::new(binder, i).to_const(Interner, ty).cast(Interner)),
     };
     Some(Substitution::from_iter(
-        &Interner,
-        vars.iter(&Interner)
-            .map(|v| table.resolve_with_fallback(v.assert_ty_ref(&Interner).clone(), &fallback)),
+        Interner,
+        vars.iter(Interner)
+            .map(|v| table.resolve_with_fallback(v.assert_ty_ref(Interner).clone(), &fallback)),
     ))
 }
 
@@ -200,7 +200,7 @@ impl<'a> InferenceTable<'a> {
             TyVariableKind::Integer => TyKind::Scalar(Scalar::Int(IntTy::I32)),
             TyVariableKind::Float => TyKind::Scalar(Scalar::Float(FloatTy::F64)),
         }
-        .intern(&Interner)
+        .intern(Interner)
     }
 
     pub(super) fn canonicalize<T: Fold<Interner> + HasInterner<Interner = Interner>>(
@@ -210,11 +210,11 @@ impl<'a> InferenceTable<'a> {
     where
         T::Result: HasInterner<Interner = Interner>,
     {
-        let result = self.var_unification_table.canonicalize(&Interner, t);
+        let result = self.var_unification_table.canonicalize(Interner, t);
         let free_vars = result
             .free_vars
             .into_iter()
-            .map(|free_var| free_var.to_generic_arg(&Interner))
+            .map(|free_var| free_var.to_generic_arg(Interner))
             .collect();
         Canonicalized { value: result.quantified, free_vars }
     }
@@ -228,7 +228,7 @@ impl<'a> InferenceTable<'a> {
     pub(super) fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
         fold_tys(
             ty,
-            |ty, _| match ty.kind(&Interner) {
+            |ty, _| match ty.kind(Interner) {
                 TyKind::Alias(AliasTy::Projection(proj_ty)) => {
                     self.normalize_projection_ty(proj_ty.clone())
                 }
@@ -241,7 +241,7 @@ impl<'a> InferenceTable<'a> {
     pub(super) fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
         let var = self.new_type_var();
         let alias_eq = AliasEq { alias: AliasTy::Projection(proj_ty), ty: var.clone() };
-        let obligation = alias_eq.cast(&Interner);
+        let obligation = alias_eq.cast(Interner);
         self.register_obligation(obligation);
         var
     }
@@ -259,7 +259,7 @@ impl<'a> InferenceTable<'a> {
         self.extend_type_variable_table(var.index() as usize);
         assert_eq!(var.index() as usize, self.type_variable_table.len() - 1);
         self.type_variable_table[var.index() as usize].diverging = diverging;
-        var.to_ty_with_kind(&Interner, kind)
+        var.to_ty_with_kind(Interner, kind)
     }
 
     pub(crate) fn new_type_var(&mut self) -> Ty {
@@ -280,12 +280,12 @@ impl<'a> InferenceTable<'a> {
 
     pub(crate) fn new_const_var(&mut self, ty: Ty) -> Const {
         let var = self.var_unification_table.new_variable(UniverseIndex::ROOT);
-        var.to_const(&Interner, ty)
+        var.to_const(Interner, ty)
     }
 
     pub(crate) fn new_lifetime_var(&mut self) -> Lifetime {
         let var = self.var_unification_table.new_variable(UniverseIndex::ROOT);
-        var.to_lifetime(&Interner)
+        var.to_lifetime(Interner)
     }
 
     pub(crate) fn resolve_with_fallback<T>(
@@ -336,7 +336,7 @@ impl<'a> InferenceTable<'a> {
     /// caller needs to deal with them.
     pub(crate) fn try_unify<T: Zip<Interner>>(&mut self, t1: &T, t2: &T) -> InferResult<()> {
         match self.var_unification_table.relate(
-            &Interner,
+            Interner,
             &self.db,
             &self.trait_env.env,
             chalk_ir::Variance::Invariant,
@@ -351,7 +351,7 @@ impl<'a> InferenceTable<'a> {
     /// If `ty` is a type variable with known type, returns that type;
     /// otherwise, return ty.
     pub(crate) fn resolve_ty_shallow(&mut self, ty: &Ty) -> Ty {
-        self.var_unification_table.normalize_ty_shallow(&Interner, ty).unwrap_or_else(|| ty.clone())
+        self.var_unification_table.normalize_ty_shallow(Interner, ty).unwrap_or_else(|| ty.clone())
     }
 
     pub(crate) fn snapshot(&mut self) -> InferenceTableSnapshot {
@@ -395,7 +395,7 @@ impl<'a> InferenceTable<'a> {
                 let uncanonical = chalk_ir::Substitute::apply(
                     &canonicalized.free_vars,
                     canonicalized.value.value,
-                    &Interner,
+                    Interner,
                 );
                 self.register_obligation_in_env(uncanonical);
             }
@@ -411,15 +411,15 @@ impl<'a> InferenceTable<'a> {
             table: &'a mut InferenceTable<'b>,
             highest_known_var: InferenceVar,
         }
-        impl<'a, 'b> Folder<'static, Interner> for VarFudger<'a, 'b> {
+        impl<'a, 'b> Folder<Interner> for VarFudger<'a, 'b> {
             type Error = NoSolution;
 
-            fn as_dyn(&mut self) -> &mut dyn Folder<'static, Interner, Error = Self::Error> {
+            fn as_dyn(&mut self) -> &mut dyn Folder<Interner, Error = Self::Error> {
                 self
             }
 
-            fn interner(&self) -> &'static Interner {
-                &Interner
+            fn interner(&self) -> Interner {
+                Interner
             }
 
             fn fold_inference_ty(
@@ -429,7 +429,7 @@ impl<'a> InferenceTable<'a> {
                 _outer_binder: chalk_ir::DebruijnIndex,
             ) -> chalk_ir::Fallible<chalk_ir::Ty<Interner>> {
                 Ok(if var < self.highest_known_var {
-                    var.to_ty(&Interner, kind)
+                    var.to_ty(Interner, kind)
                 } else {
                     self.table.new_type_var()
                 })
@@ -441,7 +441,7 @@ impl<'a> InferenceTable<'a> {
                 _outer_binder: chalk_ir::DebruijnIndex,
             ) -> chalk_ir::Fallible<chalk_ir::Lifetime<Interner>> {
                 Ok(if var < self.highest_known_var {
-                    var.to_lifetime(&Interner)
+                    var.to_lifetime(Interner)
                 } else {
                     self.table.new_lifetime_var()
                 })
@@ -454,7 +454,7 @@ impl<'a> InferenceTable<'a> {
                 _outer_binder: chalk_ir::DebruijnIndex,
             ) -> chalk_ir::Fallible<chalk_ir::Const<Interner>> {
                 Ok(if var < self.highest_known_var {
-                    var.to_const(&Interner, ty)
+                    var.to_const(Interner, ty)
                 } else {
                     self.table.new_const_var(ty)
                 })
@@ -462,8 +462,7 @@ impl<'a> InferenceTable<'a> {
         }
 
         let snapshot = self.snapshot();
-        let highest_known_var =
-            self.new_type_var().inference_var(&Interner).expect("inference_var");
+        let highest_known_var = self.new_type_var().inference_var(Interner).expect("inference_var");
         let result = f(self);
         self.rollback_to(snapshot);
         result
@@ -477,10 +476,10 @@ impl<'a> InferenceTable<'a> {
     /// again -- it'll give the same result as last time.
     fn check_changed(&mut self, canonicalized: &Canonicalized<InEnvironment<Goal>>) -> bool {
         canonicalized.free_vars.iter().any(|var| {
-            let iv = match var.data(&Interner) {
-                chalk_ir::GenericArgData::Ty(ty) => ty.inference_var(&Interner),
-                chalk_ir::GenericArgData::Lifetime(lt) => lt.inference_var(&Interner),
-                chalk_ir::GenericArgData::Const(c) => c.inference_var(&Interner),
+            let iv = match var.data(Interner) {
+                chalk_ir::GenericArgData::Ty(ty) => ty.inference_var(Interner),
+                chalk_ir::GenericArgData::Lifetime(lt) => lt.inference_var(Interner),
+                chalk_ir::GenericArgData::Const(c) => c.inference_var(Interner),
             }
             .expect("free var is not inference var");
             if self.var_unification_table.probe_var(iv).is_some() {
@@ -549,18 +548,18 @@ mod resolve {
         pub(super) var_stack: &'a mut Vec<InferenceVar>,
         pub(super) fallback: F,
     }
-    impl<'a, 'b, 'i, F> Folder<'i, Interner> for Resolver<'a, 'b, F>
+    impl<'a, 'b, 'i, F> Folder<Interner> for Resolver<'a, 'b, F>
     where
         F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg + 'i,
     {
         type Error = NoSolution;
 
-        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn Folder<Interner, Error = Self::Error> {
             self
         }
 
-        fn interner(&self) -> &'i Interner {
-            &Interner
+        fn interner(&self) -> Interner {
+            Interner
         }
 
         fn fold_inference_ty(
@@ -572,9 +571,9 @@ mod resolve {
             let var = self.table.var_unification_table.inference_var_root(var);
             if self.var_stack.contains(&var) {
                 // recursive type
-                let default = self.table.fallback_value(var, kind).cast(&Interner);
+                let default = self.table.fallback_value(var, kind).cast(Interner);
                 return Ok((self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
-                    .assert_ty_ref(&Interner)
+                    .assert_ty_ref(Interner)
                     .clone());
             }
             let result = if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
@@ -583,11 +582,11 @@ mod resolve {
                 let result =
                     known_ty.fold_with(self, outer_binder).expect("fold failed unexpectedly");
                 self.var_stack.pop();
-                result.assert_ty_ref(&Interner).clone()
+                result.assert_ty_ref(Interner).clone()
             } else {
-                let default = self.table.fallback_value(var, kind).cast(&Interner);
+                let default = self.table.fallback_value(var, kind).cast(Interner);
                 (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
-                    .assert_ty_ref(&Interner)
+                    .assert_ty_ref(Interner)
                     .clone()
             };
             Ok(result)
@@ -604,12 +603,12 @@ mod resolve {
                 ty: ty.clone(),
                 value: ConstValue::Concrete(ConcreteConst { interned: ConstScalar::Unknown }),
             }
-            .intern(&Interner)
-            .cast(&Interner);
+            .intern(Interner)
+            .cast(Interner);
             if self.var_stack.contains(&var) {
                 // recursive
                 return Ok((self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
-                    .assert_const_ref(&Interner)
+                    .assert_const_ref(Interner)
                     .clone());
             }
             let result = if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
@@ -618,10 +617,10 @@ mod resolve {
                 let result =
                     known_ty.fold_with(self, outer_binder).expect("fold failed unexpectedly");
                 self.var_stack.pop();
-                result.assert_const_ref(&Interner).clone()
+                result.assert_const_ref(Interner).clone()
             } else {
                 (self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
-                    .assert_const_ref(&Interner)
+                    .assert_const_ref(Interner)
                     .clone()
             };
             Ok(result)
