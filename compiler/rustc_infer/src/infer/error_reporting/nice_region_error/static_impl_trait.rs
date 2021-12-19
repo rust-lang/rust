@@ -287,7 +287,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 }
 
 pub fn suggest_new_region_bound(
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'_>,
     err: &mut DiagnosticBuilder<'_>,
     fn_returns: Vec<&rustc_hir::Ty<'_>>,
     lifetime_name: String,

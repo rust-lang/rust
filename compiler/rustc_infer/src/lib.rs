@@ -19,7 +19,6 @@
 #![feature(extend_one)]
 #![feature(let_else)]
 #![feature(never_type)]
-#![feature(in_band_lifetimes)]
 #![feature(control_flow_enum)]
 #![feature(min_specialization)]
 #![feature(label_break_value)]

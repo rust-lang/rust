@@ -134,7 +134,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 /// response*, then we don't typically replace free regions, as they
 /// must have been introduced from other parts of the system.
 trait CanonicalizeRegionMode {
-    fn canonicalize_free_region(
+    fn canonicalize_free_region<'tcx>(
         &self,
         canonicalizer: &mut Canonicalizer<'_, 'tcx>,
         r: ty::Region<'tcx>,
@@ -146,7 +146,7 @@ trait CanonicalizeRegionMode {
 struct CanonicalizeQueryResponse;
 
 impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
-    fn canonicalize_free_region(
+    fn canonicalize_free_region<'tcx>(
         &self,
         canonicalizer: &mut Canonicalizer<'_, 'tcx>,
         r: ty::Region<'tcx>,
@@ -203,7 +203,7 @@ impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
 struct CanonicalizeUserTypeAnnotation;
 
 impl CanonicalizeRegionMode for CanonicalizeUserTypeAnnotation {
-    fn canonicalize_free_region(
+    fn canonicalize_free_region<'tcx>(
         &self,
         canonicalizer: &mut Canonicalizer<'_, 'tcx>,
         r: ty::Region<'tcx>,
@@ -226,7 +226,7 @@ impl CanonicalizeRegionMode for CanonicalizeUserTypeAnnotation {
 struct CanonicalizeAllFreeRegions;
 
 impl CanonicalizeRegionMode for CanonicalizeAllFreeRegions {
-    fn canonicalize_free_region(
+    fn canonicalize_free_region<'tcx>(
         &self,
         canonicalizer: &mut Canonicalizer<'_, 'tcx>,
         r: ty::Region<'tcx>,
@@ -242,7 +242,7 @@ impl CanonicalizeRegionMode for CanonicalizeAllFreeRegions {
 struct CanonicalizeFreeRegionsOtherThanStatic;
 
 impl CanonicalizeRegionMode for CanonicalizeFreeRegionsOtherThanStatic {
-    fn canonicalize_free_region(
+    fn canonicalize_free_region<'tcx>(
         &self,
         canonicalizer: &mut Canonicalizer<'_, 'tcx>,
         r: ty::Region<'tcx>,

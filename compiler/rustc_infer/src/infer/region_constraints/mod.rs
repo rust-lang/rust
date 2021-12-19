@@ -65,7 +65,7 @@ pub struct RegionConstraintCollector<'a, 'tcx> {
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
 
-impl std::ops::Deref for RegionConstraintCollector<'_, 'tcx> {
+impl<'tcx> std::ops::Deref for RegionConstraintCollector<'_, 'tcx> {
     type Target = RegionConstraintStorage<'tcx>;
     #[inline]
     fn deref(&self) -> &RegionConstraintStorage<'tcx> {
@@ -73,7 +73,7 @@ impl std::ops::Deref for RegionConstraintCollector<'_, 'tcx> {
     }
 }
 
-impl std::ops::DerefMut for RegionConstraintCollector<'_, 'tcx> {
+impl<'tcx> std::ops::DerefMut for RegionConstraintCollector<'_, 'tcx> {
     #[inline]
     fn deref_mut(&mut self) -> &mut RegionConstraintStorage<'tcx> {
         self.storage

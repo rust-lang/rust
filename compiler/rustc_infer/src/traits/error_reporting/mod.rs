@@ -35,7 +35,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 }
 
-pub fn report_object_safety_error(
+pub fn report_object_safety_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     trait_def_id: DefId,

@@ -83,7 +83,7 @@ pub use need_type_info::TypeAnnotationNeeded;
 
 pub mod nice_region_error;
 
-pub(super) fn note_and_explain_region(
+pub(super) fn note_and_explain_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     err: &mut DiagnosticBuilder<'_>,
     prefix: &str,
@@ -116,7 +116,7 @@ pub(super) fn note_and_explain_region(
     emit_msg_span(err, prefix, description, span, suffix);
 }
 
-fn explain_free_region(
+fn explain_free_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     err: &mut DiagnosticBuilder<'_>,
     prefix: &str,
@@ -128,7 +128,7 @@ fn explain_free_region(
     label_msg_span(err, prefix, description, span, suffix);
 }
 
-fn msg_span_from_free_region(
+fn msg_span_from_free_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     region: ty::Region<'tcx>,
     alt_span: Option<Span>,
@@ -145,7 +145,7 @@ fn msg_span_from_free_region(
     }
 }
 
-fn msg_span_from_early_bound_and_free_regions(
+fn msg_span_from_early_bound_and_free_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
     region: ty::Region<'tcx>,
 ) -> (String, Span) {
@@ -226,7 +226,7 @@ fn label_msg_span(
     }
 }
 
-pub fn unexpected_hidden_region_diagnostic(
+pub fn unexpected_hidden_region_diagnostic<'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     hidden_ty: Ty<'tcx>,
@@ -316,7 +316,7 @@ pub fn unexpected_hidden_region_diagnostic(
 /// with the other type. A TyVar inference type is compatible with any type, and an IntVar or
 /// FloatVar inference type are compatible with themselves or their concrete types (Int and
 /// Float types, respectively). When comparing two ADTs, these rules apply recursively.
-pub fn same_type_modulo_infer(a: Ty<'tcx>, b: Ty<'ctx>) -> bool {
+pub fn same_type_modulo_infer<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
     match (&a.kind(), &b.kind()) {
         (&ty::Adt(did_a, substs_a), &ty::Adt(did_b, substs_b)) => {
             if did_a != did_b {

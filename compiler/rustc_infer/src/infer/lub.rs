@@ -23,7 +23,7 @@ impl<'combine, 'infcx, 'tcx> Lub<'combine, 'infcx, 'tcx> {
     }
 }
 
-impl TypeRelation<'tcx> for Lub<'combine, 'infcx, 'tcx> {
+impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
     fn tag(&self) -> &'static str {
         "Lub"
     }
