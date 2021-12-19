@@ -347,7 +347,7 @@ struct LiteralExpander;
 
 impl PatternFolder for LiteralExpander {
     fn fold_pattern(&mut self, pat: &Pat) -> Pat {
-        match (pat.ty.kind(&Interner), pat.kind.as_ref()) {
+        match (pat.ty.kind(Interner), pat.kind.as_ref()) {
             (_, PatKind::Binding { subpattern: Some(s), .. }) => s.fold_with(self),
             _ => pat.super_fold_with(self),
         }

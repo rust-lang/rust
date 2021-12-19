@@ -123,8 +123,8 @@ pub type WhereClause = chalk_ir::WhereClause<Interner>;
 // FIXME: get rid of this
 pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
     Substitution::from_iter(
-        &Interner,
-        s.as_slice(&Interner)[..std::cmp::min(s.len(&Interner), n)].iter().cloned(),
+        Interner,
+        s.as_slice(Interner)[..std::cmp::min(s.len(Interner), n)].iter().cloned(),
     )
 }
 
@@ -137,7 +137,7 @@ pub(crate) fn wrap_empty_binders<T>(value: T) -> Binders<T>
 where
     T: Fold<Interner, Result = T> + HasInterner<Interner = Interner>,
 {
-    Binders::empty(&Interner, value.shifted_in_from(&Interner, DebruijnIndex::ONE))
+    Binders::empty(Interner, value.shifted_in_from(Interner, DebruijnIndex::ONE))
 }
 
 pub(crate) fn make_only_type_binders<T: HasInterner<Interner = Interner>>(
@@ -146,7 +146,7 @@ pub(crate) fn make_only_type_binders<T: HasInterner<Interner = Interner>>(
 ) -> Binders<T> {
     Binders::new(
         VariableKinds::from_iter(
-            &Interner,
+            Interner,
             std::iter::repeat(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General))
                 .take(num_vars),
         ),
@@ -165,7 +165,7 @@ pub fn make_canonical<T: HasInterner<Interner = Interner>>(
             chalk_ir::UniverseIndex::ROOT,
         )
     });
-    Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
+    Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(Interner, kinds) }
 }
 
 // FIXME: get rid of this, just replace it by FnPointer
@@ -199,12 +199,12 @@ impl CallableSig {
             params_and_return: fn_ptr
                 .substitution
                 .clone()
-                .shifted_out_to(&Interner, DebruijnIndex::ONE)
+                .shifted_out_to(Interner, DebruijnIndex::ONE)
                 .expect("unexpected lifetime vars in fn ptr")
                 .0
-                .as_slice(&Interner)
+                .as_slice(Interner)
                 .iter()
-                .map(|arg| arg.assert_ty_ref(&Interner).clone())
+                .map(|arg| arg.assert_ty_ref(Interner).clone())
                 .collect(),
             is_varargs: fn_ptr.sig.variadic,
             legacy_const_generics_indices: Arc::new([]),
@@ -220,7 +220,7 @@ impl CallableSig {
             num_binders: 0,
             sig: FnSig { abi: (), safety: Safety::Safe, variadic: self.is_varargs },
             substitution: FnSubst(Substitution::from_iter(
-                &Interner,
+                Interner,
                 self.params_and_return.iter().cloned(),
             )),
         }
@@ -238,14 +238,11 @@ impl CallableSig {
 impl Fold<Interner> for CallableSig {
     type Result = CallableSig;
 
-    fn fold_with<'i, E>(
+    fn fold_with<E>(
         self,
-        folder: &mut dyn chalk_ir::fold::Folder<'i, Interner, Error = E>,
+        folder: &mut dyn chalk_ir::fold::Folder<Interner, Error = E>,
         outer_binder: DebruijnIndex,
-    ) -> Result<Self::Result, E>
-    where
-        Interner: 'i,
-    {
+    ) -> Result<Self::Result, E> {
         let vec = self.params_and_return.to_vec();
         let folded = vec.fold_with(folder, outer_binder)?;
         Ok(CallableSig {
@@ -275,18 +272,18 @@ pub(crate) struct ReturnTypeImplTrait {
 }
 
 pub fn static_lifetime() -> Lifetime {
-    LifetimeData::Static.intern(&Interner)
+    LifetimeData::Static.intern(Interner)
 }
 
 pub fn dummy_usize_const() -> Const {
-    let usize_ty = chalk_ir::TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner);
+    let usize_ty = chalk_ir::TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner);
     chalk_ir::ConstData {
         ty: usize_ty,
         value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst {
             interned: ConstScalar::Unknown,
         }),
     }
-    .intern(&Interner)
+    .intern(Interner)
 }
 
 pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + Fold<Interner>>(
@@ -295,15 +292,15 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + Fold<Interner
 ) -> T::Result {
     use chalk_ir::{fold::Folder, Fallible};
     struct FreeVarFolder<F>(F);
-    impl<'i, F: FnMut(BoundVar, DebruijnIndex) -> Ty + 'i> Folder<'i, Interner> for FreeVarFolder<F> {
+    impl<'i, F: FnMut(BoundVar, DebruijnIndex) -> Ty + 'i> Folder<Interner> for FreeVarFolder<F> {
         type Error = NoSolution;
 
-        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn Folder<Interner, Error = Self::Error> {
             self
         }
 
-        fn interner(&self) -> &'i Interner {
-            &Interner
+        fn interner(&self) -> Interner {
+            Interner
         }
 
         fn fold_free_var_ty(
@@ -327,15 +324,15 @@ pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + Fold<Interner>>(
         Fallible,
     };
     struct TyFolder<F>(F);
-    impl<'i, F: FnMut(Ty, DebruijnIndex) -> Ty + 'i> Folder<'i, Interner> for TyFolder<F> {
+    impl<'i, F: FnMut(Ty, DebruijnIndex) -> Ty + 'i> Folder<Interner> for TyFolder<F> {
         type Error = NoSolution;
 
-        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn Folder<Interner, Error = Self::Error> {
             self
         }
 
-        fn interner(&self) -> &'i Interner {
-            &Interner
+        fn interner(&self) -> Interner {
+            Interner
         }
 
         fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
@@ -361,22 +358,22 @@ where
     struct ErrorReplacer {
         vars: usize,
     }
-    impl<'i> Folder<'i, Interner> for ErrorReplacer {
+    impl<'i> Folder<Interner> for ErrorReplacer {
         type Error = NoSolution;
 
-        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner, Error = Self::Error> {
+        fn as_dyn(&mut self) -> &mut dyn Folder<Interner, Error = Self::Error> {
             self
         }
 
-        fn interner(&self) -> &'i Interner {
-            &Interner
+        fn interner(&self) -> Interner {
+            Interner
         }
 
         fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
-            if let TyKind::Error = ty.kind(&Interner) {
+            if let TyKind::Error = ty.kind(Interner) {
                 let index = self.vars;
                 self.vars += 1;
-                Ok(TyKind::BoundVar(BoundVar::new(outer_binder, index)).intern(&Interner))
+                Ok(TyKind::BoundVar(BoundVar::new(outer_binder, index)).intern(Interner))
             } else {
                 let ty = ty.super_fold_with(self.as_dyn(), outer_binder)?;
                 Ok(ty)
@@ -394,7 +391,7 @@ where
                 // won't contain the whole thing, which would not be very helpful
                 Err(NoSolution)
             } else {
-                Ok(TyKind::Error.intern(&Interner))
+                Ok(TyKind::Error.intern(Interner))
             }
         }
 
@@ -408,7 +405,7 @@ where
                 // won't contain the whole thing, which would not be very helpful
                 Err(NoSolution)
             } else {
-                Ok(TyKind::Error.intern(&Interner))
+                Ok(TyKind::Error.intern(Interner))
             }
         }
 
@@ -473,5 +470,5 @@ where
             chalk_ir::UniverseIndex::ROOT,
         )
     });
-    Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
+    Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(Interner, kinds) }
 }

@@ -105,11 +105,11 @@ impl<'a> InferenceContext<'a> {
 
         let trait_env = self.trait_env.env.clone();
         let obligation = InEnvironment {
-            goal: projection.trait_ref(self.db).cast(&Interner),
+            goal: projection.trait_ref(self.db).cast(Interner),
             environment: trait_env,
         };
         let canonical = self.canonicalize(obligation.clone());
-        if self.db.trait_solve(krate, canonical.value.cast(&Interner)).is_some() {
+        if self.db.trait_solve(krate, canonical.value.cast(Interner)).is_some() {
             self.push_obligation(obligation.goal);
             let return_ty = self.table.normalize_projection_ty(projection);
             Some((arg_tys, return_ty))
@@ -135,7 +135,7 @@ impl<'a> InferenceContext<'a> {
                 // if let is desugared to match, so this is always simple if
                 self.infer_expr(
                     condition,
-                    &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(&Interner)),
+                    &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(Interner)),
                 );
 
                 let condition_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
@@ -201,8 +201,8 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = self.infer_expr(*body, &Expectation::none());
                 let impl_trait_id = crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, *body);
                 let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
-                TyKind::OpaqueType(opaque_ty_id, Substitution::from1(&Interner, inner_ty))
-                    .intern(&Interner)
+                TyKind::OpaqueType(opaque_ty_id, Substitution::from1(Interner, inner_ty))
+                    .intern(Interner)
             }
             Expr::Loop { body, label } => {
                 self.breakables.push(BreakableContext {
@@ -218,7 +218,7 @@ impl<'a> InferenceContext<'a> {
                     self.diverges = Diverges::Maybe;
                     ctxt.coerce.complete()
                 } else {
-                    TyKind::Never.intern(&Interner)
+                    TyKind::Never.intern(Interner)
                 }
             }
             Expr::While { condition, body, label } => {
@@ -230,7 +230,7 @@ impl<'a> InferenceContext<'a> {
                 // while let is desugared to a match loop, so this is always simple while
                 self.infer_expr(
                     *condition,
-                    &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(&Interner)),
+                    &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(Interner)),
                 );
                 self.infer_expr(*body, &Expectation::has_type(TyBuilder::unit()));
                 let _ctxt = self.breakables.pop().expect("breakable stack broken");
@@ -281,14 +281,14 @@ impl<'a> InferenceContext<'a> {
                     num_binders: 0,
                     sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
                     substitution: FnSubst(
-                        Substitution::from_iter(&Interner, sig_tys.clone()).shifted_in(&Interner),
+                        Substitution::from_iter(Interner, sig_tys.clone()).shifted_in(Interner),
                     ),
                 })
-                .intern(&Interner);
+                .intern(Interner);
                 let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
                 let closure_ty =
-                    TyKind::Closure(closure_id, Substitution::from1(&Interner, sig_ty.clone()))
-                        .intern(&Interner);
+                    TyKind::Closure(closure_id, Substitution::from1(Interner, sig_ty.clone()))
+                        .intern(Interner);
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
@@ -363,7 +363,7 @@ impl<'a> InferenceContext<'a> {
                 let expected = expected.adjust_for_branches(&mut self.table);
 
                 let result_ty = if arms.is_empty() {
-                    TyKind::Never.intern(&Interner)
+                    TyKind::Never.intern(Interner)
                 } else {
                     match &expected {
                         Expectation::HasType(ty) => ty.clone(),
@@ -383,7 +383,7 @@ impl<'a> InferenceContext<'a> {
                             self.infer_expr(
                                 guard_expr,
                                 &Expectation::has_type(
-                                    TyKind::Scalar(Scalar::Bool).intern(&Interner),
+                                    TyKind::Scalar(Scalar::Bool).intern(Interner),
                                 ),
                             );
                         }
@@ -408,7 +408,7 @@ impl<'a> InferenceContext<'a> {
                 let resolver = resolver_for_expr(self.db.upcast(), self.owner, tgt_expr);
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or_else(|| self.err_ty())
             }
-            Expr::Continue { .. } => TyKind::Never.intern(&Interner),
+            Expr::Continue { .. } => TyKind::Never.intern(Interner),
             Expr::Break { expr, label } => {
                 let mut coerce = match find_breakable(&mut self.breakables, label.as_ref()) {
                     Some(ctxt) => {
@@ -439,7 +439,7 @@ impl<'a> InferenceContext<'a> {
                     });
                 };
 
-                TyKind::Never.intern(&Interner)
+                TyKind::Never.intern(Interner)
             }
             Expr::Return { expr } => {
                 if let Some(expr) = expr {
@@ -448,14 +448,14 @@ impl<'a> InferenceContext<'a> {
                     let unit = TyBuilder::unit();
                     let _ = self.coerce(Some(tgt_expr), &unit, &self.return_ty.clone());
                 }
-                TyKind::Never.intern(&Interner)
+                TyKind::Never.intern(Interner)
             }
             Expr::Yield { expr } => {
                 // FIXME: track yield type for coercion
                 if let Some(expr) = expr {
                     self.infer_expr(*expr, &Expectation::none());
                 }
-                TyKind::Never.intern(&Interner)
+                TyKind::Never.intern(Interner)
             }
             Expr::RecordLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_deref(), false);
@@ -470,7 +470,7 @@ impl<'a> InferenceContext<'a> {
                 let substs = ty
                     .as_adt()
                     .map(|(_, s)| s.clone())
-                    .unwrap_or_else(|| Substitution::empty(&Interner));
+                    .unwrap_or_else(|| Substitution::empty(Interner));
                 let field_types = def_id.map(|it| self.db.field_types(it)).unwrap_or_default();
                 let variant_data = def_id.map(|it| it.variant_data(self.db.upcast()));
                 for field in fields.iter() {
@@ -485,7 +485,7 @@ impl<'a> InferenceContext<'a> {
                             }
                         });
                     let field_ty = field_def.map_or(self.err_ty(), |it| {
-                        field_types[it.local_id].clone().substitute(&Interner, &substs)
+                        field_types[it.local_id].clone().substitute(Interner, &substs)
                     });
                     self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
                 }
@@ -519,13 +519,13 @@ impl<'a> InferenceContext<'a> {
                     };
                     match canonicalized
                         .decanonicalize_ty(&mut self.table, derefed_ty)
-                        .kind(&Interner)
+                        .kind(Interner)
                     {
                         TyKind::Tuple(_, substs) => name.as_tuple_index().and_then(|idx| {
                             substs
-                                .as_slice(&Interner)
+                                .as_slice(Interner)
                                 .get(idx)
-                                .map(|a| a.assert_ty_ref(&Interner))
+                                .map(|a| a.assert_ty_ref(Interner))
                                 .cloned()
                         }),
                         TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
@@ -536,7 +536,7 @@ impl<'a> InferenceContext<'a> {
                                 Some(
                                     self.db.field_types((*s).into())[field.local_id]
                                         .clone()
-                                        .substitute(&Interner, &parameters),
+                                        .substitute(Interner, &parameters),
                                 )
                             } else {
                                 None
@@ -550,7 +550,7 @@ impl<'a> InferenceContext<'a> {
                                 Some(
                                     self.db.field_types((*u).into())[field.local_id]
                                         .clone()
-                                        .substitute(&Interner, &parameters),
+                                        .substitute(Interner, &parameters),
                                 )
                             } else {
                                 None
@@ -608,7 +608,7 @@ impl<'a> InferenceContext<'a> {
                     Rawness::RawPtr => TyKind::Raw(mutability, inner_ty),
                     Rawness::Ref => TyKind::Ref(mutability, static_lifetime(), inner_ty),
                 }
-                .intern(&Interner)
+                .intern(Interner)
             }
             Expr::Box { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
@@ -645,7 +645,7 @@ impl<'a> InferenceContext<'a> {
                         None => self.err_ty(),
                     },
                     UnaryOp::Neg => {
-                        match inner_ty.kind(&Interner) {
+                        match inner_ty.kind(Interner) {
                             // Fast path for builtins
                             TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_) | Scalar::Float(_))
                             | TyKind::InferenceVar(
@@ -658,7 +658,7 @@ impl<'a> InferenceContext<'a> {
                         }
                     }
                     UnaryOp::Not => {
-                        match inner_ty.kind(&Interner) {
+                        match inner_ty.kind(Interner) {
                             // Fast path for builtins
                             TyKind::Scalar(Scalar::Bool | Scalar::Int(_) | Scalar::Uint(_))
                             | TyKind::InferenceVar(_, TyVariableKind::Integer) => inner_ty,
@@ -756,11 +756,11 @@ impl<'a> InferenceContext<'a> {
                 let mut tys = match expected
                     .only_has_type(&mut self.table)
                     .as_ref()
-                    .map(|t| t.kind(&Interner))
+                    .map(|t| t.kind(Interner))
                 {
                     Some(TyKind::Tuple(_, substs)) => substs
-                        .iter(&Interner)
-                        .map(|a| a.assert_ty_ref(&Interner).clone())
+                        .iter(Interner)
+                        .map(|a| a.assert_ty_ref(Interner).clone())
                         .chain(repeat_with(|| self.table.new_type_var()))
                         .take(exprs.len())
                         .collect::<Vec<_>>(),
@@ -771,11 +771,11 @@ impl<'a> InferenceContext<'a> {
                     self.infer_expr_coerce(*expr, &Expectation::has_type(ty.clone()));
                 }
 
-                TyKind::Tuple(tys.len(), Substitution::from_iter(&Interner, tys)).intern(&Interner)
+                TyKind::Tuple(tys.len(), Substitution::from_iter(Interner, tys)).intern(Interner)
             }
             Expr::Array(array) => {
                 let elem_ty =
-                    match expected.to_option(&mut self.table).as_ref().map(|t| t.kind(&Interner)) {
+                    match expected.to_option(&mut self.table).as_ref().map(|t| t.kind(Interner)) {
                         Some(TyKind::Array(st, _) | TyKind::Slice(st)) => st.clone(),
                         _ => self.table.new_type_var(),
                     };
@@ -795,7 +795,7 @@ impl<'a> InferenceContext<'a> {
                         self.infer_expr(
                             repeat,
                             &Expectation::has_type(
-                                TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner),
+                                TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner),
                             ),
                         );
 
@@ -804,41 +804,41 @@ impl<'a> InferenceContext<'a> {
                     }
                 };
 
-                TyKind::Array(coerce.complete(), consteval::usize_const(len)).intern(&Interner)
+                TyKind::Array(coerce.complete(), consteval::usize_const(len)).intern(Interner)
             }
             Expr::Literal(lit) => match lit {
-                Literal::Bool(..) => TyKind::Scalar(Scalar::Bool).intern(&Interner),
+                Literal::Bool(..) => TyKind::Scalar(Scalar::Bool).intern(Interner),
                 Literal::String(..) => {
-                    TyKind::Ref(Mutability::Not, static_lifetime(), TyKind::Str.intern(&Interner))
-                        .intern(&Interner)
+                    TyKind::Ref(Mutability::Not, static_lifetime(), TyKind::Str.intern(Interner))
+                        .intern(Interner)
                 }
                 Literal::ByteString(bs) => {
-                    let byte_type = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(&Interner);
+                    let byte_type = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
 
                     let len = consteval::usize_const(Some(bs.len() as u64));
 
-                    let array_type = TyKind::Array(byte_type, len).intern(&Interner);
-                    TyKind::Ref(Mutability::Not, static_lifetime(), array_type).intern(&Interner)
+                    let array_type = TyKind::Array(byte_type, len).intern(Interner);
+                    TyKind::Ref(Mutability::Not, static_lifetime(), array_type).intern(Interner)
                 }
-                Literal::Char(..) => TyKind::Scalar(Scalar::Char).intern(&Interner),
+                Literal::Char(..) => TyKind::Scalar(Scalar::Char).intern(Interner),
                 Literal::Int(_v, ty) => match ty {
                     Some(int_ty) => {
                         TyKind::Scalar(Scalar::Int(primitive::int_ty_from_builtin(*int_ty)))
-                            .intern(&Interner)
+                            .intern(Interner)
                     }
                     None => self.table.new_integer_var(),
                 },
                 Literal::Uint(_v, ty) => match ty {
                     Some(int_ty) => {
                         TyKind::Scalar(Scalar::Uint(primitive::uint_ty_from_builtin(*int_ty)))
-                            .intern(&Interner)
+                            .intern(Interner)
                     }
                     None => self.table.new_integer_var(),
                 },
                 Literal::Float(_v, ty) => match ty {
                     Some(float_ty) => {
                         TyKind::Scalar(Scalar::Float(primitive::float_ty_from_builtin(*float_ty)))
-                            .intern(&Interner)
+                            .intern(Interner)
                     }
                     None => self.table.new_float_var(),
                 },
@@ -880,7 +880,7 @@ impl<'a> InferenceContext<'a> {
             .build();
         self.write_method_resolution(tgt_expr, func, subst.clone());
 
-        let method_ty = self.db.value_ty(func.into()).substitute(&Interner, &subst);
+        let method_ty = self.db.value_ty(func.into()).substitute(Interner, &subst);
         self.register_obligations_for_call(&method_ty);
 
         self.infer_expr_coerce(rhs, &Expectation::has_type(rhs_ty.clone()));
@@ -934,7 +934,7 @@ impl<'a> InferenceContext<'a> {
                     if let Some(expr) = else_branch {
                         self.infer_expr_coerce(
                             *expr,
-                            &Expectation::has_type(Ty::new(&Interner, TyKind::Never)),
+                            &Expectation::has_type(Ty::new(Interner, TyKind::Never)),
                         );
                     }
 
@@ -1003,11 +1003,11 @@ impl<'a> InferenceContext<'a> {
             }
             None => (
                 receiver_ty,
-                Binders::empty(&Interner, self.err_ty()),
-                Substitution::empty(&Interner),
+                Binders::empty(Interner, self.err_ty()),
+                Substitution::empty(Interner),
             ),
         };
-        let method_ty = method_ty.substitute(&Interner, &substs);
+        let method_ty = method_ty.substitute(Interner, &substs);
         self.register_obligations_for_call(&method_ty);
         let (formal_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
             Some(sig) => {
@@ -1038,12 +1038,12 @@ impl<'a> InferenceContext<'a> {
             self.table.fudge_inference(|table| {
                 if table.try_unify(&expected_ty, &output).is_ok() {
                     table.resolve_with_fallback(inputs, &|var, kind, _, _| match kind {
-                        chalk_ir::VariableKind::Ty(tk) => var.to_ty(&Interner, tk).cast(&Interner),
+                        chalk_ir::VariableKind::Ty(tk) => var.to_ty(Interner, tk).cast(Interner),
                         chalk_ir::VariableKind::Lifetime => {
-                            var.to_lifetime(&Interner).cast(&Interner)
+                            var.to_lifetime(Interner).cast(Interner)
                         }
                         chalk_ir::VariableKind::Const(ty) => {
-                            var.to_const(&Interner, ty).cast(&Interner)
+                            var.to_const(Interner, ty).cast(Interner)
                         }
                     })
                 } else {
@@ -1148,21 +1148,21 @@ impl<'a> InferenceContext<'a> {
             substs.push(self.table.new_type_var());
         }
         assert_eq!(substs.len(), total_len);
-        Substitution::from_iter(&Interner, substs)
+        Substitution::from_iter(Interner, substs)
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
         let callable_ty = self.resolve_ty_shallow(callable_ty);
-        if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(&Interner) {
+        if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(Interner) {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
             let generic_predicates = self.db.generic_predicates(def.into());
             for predicate in generic_predicates.iter() {
                 let (predicate, binders) = predicate
                     .clone()
-                    .substitute(&Interner, parameters)
+                    .substitute(Interner, parameters)
                     .into_value_and_skipped_binders();
-                always!(binders.len(&Interner) == 0); // quantified where clauses not yet handled
-                self.push_obligation(predicate.cast(&Interner));
+                always!(binders.len(Interner) == 0); // quantified where clauses not yet handled
+                self.push_obligation(predicate.cast(Interner));
             }
             // add obligation for trait implementation, if this is a trait method
             match def {
@@ -1175,7 +1175,7 @@ impl<'a> InferenceContext<'a> {
                         );
                         self.push_obligation(
                             TraitRef { trait_id: to_chalk_trait_id(trait_), substitution: substs }
-                                .cast(&Interner),
+                                .cast(Interner),
                         );
                     }
                 }
@@ -1189,17 +1189,17 @@ impl<'a> InferenceContext<'a> {
         let rhs_ty = self.resolve_ty_shallow(&rhs_ty);
         match op {
             BinaryOp::LogicOp(_) | BinaryOp::CmpOp(_) => {
-                Some(TyKind::Scalar(Scalar::Bool).intern(&Interner))
+                Some(TyKind::Scalar(Scalar::Bool).intern(Interner))
             }
             BinaryOp::Assignment { .. } => Some(TyBuilder::unit()),
             BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) => {
                 // all integer combinations are valid here
                 if matches!(
-                    lhs_ty.kind(&Interner),
+                    lhs_ty.kind(Interner),
                     TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))
                         | TyKind::InferenceVar(_, TyVariableKind::Integer)
                 ) && matches!(
-                    rhs_ty.kind(&Interner),
+                    rhs_ty.kind(Interner),
                     TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_))
                         | TyKind::InferenceVar(_, TyVariableKind::Integer)
                 ) {
@@ -1208,7 +1208,7 @@ impl<'a> InferenceContext<'a> {
                     None
                 }
             }
-            BinaryOp::ArithOp(_) => match (lhs_ty.kind(&Interner), rhs_ty.kind(&Interner)) {
+            BinaryOp::ArithOp(_) => match (lhs_ty.kind(Interner), rhs_ty.kind(Interner)) {
                 // (int, int) | (uint, uint) | (float, float)
                 (TyKind::Scalar(Scalar::Int(_)), TyKind::Scalar(Scalar::Int(_)))
                 | (TyKind::Scalar(Scalar::Uint(_)), TyKind::Scalar(Scalar::Uint(_)))
@@ -1251,11 +1251,11 @@ impl<'a> InferenceContext<'a> {
 
     fn builtin_binary_op_rhs_expectation(&mut self, op: BinaryOp, lhs_ty: Ty) -> Option<Ty> {
         Some(match op {
-            BinaryOp::LogicOp(..) => TyKind::Scalar(Scalar::Bool).intern(&Interner),
+            BinaryOp::LogicOp(..) => TyKind::Scalar(Scalar::Bool).intern(Interner),
             BinaryOp::Assignment { op: None } => lhs_ty,
             BinaryOp::CmpOp(CmpOp::Eq { .. }) => match self
                 .resolve_ty_shallow(&lhs_ty)
-                .kind(&Interner)
+                .kind(Interner)
             {
                 TyKind::Scalar(_) | TyKind::Str => lhs_ty,
                 TyKind::InferenceVar(_, TyVariableKind::Integer | TyVariableKind::Float) => lhs_ty,
@@ -1264,7 +1264,7 @@ impl<'a> InferenceContext<'a> {
             BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr) => return None,
             BinaryOp::CmpOp(CmpOp::Ord { .. })
             | BinaryOp::Assignment { op: Some(_) }
-            | BinaryOp::ArithOp(_) => match self.resolve_ty_shallow(&lhs_ty).kind(&Interner) {
+            | BinaryOp::ArithOp(_) => match self.resolve_ty_shallow(&lhs_ty).kind(Interner) {
                 TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_) | Scalar::Float(_)) => lhs_ty,
                 TyKind::InferenceVar(_, TyVariableKind::Integer | TyVariableKind::Float) => lhs_ty,
                 _ => return None,

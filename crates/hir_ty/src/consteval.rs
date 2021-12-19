@@ -18,7 +18,7 @@ pub trait ConstExt {
 
 impl ConstExt for Const {
     fn is_unknown(&self) -> bool {
-        match self.data(&Interner).value {
+        match self.data(Interner).value {
             // interned Unknown
             chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst {
                 interned: ConstScalar::Unknown,
@@ -49,10 +49,10 @@ pub fn eval_usize(expr: &Expr) -> Option<u64> {
 /// Interns a possibly-unknown target usize
 pub fn usize_const(value: Option<u64>) -> Const {
     ConstData {
-        ty: TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)).intern(&Interner),
+        ty: TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)).intern(Interner),
         value: ConstValue::Concrete(chalk_ir::ConcreteConst {
             interned: value.map(ConstScalar::Usize).unwrap_or(ConstScalar::Unknown),
         }),
     }
-    .intern(&Interner)
+    .intern(Interner)
 }

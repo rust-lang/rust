@@ -201,7 +201,7 @@ impl SourceAnalyzer {
         let variant_data = variant.variant_data(db.upcast());
         let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
         let field_ty =
-            db.field_types(variant).get(field.local_id)?.clone().substitute(&Interner, subst);
+            db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
         Some((field.into(), local, Type::new_with_resolver(db, &self.resolver, field_ty)?))
     }
 
@@ -417,7 +417,7 @@ impl SourceAnalyzer {
             .into_iter()
             .map(|local_id| {
                 let field = FieldId { parent: variant, local_id };
-                let ty = field_types[local_id].clone().substitute(&Interner, substs);
+                let ty = field_types[local_id].clone().substitute(Interner, substs);
                 (field.into(), Type::new_with_resolver_inner(db, krate, &self.resolver, ty))
             })
             .collect()

@@ -124,25 +124,25 @@ impl chalk_ir::interner::Interner for Interner {
     }
 
     fn debug_ty(ty: &chalk_ir::Ty<Interner>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", ty.data(&Interner)))
+        Some(write!(fmt, "{:?}", ty.data(Interner)))
     }
 
     fn debug_lifetime(
         lifetime: &chalk_ir::Lifetime<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", lifetime.data(&Interner)))
+        Some(write!(fmt, "{:?}", lifetime.data(Interner)))
     }
 
     fn debug_generic_arg(
         parameter: &GenericArg,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", parameter.data(&Interner).inner_debug()))
+        Some(write!(fmt, "{:?}", parameter.data(Interner).inner_debug()))
     }
 
     fn debug_goal(goal: &Goal<Interner>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
-        let goal_data = goal.data(&Interner);
+        let goal_data = goal.data(Interner);
         Some(write!(fmt, "{:?}", goal_data))
     }
 
@@ -150,28 +150,28 @@ impl chalk_ir::interner::Interner for Interner {
         goals: &chalk_ir::Goals<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", goals.debug(&Interner)))
+        Some(write!(fmt, "{:?}", goals.debug(Interner)))
     }
 
     fn debug_program_clause_implication(
         pci: &chalk_ir::ProgramClauseImplication<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", pci.debug(&Interner)))
+        Some(write!(fmt, "{:?}", pci.debug(Interner)))
     }
 
     fn debug_substitution(
         substitution: &chalk_ir::Substitution<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", substitution.debug(&Interner)))
+        Some(write!(fmt, "{:?}", substitution.debug(Interner)))
     }
 
     fn debug_separator_trait_ref(
         separator_trait_ref: &chalk_ir::SeparatorTraitRef<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", separator_trait_ref.debug(&Interner)))
+        Some(write!(fmt, "{:?}", separator_trait_ref.debug(Interner)))
     }
 
     fn debug_fn_def_id(
@@ -184,75 +184,75 @@ impl chalk_ir::interner::Interner for Interner {
         constant: &chalk_ir::Const<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", constant.data(&Interner)))
+        Some(write!(fmt, "{:?}", constant.data(Interner)))
     }
     fn debug_variable_kinds(
         variable_kinds: &chalk_ir::VariableKinds<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", variable_kinds.as_slice(&Interner)))
+        Some(write!(fmt, "{:?}", variable_kinds.as_slice(Interner)))
     }
     fn debug_variable_kinds_with_angles(
         variable_kinds: &chalk_ir::VariableKinds<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", variable_kinds.inner_debug(&Interner)))
+        Some(write!(fmt, "{:?}", variable_kinds.inner_debug(Interner)))
     }
     fn debug_canonical_var_kinds(
         canonical_var_kinds: &chalk_ir::CanonicalVarKinds<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", canonical_var_kinds.as_slice(&Interner)))
+        Some(write!(fmt, "{:?}", canonical_var_kinds.as_slice(Interner)))
     }
     fn debug_program_clause(
         clause: &chalk_ir::ProgramClause<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", clause.data(&Interner)))
+        Some(write!(fmt, "{:?}", clause.data(Interner)))
     }
     fn debug_program_clauses(
         clauses: &chalk_ir::ProgramClauses<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", clauses.as_slice(&Interner)))
+        Some(write!(fmt, "{:?}", clauses.as_slice(Interner)))
     }
     fn debug_quantified_where_clauses(
         clauses: &chalk_ir::QuantifiedWhereClauses<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        Some(write!(fmt, "{:?}", clauses.as_slice(&Interner)))
+        Some(write!(fmt, "{:?}", clauses.as_slice(Interner)))
     }
 
-    fn intern_ty(&self, kind: chalk_ir::TyKind<Self>) -> Self::InternedType {
+    fn intern_ty(self, kind: chalk_ir::TyKind<Self>) -> Self::InternedType {
         let flags = kind.compute_flags(self);
         Interned::new(InternedWrapper(chalk_ir::TyData { kind, flags }))
     }
 
-    fn ty_data<'a>(&self, ty: &'a Self::InternedType) -> &'a chalk_ir::TyData<Self> {
+    fn ty_data<'a>(self, ty: &'a Self::InternedType) -> &'a chalk_ir::TyData<Self> {
         &ty.0
     }
 
-    fn intern_lifetime(&self, lifetime: chalk_ir::LifetimeData<Self>) -> Self::InternedLifetime {
+    fn intern_lifetime(self, lifetime: chalk_ir::LifetimeData<Self>) -> Self::InternedLifetime {
         Interned::new(InternedWrapper(lifetime))
     }
 
     fn lifetime_data<'a>(
-        &self,
+        self,
         lifetime: &'a Self::InternedLifetime,
     ) -> &'a chalk_ir::LifetimeData<Self> {
         &lifetime.0
     }
 
-    fn intern_const(&self, constant: chalk_ir::ConstData<Self>) -> Self::InternedConst {
+    fn intern_const(self, constant: chalk_ir::ConstData<Self>) -> Self::InternedConst {
         Interned::new(InternedWrapper(constant))
     }
 
-    fn const_data<'a>(&self, constant: &'a Self::InternedConst) -> &'a chalk_ir::ConstData<Self> {
+    fn const_data<'a>(self, constant: &'a Self::InternedConst) -> &'a chalk_ir::ConstData<Self> {
         &constant.0
     }
 
     fn const_eq(
-        &self,
+        self,
         _ty: &Self::InternedType,
         c1: &Self::InternedConcreteConst,
         c2: &Self::InternedConcreteConst,
@@ -266,131 +266,131 @@ impl chalk_ir::interner::Interner for Interner {
     }
 
     fn intern_generic_arg(
-        &self,
+        self,
         parameter: chalk_ir::GenericArgData<Self>,
     ) -> Self::InternedGenericArg {
         parameter
     }
 
     fn generic_arg_data<'a>(
-        &self,
+        self,
         parameter: &'a Self::InternedGenericArg,
     ) -> &'a chalk_ir::GenericArgData<Self> {
         parameter
     }
 
-    fn intern_goal(&self, goal: GoalData<Self>) -> Self::InternedGoal {
+    fn intern_goal(self, goal: GoalData<Self>) -> Self::InternedGoal {
         Arc::new(goal)
     }
 
     fn intern_goals<E>(
-        &self,
+        self,
         data: impl IntoIterator<Item = Result<Goal<Self>, E>>,
     ) -> Result<Self::InternedGoals, E> {
         data.into_iter().collect()
     }
 
-    fn goal_data<'a>(&self, goal: &'a Self::InternedGoal) -> &'a GoalData<Self> {
+    fn goal_data<'a>(self, goal: &'a Self::InternedGoal) -> &'a GoalData<Self> {
         goal
     }
 
-    fn goals_data<'a>(&self, goals: &'a Self::InternedGoals) -> &'a [Goal<Interner>] {
+    fn goals_data<'a>(self, goals: &'a Self::InternedGoals) -> &'a [Goal<Interner>] {
         goals
     }
 
     fn intern_substitution<E>(
-        &self,
+        self,
         data: impl IntoIterator<Item = Result<GenericArg, E>>,
     ) -> Result<Self::InternedSubstitution, E> {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn substitution_data<'a>(
-        &self,
+        self,
         substitution: &'a Self::InternedSubstitution,
     ) -> &'a [GenericArg] {
         &substitution.as_ref().0
     }
 
     fn intern_program_clause(
-        &self,
+        self,
         data: chalk_ir::ProgramClauseData<Self>,
     ) -> Self::InternedProgramClause {
         data
     }
 
     fn program_clause_data<'a>(
-        &self,
+        self,
         clause: &'a Self::InternedProgramClause,
     ) -> &'a chalk_ir::ProgramClauseData<Self> {
         clause
     }
 
     fn intern_program_clauses<E>(
-        &self,
+        self,
         data: impl IntoIterator<Item = Result<chalk_ir::ProgramClause<Self>, E>>,
     ) -> Result<Self::InternedProgramClauses, E> {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn program_clauses_data<'a>(
-        &self,
+        self,
         clauses: &'a Self::InternedProgramClauses,
     ) -> &'a [chalk_ir::ProgramClause<Self>] {
         clauses
     }
 
     fn intern_quantified_where_clauses<E>(
-        &self,
+        self,
         data: impl IntoIterator<Item = Result<chalk_ir::QuantifiedWhereClause<Self>, E>>,
     ) -> Result<Self::InternedQuantifiedWhereClauses, E> {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn quantified_where_clauses_data<'a>(
-        &self,
+        self,
         clauses: &'a Self::InternedQuantifiedWhereClauses,
     ) -> &'a [chalk_ir::QuantifiedWhereClause<Self>] {
         clauses
     }
 
     fn intern_generic_arg_kinds<E>(
-        &self,
+        self,
         data: impl IntoIterator<Item = Result<chalk_ir::VariableKind<Self>, E>>,
     ) -> Result<Self::InternedVariableKinds, E> {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn variable_kinds_data<'a>(
-        &self,
+        self,
         parameter_kinds: &'a Self::InternedVariableKinds,
     ) -> &'a [chalk_ir::VariableKind<Self>] {
         &parameter_kinds.as_ref().0
     }
 
     fn intern_canonical_var_kinds<E>(
-        &self,
+        self,
         data: impl IntoIterator<Item = Result<chalk_ir::CanonicalVarKind<Self>, E>>,
     ) -> Result<Self::InternedCanonicalVarKinds, E> {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn canonical_var_kinds_data<'a>(
-        &self,
+        self,
         canonical_var_kinds: &'a Self::InternedCanonicalVarKinds,
     ) -> &'a [chalk_ir::CanonicalVarKind<Self>] {
         canonical_var_kinds
     }
 
     fn intern_constraints<E>(
-        &self,
+        self,
         data: impl IntoIterator<Item = Result<chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>, E>>,
     ) -> Result<Self::InternedConstraints, E> {
         data.into_iter().collect()
     }
 
     fn constraints_data<'a>(
-        &self,
+        self,
         constraints: &'a Self::InternedConstraints,
     ) -> &'a [chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>] {
         constraints
@@ -409,14 +409,14 @@ impl chalk_ir::interner::Interner for Interner {
     }
 
     fn intern_variances<E>(
-        &self,
+        self,
         data: impl IntoIterator<Item = Result<chalk_ir::Variance, E>>,
     ) -> Result<Self::InternedVariances, E> {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
     fn variances_data<'a>(
-        &self,
+        self,
         variances: &'a Self::InternedVariances,
     ) -> &'a [chalk_ir::Variance] {
         variances

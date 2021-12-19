@@ -247,7 +247,7 @@ impl HirDisplay for TypeParam {
         let bounds = f.db.generic_predicates_for_param(self.id, None);
         let substs = TyBuilder::type_params_subst(f.db, self.id.parent);
         let predicates: Vec<_> =
-            bounds.iter().cloned().map(|b| b.substitute(&Interner, &substs)).collect();
+            bounds.iter().cloned().map(|b| b.substitute(Interner, &substs)).collect();
         let krate = self.id.parent.krate(f.db).id;
         let sized_trait =
             f.db.lang_item(krate, SmolStr::new_inline("sized"))

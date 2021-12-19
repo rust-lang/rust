@@ -85,7 +85,7 @@ impl IntRange {
     #[inline]
     fn is_integral(ty: &Ty) -> bool {
         matches!(
-            ty.kind(&Interner),
+            ty.kind(Interner),
             TyKind::Scalar(Scalar::Char | Scalar::Int(_) | Scalar::Uint(_) | Scalar::Bool)
         )
     }
@@ -479,7 +479,7 @@ impl SplitWildcard {
         // returned list of constructors.
         // Invariant: this is empty if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
-        let all_ctors = match pcx.ty.kind(&Interner) {
+        let all_ctors = match pcx.ty.kind(Interner) {
             TyKind::Scalar(Scalar::Bool) => smallvec![make_range(0, 1, Scalar::Bool)],
             // TyKind::Array(..) if ... => unhandled(),
             TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
@@ -647,16 +647,16 @@ impl Fields {
         let wildcard_from_ty = |ty: &Ty| cx.alloc_pat(Pat::wildcard_from_ty(ty.clone()));
 
         let ret = match constructor {
-            Single | Variant(_) => match ty.kind(&Interner) {
+            Single | Variant(_) => match ty.kind(Interner) {
                 TyKind::Tuple(_, substs) => {
-                    let tys = substs.iter(&Interner).map(|ty| ty.assert_ty_ref(&Interner));
+                    let tys = substs.iter(Interner).map(|ty| ty.assert_ty_ref(Interner));
                     Fields::wildcards_from_tys(cx, tys.cloned())
                 }
                 TyKind::Ref(.., rty) => Fields::from_single_pattern(wildcard_from_ty(rty)),
                 &TyKind::Adt(AdtId(adt), ref substs) => {
                     if adt_is_box(adt, cx) {
                         // Use T as the sub pattern type of Box<T>.
-                        let subst_ty = substs.at(&Interner, 0).assert_ty_ref(&Interner);
+                        let subst_ty = substs.at(Interner, 0).assert_ty_ref(Interner);
                         Fields::from_single_pattern(wildcard_from_ty(subst_ty))
                     } else {
                         let variant_id = constructor.variant_id_for_adt(adt);
@@ -671,7 +671,7 @@ impl Fields {
                         let field_tys = || {
                             field_ty_data
                                 .iter()
-                                .map(|(_, binders)| binders.clone().substitute(&Interner, substs))
+                                .map(|(_, binders)| binders.clone().substitute(Interner, substs))
                         };
 
                         // In the following cases, we don't need to filter out any fields. This is
@@ -725,7 +725,7 @@ impl Fields {
         const UNHANDLED: PatKind = PatKind::Wild;
 
         let pat = match ctor {
-            Single | Variant(_) => match pcx.ty.kind(&Interner) {
+            Single | Variant(_) => match pcx.ty.kind(Interner) {
                 TyKind::Adt(..) | TyKind::Tuple(..) => {
                     // We want the real indices here.
                     let subpatterns = subpatterns_and_indices

@@ -166,11 +166,11 @@ impl<'a> TyLoweringContext<'a> {
     pub fn lower_ty_ext(&self, type_ref: &TypeRef) -> (Ty, Option<TypeNs>) {
         let mut res = None;
         let ty = match type_ref {
-            TypeRef::Never => TyKind::Never.intern(&Interner),
+            TypeRef::Never => TyKind::Never.intern(Interner),
             TypeRef::Tuple(inner) => {
                 let inner_tys = inner.iter().map(|tr| self.lower_ty(tr));
-                TyKind::Tuple(inner_tys.len(), Substitution::from_iter(&Interner, inner_tys))
-                    .intern(&Interner)
+                TyKind::Tuple(inner_tys.len(), Substitution::from_iter(Interner, inner_tys))
+                    .intern(Interner)
             }
             TypeRef::Path(path) => {
                 let (ty, res_) = self.lower_path(path);
@@ -179,48 +179,48 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeRef::RawPtr(inner, mutability) => {
                 let inner_ty = self.lower_ty(inner);
-                TyKind::Raw(lower_to_chalk_mutability(*mutability), inner_ty).intern(&Interner)
+                TyKind::Raw(lower_to_chalk_mutability(*mutability), inner_ty).intern(Interner)
             }
             TypeRef::Array(inner, len) => {
                 let inner_ty = self.lower_ty(inner);
 
                 let const_len = consteval::usize_const(len.as_usize());
 
-                TyKind::Array(inner_ty, const_len).intern(&Interner)
+                TyKind::Array(inner_ty, const_len).intern(Interner)
             }
             TypeRef::Slice(inner) => {
                 let inner_ty = self.lower_ty(inner);
-                TyKind::Slice(inner_ty).intern(&Interner)
+                TyKind::Slice(inner_ty).intern(Interner)
             }
             TypeRef::Reference(inner, _, mutability) => {
                 let inner_ty = self.lower_ty(inner);
                 let lifetime = static_lifetime();
                 TyKind::Ref(lower_to_chalk_mutability(*mutability), lifetime, inner_ty)
-                    .intern(&Interner)
+                    .intern(Interner)
             }
-            TypeRef::Placeholder => TyKind::Error.intern(&Interner),
+            TypeRef::Placeholder => TyKind::Error.intern(Interner),
             TypeRef::Fn(params, is_varargs) => {
                 let substs = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-                    Substitution::from_iter(&Interner, params.iter().map(|tr| ctx.lower_ty(tr)))
+                    Substitution::from_iter(Interner, params.iter().map(|tr| ctx.lower_ty(tr)))
                 });
                 TyKind::Function(FnPointer {
                     num_binders: 0, // FIXME lower `for<'a> fn()` correctly
                     sig: FnSig { abi: (), safety: Safety::Safe, variadic: *is_varargs },
                     substitution: FnSubst(substs),
                 })
-                .intern(&Interner)
+                .intern(Interner)
             }
             TypeRef::DynTrait(bounds) => {
                 let self_ty =
-                    TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner);
+                    TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
                 let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
                     QuantifiedWhereClauses::from_iter(
-                        &Interner,
+                        Interner,
                         bounds.iter().flat_map(|b| ctx.lower_type_bound(b, self_ty.clone(), false)),
                     )
                 });
                 let bounds = crate::make_only_type_binders(1, bounds);
-                TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(&Interner)
+                TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
             }
             TypeRef::ImplTrait(bounds) => {
                 match self.impl_trait_mode {
@@ -258,7 +258,7 @@ impl<'a> TyLoweringContext<'a> {
                         let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                         let generics = generics(self.db.upcast(), func.into());
                         let parameters = generics.bound_vars_subst(self.in_binders);
-                        TyKind::OpaqueType(opaque_ty_id, parameters).intern(&Interner)
+                        TyKind::OpaqueType(opaque_ty_id, parameters).intern(Interner)
                     }
                     ImplTraitLoweringMode::Param => {
                         let idx = self.impl_trait_counter.get();
@@ -275,9 +275,9 @@ impl<'a> TyLoweringContext<'a> {
                                 .map_or(TyKind::Error, |(id, _)| {
                                     TyKind::Placeholder(to_placeholder_idx(self.db, id))
                                 });
-                            param.intern(&Interner)
+                            param.intern(Interner)
                         } else {
-                            TyKind::Error.intern(&Interner)
+                            TyKind::Error.intern(Interner)
                         }
                     }
                     ImplTraitLoweringMode::Variable => {
@@ -295,11 +295,11 @@ impl<'a> TyLoweringContext<'a> {
                             self.in_binders,
                             idx as usize + parent_params + self_params + list_params,
                         ))
-                        .intern(&Interner)
+                        .intern(Interner)
                     }
                     ImplTraitLoweringMode::Disallowed => {
                         // FIXME: report error
-                        TyKind::Error.intern(&Interner)
+                        TyKind::Error.intern(Interner)
                     }
                 }
             }
@@ -343,9 +343,9 @@ impl<'a> TyLoweringContext<'a> {
                 if recursion_start {
                     *self.expander.borrow_mut() = None;
                 }
-                ty.unwrap_or_else(|| TyKind::Error.intern(&Interner))
+                ty.unwrap_or_else(|| TyKind::Error.intern(Interner))
             }
-            TypeRef::Error => TyKind::Error.intern(&Interner),
+            TypeRef::Error => TyKind::Error.intern(Interner),
         };
         (ty, res)
     }
@@ -391,7 +391,7 @@ impl<'a> TyLoweringContext<'a> {
             }
             _ => {
                 // FIXME report error (ambiguous associated type)
-                (TyKind::Error.intern(&Interner), None)
+                (TyKind::Error.intern(Interner), None)
             }
         }
     }
@@ -421,18 +421,18 @@ impl<'a> TyLoweringContext<'a> {
                                     associated_ty_id: to_assoc_type_id(associated_ty),
                                     substitution: trait_ref.substitution,
                                 }))
-                                .intern(&Interner)
+                                .intern(Interner)
                             }
                             None => {
                                 // FIXME: report error (associated type not found)
-                                TyKind::Error.intern(&Interner)
+                                TyKind::Error.intern(Interner)
                             }
                         }
                     }
                     0 => {
                         let self_ty = Some(
                             TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
-                                .intern(&Interner),
+                                .intern(Interner),
                         );
                         let trait_ref = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
                             ctx.lower_trait_ref_from_resolved_path(
@@ -445,7 +445,7 @@ impl<'a> TyLoweringContext<'a> {
                             bounds: crate::make_only_type_binders(
                                 1,
                                 QuantifiedWhereClauses::from_iter(
-                                    &Interner,
+                                    Interner,
                                     Some(crate::wrap_empty_binders(WhereClause::Implemented(
                                         trait_ref,
                                     ))),
@@ -453,11 +453,11 @@ impl<'a> TyLoweringContext<'a> {
                             ),
                             lifetime: static_lifetime(),
                         };
-                        TyKind::Dyn(dyn_ty).intern(&Interner)
+                        TyKind::Dyn(dyn_ty).intern(Interner)
                     }
                     _ => {
                         // FIXME report error (ambiguous associated type)
-                        TyKind::Error.intern(&Interner)
+                        TyKind::Error.intern(Interner)
                     }
                 };
                 return (ty, None);
@@ -476,7 +476,7 @@ impl<'a> TyLoweringContext<'a> {
                         TyKind::BoundVar(BoundVar::new(self.in_binders, idx))
                     }
                 }
-                .intern(&Interner)
+                .intern(Interner)
             }
             TypeNs::SelfType(impl_id) => {
                 let generics = generics(self.db.upcast(), impl_id.into());
@@ -484,7 +484,7 @@ impl<'a> TyLoweringContext<'a> {
                     TypeParamLoweringMode::Placeholder => generics.type_params_subst(self.db),
                     TypeParamLoweringMode::Variable => generics.bound_vars_subst(self.in_binders),
                 };
-                self.db.impl_self_ty(impl_id).substitute(&Interner, &substs)
+                self.db.impl_self_ty(impl_id).substitute(Interner, &substs)
             }
             TypeNs::AdtSelfType(adt) => {
                 let generics = generics(self.db.upcast(), adt.into());
@@ -492,7 +492,7 @@ impl<'a> TyLoweringContext<'a> {
                     TypeParamLoweringMode::Placeholder => generics.type_params_subst(self.db),
                     TypeParamLoweringMode::Variable => generics.bound_vars_subst(self.in_binders),
                 };
-                self.db.ty(adt.into()).substitute(&Interner, &substs)
+                self.db.ty(adt.into()).substitute(Interner, &substs)
             }
 
             TypeNs::AdtId(it) => self.lower_path_inner(resolved_segment, it.into(), infer_args),
@@ -503,7 +503,7 @@ impl<'a> TyLoweringContext<'a> {
                 self.lower_path_inner(resolved_segment, it.into(), infer_args)
             }
             // FIXME: report error
-            TypeNs::EnumVariantId(_) => return (TyKind::Error.intern(&Interner), None),
+            TypeNs::EnumVariantId(_) => return (TyKind::Error.intern(Interner), None),
         };
         self.lower_ty_relative_path(ty, Some(resolution), remaining_segments)
     }
@@ -517,7 +517,7 @@ impl<'a> TyLoweringContext<'a> {
         let (resolution, remaining_index) =
             match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path.mod_path()) {
                 Some(it) => it,
-                None => return (TyKind::Error.intern(&Interner), None),
+                None => return (TyKind::Error.intern(Interner), None),
             };
         let (resolved_segment, remaining_segments) = match remaining_index {
             None => (
@@ -548,20 +548,20 @@ impl<'a> TyLoweringContext<'a> {
                                     ),
                                 );
                                 let s = generics.type_params_subst(self.db);
-                                s.apply(t.substitution.clone(), &Interner)
+                                s.apply(t.substitution.clone(), Interner)
                             }
                             TypeParamLoweringMode::Variable => t.substitution.clone(),
                         };
                         // We need to shift in the bound vars, since
                         // associated_type_shorthand_candidates does not do that
-                        let substs = substs.shifted_in_from(&Interner, self.in_binders);
+                        let substs = substs.shifted_in_from(Interner, self.in_binders);
                         // FIXME handle type parameters on the segment
                         Some(
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
                                 associated_ty_id: to_assoc_type_id(associated_ty),
                                 substitution: substs,
                             }))
-                            .intern(&Interner),
+                            .intern(Interner),
                         )
                     } else {
                         None
@@ -569,9 +569,9 @@ impl<'a> TyLoweringContext<'a> {
                 },
             );
 
-            ty.unwrap_or_else(|| TyKind::Error.intern(&Interner))
+            ty.unwrap_or_else(|| TyKind::Error.intern(Interner))
         } else {
-            TyKind::Error.intern(&Interner)
+            TyKind::Error.intern(Interner)
         }
     }
 
@@ -587,7 +587,7 @@ impl<'a> TyLoweringContext<'a> {
             TyDefId::TypeAliasId(it) => Some(it.into()),
         };
         let substs = self.substs_from_path_segment(segment, generic_def, infer_args, None);
-        self.db.ty(typeable).substitute(&Interner, &substs)
+        self.db.ty(typeable).substitute(Interner, &substs)
     }
 
     /// Collect generic arguments from a path into a `Substs`. See also
@@ -640,13 +640,13 @@ impl<'a> TyLoweringContext<'a> {
             def_generics.map_or((0, 0, 0, 0), |g| g.provenance_split());
         let total_len = parent_params + self_params + type_params + impl_trait_params;
 
-        substs.extend(iter::repeat(TyKind::Error.intern(&Interner)).take(parent_params));
+        substs.extend(iter::repeat(TyKind::Error.intern(Interner)).take(parent_params));
 
         let fill_self_params = || {
             substs.extend(
                 explicit_self_ty
                     .into_iter()
-                    .chain(iter::repeat(TyKind::Error.intern(&Interner)))
+                    .chain(iter::repeat(TyKind::Error.intern(Interner)))
                     .take(self_params),
             )
         };
@@ -690,8 +690,8 @@ impl<'a> TyLoweringContext<'a> {
 
                 for default_ty in defaults.iter().skip(substs.len()) {
                     // each default can depend on the previous parameters
-                    let substs_so_far = Substitution::from_iter(&Interner, substs.clone());
-                    substs.push(default_ty.clone().substitute(&Interner, &substs_so_far));
+                    let substs_so_far = Substitution::from_iter(Interner, substs.clone());
+                    substs.push(default_ty.clone().substitute(Interner, &substs_so_far));
                 }
             }
         }
@@ -699,11 +699,11 @@ impl<'a> TyLoweringContext<'a> {
         // add placeholders for args that were not provided
         // FIXME: emit diagnostics in contexts where this is not allowed
         for _ in substs.len()..total_len {
-            substs.push(TyKind::Error.intern(&Interner));
+            substs.push(TyKind::Error.intern(Interner));
         }
         assert_eq!(substs.len(), total_len);
 
-        Substitution::from_iter(&Interner, substs)
+        Substitution::from_iter(Interner, substs)
     }
 
     fn lower_trait_ref_from_path(
@@ -770,7 +770,7 @@ impl<'a> TyLoweringContext<'a> {
                                 TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, idx))
                             }
                         }
-                        .intern(&Interner)
+                        .intern(Interner)
                     }
                 };
                 self.lower_type_bound(bound, self_ty, ignore_bindings)
@@ -869,7 +869,7 @@ impl<'a> TyLoweringContext<'a> {
                 for bound in &binding.bounds {
                     preds.extend(self.lower_type_bound(
                         bound,
-                        TyKind::Alias(AliasTy::Projection(projection_ty.clone())).intern(&Interner),
+                        TyKind::Alias(AliasTy::Projection(projection_ty.clone())).intern(Interner),
                         false,
                     ));
                 }
@@ -883,8 +883,7 @@ impl<'a> TyLoweringContext<'a> {
         func: FunctionId,
     ) -> ReturnTypeImplTrait {
         cov_mark::hit!(lower_rpit);
-        let self_ty =
-            TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner);
+        let self_ty = TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
         let predicates = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
             let mut predicates: Vec<_> = bounds
                 .iter()
@@ -900,7 +899,7 @@ impl<'a> TyLoweringContext<'a> {
                 let sized_clause = sized_trait.map(|trait_id| {
                     let clause = WhereClause::Implemented(TraitRef {
                         trait_id,
-                        substitution: Substitution::from1(&Interner, self_ty.clone()),
+                        substitution: Substitution::from1(Interner, self_ty.clone()),
                     });
                     crate::wrap_empty_binders(clause)
                 });
@@ -974,7 +973,7 @@ fn named_associated_type_shorthand_candidates<R>(
                 // FIXME: how to correctly handle higher-ranked bounds here?
                 WhereClause::Implemented(tr) => search(
                     tr.clone()
-                        .shifted_out_to(&Interner, DebruijnIndex::ONE)
+                        .shifted_out_to(Interner, DebruijnIndex::ONE)
                         .expect("FIXME unexpected higher-ranked trait bound"),
                 ),
                 _ => None,
@@ -1117,11 +1116,10 @@ pub(crate) fn trait_environment_query(
     for pred in resolver.where_predicates_in_scope() {
         for pred in ctx.lower_where_predicate(pred, false) {
             if let WhereClause::Implemented(tr) = &pred.skip_binders() {
-                traits_in_scope
-                    .push((tr.self_type_parameter(&Interner).clone(), tr.hir_trait_id()));
+                traits_in_scope.push((tr.self_type_parameter(Interner).clone(), tr.hir_trait_id()));
             }
-            let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(&Interner);
-            clauses.push(program_clause.into_from_env_clause(&Interner));
+            let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(Interner);
+            clauses.push(program_clause.into_from_env_clause(Interner));
         }
     }
 
@@ -1143,22 +1141,22 @@ pub(crate) fn trait_environment_query(
         let substs = TyBuilder::type_params_subst(db, trait_id);
         let trait_ref = TraitRef { trait_id: to_chalk_trait_id(trait_id), substitution: substs };
         let pred = WhereClause::Implemented(trait_ref);
-        let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(&Interner);
-        clauses.push(program_clause.into_from_env_clause(&Interner));
+        let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(Interner);
+        clauses.push(program_clause.into_from_env_clause(Interner));
     }
 
     let subst = generics(db.upcast(), def).type_params_subst(db);
     let explicitly_unsized_tys = ctx.unsized_types.into_inner();
     let implicitly_sized_clauses =
         implicitly_sized_clauses(db, def, &explicitly_unsized_tys, &subst, &resolver).map(|pred| {
-            let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(&Interner);
-            program_clause.into_from_env_clause(&Interner)
+            let program_clause: chalk_ir::ProgramClause<Interner> = pred.cast(Interner);
+            program_clause.into_from_env_clause(Interner)
         });
     clauses.extend(implicitly_sized_clauses);
 
     let krate = def.module(db.upcast()).krate();
 
-    let env = chalk_ir::Environment::new(&Interner).add_clauses(&Interner, clauses);
+    let env = chalk_ir::Environment::new(Interner).add_clauses(Interner, clauses);
 
     Arc::new(TraitEnvironment { krate, traits_from_clauses: traits_in_scope, env })
 }
@@ -1197,7 +1195,7 @@ fn implicitly_sized_clauses<'a>(
     resolver: &Resolver,
 ) -> impl Iterator<Item = WhereClause> + 'a {
     let is_trait_def = matches!(def, GenericDefId::TraitId(..));
-    let generic_args = &substitution.as_slice(&Interner)[is_trait_def as usize..];
+    let generic_args = &substitution.as_slice(Interner)[is_trait_def as usize..];
     let sized_trait = resolver
         .krate()
         .and_then(|krate| db.lang_item(krate, SmolStr::new_inline("sized")))
@@ -1206,12 +1204,12 @@ fn implicitly_sized_clauses<'a>(
     sized_trait.into_iter().flat_map(move |sized_trait| {
         let implicitly_sized_tys = generic_args
             .iter()
-            .filter_map(|generic_arg| generic_arg.ty(&Interner))
+            .filter_map(|generic_arg| generic_arg.ty(Interner))
             .filter(move |&self_ty| !explicitly_unsized_tys.contains(self_ty));
         implicitly_sized_tys.map(move |self_ty| {
             WhereClause::Implemented(TraitRef {
                 trait_id: sized_trait,
-                substitution: Substitution::from1(&Interner, self_ty.clone()),
+                substitution: Substitution::from1(Interner, self_ty.clone()),
             })
         })
     })
@@ -1232,7 +1230,7 @@ pub(crate) fn generic_defaults_query(
         .enumerate()
         .map(|(idx, (_, p))| {
             let mut ty =
-                p.default.as_ref().map_or(TyKind::Error.intern(&Interner), |t| ctx.lower_ty(t));
+                p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
 
             // Each default can only refer to previous parameters.
             ty = crate::fold_free_vars(ty, |bound, binders| {
@@ -1240,9 +1238,9 @@ pub(crate) fn generic_defaults_query(
                     // type variable default referring to parameter coming
                     // after it. This is forbidden (FIXME: report
                     // diagnostic)
-                    TyKind::Error.intern(&Interner)
+                    TyKind::Error.intern(Interner)
                 } else {
-                    bound.shifted_in_from(binders).to_ty(&Interner)
+                    bound.shifted_in_from(binders).to_ty(Interner)
                 }
             });
 
@@ -1265,7 +1263,7 @@ pub(crate) fn generic_defaults_recover(
         .iter()
         .enumerate()
         .map(|(idx, _)| {
-            let ty = TyKind::Error.intern(&Interner);
+            let ty = TyKind::Error.intern(Interner);
 
             crate::make_only_type_binders(idx, ty)
         })
@@ -1300,7 +1298,7 @@ fn type_for_fn(db: &dyn HirDatabase, def: FunctionId) -> Binders<Ty> {
     let substs = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
     make_binders(
         &generics,
-        TyKind::FnDef(CallableDefId::FunctionId(def).to_chalk(db), substs).intern(&Interner),
+        TyKind::FnDef(CallableDefId::FunctionId(def).to_chalk(db), substs).intern(Interner),
     )
 }
 
@@ -1321,7 +1319,7 @@ fn type_for_static(db: &dyn HirDatabase, def: StaticId) -> Binders<Ty> {
     let resolver = def.resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver);
 
-    Binders::empty(&Interner, ctx.lower_ty(&data.type_ref))
+    Binders::empty(Interner, ctx.lower_ty(&data.type_ref))
 }
 
 fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnSig {
@@ -1345,7 +1343,7 @@ fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<T
     let substs = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
     make_binders(
         &generics,
-        TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(&Interner),
+        TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(Interner),
     )
 }
 
@@ -1372,7 +1370,7 @@ fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -
     let substs = generics.bound_vars_subst(DebruijnIndex::INNERMOST);
     make_binders(
         &generics,
-        TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs).intern(&Interner),
+        TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs).intern(Interner),
     )
 }
 
@@ -1389,7 +1387,7 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
     if db.type_alias_data(t).is_extern {
-        Binders::empty(&Interner, TyKind::Foreign(crate::to_foreign_def_id(t)).intern(&Interner))
+        Binders::empty(Interner, TyKind::Foreign(crate::to_foreign_def_id(t)).intern(Interner))
     } else {
         let type_ref = &db.type_alias_data(t).type_ref;
         let inner = ctx.lower_ty(type_ref.as_deref().unwrap_or(&TypeRef::Error));
@@ -1452,7 +1450,7 @@ impl_from!(FunctionId, StructId, UnionId, EnumVariantId, ConstId, StaticId for V
 /// namespace.
 pub(crate) fn ty_query(db: &dyn HirDatabase, def: TyDefId) -> Binders<Ty> {
     match def {
-        TyDefId::BuiltinType(it) => Binders::empty(&Interner, TyBuilder::builtin(it)),
+        TyDefId::BuiltinType(it) => Binders::empty(Interner, TyBuilder::builtin(it)),
         TyDefId::AdtId(it) => type_for_adt(db, it),
         TyDefId::TypeAliasId(it) => type_for_type_alias(db, it),
     }
@@ -1460,13 +1458,11 @@ pub(crate) fn ty_query(db: &dyn HirDatabase, def: TyDefId) -> Binders<Ty> {
 
 pub(crate) fn ty_recover(db: &dyn HirDatabase, _cycle: &[String], def: &TyDefId) -> Binders<Ty> {
     let generics = match *def {
-        TyDefId::BuiltinType(_) => {
-            return Binders::empty(&Interner, TyKind::Error.intern(&Interner))
-        }
+        TyDefId::BuiltinType(_) => return Binders::empty(Interner, TyKind::Error.intern(Interner)),
         TyDefId::AdtId(it) => generics(db.upcast(), it.into()),
         TyDefId::TypeAliasId(it) => generics(db.upcast(), it.into()),
     };
-    make_binders(&generics, TyKind::Error.intern(&Interner))
+    make_binders(&generics, TyKind::Error.intern(Interner))
 }
 
 pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Binders<Ty> {
@@ -1509,7 +1505,7 @@ pub(crate) fn impl_self_ty_recover(
     impl_id: &ImplId,
 ) -> Binders<Ty> {
     let generics = generics(db.upcast(), (*impl_id).into());
-    make_binders(&generics, TyKind::Error.intern(&Interner))
+    make_binders(&generics, TyKind::Error.intern(Interner))
 }
 
 pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {

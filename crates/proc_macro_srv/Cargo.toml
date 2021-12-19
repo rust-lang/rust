@@ -10,7 +10,7 @@ rust-version = "1.56"
 doctest = false
 
 [dependencies]
-object = { version = "0.27", default-features = false, features = [
+object = { version = "0.28", default-features = false, features = [
     "std",
     "read_core",
     "elf",

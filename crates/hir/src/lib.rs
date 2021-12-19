@@ -796,7 +796,7 @@ impl Field {
             VariantDef::Variant(it) => it.parent.id.into(),
         };
         let substs = TyBuilder::type_params_subst(db, generic_def_id);
-        let ty = db.field_types(var_id)[self.id].clone().substitute(&Interner, &substs);
+        let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
         Type::new(db, self.parent.module(db).id.krate(), var_id, ty)
     }
 
@@ -2136,7 +2136,7 @@ impl TypeParam {
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         let resolver = self.id.parent.resolver(db.upcast());
         let krate = self.id.parent.module(db.upcast()).krate();
-        let ty = TyKind::Placeholder(hir_ty::to_placeholder_idx(db, self.id)).intern(&Interner);
+        let ty = TyKind::Placeholder(hir_ty::to_placeholder_idx(db, self.id)).intern(Interner);
         Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 
@@ -2159,7 +2159,7 @@ impl TypeParam {
         let krate = self.id.parent.module(db.upcast()).krate();
         let ty = params.get(local_idx)?.clone();
         let subst = TyBuilder::type_params_subst(db, self.id.parent);
-        let ty = ty.substitute(&Interner, &subst_prefix(&subst, local_idx));
+        let ty = ty.substitute(Interner, &subst_prefix(&subst, local_idx));
         Some(Type::new_with_resolver_inner(db, krate, &resolver, ty))
     }
 }
@@ -2381,31 +2381,31 @@ impl Type {
     }
 
     pub fn is_unit(&self) -> bool {
-        matches!(self.ty.kind(&Interner), TyKind::Tuple(0, ..))
+        matches!(self.ty.kind(Interner), TyKind::Tuple(0, ..))
     }
 
     pub fn is_bool(&self) -> bool {
-        matches!(self.ty.kind(&Interner), TyKind::Scalar(Scalar::Bool))
+        matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Bool))
     }
 
     pub fn is_never(&self) -> bool {
-        matches!(self.ty.kind(&Interner), TyKind::Never)
+        matches!(self.ty.kind(Interner), TyKind::Never)
     }
 
     pub fn is_mutable_reference(&self) -> bool {
-        matches!(self.ty.kind(&Interner), TyKind::Ref(hir_ty::Mutability::Mut, ..))
+        matches!(self.ty.kind(Interner), TyKind::Ref(hir_ty::Mutability::Mut, ..))
     }
 
     pub fn is_reference(&self) -> bool {
-        matches!(self.ty.kind(&Interner), TyKind::Ref(..))
+        matches!(self.ty.kind(Interner), TyKind::Ref(..))
     }
 
     pub fn is_usize(&self) -> bool {
-        matches!(self.ty.kind(&Interner), TyKind::Scalar(Scalar::Uint(UintTy::Usize)))
+        matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Uint(UintTy::Usize)))
     }
 
     pub fn remove_ref(&self) -> Option<Type> {
-        match &self.ty.kind(&Interner) {
+        match &self.ty.kind(Interner) {
             TyKind::Ref(.., ty) => Some(self.derived(ty.clone())),
             _ => None,
         }
@@ -2434,7 +2434,7 @@ impl Type {
         };
 
         let canonical_ty =
-            Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(&Interner) };
+            Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
         method_resolution::implements_trait(
             &canonical_ty,
             db,
@@ -2457,7 +2457,7 @@ impl Type {
         };
 
         let canonical_ty =
-            Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(&Interner) };
+            Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
         method_resolution::implements_trait_unique(
             &canonical_ty,
             db,
@@ -2474,8 +2474,8 @@ impl Type {
             .build();
 
         let goal = Canonical {
-            value: hir_ty::InEnvironment::new(&self.env.env, trait_ref.cast(&Interner)),
-            binders: CanonicalVarKinds::empty(&Interner),
+            value: hir_ty::InEnvironment::new(&self.env.env, trait_ref.cast(Interner)),
+            binders: CanonicalVarKinds::empty(Interner),
         };
 
         db.trait_solve(self.krate, goal).is_some()
@@ -2497,9 +2497,9 @@ impl Type {
                 AliasEq {
                     alias: AliasTy::Projection(projection),
                     ty: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
-                        .intern(&Interner),
+                        .intern(Interner),
                 }
-                .cast(&Interner),
+                .cast(Interner),
             ),
             [TyVariableKind::General].into_iter(),
         );
@@ -2508,9 +2508,9 @@ impl Type {
             Solution::Unique(s) => s
                 .value
                 .subst
-                .as_slice(&Interner)
+                .as_slice(Interner)
                 .first()
-                .map(|ty| self.derived(ty.assert_ty_ref(&Interner).clone())),
+                .map(|ty| self.derived(ty.assert_ty_ref(Interner).clone())),
             Solution::Ambig(_) => None,
         }
     }
@@ -2532,15 +2532,15 @@ impl Type {
     }
 
     pub fn is_closure(&self) -> bool {
-        matches!(&self.ty.kind(&Interner), TyKind::Closure { .. })
+        matches!(&self.ty.kind(Interner), TyKind::Closure { .. })
     }
 
     pub fn is_fn(&self) -> bool {
-        matches!(&self.ty.kind(&Interner), TyKind::FnDef(..) | TyKind::Function { .. })
+        matches!(&self.ty.kind(Interner), TyKind::FnDef(..) | TyKind::Function { .. })
     }
 
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
-        let adt_id = match *self.ty.kind(&Interner) {
+        let adt_id = match *self.ty.kind(Interner) {
             TyKind::Adt(hir_ty::AdtId(adt_id), ..) => adt_id,
             _ => return false,
         };
@@ -2553,14 +2553,14 @@ impl Type {
     }
 
     pub fn is_raw_ptr(&self) -> bool {
-        matches!(&self.ty.kind(&Interner), TyKind::Raw(..))
+        matches!(&self.ty.kind(Interner), TyKind::Raw(..))
     }
 
     pub fn contains_unknown(&self) -> bool {
         return go(&self.ty);
 
         fn go(ty: &Ty) -> bool {
-            match ty.kind(&Interner) {
+            match ty.kind(Interner) {
                 TyKind::Error => true,
 
                 TyKind::Adt(_, substs)
@@ -2569,7 +2569,7 @@ impl Type {
                 | TyKind::OpaqueType(_, substs)
                 | TyKind::FnDef(_, substs)
                 | TyKind::Closure(_, substs) => {
-                    substs.iter(&Interner).filter_map(|a| a.ty(&Interner)).any(go)
+                    substs.iter(Interner).filter_map(|a| a.ty(Interner)).any(go)
                 }
 
                 TyKind::Array(_ty, len) if len.is_unknown() => true,
@@ -2595,7 +2595,7 @@ impl Type {
     }
 
     pub fn fields(&self, db: &dyn HirDatabase) -> Vec<(Field, Type)> {
-        let (variant_id, substs) = match self.ty.kind(&Interner) {
+        let (variant_id, substs) = match self.ty.kind(Interner) {
             TyKind::Adt(hir_ty::AdtId(AdtId::StructId(s)), substs) => ((*s).into(), substs),
             TyKind::Adt(hir_ty::AdtId(AdtId::UnionId(u)), substs) => ((*u).into(), substs),
             _ => return Vec::new(),
@@ -2605,17 +2605,17 @@ impl Type {
             .iter()
             .map(|(local_id, ty)| {
                 let def = Field { parent: variant_id.into(), id: local_id };
-                let ty = ty.clone().substitute(&Interner, substs);
+                let ty = ty.clone().substitute(Interner, substs);
                 (def, self.derived(ty))
             })
             .collect()
     }
 
     pub fn tuple_fields(&self, _db: &dyn HirDatabase) -> Vec<Type> {
-        if let TyKind::Tuple(_, substs) = &self.ty.kind(&Interner) {
+        if let TyKind::Tuple(_, substs) = &self.ty.kind(Interner) {
             substs
-                .iter(&Interner)
-                .map(|ty| self.derived(ty.assert_ty_ref(&Interner).clone()))
+                .iter(Interner)
+                .map(|ty| self.derived(ty.assert_ty_ref(Interner).clone()))
                 .collect()
         } else {
             Vec::new()
@@ -2678,8 +2678,8 @@ impl Type {
             .strip_references()
             .as_adt()
             .into_iter()
-            .flat_map(|(_, substs)| substs.iter(&Interner))
-            .filter_map(|arg| arg.ty(&Interner).cloned())
+            .flat_map(|(_, substs)| substs.iter(Interner))
+            .filter_map(|arg| arg.ty(Interner).cloned())
             .map(move |ty| self.derived(ty))
     }
 
@@ -2819,7 +2819,7 @@ impl Type {
     pub fn env_traits<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Trait> + 'a {
         let _p = profile::span("env_traits");
         self.autoderef_(db)
-            .filter(|ty| matches!(ty.kind(&Interner), TyKind::Placeholder(_)))
+            .filter(|ty| matches!(ty.kind(Interner), TyKind::Placeholder(_)))
             .flat_map(|ty| {
                 self.env
                     .traits_in_scope_from_clauses(ty)
@@ -2857,7 +2857,7 @@ impl Type {
             substs: &Substitution,
             cb: &mut impl FnMut(Type),
         ) {
-            for ty in substs.iter(&Interner).filter_map(|a| a.ty(&Interner)) {
+            for ty in substs.iter(Interner).filter_map(|a| a.ty(Interner)) {
                 walk_type(db, &type_.derived(ty.clone()), cb);
             }
         }
@@ -2872,11 +2872,8 @@ impl Type {
                 if let WhereClause::Implemented(trait_ref) = pred.skip_binders() {
                     cb(type_.clone());
                     // skip the self type. it's likely the type we just got the bounds from
-                    for ty in trait_ref
-                        .substitution
-                        .iter(&Interner)
-                        .skip(1)
-                        .filter_map(|a| a.ty(&Interner))
+                    for ty in
+                        trait_ref.substitution.iter(Interner).skip(1).filter_map(|a| a.ty(Interner))
                     {
                         walk_type(db, &type_.derived(ty.clone()), cb);
                     }
@@ -2886,7 +2883,7 @@ impl Type {
 
         fn walk_type(db: &dyn HirDatabase, type_: &Type, cb: &mut impl FnMut(Type)) {
             let ty = type_.ty.strip_references();
-            match ty.kind(&Interner) {
+            match ty.kind(Interner) {
                 TyKind::Adt(_, substs) => {
                     cb(type_.derived(ty.clone()));
                     walk_substs(db, type_, substs, cb);

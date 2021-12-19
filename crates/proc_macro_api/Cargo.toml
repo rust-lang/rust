@@ -10,6 +10,13 @@ rust-version = "1.56"
 doctest = false
 
 [dependencies]
+object = { version = "0.28", default-features = false, features = [
+    "std",
+    "read_core",
+    "elf",
+    "macho",
+    "pe",
+] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["unbounded_depth"] }
 tracing = "0.1"
@@ -22,8 +29,3 @@ stdx = { path = "../stdx", version = "0.0.0" }
 profile = { path = "../profile", version = "0.0.0" }
 # Intentionally *not* depend on anything salsa-related
 # base_db = { path = "../base_db", version = "0.0.0" }
-
-[dependencies.object]
-version = "0.27"
-default-features = false
-features = ["std", "read_core", "elf", "macho", "pe"]
