@@ -2845,6 +2845,25 @@ pub struct OccupiedEntryRef<'a, 'b, K, Q: ?Sized, V, S, A: Allocator + Clone = G
     table: &'a mut HashMap<K, V, S, A>,
 }
 
+unsafe impl<'a, 'b, K, Q, V, S, A> Send for OccupiedEntryRef<'a, 'b, K, Q, V, S, A>
+where
+    K: Send,
+    Q: Sync + ?Sized,
+    V: Send,
+    S: Send,
+    A: Send + Allocator + Clone,
+{
+}
+unsafe impl<'a, 'b, K, Q, V, S, A> Sync for OccupiedEntryRef<'a, 'b, K, Q, V, S, A>
+where
+    K: Sync,
+    Q: Sync + ?Sized,
+    V: Sync,
+    S: Sync,
+    A: Sync + Allocator + Clone,
+{
+}
+
 impl<K: Borrow<Q>, Q: ?Sized + Debug, V: Debug, S, A: Allocator + Clone> Debug
     for OccupiedEntryRef<'_, '_, K, Q, V, S, A>
 {
