@@ -81,8 +81,11 @@ rustup +nightly component add miri
 If `rustup` says the `miri` component is unavailable, that's because not all
 nightly releases come with all tools. Check out
 [this website](https://rust-lang.github.io/rustup-components-history) to
-determine a nightly version that comes with Miri and install that using
-`rustup toolchain install nightly-YYYY-MM-DD`.
+determine a nightly version that comes with Miri and install that using `rustup
+toolchain install nightly-YYYY-MM-DD`. Either way, all of the following commands
+assume the right toolchain is pinned via `rustup override set nightly` or
+`rustup override set nightly-YYYY-MM-DD`. (Alternatively, use `cargo
++nightly`/`cargo +nightly-YYYY-MM-DD` for each of the following commands.)
 
 Now you can run your project in Miri:
 
