@@ -45,3 +45,13 @@ impl Whatever for Bar {
         self
     }
 }
+
+#[must_use]
+pub struct Foo;
+
+impl Foo {
+    // There should be no warning here! (`Foo` already implements `#[must_use]`)
+    fn foo(&self) -> Self {
+        Self
+    }
+}
