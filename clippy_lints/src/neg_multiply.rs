@@ -1,7 +1,8 @@
 use clippy_utils::consts::{self, Constant};
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use if_chain::if_chain;
-use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
+use rustc_errors::Applicability;
+use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -18,7 +19,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// x * -1
+    /// // Bad
+    /// let a = x * -1;
+    ///
+    /// // Good
+    /// let b = -x;
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NEG_MULTIPLY,
@@ -49,8 +54,21 @@ fn check_mul(cx: &LateContext<'_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
         if let ExprKind::Lit(ref l) = lit.kind;
         if consts::lit_to_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)) == Constant::Int(1);
         if cx.typeck_results().expr_ty(exp).is_integral();
+        if let ExprKind::Path(QPath::Resolved(_, var_path)) = exp.kind;
+
         then {
-            span_lint(cx, NEG_MULTIPLY, span, "negation by multiplying with `-1`");
+            let var_name = var_path.segments[0].ident.name.as_str();
+            let suggestion = format!("-{var}",var=var_name);
+            let applicability = Applicability::MachineApplicable;
+            span_lint_and_sugg(
+                    cx,
+                    NEG_MULTIPLY,
+                    span,
+                    "this `multiplication with -1` can be written more succinctly",
+                    "consider using",
+                    suggestion,
+                    applicability,
+                );
         }
     }
 }
