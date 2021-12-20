@@ -369,7 +369,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             TodoItem::Static(def_id) => {
                 //println!("static {:?}", def_id);
 
-                let section_name = tcx.codegen_fn_attrs(def_id).link_section.map(|s| s.as_str());
+                let section_name = tcx.codegen_fn_attrs(def_id).link_section;
 
                 let alloc = tcx.eval_static_initializer(def_id).unwrap();
 
@@ -388,6 +388,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
 
         if let Some(section_name) = section_name {
             let (segment_name, section_name) = if tcx.sess.target.is_like_osx {
+                let section_name = section_name.as_str();
                 if let Some(names) = section_name.split_once(',') {
                     names
                 } else {
@@ -397,7 +398,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     ));
                 }
             } else {
-                ("", &*section_name)
+                ("", section_name.as_str())
             };
             data_ctx.set_segment_section(segment_name, section_name);
         }
