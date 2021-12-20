@@ -8,10 +8,30 @@ function initSearch(searchIndex){}
 
 /**
  * @typedef {{
- *   raw: string,
- *   query: string,
- *   type: string,
- *   id: string,
+ *     isExact: boolean,
+ *     name: string,
+ *     fullPath: Array<string>,
+ *     pathWithoutLast: Array<string>,
+ *     pathLast: string,
+ *     generics: Array<QueryElement>,
+ * }}
+ */
+var QueryElement;
+
+/**
+ * @typedef {{
+ *     original: string,
+ *     val: string,
+ *     length: number,
+ *     pos: number,
+ *     typeFilter: number,
+ *     elems: Array<QueryElement>,
+ *     elemName: (string|null),
+ *     args: Array<QueryElement>,
+ *     returned: Array<QueryElement>,
+ *     foundElems: number,
+ *     id: string,
+ *     nameSplit: (string|null),
  * }}
  */
 var ParsedQuery;
