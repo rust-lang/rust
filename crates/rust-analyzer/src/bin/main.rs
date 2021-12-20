@@ -93,6 +93,18 @@ fn try_main() -> Result<()> {
 }
 
 fn setup_logging(log_file: Option<&Path>) -> Result<()> {
+    if cfg!(windows) {
+        // This is required so that windows finds our pdb that is placed right beside the exe.
+        // By default it doesn't look at the folder the exe resides in, only in the current working
+        // directory which we set to the project workspace.
+        // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/general-environment-variables
+        // https://docs.microsoft.com/en-us/windows/win32/api/dbghelp/nf-dbghelp-syminitialize
+        if let Ok(path) = env::current_exe() {
+            if let Some(path) = path.parent() {
+                env::set_var("_NT_SYMBOL_PATH", path);
+            }
+        }
+    }
     if env::var("RUST_BACKTRACE").is_err() {
         env::set_var("RUST_BACKTRACE", "short");
     }
