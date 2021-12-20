@@ -104,7 +104,7 @@ clang-cl --version
 
 If you are compiling any proc-macros, you will get this error:
 
-```
+```bash
 error: Linker plugin based LTO is not supported together with `-C prefer-dynamic` when
 targeting Windows-like targets
 ```
