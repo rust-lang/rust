@@ -125,7 +125,7 @@ export interface SsrParams {
     parseOnly: boolean;
     textDocument: lc.TextDocumentIdentifier;
     position: lc.Position;
-    selections: lc.Range[];
+    selections: readonly lc.Range[];
 }
 export const ssr = new lc.RequestType<SsrParams, lc.WorkspaceEdit, void>('experimental/ssr');
 
