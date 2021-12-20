@@ -257,8 +257,11 @@ impl<'a> Printer<'a> {
                         for param in params.clone() {
                             this.print_attrs_of(param);
                             match &this.tree[param] {
-                                Param::Normal(ty) => {
-                                    w!(this, "_: ");
+                                Param::Normal(name, ty) => {
+                                    match name {
+                                        Some(name) => w!(this, "{}: ", name),
+                                        None => w!(this, "_: "),
+                                    }
                                     this.print_type_ref(ty);
                                     wln!(this, ",");
                                 }

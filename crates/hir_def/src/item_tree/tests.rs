@@ -176,7 +176,7 @@ trait Tr: SuperTrait + 'lifetime {
             // flags = 0x2
             pub(self) fn f(
                 #[attr]  // AttrId { is_doc_comment: false, ast_index: 0 }
-                _: u8,
+                arg: u8,
                 _: (),
             ) -> ();
 
@@ -341,7 +341,7 @@ trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
             {
                 // flags = 0x2
                 pub(self) fn f<G>(
-                    _: impl Copy,
+                    arg: impl Copy,
                 ) -> impl Copy
                 where
                     G: 'a;

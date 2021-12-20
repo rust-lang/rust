@@ -718,7 +718,7 @@ impl<'a> InferenceContext<'a> {
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver)
             .with_impl_trait_mode(ImplTraitLoweringMode::Param);
         let param_tys =
-            data.params.iter().map(|type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>();
+            data.params.iter().map(|(_, type_ref)| ctx.lower_ty(type_ref)).collect::<Vec<_>>();
         for (ty, pat) in param_tys.into_iter().zip(body.params.iter()) {
             let ty = self.insert_type_vars(ty);
             let ty = self.normalize_associated_types_in(ty);

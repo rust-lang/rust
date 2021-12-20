@@ -1,21 +1,19 @@
 //! Extensions for `Builder` structure required for item rendering.
 
-use either::Either;
 use itertools::Itertools;
-use syntax::ast::{self, HasName};
 
 use crate::{context::PathKind, item::Builder, patterns::ImmediateLocation, CompletionContext};
 
 #[derive(Debug)]
 pub(super) enum Params {
-    Named(Vec<(Either<ast::SelfParam, ast::Param>, hir::Param)>),
+    Named(Option<hir::SelfParam>, Vec<hir::Param>),
     Anonymous(usize),
 }
 
 impl Params {
     pub(super) fn len(&self) -> usize {
         match self {
-            Params::Named(xs) => xs.len(),
+            Params::Named(selv, params) => params.len() + if selv.is_some() { 1 } else { 0 },
             Params::Anonymous(len) => *len,
         }
     }
@@ -77,48 +75,34 @@ impl Builder {
         } else {
             self.trigger_call_info();
             let snippet = match (ctx.config.add_call_argument_snippets, params) {
-                (true, Params::Named(params)) => {
+                (true, Params::Named(self_param, params)) => {
+                    let offset = if self_param.is_some() { 2 } else { 1 };
                     let function_params_snippet = params.iter().enumerate().format_with(
                         ", ",
-                        |(index, (param_source, param)), f| {
-                            let name;
-                            let text;
-                            let (ref_, name) = match param_source {
-                                Either::Left(self_param) => (
-                                    match self_param.kind() {
-                                        ast::SelfParamKind::Owned => "",
-                                        ast::SelfParamKind::Ref => "&",
-                                        ast::SelfParamKind::MutRef => "&mut ",
-                                    },
-                                    "self",
-                                ),
-                                Either::Right(it) => {
-                                    let n = (|| {
-                                        let mut pat = it.pat()?;
-                                        loop {
-                                            match pat {
-                                                ast::Pat::IdentPat(pat) => break pat.name(),
-                                                ast::Pat::RefPat(it) => pat = it.pat()?,
-                                                _ => return None,
-                                            }
-                                        }
-                                    })();
-                                    match n {
-                                        Some(n) => {
-                                            name = n;
-                                            text = name.text();
-                                            let text = text.as_str().trim_start_matches('_');
-                                            let ref_ = ref_of_param(ctx, text, param.ty());
-                                            (ref_, text)
-                                        }
-                                        None => ("", "_"),
-                                    }
-                                }
-                            };
-                            f(&format_args!("${{{}:{}{}}}", index + 1, ref_, name))
+                        |(index, param), f| match param.name(ctx.db) {
+                            Some(n) => {
+                                let smol_str = n.to_smol_str();
+                                let text = smol_str.as_str().trim_start_matches('_');
+                                let ref_ = ref_of_param(ctx, text, param.ty());
+                                f(&format_args!("${{{}:{}{}}}", index + offset, ref_, text))
+                            }
+                            None => f(&format_args!("${{{}:_}}", index + offset,)),
                         },
                     );
-                    format!("{}({})$0", name, function_params_snippet)
+                    match self_param {
+                        Some(self_param) => {
+                            format!(
+                                "{}(${{1:{}}}{}{})$0",
+                                name,
+                                self_param.display(ctx.db),
+                                if params.is_empty() { "" } else { ", " },
+                                function_params_snippet
+                            )
+                        }
+                        None => {
+                            format!("{}({})$0", name, function_params_snippet)
+                        }
+                    }
                 }
                 _ => {
                     cov_mark::hit!(suppress_arg_snippets);

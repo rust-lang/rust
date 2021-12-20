@@ -12,10 +12,7 @@ use hir_ty::{
     },
     Interner, TraitRefExt, WhereClause,
 };
-use syntax::{
-    ast::{self, HasName},
-    SmolStr,
-};
+use syntax::SmolStr;
 
 use crate::{
     Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasCrate, HasVisibility,
@@ -69,7 +66,7 @@ impl HirDisplay for Function {
         };
 
         let mut first = true;
-        for (param, type_ref) in self.assoc_fn_params(f.db).into_iter().zip(&data.params) {
+        for (name, type_ref) in &data.params {
             if !first {
                 write!(f, ", ")?;
             } else {
@@ -79,11 +76,9 @@ impl HirDisplay for Function {
                     continue;
                 }
             }
-            match param.pattern_source(f.db) {
-                Some(ast::Pat::IdentPat(p)) if p.name().is_some() => {
-                    write!(f, "{}: ", p.name().unwrap())?
-                }
-                _ => write!(f, "_: ")?,
+            match name {
+                Some(name) => write!(f, "{}: ", name)?,
+                None => write!(f, "_: ")?,
             }
             // FIXME: Use resolved `param.ty` or raw `type_ref`?
             // The former will ignore lifetime arguments currently.
