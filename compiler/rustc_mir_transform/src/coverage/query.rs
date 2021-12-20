@@ -9,7 +9,6 @@ use rustc_span::def_id::DefId;
 /// A `query` provider for retrieving coverage information injected into MIR.
 pub(crate) fn provide(providers: &mut Providers) {
     providers.coverageinfo = |tcx, def_id| coverageinfo(tcx, def_id);
-    providers.covered_file_name = |tcx, def_id| covered_file_name(tcx, def_id);
     providers.covered_code_regions = |tcx, def_id| covered_code_regions(tcx, def_id);
 }
 
@@ -135,25 +134,6 @@ fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) ->
     coverage_visitor.visit_body(mir_body);
 
     coverage_visitor.info
-}
-
-fn covered_file_name(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
-    if tcx.is_mir_available(def_id) {
-        let body = mir_body(tcx, def_id);
-        for bb_data in body.basic_blocks().iter() {
-            for statement in bb_data.statements.iter() {
-                if let StatementKind::Coverage(box ref coverage) = statement.kind {
-                    if let Some(code_region) = coverage.code_region.as_ref() {
-                        if is_inlined(body, statement) {
-                            continue;
-                        }
-                        return Some(code_region.file_name);
-                    }
-                }
-            }
-        }
-    }
-    return None;
 }
 
 fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx CodeRegion> {

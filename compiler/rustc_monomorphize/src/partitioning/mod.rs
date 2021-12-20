@@ -201,6 +201,24 @@ pub fn partition<'tcx>(
         partitioner.internalize_symbols(cx, &mut post_inlining);
     }
 
+    let instrument_dead_code =
+        tcx.sess.instrument_coverage() && !tcx.sess.instrument_coverage_except_unused_functions();
+
+    if instrument_dead_code {
+        // Find the smallest CGU that has exported symbols and put the dead
+        // function stubs in that CGU. We look for exported symbols to increase
+        // the likelyhood the linker won't throw away the dead functions.
+        let mut cgus_with_exported_symbols: Vec<_> = post_inlining
+            .codegen_units
+            .iter_mut()
+            .filter(|cgu| cgu.items().iter().any(|(_, (linkage, _))| *linkage == Linkage::External))
+            .collect();
+        cgus_with_exported_symbols.sort_by_key(|cgu| cgu.size_estimate());
+
+        let dead_code_cgu = cgus_with_exported_symbols.last_mut().unwrap();
+        dead_code_cgu.make_code_coverage_dead_code_cgu();
+    }
+
     // Finally, sort by codegen unit name, so that we get deterministic results.
     let PostInliningPartitioning {
         codegen_units: mut result,
