@@ -50,9 +50,6 @@ details.
   ultimate in flexibility but quite annoying to write.
 - `rustdoc` – tests for rustdoc, making sure that the generated files
   contain the expected documentation.
-- `rustfix` – tests for applying [diagnostic
-  suggestions](../diagnostics.md#suggestions) with the
-  [`rustfix`](https://github.com/rust-lang/rustfix/) crate
 - `*-fulldeps` – same as above, but indicates that the test depends
   on things other than `std` (and hence those things must be built)
 
