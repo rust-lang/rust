@@ -1130,6 +1130,7 @@ to_def_impls![
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
     (crate::LifetimeParam, ast::LifetimeParam, lifetime_param_to_def),
     (crate::ConstParam, ast::ConstParam, const_param_to_def),
+    (crate::GenericParam, ast::GenericParam, generic_param_to_def),
     (crate::MacroDef, ast::Macro, macro_to_def),
     (crate::Local, ast::IdentPat, bind_pat_to_def),
     (crate::Local, ast::SelfParam, self_param_to_def),
