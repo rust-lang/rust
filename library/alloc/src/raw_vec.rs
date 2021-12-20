@@ -108,7 +108,7 @@ impl<T, A: Allocator> RawVec<T, A> {
     //   to round up a request of less than 8 bytes to at least 8 bytes.
     // - 4 if elements are moderate-sized (<= 1 KiB).
     // - 1 otherwise, to avoid wasting too much space for very short Vecs.
-    const MIN_NON_ZERO_CAP: usize = if mem::size_of::<T>() == 1 {
+    pub(crate) const MIN_NON_ZERO_CAP: usize = if mem::size_of::<T>() == 1 {
         8
     } else if mem::size_of::<T>() <= 1024 {
         4
