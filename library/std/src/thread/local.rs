@@ -630,7 +630,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     where
         F: FnOnce(&T) -> R,
     {
-        self.with(|cell| f(&mut cell.borrow()))
+        self.with(|cell| f(&cell.borrow()))
     }
 
     /// Acquires a mutable reference to the contained value.
@@ -703,7 +703,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
                 // The cell was already initialized, so `value` wasn't used to
                 // initialize it. So we overwrite the current value with the
                 // new one instead.
-                cell.replace(init.into_inner());
+                *cell.borrow_mut() = value.into_inner();
             }
         });
     }
