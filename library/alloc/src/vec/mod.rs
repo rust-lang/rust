@@ -1641,7 +1641,7 @@ impl<T, A: Allocator> Vec<T, A> {
                     let ptr = self.vec.as_mut_ptr();
                     let len = self.vec.len();
 
-                    /* How many items were left when `same_bucket` paniced.
+                    /* How many items were left when `same_bucket` panicked.
                      * Basically vec[read..].len() */
                     let items_left = len.wrapping_sub(self.read);
 
