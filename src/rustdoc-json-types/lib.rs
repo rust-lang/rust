@@ -69,6 +69,10 @@ pub struct Item {
     /// so this field is needed to differentiate.
     pub visibility: Visibility,
     /// The full markdown docstring of this item.
+    ///
+    /// This field has already been pre-parsed, including combining lines and de-indenting
+    /// whitespace. Each line is delimited by a newline, but the docs will not end with a trailing
+    /// newline (unless added explicitly by the user with `#[doc = "\n"]`).
     pub docs: String,
     /// This mapping resolves [intra-doc links](https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md) from the docstring to their IDs
     pub links: HashMap<String, Id>,

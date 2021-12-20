@@ -2401,8 +2401,6 @@ impl<'test> TestCx<'test> {
         }
 
         let root = self.config.find_rust_src_root().unwrap();
-        let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
-        json_out.set_extension("json");
         let res = self.cmd2procres(
             Command::new(self.config.jsondocck_path.as_ref().unwrap())
                 .arg("--doc-dir")
@@ -2415,7 +2413,9 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("jsondocck failed!", &res)
         }
 
-        let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
+        let crate_name =
+            self.testpaths.file.file_stem().unwrap().to_str().unwrap().replace('-', "_");
+        let mut json_out = out_dir.join(crate_name);
         json_out.set_extension("json");
         let res = self.cmd2procres(
             Command::new(&self.config.docck_python)
