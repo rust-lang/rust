@@ -3,8 +3,8 @@ use rustc_ast::visit::Visitor;
 use rustc_span::Symbol;
 
 use crate::attr::MetaVisitor;
-use crate::syntux::parser::Parser;
-use crate::syntux::session::ParseSess;
+use crate::parse::parser::Parser;
+use crate::parse::session::ParseSess;
 
 pub(crate) struct ModItem {
     pub(crate) item: ast::Item,

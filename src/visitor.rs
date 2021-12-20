@@ -16,13 +16,13 @@ use crate::items::{
 };
 use crate::macros::{macro_style, rewrite_macro, rewrite_macro_def, MacroPosition};
 use crate::modules::Module;
+use crate::parse::session::ParseSess;
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::skip::{is_skip_attr, SkipContext};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::stmt::Stmt;
-use crate::syntux::session::ParseSess;
 use crate::utils::{
     self, contains_skip, count_newlines, depr_skip_annotation, format_unsafety, inner_attributes,
     last_line_width, mk_sp, ptr_vec_to_ref_vec, rewrite_ident, starts_with_newline, stmt_expr,

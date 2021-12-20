@@ -11,7 +11,7 @@ use rustc_parse::{
 use rustc_span::{sym, symbol::kw, Span};
 
 use crate::attr::first_attr_value_str_by_name;
-use crate::syntux::session::ParseSess;
+use crate::parse::session::ParseSess;
 use crate::Input;
 
 pub(crate) type DirectoryOwnership = rustc_expand::module::DirOwnership;
