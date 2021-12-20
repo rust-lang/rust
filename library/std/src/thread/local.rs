@@ -443,6 +443,18 @@ impl<T: 'static> LocalKey<T> {
         }
     }
 
+    /// Acquires a reference to the value in this TLS key, initializing it with
+    /// `init` if it wasn't already initialized on this thread.
+    ///
+    /// If `init` was used to initialize the thread local variable, `None` is
+    /// passed as the first argument to `f`. If it was already initialized,
+    /// `Some(init)` is passed to `f`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the key currently has its destructor
+    /// running, and it **may** panic if the destructor has previously been run
+    /// for this thread.
     fn initialize_with<F, R>(&'static self, init: T, f: F) -> R
     where
         F: FnOnce(Option<T>, &T) -> R,
@@ -488,9 +500,12 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// ```
     #[unstable(feature = "local_key_cell_methods", issue = "92122")]
     pub fn set(&'static self, value: T) {
-        self.initialize_with(Cell::new(value), |init, cell| {
-            if let Some(init) = init {
-                cell.set(init.into_inner());
+        self.initialize_with(Cell::new(value), |value, cell| {
+            if let Some(value) = value {
+                // The cell was already initialized, so `value` wasn't used to
+                // initialize it. So we overwrite the current value with the
+                // new one instead.
+                cell.set(value.into_inner());
             }
         });
     }
@@ -593,7 +608,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is currently borrowed.
+    /// Panics if the value is currently mutably borrowed.
     ///
     /// Panics if the key currently has its destructor running,
     /// and it **may** panic if the destructor has previously been run for this thread.
@@ -660,6 +675,8 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///
     /// # Panics
     ///
+    /// Panics if the value is currently borrowed.
+    ///
     /// Panics if the key currently has its destructor running,
     /// and it **may** panic if the destructor has previously been run for this thread.
     ///
@@ -681,8 +698,11 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// ```
     #[unstable(feature = "local_key_cell_methods", issue = "92122")]
     pub fn set(&'static self, value: T) {
-        self.initialize_with(RefCell::new(value), |init, cell| {
-            if let Some(init) = init {
+        self.initialize_with(RefCell::new(value), |value, cell| {
+            if let Some(value) = value {
+                // The cell was already initialized, so `value` wasn't used to
+                // initialize it. So we overwrite the current value with the
+                // new one instead.
                 cell.replace(init.into_inner());
             }
         });
