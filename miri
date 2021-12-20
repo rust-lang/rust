@@ -39,12 +39,8 @@ EOF
 TARGET=$(rustc --version --verbose | grep "^host:" | cut -d ' ' -f 2)
 SYSROOT=$(rustc --print sysroot)
 LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
-if readlink -e . &>/dev/null; then
-    # This platform supports `readlink -e`.
-    MIRIDIR=$(dirname "$(readlink -e "$0")")
-else
-    MIRIDIR=$(dirname "$0")
-fi
+# macOS does not have a useful readlink/realpath so we have to use Python instead...
+MIRIDIR=$(dirname "$(python -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$0")")
 if ! test -d "$LIBDIR"; then
     echo "Something went wrong determining the library dir."
     echo "I got $LIBDIR but that does not exist."
