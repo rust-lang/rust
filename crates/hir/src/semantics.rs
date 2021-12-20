@@ -528,7 +528,7 @@ impl<'db> SemanticsImpl<'db> {
         if first == last {
             self.descend_into_macros_impl(
                 first,
-                |InFile { value, .. }| {
+                &mut |InFile { value, .. }| {
                     if let Some(node) = value.ancestors().find_map(N::cast) {
                         res.push(node)
                     }
@@ -540,7 +540,7 @@ impl<'db> SemanticsImpl<'db> {
             let mut scratch: SmallVec<[_; 1]> = smallvec![];
             self.descend_into_macros_impl(
                 first,
-                |token| {
+                &mut |token| {
                     scratch.push(token);
                 },
                 false,
@@ -549,7 +549,7 @@ impl<'db> SemanticsImpl<'db> {
             let mut scratch = scratch.into_iter();
             self.descend_into_macros_impl(
                 last,
-                |InFile { value: last, file_id: last_fid }| {
+                &mut |InFile { value: last, file_id: last_fid }| {
                     if let Some(InFile { value: first, file_id: first_fid }) = scratch.next() {
                         if first_fid == last_fid {
                             if let Some(p) = first.parent() {
@@ -574,20 +574,20 @@ impl<'db> SemanticsImpl<'db> {
 
     fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         let mut res = smallvec![];
-        self.descend_into_macros_impl(token, |InFile { value, .. }| res.push(value), false);
+        self.descend_into_macros_impl(token, &mut |InFile { value, .. }| res.push(value), false);
         res
     }
 
     fn descend_into_macros_single(&self, token: SyntaxToken) -> SyntaxToken {
         let mut res = token.clone();
-        self.descend_into_macros_impl(token, |InFile { value, .. }| res = value, true);
+        self.descend_into_macros_impl(token, &mut |InFile { value, .. }| res = value, true);
         res
     }
 
     fn descend_into_macros_impl(
         &self,
         token: SyntaxToken,
-        mut f: impl FnMut(InFile<SyntaxToken>),
+        f: &mut dyn FnMut(InFile<SyntaxToken>),
         single: bool,
     ) {
         let _p = profile::span("descend_into_macros");
@@ -595,7 +595,7 @@ impl<'db> SemanticsImpl<'db> {
             Some(it) => it,
             None => return,
         };
-        let sa = self.analyze(&parent);
+        let sa = self.analyze_no_infer(&parent);
         let mut stack: SmallVec<[_; 4]> = smallvec![InFile::new(sa.file_id, token)];
         let mut cache = self.expansion_info_cache.borrow_mut();
         let mut mcache = self.macro_call_cache.borrow_mut();
@@ -927,14 +927,23 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn analyze(&self, node: &SyntaxNode) -> SourceAnalyzer {
-        self.analyze_impl(node, None)
+        self.analyze_impl(node, None, true)
     }
 
     fn analyze_with_offset(&self, node: &SyntaxNode, offset: TextSize) -> SourceAnalyzer {
-        self.analyze_impl(node, Some(offset))
+        self.analyze_impl(node, Some(offset), true)
     }
 
-    fn analyze_impl(&self, node: &SyntaxNode, offset: Option<TextSize>) -> SourceAnalyzer {
+    fn analyze_no_infer(&self, node: &SyntaxNode) -> SourceAnalyzer {
+        self.analyze_impl(node, None, false)
+    }
+
+    fn analyze_impl(
+        &self,
+        node: &SyntaxNode,
+        offset: Option<TextSize>,
+        infer_body: bool,
+    ) -> SourceAnalyzer {
         let _p = profile::span("Semantics::analyze_impl");
         let node = self.find_file(node.clone());
         let node = node.as_ref();
@@ -946,7 +955,11 @@ impl<'db> SemanticsImpl<'db> {
 
         let resolver = match container {
             ChildContainer::DefWithBodyId(def) => {
-                return SourceAnalyzer::new_for_body(self.db, def, node, offset)
+                return if infer_body {
+                    SourceAnalyzer::new_for_body(self.db, def, node, offset)
+                } else {
+                    SourceAnalyzer::new_for_body_no_infer(self.db, def, node, offset)
+                }
             }
             ChildContainer::TraitId(it) => it.resolver(self.db.upcast()),
             ChildContainer::ImplId(it) => it.resolver(self.db.upcast()),
