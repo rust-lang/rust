@@ -112,8 +112,12 @@ pub(crate) fn generate_getter_impl(
             }
 
             let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
-            let (ty, body) = if mutable {
-                (format!("&mut {}", field_ty), format!("&mut self.{}", field_name))
+            let (ty, body, description) = if mutable {
+                (
+                    format!("&mut {}", field_ty),
+                    format!("&mut self.{}", field_name),
+                    "a mutable reference to ",
+                )
             } else {
                 let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(field_ty.syntax()).krate());
                 ctx.sema
@@ -124,18 +128,25 @@ pub(crate) fn generate_getter_impl(
                         (
                             conversion.convert_type(ctx.db()),
                             conversion.getter(field_name.to_string()),
+                            if conversion.is_copy() { "" } else { "a reference to " },
                         )
                     })
-                    .unwrap_or_else(|| (format!("&{}", field_ty), format!("&self.{}", field_name)))
+                    .unwrap_or_else(|| {
+                        (
+                            format!("&{}", field_ty),
+                            format!("&self.{}", field_name),
+                            "a reference to ",
+                        )
+                    })
             };
 
             format_to!(
                 buf,
-                "    /// Get a {}reference to the {}'s {}.
+                "    /// Get {}the {}'s {}.
     {}fn {}(&{}self) -> {} {{
         {}
     }}",
-                mutable.then(|| "mutable ").unwrap_or_default(),
+                description,
                 to_lower_snake_case(&strukt_name.to_string()).replace('_', " "),
                 fn_name.trim_end_matches("_mut").replace('_', " "),
                 vis,
@@ -349,7 +360,7 @@ struct S { foo: $0bool }
 struct S { foo: bool }
 
 impl S {
-    /// Get a reference to the s's foo.
+    /// Get the s's foo.
     fn $0foo(&self) -> bool {
         self.foo
     }

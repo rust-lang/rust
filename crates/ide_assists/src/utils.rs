@@ -571,6 +571,10 @@ impl ReferenceConversion {
             | ReferenceConversionType::Result => format!("self.{}.as_ref()", field_name),
         }
     }
+
+    pub(crate) fn is_copy(&self) -> bool {
+        matches!(self.conversion, ReferenceConversionType::Copy)
+    }
 }
 
 // FIXME: It should return a new hir::Type, but currently constructing new types is too cumbersome
