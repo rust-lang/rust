@@ -5,25 +5,26 @@
 //!
 //! It is modeled on the rustc module `rustc_mir_build::thir::pattern`.
 
-mod deconstruct_pat;
 mod pat_util;
 
+pub(crate) mod deconstruct_pat;
 pub(crate) mod usefulness;
 
-use hir_def::{body::Body, EnumVariantId, LocalFieldId, VariantId};
-use la_arena::Idx;
+use hir_def::{body::Body, expr::PatId, EnumVariantId, LocalFieldId, VariantId};
+use stdx::never;
 
-use crate::{db::HirDatabase, InferenceResult, Interner, Substitution, Ty, TyKind};
+use crate::{
+    db::HirDatabase, infer::BindingMode, InferenceResult, Interner, Substitution, Ty, TyKind,
+};
 
 use self::pat_util::EnumerateAndAdjustIterator;
 
 pub(crate) use self::usefulness::MatchArm;
 
-pub(crate) type PatId = Idx<Pat>;
-
 #[derive(Clone, Debug)]
 pub(crate) enum PatternError {
     Unimplemented,
+    UnexpectedType,
     UnresolvedVariant,
     MissingField,
     ExtraFields,
@@ -39,12 +40,6 @@ pub(crate) struct FieldPat {
 pub(crate) struct Pat {
     pub(crate) ty: Ty,
     pub(crate) kind: Box<PatKind>,
-}
-
-impl Pat {
-    pub(crate) fn wildcard_from_ty(ty: Ty) -> Self {
-        Pat { ty, kind: Box::new(PatKind::Wild) }
-    }
 }
 
 /// Close relative to `rustc_mir_build::thir::pattern::PatKind`
@@ -100,7 +95,7 @@ impl<'a> PatCtxt<'a> {
         Self { db, infer, body, errors: Vec::new() }
     }
 
-    pub(crate) fn lower_pattern(&mut self, pat: hir_def::expr::PatId) -> Pat {
+    pub(crate) fn lower_pattern(&mut self, pat: PatId) -> Pat {
         // XXX(iDawer): Collecting pattern adjustments feels imprecise to me.
         // When lowering of & and box patterns are implemented this should be tested
         // in a manner of `match_ergonomics_issue_9095` test.
@@ -116,7 +111,7 @@ impl<'a> PatCtxt<'a> {
         )
     }
 
-    fn lower_pattern_unadjusted(&mut self, pat: hir_def::expr::PatId) -> Pat {
+    fn lower_pattern_unadjusted(&mut self, pat: PatId) -> Pat {
         let mut ty = &self.infer[pat];
         let variant = self.infer.variant_resolution_for_pat(pat);
 
@@ -138,9 +133,16 @@ impl<'a> PatCtxt<'a> {
                 PatKind::Leaf { subpatterns }
             }
 
-            hir_def::expr::Pat::Bind { subpat, .. } => {
-                if let TyKind::Ref(.., rty) = ty.kind(Interner) {
-                    ty = rty;
+            hir_def::expr::Pat::Bind { ref name, subpat, .. } => {
+                let bm = self.infer.pat_binding_modes[&pat];
+                match (bm, ty.kind(Interner)) {
+                    (BindingMode::Ref(_), TyKind::Ref(.., rty)) => ty = rty,
+                    (BindingMode::Ref(_), _) => {
+                        never!("`ref {}` has wrong type {:?}", name, ty);
+                        self.errors.push(PatternError::UnexpectedType);
+                        return Pat { ty: ty.clone(), kind: PatKind::Wild.into() };
+                    }
+                    _ => (),
                 }
                 PatKind::Binding { subpattern: self.lower_opt_pattern(subpat) }
             }
@@ -189,7 +191,7 @@ impl<'a> PatCtxt<'a> {
 
     fn lower_tuple_subpats(
         &mut self,
-        pats: &[hir_def::expr::PatId],
+        pats: &[PatId],
         expected_len: usize,
         ellipsis: Option<usize>,
     ) -> Vec<FieldPat> {
@@ -207,17 +209,17 @@ impl<'a> PatCtxt<'a> {
             .collect()
     }
 
-    fn lower_patterns(&mut self, pats: &[hir_def::expr::PatId]) -> Vec<Pat> {
+    fn lower_patterns(&mut self, pats: &[PatId]) -> Vec<Pat> {
         pats.iter().map(|&p| self.lower_pattern(p)).collect()
     }
 
-    fn lower_opt_pattern(&mut self, pat: Option<hir_def::expr::PatId>) -> Option<Pat> {
+    fn lower_opt_pattern(&mut self, pat: Option<PatId>) -> Option<Pat> {
         pat.map(|p| self.lower_pattern(p))
     }
 
     fn lower_variant_or_leaf(
         &mut self,
-        pat: hir_def::expr::PatId,
+        pat: PatId,
         ty: &Ty,
         subpatterns: Vec<FieldPat>,
     ) -> PatKind {
@@ -244,7 +246,7 @@ impl<'a> PatCtxt<'a> {
         kind
     }
 
-    fn lower_path(&mut self, pat: hir_def::expr::PatId, _path: &hir_def::path::Path) -> Pat {
+    fn lower_path(&mut self, pat: PatId, _path: &hir_def::path::Path) -> Pat {
         let ty = &self.infer[pat];
 
         let pat_from_kind = |kind| Pat { ty: ty.clone(), kind: Box::new(kind) };

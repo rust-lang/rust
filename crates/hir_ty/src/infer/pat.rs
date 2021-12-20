@@ -204,6 +204,8 @@ impl<'a> InferenceContext<'a> {
                 } else {
                     BindingMode::convert(*mode)
                 };
+                self.result.pat_binding_modes.insert(pat, mode);
+
                 let inner_ty = match subpat {
                     Some(subpat) => self.infer_pat(*subpat, &expected, default_bm),
                     None => expected,

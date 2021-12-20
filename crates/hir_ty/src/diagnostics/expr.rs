@@ -2,7 +2,7 @@
 //! through the body using inference results: mismatched arg counts, missing
 //! fields, etc.
 
-use std::{cell::RefCell, sync::Arc};
+use std::sync::Arc;
 
 use hir_def::{
     expr::Statement, path::path, resolver::HasResolver, type_ref::Mutability, AssocItemId,
@@ -11,12 +11,14 @@ use hir_def::{
 use hir_expand::name;
 use itertools::Either;
 use rustc_hash::FxHashSet;
+use typed_arena::Arena;
 
 use crate::{
     db::HirDatabase,
     diagnostics::match_check::{
         self,
-        usefulness::{compute_match_usefulness, expand_pattern, MatchCheckCtx, PatternArena},
+        deconstruct_pat::DeconstructedPat,
+        usefulness::{compute_match_usefulness, MatchCheckCtx},
     },
     AdtId, InferenceResult, Interner, Ty, TyExt, TyKind,
 };
@@ -275,15 +277,20 @@ impl ExprValidator {
     ) {
         let body = db.body(self.owner);
 
-        let match_expr_ty = if infer.type_of_expr[match_expr].is_unknown() {
+        let match_expr_ty = &infer[match_expr];
+        if match_expr_ty.is_unknown() {
             return;
-        } else {
-            &infer.type_of_expr[match_expr]
+        }
+
+        let pattern_arena = Arena::new();
+        let cx = MatchCheckCtx {
+            module: self.owner.module(db.upcast()),
+            body: self.owner,
+            db,
+            pattern_arena: &pattern_arena,
         };
 
-        let pattern_arena = RefCell::new(PatternArena::new());
-
-        let mut m_arms = Vec::new();
+        let mut m_arms = Vec::with_capacity(arms.len());
         let mut has_lowering_errors = false;
         for arm in arms {
             if let Some(pat_ty) = infer.type_of_pat.get(arm.pat) {
@@ -308,13 +315,7 @@ impl ExprValidator {
                     // check the usefulness of each pattern as we added it
                     // to the matrix here.
                     let m_arm = match_check::MatchArm {
-                        pat: self.lower_pattern(
-                            arm.pat,
-                            &mut pattern_arena.borrow_mut(),
-                            db,
-                            &body,
-                            &mut has_lowering_errors,
-                        ),
+                        pat: self.lower_pattern(&cx, arm.pat, db, &body, &mut has_lowering_errors),
                         has_guard: arm.guard.is_some(),
                     };
                     m_arms.push(m_arm);
@@ -332,17 +333,10 @@ impl ExprValidator {
             return;
         }
 
-        let cx = MatchCheckCtx {
-            module: self.owner.module(db.upcast()),
-            match_expr,
-            infer: &infer,
-            db,
-            pattern_arena: &pattern_arena,
-        };
-        let report = compute_match_usefulness(&cx, &m_arms);
+        let report = compute_match_usefulness(&cx, &m_arms, match_expr_ty);
 
         // FIXME Report unreacheble arms
-        // https://github.com/rust-lang/rust/blob/25c15cdbe/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L200-L201
+        // https://github.com/rust-lang/rust/blob/f31622a50/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L200
 
         let witnesses = report.non_exhaustiveness_witnesses;
         // FIXME Report witnesses
@@ -352,17 +346,17 @@ impl ExprValidator {
         }
     }
 
-    fn lower_pattern(
+    fn lower_pattern<'p>(
         &self,
+        cx: &MatchCheckCtx<'_, 'p>,
         pat: PatId,
-        pattern_arena: &mut PatternArena,
         db: &dyn HirDatabase,
         body: &Body,
         have_errors: &mut bool,
-    ) -> match_check::PatId {
+    ) -> &'p DeconstructedPat<'p> {
         let mut patcx = match_check::PatCtxt::new(db, &self.infer, body);
         let pattern = patcx.lower_pattern(pat);
-        let pattern = pattern_arena.alloc(expand_pattern(pattern));
+        let pattern = cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, &pattern));
         if !patcx.errors.is_empty() {
             *have_errors = true;
         }

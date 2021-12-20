@@ -821,7 +821,6 @@ fn main() {
 
     #[test]
     fn pattern_type_is_of_substitution() {
-        cov_mark::check!(match_check_wildcard_expanded_to_substitutions);
         check_diagnostics_no_bails(
             r#"
 struct Foo<T>(T);
@@ -861,6 +860,43 @@ fn main() {
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn normalize_field_ty() {
+        check_diagnostics_no_bails(
+            r"
+trait Trait { type Projection; }
+enum E {Foo, Bar}
+struct A;
+impl Trait for A { type Projection = E; }
+struct Next<T: Trait>(T::Projection);
+static __: () = {
+    let n: Next<A> = Next(E::Foo);
+    match n { Next(E::Foo) => {} }
+    //    ^ error: missing match arm
+    match n { Next(E::Foo | E::Bar) => {} }
+    match n { Next(E::Foo | _     ) => {} }
+    match n { Next(_      | E::Bar) => {} }
+    match n {      _ | Next(E::Bar) => {} }
+    match &n { Next(E::Foo | E::Bar) => {} }
+    match &n {      _ | Next(E::Bar) => {} }
+};",
+        );
+    }
+
+    #[test]
+    fn binding_mode_by_ref() {
+        check_diagnostics_no_bails(
+            r"
+enum E{ A, B }
+fn foo() {
+    match &E::A {
+        E::A => {}
+        x => {}
+    }
+}",
         );
     }
 

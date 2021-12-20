@@ -42,6 +42,7 @@
 //! wildcards, see [`SplitWildcard`]; for integer ranges, see [`SplitIntRange`].
 
 use std::{
+    cell::Cell,
     cmp::{max, min},
     iter::once,
     ops::RangeInclusive,
@@ -52,14 +53,31 @@ use smallvec::{smallvec, SmallVec};
 use stdx::never;
 use syntax::SmolStr;
 
-use crate::{AdtId, Interner, Scalar, Ty, TyExt, TyKind};
+use crate::{infer::normalize, AdtId, Interner, Scalar, Ty, TyExt, TyKind};
 
 use super::{
-    usefulness::{MatchCheckCtx, PatCtxt},
-    FieldPat, Pat, PatId, PatKind,
+    usefulness::{helper::Captures, MatchCheckCtx, PatCtxt},
+    Pat, PatKind,
 };
 
 use self::Constructor::*;
+
+/// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
+fn expand_or_pat(pat: &Pat) -> Vec<&Pat> {
+    fn expand<'p>(pat: &'p Pat, vec: &mut Vec<&'p Pat>) {
+        if let PatKind::Or { pats } = pat.kind.as_ref() {
+            for pat in pats {
+                expand(pat, vec);
+            }
+        } else {
+            vec.push(pat)
+        }
+    }
+
+    let mut pats = Vec::new();
+    expand(pat, &mut pats);
+    pats
+}
 
 /// [Constructor] uses this in umimplemented variants.
 /// It allows porting match expressions from upstream algorithm without losing semantics.
@@ -241,6 +259,10 @@ pub(super) struct Slice {
 }
 
 impl Slice {
+    fn arity(self) -> usize {
+        unimplemented!()
+    }
+
     /// See `Constructor::is_covered_by`
     fn is_covered_by(self, _other: Self) -> bool {
         unimplemented!() // never called as Slice contains Void
@@ -278,15 +300,22 @@ pub(super) enum Constructor {
     /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
     NonExhaustive,
     /// Stands for constructors that are not seen in the matrix, as explained in the documentation
-    /// for [`SplitWildcard`].
-    Missing,
+    /// for [`SplitWildcard`]. The carried `bool` is used for the `non_exhaustive_omitted_patterns`
+    /// lint.
+    Missing { nonexhaustive_enum_missing_real_variants: bool },
     /// Wildcard pattern.
     Wildcard,
+    /// Or-pattern.
+    Or,
 }
 
 impl Constructor {
     pub(super) fn is_wildcard(&self) -> bool {
         matches!(self, Wildcard)
+    }
+
+    pub(super) fn is_non_exhaustive(&self) -> bool {
+        matches!(self, NonExhaustive)
     }
 
     fn as_int_range(&self) -> Option<&IntRange> {
@@ -301,6 +330,14 @@ impl Constructor {
             Slice(slice) => Some(*slice),
             _ => None,
         }
+    }
+
+    pub(super) fn is_unstable_variant(&self, _pcx: PatCtxt<'_, '_>) -> bool {
+        false //FIXME: implement this
+    }
+
+    pub(super) fn is_doc_hidden_variant(&self, _pcx: PatCtxt<'_, '_>) -> bool {
+        false //FIXME: implement this
     }
 
     fn variant_id_for_adt(&self, adt: hir_def::AdtId) -> VariantId {
@@ -318,16 +355,39 @@ impl Constructor {
         }
     }
 
-    /// Determines the constructor that the given pattern can be specialized to.
-    pub(super) fn from_pat(cx: &MatchCheckCtx<'_>, pat: PatId) -> Self {
-        match cx.pattern_arena.borrow()[pat].kind.as_ref() {
-            PatKind::Binding { .. } | PatKind::Wild => Wildcard,
-            PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
-            &PatKind::Variant { enum_variant, .. } => Variant(enum_variant),
-            &PatKind::LiteralBool { value } => IntRange(IntRange::from_bool(value)),
-            PatKind::Or { .. } => {
-                never!("Or-pattern should have been expanded earlier on.");
-                Wildcard
+    /// The number of fields for this constructor. This must be kept in sync with
+    /// `Fields::wildcards`.
+    pub(super) fn arity(&self, pcx: PatCtxt<'_, '_>) -> usize {
+        match self {
+            Single | Variant(_) => match *pcx.ty.kind(Interner) {
+                TyKind::Tuple(arity, ..) => arity,
+                TyKind::Ref(..) => 1,
+                TyKind::Adt(adt, ..) => {
+                    if adt_is_box(adt.0, pcx.cx) {
+                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
+                        // patterns. If we're here we can assume this is a box pattern.
+                        1
+                    } else {
+                        let variant = self.variant_id_for_adt(adt.0);
+                        Fields::list_variant_nonhidden_fields(pcx.cx, pcx.ty, variant).count()
+                    }
+                }
+                _ => {
+                    never!("Unexpected type for `Single` constructor: {:?}", pcx.ty);
+                    0
+                }
+            },
+            Slice(slice) => slice.arity(),
+            Str(..)
+            | FloatRange(..)
+            | IntRange(..)
+            | NonExhaustive
+            | Opaque
+            | Missing { .. }
+            | Wildcard => 0,
+            Or => {
+                never!("The `Or` constructor doesn't have a fixed arity");
+                0
             }
         }
     }
@@ -347,7 +407,7 @@ impl Constructor {
     /// matrix, unless all of them are.
     pub(super) fn split<'a>(
         &self,
-        pcx: PatCtxt<'_>,
+        pcx: PatCtxt<'_, '_>,
         ctors: impl Iterator<Item = &'a Constructor> + Clone,
     ) -> SmallVec<[Self; 1]> {
         match self {
@@ -375,13 +435,13 @@ impl Constructor {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(super) fn is_covered_by(&self, _pcx: PatCtxt<'_>, other: &Self) -> bool {
+    pub(super) fn is_covered_by(&self, _pcx: PatCtxt<'_, '_>, other: &Self) -> bool {
         // This must be kept in sync with `is_covered_by_any`.
         match (self, other) {
             // Wildcards cover anything
             (_, Wildcard) => true,
             // The missing ctors are not covered by anything in the matrix except wildcards.
-            (Missing | Wildcard, _) => false,
+            (Missing { .. } | Wildcard, _) => false,
 
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
@@ -411,7 +471,7 @@ impl Constructor {
     /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
     /// assumed to be built from `matrix.head_ctors()` with wildcards filtered out, and `self` is
     /// assumed to have been split from a wildcard.
-    fn is_covered_by_any(&self, _pcx: PatCtxt<'_>, used_ctors: &[Constructor]) -> bool {
+    fn is_covered_by_any(&self, _pcx: PatCtxt<'_, '_>, used_ctors: &[Constructor]) -> bool {
         if used_ctors.is_empty() {
             return false;
         }
@@ -431,7 +491,7 @@ impl Constructor {
                 .any(|other| slice.is_covered_by(other)),
             // This constructor is never covered by anything else
             NonExhaustive => false,
-            Str(..) | FloatRange(..) | Opaque | Missing | Wildcard => {
+            Str(..) | FloatRange(..) | Opaque | Missing { .. } | Wildcard | Or => {
                 never!("found unexpected ctor in all_ctors: {:?}", self);
                 true
             }
@@ -463,7 +523,7 @@ pub(super) struct SplitWildcard {
 }
 
 impl SplitWildcard {
-    pub(super) fn new(pcx: PatCtxt<'_>) -> Self {
+    pub(super) fn new(pcx: PatCtxt<'_, '_>) -> Self {
         let cx = pcx.cx;
         let make_range = |start, end, scalar| IntRange(IntRange::from_range(start, end, scalar));
 
@@ -483,7 +543,7 @@ impl SplitWildcard {
             TyKind::Scalar(Scalar::Bool) => smallvec![make_range(0, 1, Scalar::Bool)],
             // TyKind::Array(..) if ... => unhandled(),
             TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
-            &TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ref _substs) => {
+            &TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ..) => {
                 let enum_data = cx.db.enum_data(enum_id);
 
                 // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
@@ -502,27 +562,35 @@ impl SplitWildcard {
                 //
                 // we don't want to show every possible IO error, but instead have only `_` as the
                 // witness.
-                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(enum_id);
+                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
+
+                let is_exhaustive_pat_feature = cx.feature_exhaustive_patterns();
 
                 // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
                 // as though it had an "unknown" constructor to avoid exposing its emptiness. The
                 // exception is if the pattern is at the top level, because we want empty matches to be
                 // considered exhaustive.
                 let is_secretly_empty = enum_data.variants.is_empty()
-                    && !cx.feature_exhaustive_patterns()
+                    && !is_exhaustive_pat_feature
                     && !pcx.is_top_level;
 
+                let mut ctors: SmallVec<[_; 1]> = enum_data
+                    .variants
+                    .iter()
+                    .filter(|&(_, _v)| {
+                        // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                        // uninhabited.
+                        let is_uninhabited = is_exhaustive_pat_feature
+                            && unimplemented!("after MatchCheckCtx.feature_exhaustive_patterns()");
+                        !is_uninhabited
+                    })
+                    .map(|(local_id, _)| Variant(EnumVariantId { parent: enum_id, local_id }))
+                    .collect();
+
                 if is_secretly_empty || is_declared_nonexhaustive {
-                    smallvec![NonExhaustive]
-                } else if cx.feature_exhaustive_patterns() {
-                    unimplemented!() // see MatchCheckCtx.feature_exhaustive_patterns()
-                } else {
-                    enum_data
-                        .variants
-                        .iter()
-                        .map(|(local_id, ..)| Variant(EnumVariantId { parent: enum_id, local_id }))
-                        .collect()
+                    ctors.push(NonExhaustive);
                 }
+                ctors
             }
             TyKind::Scalar(Scalar::Char) => unhandled(),
             TyKind::Scalar(Scalar::Int(..) | Scalar::Uint(..)) => unhandled(),
@@ -535,6 +603,7 @@ impl SplitWildcard {
             // This type is one for which we cannot list constructors, like `str` or `f64`.
             _ => smallvec![NonExhaustive],
         };
+
         SplitWildcard { matrix_ctors: Vec::new(), all_ctors }
     }
 
@@ -542,7 +611,7 @@ impl SplitWildcard {
     /// do what you want.
     pub(super) fn split<'a>(
         &mut self,
-        pcx: PatCtxt<'_>,
+        pcx: PatCtxt<'_, '_>,
         ctors: impl Iterator<Item = &'a Constructor> + Clone,
     ) {
         // Since `all_ctors` never contains wildcards, this won't recurse further.
@@ -552,21 +621,21 @@ impl SplitWildcard {
     }
 
     /// Whether there are any value constructors for this type that are not present in the matrix.
-    fn any_missing(&self, pcx: PatCtxt<'_>) -> bool {
+    fn any_missing(&self, pcx: PatCtxt<'_, '_>) -> bool {
         self.iter_missing(pcx).next().is_some()
     }
 
     /// Iterate over the constructors for this type that are not present in the matrix.
-    pub(super) fn iter_missing<'a>(
+    pub(super) fn iter_missing<'a, 'p>(
         &'a self,
-        pcx: PatCtxt<'a>,
-    ) -> impl Iterator<Item = &'a Constructor> {
+        pcx: PatCtxt<'a, 'p>,
+    ) -> impl Iterator<Item = &'a Constructor> + Captures<'p> {
         self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.matrix_ctors))
     }
 
     /// Return the set of constructors resulting from splitting the wildcard. As explained at the
     /// top of the file, if any constructors are missing we can ignore the present ones.
-    fn into_ctors(self, pcx: PatCtxt<'_>) -> SmallVec<[Constructor; 1]> {
+    fn into_ctors(self, pcx: PatCtxt<'_, '_>) -> SmallVec<[Constructor; 1]> {
         if self.any_missing(pcx) {
             // Some constructors are missing, thus we can specialize with the special `Missing`
             // constructor, which stands for those constructors that are not seen in the matrix,
@@ -597,7 +666,15 @@ impl SplitWildcard {
             // sometimes prefer reporting the list of constructors instead of just `_`.
             let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
             let ctor = if !self.matrix_ctors.is_empty() || report_when_all_missing {
-                Missing
+                if pcx.is_non_exhaustive {
+                    Missing {
+                        nonexhaustive_enum_missing_real_variants: self
+                            .iter_missing(pcx)
+                            .any(|c| !(c.is_non_exhaustive() || c.is_unstable_variant(pcx))),
+                    }
+                } else {
+                    Missing { nonexhaustive_enum_missing_real_variants: false }
+                }
             } else {
                 Wildcard
             };
@@ -611,291 +688,334 @@ impl SplitWildcard {
 
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
 /// those fields, generalized to allow patterns in each field. See also `Constructor`.
-/// This is constructed from a constructor using [`Fields::wildcards()`].
 ///
-/// If a private or `non_exhaustive` field is uninhabited, the code mustn't observe that it is
-/// uninhabited. For that, we filter these fields out of the matrix. This is handled automatically
-/// in `Fields`. This filtering is uncommon in practice, because uninhabited fields are rarely used,
-/// so we avoid it when possible to preserve performance.
-#[derive(Debug, Clone)]
-pub(super) enum Fields {
-    /// Lists of patterns that don't contain any filtered fields.
-    /// `Slice` and `Vec` behave the same; the difference is only to avoid allocating and
-    /// triple-dereferences when possible. Frankly this is premature optimization, I (Nadrieril)
-    /// have not measured if it really made a difference.
-    Vec(SmallVec<[PatId; 2]>),
+/// This is constructed for a constructor using [`Fields::wildcards()`]. The idea is that
+/// [`Fields::wildcards()`] constructs a list of fields where all entries are wildcards, and then
+/// given a pattern we fill some of the fields with its subpatterns.
+/// In the following example `Fields::wildcards` returns `[_, _, _, _]`. Then in
+/// `extract_pattern_arguments` we fill some of the entries, and the result is
+/// `[Some(0), _, _, _]`.
+/// ```rust
+/// let x: [Option<u8>; 4] = foo();
+/// match x {
+///     [Some(0), ..] => {}
+/// }
+/// ```
+///
+/// Note that the number of fields of a constructor may not match the fields declared in the
+/// original struct/variant. This happens if a private or `non_exhaustive` field is uninhabited,
+/// because the code mustn't observe that it is uninhabited. In that case that field is not
+/// included in `fields`. For that reason, when you have a `mir::Field` you must use
+/// `index_with_declared_idx`.
+#[derive(Clone, Copy)]
+pub(super) struct Fields<'p> {
+    fields: &'p [DeconstructedPat<'p>],
 }
 
-impl Fields {
-    /// Internal use. Use `Fields::wildcards()` instead.
-    /// Must not be used if the pattern is a field of a struct/tuple/variant.
-    fn from_single_pattern(pat: PatId) -> Self {
-        Fields::Vec(smallvec![pat])
+impl<'p> Fields<'p> {
+    fn empty() -> Self {
+        Fields { fields: &[] }
     }
 
-    /// Convenience; internal use.
-    fn wildcards_from_tys(cx: &MatchCheckCtx<'_>, tys: impl IntoIterator<Item = Ty>) -> Self {
-        let wilds = tys.into_iter().map(Pat::wildcard_from_ty);
-        let pats = wilds.map(|pat| cx.alloc_pat(pat)).collect();
-        Fields::Vec(pats)
+    fn singleton(cx: &MatchCheckCtx<'_, 'p>, field: DeconstructedPat<'p>) -> Self {
+        let field = cx.pattern_arena.alloc(field);
+        Fields { fields: std::slice::from_ref(field) }
     }
 
-    /// Creates a new list of wildcard fields for a given constructor.
-    pub(crate) fn wildcards(pcx: PatCtxt<'_>, constructor: &Constructor) -> Self {
-        let ty = pcx.ty;
-        let cx = pcx.cx;
-        let wildcard_from_ty = |ty: &Ty| cx.alloc_pat(Pat::wildcard_from_ty(ty.clone()));
+    pub(super) fn from_iter(
+        cx: &MatchCheckCtx<'_, 'p>,
+        fields: impl IntoIterator<Item = DeconstructedPat<'p>>,
+    ) -> Self {
+        let fields: &[_] = cx.pattern_arena.alloc_extend(fields);
+        Fields { fields }
+    }
 
+    fn wildcards_from_tys(cx: &MatchCheckCtx<'_, 'p>, tys: impl IntoIterator<Item = Ty>) -> Self {
+        Fields::from_iter(cx, tys.into_iter().map(DeconstructedPat::wildcard))
+    }
+
+    // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
+    // uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
+    // This lists the fields we keep along with their types.
+    fn list_variant_nonhidden_fields<'a>(
+        cx: &'a MatchCheckCtx<'a, 'p>,
+        ty: &'a Ty,
+        variant: VariantId,
+    ) -> impl Iterator<Item = (LocalFieldId, Ty)> + Captures<'a> + Captures<'p> {
+        let (adt, substs) = ty.as_adt().unwrap();
+
+        let adt_is_local = variant.module(cx.db.upcast()).krate() == cx.module.krate();
+        // Whether we must not match the fields of this variant exhaustively.
+        let is_non_exhaustive = is_field_list_non_exhaustive(variant, cx) && !adt_is_local;
+
+        let visibility = cx.db.field_visibilities(variant);
+        let field_ty = cx.db.field_types(variant);
+        let fields_len = variant.variant_data(cx.db.upcast()).fields().len() as u32;
+
+        (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).filter_map(move |fid| {
+            let ty = field_ty[fid].clone().substitute(Interner, substs);
+            let ty = normalize(cx.db, cx.body, ty);
+            let is_visible = matches!(adt, hir_def::AdtId::EnumId(..))
+                || visibility[fid].is_visible_from(cx.db.upcast(), cx.module);
+            let is_uninhabited = cx.is_uninhabited(&ty);
+
+            if is_uninhabited && (!is_visible || is_non_exhaustive) {
+                None
+            } else {
+                Some((fid, ty))
+            }
+        })
+    }
+
+    /// Creates a new list of wildcard fields for a given constructor. The result must have a
+    /// length of `constructor.arity()`.
+    pub(crate) fn wildcards(
+        cx: &MatchCheckCtx<'_, 'p>,
+        ty: &Ty,
+        constructor: &Constructor,
+    ) -> Self {
         let ret = match constructor {
             Single | Variant(_) => match ty.kind(Interner) {
                 TyKind::Tuple(_, substs) => {
                     let tys = substs.iter(Interner).map(|ty| ty.assert_ty_ref(Interner));
                     Fields::wildcards_from_tys(cx, tys.cloned())
                 }
-                TyKind::Ref(.., rty) => Fields::from_single_pattern(wildcard_from_ty(rty)),
+                TyKind::Ref(.., rty) => Fields::wildcards_from_tys(cx, once(rty.clone())),
                 &TyKind::Adt(AdtId(adt), ref substs) => {
                     if adt_is_box(adt, cx) {
-                        // Use T as the sub pattern type of Box<T>.
-                        let subst_ty = substs.at(Interner, 0).assert_ty_ref(Interner);
-                        Fields::from_single_pattern(wildcard_from_ty(subst_ty))
+                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
+                        // patterns. If we're here we can assume this is a box pattern.
+                        let subst_ty = substs.at(Interner, 0).assert_ty_ref(Interner).clone();
+                        Fields::wildcards_from_tys(cx, once(subst_ty))
                     } else {
-                        let variant_id = constructor.variant_id_for_adt(adt);
-                        let adt_is_local =
-                            variant_id.module(cx.db.upcast()).krate() == cx.module.krate();
-                        // Whether we must not match the fields of this variant exhaustively.
-                        let is_non_exhaustive =
-                            is_field_list_non_exhaustive(variant_id, cx) && !adt_is_local;
-
-                        cov_mark::hit!(match_check_wildcard_expanded_to_substitutions);
-                        let field_ty_data = cx.db.field_types(variant_id);
-                        let field_tys = || {
-                            field_ty_data
-                                .iter()
-                                .map(|(_, binders)| binders.clone().substitute(Interner, substs))
-                        };
-
-                        // In the following cases, we don't need to filter out any fields. This is
-                        // the vast majority of real cases, since uninhabited fields are uncommon.
-                        let has_no_hidden_fields = (matches!(adt, hir_def::AdtId::EnumId(_))
-                            && !is_non_exhaustive)
-                            || !field_tys().any(|ty| cx.is_uninhabited(&ty));
-
-                        if has_no_hidden_fields {
-                            Fields::wildcards_from_tys(cx, field_tys())
-                        } else {
-                            //FIXME(iDawer): see MatchCheckCtx::is_uninhabited, has_no_hidden_fields is always true
-                            unimplemented!("exhaustive_patterns feature")
-                        }
+                        let variant = constructor.variant_id_for_adt(adt);
+                        let tys = Fields::list_variant_nonhidden_fields(cx, ty, variant)
+                            .map(|(_, ty)| ty);
+                        Fields::wildcards_from_tys(cx, tys)
                     }
                 }
                 ty_kind => {
                     never!("Unexpected type for `Single` constructor: {:?}", ty_kind);
-                    Fields::from_single_pattern(wildcard_from_ty(ty))
+                    Fields::wildcards_from_tys(cx, once(ty.clone()))
                 }
             },
             Slice(..) => {
                 unimplemented!()
             }
-            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Missing
-            | Wildcard => Fields::Vec(Default::default()),
+            Str(..)
+            | FloatRange(..)
+            | IntRange(..)
+            | NonExhaustive
+            | Opaque
+            | Missing { .. }
+            | Wildcard => Fields::empty(),
+            Or => {
+                never!("called `Fields::wildcards` on an `Or` ctor");
+                Fields::empty()
+            }
         };
         ret
     }
 
-    /// Apply a constructor to a list of patterns, yielding a new pattern. `self`
-    /// must have as many elements as this constructor's arity.
-    ///
-    /// This is roughly the inverse of `specialize_constructor`.
-    ///
-    /// Examples:
-    /// `ctor`: `Constructor::Single`
-    /// `ty`: `Foo(u32, u32, u32)`
-    /// `self`: `[10, 20, _]`
-    /// returns `Foo(10, 20, _)`
-    ///
-    /// `ctor`: `Constructor::Variant(Option::Some)`
-    /// `ty`: `Option<bool>`
-    /// `self`: `[false]`
-    /// returns `Some(false)`
-    pub(super) fn apply(self, pcx: PatCtxt<'_>, ctor: &Constructor) -> Pat {
-        let subpatterns_and_indices = self.patterns_and_indices();
-        let mut subpatterns =
-            subpatterns_and_indices.iter().map(|&(_, p)| pcx.cx.pattern_arena.borrow()[p].clone());
-        // FIXME(iDawer) witnesses are not yet used
-        const UNHANDLED: PatKind = PatKind::Wild;
-
-        let pat = match ctor {
-            Single | Variant(_) => match pcx.ty.kind(Interner) {
-                TyKind::Adt(..) | TyKind::Tuple(..) => {
-                    // We want the real indices here.
-                    let subpatterns = subpatterns_and_indices
-                        .iter()
-                        .map(|&(field, pat)| FieldPat {
-                            field,
-                            pattern: pcx.cx.pattern_arena.borrow()[pat].clone(),
-                        })
-                        .collect();
-
-                    if let Some((hir_def::AdtId::EnumId(_), substs)) = pcx.ty.as_adt() {
-                        let enum_variant = match ctor {
-                            &Variant(id) => id,
-                            _ => unreachable!(),
-                        };
-                        PatKind::Variant { substs: substs.clone(), enum_variant, subpatterns }
-                    } else {
-                        PatKind::Leaf { subpatterns }
-                    }
-                }
-                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
-                // be careful to reconstruct the correct constant pattern here. However a string
-                // literal pattern will never be reported as a non-exhaustiveness witness, so we
-                // can ignore this issue.
-                TyKind::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
-                TyKind::Slice(..) | TyKind::Array(..) => {
-                    never!("bad slice pattern {:?} {:?}", ctor, pcx.ty);
-                    PatKind::Wild
-                }
-                _ => PatKind::Wild,
-            },
-            Constructor::Slice(_) => UNHANDLED,
-            Str(_) => UNHANDLED,
-            FloatRange(..) => UNHANDLED,
-            Constructor::IntRange(_) => UNHANDLED,
-            NonExhaustive => PatKind::Wild,
-            Wildcard => return Pat::wildcard_from_ty(pcx.ty.clone()),
-            Opaque => {
-                never!("we should not try to apply an opaque constructor");
-                PatKind::Wild
-            }
-            Missing => {
-                never!(
-                    "trying to apply the `Missing` constructor; \
-                    this should have been done in `apply_constructors`",
-                );
-                PatKind::Wild
-            }
-        };
-
-        Pat { ty: pcx.ty.clone(), kind: Box::new(pat) }
-    }
-
-    /// Returns the number of patterns. This is the same as the arity of the constructor used to
-    /// construct `self`.
-    pub(super) fn len(&self) -> usize {
-        match self {
-            Fields::Vec(pats) => pats.len(),
-        }
-    }
-
-    /// Returns the list of patterns along with the corresponding field indices.
-    fn patterns_and_indices(&self) -> SmallVec<[(LocalFieldId, PatId); 2]> {
-        match self {
-            Fields::Vec(pats) => pats
-                .iter()
-                .copied()
-                .enumerate()
-                .map(|(i, p)| (LocalFieldId::from_raw((i as u32).into()), p))
-                .collect(),
-        }
-    }
-
-    pub(super) fn into_patterns(self) -> SmallVec<[PatId; 2]> {
-        match self {
-            Fields::Vec(pats) => pats,
-        }
-    }
-
-    /// Overrides some of the fields with the provided patterns. Exactly like
-    /// `replace_fields_indexed`, except that it takes `FieldPat`s as input.
-    fn replace_with_fieldpats(
-        &self,
-        new_pats: impl IntoIterator<Item = (LocalFieldId, PatId)>,
-    ) -> Self {
-        self.replace_fields_indexed(
-            new_pats.into_iter().map(|(field, pat)| (u32::from(field.into_raw()) as usize, pat)),
-        )
-    }
-
-    /// Overrides some of the fields with the provided patterns. This is used when a pattern
-    /// defines some fields but not all, for example `Foo { field1: Some(_), .. }`: here we start
-    /// with a `Fields` that is just one wildcard per field of the `Foo` struct, and override the
-    /// entry corresponding to `field1` with the pattern `Some(_)`. This is also used for slice
-    /// patterns for the same reason.
-    fn replace_fields_indexed(&self, new_pats: impl IntoIterator<Item = (usize, PatId)>) -> Self {
-        let mut fields = self.clone();
-
-        match &mut fields {
-            Fields::Vec(pats) => {
-                for (i, pat) in new_pats {
-                    if let Some(p) = pats.get_mut(i) {
-                        *p = pat;
-                    }
-                }
-            }
-        }
-        fields
-    }
-
-    /// Replaces contained fields with the given list of patterns. There must be `len()` patterns
-    /// in `pats`.
-    pub(super) fn replace_fields(
-        &self,
-        cx: &MatchCheckCtx<'_>,
-        pats: impl IntoIterator<Item = Pat>,
-    ) -> Self {
-        let pats = pats.into_iter().map(|pat| cx.alloc_pat(pat)).collect();
-
-        match self {
-            Fields::Vec(_) => Fields::Vec(pats),
-        }
-    }
-
-    /// Replaces contained fields with the arguments of the given pattern. Only use on a pattern
-    /// that is compatible with the constructor used to build `self`.
-    /// This is meant to be used on the result of `Fields::wildcards()`. The idea is that
-    /// `wildcards` constructs a list of fields where all entries are wildcards, and the pattern
-    /// provided to this function fills some of the fields with non-wildcards.
-    /// In the following example `Fields::wildcards` would return `[_, _, _, _]`. If we call
-    /// `replace_with_pattern_arguments` on it with the pattern, the result will be `[Some(0), _,
-    /// _, _]`.
-    /// ```rust
-    /// let x: [Option<u8>; 4] = foo();
-    /// match x {
-    ///     [Some(0), ..] => {}
-    /// }
-    /// ```
-    /// This is guaranteed to preserve the number of patterns in `self`.
-    pub(super) fn replace_with_pattern_arguments(
-        &self,
-        pat: PatId,
-        cx: &MatchCheckCtx<'_>,
-    ) -> Self {
-        // FIXME(iDawer): Factor out pattern deep cloning. See discussion:
-        // https://github.com/rust-analyzer/rust-analyzer/pull/8717#discussion_r633086640
-        let mut arena = cx.pattern_arena.borrow_mut();
-        match arena[pat].kind.as_ref() {
-            PatKind::Deref { subpattern } => {
-                assert_eq!(self.len(), 1);
-                let subpattern = subpattern.clone();
-                Fields::from_single_pattern(arena.alloc(subpattern))
-            }
-            PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
-                let subpatterns = subpatterns.clone();
-                let subpatterns = subpatterns
-                    .iter()
-                    .map(|field_pat| (field_pat.field, arena.alloc(field_pat.pattern.clone())));
-                self.replace_with_fieldpats(subpatterns)
-            }
-
-            PatKind::Wild
-            | PatKind::Binding { .. }
-            | PatKind::LiteralBool { .. }
-            | PatKind::Or { .. } => self.clone(),
-        }
+    /// Returns the list of patterns.
+    pub(super) fn iter_patterns<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = &'p DeconstructedPat<'p>> + Captures<'a> {
+        self.fields.iter()
     }
 }
 
-fn is_field_list_non_exhaustive(variant_id: VariantId, cx: &MatchCheckCtx<'_>) -> bool {
+/// Values and patterns can be represented as a constructor applied to some fields. This represents
+/// a pattern in this form.
+/// This also keeps track of whether the pattern has been found reachable during analysis. For this
+/// reason we should be careful not to clone patterns for which we care about that. Use
+/// `clone_and_forget_reachability` if you're sure.
+pub(crate) struct DeconstructedPat<'p> {
+    ctor: Constructor,
+    fields: Fields<'p>,
+    ty: Ty,
+    reachable: Cell<bool>,
+}
+
+impl<'p> DeconstructedPat<'p> {
+    pub(super) fn wildcard(ty: Ty) -> Self {
+        Self::new(Wildcard, Fields::empty(), ty)
+    }
+
+    pub(super) fn new(ctor: Constructor, fields: Fields<'p>, ty: Ty) -> Self {
+        DeconstructedPat { ctor, fields, ty, reachable: Cell::new(false) }
+    }
+
+    /// Construct a pattern that matches everything that starts with this constructor.
+    /// For example, if `ctor` is a `Constructor::Variant` for `Option::Some`, we get the pattern
+    /// `Some(_)`.
+    pub(super) fn wild_from_ctor(pcx: PatCtxt<'_, 'p>, ctor: Constructor) -> Self {
+        let fields = Fields::wildcards(pcx.cx, pcx.ty, &ctor);
+        DeconstructedPat::new(ctor, fields, pcx.ty.clone())
+    }
+
+    /// Clone this value. This method emphasizes that cloning loses reachability information and
+    /// should be done carefully.
+    pub(super) fn clone_and_forget_reachability(&self) -> Self {
+        DeconstructedPat::new(self.ctor.clone(), self.fields, self.ty.clone())
+    }
+
+    pub(crate) fn from_pat(cx: &MatchCheckCtx<'_, 'p>, pat: &Pat) -> Self {
+        let mkpat = |pat| DeconstructedPat::from_pat(cx, pat);
+        let ctor;
+        let fields;
+        match pat.kind.as_ref() {
+            PatKind::Binding { subpattern: Some(subpat) } => return mkpat(subpat),
+            PatKind::Binding { subpattern: None } | PatKind::Wild => {
+                ctor = Wildcard;
+                fields = Fields::empty();
+            }
+            PatKind::Deref { subpattern } => {
+                ctor = Single;
+                fields = Fields::singleton(cx, mkpat(subpattern));
+            }
+            PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
+                match pat.ty.kind(Interner) {
+                    TyKind::Tuple(_, substs) => {
+                        ctor = Single;
+                        let mut wilds: SmallVec<[_; 2]> = substs
+                            .iter(Interner)
+                            .map(|arg| arg.assert_ty_ref(Interner).clone())
+                            .map(DeconstructedPat::wildcard)
+                            .collect();
+                        for pat in subpatterns {
+                            let idx: u32 = pat.field.into_raw().into();
+                            wilds[idx as usize] = mkpat(&pat.pattern);
+                        }
+                        fields = Fields::from_iter(cx, wilds)
+                    }
+                    TyKind::Adt(adt, substs) if adt_is_box(adt.0, cx) => {
+                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
+                        // patterns. If we're here we can assume this is a box pattern.
+                        // FIXME(Nadrieril): A `Box` can in theory be matched either with `Box(_,
+                        // _)` or a box pattern. As a hack to avoid an ICE with the former, we
+                        // ignore other fields than the first one. This will trigger an error later
+                        // anyway.
+                        // See https://github.com/rust-lang/rust/issues/82772 ,
+                        // explanation: https://github.com/rust-lang/rust/pull/82789#issuecomment-796921977
+                        // The problem is that we can't know from the type whether we'll match
+                        // normally or through box-patterns. We'll have to figure out a proper
+                        // solution when we introduce generalized deref patterns. Also need to
+                        // prevent mixing of those two options.
+                        let pat =
+                            subpatterns.iter().find(|pat| pat.field.into_raw() == 0u32.into());
+                        let field = if let Some(pat) = pat {
+                            mkpat(&pat.pattern)
+                        } else {
+                            let ty = substs.at(Interner, 0).assert_ty_ref(Interner).clone();
+                            DeconstructedPat::wildcard(ty)
+                        };
+                        ctor = Single;
+                        fields = Fields::singleton(cx, field)
+                    }
+                    &TyKind::Adt(adt, _) => {
+                        ctor = match pat.kind.as_ref() {
+                            PatKind::Leaf { .. } => Single,
+                            PatKind::Variant { enum_variant, .. } => Variant(*enum_variant),
+                            _ => {
+                                never!();
+                                Wildcard
+                            }
+                        };
+                        let variant = ctor.variant_id_for_adt(adt.0);
+                        let fields_len = variant.variant_data(cx.db.upcast()).fields().len();
+                        // For each field in the variant, we store the relevant index into `self.fields` if any.
+                        let mut field_id_to_id: Vec<Option<usize>> = vec![None; fields_len];
+                        let tys = Fields::list_variant_nonhidden_fields(cx, &pat.ty, variant)
+                            .enumerate()
+                            .map(|(i, (fid, ty))| {
+                                let field_idx: u32 = fid.into_raw().into();
+                                field_id_to_id[field_idx as usize] = Some(i);
+                                ty
+                            });
+                        let mut wilds: SmallVec<[_; 2]> =
+                            tys.map(DeconstructedPat::wildcard).collect();
+                        for pat in subpatterns {
+                            let field_idx: u32 = pat.field.into_raw().into();
+                            if let Some(i) = field_id_to_id[field_idx as usize] {
+                                wilds[i] = mkpat(&pat.pattern);
+                            }
+                        }
+                        fields = Fields::from_iter(cx, wilds);
+                    }
+                    _ => {
+                        never!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, &pat.ty);
+                        ctor = Wildcard;
+                        fields = Fields::empty();
+                    }
+                }
+            }
+            &PatKind::LiteralBool { value } => {
+                ctor = IntRange(IntRange::from_bool(value));
+                fields = Fields::empty();
+            }
+            PatKind::Or { .. } => {
+                ctor = Or;
+                let pats: SmallVec<[_; 2]> = expand_or_pat(pat).into_iter().map(mkpat).collect();
+                fields = Fields::from_iter(cx, pats)
+            }
+        }
+        DeconstructedPat::new(ctor, fields, pat.ty.clone())
+    }
+
+    // // FIXME(iDawer): implement reporting of noncovered patterns
+    // pub(crate) fn to_pat(&self, _cx: &MatchCheckCtx<'_, 'p>) -> Pat {
+    //     Pat { ty: self.ty.clone(), kind: PatKind::Wild.into() }
+    // }
+
+    pub(super) fn is_or_pat(&self) -> bool {
+        matches!(self.ctor, Or)
+    }
+
+    pub(super) fn ctor(&self) -> &Constructor {
+        &self.ctor
+    }
+
+    pub(super) fn ty(&self) -> &Ty {
+        &self.ty
+    }
+
+    pub(super) fn iter_fields<'a>(&'a self) -> impl Iterator<Item = &'a DeconstructedPat<'a>> + 'a {
+        self.fields.iter_patterns()
+    }
+
+    /// Specialize this pattern with a constructor.
+    /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
+    pub(super) fn specialize<'a>(
+        &'a self,
+        cx: &MatchCheckCtx<'_, 'p>,
+        other_ctor: &Constructor,
+    ) -> SmallVec<[&'p DeconstructedPat<'p>; 2]> {
+        match (&self.ctor, other_ctor) {
+            (Wildcard, _) => {
+                // We return a wildcard for each field of `other_ctor`.
+                Fields::wildcards(cx, &self.ty, other_ctor).iter_patterns().collect()
+            }
+            (Slice(self_slice), Slice(other_slice))
+                if self_slice.arity() != other_slice.arity() =>
+            {
+                unimplemented!()
+            }
+            _ => self.fields.iter_patterns().collect(),
+        }
+    }
+
+    /// We keep track for each pattern if it was ever reachable during the analysis. This is used
+    /// with `unreachable_spans` to report unreachable subpatterns arising from or patterns.
+    pub(super) fn set_reachable(&self) {
+        self.reachable.set(true)
+    }
+    pub(super) fn is_reachable(&self) -> bool {
+        self.reachable.get()
+    }
+}
+
+fn is_field_list_non_exhaustive(variant_id: VariantId, cx: &MatchCheckCtx<'_, '_>) -> bool {
     let attr_def_id = match variant_id {
         VariantId::EnumVariantId(id) => id.into(),
         VariantId::StructId(id) => id.into(),
@@ -904,7 +1024,7 @@ fn is_field_list_non_exhaustive(variant_id: VariantId, cx: &MatchCheckCtx<'_>) -
     cx.db.attrs(attr_def_id).by_key("non_exhaustive").exists()
 }
 
-fn adt_is_box(adt: hir_def::AdtId, cx: &MatchCheckCtx<'_>) -> bool {
+fn adt_is_box(adt: hir_def::AdtId, cx: &MatchCheckCtx<'_, '_>) -> bool {
     use hir_def::lang_item::LangItemTarget;
     match cx.db.lang_item(cx.module.krate(), SmolStr::new_inline("owned_box")) {
         Some(LangItemTarget::StructId(box_id)) => adt == box_id.into(),

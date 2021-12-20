@@ -16,7 +16,7 @@
 use std::ops::Index;
 use std::sync::Arc;
 
-use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar};
+use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
@@ -70,6 +70,26 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     Arc::new(ctx.resolve_all())
 }
 
+/// Fully normalize all the types found within `ty` in context of `owner` body definition.
+///
+/// This is appropriate to use only after type-check: it assumes
+/// that normalization will succeed, for example.
+pub(crate) fn normalize(db: &dyn HirDatabase, owner: DefWithBodyId, ty: Ty) -> Ty {
+    if !ty.data(Interner).flags.intersects(TypeFlags::HAS_PROJECTION) {
+        return ty;
+    }
+    let krate = owner.module(db.upcast()).krate();
+    let trait_env = owner
+        .as_generic_def_id()
+        .map_or_else(|| Arc::new(TraitEnvironment::empty(krate)), |d| db.trait_environment(d));
+    let mut table = unify::InferenceTable::new(db, trait_env.clone());
+
+    let ty_with_vars = table.normalize_associated_types_in(ty);
+    table.resolve_obligations_as_possible();
+    table.propagate_diverging_flag();
+    table.resolve_completely(ty_with_vars)
+}
+
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 enum ExprOrPatId {
     ExprId(ExprId),
@@ -80,7 +100,7 @@ impl_from!(ExprId, PatId for ExprOrPatId);
 /// Binding modes inferred for patterns.
 /// <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-enum BindingMode {
+pub enum BindingMode {
     Move,
     Ref(Mutability),
 }
@@ -272,6 +292,7 @@ pub struct InferenceResult {
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
     pub pat_adjustments: FxHashMap<PatId, Vec<Adjustment>>,
+    pub pat_binding_modes: FxHashMap<PatId, BindingMode>,
     pub expr_adjustments: FxHashMap<ExprId, Vec<Adjustment>>,
 }
 

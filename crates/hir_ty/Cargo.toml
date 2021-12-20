@@ -23,6 +23,7 @@ chalk-ir = "0.75"
 chalk-recursive = { version = "0.75", default-features = false }
 la-arena = { version = "0.3.0", path = "../../lib/arena" }
 once_cell = { version = "1.5.0" }
+typed-arena = "2.0.1"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 hir_def = { path = "../hir_def", version = "0.0.0" }
