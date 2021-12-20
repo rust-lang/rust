@@ -604,10 +604,10 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///     static X: RefCell<Vec<i32>> = RefCell::new(Vec::new());
     /// }
     ///
-    /// X.with_ref(|v| assert!(v.is_empty()));
+    /// X.with_borrow(|v| assert!(v.is_empty()));
     /// ```
     #[unstable(feature = "local_key_cell_methods", issue = "none")]
-    pub fn with_ref<F, R>(&'static self, f: F) -> R
+    pub fn with_borrow<F, R>(&'static self, f: F) -> R
     where
         F: FnOnce(&T) -> R,
     {
@@ -636,12 +636,12 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///     static X: RefCell<Vec<i32>> = RefCell::new(Vec::new());
     /// }
     ///
-    /// X.with_mut(|v| v.push(1));
+    /// X.with_borrow_mut(|v| v.push(1));
     ///
-    /// X.with_ref(|v| assert_eq!(*v, vec![1]));
+    /// X.with_borrow(|v| assert_eq!(*v, vec![1]));
     /// ```
     #[unstable(feature = "local_key_cell_methods", issue = "none")]
-    pub fn with_mut<F, R>(&'static self, f: F) -> R
+    pub fn with_borrow_mut<F, R>(&'static self, f: F) -> R
     where
         F: FnOnce(&mut T) -> R,
     {
@@ -673,7 +673,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///
     /// X.set(vec![1, 2, 3]); // But X.set() is fine, as it skips the initializer above.
     ///
-    /// X.with_ref(|v| assert_eq!(*v, vec![1, 2, 3]));
+    /// X.with_borrow(|v| assert_eq!(*v, vec![1, 2, 3]));
     /// ```
     #[unstable(feature = "local_key_cell_methods", issue = "none")]
     pub fn set(&'static self, value: T) {
@@ -706,13 +706,13 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///     static X: RefCell<Vec<i32>> = RefCell::new(Vec::new());
     /// }
     ///
-    /// X.with_mut(|v| v.push(1));
+    /// X.with_borrow_mut(|v| v.push(1));
     ///
     /// let a = X.take();
     ///
     /// assert_eq!(a, vec![1]);
     ///
-    /// X.with_ref(|v| assert!(v.is_empty()));
+    /// X.with_borrow(|v| assert!(v.is_empty()));
     /// ```
     #[unstable(feature = "local_key_cell_methods", issue = "none")]
     pub fn take(&'static self) -> T
@@ -744,7 +744,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// let prev = X.replace(vec![1, 2, 3]);
     /// assert!(prev.is_empty());
     ///
-    /// X.with_ref(|v| assert_eq!(*v, vec![1, 2, 3]));
+    /// X.with_borrow(|v| assert_eq!(*v, vec![1, 2, 3]));
     /// ```
     #[unstable(feature = "local_key_cell_methods", issue = "none")]
     pub fn replace(&'static self, value: T) -> T {
