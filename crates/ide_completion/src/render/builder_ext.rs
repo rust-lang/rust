@@ -1,13 +1,12 @@
 //! Extensions for `Builder` structure required for item rendering.
 
 use itertools::Itertools;
-use syntax::ast::{self, HasName};
 
 use crate::{context::PathKind, item::Builder, patterns::ImmediateLocation, CompletionContext};
 
 #[derive(Debug)]
 pub(super) enum Params {
-    Named(Option<ast::SelfParam>, Vec<(ast::Param, hir::Param)>),
+    Named(Option<hir::SelfParam>, Vec<hir::Param>),
     Anonymous(usize),
 }
 
@@ -80,44 +79,22 @@ impl Builder {
                     let offset = if self_param.is_some() { 2 } else { 1 };
                     let function_params_snippet = params.iter().enumerate().format_with(
                         ", ",
-                        |(index, (param_source, param)), f| {
-                            let name;
-                            let text;
-                            let n = (|| {
-                                let mut pat = param_source.pat()?;
-                                loop {
-                                    match pat {
-                                        ast::Pat::IdentPat(pat) => break pat.name(),
-                                        ast::Pat::RefPat(it) => pat = it.pat()?,
-                                        _ => return None,
-                                    }
-                                }
-                            })();
-                            let (ref_, name) = match n {
-                                Some(n) => {
-                                    name = n;
-                                    text = name.text();
-                                    let text = text.as_str().trim_start_matches('_');
-                                    let ref_ = ref_of_param(ctx, text, param.ty());
-                                    (ref_, text)
-                                }
-                                None => ("", "_"),
-                            };
-
-                            f(&format_args!("${{{}:{}{}}}", index + offset, ref_, name))
+                        |(index, param), f| match param.name(ctx.db) {
+                            Some(n) => {
+                                let smol_str = n.to_smol_str();
+                                let text = smol_str.as_str().trim_start_matches('_');
+                                let ref_ = ref_of_param(ctx, text, param.ty());
+                                f(&format_args!("${{{}:{}{}}}", index + offset, ref_, text))
+                            }
+                            None => f(&format_args!("${{{}:_}}", index + offset,)),
                         },
                     );
                     match self_param {
                         Some(self_param) => {
-                            let prefix = match self_param.kind() {
-                                ast::SelfParamKind::Owned => "",
-                                ast::SelfParamKind::Ref => "&",
-                                ast::SelfParamKind::MutRef => "&mut ",
-                            };
                             format!(
-                                "{}(${{1:{}self}}{}{})$0",
+                                "{}(${{1:{}}}{}{})$0",
                                 name,
-                                prefix,
+                                self_param.display(ctx.db),
                                 if params.is_empty() { "" } else { ", " },
                                 function_params_snippet
                             )

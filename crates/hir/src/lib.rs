@@ -1343,7 +1343,7 @@ impl Function {
             .params
             .iter()
             .enumerate()
-            .map(|(idx, type_ref)| {
+            .map(|(idx, (_, type_ref))| {
                 let ty = Type { krate, env: environment.clone(), ty: ctx.lower_ty(type_ref) };
                 Param { func: self, ty, idx }
             })
@@ -1421,6 +1421,10 @@ impl Param {
         &self.ty
     }
 
+    pub fn name(&self, db: &dyn HirDatabase) -> Option<Name> {
+        db.function_data(self.func.id).params[self.idx].0.clone()
+    }
+
     pub fn as_local(&self, db: &dyn HirDatabase) -> Local {
         let parent = DefWithBodyId::FunctionId(self.func.into());
         let body = db.body(parent);
@@ -1454,7 +1458,7 @@ impl SelfParam {
         func_data
             .params
             .first()
-            .map(|param| match &**param {
+            .map(|(_, param)| match &**param {
                 TypeRef::Reference(.., mutability) => match mutability {
                     hir_def::type_ref::Mutability::Shared => Access::Shared,
                     hir_def::type_ref::Mutability::Mut => Access::Exclusive,

@@ -1,10 +1,9 @@
 //! Renderer for function calls.
 
-use hir::{AsAssocItem, HasSource, HirDisplay};
+use hir::{AsAssocItem, HirDisplay};
 use ide_db::SymbolKind;
 use itertools::Itertools;
 use stdx::format_to;
-use syntax::ast;
 
 use crate::{
     item::{CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit},
@@ -41,21 +40,6 @@ struct FunctionRender<'a> {
     name: hir::Name,
     receiver: Option<hir::Name>,
     func: hir::Function,
-    /// NB: having `ast::Fn` here might or might not be a good idea. The problem
-    /// with it is that, to get an `ast::`, you want to parse the corresponding
-    /// source file. So, when flyimport completions suggest a bunch of
-    /// functions, we spend quite some time parsing many files.
-    ///
-    /// We need ast because we want to access parameter names (patterns). We can
-    /// add them to the hir of the function itself, but parameter names are not
-    /// something hir cares otherwise.
-    ///
-    /// Alternatively we can reconstruct params from the function body, but that
-    /// would require parsing anyway.
-    ///
-    /// It seems that just using `ast` is the best choice -- most of parses
-    /// should be cached anyway.
-    param_list: Option<ast::ParamList>,
     is_method: bool,
 }
 
@@ -68,9 +52,8 @@ impl<'a> FunctionRender<'a> {
         is_method: bool,
     ) -> Option<FunctionRender<'a>> {
         let name = local_name.unwrap_or_else(|| fn_.name(ctx.db()));
-        let param_list = fn_.source(ctx.db())?.value.param_list();
 
-        Some(FunctionRender { ctx, name, receiver, func: fn_, param_list, is_method })
+        Some(FunctionRender { ctx, name, receiver, func: fn_, is_method })
     }
 
     fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
@@ -151,23 +134,18 @@ impl<'a> FunctionRender<'a> {
     }
 
     fn params(&self) -> Params {
-        let ast_params = match &self.param_list {
-            Some(it) => it,
-            None => return Params::Named(None, Vec::new()),
-        };
-        let params = ast_params.params();
+        let (params, self_param) =
+            if self.ctx.completion.has_dot_receiver() || self.receiver.is_some() {
+                (self.func.method_params(self.ctx.db()).unwrap_or_default(), None)
+            } else {
+                let self_param = self.func.self_param(self.ctx.db());
 
-        let (params, self_param) = if self.ctx.completion.has_dot_receiver()
-            || self.receiver.is_some()
-        {
-            (params.zip(self.func.method_params(self.ctx.db()).unwrap_or_default()).collect(), None)
-        } else {
-            let mut assoc_params = self.func.assoc_fn_params(self.ctx.db());
-            if self.func.self_param(self.ctx.db()).is_some() {
-                assoc_params.remove(0);
-            }
-            (params.zip(assoc_params).collect(), ast_params.self_param())
-        };
+                let mut assoc_params = self.func.assoc_fn_params(self.ctx.db());
+                if self_param.is_some() {
+                    assoc_params.remove(0);
+                }
+                (assoc_params, self_param)
+            };
 
         Params::Named(self_param, params)
     }
