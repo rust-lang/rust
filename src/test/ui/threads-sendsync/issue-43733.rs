@@ -4,6 +4,8 @@
 #![feature(thread_local)]
 #![feature(cfg_target_thread_local, thread_local_internals)]
 
+use std::cell::RefCell;
+
 type Foo = std::cell::RefCell<String>;
 
 #[cfg(target_thread_local)]
@@ -13,7 +15,7 @@ static __KEY: std::thread::__FastLocalKeyInner<Foo> = std::thread::__FastLocalKe
 #[cfg(not(target_thread_local))]
 static __KEY: std::thread::__OsLocalKeyInner<Foo> = std::thread::__OsLocalKeyInner::new();
 
-fn __getit() -> std::option::Option<&'static Foo> {
+fn __getit(_: Option<&mut Option<RefCell<String>>>) -> std::option::Option<&'static Foo> {
     __KEY.get(Default::default) //~ ERROR call to unsafe function is unsafe
 }
 
