@@ -5,6 +5,7 @@
     "rust-analyzer.assist.importEnforceGranularity": true,
     "rust-analyzer.assist.importPrefix": "crate",
     "rust-analyzer.cargo.runBuildScripts": true,
+    "rust-analyzer.cargo.features": ["unstable-features"]
     "rust-analyzer.linkedProjects": [
         "./Cargo.toml",
         //"./build_sysroot/sysroot_src/src/libstd/Cargo.toml",

@@ -3,7 +3,7 @@
 
 use std::cell::RefCell;
 use std::ffi::CString;
-use std::lazy::{Lazy, SyncOnceCell};
+use std::lazy::SyncOnceCell;
 use std::os::raw::{c_char, c_int};
 use std::sync::{mpsc, Mutex};
 
@@ -11,6 +11,7 @@ use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_session::Session;
+use rustc_span::Symbol;
 
 use cranelift_jit::{JITBuilder, JITModule};
 
@@ -23,7 +24,7 @@ struct JitState {
 }
 
 thread_local! {
-    static LAZY_JIT_STATE: RefCell<Option<JitState>> = RefCell::new(None);
+    static LAZY_JIT_STATE: RefCell<Option<JitState>> = const { RefCell::new(None) };
 }
 
 /// The Sender owned by the rustc thread
@@ -50,12 +51,11 @@ impl UnsafeMessage {
     fn send(self) -> Result<(), mpsc::SendError<UnsafeMessage>> {
         thread_local! {
             /// The Sender owned by the local thread
-            static LOCAL_MESSAGE_SENDER: Lazy<mpsc::Sender<UnsafeMessage>> = Lazy::new(||
+            static LOCAL_MESSAGE_SENDER: mpsc::Sender<UnsafeMessage> =
                 GLOBAL_MESSAGE_SENDER
                     .get().unwrap()
                     .lock().unwrap()
-                    .clone()
-            );
+                    .clone();
         }
         LOCAL_MESSAGE_SENDER.with(|sender| sender.send(self))
     }
@@ -76,7 +76,13 @@ fn create_jit_module<'tcx>(
     jit_builder.symbols(imported_symbols);
     let mut jit_module = JITModule::new(jit_builder);
 
-    let mut cx = crate::CodegenCx::new(tcx, backend_config.clone(), jit_module.isa(), false);
+    let mut cx = crate::CodegenCx::new(
+        tcx,
+        backend_config.clone(),
+        jit_module.isa(),
+        false,
+        Symbol::intern("dummy_cgu_name"),
+    );
 
     crate::allocator::codegen(tcx, &mut jit_module, &mut cx.unwind_context);
     crate::main_shim::maybe_create_entry_wrapper(
@@ -246,7 +252,13 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
 
             jit_module.prepare_for_function_redefine(func_id).unwrap();
 
-            let mut cx = crate::CodegenCx::new(tcx, backend_config, jit_module.isa(), false);
+            let mut cx = crate::CodegenCx::new(
+                tcx,
+                backend_config,
+                jit_module.isa(),
+                false,
+                Symbol::intern("dummy_cgu_name"),
+            );
             tcx.sess.time("codegen fn", || crate::base::codegen_fn(&mut cx, jit_module, instance));
 
             assert!(cx.global_asm.is_empty());
