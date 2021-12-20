@@ -92,8 +92,8 @@ use hir_def::{
     expr::{LabelId, PatId},
     keys::{self, Key},
     AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId,
-    GenericDefId, ImplId, LifetimeParamId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
-    TypeParamId, UnionId, VariantId,
+    GenericDefId, GenericParamId, ImplId, LifetimeParamId, ModuleId, StaticId, StructId, TraitId,
+    TypeAliasId, TypeParamId, UnionId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, HirFileId, MacroCallId, MacroDefId, MacroDefKind};
 use rustc_hash::FxHashMap;
@@ -297,6 +297,23 @@ impl SourceToDefCtx<'_, '_> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let dyn_map = self.cache_for(container, src.file_id);
         dyn_map[keys::CONST_PARAM].get(&src).copied()
+    }
+
+    pub(super) fn generic_param_to_def(
+        &mut self,
+        InFile { file_id, value }: InFile<ast::GenericParam>,
+    ) -> Option<GenericParamId> {
+        match value {
+            ast::GenericParam::ConstParam(it) => {
+                self.const_param_to_def(InFile::new(file_id, it)).map(GenericParamId::ConstParamId)
+            }
+            ast::GenericParam::LifetimeParam(it) => self
+                .lifetime_param_to_def(InFile::new(file_id, it))
+                .map(GenericParamId::LifetimeParamId),
+            ast::GenericParam::TypeParam(it) => {
+                self.type_param_to_def(InFile::new(file_id, it)).map(GenericParamId::TypeParamId)
+            }
+        }
     }
 
     pub(super) fn macro_to_def(&mut self, src: InFile<ast::Macro>) -> Option<MacroDefId> {

@@ -50,7 +50,7 @@ impl SourceAnalyzer {
     pub(crate) fn new_for_body(
         db: &dyn HirDatabase,
         def: DefWithBodyId,
-        node: InFile<&SyntaxNode>,
+        node @ InFile { file_id, .. }: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
     ) -> SourceAnalyzer {
         let (body, source_map) = db.body_with_source_map(def);
@@ -65,7 +65,29 @@ impl SourceAnalyzer {
             body: Some(body),
             body_source_map: Some(source_map),
             infer: Some(db.infer(def)),
-            file_id: node.file_id,
+            file_id,
+        }
+    }
+
+    pub(crate) fn new_for_body_no_infer(
+        db: &dyn HirDatabase,
+        def: DefWithBodyId,
+        node @ InFile { file_id, .. }: InFile<&SyntaxNode>,
+        offset: Option<TextSize>,
+    ) -> SourceAnalyzer {
+        let (body, source_map) = db.body_with_source_map(def);
+        let scopes = db.expr_scopes(def);
+        let scope = match offset {
+            None => scope_for(&scopes, &source_map, node),
+            Some(offset) => scope_for_offset(db, &scopes, &source_map, node.with_value(offset)),
+        };
+        let resolver = resolver_for_scope(db.upcast(), def, scope);
+        SourceAnalyzer {
+            resolver,
+            body: Some(body),
+            body_source_map: Some(source_map),
+            infer: None,
+            file_id,
         }
     }
 
