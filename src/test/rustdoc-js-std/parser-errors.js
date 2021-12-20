@@ -1,0 +1,43 @@
+const QUERY = ['<"P">', '"P" "P"', 'P "P"'];
+
+const PARSED = [
+    {
+        args: [],
+        elemName: null,
+        elems: [],
+        foundElems: 0,
+        id: "<\"P\">",
+        nameSplit: null,
+        original: "<\"P\">",
+        returned: [],
+        typeFilter: null,
+        val: "<\"p\">",
+        error: "`\"` cannot be used in generics",
+    },
+    {
+        args: [],
+        elemName: null,
+        elems: [],
+        foundElems: 0,
+        id: "\"P\" \"P\"",
+        nameSplit: null,
+        original: "\"P\" \"P\"",
+        returned: [],
+        typeFilter: null,
+        val: "\"p\" \"p\"",
+        error: "Cannot have more than one literal search element",
+    },
+    {
+        args: [],
+        elemName: null,
+        elems: [],
+        foundElems: 0,
+        id: "P \"P\"",
+        nameSplit: null,
+        original: "P \"P\"",
+        returned: [],
+        typeFilter: null,
+        val: "p \"p\"",
+        error: "Cannot use literal search when there is more than one element",
+    },
+];

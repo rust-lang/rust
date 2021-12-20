@@ -1,10 +1,10 @@
 // exact-check
 
 const QUERY = [
-    '"R"<"P">',
+    '"R"<P>',
     '"P"',
     'P',
-    '"ExtraCreditStructMulti"<"ExtraCreditInnerMulti", "ExtraCreditInnerMulti">',
+    '"ExtraCreditStructMulti"<ExtraCreditInnerMulti, ExtraCreditInnerMulti>',
     'TraitCat',
     'TraitDog',
     'Result<String>',
@@ -12,7 +12,7 @@ const QUERY = [
 
 const EXPECTED = [
     {
-        // "R"<"P">
+        // "R"<P>
         'returned': [
             { 'path': 'generics', 'name': 'alef' },
         ],
@@ -36,15 +36,13 @@ const EXPECTED = [
         // P
         'returned': [
             { 'path': 'generics', 'name': 'alef' },
-            { 'path': 'generics', 'name': 'bet' },
         ],
         'in_args': [
             { 'path': 'generics', 'name': 'alpha' },
-            { 'path': 'generics', 'name': 'beta' },
         ],
     },
     {
-        // "ExtraCreditStructMulti"<"ExtraCreditInnerMulti", "ExtraCreditInnerMulti">
+        // "ExtraCreditStructMulti"<ExtraCreditInnerMulti, ExtraCreditInnerMulti>
         'in_args': [
             { 'path': 'generics', 'name': 'extracreditlabhomework' },
         ],
