@@ -119,11 +119,11 @@ unsafe fn configure_llvm(sess: &Session) {
 
     llvm::LLVMInitializePasses();
 
-    let use_new_llvm_pm_plugin_register =
-        sess.opts.debugging_opts.new_llvm_pass_manager.unwrap_or(false);
-
-    // Use the legacy pm registration if the new_llvm_pass_manager option isn't explicitly enabled
-    if !use_new_llvm_pm_plugin_register {
+    // Use the legacy plugin registration if we don't use the new pass manager
+    if !should_use_new_llvm_pass_manager(
+        &sess.opts.debugging_opts.new_llvm_pass_manager,
+        &sess.target.arch,
+    ) {
         // Register LLVM plugins by loading them into the compiler process.
         for plugin in &sess.opts.debugging_opts.llvm_plugins {
             let lib = Library::new(plugin).unwrap_or_else(|e| bug!("couldn't load plugin: {}", e));
