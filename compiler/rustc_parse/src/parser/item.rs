@@ -794,6 +794,44 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    /// Emits an error that the where clause at the end of a type alias is not
+    /// allowed and suggests moving it.
+    fn error_ty_alias_where(
+        &self,
+        before_where_clause_present: bool,
+        before_where_clause_span: Span,
+        after_predicates: &[WherePredicate],
+        after_where_clause_span: Span,
+    ) {
+        let mut err =
+            self.struct_span_err(after_where_clause_span, "where clause not allowed here");
+        if !after_predicates.is_empty() {
+            let mut state = crate::pprust::State::new();
+            if !before_where_clause_present {
+                state.space();
+                state.word_space("where");
+            } else {
+                state.word_space(",");
+            }
+            let mut first = true;
+            for p in after_predicates.iter() {
+                if !first {
+                    state.word_space(",");
+                }
+                first = false;
+                state.print_where_predicate(p);
+            }
+            let suggestion = state.s.eof();
+            err.span_suggestion(
+                before_where_clause_span.shrink_to_hi(),
+                "move it here",
+                suggestion,
+                Applicability::MachineApplicable,
+            );
+        }
+        err.emit()
+    }
+
     /// Parses a `type` alias with the following grammar:
     /// ```
     /// TypeAlias = "type" Ident Generics {":" GenericBounds}? {"=" Ty}? ";" ;
@@ -806,9 +844,24 @@ impl<'a> Parser<'a> {
         // Parse optional colon and param bounds.
         let bounds =
             if self.eat(&token::Colon) { self.parse_generic_bounds(None)? } else { Vec::new() };
+
         generics.where_clause = self.parse_where_clause()?;
 
         let ty = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
+
+        if self.token.is_keyword(kw::Where) {
+            let after_where_clause = self.parse_where_clause()?;
+
+            self.error_ty_alias_where(
+                generics.where_clause.has_where_token,
+                generics.where_clause.span,
+                &after_where_clause.predicates,
+                after_where_clause.span,
+            );
+
+            generics.where_clause.predicates.extend(after_where_clause.predicates.into_iter());
+        }
+
         self.expect_semi()?;
 
         Ok((ident, ItemKind::TyAlias(Box::new(TyAlias { defaultness, generics, bounds, ty }))))
