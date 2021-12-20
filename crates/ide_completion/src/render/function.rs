@@ -1,6 +1,5 @@
 //! Renderer for function calls.
 
-use either::Either;
 use hir::{AsAssocItem, HasSource, HirDisplay};
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -56,7 +55,7 @@ struct FunctionRender<'a> {
     ///
     /// It seems that just using `ast` is the best choice -- most of parses
     /// should be cached anyway.
-    ast_node: ast::Fn,
+    param_list: Option<ast::ParamList>,
     is_method: bool,
 }
 
@@ -69,9 +68,9 @@ impl<'a> FunctionRender<'a> {
         is_method: bool,
     ) -> Option<FunctionRender<'a>> {
         let name = local_name.unwrap_or_else(|| fn_.name(ctx.db()));
-        let ast_node = fn_.source(ctx.db())?.value;
+        let param_list = fn_.source(ctx.db())?.value.param_list();
 
-        Some(FunctionRender { ctx, name, receiver, func: fn_, ast_node, is_method })
+        Some(FunctionRender { ctx, name, receiver, func: fn_, param_list, is_method })
     }
 
     fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
@@ -152,25 +151,25 @@ impl<'a> FunctionRender<'a> {
     }
 
     fn params(&self) -> Params {
-        let ast_params = match self.ast_node.param_list() {
+        let ast_params = match &self.param_list {
             Some(it) => it,
-            None => return Params::Named(Vec::new()),
+            None => return Params::Named(None, Vec::new()),
         };
-        let params = ast_params.params().map(Either::Right);
+        let params = ast_params.params();
 
-        let params = if self.ctx.completion.has_dot_receiver() || self.receiver.is_some() {
-            params.zip(self.func.method_params(self.ctx.db()).unwrap_or_default()).collect()
+        let (params, self_param) = if self.ctx.completion.has_dot_receiver()
+            || self.receiver.is_some()
+        {
+            (params.zip(self.func.method_params(self.ctx.db()).unwrap_or_default()).collect(), None)
         } else {
-            ast_params
-                .self_param()
-                .map(Either::Left)
-                .into_iter()
-                .chain(params)
-                .zip(self.func.assoc_fn_params(self.ctx.db()))
-                .collect()
+            let mut assoc_params = self.func.assoc_fn_params(self.ctx.db());
+            if self.func.self_param(self.ctx.db()).is_some() {
+                assoc_params.remove(0);
+            }
+            (params.zip(assoc_params).collect(), ast_params.self_param())
         };
 
-        Params::Named(params)
+        Params::Named(self_param, params)
     }
 
     fn kind(&self) -> CompletionItemKind {
