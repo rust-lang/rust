@@ -268,6 +268,8 @@ macro_rules! __thread_local_inner {
                         if let $crate::option::Option::Some(init) = _init {
                             if let $crate::option::Option::Some(value) = init.take() {
                                 return value;
+                            } else if $crate::cfg!(debug_assertions) {
+                                unreachable!("missing initial value");
                             }
                         }
                         __init()
@@ -341,6 +343,8 @@ macro_rules! __thread_local_inner {
                         if let $crate::option::Option::Some(init) = init {
                             if let $crate::option::Option::Some(value) = init.take() {
                                 return value;
+                            } else if $crate::cfg!(debug_assertions) {
+                                unreachable!("missing default value");
                             }
                         }
                         __init()
