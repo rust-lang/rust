@@ -1617,7 +1617,29 @@ impl<T, A: Allocator> Vec<T, A> {
             return;
         }
 
-        /* INVARIANT: vec.len() > read >= write > write-1 >= 0 */
+        // Check if we ever want to remove anything.
+        // This allows to use copy_non_overlapping in next cycle.
+        // And avoids any memory writes if we don't need to remove anything.
+        let mut possible_remove_idx = 1;
+        let start = self.as_mut_ptr();
+        while possible_remove_idx < len {
+            let found_duplicate = unsafe {
+                // SAFETY: possible_remove_idx always in range [1..len)
+                let prev = start.add(possible_remove_idx - 1);
+                let current = start.add(possible_remove_idx);
+                same_bucket(&mut *current, &mut *prev)
+            };
+            if found_duplicate {
+                break;
+            }
+            possible_remove_idx += 1;
+        }
+        // Don't need to remove anything.
+        if possible_remove_idx >= len {
+            return;
+        }
+
+        /* INVARIANT: vec.len() > read > write > write-1 >= 0 */
         struct FillGapOnDrop<'a, T, A: core::alloc::Allocator> {
             /* Offset of the element we want to check if it is duplicate */
             read: usize,
@@ -1663,18 +1685,24 @@ impl<T, A: Allocator> Vec<T, A> {
             }
         }
 
-        let mut gap = FillGapOnDrop { read: 1, write: 1, vec: self };
-        let ptr = gap.vec.as_mut_ptr();
-
         /* Drop items while going through Vec, it should be more efficient than
          * doing slice partition_dedup + truncate */
+
+        // Construct gap first and then drop item to avoid memory corruption if `T::drop` panics.
+        let mut gap =
+            FillGapOnDrop { read: possible_remove_idx + 1, write: possible_remove_idx, vec: self };
+        unsafe {
+            // SAFETY: we checked that possible_remove_idx < len before.
+            // If drop panics, `gap` would remove this item without drop.
+            ptr::drop_in_place(start.add(possible_remove_idx));
+        }
 
         /* SAFETY: Because of the invariant, read_ptr, prev_ptr and write_ptr
          * are always in-bounds and read_ptr never aliases prev_ptr */
         unsafe {
             while gap.read < len {
-                let read_ptr = ptr.add(gap.read);
-                let prev_ptr = ptr.add(gap.write.wrapping_sub(1));
+                let read_ptr = start.add(gap.read);
+                let prev_ptr = start.add(gap.write.wrapping_sub(1));
 
                 if same_bucket(&mut *read_ptr, &mut *prev_ptr) {
                     // Increase `gap.read` now since the drop may panic.
@@ -1682,12 +1710,10 @@ impl<T, A: Allocator> Vec<T, A> {
                     /* We have found duplicate, drop it in-place */
                     ptr::drop_in_place(read_ptr);
                 } else {
-                    let write_ptr = ptr.add(gap.write);
+                    let write_ptr = start.add(gap.write);
 
-                    /* Because `read_ptr` can be equal to `write_ptr`, we either
-                     * have to use `copy` or conditional `copy_nonoverlapping`.
-                     * Looks like the first option is faster. */
-                    ptr::copy(read_ptr, write_ptr, 1);
+                    /* read_ptr cannot be equal to write_ptr by `gap` invariant */
+                    ptr::copy_nonoverlapping(read_ptr, write_ptr, 1);
 
                     /* We have filled that place, so go further */
                     gap.write += 1;
