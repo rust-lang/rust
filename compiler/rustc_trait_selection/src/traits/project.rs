@@ -1242,6 +1242,10 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
     );
 }
 
+#[tracing::instrument(
+    level = "debug",
+    skip(selcx, candidate_set, ctor, env_predicates, potentially_unnormalized_candidates)
+)]
 fn assemble_candidates_from_predicates<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
@@ -1250,8 +1254,6 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     env_predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
     potentially_unnormalized_candidates: bool,
 ) {
-    debug!(?obligation, "assemble_candidates_from_predicates");
-
     let infcx = selcx.infcx();
     for predicate in env_predicates {
         debug!(?predicate);
@@ -1287,13 +1289,12 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     }
 }
 
+#[tracing::instrument(level = "debug", skip(selcx, obligation, candidate_set))]
 fn assemble_candidates_from_impls<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>,
 ) {
-    debug!("assemble_candidates_from_impls");
-
     // If we are resolving `<T as TraitRef<...>>::Item == Type`,
     // start out by selecting the predicate `T as TraitRef<...>`:
     let poly_trait_ref = ty::Binder::dummy(obligation.predicate.trait_ref(selcx.tcx()));
