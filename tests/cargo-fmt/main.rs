@@ -2,6 +2,7 @@
 
 use std::env;
 use std::process::Command;
+use std::path::Path;
 
 /// Run the cargo-fmt executable and return its output.
 fn cargo_fmt(args: &[&str]) -> (String, String) {
@@ -70,4 +71,27 @@ fn rustfmt_help() {
     assert_that!(&["--", "--help"], contains("Format Rust code"));
     assert_that!(&["--", "-h"], contains("Format Rust code"));
     assert_that!(&["--", "--help=config"], contains("Configuration Options:"));
+}
+
+#[test]
+fn cargo_fmt_out_of_line_test_modules() {
+    // See also https://github.com/rust-lang/rustfmt/issues/5119
+    let expected_modified_files = [
+        "tests/mod-resolver/test-submodule-issue-5119/src/lib.rs",
+        "tests/mod-resolver/test-submodule-issue-5119/tests/test1.rs",
+        "tests/mod-resolver/test-submodule-issue-5119/tests/test1/sub1.rs",
+        "tests/mod-resolver/test-submodule-issue-5119/tests/test1/sub2.rs",
+        "tests/mod-resolver/test-submodule-issue-5119/tests/test1/sub3/sub4.rs",
+    ];
+    let args = [
+        "-v",
+        "--check",
+        "--manifest-path",
+        "tests/mod-resolver/test-submodule-issue-5119/Cargo.toml",
+    ];
+    let (stdout, _) = cargo_fmt(&args);
+    for file in expected_modified_files {
+        let path = Path::new(file).canonicalize().unwrap();
+        assert!(stdout.contains(&format!("Diff in {}", path.display())))
+    }
 }

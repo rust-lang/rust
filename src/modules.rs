@@ -458,6 +458,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             self.directory.path.push(path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
+            let id = id.as_str();
             // We have to push on the current module name in the case of relative
             // paths in order to ensure that any additional module paths from inline
             // `mod x { ... }` come after the relative extension.
@@ -468,9 +469,15 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 if let Some(ident) = relative.take() {
                     // remove the relative offset
                     self.directory.path.push(ident.as_str());
+
+                    // In the case where there is an x.rs and an ./x directory we want
+                    // to prevent adding x twice. For example, ./x/x
+                    if self.directory.path.exists() && !self.directory.path.join(id).exists() {
+                        return;
+                    }
                 }
             }
-            self.directory.path.push(id.as_str());
+            self.directory.path.push(id);
         }
     }
 

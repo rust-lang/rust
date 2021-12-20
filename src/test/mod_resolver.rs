@@ -50,3 +50,17 @@ fn skip_out_of_line_nested_inline_within_out_of_line() {
         &["tests/mod-resolver/skip-files-issue-5065/one.rs"],
     );
 }
+
+#[test]
+fn fmt_out_of_line_test_modules() {
+    // See also https://github.com/rust-lang/rustfmt/issues/5119
+    verify_mod_resolution(
+        "tests/mod-resolver/test-submodule-issue-5119/tests/test1.rs",
+        &[
+            "tests/mod-resolver/test-submodule-issue-5119/tests/test1.rs",
+            "tests/mod-resolver/test-submodule-issue-5119/tests/test1/sub1.rs",
+            "tests/mod-resolver/test-submodule-issue-5119/tests/test1/sub2.rs",
+            "tests/mod-resolver/test-submodule-issue-5119/tests/test1/sub3/sub4.rs",
+        ],
+    )
+}
