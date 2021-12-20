@@ -1,16 +1,14 @@
+use super::TrackedValue;
 use crate::{
     check::FnCtxt,
     expr_use_visitor::{self, ExprUseVisitor},
 };
-use hir::{def_id::DefId, Body, HirId, HirIdMap, HirIdSet};
+use hir::{def_id::DefId, Body, HirId, HirIdMap};
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_hir as hir;
-use rustc_middle::hir::{
-    map::Map,
-    place::{Place, PlaceBase},
-};
-use rustc_middle::ty;
+use rustc_middle::hir::map::Map;
 
-pub fn find_consumed_and_borrowed<'a, 'tcx>(
+pub(super) fn find_consumed_and_borrowed<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     def_id: DefId,
     body: &'tcx Body<'tcx>,
@@ -20,7 +18,7 @@ pub fn find_consumed_and_borrowed<'a, 'tcx>(
     expr_use_visitor.places
 }
 
-pub struct ConsumedAndBorrowedPlaces {
+pub(super) struct ConsumedAndBorrowedPlaces {
     /// Records the variables/expressions that are dropped by a given expression.
     ///
     /// The key is the hir-id of the expression, and the value is a set or hir-ids for variables
@@ -28,9 +26,9 @@ pub struct ConsumedAndBorrowedPlaces {
     ///
     /// Note that this set excludes "partial drops" -- for example, a statement like `drop(x.y)` is
     /// not considered a drop of `x`, although it would be a drop of `x.y`.
-    pub consumed: HirIdMap<HirIdSet>,
+    pub(super) consumed: HirIdMap<FxHashSet<TrackedValue>>,
     /// A set of hir-ids of values or variables that are borrowed at some point within the body.
-    pub borrowed: HirIdSet,
+    pub(super) borrowed: FxHashSet<TrackedValue>,
 }
 
 /// Works with ExprUseVisitor to find interesting values for the drop range analysis.
@@ -65,7 +63,7 @@ impl<'tcx> ExprUseDelegate<'tcx> {
         .consume_body(body);
     }
 
-    fn mark_consumed(&mut self, consumer: HirId, target: HirId) {
+    fn mark_consumed(&mut self, consumer: HirId, target: TrackedValue) {
         if !self.places.consumed.contains_key(&consumer) {
             self.places.consumed.insert(consumer, <_>::default());
         }
@@ -87,8 +85,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
             "consume {:?}; diag_expr_id={:?}, using parent {:?}",
             place_with_id, diag_expr_id, parent
         );
-        self.mark_consumed(parent, place_with_id.hir_id);
-        place_hir_id(&place_with_id.place).map(|place| self.mark_consumed(parent, place));
+        self.mark_consumed(parent, place_with_id.into());
     }
 
     fn borrow(
@@ -97,7 +94,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         _diag_expr_id: HirId,
         _bk: rustc_middle::ty::BorrowKind,
     ) {
-        place_hir_id(&place_with_id.place).map(|place| self.places.borrowed.insert(place));
+        self.places.borrowed.insert(place_with_id.into());
     }
 
     fn mutate(
@@ -113,15 +110,5 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         _cause: rustc_middle::mir::FakeReadCause,
         _diag_expr_id: HirId,
     ) {
-    }
-}
-
-/// Gives the hir_id associated with a place if one exists. This is the hir_id that we want to
-/// track for a value in the drop range analysis.
-fn place_hir_id(place: &Place<'_>) -> Option<HirId> {
-    match place.base {
-        PlaceBase::Rvalue | PlaceBase::StaticItem => None,
-        PlaceBase::Local(hir_id)
-        | PlaceBase::Upvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id }, .. }) => Some(hir_id),
     }
 }

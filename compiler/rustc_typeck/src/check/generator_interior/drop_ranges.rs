@@ -17,9 +17,12 @@ use self::record_consumed_borrow::find_consumed_and_borrowed;
 use crate::check::FnCtxt;
 use hir::def_id::DefId;
 use hir::{Body, HirId, HirIdMap, Node};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId};
+use rustc_middle::ty;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 
@@ -47,13 +50,17 @@ pub fn compute_drop_ranges<'a, 'tcx>(
 
     drop_ranges.propagate_to_fixpoint();
 
-    DropRanges { hir_id_map: drop_ranges.hir_id_map, nodes: drop_ranges.nodes }
+    DropRanges { tracked_value_map: drop_ranges.tracked_value_map, nodes: drop_ranges.nodes }
 }
 
 /// Applies `f` to consumable portion of a HIR node.
 ///
 /// The `node` parameter should be the result of calling `Map::find(place)`.
-fn for_each_consumable(place: HirId, node: Option<Node<'_>>, mut f: impl FnMut(HirId)) {
+fn for_each_consumable(
+    place: TrackedValue,
+    node: Option<Node<'_>>,
+    mut f: impl FnMut(TrackedValue),
+) {
     f(place);
     if let Some(Node::Expr(expr)) = node {
         match expr.kind {
@@ -61,7 +68,7 @@ fn for_each_consumable(place: HirId, node: Option<Node<'_>>, mut f: impl FnMut(H
                 _,
                 hir::Path { res: hir::def::Res::Local(hir_id), .. },
             )) => {
-                f(*hir_id);
+                f(TrackedValue::Variable(*hir_id));
             }
             _ => (),
         }
@@ -75,22 +82,60 @@ rustc_index::newtype_index! {
 }
 
 rustc_index::newtype_index! {
-    pub struct HirIdIndex {
+    pub struct TrackedValueIndex {
         DEBUG_FORMAT = "hidx({})",
     }
 }
 
+/// Identifies a value whose drop state we need to track.
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
+enum TrackedValue {
+    /// Represents a named variable, such as a let binding, parameter, or upvar.
+    ///
+    /// The HirId points to the variable's definition site.
+    Variable(HirId),
+    /// A value produced as a result of an expression.
+    ///
+    /// The HirId points to the expression that returns this value.
+    Temporary(HirId),
+}
+
+impl TrackedValue {
+    fn hir_id(&self) -> HirId {
+        match self {
+            TrackedValue::Variable(hir_id) | TrackedValue::Temporary(hir_id) => *hir_id,
+        }
+    }
+}
+
+impl From<&PlaceWithHirId<'_>> for TrackedValue {
+    fn from(place_with_id: &PlaceWithHirId<'_>) -> Self {
+        match place_with_id.place.base {
+            PlaceBase::Rvalue | PlaceBase::StaticItem => {
+                TrackedValue::Temporary(place_with_id.hir_id)
+            }
+            PlaceBase::Local(hir_id)
+            | PlaceBase::Upvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id }, .. }) => {
+                TrackedValue::Variable(hir_id)
+            }
+        }
+    }
+}
+
 pub struct DropRanges {
-    hir_id_map: HirIdMap<HirIdIndex>,
+    tracked_value_map: FxHashMap<TrackedValue, TrackedValueIndex>,
     nodes: IndexVec<PostOrderId, NodeInfo>,
 }
 
 impl DropRanges {
     pub fn is_dropped_at(&self, hir_id: HirId, location: usize) -> bool {
-        self.hir_id_map
-            .get(&hir_id)
-            .copied()
-            .map_or(false, |hir_id| self.expect_node(location.into()).drop_state.contains(hir_id))
+        self.tracked_value_map
+            .get(&TrackedValue::Temporary(hir_id))
+            .or(self.tracked_value_map.get(&TrackedValue::Variable(hir_id)))
+            .cloned()
+            .map_or(false, |tracked_value_id| {
+                self.expect_node(location.into()).drop_state.contains(tracked_value_id)
+            })
     }
 
     /// Returns a reference to the NodeInfo for a node, panicking if it does not exist
@@ -118,7 +163,7 @@ struct DropRangesBuilder {
     /// (see NodeInfo::drop_state). The hir_id_map field stores the mapping
     /// from HirIds to the HirIdIndex that is used to represent that value in
     /// bitvector.
-    hir_id_map: HirIdMap<HirIdIndex>,
+    tracked_value_map: FxHashMap<TrackedValue, TrackedValueIndex>,
 
     /// When building the control flow graph, we don't always know the
     /// post-order index of the target node at the point we encounter it.
@@ -138,7 +183,7 @@ struct DropRangesBuilder {
 impl Debug for DropRangesBuilder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DropRanges")
-            .field("hir_id_map", &self.hir_id_map)
+            .field("hir_id_map", &self.tracked_value_map)
             .field("post_order_maps", &self.post_order_map)
             .field("nodes", &self.nodes.iter_enumerated().collect::<BTreeMap<_, _>>())
             .finish()
@@ -154,7 +199,7 @@ impl Debug for DropRangesBuilder {
 impl DropRangesBuilder {
     /// Returns the number of values (hir_ids) that are tracked
     fn num_values(&self) -> usize {
-        self.hir_id_map.len()
+        self.tracked_value_map.len()
     }
 
     fn node_mut(&mut self, id: PostOrderId) -> &mut NodeInfo {
@@ -177,13 +222,13 @@ struct NodeInfo {
     successors: Vec<PostOrderId>,
 
     /// List of hir_ids that are dropped by this node.
-    drops: Vec<HirIdIndex>,
+    drops: Vec<TrackedValueIndex>,
 
     /// List of hir_ids that are reinitialized by this node.
-    reinits: Vec<HirIdIndex>,
+    reinits: Vec<TrackedValueIndex>,
 
     /// Set of values that are definitely dropped at this point.
-    drop_state: BitSet<HirIdIndex>,
+    drop_state: BitSet<TrackedValueIndex>,
 }
 
 impl NodeInfo {

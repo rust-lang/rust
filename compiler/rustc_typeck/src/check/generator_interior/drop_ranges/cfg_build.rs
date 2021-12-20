@@ -1,11 +1,12 @@
 use super::{
     for_each_consumable, record_consumed_borrow::ConsumedAndBorrowedPlaces, DropRangesBuilder,
-    HirIdIndex, NodeInfo, PostOrderId,
+    NodeInfo, PostOrderId, TrackedValue, TrackedValueIndex,
 };
 use hir::{
     intravisit::{self, NestedVisitorMap, Visitor},
-    Body, Expr, ExprKind, Guard, HirId, HirIdMap,
+    Body, Expr, ExprKind, Guard, HirId,
 };
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
 use rustc_middle::{
@@ -61,20 +62,20 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
     ) -> Self {
         debug!("consumed_places: {:?}", places.consumed);
         let drop_ranges = DropRangesBuilder::new(
-            places.consumed.iter().flat_map(|(_, places)| places.iter().copied()),
+            places.consumed.iter().flat_map(|(_, places)| places.iter().cloned()),
             hir,
             num_exprs,
         );
         Self { hir, places, drop_ranges, expr_index: PostOrderId::from_u32(0), typeck_results, tcx }
     }
 
-    fn record_drop(&mut self, hir_id: HirId) {
-        if self.places.borrowed.contains(&hir_id) {
-            debug!("not marking {:?} as dropped because it is borrowed at some point", hir_id);
+    fn record_drop(&mut self, value: TrackedValue) {
+        if self.places.borrowed.contains(&value) {
+            debug!("not marking {:?} as dropped because it is borrowed at some point", value);
         } else {
-            debug!("marking {:?} as dropped at {:?}", hir_id, self.expr_index);
+            debug!("marking {:?} as dropped at {:?}", value, self.expr_index);
             let count = self.expr_index;
-            self.drop_ranges.drop_at(hir_id, count);
+            self.drop_ranges.drop_at(value, count);
         }
     }
 
@@ -88,7 +89,9 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             .get(&expr.hir_id)
             .map_or(vec![], |places| places.iter().cloned().collect());
         for place in places {
-            for_each_consumable(place, self.hir.find(place), |hir_id| self.record_drop(hir_id));
+            for_each_consumable(place, self.hir.find(place.hir_id()), |value| {
+                self.record_drop(value)
+            });
         }
     }
 
@@ -100,7 +103,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
         {
             let location = self.expr_index;
             debug!("reinitializing {:?} at {:?}", hir_id, location);
-            self.drop_ranges.reinit_at(*hir_id, location);
+            self.drop_ranges.reinit_at(TrackedValue::Variable(*hir_id), location);
         } else {
             debug!("reinitializing {:?} is not supported", expr);
         }
@@ -264,36 +267,40 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
 }
 
 impl DropRangesBuilder {
-    fn new(hir_ids: impl Iterator<Item = HirId>, hir: Map<'_>, num_exprs: usize) -> Self {
-        let mut hir_id_map = HirIdMap::<HirIdIndex>::default();
+    fn new(
+        tracked_values: impl Iterator<Item = TrackedValue>,
+        hir: Map<'_>,
+        num_exprs: usize,
+    ) -> Self {
+        let mut tracked_value_map = FxHashMap::<_, TrackedValueIndex>::default();
         let mut next = <_>::from(0u32);
-        for hir_id in hir_ids {
-            for_each_consumable(hir_id, hir.find(hir_id), |hir_id| {
-                if !hir_id_map.contains_key(&hir_id) {
-                    hir_id_map.insert(hir_id, next);
-                    next = <_>::from(next.index() + 1);
+        for value in tracked_values {
+            for_each_consumable(value, hir.find(value.hir_id()), |value| {
+                if !tracked_value_map.contains_key(&value) {
+                    tracked_value_map.insert(value, next);
+                    next = next + 1;
                 }
             });
         }
-        debug!("hir_id_map: {:?}", hir_id_map);
-        let num_values = hir_id_map.len();
+        debug!("hir_id_map: {:?}", tracked_value_map);
+        let num_values = tracked_value_map.len();
         Self {
-            hir_id_map,
+            tracked_value_map,
             nodes: IndexVec::from_fn_n(|_| NodeInfo::new(num_values), num_exprs + 1),
             deferred_edges: <_>::default(),
             post_order_map: <_>::default(),
         }
     }
 
-    fn hidx(&self, hir_id: HirId) -> HirIdIndex {
-        *self.hir_id_map.get(&hir_id).unwrap()
+    fn tracked_value_index(&self, tracked_value: TrackedValue) -> TrackedValueIndex {
+        *self.tracked_value_map.get(&tracked_value).unwrap()
     }
 
     /// Adds an entry in the mapping from HirIds to PostOrderIds
     ///
     /// Needed so that `add_control_edge_hir_id` can work.
-    fn add_node_mapping(&mut self, hir_id: HirId, post_order_id: PostOrderId) {
-        self.post_order_map.insert(hir_id, post_order_id);
+    fn add_node_mapping(&mut self, node_hir_id: HirId, post_order_id: PostOrderId) {
+        self.post_order_map.insert(node_hir_id, post_order_id);
     }
 
     /// Like add_control_edge, but uses a hir_id as the target.
@@ -304,13 +311,13 @@ impl DropRangesBuilder {
         self.deferred_edges.push((from, to));
     }
 
-    fn drop_at(&mut self, value: HirId, location: PostOrderId) {
-        let value = self.hidx(value);
+    fn drop_at(&mut self, value: TrackedValue, location: PostOrderId) {
+        let value = self.tracked_value_index(value);
         self.node_mut(location.into()).drops.push(value);
     }
 
-    fn reinit_at(&mut self, value: HirId, location: PostOrderId) {
-        let value = match self.hir_id_map.get(&value) {
+    fn reinit_at(&mut self, value: TrackedValue, location: PostOrderId) {
+        let value = match self.tracked_value_map.get(&value) {
             Some(value) => *value,
             // If there's no value, this is never consumed and therefore is never dropped. We can
             // ignore this.
