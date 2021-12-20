@@ -659,7 +659,8 @@ fn random_sorted_fill(mut seed: u32, buf: &mut [u32]) {
 }
 
 // Measures performance of slice dedup impl.
-// "Old" implementation of Vec::dedup
+// This was used to justify separate implementation of dedup for Vec.
+// This algorithm was used for Vecs prior to Rust 1.52.
 fn bench_dedup_slice_truncate(b: &mut Bencher, sz: usize) {
     let mut template = vec![0u32; sz];
     b.bytes = std::mem::size_of_val(template.as_slice()) as u64;
@@ -714,7 +715,7 @@ fn bench_vec_dedup_none(b: &mut Bencher, sz: usize) {
         black_box(vec.first());
         // Unlike other benches of `dedup`
         // this doesn't reinitialize vec
-        // because we measure how effecient dedup is
+        // because we measure how efficient dedup is
         // when no memory written
     });
 }
