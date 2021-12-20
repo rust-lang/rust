@@ -205,7 +205,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         self.note_obligation_cause_code(
             &mut err,
             &obligation.predicate,
-            &obligation.cause.code,
+            obligation.cause.code(),
             &mut vec![],
             &mut Default::default(),
         );
@@ -255,7 +255,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 // If this obligation was generated as a result of well-formedness checking, see if we
                 // can get a better error message by performing HIR-based well-formedness checking.
                 if let ObligationCauseCode::WellFormed(Some(wf_loc)) =
-                    root_obligation.cause.code.peel_derives()
+                    root_obligation.cause.code().peel_derives()
                 {
                     if let Some(cause) = self
                         .tcx
@@ -272,7 +272,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 | ObligationCauseCode::CompareImplTypeObligation {
                     impl_item_def_id,
                     trait_item_def_id,
-                } = obligation.cause.code
+                } = *obligation.cause.code()
                 {
                     self.report_extra_impl_obligation(
                         span,
@@ -295,7 +295,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
                         let (post_message, pre_message, type_def) = self
-                            .get_parent_trait_ref(&obligation.cause.code)
+                            .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
                                 (
                                     format!(" in `{}`", t),
@@ -376,17 +376,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             }
                         }
 
-                        let explanation =
-                            if obligation.cause.code == ObligationCauseCode::MainFunctionType {
-                                "consider using `()`, or a `Result`".to_owned()
-                            } else {
-                                format!(
-                                    "{}the trait `{}` is not implemented for `{}`",
-                                    pre_message,
-                                    trait_ref.print_only_trait_path(),
-                                    trait_ref.skip_binder().self_ty(),
-                                )
-                            };
+                        let explanation = if let ObligationCauseCode::MainFunctionType =
+                            obligation.cause.code()
+                        {
+                            "consider using `()`, or a `Result`".to_owned()
+                        } else {
+                            format!(
+                                "{}the trait `{}` is not implemented for `{}`",
+                                pre_message,
+                                trait_ref.print_only_trait_path(),
+                                trait_ref.skip_binder().self_ty(),
+                            )
+                        };
 
                         if self.suggest_add_reference_to_arg(
                             &obligation,
@@ -1305,7 +1306,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 );
 
                 let is_normalized_ty_expected = !matches!(
-                    obligation.cause.code.peel_derives(),
+                    obligation.cause.code().peel_derives(),
                     ObligationCauseCode::ItemObligation(_)
                         | ObligationCauseCode::BindingObligation(_, _)
                         | ObligationCauseCode::ObjectCastObligation(_)
@@ -1620,9 +1621,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         let predicate = self.resolve_vars_if_possible(obligation.predicate);
         let span = obligation.cause.span;
 
-        debug!(
-            ?predicate, ?obligation.cause.code,
-        );
+        debug!(?predicate, obligation.cause.code = tracing::field::debug(&obligation.cause.code()));
 
         // Ambiguity errors are often caused as fallout from earlier errors.
         // We ignore them if this `infcx` is tainted in some cases below.
@@ -1717,13 +1716,13 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
 
-                if let ObligationCauseCode::ItemObligation(def_id) = obligation.cause.code {
+                if let ObligationCauseCode::ItemObligation(def_id) = *obligation.cause.code() {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 } else if let (
                     Ok(ref snippet),
                     ObligationCauseCode::BindingObligation(ref def_id, _),
                 ) =
-                    (self.tcx.sess.source_map().span_to_snippet(span), &obligation.cause.code)
+                    (self.tcx.sess.source_map().span_to_snippet(span), obligation.cause.code())
                 {
                     let generics = self.tcx.generics_of(*def_id);
                     if generics.params.iter().any(|p| p.name != kw::SelfUpper)
@@ -2006,7 +2005,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             self.note_obligation_cause_code(
                 err,
                 &obligation.predicate,
-                &obligation.cause.code,
+                obligation.cause.code(),
                 &mut vec![],
                 &mut Default::default(),
             );
@@ -2019,15 +2018,16 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        let (pred, item_def_id, span) =
-            match (obligation.predicate.kind().skip_binder(), obligation.cause.code.peel_derives())
-            {
-                (
-                    ty::PredicateKind::Trait(pred),
-                    &ObligationCauseCode::BindingObligation(item_def_id, span),
-                ) => (pred, item_def_id, span),
-                _ => return,
-            };
+        let (pred, item_def_id, span) = match (
+            obligation.predicate.kind().skip_binder(),
+            obligation.cause.code().peel_derives(),
+        ) {
+            (
+                ty::PredicateKind::Trait(pred),
+                &ObligationCauseCode::BindingObligation(item_def_id, span),
+            ) => (pred, item_def_id, span),
+            _ => return,
+        };
         debug!(
             "suggest_unsized_bound_if_applicable: pred={:?} item_def_id={:?} span={:?}",
             pred, item_def_id, span

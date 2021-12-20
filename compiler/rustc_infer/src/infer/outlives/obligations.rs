@@ -102,7 +102,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             infer::RelateParamBound(
                 cause.span,
                 sup_type,
-                match cause.code.peel_derives() {
+                match cause.code().peel_derives() {
                     ObligationCauseCode::BindingObligation(_, span) => Some(*span),
                     _ => None,
                 },
