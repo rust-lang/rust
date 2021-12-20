@@ -105,13 +105,13 @@ clang-cl --version
 If you are compiling any proc-macros, you will get this error:
 
 ```
-error: Linker plugin based LTO is not supported together with `-C prefer-dynamic` when 
+error: Linker plugin based LTO is not supported together with `-C prefer-dynamic` when
 targeting Windows-like targets
 ```
 
-This is fixed if you explicitly set the target, for example 
+This is fixed if you explicitly set the target, for example
 `cargo build --target x86_64-pc-windows-msvc`
-Without an explicit --target the flags will be passed to all compiler invocations (including build 
+Without an explicit --target the flags will be passed to all compiler invocations (including build
 scripts and proc macros), see [cargo docs on rustflags](https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags)
 
 If you have dependencies using the `cc` crate, you will need to set these
