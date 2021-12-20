@@ -415,3 +415,13 @@ pub fn tune_cpu(sess: &Session) -> Option<&str> {
     let name = sess.opts.debugging_opts.tune_cpu.as_ref()?;
     Some(handle_native(name))
 }
+
+pub(crate) fn should_use_new_llvm_pass_manager(user_opt: &Option<bool>, target_arch: &str) -> bool {
+    // The new pass manager is enabled by default for LLVM >= 13.
+    // This matches Clang, which also enables it since Clang 13.
+
+    // FIXME: There are some perf issues with the new pass manager
+    // when targeting s390x, so it is temporarily disabled for that
+    // arch, see https://github.com/rust-lang/rust/issues/89609
+    user_opt.unwrap_or_else(|| target_arch != "s390x" && llvm_util::get_version() >= (13, 0, 0))
+}

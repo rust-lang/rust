@@ -413,21 +413,6 @@ fn get_pgo_sample_use_path(config: &ModuleConfig) -> Option<CString> {
         .map(|path_buf| CString::new(path_buf.to_string_lossy().as_bytes()).unwrap())
 }
 
-pub(crate) fn should_use_new_llvm_pass_manager(
-    cgcx: &CodegenContext<LlvmCodegenBackend>,
-    config: &ModuleConfig,
-) -> bool {
-    // The new pass manager is enabled by default for LLVM >= 13.
-    // This matches Clang, which also enables it since Clang 13.
-
-    // FIXME: There are some perf issues with the new pass manager
-    // when targeting s390x, so it is temporarily disabled for that
-    // arch, see https://github.com/rust-lang/rust/issues/89609
-    config
-        .new_llvm_pass_manager
-        .unwrap_or_else(|| cgcx.target_arch != "s390x" && llvm_util::get_version() >= (13, 0, 0))
-}
-
 pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diag_handler: &Handler,
@@ -531,7 +516,10 @@ pub(crate) unsafe fn optimize(
     }
 
     if let Some(opt_level) = config.opt_level {
-        if should_use_new_llvm_pass_manager(cgcx, config) {
+        if llvm_util::should_use_new_llvm_pass_manager(
+            &config.new_llvm_pass_manager,
+            &cgcx.target_arch,
+        ) {
             let opt_stage = match cgcx.lto {
                 Lto::Fat => llvm::OptStage::PreLinkFatLTO,
                 Lto::Thin | Lto::ThinLocal => llvm::OptStage::PreLinkThinLTO,
