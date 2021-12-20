@@ -100,14 +100,25 @@ jobs:
       - run: npm ci
         working-directory: editors/code
 
-      - run: npx vsce package -o "../../dist/rust-analyzer-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }}
+      - name: Package Extension (release)
+        if: github.ref == 'refs/heads/release'
+        run: npx vsce package -o "../../dist/rust-analyzer-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }}
+        working-directory: editors/code
+
+      - name: Package Extension (nightly)
+        if: github.ref != 'refs/heads/release'
+        run: npx vsce package -o "../../dist/rust-analyzer-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }} --pre-release
         working-directory: editors/code
 
       - if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: rm -rf editors/code/server
 
-      - if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: npx vsce package -o ../../dist/rust-analyzer.vsix
+      - if: matrix.target == 'x86_64-unknown-linux-gnu' && github.ref == 'refs/heads/release'
+        run: npx vsce package -o ../../dist/rust-analyzer-no-server.vsix
+        working-directory: editors/code
+
+      - if: matrix.target == 'x86_64-unknown-linux-gnu' && github.ref != 'refs/heads/release'
+        run: npx vsce package -o ../../dist/rust-analyzer-no-server.vsix --pre-release
         working-directory: editors/code
 
       - name: Run analysis-stats on rust-analyzer
@@ -151,7 +162,14 @@ jobs:
       - run: npm ci
         working-directory: editors/code
 
-      - run: npx vsce package -o "../../dist/rust-analyzer-alpine-x64.vsix" --target alpine-x64
+      - name: Publish Extension (release)
+        if: github.ref == 'refs/heads/release'
+        run: npx vsce package -o "../../dist/rust-analyzer-alpine-x64.vsix" --target alpine-x64
+        working-directory: editors/code
+
+      - name: Publish Extension (nightly)
+        if: github.ref != 'refs/heads/release'
+        run: npx vsce package -o "../../dist/rust-analyzer-alpine-x64.vsix" --target alpine-x64 --pre-release
         working-directory: editors/code
 
       - run: rm -rf editors/code/server
@@ -223,11 +241,19 @@ jobs:
           name: ${{ env.TAG }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - run: rm dist/rust-analyzer-no-server.vsix
+
       - run: npm ci
         working-directory: ./editors/code
 
-      - name: Publish Extension
+      - name: Publish Extension (release)
         if: github.ref == 'refs/heads/release'
         working-directory: ./editors/code
         # token from https://dev.azure.com/rust-analyzer/
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
+
+      - name: Publish Extension (nightly)
+        # check specifically for nightly in case someone triggers a release on a feature branch
+        if: github.ref == 'refs/heads/nightly'
+        working-directory: ./editors/code
+        run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix --pre-release
