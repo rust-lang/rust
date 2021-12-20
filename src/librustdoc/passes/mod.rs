@@ -125,27 +125,9 @@ impl ConditionalPass {
     }
 }
 
-/// A shorthand way to refer to which set of passes to use, based on the presence of
-/// `--no-defaults` and `--show-coverage`.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-crate enum DefaultPassOption {
-    Default,
-    Coverage,
-    None,
-}
-
 /// Returns the given default set of passes.
-crate fn defaults(default_set: DefaultPassOption) -> &'static [ConditionalPass] {
-    match default_set {
-        DefaultPassOption::Default => DEFAULT_PASSES,
-        DefaultPassOption::Coverage => COVERAGE_PASSES,
-        DefaultPassOption::None => &[],
-    }
-}
-
-/// If the given name matches a known pass, returns its information.
-crate fn find_pass(pass_name: &str) -> Option<Pass> {
-    PASSES.iter().find(|p| p.name == pass_name).copied()
+crate fn defaults(show_coverage: bool) -> &'static [ConditionalPass] {
+    if show_coverage { COVERAGE_PASSES } else { DEFAULT_PASSES }
 }
 
 /// Returns a span encompassing all the given attributes.

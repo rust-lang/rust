@@ -1,3 +1,3 @@
 // check-pass
 // compile-flags: --passes list
-// error-pattern: the `passes` flag is deprecated
+// error-pattern: the `passes` flag no longer functions

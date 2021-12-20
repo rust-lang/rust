@@ -1,4 +1,4 @@
-// compile-flags: --no-defaults --passes collapse-docs --passes unindent-comments
+// compile-flags: -Z unstable-options --document-hidden-items
 
 // @has issue_15347/fn.foo.html
 #[doc(hidden)]
