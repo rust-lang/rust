@@ -156,18 +156,18 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 /// instead.
 ///
 /// Examples:
-/// ```ignore
+/// ```
 /// let abc = 1;
 /// //        ^ output
 /// let def = abc;
-/// dbg!(def)
+/// dbg!(def);
 /// //   ^^^ input
 ///
 /// // or...
 /// let abc = 1;
 /// let def = abc + 2;
 /// //        ^^^^^^^ output
-/// dbg!(def)
+/// dbg!(def);
 /// //   ^^^ input
 /// ```
 pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr<'b>) -> &'a Expr<'b> {
@@ -1136,7 +1136,7 @@ pub fn find_macro_calls(names: &[&str], body: &Body<'_>) -> Vec<Span> {
 
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
 ///
-/// ```rust,ignore
+/// ```rust
 ///        let x = ();
 /// //             ^^
 /// // will be converted to
@@ -1337,7 +1337,7 @@ pub fn is_adjusted(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     cx.typeck_results().adjustments().get(e.hir_id).is_some()
 }
 
-/// Returns the pre-expansion span if is this comes from an expansion of the
+/// Returns the pre-expansion span if this comes from an expansion of the
 /// macro `name`.
 /// See also [`is_direct_expn_of`].
 #[must_use]
@@ -1364,7 +1364,8 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// of the macro `name`.
 /// The difference with [`is_expn_of`] is that in
 /// ```rust
-/// # macro_rules! foo { ($e:tt) => { $e } }; macro_rules! bar { ($e:expr) => { $e } }
+/// # macro_rules! foo { ($name:tt!$args:tt) => { $name!$args } }
+/// # macro_rules! bar { ($e:expr) => { $e } }
 /// foo!(bar!(42));
 /// ```
 /// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only
@@ -1905,7 +1906,9 @@ pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
 
 /// Check if parent of a hir node is a trait implementation block.
 /// For example, `f` in
-/// ```rust,ignore
+/// ```rust
+/// # struct S;
+/// # trait Trait { fn f(); }
 /// impl Trait for S {
 ///     fn f() {}
 /// }
