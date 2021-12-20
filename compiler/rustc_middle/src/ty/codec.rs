@@ -16,7 +16,6 @@ use crate::thir;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, List, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::Span;
 use std::hash::Hash;
@@ -160,7 +159,8 @@ encodable_via_deref! {
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,
-    &'tcx mir::coverage::CodeRegion
+    &'tcx mir::coverage::CodeRegion,
+    &'tcx ty::AdtDef
 }
 
 pub trait TyDecoder<'tcx>: Decoder {
@@ -312,13 +312,6 @@ macro_rules! impl_decodable_via_ref {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::AdtDef {
-    fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
-        let def_id = <DefId as Decodable<D>>::decode(decoder)?;
-        Ok(decoder.tcx().adt_def(def_id))
-    }
-}
-
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Ty<'tcx>> {
     fn decode(decoder: &mut D) -> Result<&'tcx Self, D::Error> {
         let len = decoder.read_usize()?;
@@ -403,7 +396,8 @@ impl_decodable_via_ref! {
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,
     &'tcx mir::coverage::CodeRegion,
-    &'tcx ty::List<ty::BoundVariableKind>
+    &'tcx ty::List<ty::BoundVariableKind>,
+    &'tcx ty::AdtDef
 }
 
 #[macro_export]

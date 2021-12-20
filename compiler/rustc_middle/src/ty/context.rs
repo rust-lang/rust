@@ -112,6 +112,7 @@ pub struct CtxtInterners<'tcx> {
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, Layout>,
+    adt_def: InternedSet<'tcx, AdtDef>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -132,6 +133,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             const_allocation: Default::default(),
             bound_variable_kinds: Default::default(),
             layout: Default::default(),
+            adt_def: Default::default(),
         }
     }
 
@@ -1078,7 +1080,7 @@ impl<'tcx> TyCtxt<'tcx> {
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,
     ) -> &'tcx ty::AdtDef {
-        self.arena.alloc(ty::AdtDef::new(self, did, kind, variants, repr))
+        self.intern_adt_def(ty::AdtDef::new(self, did, kind, variants, repr))
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
@@ -2057,6 +2059,7 @@ direct_interners! {
     const_: mk_const(Const<'tcx>),
     const_allocation: intern_const_alloc(Allocation),
     layout: intern_layout(Layout),
+    adt_def: intern_adt_def(AdtDef),
 }
 
 macro_rules! slice_interners {

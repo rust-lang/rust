@@ -1472,7 +1472,7 @@ pub struct Destructor {
 }
 
 bitflags! {
-    #[derive(HashStable)]
+    #[derive(HashStable, TyEncodable, TyDecodable)]
     pub struct VariantFlags: u32 {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
@@ -1484,7 +1484,7 @@ bitflags! {
 }
 
 /// Definition of a variant -- a struct's fields or an enum variant.
-#[derive(Debug, HashStable)]
+#[derive(Debug, HashStable, TyEncodable, TyDecodable)]
 pub struct VariantDef {
     /// `DefId` that identifies the variant itself.
     /// If this variant belongs to a struct or union, then this is a copy of its `DefId`.
@@ -1586,7 +1586,7 @@ pub enum VariantDiscr {
     Relative(u32),
 }
 
-#[derive(Debug, HashStable)]
+#[derive(Debug, HashStable, TyEncodable, TyDecodable)]
 pub struct FieldDef {
     pub did: DefId,
     #[stable_hasher(project(name))]
