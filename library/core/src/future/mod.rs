@@ -13,6 +13,7 @@ mod future;
 mod into_future;
 mod pending;
 mod poll_fn;
+mod poll_once;
 mod ready;
 
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -28,6 +29,9 @@ pub use ready::{ready, Ready};
 
 #[unstable(feature = "future_poll_fn", issue = "72302")]
 pub use poll_fn::{poll_fn, PollFn};
+
+#[unstable(feature = "future_poll_once", issue = "92115")]
+pub use poll_once::PollOnce;
 
 /// This type is needed because:
 ///

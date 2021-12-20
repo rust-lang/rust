@@ -1,5 +1,6 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
+use crate::future::PollOnce;
 use crate::marker::Unpin;
 use crate::ops;
 use crate::pin::Pin;
@@ -101,6 +102,32 @@ pub trait Future {
     #[lang = "poll"]
     #[stable(feature = "futures_api", since = "1.36.0")]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
+
+    /// Poll a future once.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(future_poll_once)]
+    ///
+    /// use std::future::{self, Future};
+    /// use std::task::Poll;
+    ///
+    /// # let _ = async {
+    /// let f = future::ready(1);
+    /// assert_eq!(f.poll_once().await, Poll::Ready(1));
+    ///
+    /// let mut f = future::pending::<()>();
+    /// assert_eq!(f.poll_once().await, Poll::Pending);
+    /// # };
+    /// ```
+    #[unstable(feature = "future_poll_once", issue = "92115")]
+    fn poll_once(self) -> PollOnce<Self>
+    where
+        Self: Sized,
+    {
+        PollOnce { future: self }
+    }
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
