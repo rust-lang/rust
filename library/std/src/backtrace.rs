@@ -99,7 +99,7 @@ use crate::cell::UnsafeCell;
 use crate::env;
 use crate::ffi::c_void;
 use crate::fmt;
-use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use crate::sync::Once;
 use crate::sys_common::backtrace::{lock, output_filename};
 use crate::vec::Vec;
@@ -256,7 +256,7 @@ impl Backtrace {
         // backtrace captures speedy, because otherwise reading environment
         // variables every time can be somewhat slow.
         static ENABLED: AtomicUsize = AtomicUsize::new(0);
-        match ENABLED.load(SeqCst) {
+        match ENABLED.load(Relaxed) {
             0 => {}
             1 => return false,
             _ => return true,
@@ -268,7 +268,7 @@ impl Backtrace {
                 Err(_) => false,
             },
         };
-        ENABLED.store(enabled as usize + 1, SeqCst);
+        ENABLED.store(enabled as usize + 1, Relaxed);
         enabled
     }
 
