@@ -2,7 +2,7 @@ use super::{abi, error};
 use crate::{
     ffi::{CStr, CString, OsStr, OsString},
     fmt,
-    io::{self, IoSlice, IoSliceMut, SeekFrom},
+    io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom},
     mem::MaybeUninit,
     os::raw::{c_int, c_short},
     os::solid::ffi::OsStrExt,
@@ -336,6 +336,32 @@ impl File {
             ))
             .map_err(|e| e.as_io_error())?;
             Ok(out_num_bytes.assume_init())
+        }
+    }
+
+    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        unsafe {
+            let len = buf.remaining();
+            let mut out_num_bytes = MaybeUninit::uninit();
+            error::SolidError::err_if_negative(abi::SOLID_FS_Read(
+                self.fd.raw(),
+                buf.unfilled_mut().as_mut_ptr() as *mut u8,
+                len,
+                out_num_bytes.as_mut_ptr(),
+            ))
+            .map_err(|e| e.as_io_error())?;
+
+            // Safety: `out_num_bytes` is filled by the successful call to
+            // `SOLID_FS_Read`
+            let num_bytes_read = out_num_bytes.assume_init();
+
+            // Safety: `num_bytes_read` bytes were written to the unfilled
+            // portion of the buffer
+            buf.assume_init(num_bytes_read);
+
+            buf.add_filled(num_bytes_read);
+
+            Ok(())
         }
     }
 
