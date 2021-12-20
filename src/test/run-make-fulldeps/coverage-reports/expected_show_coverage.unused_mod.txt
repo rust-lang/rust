@@ -1,0 +1,7 @@
+    1|       |#[path = "lib/unused_mod_helper.rs"]
+    2|       |mod unused_module;
+    3|       |
+    4|      1|fn main() {
+    5|      1|    println!("hello world!");
+    6|      1|}
+
