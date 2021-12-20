@@ -733,12 +733,47 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 .caller_bounds()
                 .iter()
                 .filter(|bound| match bound.kind().skip_binder() {
-                    ty::PredicateKind::RegionOutlives(_) | ty::PredicateKind::TypeOutlives(_) => {
-                        false
+                    predicate @ ty::PredicateKind::RegionOutlives(_) => {
+                        // A bound involving early-bound regions
+                        // (e.g. `fn foo<'a, 'b>() where 'a: 'b or
+                        //       `fn bar<'a>()     where 'a: 'static
+                        //)
+                        // cannot affect the evaluation of a predicate with no
+                        // free regions. Such a predicate only gives us information
+                        // about some specific caller-chosen lifetime, and does not
+                        // give us any information about any bound regions within
+                        // our predicate (e.g. `for<'a> T: MyTrait<'a>`). Since
+                        // we checked above that our predicate does not include any
+                        // free regions (which includes early-bound regions), we know
+                        // that it's safe to discard a predicate involving only
+                        // early-bound regions.
+                        //
+                        // If a `RegionOutLives` predicate has any late-bound regions,
+                        // we choose to keep it. This might be overly conservative,
+                        // but should be safe in all cases.
+                        predicate.has_late_bound_regions()
                     }
+                    // If we have a predicate like `T: 'static`, then we need to keep
+                    // it, since it could legitimately affect the evaluation of our predicate.
+                    // For exmaple, we could be evaluating `T: MyTrait`, and find
+                    // `impl<T: 'static> MyTrait for T {}`.
+                    //
+                    // We also keep any `TypeOutlives` predicates involving any late-bound
+                    // regions. This is probably overly conservative, but ensures that we don't
+                    // run into any weird situations with impossible-to-satisfiy predicates
+                    // (e.g. `for<'a> &'a u8: 'static).
+                    predicate @ ty::PredicateKind::TypeOutlives(outlives) => {
+                        *outlives.1 == ty::ReStatic || predicate.has_late_bound_regions()
+                    }
+                    // We assume that all other bounds can potentially affect
+                    // the evaluation of our predicates, so we keep them
                     _ => true,
                 })
                 .collect();
+
+            // Replace the `ParamEnv` with a new one, which differs
+            // only be the removal of some of the caller bounds. This will
+            // allow us to use the global cache in more cases.
             obligation.param_env = ty::ParamEnv::new(
                 self.tcx().intern_predicates(&new_bounds),
                 obligation.param_env.reveal(),
