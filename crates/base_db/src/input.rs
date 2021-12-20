@@ -97,6 +97,10 @@ impl CrateName {
     pub fn normalize_dashes(name: &str) -> CrateName {
         Self(SmolStr::new(name.replace('-', "_")))
     }
+
+    pub fn as_smol_str(&self) -> &SmolStr {
+        &self.0
+    }
 }
 
 impl fmt::Display for CrateName {

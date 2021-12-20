@@ -4,7 +4,7 @@
 //! get a super-set of matches. Then, we we confirm each match using precise
 //! name resolution.
 
-use std::{convert::TryInto, mem};
+use std::{convert::TryInto, mem, sync::Arc};
 
 use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
 use hir::{
@@ -376,32 +376,63 @@ impl<'a> FindUsages<'a> {
             }
         };
 
-        let name = self.def.name(sema.db).or_else(|| {
-            self.include_self_kw_refs.as_ref().and_then(|ty| {
-                ty.as_adt()
-                    .map(|adt| adt.name(self.sema.db))
-                    .or_else(|| ty.as_builtin().map(|builtin| builtin.name()))
-            })
-        });
-        let name = match name {
-            Some(name) => name.to_smol_str(),
+        let name = match self.def {
+            // special case crate modules as these do not have a proper name
+            Definition::Module(module) if module.crate_root(self.sema.db) == module => {
+                // FIXME: This assumes the crate name is always equal to its display name when it really isn't
+                module
+                    .krate()
+                    .display_name(self.sema.db)
+                    .map(|crate_name| crate_name.crate_name().as_smol_str().clone())
+            }
+            _ => {
+                let self_kw_refs = || {
+                    self.include_self_kw_refs.as_ref().and_then(|ty| {
+                        ty.as_adt()
+                            .map(|adt| adt.name(self.sema.db))
+                            .or_else(|| ty.as_builtin().map(|builtin| builtin.name()))
+                    })
+                };
+                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.to_smol_str())
+            }
+        };
+        let name = match &name {
+            Some(s) => s.as_str(),
             None => return,
         };
-        let name = name.as_str();
 
-        for (file_id, search_range) in search_scope {
-            let text = sema.db.file_text(file_id);
-            let search_range =
-                search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(text.as_str())));
-
-            let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
-
-            for (idx, _) in text.match_indices(name) {
+        // these can't be closures because rust infers the lifetimes wrong ...
+        fn match_indices<'a>(
+            text: &'a str,
+            name: &'a str,
+            search_range: TextRange,
+        ) -> impl Iterator<Item = TextSize> + 'a {
+            text.match_indices(name).filter_map(move |(idx, _)| {
                 let offset: TextSize = idx.try_into().unwrap();
                 if !search_range.contains_inclusive(offset) {
-                    continue;
+                    return None;
                 }
+                Some(offset)
+            })
+        }
+        fn scope_files<'a>(
+            sema: &'a Semantics<RootDatabase>,
+            scope: &'a SearchScope,
+        ) -> impl Iterator<Item = (Arc<String>, FileId, TextRange)> + 'a {
+            scope.entries.iter().map(|(&file_id, &search_range)| {
+                let text = sema.db.file_text(file_id);
+                let search_range =
+                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(text.as_str())));
 
+                (text, file_id, search_range)
+            })
+        }
+
+        for (text, file_id, search_range) in scope_files(sema, &search_scope) {
+            let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
+
+            // Search for occurrences of the items name
+            for offset in match_indices(&text, name, search_range) {
                 for name in sema.find_nodes_at_offset_with_descend(&tree, offset) {
                     if match name {
                         ast::NameLike::NameRef(name_ref) => self.found_name_ref(&name_ref, sink),
@@ -412,13 +443,9 @@ impl<'a> FindUsages<'a> {
                     }
                 }
             }
+            // Search for occurrences of the `Self` referring to our type
             if let Some(self_ty) = &self.include_self_kw_refs {
-                for (idx, _) in text.match_indices("Self") {
-                    let offset: TextSize = idx.try_into().unwrap();
-                    if !search_range.contains_inclusive(offset) {
-                        continue;
-                    }
-
+                for offset in match_indices(&text, "Self", search_range) {
                     for name_ref in sema.find_nodes_at_offset_with_descend(&tree, offset) {
                         if self.found_self_ty_name_ref(self_ty, &name_ref, sink) {
                             return;
@@ -426,6 +453,37 @@ impl<'a> FindUsages<'a> {
                     }
                 }
             }
+        }
+
+        // Search for `super` and `crate` resolving to our module
+        match self.def {
+            Definition::Module(module) => {
+                let scope = search_scope.intersection(&SearchScope::module(self.sema.db, module));
+
+                let is_crate_root = module.crate_root(self.sema.db) == module;
+
+                for (text, file_id, search_range) in scope_files(sema, &scope) {
+                    let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
+
+                    for offset in match_indices(&text, "super", search_range) {
+                        for name_ref in sema.find_nodes_at_offset_with_descend(&tree, offset) {
+                            if self.found_name_ref(&name_ref, sink) {
+                                return;
+                            }
+                        }
+                    }
+                    if is_crate_root {
+                        for offset in match_indices(&text, "crate", search_range) {
+                            for name_ref in sema.find_nodes_at_offset_with_descend(&tree, offset) {
+                                if self.found_name_ref(&name_ref, sink) {
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => (),
         }
 
         // search for module `self` references in our module's definition source
@@ -439,18 +497,25 @@ impl<'a> FindUsages<'a> {
                     ModuleSource::SourceFile(_) => (file_id, None),
                 };
 
+                let search_range = if let Some(&range) = search_scope.entries.get(&file_id) {
+                    match (range, search_range) {
+                        (None, range) | (range, None) => range,
+                        (Some(range), Some(search_range)) => match range.intersect(search_range) {
+                            Some(range) => Some(range),
+                            None => return,
+                        },
+                    }
+                } else {
+                    return;
+                };
+
                 let text = sema.db.file_text(file_id);
                 let search_range =
                     search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(text.as_str())));
 
                 let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
 
-                for (idx, _) in text.match_indices("self") {
-                    let offset: TextSize = idx.try_into().unwrap();
-                    if !search_range.contains_inclusive(offset) {
-                        continue;
-                    }
-
+                for offset in match_indices(&text, "self", search_range) {
                     for name_ref in sema.find_nodes_at_offset_with_descend(&tree, offset) {
                         if self.found_self_module_name_ref(&name_ref, sink) {
                             return;

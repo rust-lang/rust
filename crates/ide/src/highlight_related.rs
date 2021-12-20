@@ -378,7 +378,22 @@ struct Foo;
     fn test_hl_self_in_crate_root() {
         check(
             r#"
-use self$0;
+use crate$0;
+  //^^^^^
+use self;
+  //^^^^
+mod __ {
+    use super;
+      //^^^^^
+}
+"#,
+        );
+        check(
+            r#"
+//- /main.rs crate:main deps:lib
+use lib$0;
+  //^^^
+//- /lib.rs crate:lib
 "#,
         );
     }
