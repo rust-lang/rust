@@ -589,9 +589,10 @@ macro_rules! writeln {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable(core_panic)]
 macro_rules! unreachable {
     () => ({
-        $crate::panic!("internal error: entered unreachable code")
+        $crate::panicking::panic("internal error: entered unreachable code")
     });
     ($msg:expr $(,)?) => ({
         $crate::unreachable!("{}", $msg)
@@ -674,8 +675,9 @@ macro_rules! unreachable {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable(core_panic)]
 macro_rules! unimplemented {
-    () => ($crate::panic!("not implemented"));
+    () => ($crate::panicking::panic("not implemented"));
     ($($arg:tt)+) => ($crate::panic!("not implemented: {}", $crate::format_args!($($arg)+)));
 }
 
@@ -735,8 +737,9 @@ macro_rules! unimplemented {
 /// ```
 #[macro_export]
 #[stable(feature = "todo_macro", since = "1.40.0")]
+#[allow_internal_unstable(core_panic)]
 macro_rules! todo {
-    () => ($crate::panic!("not yet implemented"));
+    () => ($crate::panicking::panic("not yet implemented"));
     ($($arg:tt)+) => ($crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
 }
 

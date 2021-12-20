@@ -501,6 +501,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
+use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
     convert, hint, mem,
@@ -755,7 +756,7 @@ impl<T> Option<T> {
     pub const fn unwrap(self) -> T {
         match self {
             Some(val) => val,
-            None => panic!("called `Option::unwrap()` on a `None` value"),
+            None => panic("called `Option::unwrap()` on a `None` value"),
         }
     }
 
@@ -1815,8 +1816,9 @@ impl<T, E> Option<Result<T, E>> {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
+#[rustc_const_unstable(feature = "const_option", issue = "67441")]
 const fn expect_failed(msg: &str) -> ! {
-    panic!("{}", msg)
+    panic_str(msg)
 }
 
 /////////////////////////////////////////////////////////////////////////////

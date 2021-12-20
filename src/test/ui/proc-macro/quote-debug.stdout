@@ -36,13 +36,7 @@ fn main() {
                                                                 lit
                                                             } else {
                                                                 {
-                                                                    ::core::panicking::panic_fmt(::core::fmt::Arguments::new_v1(&["internal error: entered unreachable code"],
-                                                                                                                                &match ()
-                                                                                                                                     {
-                                                                                                                                     _args
-                                                                                                                                     =>
-                                                                                                                                     [],
-                                                                                                                                 }))
+                                                                    ::core::panicking::panic("internal error: entered unreachable code")
                                                                 }
                                                             }
                                                         })),

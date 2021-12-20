@@ -4,7 +4,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     fn foo<'a>() -> Self::FooFuture<'a> {
    |                     ^^^^^^^^^^^^^^^^^^^
    |
-   = note: hidden type `Struct<'_>` captures lifetime '_#38r
+   = note: hidden type `Struct<'_>` captures lifetime '_#7r
 
 error: aborting due to previous error
 
