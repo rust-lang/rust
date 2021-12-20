@@ -12,7 +12,6 @@ fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
         parent_module: None,
         doc: Symbol::intern(s),
         kind: DocFragmentKind::SugaredDoc,
-        need_backline: false,
         indent: 0,
     }]
 }
