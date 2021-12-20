@@ -1,41 +1,20 @@
-From 6bfce5dc2cbf834c74dbccb7538adc08c6eb57e7 Mon Sep 17 00:00:00 2001
+From 97c473937382a5b5858d9cce3c947855d23b2dc5 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sun, 25 Jul 2021 18:39:31 +0200
+Date: Thu, 18 Nov 2021 19:28:40 +0100
 Subject: [PATCH] Disable unsupported tests
 
 ---
- crates/core_simd/src/vector.rs        |  2 ++
- crates/core_simd/src/math.rs         |  4 ++++
- crates/core_simd/tests/masks.rs      | 12 ------------
- crates/core_simd/tests/ops_macros.rs |  6 ++++++
- crates/core_simd/tests/round.rs      |  2 ++
- 6 files changed, 15 insertions(+), 13 deletions(-)
+ crates/core_simd/src/math.rs         | 6 ++++++
+ crates/core_simd/src/vector.rs       | 2 ++
+ crates/core_simd/tests/masks.rs      | 2 ++
+ crates/core_simd/tests/ops_macros.rs | 4 ++++
+ 4 files changed, 14 insertions(+)
 
-diff --git a/crates/core_simd/src/vector.rs b/crates/core_simd/src/vector.rs
-index 25c5309..2b3d819 100644
---- a/crates/core_simd/src/vector.rs
-+++ b/crates/core_simd/src/vector.rs
-@@ -22,6 +22,7 @@ where
-         self.0
-     }
- 
-+    /*
-     /// SIMD gather: construct a SIMD vector by reading from a slice, using potentially discontiguous indices.
-     /// If an index is out of bounds, that lane instead selects the value from the "or" vector.
-     /// ```
-@@ -150,6 +151,7 @@ where
-             // Cleared ☢️ *mut T Zone
-         }
-     }
-+    */
- }
- 
- impl<T, const LANES: usize> Copy for Simd<T, LANES>
 diff --git a/crates/core_simd/src/math.rs b/crates/core_simd/src/math.rs
-index 7290a28..e394730 100644
+index 2bae414..2f87499 100644
 --- a/crates/core_simd/src/math.rs
 +++ b/crates/core_simd/src/math.rs
-@@ -2,6 +2,7 @@ macro_rules! impl_uint_arith {
+@@ -5,6 +5,7 @@ macro_rules! impl_uint_arith {
      ($($ty:ty),+) => {
          $( impl<const LANES: usize> Simd<$ty, LANES> where LaneCount<LANES>: SupportedLaneCount {
  
@@ -43,15 +22,15 @@ index 7290a28..e394730 100644
              /// Lanewise saturating add.
              ///
              /// # Examples
-@@ -38,6 +39,7 @@ macro_rules! impl_uint_arith {
+@@ -43,6 +44,7 @@ macro_rules! impl_uint_arith {
              pub fn saturating_sub(self, second: Self) -> Self {
-                 unsafe { crate::intrinsics::simd_saturating_sub(self, second) }
+                 unsafe { simd_saturating_sub(self, second) }
              }
 +            */
          })+
      }
  }
-@@ -46,6 +48,7 @@ macro_rules! impl_int_arith {
+@@ -51,6 +53,7 @@ macro_rules! impl_int_arith {
      ($($ty:ty),+) => {
          $( impl<const LANES: usize> Simd<$ty, LANES> where LaneCount<LANES>: SupportedLaneCount {
  
@@ -59,7 +38,23 @@ index 7290a28..e394730 100644
              /// Lanewise saturating add.
              ///
              /// # Examples
-@@ -141,6 +144,7 @@ macro_rules! impl_int_arith {
+@@ -89,6 +92,7 @@ macro_rules! impl_int_arith {
+             pub fn saturating_sub(self, second: Self) -> Self {
+                 unsafe { simd_saturating_sub(self, second) }
+             }
++            */
+ 
+             /// Lanewise absolute value, implemented in Rust.
+             /// Every lane becomes its absolute value.
+@@ -109,6 +113,7 @@ macro_rules! impl_int_arith {
+                 (self^m) - m
+             }
+ 
++            /*
+             /// Lanewise saturating absolute value, implemented in Rust.
+             /// As abs(), except the MIN value becomes MAX instead of itself.
+             ///
+@@ -151,6 +156,7 @@ macro_rules! impl_int_arith {
              pub fn saturating_neg(self) -> Self {
                  Self::splat(0).saturating_sub(self)
              }
@@ -67,51 +62,51 @@ index 7290a28..e394730 100644
          })+
      }
  }
+diff --git a/crates/core_simd/src/vector.rs b/crates/core_simd/src/vector.rs
+index 7c5ec2b..c8631e8 100644
+--- a/crates/core_simd/src/vector.rs
++++ b/crates/core_simd/src/vector.rs
+@@ -75,6 +75,7 @@ where
+         Self(array)
+     }
+ 
++    /*
+     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
+     /// If an index is out-of-bounds, the lane is instead selected from the `or` vector.
+     ///
+@@ -297,6 +298,7 @@ where
+             // Cleared ☢️ *mut T Zone
+         }
+     }
++    */
+ }
+ 
+ impl<T, const LANES: usize> Copy for Simd<T, LANES>
 diff --git a/crates/core_simd/tests/masks.rs b/crates/core_simd/tests/masks.rs
-index 61d8e44..2bccae2 100644
+index 6a8ecd3..68fcb49 100644
 --- a/crates/core_simd/tests/masks.rs
 +++ b/crates/core_simd/tests/masks.rs
-@@ -67,19 +67,6 @@ macro_rules! test_mask_api {
-                 assert_eq!(int.to_array(), [-1, 0, 0, -1, 0, 0, -1, 0]);
+@@ -68,6 +68,7 @@ macro_rules! test_mask_api {
                  assert_eq!(core_simd::Mask::<$type, 8>::from_int(int), mask);
              }
--
--            #[cfg(feature = "generic_const_exprs")]
--            #[test]
--            fn roundtrip_bitmask_conversion() {
--                let values = [
--                    true, false, false, true, false, false, true, false,
--                    true, true, false, false, false, false, false, true,
--                ];
--                let mask = core_simd::Mask::<$type, 16>::from_array(values);
--                let bitmask = mask.to_bitmask();
--                assert_eq!(bitmask, [0b01001001, 0b10000011]);
--                assert_eq!(core_simd::Mask::<$type, 16>::from_bitmask(bitmask), mask);
--            }
+ 
++            /*
+             #[cfg(feature = "generic_const_exprs")]
+             #[test]
+             fn roundtrip_bitmask_conversion() {
+@@ -80,6 +81,7 @@ macro_rules! test_mask_api {
+                 assert_eq!(bitmask, [0b01001001, 0b10000011]);
+                 assert_eq!(core_simd::Mask::<$type, 16>::from_bitmask(bitmask), mask);
+             }
++            */
          }
      }
  }
 diff --git a/crates/core_simd/tests/ops_macros.rs b/crates/core_simd/tests/ops_macros.rs
-index cb39e73..fc0ebe1 100644
+index 31b7ee2..bd04b3c 100644
 --- a/crates/core_simd/tests/ops_macros.rs
 +++ b/crates/core_simd/tests/ops_macros.rs
-@@ -435,6 +435,7 @@ macro_rules! impl_float_tests {
-                     )
-                 }
- 
-+                /*
-                 fn mul_add<const LANES: usize>() {
-                     test_helpers::test_ternary_elementwise(
-                         &Vector::<LANES>::mul_add,
-@@ -442,6 +443,7 @@ macro_rules! impl_float_tests {
-                         &|_, _, _| true,
-                     )
-                 }
-+                */
- 
-                 fn recip<const LANES: usize>() {
-                     test_helpers::test_unary_elementwise(
-@@ -581,6 +585,7 @@ macro_rules! impl_float_tests {
+@@ -567,6 +567,7 @@ macro_rules! impl_float_tests {
                      });
                  }
  
@@ -119,7 +114,7 @@ index cb39e73..fc0ebe1 100644
                  fn horizontal_max<const LANES: usize>() {
                      test_helpers::test_1(&|x| {
                          let vmax = Vector::<LANES>::from_array(x).horizontal_max();
-@@ -604,6 +609,7 @@ macro_rules! impl_float_tests {
+@@ -590,6 +591,7 @@ macro_rules! impl_float_tests {
                          Ok(())
                      });
                  }
@@ -127,26 +122,22 @@ index cb39e73..fc0ebe1 100644
              }
  
              #[cfg(feature = "std")]
-diff --git a/crates/core_simd/tests/round.rs b/crates/core_simd/tests/round.rs
-index 37044a7..4cdc6b7 100644
---- a/crates/core_simd/tests/round.rs
-+++ b/crates/core_simd/tests/round.rs
-@@ -25,6 +25,7 @@ macro_rules! float_rounding_test {
-                     )
-                 }
+@@ -604,6 +606,7 @@ macro_rules! impl_float_tests {
+                         )
+                     }
  
-+                /*
-                 fn round<const LANES: usize>() {
-                     test_helpers::test_unary_elementwise(
-                         &Vector::<LANES>::round,
-@@ -32,6 +33,7 @@ macro_rules! float_rounding_test {
-                         &|_| true,
-                     )
++                    /*
+                     fn mul_add<const LANES: usize>() {
+                         test_helpers::test_ternary_elementwise(
+                             &Vector::<LANES>::mul_add,
+@@ -611,6 +614,7 @@ macro_rules! impl_float_tests {
+                             &|_, _, _| true,
+                         )
+                     }
++                    */
                  }
-+                */
- 
-                 fn trunc<const LANES: usize>() {
-                     test_helpers::test_unary_elementwise(
+             }
+         }
 -- 
 2.26.2.7.g19db9cfb68
 

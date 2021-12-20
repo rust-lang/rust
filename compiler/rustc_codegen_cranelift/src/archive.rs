@@ -1,7 +1,6 @@
 //! Creation of ar archives like for the lib and staticlib crate type
 
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{self, Read, Seek};
 use std::path::{Path, PathBuf};
@@ -10,7 +9,7 @@ use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_session::Session;
 
 use object::read::archive::ArchiveFile;
-use object::{Object, ObjectSymbol, ReadCache, SymbolKind};
+use object::{Object, ObjectSymbol, ReadCache};
 
 #[derive(Debug)]
 enum ArchiveEntry {
@@ -150,12 +149,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                             object
                                 .symbols()
                                 .filter_map(|symbol| {
-                                    if symbol.is_undefined()
-                                        || symbol.is_local()
-                                        || symbol.kind() != SymbolKind::Data
-                                            && symbol.kind() != SymbolKind::Text
-                                            && symbol.kind() != SymbolKind::Tls
-                                    {
+                                    if symbol.is_undefined() || symbol.is_local() {
                                         None
                                     } else {
                                         symbol.name().map(|name| name.as_bytes().to_vec()).ok()

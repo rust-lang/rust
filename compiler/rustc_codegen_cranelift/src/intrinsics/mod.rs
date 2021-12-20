@@ -503,10 +503,10 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 
             if intrinsic == sym::copy_nonoverlapping {
                 // FIXME emit_small_memcpy
-                fx.bcx.call_memcpy(fx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memcpy(fx.target_config, dst, src, byte_amount);
             } else {
                 // FIXME emit_small_memmove
-                fx.bcx.call_memmove(fx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memmove(fx.target_config, dst, src, byte_amount);
             }
         };
         // NOTE: the volatile variants have src and dst swapped
@@ -522,10 +522,10 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             // FIXME make the copy actually volatile when using emit_small_mem{cpy,move}
             if intrinsic == sym::volatile_copy_nonoverlapping_memory {
                 // FIXME emit_small_memcpy
-                fx.bcx.call_memcpy(fx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memcpy(fx.target_config, dst, src, byte_amount);
             } else {
                 // FIXME emit_small_memmove
-                fx.bcx.call_memmove(fx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memmove(fx.target_config, dst, src, byte_amount);
             }
         };
         size_of_val, <T> (c ptr) {
@@ -673,7 +673,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             let dst_ptr = dst.load_scalar(fx);
             // FIXME make the memset actually volatile when switching to emit_small_memset
             // FIXME use emit_small_memset
-            fx.bcx.call_memset(fx.module.target_config(), dst_ptr, val, count);
+            fx.bcx.call_memset(fx.target_config, dst_ptr, val, count);
         };
         ctlz | ctlz_nonzero, <T> (v arg) {
             // FIXME trap on `ctlz_nonzero` with zero arg.
@@ -1067,7 +1067,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         kw.Try, (v f, v data, v _catch_fn) {
             // FIXME once unwinding is supported, change this to actually catch panics
             let f_sig = fx.bcx.func.import_signature(Signature {
-                call_conv: CallConv::triple_default(fx.triple()),
+                call_conv: fx.target_config.default_call_conv,
                 params: vec![AbiParam::new(fx.bcx.func.dfg.value_type(data))],
                 returns: vec![],
             });

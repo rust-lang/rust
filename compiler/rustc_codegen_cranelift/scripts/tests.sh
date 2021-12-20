@@ -35,6 +35,10 @@ function base_sysroot_tests() {
     $MY_RUSTC example/arbitrary_self_types_pointers_and_wrappers.rs --crate-name arbitrary_self_types_pointers_and_wrappers --crate-type bin --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/arbitrary_self_types_pointers_and_wrappers
 
+    echo "[AOT] issue_91827_extern_types"
+    $MY_RUSTC example/issue-91827-extern-types.rs --crate-name issue_91827_extern_types --crate-type bin --target "$TARGET_TRIPLE"
+    $RUN_WRAPPER ./target/out/issue_91827_extern_types
+
     echo "[AOT] alloc_system"
     $MY_RUSTC example/alloc_system.rs --crate-type lib --target "$TARGET_TRIPLE"
 
