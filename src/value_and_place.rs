@@ -672,7 +672,12 @@ impl<'tcx> CPlace<'tcx> {
 
         let (field_ptr, field_layout) = codegen_field(fx, base, extra, layout, field);
         if field_layout.is_unsized() {
-            CPlace::for_ptr_with_extra(field_ptr, extra.unwrap(), field_layout)
+            if let ty::Foreign(_) = field_layout.ty.kind() {
+                assert!(extra.is_none());
+                CPlace::for_ptr(field_ptr, field_layout)
+            } else {
+                CPlace::for_ptr_with_extra(field_ptr, extra.unwrap(), field_layout)
+            }
         } else {
             CPlace::for_ptr(field_ptr, field_layout)
         }
