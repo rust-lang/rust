@@ -1,8 +1,8 @@
 //! Renderer for type aliases.
 
-use hir::{AsAssocItem, HasSource};
+use hir::{AsAssocItem, HirDisplay};
 use ide_db::SymbolKind;
-use syntax::{ast::HasName, display::type_label};
+use syntax::SmolStr;
 
 use crate::{item::CompletionItem, render::RenderContext};
 
@@ -29,16 +29,12 @@ fn render(
 ) -> Option<CompletionItem> {
     let db = ctx.db();
 
-    // FIXME: This parses the file!
-    let ast_node = type_alias.source(db)?.value;
-    let name = ast_node.name().map(|name| {
-        if with_eq {
-            format!("{} = ", name.text())
-        } else {
-            name.text().to_string()
-        }
-    })?;
-    let detail = type_label(&ast_node);
+    let name = if with_eq {
+        SmolStr::from_iter([&*type_alias.name(db).to_smol_str(), " = "])
+    } else {
+        type_alias.name(db).to_smol_str()
+    };
+    let detail = type_alias.display(db).to_string();
 
     let mut item = CompletionItem::new(SymbolKind::TypeAlias, ctx.source_range(), name.clone());
     item.set_documentation(ctx.docs(type_alias))

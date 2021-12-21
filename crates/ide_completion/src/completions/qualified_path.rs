@@ -287,8 +287,8 @@ fn foo() { let _ = lib::S::$0 }
 "#,
             expect![[r#"
                 fn public_method() fn()
-                ct PUBLIC_CONST    pub const PUBLIC_CONST: u32;
-                ta PublicType      pub type PublicType;
+                ct PUBLIC_CONST    pub const PUBLIC_CONST: u32
+                ta PublicType      pub type PublicType = u32
             "#]],
         );
     }
@@ -377,12 +377,12 @@ trait Sub: Super {
 fn foo<T: Sub>() { T::$0 }
 "#,
             expect![[r#"
-                ta SubTy (as Sub)        type SubTy;
-                ta Ty (as Super)         type Ty;
-                ct C2 (as Sub)           const C2: ();
+                ta SubTy (as Sub)        type SubTy
+                ta Ty (as Super)         type Ty
+                ct C2 (as Sub)           const C2: ()
                 fn subfunc() (as Sub)    fn()
                 me submethod(…) (as Sub) fn(&self)
-                ct CONST (as Super)      const CONST: u8;
+                ct CONST (as Super)      const CONST: u8
                 fn func() (as Super)     fn()
                 me method(…) (as Super)  fn(&self)
             "#]],
@@ -417,12 +417,12 @@ impl<T> Sub for Wrap<T> {
 }
 "#,
             expect![[r#"
-                ta SubTy (as Sub)        type SubTy;
-                ta Ty (as Super)         type Ty;
-                ct CONST (as Super)      const CONST: u8;
+                ta SubTy (as Sub)        type SubTy
+                ta Ty (as Super)         type Ty
+                ct CONST (as Super)      const CONST: u8
                 fn func() (as Super)     fn()
                 me method(…) (as Super)  fn(&self)
-                ct C2 (as Sub)           const C2: ();
+                ct C2 (as Sub)           const C2: ()
                 fn subfunc() (as Sub)    fn()
                 me submethod(…) (as Sub) fn(&self)
             "#]],
@@ -653,7 +653,7 @@ impl u8 {
 }
 "#,
             expect![[r#"
-                ct MAX     pub const MAX: Self;
+                ct MAX     pub const MAX: Self
                 me func(…) fn(self)
             "#]],
         );

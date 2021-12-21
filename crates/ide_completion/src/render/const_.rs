@@ -1,8 +1,7 @@
 //! Renderer for `const` fields.
 
-use hir::{AsAssocItem, HasSource};
+use hir::{AsAssocItem, HirDisplay};
 use ide_db::SymbolKind;
-use syntax::display::const_label;
 
 use crate::{item::CompletionItem, render::RenderContext};
 
@@ -14,8 +13,7 @@ pub(crate) fn render_const(ctx: RenderContext<'_>, const_: hir::Const) -> Option
 fn render(ctx: RenderContext<'_>, const_: hir::Const) -> Option<CompletionItem> {
     let db = ctx.db();
     let name = const_.name(db)?.to_smol_str();
-    // FIXME: This is parsing files!
-    let detail = const_label(&const_.source(db)?.value);
+    let detail = const_.display(db).to_string();
 
     let mut item = CompletionItem::new(SymbolKind::Const, ctx.source_range(), name.clone());
     item.set_documentation(ctx.docs(const_))

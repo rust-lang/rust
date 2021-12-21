@@ -420,7 +420,7 @@ where
     E: Fn(&D) -> Option<V>,
     V: Display,
 {
-    let label = if let Some(value) = (value_extractor)(&def) {
+    let label = if let Some(value) = value_extractor(&def) {
         format!("{} = {}", def.display(db), value)
     } else {
         def.display(db).to_string()
