@@ -18,11 +18,11 @@ pub(crate) use self::returning::codegen_return;
 
 fn clif_sig_from_fn_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
-    triple: &target_lexicon::Triple,
+    default_call_conv: CallConv,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> Signature {
     let call_conv = match fn_abi.conv {
-        Conv::Rust | Conv::C => CallConv::triple_default(triple),
+        Conv::Rust | Conv::C => default_call_conv,
         Conv::X86_64SysV => CallConv::SystemV,
         Conv::X86_64Win64 => CallConv::WindowsFastcall,
         Conv::ArmAapcs
@@ -55,7 +55,7 @@ pub(crate) fn get_function_sig<'tcx>(
     assert!(!inst.substs.needs_infer());
     clif_sig_from_fn_abi(
         tcx,
-        triple,
+        CallConv::triple_default(triple),
         &RevealAllLayoutCx(tcx).fn_abi_of_instance(inst, ty::List::empty()),
     )
 }
@@ -91,7 +91,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         returns: Vec<AbiParam>,
         args: &[Value],
     ) -> &[Value] {
-        let sig = Signature { params, returns, call_conv: CallConv::triple_default(self.triple()) };
+        let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
@@ -420,7 +420,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             }
 
             let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0].value, idx);
-            let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
+            let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
             (CallTarget::Indirect(sig, method), Some(ptr))
@@ -440,7 +440,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             }
 
             let func = codegen_operand(fx, func).load_scalar(fx);
-            let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
+            let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
             (CallTarget::Indirect(sig, func), None)
@@ -531,7 +531,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 let fn_abi =
                     RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(virtual_drop, ty::List::empty());
 
-                let sig = clif_sig_from_fn_abi(fx.tcx, fx.triple(), &fn_abi);
+                let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
                 let sig = fx.bcx.import_signature(sig);
                 fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
             }

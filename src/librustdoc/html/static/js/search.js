@@ -152,16 +152,26 @@ window.initSearch = function(rawSearchIndex) {
         removeEmptyStringsFromArray(split);
 
         function transformResults(results) {
+            var duplicates = {};
             var out = [];
+
             for (var i = 0, len = results.length; i < len; ++i) {
-                if (results[i].id > -1) {
-                    var obj = searchIndex[results[i].id];
-                    obj.lev = results[i].lev;
+                var result = results[i];
+
+                if (result.id > -1) {
+                    var obj = searchIndex[result.id];
+                    obj.lev = result.lev;
                     var res = buildHrefAndPath(obj);
                     obj.displayPath = pathSplitter(res[0]);
                     obj.fullPath = obj.displayPath + obj.name;
                     // To be sure than it some items aren't considered as duplicate.
                     obj.fullPath += "|" + obj.ty;
+
+                    if (duplicates[obj.fullPath]) {
+                        continue;
+                    }
+                    duplicates[obj.fullPath] = true;
+
                     obj.href = res[1];
                     out.push(obj);
                     if (out.length >= MAX_RESULTS) {
@@ -971,19 +981,11 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         var output = document.createElement("div");
-        var duplicates = {};
         var length = 0;
         if (array.length > 0) {
             output.className = "search-results " + extraClass;
 
             array.forEach(function(item) {
-                if (item.is_alias !== true) {
-                    if (duplicates[item.fullPath]) {
-                        return;
-                    }
-                    duplicates[item.fullPath] = true;
-                }
-
                 var name = item.name;
                 var type = itemTypes[item.ty];
 

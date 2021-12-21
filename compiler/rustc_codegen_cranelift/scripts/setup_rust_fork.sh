@@ -33,7 +33,7 @@ index d95b5b7f17f..00b6f0e3635 100644
  [dependencies]
  core = { path = "../core" }
 -compiler_builtins = { version = "0.1.40", features = ['rustc-dep-of-std'] }
-+compiler_builtins = { version = "0.1.46", features = ['rustc-dep-of-std', 'no-asm'] }
++compiler_builtins = { version = "0.1.66", features = ['rustc-dep-of-std', 'no-asm'] }
 
  [dev-dependencies]
  rand = "0.7"
@@ -53,5 +53,6 @@ local-rebuild = true
 [rust]
 codegen-backends = ["cranelift"]
 deny-warnings = false
+verbose-tests = false
 EOF
 popd

@@ -2462,17 +2462,16 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(entry_insert)]
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, String> = HashMap::new();
-    /// let entry = map.entry("poneyland").insert("hoho".to_string());
+    /// let entry = map.entry("poneyland").insert_entry("hoho".to_string());
     ///
     /// assert_eq!(entry.key(), &"poneyland");
     /// ```
     #[inline]
-    #[unstable(feature = "entry_insert", issue = "65225")]
-    pub fn insert(self, value: V) -> OccupiedEntry<'a, K, V> {
+    #[stable(feature = "entry_insert", since = "1.59.0")]
+    pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
         match self {
             Occupied(mut entry) => {
                 entry.insert(value);
@@ -2811,12 +2810,13 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
     /// if let Entry::Vacant(o) = map.entry("poneyland") {
-    ///     o.insert(37);
+    ///     o.insert_entry(37);
     /// }
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[inline]
-    fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
+    #[stable(feature = "entry_insert", since = "1.59.0")]
+    pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V> {
         let base = self.base.insert_entry(value);
         OccupiedEntry { base }
     }

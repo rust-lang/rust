@@ -4,7 +4,6 @@
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
 
-extern crate snap;
 #[macro_use]
 extern crate rustc_middle;
 extern crate rustc_ast;
@@ -26,6 +25,7 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
+use std::cell::Cell;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
@@ -34,6 +34,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
+use rustc_span::Symbol;
 
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
@@ -59,7 +60,6 @@ mod inline_asm;
 mod intrinsics;
 mod linkage;
 mod main_shim;
-mod metadata;
 mod num;
 mod optimize;
 mod pointer;
@@ -71,9 +71,7 @@ mod value_and_place;
 mod vtable;
 
 mod prelude {
-    pub(crate) use std::convert::{TryFrom, TryInto};
-
-    pub(crate) use rustc_span::{Span, FileNameDisplayPreference};
+    pub(crate) use rustc_span::{FileNameDisplayPreference, Span};
 
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_middle::bug;
@@ -125,9 +123,11 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 struct CodegenCx<'tcx> {
     tcx: TyCtxt<'tcx>,
     global_asm: String,
+    inline_asm_index: Cell<usize>,
     cached_context: Context,
     debug_context: Option<DebugContext<'tcx>>,
     unwind_context: UnwindContext,
+    cgu_name: Symbol,
 }
 
 impl<'tcx> CodegenCx<'tcx> {
@@ -136,6 +136,7 @@ impl<'tcx> CodegenCx<'tcx> {
         backend_config: BackendConfig,
         isa: &dyn TargetIsa,
         debug_info: bool,
+        cgu_name: Symbol,
     ) -> Self {
         assert_eq!(pointer_ty(tcx), isa.pointer_type());
 
@@ -145,9 +146,11 @@ impl<'tcx> CodegenCx<'tcx> {
         CodegenCx {
             tcx,
             global_asm: String::new(),
+            inline_asm_index: Cell::new(0),
             cached_context: Context::new(),
             debug_context,
             unwind_context,
+            cgu_name,
         }
     }
 }
@@ -269,19 +272,16 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
 
     let flags = settings::Flags::new(flags_builder);
 
-    let variant = cranelift_codegen::isa::BackendVariant::MachInst;
-
     let isa_builder = match sess.opts.cg.target_cpu.as_deref() {
         Some("native") => {
-            let builder = cranelift_native::builder_with_options(variant, true).unwrap();
+            let builder = cranelift_native::builder_with_options(true).unwrap();
             builder
         }
         Some(value) => {
             let mut builder =
-                cranelift_codegen::isa::lookup_variant(target_triple.clone(), variant)
-                    .unwrap_or_else(|err| {
-                        sess.fatal(&format!("can't compile for {}: {}", target_triple, err));
-                    });
+                cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
+                    sess.fatal(&format!("can't compile for {}: {}", target_triple, err));
+                });
             if let Err(_) = builder.enable(value) {
                 sess.fatal("the specified target cpu isn't currently supported by Cranelift.");
             }
@@ -289,10 +289,9 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
         }
         None => {
             let mut builder =
-                cranelift_codegen::isa::lookup_variant(target_triple.clone(), variant)
-                    .unwrap_or_else(|err| {
-                        sess.fatal(&format!("can't compile for {}: {}", target_triple, err));
-                    });
+                cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
+                    sess.fatal(&format!("can't compile for {}: {}", target_triple, err));
+                });
             if target_triple.architecture == target_lexicon::Architecture::X86_64 {
                 // Don't use "haswell" as the default, as it implies `has_lzcnt`.
                 // macOS CI is still at Ivy Bridge EP, so `lzcnt` is interpreted as `bsr`.

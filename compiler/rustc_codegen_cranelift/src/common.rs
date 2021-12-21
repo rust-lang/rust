@@ -1,3 +1,4 @@
+use cranelift_codegen::isa::TargetFrontendConfig;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
@@ -235,6 +236,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) cx: &'clif mut crate::CodegenCx<'tcx>,
     pub(crate) module: &'m mut dyn Module,
     pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) target_config: TargetFrontendConfig, // Cached from module
     pub(crate) pointer_type: Type, // Cached from module
     pub(crate) constants_cx: ConstantCx,
 
@@ -255,8 +257,6 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
 
     /// This should only be accessed by `CPlace::new_var`.
     pub(crate) next_ssa_var: u32,
-
-    pub(crate) inline_asm_index: u32,
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
@@ -357,10 +357,6 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             caller.col_display as u32 + 1,
         ));
         crate::constant::codegen_const_value(self, const_loc, self.tcx.caller_location_ty())
-    }
-
-    pub(crate) fn triple(&self) -> &target_lexicon::Triple {
-        self.module.isa().triple()
     }
 
     pub(crate) fn anonymous_str(&mut self, msg: &str) -> Value {

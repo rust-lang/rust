@@ -12,7 +12,7 @@ use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::fast_reject::{simplify_type, SimplifyParams, StripReferences};
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_span::lev_distance;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{source_map, FileName, MultiSpan, Span, Symbol};
@@ -1310,25 +1310,66 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut msg: String,
         candidates: Vec<DefId>,
     ) {
+        let parent_map = self.tcx.visible_parent_map(());
+
+        // Separate out candidates that must be imported with a glob, because they are named `_`
+        // and cannot be referred with their identifier.
+        let (candidates, globs): (Vec<_>, Vec<_>) = candidates.into_iter().partition(|trait_did| {
+            if let Some(parent_did) = parent_map.get(trait_did) {
+                // If the item is re-exported as `_`, we should suggest a glob-import instead.
+                if Some(*parent_did) != self.tcx.parent(*trait_did)
+                    && self
+                        .tcx
+                        .item_children(*parent_did)
+                        .iter()
+                        .filter(|child| child.res.opt_def_id() == Some(*trait_did))
+                        .all(|child| child.ident.name == kw::Underscore)
+                {
+                    return false;
+                }
+            }
+
+            true
+        });
+
         let module_did = self.tcx.parent_module(self.body_id);
         let (span, found_use) = find_use_placement(self.tcx, module_did);
         if let Some(span) = span {
-            let path_strings = candidates.iter().map(|did| {
+            let path_strings = candidates.iter().map(|trait_did| {
                 // Produce an additional newline to separate the new use statement
                 // from the directly following item.
                 let additional_newline = if found_use { "" } else { "\n" };
                 format!(
                     "use {};\n{}",
-                    with_crate_prefix(|| self.tcx.def_path_str(*did)),
+                    with_crate_prefix(|| self.tcx.def_path_str(*trait_did)),
                     additional_newline
                 )
             });
 
-            err.span_suggestions(span, &msg, path_strings, Applicability::MaybeIncorrect);
+            let glob_path_strings = globs.iter().map(|trait_did| {
+                let parent_did = parent_map.get(trait_did).unwrap();
+
+                // Produce an additional newline to separate the new use statement
+                // from the directly following item.
+                let additional_newline = if found_use { "" } else { "\n" };
+                format!(
+                    "use {}::*; // trait {}\n{}",
+                    with_crate_prefix(|| self.tcx.def_path_str(*parent_did)),
+                    self.tcx.item_name(*trait_did),
+                    additional_newline
+                )
+            });
+
+            err.span_suggestions(
+                span,
+                &msg,
+                path_strings.chain(glob_path_strings),
+                Applicability::MaybeIncorrect,
+            );
         } else {
-            let limit = if candidates.len() == 5 { 5 } else { 4 };
+            let limit = if candidates.len() + globs.len() == 5 { 5 } else { 4 };
             for (i, trait_did) in candidates.iter().take(limit).enumerate() {
-                if candidates.len() > 1 {
+                if candidates.len() + globs.len() > 1 {
                     msg.push_str(&format!(
                         "\ncandidate #{}: `use {};`",
                         i + 1,
@@ -1341,8 +1382,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                 }
             }
+            for (i, trait_did) in
+                globs.iter().take(limit.saturating_sub(candidates.len())).enumerate()
+            {
+                let parent_did = parent_map.get(trait_did).unwrap();
+
+                if candidates.len() + globs.len() > 1 {
+                    msg.push_str(&format!(
+                        "\ncandidate #{}: `use {}::*; // trait {}`",
+                        candidates.len() + i + 1,
+                        with_crate_prefix(|| self.tcx.def_path_str(*parent_did)),
+                        self.tcx.item_name(*trait_did),
+                    ));
+                } else {
+                    msg.push_str(&format!(
+                        "\n`use {}::*; // trait {}`",
+                        with_crate_prefix(|| self.tcx.def_path_str(*parent_did)),
+                        self.tcx.item_name(*trait_did),
+                    ));
+                }
+            }
             if candidates.len() > limit {
-                msg.push_str(&format!("\nand {} others", candidates.len() - limit));
+                msg.push_str(&format!("\nand {} others", candidates.len() + globs.len() - limit));
             }
             err.note(&msg);
         }

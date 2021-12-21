@@ -8,23 +8,23 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime.git", features = ["unwind", "all-arch"] }
-cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime.git" }
-cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime.git" }
-cranelift-native = { git = "https://github.com/bytecodealliance/wasmtime.git" }
-cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime.git", optional = true }
-cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime.git" }
+cranelift-codegen = { version = "0.78.0", features = ["unwind", "all-arch"] }
+cranelift-frontend = "0.78.0"
+cranelift-module = "0.78.0"
+cranelift-native = "0.78.0"
+cranelift-jit = { version = "0.78.0", optional = true }
+cranelift-object = "0.78.0"
 target-lexicon = "0.12.0"
 gimli = { version = "0.25.0", default-features = false, features = ["write"]}
-object = { version = "0.26.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
+object = { version = "0.27.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
 
 ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "do_not_remove_cg_clif_ranlib" }
 indexmap = "1.0.2"
 libloading = { version = "0.6.0", optional = true }
 smallvec = "1.6.1"
 
+[patch.crates-io]
 # Uncomment to use local checkout of cranelift
-#[patch."https://github.com/bytecodealliance/wasmtime.git"]
 #cranelift-codegen = { path = "../wasmtime/cranelift/codegen" }
 #cranelift-frontend = { path = "../wasmtime/cranelift/frontend" }
 #cranelift-module = { path = "../wasmtime/cranelift/module" }
@@ -32,7 +32,6 @@ smallvec = "1.6.1"
 #cranelift-jit = { path = "../wasmtime/cranelift/jit" }
 #cranelift-object = { path = "../wasmtime/cranelift/object" }
 
-#[patch.crates-io]
 #gimli = { path = "../" }
 
 [features]
