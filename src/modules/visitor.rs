@@ -3,7 +3,7 @@ use rustc_ast::visit::Visitor;
 use rustc_span::Symbol;
 
 use crate::attr::MetaVisitor;
-use crate::parse::parser::Parser;
+use crate::parse::macros::cfg_if::parse_cfg_if;
 use crate::parse::session::ParseSess;
 
 pub(crate) struct ModItem {
@@ -62,7 +62,7 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
             }
         };
 
-        let items = Parser::parse_cfg_if(self.parse_sess, mac)?;
+        let items = parse_cfg_if(self.parse_sess, mac)?;
         self.mods
             .append(&mut items.into_iter().map(|item| ModItem { item }).collect());
 

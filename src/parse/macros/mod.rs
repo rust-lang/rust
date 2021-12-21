@@ -3,6 +3,7 @@ use rustc_ast::tokenstream::{Cursor, Spacing, TokenStream, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{stream_to_parser, MACRO_ARGUMENTS};
+use rustc_session::parse::ParseSess;
 use rustc_span::{
     symbol::{self, kw},
     BytePos, Span, Symbol, DUMMY_SP,
@@ -11,10 +12,15 @@ use rustc_span::{
 use crate::macros::MacroArg;
 use crate::rewrite::{Rewrite, RewriteContext};
 
+pub(crate) mod cfg_if;
 pub(crate) mod lazy_static;
 
+fn build_stream_parser<'a>(sess: &'a ParseSess, tokens: TokenStream) -> Parser<'a> {
+    stream_to_parser(sess, tokens, MACRO_ARGUMENTS)
+}
+
 fn build_parser<'a>(context: &RewriteContext<'a>, tokens: TokenStream) -> Parser<'a> {
-    stream_to_parser(context.parse_sess.inner(), tokens, MACRO_ARGUMENTS)
+    build_stream_parser(context.parse_sess.inner(), tokens)
 }
 
 fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
