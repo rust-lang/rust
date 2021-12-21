@@ -734,6 +734,15 @@ pub struct TraitPredicate<'tcx> {
 pub type PolyTraitPredicate<'tcx> = ty::Binder<'tcx, TraitPredicate<'tcx>>;
 
 impl<'tcx> TraitPredicate<'tcx> {
+    pub fn remap_constness(&mut self, tcx: TyCtxt<'tcx>, param_env: &mut ParamEnv<'tcx>) {
+        if unlikely!(Some(self.trait_ref.def_id) == tcx.lang_items().drop_trait()) {
+            // remap without changing constness of this predicate.
+            // this is because `T: ~const Drop` has a different meaning to `T: Drop`
+            param_env.remap_constness_with(self.constness)
+        } else {
+            *param_env = param_env.with_constness(self.constness.and(param_env.constness()))
+        }
+    }
     pub fn def_id(self) -> DefId {
         self.trait_ref.def_id
     }
