@@ -29,7 +29,7 @@ use crate::expr::{rewrite_array, rewrite_assign_rhs, RhsAssignKind};
 use crate::lists::{itemize_list, write_list, ListFormatting};
 use crate::overflow;
 use crate::parse::macros::lazy_static::parse_lazy_static;
-use crate::parse::macros::{build_parser, parse_macro_args, ParsedMacroArgs};
+use crate::parse::macros::{parse_expr, parse_macro_args, ParsedMacroArgs};
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
@@ -1060,11 +1060,10 @@ pub(crate) fn convert_try_mac(
     let path = &pprust::path_to_string(&mac.path);
     if path == "try" || path == "r#try" {
         let ts = mac.args.inner_tokens();
-        let mut parser = build_parser(context, ts);
 
         Some(ast::Expr {
             id: ast::NodeId::root(), // dummy value
-            kind: ast::ExprKind::Try(parser.parse_expr().ok()?),
+            kind: ast::ExprKind::Try(parse_expr(context, ts)?),
             span: mac.span(), // incorrect span, but shouldn't matter too much
             attrs: ast::AttrVec::new(),
             tokens: None,

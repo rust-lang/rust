@@ -13,7 +13,7 @@ use crate::rewrite::{Rewrite, RewriteContext};
 
 pub(crate) mod lazy_static;
 
-pub(crate) fn build_parser<'a>(context: &RewriteContext<'a>, tokens: TokenStream) -> Parser<'a> {
+fn build_parser<'a>(context: &RewriteContext<'a>, tokens: TokenStream) -> Parser<'a> {
     stream_to_parser(context.parse_sess.inner(), tokens, MACRO_ARGUMENTS)
 }
 
@@ -153,6 +153,14 @@ pub(crate) fn parse_macro_args(
         trailing_comma,
         args,
     })
+}
+
+pub(crate) fn parse_expr(
+    context: &RewriteContext<'_>,
+    tokens: TokenStream,
+) -> Option<ptr::P<ast::Expr>> {
+    let mut parser = build_parser(context, tokens);
+    parser.parse_expr().ok()
 }
 
 const RUST_KW: [Symbol; 59] = [
