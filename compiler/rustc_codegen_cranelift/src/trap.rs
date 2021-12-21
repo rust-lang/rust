@@ -9,7 +9,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, '_>, msg: &str) {
             "puts",
             Linkage::Import,
             &Signature {
-                call_conv: CallConv::triple_default(fx.triple()),
+                call_conv: fx.target_config.default_call_conv,
                 params: vec![AbiParam::new(fx.pointer_type)],
                 returns: vec![AbiParam::new(types::I32)],
             },

@@ -2,9 +2,17 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub(crate) fn build_backend(channel: &str, host_triple: &str) -> PathBuf {
+pub(crate) fn build_backend(
+    channel: &str,
+    host_triple: &str,
+    use_unstable_features: bool,
+) -> PathBuf {
     let mut cmd = Command::new("cargo");
-    cmd.arg("build").arg("--target").arg(host_triple).arg("--features").arg("unstable-features");
+    cmd.arg("build").arg("--target").arg(host_triple);
+
+    if use_unstable_features {
+        cmd.arg("--features").arg("unstable-features");
+    }
 
     match channel {
         "debug" => {}

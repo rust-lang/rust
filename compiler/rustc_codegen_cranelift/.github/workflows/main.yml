@@ -65,6 +65,12 @@ jobs:
         git config --global user.name "User"
         ./y.rs prepare
 
+    - name: Build without unstable features
+      env:
+        TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
+      # This is the config rust-lang/rust uses for builds
+      run: ./y.rs build --no-unstable-features
+
     - name: Build
       run: ./y.rs build --sysroot none
 
@@ -152,11 +158,12 @@ jobs:
 
         ./y.exe build
 
-    #- name: Package prebuilt cg_clif
-    #  run: tar cvfJ cg_clif.tar.xz build
+    - name: Package prebuilt cg_clif
+      # don't use compression as xzip isn't supported by tar on windows and bzip2 hangs
+      run: tar cvf cg_clif.tar build
 
-    #- name: Upload prebuilt cg_clif
-    #  uses: actions/upload-artifact@v2
-    #  with:
-    #    name: cg_clif-${{ runner.os }}
-    #    path: cg_clif.tar.xz
+    - name: Upload prebuilt cg_clif
+      uses: actions/upload-artifact@v2
+      with:
+        name: cg_clif-${{ runner.os }}
+        path: cg_clif.tar
