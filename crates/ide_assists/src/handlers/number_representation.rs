@@ -6,7 +6,7 @@ const MIN_NUMBER_OF_DIGITS_TO_FORMAT: usize = 5;
 
 // Assist: reformat_number_literal
 //
-// Adds or removes seprators from integer literal.
+// Adds or removes separators from integer literal.
 //
 // ```
 // const _: i32 = 1012345$0;
@@ -55,7 +55,7 @@ fn remove_separators(acc: &mut Assists, literal: ast::IntNumber) -> Option<()> {
     acc.add_group(
         &group_id,
         AssistId("reformat_number_literal", AssistKind::RefactorInline),
-        "Remove digit seprators",
+        "Remove digit separators",
         range,
         |builder| builder.replace(range, literal.text().replace("_", "")),
     )
@@ -172,7 +172,7 @@ mod tests {
                 "const _: i32 = 10_000i32;",
                 "Convert 10000i32 to 10_000i32",
             ),
-            ("const _: i32 = 1_0_0_0_i32$0;", "const _: i32 = 1000i32;", "Remove digit seprators"),
+            ("const _: i32 = 1_0_0_0_i32$0;", "const _: i32 = 1000i32;", "Remove digit separators"),
         ];
 
         for case in cases {
