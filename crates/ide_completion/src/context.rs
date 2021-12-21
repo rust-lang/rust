@@ -278,7 +278,7 @@ impl<'a> CompletionContext<'a> {
         self.is_visible_impl(&item.visibility(self.db), &item.attrs(self.db), item.krate(self.db))
     }
 
-    pub(crate) fn is_scope_def_hidden(&self, scope_def: &ScopeDef) -> bool {
+    pub(crate) fn is_scope_def_hidden(&self, scope_def: ScopeDef) -> bool {
         if let (Some(attrs), Some(krate)) = (scope_def.attrs(self.db), scope_def.krate(self.db)) {
             return self.is_doc_hidden(&attrs, krate);
         }
@@ -303,7 +303,7 @@ impl<'a> CompletionContext<'a> {
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items.
     pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
         self.scope.process_all_names(&mut |name, def| {
-            if self.is_scope_def_hidden(&def) {
+            if self.is_scope_def_hidden(def) {
                 return;
             }
 
@@ -367,7 +367,7 @@ impl<'a> CompletionContext<'a> {
             parse.reparse(&edit).tree()
         };
         let fake_ident_token =
-            file_with_fake_ident.syntax().token_at_offset(offset).right_biased().unwrap();
+            file_with_fake_ident.syntax().token_at_offset(offset).right_biased()?;
 
         let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
         let token = sema.descend_into_macros_single(original_token.clone());

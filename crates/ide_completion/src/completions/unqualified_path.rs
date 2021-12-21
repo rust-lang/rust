@@ -24,7 +24,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         cov_mark::hit!(unqualified_path_only_modules_in_import);
         ctx.process_all_names(&mut |name, res| {
             if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
-                acc.add_resolution(ctx, name, &res);
+                acc.add_resolution(ctx, name, res);
             }
         });
 
@@ -43,7 +43,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
                     _ => false,
                 };
                 if add_resolution {
-                    acc.add_resolution(ctx, name, &res);
+                    acc.add_resolution(ctx, name, res);
                 }
             });
             return;
@@ -61,7 +61,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
                     }
                 }
                 if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
-                    acc.add_resolution(ctx, name, &res);
+                    acc.add_resolution(ctx, name, res);
                 }
             });
             return;
@@ -76,7 +76,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
                     _ => false,
                 };
                 if add_resolution {
-                    acc.add_resolution(ctx, name, &res);
+                    acc.add_resolution(ctx, name, res);
                 }
             });
             return;
@@ -134,7 +134,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
             _ => true,
         };
         if add_resolution {
-            acc.add_resolution(ctx, name, &res);
+            acc.add_resolution(ctx, name, res);
         }
     });
 }

@@ -84,7 +84,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         local_name: hir::Name,
-        resolution: &hir::ScopeDef,
+        resolution: hir::ScopeDef,
     ) {
         if ctx.is_scope_def_hidden(resolution) {
             cov_mark::hit!(qualified_path_doc_hidden);
