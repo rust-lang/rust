@@ -71,3 +71,30 @@ fn test_hash_isize() {
 
     assert_eq!(h.finalize(), expected);
 }
+
+fn hash<T: HashStable<()>>(t: &T) -> u128 {
+    let mut h = StableHasher::new();
+    let ctx = &mut ();
+    t.hash_stable(ctx, &mut h);
+    h.finish()
+}
+
+// Check that bit set hash includes the domain size.
+#[test]
+fn test_hash_bit_set() {
+    use rustc_index::bit_set::BitSet;
+    let a: BitSet<usize> = BitSet::new_empty(1);
+    let b: BitSet<usize> = BitSet::new_empty(2);
+    assert_ne!(a, b);
+    assert_ne!(hash(&a), hash(&b));
+}
+
+// Check that bit matrix hash includes the matrix dimensions.
+#[test]
+fn test_hash_bit_matrix() {
+    use rustc_index::bit_set::BitMatrix;
+    let a: BitMatrix<usize, usize> = BitMatrix::new(1, 1);
+    let b: BitMatrix<usize, usize> = BitMatrix::new(1, 2);
+    assert_ne!(a, b);
+    assert_ne!(hash(&a), hash(&b));
+}

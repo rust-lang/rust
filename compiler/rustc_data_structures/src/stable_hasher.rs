@@ -478,14 +478,14 @@ where
 }
 
 impl<I: vec::Idx, CTX> HashStable<CTX> for bit_set::BitSet<I> {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.words().hash_stable(ctx, hasher);
+    fn hash_stable(&self, _ctx: &mut CTX, hasher: &mut StableHasher) {
+        ::std::hash::Hash::hash(self, hasher);
     }
 }
 
 impl<R: vec::Idx, C: vec::Idx, CTX> HashStable<CTX> for bit_set::BitMatrix<R, C> {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.words().hash_stable(ctx, hasher);
+    fn hash_stable(&self, _ctx: &mut CTX, hasher: &mut StableHasher) {
+        ::std::hash::Hash::hash(self, hasher);
     }
 }
 
