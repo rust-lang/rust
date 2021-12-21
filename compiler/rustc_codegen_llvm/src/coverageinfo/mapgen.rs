@@ -273,7 +273,9 @@ fn save_function_record(
 /// `codegened_and_inlined_items`).
 ///
 /// These unused functions are then codegen'd in one of the CGUs which is marked as the
-/// "code coverage dead code cgu" during the partitioning process.
+/// "code coverage dead code cgu" during the partitioning process. This prevents us from generating
+/// code regions for the same function more than once which can lead to linker errors regarding
+/// duplicate symbols.
 fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
@@ -281,12 +283,24 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
 
     let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
 
-    let all_def_ids: DefIdSet = tcx
+    let eligible_def_ids: DefIdSet = tcx
         .mir_keys(())
         .iter()
         .filter_map(|local_def_id| {
             let def_id = local_def_id.to_def_id();
-            if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
+            let kind = tcx.def_kind(def_id);
+            // `mir_keys` will give us `DefId`s for all kinds of things, not
+            // just "functions", like consts, statics, etc. Filter those out.
+            // If `ignore_unused_generics` was specified, filter out any
+            // generic functions from consideration as well.
+            if !matches!(
+                kind,
+                DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator
+            ) {
+                return None;
+            } else if ignore_unused_generics
+                && tcx.generics_of(def_id).requires_monomorphization(tcx)
+            {
                 return None;
             }
             Some(local_def_id.to_def_id())
@@ -295,24 +309,17 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
 
     let codegenned_def_ids = tcx.codegened_and_inlined_items(());
 
-    for &non_codegenned_def_id in all_def_ids.difference(codegenned_def_ids) {
-        // `all_def_ids` contains things besides just "functions" such as constants,
-        // statics, etc. We need to filter those out.
-        let kind = tcx.def_kind(non_codegenned_def_id);
-        if matches!(kind, DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator) {
-            let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
+    for &non_codegenned_def_id in eligible_def_ids.difference(codegenned_def_ids) {
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
 
-            // If a function is marked `#[no_coverage]`, then skip generating a
-            // dead code stub for it.
-            if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
-                debug!("skipping unused fn marked #[no_coverage]: {:?}", non_codegenned_def_id);
-                continue;
-            }
-
-            debug!("generating unused fn: {:?}", non_codegenned_def_id);
-            cx.define_unused_fn(non_codegenned_def_id);
-        } else {
-            debug!("skipping unused {:?}: {:?}", kind, non_codegenned_def_id);
+        // If a function is marked `#[no_coverage]`, then skip generating a
+        // dead code stub for it.
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+            debug!("skipping unused fn marked #[no_coverage]: {:?}", non_codegenned_def_id);
+            continue;
         }
+
+        debug!("generating unused fn: {:?}", non_codegenned_def_id);
+        cx.define_unused_fn(non_codegenned_def_id);
     }
 }
