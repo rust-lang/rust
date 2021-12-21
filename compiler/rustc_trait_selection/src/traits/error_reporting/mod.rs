@@ -830,8 +830,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
 
                         let anon_const_sugg = match AbstractConst::new(self.tcx, uv) {
-                            Ok(Some(a)) => a.try_print_with_replacing_substs(self.tcx).map_or(
-                                {
+                            Ok(Some(a)) => a.try_print_with_replacing_substs(self.tcx).map_or_else(
+                                || {
+                                    println!("IN HEREE");
                                     let const_span = self.tcx.def_span(uv.def.did);
                                     self.tcx
                                         .sess
@@ -842,6 +843,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                 |s| Some(format!("{{ {} }}", s)),
                             ),
                             _ => {
+                                println!("UNDERSCORE UWU");
+
                                 let const_span = self.tcx.def_span(uv.def.did);
                                 self.tcx
                                     .sess
