@@ -296,7 +296,7 @@ fn func() {
             ev UnitV       ()
             ct ASSOC_CONST const ASSOC_CONST: ()
             fn assoc_fn()  fn()
-            ta AssocType   type AssocType;
+            ta AssocType   type AssocType = ()
         "#]],
     );
 }

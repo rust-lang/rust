@@ -148,7 +148,7 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             kw self
             kw super
             kw crate
-            ta Foo =  (as Trait2) type Foo;
+            ta Foo =  (as Trait2) type Foo
             tp T
             cp CONST_PARAM
             tt Trait
@@ -199,7 +199,7 @@ impl Enum {
 fn func(_: Enum::$0) {}
 "#,
         expect![[r#"
-            ta AssocType type AssocType;
+            ta AssocType type AssocType = ()
         "#]],
     );
 }
