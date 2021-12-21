@@ -11,6 +11,8 @@ use rustc_span::{
 use crate::macros::MacroArg;
 use crate::rewrite::{Rewrite, RewriteContext};
 
+pub(crate) mod lazy_static;
+
 pub(crate) fn build_parser<'a>(context: &RewriteContext<'a>, tokens: TokenStream) -> Parser<'a> {
     stream_to_parser(context.parse_sess.inner(), tokens, MACRO_ARGUMENTS)
 }

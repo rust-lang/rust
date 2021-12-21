@@ -28,6 +28,7 @@ use crate::config::lists::*;
 use crate::expr::{rewrite_array, rewrite_assign_rhs, RhsAssignKind};
 use crate::lists::{itemize_list, write_list, ListFormatting};
 use crate::overflow;
+use crate::parse::macros::lazy_static::parse_lazy_static;
 use crate::parse::macros::{build_parser, parse_macro_args, ParsedMacroArgs};
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
@@ -1297,7 +1298,6 @@ fn format_lazy_static(
     ts: TokenStream,
 ) -> Option<String> {
     let mut result = String::with_capacity(1024);
-    let mut parser = build_parser(context, ts);
     let nested_shape = shape
         .block_indent(context.config.tab_spaces())
         .with_max_width(context.config);
@@ -1305,42 +1305,11 @@ fn format_lazy_static(
     result.push_str("lazy_static! {");
     result.push_str(&nested_shape.indent.to_string_with_newline(context.config));
 
-    macro_rules! parse_or {
-        ($method:ident $(,)* $($arg:expr),* $(,)*) => {
-            match parser.$method($($arg,)*) {
-                Ok(val) => {
-                    if parser.sess.span_diagnostic.has_errors() {
-                        parser.sess.span_diagnostic.reset_err_count();
-                        return None;
-                    } else {
-                        val
-                    }
-                }
-                Err(mut err) => {
-                    err.cancel();
-                    parser.sess.span_diagnostic.reset_err_count();
-                    return None;
-                }
-            }
-        }
-    }
-
-    while parser.token.kind != TokenKind::Eof {
-        // Parse a `lazy_static!` item.
-        let vis = crate::utils::format_visibility(
-            context,
-            &parse_or!(parse_visibility, rustc_parse::parser::FollowedByType::No),
-        );
-        parser.eat_keyword(kw::Static);
-        parser.eat_keyword(kw::Ref);
-        let id = parse_or!(parse_ident);
-        parser.eat(&TokenKind::Colon);
-        let ty = parse_or!(parse_ty);
-        parser.eat(&TokenKind::Eq);
-        let expr = parse_or!(parse_expr);
-        parser.eat(&TokenKind::Semi);
-
+    let parsed_elems = parse_lazy_static(context, ts)?;
+    let last = parsed_elems.len() - 1;
+    for (i, (vis, id, ty, expr)) in parsed_elems.iter().enumerate() {
         // Rewrite as a static item.
+        let vis = crate::utils::format_visibility(context, vis);
         let mut stmt = String::with_capacity(128);
         stmt.push_str(&format!(
             "{}static ref {}: {} =",
@@ -1356,7 +1325,7 @@ fn format_lazy_static(
             nested_shape.sub_width(1)?,
         )?);
         result.push(';');
-        if parser.token.kind != TokenKind::Eof {
+        if i != last {
             result.push_str(&nested_shape.indent.to_string_with_newline(context.config));
         }
     }
