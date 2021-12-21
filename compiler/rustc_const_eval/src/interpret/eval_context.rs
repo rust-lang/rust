@@ -1,5 +1,6 @@
 use std::cell::Cell;
 use std::fmt;
+use std::hash::Hasher;
 use std::mem;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -1028,7 +1029,11 @@ where
     Extra: HashStable<StableHashingContext<'ctx>>,
     Tag: HashStable<StableHashingContext<'ctx>>,
 {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'ctx>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'ctx>,
+        hasher: &mut StableHasher<H>,
+    ) {
         // Exhaustive match on fields to make sure we forget no field.
         let Frame {
             body,

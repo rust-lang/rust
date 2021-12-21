@@ -110,9 +110,10 @@ pub enum TypeKind {
 mod temp_stable_hash_impls {
     use crate::ModuleCodegen;
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+    use std::hash::Hasher;
 
     impl<HCX, M> HashStable<HCX> for ModuleCodegen<M> {
-        fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
+        fn hash_stable<H: Hasher>(&self, _: &mut HCX, _: &mut StableHasher<H>) {
             // do nothing
         }
     }

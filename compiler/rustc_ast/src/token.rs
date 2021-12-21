@@ -15,6 +15,7 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
+use std::hash::Hasher;
 use std::{fmt, mem};
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -828,7 +829,7 @@ impl<CTX> HashStable<CTX> for Nonterminal
 where
     CTX: crate::HashStableContext,
 {
-    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, _hcx: &mut CTX, _hasher: &mut StableHasher<H>) {
         panic!("interpolated tokens should not be present in the HIR")
     }
 }

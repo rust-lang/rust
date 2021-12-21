@@ -21,7 +21,7 @@ use crate::{prelude::*, BackendConfig};
 struct ModuleCodegenResult(CompiledModule, Option<(WorkProductId, WorkProduct)>);
 
 impl<HCX> HashStable<HCX> for ModuleCodegenResult {
-    fn hash_stable(&self, _: &mut HCX, _: &mut StableHasher) {
+    fn hash_stable<H: core::hash::Hasher>(&self, _: &mut HCX, _: &mut StableHasher<H>) {
         // do nothing
     }
 }

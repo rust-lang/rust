@@ -1,4 +1,5 @@
 use crate::stable_hasher::{HashStable, StableHasher};
+use std::hash::Hasher;
 
 use std::iter::FromIterator;
 
@@ -116,7 +117,7 @@ impl<T> Extend<T> for ThinVec<T> {
 }
 
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for ThinVec<T> {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut CTX, hasher: &mut StableHasher<H>) {
         (**self).hash_stable(hcx, hasher)
     }
 }

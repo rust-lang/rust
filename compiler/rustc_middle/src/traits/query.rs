@@ -9,6 +9,7 @@ use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::error::TypeError;
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
+use std::hash::Hasher;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -230,7 +231,11 @@ pub enum OutlivesBound<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OutlivesBound<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             OutlivesBound::RegionSubRegion(ref a, ref b) => {

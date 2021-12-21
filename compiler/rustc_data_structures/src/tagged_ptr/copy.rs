@@ -1,6 +1,7 @@
 use super::{Pointer, Tag};
 use crate::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
+use std::hash::Hasher;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
@@ -176,7 +177,7 @@ where
     P: Pointer + HashStable<HCX>,
     T: Tag + HashStable<HCX>,
 {
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HCX, hasher: &mut StableHasher<H>) {
         unsafe {
             Pointer::with_ref(self.pointer_raw(), |p: &P| p.hash_stable(hcx, hasher));
         }

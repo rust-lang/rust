@@ -9,13 +9,18 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_query_system::ich::StableHashingContext;
 use std::cell::RefCell;
+use std::hash::Hasher;
 use std::mem;
 
 impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for &'tcx ty::List<T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<(usize, usize), Fingerprint>> =
                 RefCell::new(Default::default());
@@ -55,13 +60,21 @@ where
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArg<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         self.unpack().hash_stable(hcx, hasher);
     }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             ty::ReErased | ty::ReStatic => {
@@ -102,21 +115,33 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
 
 impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionVid {
     #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         self.index().hash_stable(hcx, hasher);
     }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::ConstVid<'tcx> {
     #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         self.index.hash_stable(hcx, hasher);
     }
 }
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for ty::BoundVar {
     #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'tcx>,
+        hasher: &mut StableHasher<H>,
+    ) {
         self.index().hash_stable(hcx, hasher);
     }
 }
@@ -125,7 +150,11 @@ impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for ty::Binder<'tcx, T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         self.as_ref().skip_binder().hash_stable(hcx, hasher);
         self.bound_vars().hash_stable(hcx, hasher);
     }
@@ -133,7 +162,11 @@ where
 
 // AllocIds get resolved to whatever they point to (to be stable)
 impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
@@ -147,7 +180,11 @@ impl<'a, Tag> HashStable<StableHashingContext<'a>> for mir::interpret::Relocatio
 where
     Tag: HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         self.len().hash_stable(hcx, hasher);
         for reloc in self.iter() {
             reloc.hash_stable(hcx, hasher);

@@ -22,6 +22,7 @@
 //!   Moreover, a switch to, e.g., `P<'a, T>` would be easy and mostly automated.
 
 use std::fmt::{self, Debug, Display};
+use std::hash::Hasher;
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::{slice, vec};
@@ -213,7 +214,7 @@ impl<CTX, T> HashStable<CTX> for P<T>
 where
     T: ?Sized + HashStable<CTX>,
 {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut CTX, hasher: &mut StableHasher<H>) {
         (**self).hash_stable(hcx, hasher);
     }
 }

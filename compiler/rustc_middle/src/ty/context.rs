@@ -749,7 +749,11 @@ impl<'tcx> TypeckResults<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         let ty::TypeckResults {
             hir_owner,
             ref type_dependent_defs,

@@ -1,6 +1,7 @@
 use crate::stable_hasher::{HashStable, StableHasher};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
+use std::hash::Hasher;
 use std::iter::FromIterator;
 use std::mem;
 use std::ops::{Bound, Index, IndexMut, RangeBounds};
@@ -293,7 +294,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for SortedMap<K, V> {
 
 impl<K: HashStable<CTX>, V: HashStable<CTX>, CTX> HashStable<CTX> for SortedMap<K, V> {
     #[inline]
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, ctx: &mut CTX, hasher: &mut StableHasher<H>) {
         self.data.hash_stable(ctx, hasher);
     }
 }

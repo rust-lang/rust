@@ -1,4 +1,5 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use std::hash::Hasher;
 
 use crate::hir::{
     AttributeMap, BodyId, Crate, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item,
@@ -13,15 +14,23 @@ use rustc_span::def_id::DefPathHash;
 pub trait HashStableContext:
     rustc_ast::HashStableContext + rustc_target::HashStableContext
 {
-    fn hash_hir_id(&mut self, _: HirId, hasher: &mut StableHasher);
-    fn hash_body_id(&mut self, _: BodyId, hasher: &mut StableHasher);
-    fn hash_reference_to_item(&mut self, _: HirId, hasher: &mut StableHasher);
-    fn hash_hir_mod(&mut self, _: &Mod<'_>, hasher: &mut StableHasher);
-    fn hash_hir_expr(&mut self, _: &Expr<'_>, hasher: &mut StableHasher);
-    fn hash_hir_ty(&mut self, _: &Ty<'_>, hasher: &mut StableHasher);
-    fn hash_hir_visibility_kind(&mut self, _: &VisibilityKind<'_>, hasher: &mut StableHasher);
+    fn hash_hir_id<H: Hasher>(&mut self, _: HirId, hasher: &mut StableHasher<H>);
+    fn hash_body_id<H: Hasher>(&mut self, _: BodyId, hasher: &mut StableHasher<H>);
+    fn hash_reference_to_item<H: Hasher>(&mut self, _: HirId, hasher: &mut StableHasher<H>);
+    fn hash_hir_mod<H: Hasher>(&mut self, _: &Mod<'_>, hasher: &mut StableHasher<H>);
+    fn hash_hir_expr<H: Hasher>(&mut self, _: &Expr<'_>, hasher: &mut StableHasher<H>);
+    fn hash_hir_ty<H: Hasher>(&mut self, _: &Ty<'_>, hasher: &mut StableHasher<H>);
+    fn hash_hir_visibility_kind<H: Hasher>(
+        &mut self,
+        _: &VisibilityKind<'_>,
+        hasher: &mut StableHasher<H>,
+    );
     fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F);
-    fn hash_hir_trait_candidate(&mut self, _: &TraitCandidate, hasher: &mut StableHasher);
+    fn hash_hir_trait_candidate<H: Hasher>(
+        &mut self,
+        _: &TraitCandidate,
+        hasher: &mut StableHasher<H>,
+    );
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
@@ -90,13 +99,13 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ForeignItemId
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for HirId {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_hir_id(*self, hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for BodyId {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_body_id(*self, hasher)
     }
 }
@@ -109,55 +118,55 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for BodyId {
 // in "DefPath Mode".
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ItemId {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_reference_to_item(self.hir_id(), hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ForeignItemId {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_reference_to_item(self.hir_id(), hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItemId {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_reference_to_item(self.hir_id(), hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItemId {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_reference_to_item(self.hir_id(), hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Mod<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_hir_mod(self, hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Expr<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_hir_expr(self, hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Ty<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_hir_ty(self, hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for VisibilityKind<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_hir_visibility_kind(self, hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItem<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         let TraitItem { def_id: _, ident, ref generics, ref kind, span } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
@@ -170,7 +179,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItem<'_> {
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItem<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         let ImplItem { def_id: _, ident, ref vis, defaultness, ref generics, ref kind, span } =
             *self;
 
@@ -186,7 +195,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItem<'_> {
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ForeignItem<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         let ForeignItem { def_id: _, ident, ref kind, span, ref vis } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
@@ -199,7 +208,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ForeignItem<'_> {
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Item<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         let Item { ident, def_id: _, ref kind, ref vis, span } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
@@ -212,7 +221,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Item<'_> {
 }
 
 impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'tcx> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
         let OwnerNodes { hash_including_bodies, hash_without_bodies: _, nodes: _, bodies: _ } =
@@ -222,7 +231,7 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'
 }
 
 impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap<'tcx> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         // We ignore the `map` since it refers to information included in `hash` which is hashed in
         // the collector and used for the crate hash.
         let AttributeMap { hash, map: _ } = *self;
@@ -231,14 +240,14 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Crate<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         let Crate { owners: _, hir_hash } = self;
         hir_hash.hash_stable(hcx, hasher)
     }
 }
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitCandidate {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HirCtx, hasher: &mut StableHasher<H>) {
         hcx.hash_hir_trait_candidate(self, hasher)
     }
 }

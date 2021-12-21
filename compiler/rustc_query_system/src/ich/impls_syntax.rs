@@ -7,13 +7,18 @@ use rustc_ast as ast;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::{BytePos, NormalizedPos, SourceFile};
 use std::assert_matches::assert_matches;
+use std::hash::Hasher;
 
 use smallvec::SmallVec;
 
 impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         if self.is_empty() {
             self.len().hash_stable(hcx, hasher);
             return;
@@ -36,7 +41,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
 }
 
 impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
-    fn hash_attr(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher) {
+    fn hash_attr<H: Hasher>(&mut self, attr: &ast::Attribute, hasher: &mut StableHasher<H>) {
         // Make sure that these have been filtered out.
         debug_assert!(!attr.ident().map_or(false, |ident| self.is_ignored_attr(ident.name)));
         debug_assert!(!attr.is_doc_comment());
@@ -58,7 +63,11 @@ impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         let SourceFile {
             name: _, // We hash the smaller name_hash instead of this
             name_hash,
@@ -132,7 +141,11 @@ fn stable_normalized_pos(np: NormalizedPos, source_file_start: BytePos) -> (u32,
 }
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'tcx>,
+        hasher: &mut StableHasher<H>,
+    ) {
         // Unfortunately we cannot exhaustively list fields here, since the
         // struct is macro generated.
         self.declared_lang_features.hash_stable(hcx, hasher);

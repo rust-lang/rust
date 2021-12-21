@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::fmt::Debug;
+use std::hash::Hasher;
 use std::iter::FromIterator;
 use std::slice::Iter;
 use std::vec::IntoIter;
@@ -171,7 +172,7 @@ where
     K: HashStable<CTX> + Eq,
     V: HashStable<CTX>,
 {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut CTX, hasher: &mut StableHasher<H>) {
         self.0.hash_stable(hcx, hasher)
     }
 }

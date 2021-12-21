@@ -23,6 +23,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
+use std::hash::Hasher;
 use std::{fmt, iter, mem};
 
 /// When the main Rust parser encounters a syntax-extension invocation, it
@@ -116,7 +117,7 @@ impl<CTX> HashStable<CTX> for TokenStream
 where
     CTX: crate::HashStableContext,
 {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut CTX, hasher: &mut StableHasher<H>) {
         for sub_tt in self.trees() {
             sub_tt.hash_stable(hcx, hasher);
         }
@@ -169,7 +170,7 @@ impl<D: Decoder> Decodable<D> for LazyTokenStream {
 }
 
 impl<CTX> HashStable<CTX> for LazyTokenStream {
-    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, _hcx: &mut CTX, _hasher: &mut StableHasher<H>) {
         panic!("Attempted to compute stable hash for LazyTokenStream");
     }
 }

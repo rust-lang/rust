@@ -9,6 +9,7 @@
 
 use crate::def_id::DefId;
 use crate::{MethodKind, Target};
+use std::hash::Hasher;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
@@ -143,7 +144,7 @@ macro_rules! language_item_table {
 }
 
 impl<CTX> HashStable<CTX> for LangItem {
-    fn hash_stable(&self, _: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, _: &mut CTX, hasher: &mut StableHasher<H>) {
         ::std::hash::Hash::hash(self, hasher);
     }
 }

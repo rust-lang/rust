@@ -134,7 +134,11 @@ impl Hash for AdtDef {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for AdtDef {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<usize, Fingerprint>> = Default::default();
         }

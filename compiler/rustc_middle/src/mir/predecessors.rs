@@ -5,6 +5,7 @@ use rustc_data_structures::sync::OnceCell;
 use rustc_index::vec::IndexVec;
 use rustc_serialize as serialize;
 use smallvec::SmallVec;
+use std::hash::Hasher;
 
 use crate::mir::{BasicBlock, BasicBlockData};
 
@@ -70,7 +71,7 @@ impl<D: serialize::Decoder> serialize::Decodable<D> for PredecessorCache {
 
 impl<CTX> HashStable<CTX> for PredecessorCache {
     #[inline]
-    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, _: &mut CTX, _: &mut StableHasher<H>) {
         // do nothing
     }
 }

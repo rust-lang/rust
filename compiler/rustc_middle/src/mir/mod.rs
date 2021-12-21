@@ -834,9 +834,14 @@ TrivialTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
 mod binding_form_impl {
     use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
     use rustc_query_system::ich::StableHashingContext;
+    use std::hash::Hasher;
 
     impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for super::BindingForm<'tcx> {
-        fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        fn hash_stable<H: Hasher>(
+            &self,
+            hcx: &mut StableHashingContext<'a>,
+            hasher: &mut StableHasher<H>,
+        ) {
             use super::BindingForm::*;
             std::mem::discriminant(self).hash_stable(hcx, hasher);
 

@@ -12,6 +12,7 @@ use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, CachingSourceMapView, SourceFile, Span, SpanData};
+use std::hash::Hasher;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(!ich::IGNORED_ATTRIBUTES.is_empty());
@@ -187,7 +188,7 @@ impl<'a> StableHashingContext<'a> {
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
     #[inline]
-    fn hash_stable(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, _: &mut StableHashingContext<'a>, _: &mut StableHasher<H>) {
         panic!("Node IDs should not appear in incremental state");
     }
 }

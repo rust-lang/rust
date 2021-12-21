@@ -8,6 +8,7 @@ extern crate rustc_macros;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 use std::fmt;
+use std::hash::Hasher;
 use std::mem::discriminant;
 
 bitflags! {
@@ -533,31 +534,31 @@ impl Variance {
 }
 
 impl<CTX> HashStable<CTX> for DebruijnIndex {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, ctx: &mut CTX, hasher: &mut StableHasher<H>) {
         self.as_u32().hash_stable(ctx, hasher);
     }
 }
 
 impl<CTX> HashStable<CTX> for IntTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, ctx: &mut CTX, hasher: &mut StableHasher<H>) {
         discriminant(self).hash_stable(ctx, hasher);
     }
 }
 
 impl<CTX> HashStable<CTX> for UintTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, ctx: &mut CTX, hasher: &mut StableHasher<H>) {
         discriminant(self).hash_stable(ctx, hasher);
     }
 }
 
 impl<CTX> HashStable<CTX> for FloatTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, ctx: &mut CTX, hasher: &mut StableHasher<H>) {
         discriminant(self).hash_stable(ctx, hasher);
     }
 }
 
 impl<CTX> HashStable<CTX> for InferTy {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, ctx: &mut CTX, hasher: &mut StableHasher<H>) {
         use InferTy::*;
         discriminant(self).hash_stable(ctx, hasher);
         match self {
@@ -570,7 +571,7 @@ impl<CTX> HashStable<CTX> for InferTy {
 }
 
 impl<CTX> HashStable<CTX> for Variance {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, ctx: &mut CTX, hasher: &mut StableHasher<H>) {
         discriminant(self).hash_stable(ctx, hasher);
     }
 }

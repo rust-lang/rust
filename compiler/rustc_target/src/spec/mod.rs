@@ -42,6 +42,7 @@ use rustc_serialize::json::{Json, ToJson};
 use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
+use std::hash::Hasher;
 use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
@@ -662,7 +663,7 @@ impl IntoIterator for SanitizerSet {
 }
 
 impl<CTX> HashStable<CTX> for SanitizerSet {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, ctx: &mut CTX, hasher: &mut StableHasher<H>) {
         self.bits().hash_stable(ctx, hasher);
     }
 }
@@ -2400,7 +2401,7 @@ impl TargetTriple {
     /// by `triple()`.
     pub fn debug_triple(&self) -> String {
         use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::hash::Hash;
 
         let triple = self.triple();
         if let TargetTriple::TargetPath(ref path) = *self {

@@ -2,6 +2,7 @@ use crate::def_id::DefId;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::Symbol;
+use std::hash::Hasher;
 
 #[derive(Debug, Default)]
 pub struct DiagnosticItems {
@@ -11,7 +12,7 @@ pub struct DiagnosticItems {
 
 impl<CTX: crate::HashStableContext> HashStable<CTX> for DiagnosticItems {
     #[inline]
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, ctx: &mut CTX, hasher: &mut StableHasher<H>) {
         self.name_to_id.hash_stable(ctx, hasher);
     }
 }

@@ -16,6 +16,7 @@ use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
+use std::hash::Hasher;
 
 /// Represents a statically-describable scope that can be used to
 /// bound the lifetime/region for values.
@@ -436,7 +437,11 @@ impl ScopeTree {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         let ScopeTree {
             root_body,
             ref body_expr_count,

@@ -446,7 +446,11 @@ impl<'tcx> Hash for TyS<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         let ty::TyS {
             ref kind,
 
@@ -535,7 +539,11 @@ impl<'tcx> Predicate<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         let PredicateInner {
             ref kind,
 
@@ -1053,7 +1061,11 @@ impl<'a, T> HashStable<StableHashingContext<'a>> for Placeholder<T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         self.universe.hash_stable(hcx, hasher);
         self.name.hash_stable(hcx, hasher);
     }
@@ -1261,7 +1273,11 @@ impl<'tcx> fmt::Debug for ParamEnv<'tcx> {
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         self.caller_bounds().hash_stable(hcx, hasher);
         self.reveal().hash_stable(hcx, hasher);
         self.constness().hash_stable(hcx, hasher);
@@ -1455,7 +1471,11 @@ impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for ParamEnvAnd<'tcx, T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         let ParamEnvAnd { ref param_env, ref value } = *self;
 
         param_env.hash_stable(hcx, hasher);

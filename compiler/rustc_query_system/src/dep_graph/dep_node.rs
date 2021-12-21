@@ -48,7 +48,7 @@ use crate::ich::StableHashingContext;
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 pub struct DepNode<K> {
@@ -172,7 +172,7 @@ impl WorkProductId {
 
 impl<HCX> HashStable<HCX> for WorkProductId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HCX, hasher: &mut StableHasher<H>) {
         self.hash.hash_stable(hcx, hasher)
     }
 }

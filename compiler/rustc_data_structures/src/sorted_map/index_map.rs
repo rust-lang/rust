@@ -125,7 +125,7 @@ where
     K: HashStable<C>,
     V: HashStable<C>,
 {
-    fn hash_stable(&self, ctx: &mut C, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, ctx: &mut C, hasher: &mut StableHasher<H>) {
         self.items.hash_stable(ctx, hasher)
     }
 }

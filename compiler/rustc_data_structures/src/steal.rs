@@ -1,5 +1,6 @@
 use crate::stable_hasher::{HashStable, StableHasher};
 use crate::sync::{MappedReadGuard, ReadGuard, RwLock};
+use std::hash::Hasher;
 
 /// The `Steal` struct is intended to used as the value for a query.
 /// Specifically, we sometimes have queries (*cough* MIR *cough*)
@@ -49,7 +50,7 @@ impl<T> Steal<T> {
 }
 
 impl<CTX, T: HashStable<CTX>> HashStable<CTX> for Steal<T> {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut CTX, hasher: &mut StableHasher<H>) {
         self.borrow().hash_stable(hcx, hasher);
     }
 }

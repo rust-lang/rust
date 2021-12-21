@@ -4,6 +4,7 @@ use rustc_data_structures::graph::{
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceCell;
 use rustc_serialize as serialize;
+use std::hash::Hasher;
 
 /// Helper type to cache the result of `graph::is_cyclic`.
 #[derive(Clone, Debug)]
@@ -52,7 +53,7 @@ impl<D: serialize::Decoder> serialize::Decodable<D> for GraphIsCyclicCache {
 
 impl<CTX> HashStable<CTX> for GraphIsCyclicCache {
     #[inline]
-    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, _: &mut CTX, _: &mut StableHasher<H>) {
         // do nothing
     }
 }

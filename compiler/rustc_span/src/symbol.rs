@@ -1711,7 +1711,7 @@ impl<D: Decoder> Decodable<D> for Symbol {
 
 impl<CTX> HashStable<CTX> for Symbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut CTX, hasher: &mut StableHasher<H>) {
         self.as_str().hash_stable(hcx, hasher);
     }
 }

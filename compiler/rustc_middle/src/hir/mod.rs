@@ -14,6 +14,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::DUMMY_SP;
+use std::hash::Hasher;
 
 /// Top-level HIR node for current owner. This only contains the node for which
 /// `HirId::local_id == 0`, and excludes bodies.
@@ -28,7 +29,11 @@ pub struct Owner<'tcx> {
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Owner<'tcx> {
     #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         let Owner { node: _, hash_without_bodies } = self;
         hash_without_bodies.hash_stable(hcx, hasher)
     }

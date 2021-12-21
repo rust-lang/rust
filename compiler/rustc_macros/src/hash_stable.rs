@@ -73,10 +73,10 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
         quote!(::rustc_data_structures::stable_hasher::HashStable<__CTX>),
         quote! {
             #[inline]
-            fn hash_stable(
+            fn hash_stable<H: ::std::hash::Hasher>(
                 &self,
                 __hcx: &mut __CTX,
-                __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<H>) {
                 #discriminant
                 match *self { #body }
             }
@@ -119,10 +119,10 @@ pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::To
         ),
         quote! {
             #[inline]
-            fn hash_stable(
+            fn hash_stable<H: ::std::hash::Hasher>(
                 &self,
                 __hcx: &mut ::rustc_query_system::ich::StableHashingContext<'__ctx>,
-                __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher) {
+                __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<H>) {
                 #discriminant
                 match *self { #body }
             }

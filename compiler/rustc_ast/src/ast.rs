@@ -39,6 +39,7 @@ use rustc_span::{Span, DUMMY_SP};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
+use std::hash::Hasher;
 
 #[cfg(test)]
 mod tests;
@@ -107,7 +108,7 @@ impl PartialEq<Symbol> for Path {
 }
 
 impl<CTX> HashStable<CTX> for Path {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut CTX, hasher: &mut StableHasher<H>) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
             segment.ident.name.hash_stable(hcx, hasher);

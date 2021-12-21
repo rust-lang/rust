@@ -1,4 +1,5 @@
 use std::cmp;
+use std::hash::Hasher;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -177,7 +178,11 @@ impl LintLevelMap {
 
 impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         let LintLevelMap { ref sets, ref id_to_set } = *self;
 
         id_to_set.hash_stable(hcx, hasher);

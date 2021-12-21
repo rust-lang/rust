@@ -6,11 +6,12 @@ use crate::ich::{NodeIdHashingMode, StableHashingContext};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_hir as hir;
+use std::hash::Hasher;
 use std::mem;
 
 impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     #[inline]
-    fn hash_hir_id(&mut self, hir_id: hir::HirId, hasher: &mut StableHasher) {
+    fn hash_hir_id<H: Hasher>(&mut self, hir_id: hir::HirId, hasher: &mut StableHasher<H>) {
         let hcx = self;
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
@@ -26,7 +27,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     }
 
     #[inline]
-    fn hash_body_id(&mut self, id: hir::BodyId, hasher: &mut StableHasher) {
+    fn hash_body_id<H: Hasher>(&mut self, id: hir::BodyId, hasher: &mut StableHasher<H>) {
         let hcx = self;
         match hcx.body_resolver {
             BodyResolver::Forbidden => panic!("Hashing HIR bodies is forbidden."),
@@ -39,7 +40,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     }
 
     #[inline]
-    fn hash_reference_to_item(&mut self, id: hir::HirId, hasher: &mut StableHasher) {
+    fn hash_reference_to_item<H: Hasher>(&mut self, id: hir::HirId, hasher: &mut StableHasher<H>) {
         let hcx = self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -48,7 +49,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     }
 
     #[inline]
-    fn hash_hir_mod(&mut self, module: &hir::Mod<'_>, hasher: &mut StableHasher) {
+    fn hash_hir_mod<H: Hasher>(&mut self, module: &hir::Mod<'_>, hasher: &mut StableHasher<H>) {
         let hcx = self;
         let hir::Mod { inner: ref inner_span, ref item_ids } = *module;
 
@@ -69,7 +70,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         item_ids_hash.hash_stable(hcx, hasher);
     }
 
-    fn hash_hir_expr(&mut self, expr: &hir::Expr<'_>, hasher: &mut StableHasher) {
+    fn hash_hir_expr<H: Hasher>(&mut self, expr: &hir::Expr<'_>, hasher: &mut StableHasher<H>) {
         self.while_hashing_hir_bodies(true, |hcx| {
             let hir::Expr { hir_id: _, ref span, ref kind } = *expr;
 
@@ -78,7 +79,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         })
     }
 
-    fn hash_hir_ty(&mut self, ty: &hir::Ty<'_>, hasher: &mut StableHasher) {
+    fn hash_hir_ty<H: Hasher>(&mut self, ty: &hir::Ty<'_>, hasher: &mut StableHasher<H>) {
         self.while_hashing_hir_bodies(true, |hcx| {
             let hir::Ty { hir_id: _, ref kind, ref span } = *ty;
 
@@ -87,10 +88,10 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         })
     }
 
-    fn hash_hir_visibility_kind(
+    fn hash_hir_visibility_kind<H: Hasher>(
         &mut self,
         vis: &hir::VisibilityKind<'_>,
-        hasher: &mut StableHasher,
+        hasher: &mut StableHasher<H>,
     ) {
         let hcx = self;
         mem::discriminant(vis).hash_stable(hcx, hasher);
@@ -121,7 +122,11 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     }
 
     #[inline]
-    fn hash_hir_trait_candidate(&mut self, tc: &hir::TraitCandidate, hasher: &mut StableHasher) {
+    fn hash_hir_trait_candidate<H: Hasher>(
+        &mut self,
+        tc: &hir::TraitCandidate,
+        hasher: &mut StableHasher<H>,
+    ) {
         self.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
             let hir::TraitCandidate { def_id, import_ids } = tc;
 
@@ -133,7 +138,11 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Body<'_> {
     #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<H>,
+    ) {
         let hir::Body { params, value, generator_kind } = self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::Ignore, |hcx| {

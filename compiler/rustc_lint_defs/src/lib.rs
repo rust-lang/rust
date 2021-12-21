@@ -8,6 +8,7 @@ use rustc_serialize::json::Json;
 use rustc_span::edition::Edition;
 use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
 use rustc_target::spec::abi::Abi;
+use std::hash::Hasher;
 
 pub mod builtin;
 
@@ -259,7 +260,7 @@ impl LintId {
 
 impl<HCX> HashStable<HCX> for LintId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable<H: Hasher>(&self, hcx: &mut HCX, hasher: &mut StableHasher<H>) {
         self.lint_name_raw().hash_stable(hcx, hasher);
     }
 }
