@@ -1,7 +1,7 @@
 // Regression test for #92111.
 //
 // The issue was that we normalize trait bounds before caching
-// results of selection. Checking that `impl NoDrop for S` requires
+// results of selection. Checking that `impl Tr for S` requires
 // checking `S: !Drop` because it cannot overlap with the blanket
 // impl. Then we save the (unsatisfied) result from checking `S: Drop`.
 // Then the call to `a` checks whether `S: ~const Drop` but we normalize
