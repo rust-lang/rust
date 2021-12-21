@@ -728,11 +728,13 @@ fn string<T: Display>(
                     LinkFromSrc::Local(span) => context
                         .href_from_span(*span, true)
                         .map(|s| format!("{}{}", context_info.root_path, s)),
-                    LinkFromSrc::External(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(context_info.root_path))
-                            .ok()
-                            .map(|(url, _, _)| url)
-                    }
+                    LinkFromSrc::External(span) => context.href_from_span(*span, true).map(|s| {
+                        if s.starts_with("http://") || s.starts_with("https://") {
+                            s
+                        } else {
+                            format!("{}{}", context_info.root_path, s)
+                        }
+                    }),
                     LinkFromSrc::Primitive(prim) => format::href_with_root_path(
                         PrimitiveType::primitive_locations(context.tcx())[prim],
                         context,

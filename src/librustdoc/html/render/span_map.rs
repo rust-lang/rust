@@ -6,9 +6,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{ExprKind, HirId, Mod, Node};
+use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node};
 use rustc_middle::hir::nested_filter;
-use rustc_hir::{ExprKind, GenericParam, GenericParamKind, HirId, Item, ItemKind, Mod, Node};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
@@ -24,7 +23,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug)]
 pub(crate) enum LinkFromSrc {
     Local(clean::Span),
-    External(DefId),
+    External(clean::Span),
     Primitive(PrimitiveType),
     Doc(DefId),
 }
@@ -67,7 +66,7 @@ struct SpanMapVisitor<'tcx> {
 impl<'tcx> SpanMapVisitor<'tcx> {
     /// This function is where we handle `hir::Path` elements and add them into the "span map".
     fn handle_path(&mut self, path: &rustc_hir::Path<'_>, path_span: Option<Span>) {
-        let info = match path.res {
+        match path.res {
             // FIXME: For now, we only handle `DefKind` if it's not `DefKind::TyParam` or
             // `DefKind::Macro`. Would be nice to support them too alongside the other `DefKind`
             // (such as primitive types!).
@@ -75,28 +74,34 @@ impl<'tcx> SpanMapVisitor<'tcx> {
                 if matches!(kind, DefKind::Macro(_)) {
                     return;
                 }
-                Some(def_id)
+                let span = rustc_span(def_id, self.tcx);
+                let link = if def_id.as_local().is_some() {
+                    LinkFromSrc::Local(span)
+                } else {
+                    LinkFromSrc::External(span)
+                };
+                self.matches.insert(path_span.unwrap_or(path.span), link);
             }
-            Res::Local(_) => None,
+            Res::Local(_) => {
+                if let Some(span) = self.tcx.hir().res_span(path.res) {
+                    self.matches.insert(
+                        path_span.unwrap_or(path.span),
+                        LinkFromSrc::Local(clean::Span::new(span)),
+                    );
+                }
+            }
             Res::PrimTy(p) => {
                 // FIXME: Doesn't handle "path-like" primitives like arrays or tuples.
                 let span = path_span.unwrap_or(path.span);
                 self.matches.insert(span, LinkFromSrc::Primitive(PrimitiveType::from(p)));
-                return;
             }
-            Res::Err => return,
-            _ => return,
-        };
-        if let Some(span) = self.tcx.hir().res_span(path.res) {
-            self.matches
-                .insert(path_span.unwrap_or(path.span), LinkFromSrc::Local(clean::Span::new(span)));
-        } else if let Some(def_id) = info {
-            self.matches.insert(path_span.unwrap_or(path.span), LinkFromSrc::External(def_id));
+            Res::Err => {}
+            _ => {}
         }
     }
 
     /// Used to generate links on items' definition to go to their documentation page.
-    crate fn extract_info_from_hir_id(&mut self, hir_id: HirId) {
+    pub(crate) fn extract_info_from_hir_id(&mut self, hir_id: HirId) {
         if let Some(def_id) = self.tcx.hir().opt_local_def_id(hir_id) {
             if let Some(span) = self.tcx.def_ident_span(def_id) {
                 let cspan = clean::Span::new(span);
@@ -155,13 +160,13 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                     hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"),
                 );
                 if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
-                    self.matches.insert(
-                        segment.ident.span,
-                        match hir.span_if_local(def_id) {
-                            Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
-                            None => LinkFromSrc::External(def_id),
-                        },
-                    );
+                    let span = rustc_span(def_id, self.tcx);
+                    let link = if def_id.as_local().is_some() {
+                        LinkFromSrc::Local(span)
+                    } else {
+                        LinkFromSrc::External(span)
+                    };
+                    self.matches.insert(segment.ident.span, link);
                 }
             }
         }
@@ -178,7 +183,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             ItemKind::Static(_, _, _)
             | ItemKind::Const(_, _)
             | ItemKind::Fn(_, _, _)
-            | ItemKind::Macro(_)
+            | ItemKind::Macro(_, _)
             | ItemKind::TyAlias(_, _)
             | ItemKind::Enum(_, _)
             | ItemKind::Struct(_, _)
