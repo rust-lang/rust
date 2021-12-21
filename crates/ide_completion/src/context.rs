@@ -302,6 +302,7 @@ impl<'a> CompletionContext<'a> {
 
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items.
     pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
+        let _p = profile::span("CompletionContext::process_all_names");
         self.scope.process_all_names(&mut |name, def| {
             if self.is_scope_def_hidden(def) {
                 return;
@@ -422,6 +423,7 @@ impl<'a> CompletionContext<'a> {
         mut offset: TextSize,
         mut fake_ident_token: SyntaxToken,
     ) {
+        let _p = profile::span("CompletionContext::expand_and_fill");
         loop {
             // Expand attributes
             if let (Some(actual_item), Some(item_with_fake_ident)) = (
