@@ -108,7 +108,7 @@ impl<'a> Resolver<'a> {
     /// Reachable macros with block module parents exist due to `#[macro_export] macro_rules!`,
     /// but they cannot use def-site hygiene, so the assumption holds
     /// (<https://github.com/rust-lang/rust/pull/77984#issuecomment-712445508>).
-    fn get_nearest_non_block_module(&mut self, mut def_id: DefId) -> Module<'a> {
+    crate fn get_nearest_non_block_module(&mut self, mut def_id: DefId) -> Module<'a> {
         loop {
             match self.get_module(def_id) {
                 Some(module) => return module,

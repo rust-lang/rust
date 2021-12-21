@@ -661,12 +661,20 @@ pub trait LintContext: Sized {
                 BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
                     db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);
                 }
-                BuiltinLintDiagnostics::UnusedImports(message, replaces) => {
+                BuiltinLintDiagnostics::UnusedImports(message, replaces, in_test_module) => {
                     if !replaces.is_empty() {
                         db.tool_only_multipart_suggestion(
                             &message,
                             replaces,
                             Applicability::MachineApplicable,
+                        );
+                    }
+
+                    if let Some(span) = in_test_module {
+                        let def_span = self.sess().source_map().guess_head_span(span);
+                        db.span_help(
+                            span.shrink_to_lo().to(def_span),
+                            "consider adding a `#[cfg(test)]` to the containing module",
                         );
                     }
                 }

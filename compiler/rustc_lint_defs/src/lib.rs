@@ -289,7 +289,7 @@ pub enum BuiltinLintDiagnostics {
     ProcMacroDeriveResolutionFallback(Span),
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     UnknownCrateTypes(Span, String, String),
-    UnusedImports(String, Vec<(Span, String)>),
+    UnusedImports(String, Vec<(Span, String)>, Option<Span>),
     RedundantImport(Vec<(Span, bool)>, Ident),
     DeprecatedMacro(Option<Symbol>, Span),
     MissingAbi(Span, Abi),
