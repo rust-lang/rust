@@ -1913,7 +1913,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return,
         };
         let mut add_label = true;
-        if let ty::Adt(def, _) = output_ty.kind() {
+        if let ty::Adt(def, _) = output_ty.skip_binder().kind() {
             // no field access on enum type
             if !def.is_enum() {
                 if def.non_enum_variant().fields.iter().any(|field| field.ident == field_ident) {
