@@ -122,7 +122,8 @@ impl<T: Sized> NonNull<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_ref<'a>(&self) -> &'a MaybeUninit<T> {
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    pub const unsafe fn as_uninit_ref<'a>(&self) -> &'a MaybeUninit<T> {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
         unsafe { &*self.cast().as_ptr() }
@@ -155,7 +156,8 @@ impl<T: Sized> NonNull<T> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_mut<'a>(&mut self) -> &'a mut MaybeUninit<T> {
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    pub const unsafe fn as_uninit_mut<'a>(&mut self) -> &'a mut MaybeUninit<T> {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
         unsafe { &mut *self.cast().as_ptr() }
@@ -316,9 +318,10 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[must_use]
     #[inline]
-    pub unsafe fn as_ref<'a>(&self) -> &'a T {
+    pub const unsafe fn as_ref<'a>(&self) -> &'a T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
         unsafe { &*self.as_ptr() }
@@ -366,9 +369,10 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[must_use]
     #[inline]
-    pub unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
+    pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a mutable reference.
         unsafe { &mut *self.as_ptr() }
@@ -534,7 +538,8 @@ impl<T> NonNull<[T]> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_slice<'a>(&self) -> &'a [MaybeUninit<T>] {
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    pub const unsafe fn as_uninit_slice<'a>(&self) -> &'a [MaybeUninit<T>] {
         // SAFETY: the caller must uphold the safety contract for `as_uninit_slice`.
         unsafe { slice::from_raw_parts(self.cast().as_ptr(), self.len()) }
     }
@@ -596,7 +601,8 @@ impl<T> NonNull<[T]> {
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
-    pub unsafe fn as_uninit_slice_mut<'a>(&self) -> &'a mut [MaybeUninit<T>] {
+    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    pub const unsafe fn as_uninit_slice_mut<'a>(&self) -> &'a mut [MaybeUninit<T>] {
         // SAFETY: the caller must uphold the safety contract for `as_uninit_slice_mut`.
         unsafe { slice::from_raw_parts_mut(self.cast().as_ptr(), self.len()) }
     }
