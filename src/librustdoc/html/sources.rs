@@ -280,13 +280,15 @@ crate fn print_src(
         tmp /= 10;
     }
     line_numbers.write_str("<pre class=\"line-numbers\">");
-    for i in 1..=lines {
-        match source_context {
-            SourceContext::Standalone => {
-                writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i, cols)
+    match source_context {
+        SourceContext::Standalone => {
+            for line in 1..=lines {
+                writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", line, cols)
             }
-            SourceContext::Embedded { offset } => {
-                writeln!(line_numbers, "<span>{0:1$}</span>", i + offset, cols)
+        }
+        SourceContext::Embedded { offset } => {
+            for line in 1..=lines {
+                writeln!(line_numbers, "<span>{0:1$}</span>", line + offset, cols)
             }
         }
     }
