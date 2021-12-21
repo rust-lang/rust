@@ -18,10 +18,8 @@ Compiler
 - [Update the minimum external LLVM to 12][90175]
 - [Add `x86_64-unknown-none` at Tier 3*][89062]
 - [Build musl dist artifacts with debuginfo enabled][90733]
-- [Fix CVE-2021-42574][90462]
 - [Don't abort compilation after giving a lint error][87337]
 - [Error messages point at the source of trait bound obligations in more places][89580]
-- [Link with default MACOSX_DEPLOYMENT_TARGET if not otherwise specified.][90499]
 
 \* Refer to Rust's [platform support page][platform-support-doc] for more
    information on Rust's tiered platform support.
@@ -39,12 +37,10 @@ Libraries
 - [Add #[must_use] to alloc functions that would leak memory][90427]
 - [Add #[must_use] to remaining std functions (A-N)][90430]
 - [Add #[must_use] to remaining std functions (O-Z)][90431]
-- [Windows: Resolve `process::Command` program without using the current directory][87704]
 - [Paths are automatically canonicalized on Windows for operations that support it][89174]
 - [Re-enable `copy[_nonoverlapping]()` debug-checks][90041]
 - [Implement `RefUnwindSafe` for `Rc<T>`][87467]
 - [Make RSplit<T, P>: Clone not require T: Clone][90117]
-- [unix: Make `std::thread::available_concurrency` support process-limited number of CPUs][89310]
 - [Implement `Termination` for `Result<Infallible, E>`][88601]
 
 Stabilized APIs
@@ -92,7 +88,7 @@ Cargo
 - [Add --message-format for install command][cargo/10107]
 - [Warn when alias shadows external subcommand][cargo/10082]
 
-Misc
+Rustdoc
 ----
 
 - [Show all Deref implementations recursively in rustdoc][90183]
@@ -101,15 +97,16 @@ Misc
 Compatibility Notes
 -------------------
 
+- Windows: [`std::process::Command` will no longer search the current directory for executables.][87704]
 - [All proc-macro backward-compatibility lints are now deny-by-default.][88041]
 - [proc_macro: Append .0 to unsuffixed float if it would otherwise become int token][90297]
 - [Refactor weak symbols in std::sys::unix][90846]
+- [rustdoc now rejects some unexpected semicolons in doctests][91026]
 - `RUSTFLAGS` is no longer set for build scripts. This change was made in
   1.55, but the release notes did not highlight this change. Build scripts
   should use `CARGO_ENCODED_RUSTFLAGS` instead. See the
   [documentation](https://doc.rust-lang.org/nightly/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts)
   for more details.
-- [rustdoc doctest: detect `fn main` after an unexpected semicolon][91026]
 
 Internal Changes
 ----------------
