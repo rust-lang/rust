@@ -378,6 +378,7 @@ struct TraitData {
     is_marker: bool,
     skip_array_during_method_dispatch: bool,
     specialization_kind: ty::trait_def::TraitSpecializationKind,
+    must_implement_one_of: Option<Box<[Ident]>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]
