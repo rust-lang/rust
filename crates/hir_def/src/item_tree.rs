@@ -56,6 +56,7 @@ use la_arena::{Arena, Idx, IdxRange, RawIdx};
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
+use stdx::never;
 use syntax::{ast, match_ast, SyntaxKind};
 
 use crate::{
@@ -109,18 +110,17 @@ impl ItemTree {
             Some(node) => node,
             None => return Default::default(),
         };
-        if syntax.kind() == SyntaxKind::ERROR {
+        if never!(syntax.kind() == SyntaxKind::ERROR) {
             // FIXME: not 100% sure why these crop up, but return an empty tree to avoid a panic
             return Default::default();
         }
 
-        let hygiene = Hygiene::new(db.upcast(), file_id);
-        let ctx = lower::Ctx::new(db, hygiene.clone(), file_id);
+        let ctx = lower::Ctx::new(db, file_id);
         let mut top_attrs = None;
         let mut item_tree = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
-                    top_attrs = Some(RawAttrs::new(db, &file, &hygiene));
+                    top_attrs = Some(RawAttrs::new(db, &file, ctx.hygiene()));
                     ctx.lower_module_items(&file)
                 },
                 ast::MacroItems(items) => {
@@ -147,8 +147,7 @@ impl ItemTree {
     fn block_item_tree(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
         let loc = db.lookup_intern_block(block);
         let block = loc.ast_id.to_node(db.upcast());
-        let hygiene = Hygiene::new(db.upcast(), loc.ast_id.file_id);
-        let ctx = lower::Ctx::new(db, hygiene, loc.ast_id.file_id);
+        let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
         Arc::new(ctx.lower_block(&block))
     }
 

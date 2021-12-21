@@ -59,7 +59,7 @@ export class AstInspector implements vscode.HoverProvider, vscode.DefinitionProv
         }
     }
 
-    private onDidChangeVisibleTextEditors(editors: vscode.TextEditor[]) {
+    private onDidChangeVisibleTextEditors(editors: readonly vscode.TextEditor[]) {
         if (!this.findAstTextEditor()) {
             this.setRustEditor(undefined);
             return;

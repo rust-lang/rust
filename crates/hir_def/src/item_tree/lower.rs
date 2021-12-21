@@ -19,22 +19,24 @@ fn id<N: ItemTreeNode>(index: Idx<N>) -> FileItemTreeId<N> {
 pub(super) struct Ctx<'a> {
     db: &'a dyn DefDatabase,
     tree: ItemTree,
-    hygiene: Hygiene,
     source_ast_id_map: Arc<AstIdMap>,
     body_ctx: crate::body::LowerCtx<'a>,
     forced_visibility: Option<RawVisibilityId>,
 }
 
 impl<'a> Ctx<'a> {
-    pub(super) fn new(db: &'a dyn DefDatabase, hygiene: Hygiene, file: HirFileId) -> Self {
+    pub(super) fn new(db: &'a dyn DefDatabase, file: HirFileId) -> Self {
         Self {
             db,
             tree: ItemTree::default(),
-            hygiene,
             source_ast_id_map: db.ast_id_map(file),
             body_ctx: crate::body::LowerCtx::new(db, file),
             forced_visibility: None,
         }
+    }
+
+    pub(super) fn hygiene(&self) -> &Hygiene {
+        self.body_ctx.hygiene()
     }
 
     pub(super) fn lower_module_items(mut self, item_owner: &dyn HasModuleItem) -> ItemTree {
@@ -88,7 +90,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_mod_item(&mut self, item: &ast::Item) -> Option<ModItem> {
-        let attrs = RawAttrs::new(self.db, item, &self.hygiene);
+        let attrs = RawAttrs::new(self.db, item, self.hygiene());
         let item: ModItem = match item {
             ast::Item::Struct(ast) => self.lower_struct(ast)?.into(),
             ast::Item::Union(ast) => self.lower_union(ast)?.into(),
@@ -162,7 +164,7 @@ impl<'a> Ctx<'a> {
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
                 let idx = self.data().fields.alloc(data);
-                self.add_attrs(idx.into(), RawAttrs::new(self.db, &field, &self.hygiene));
+                self.add_attrs(idx.into(), RawAttrs::new(self.db, &field, self.hygiene()));
             }
         }
         let end = self.next_field_idx();
@@ -182,7 +184,7 @@ impl<'a> Ctx<'a> {
         for (i, field) in fields.fields().enumerate() {
             let data = self.lower_tuple_field(i, &field);
             let idx = self.data().fields.alloc(data);
-            self.add_attrs(idx.into(), RawAttrs::new(self.db, &field, &self.hygiene));
+            self.add_attrs(idx.into(), RawAttrs::new(self.db, &field, self.hygiene()));
         }
         let end = self.next_field_idx();
         IdxRange::new(start..end)
@@ -227,7 +229,7 @@ impl<'a> Ctx<'a> {
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
                 let idx = self.data().variants.alloc(data);
-                self.add_attrs(idx.into(), RawAttrs::new(self.db, &variant, &self.hygiene));
+                self.add_attrs(idx.into(), RawAttrs::new(self.db, &variant, self.hygiene()));
             }
         }
         let end = self.next_variant_idx();
@@ -270,7 +272,7 @@ impl<'a> Ctx<'a> {
                 };
                 let ty = Interned::new(self_type);
                 let idx = self.data().params.alloc(Param::Normal(None, ty));
-                self.add_attrs(idx.into(), RawAttrs::new(self.db, &self_param, &self.hygiene));
+                self.add_attrs(idx.into(), RawAttrs::new(self.db, &self_param, self.hygiene()));
                 has_self_param = true;
             }
             for param in param_list.params() {
@@ -294,7 +296,7 @@ impl<'a> Ctx<'a> {
                         self.data().params.alloc(Param::Normal(name, ty))
                     }
                 };
-                self.add_attrs(idx.into(), RawAttrs::new(self.db, &param, &self.hygiene));
+                self.add_attrs(idx.into(), RawAttrs::new(self.db, &param, self.hygiene()));
             }
         }
         let end_param = self.next_param_idx();
@@ -427,7 +429,7 @@ impl<'a> Ctx<'a> {
             self.with_inherited_visibility(visibility, |this| {
                 list.assoc_items()
                     .filter_map(|item| {
-                        let attrs = RawAttrs::new(db, &item, &this.hygiene);
+                        let attrs = RawAttrs::new(db, &item, this.hygiene());
                         this.lower_assoc_item(&item).map(|item| {
                             this.add_attrs(ModItem::from(item).into(), attrs);
                             item
@@ -465,7 +467,7 @@ impl<'a> Ctx<'a> {
             .flat_map(|it| it.assoc_items())
             .filter_map(|item| {
                 let assoc = self.lower_assoc_item(&item)?;
-                let attrs = RawAttrs::new(self.db, &item, &self.hygiene);
+                let attrs = RawAttrs::new(self.db, &item, self.hygiene());
                 self.add_attrs(ModItem::from(assoc).into(), attrs);
                 Some(assoc)
             })
@@ -478,7 +480,7 @@ impl<'a> Ctx<'a> {
     fn lower_use(&mut self, use_item: &ast::Use) -> Option<FileItemTreeId<Import>> {
         let visibility = self.lower_visibility(use_item);
         let ast_id = self.source_ast_id_map.ast_id(use_item);
-        let (use_tree, _) = lower_use_tree(self.db, &self.hygiene, use_item.use_tree()?)?;
+        let (use_tree, _) = lower_use_tree(self.db, self.hygiene(), use_item.use_tree()?)?;
 
         let res = Import { visibility, ast_id, use_tree };
         Some(id(self.data().imports.alloc(res)))
@@ -500,7 +502,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<FileItemTreeId<MacroCall>> {
-        let path = Interned::new(ModPath::from_src(self.db, m.path()?, &self.hygiene)?);
+        let path = Interned::new(ModPath::from_src(self.db, m.path()?, self.hygiene())?);
         let ast_id = self.source_ast_id_map.ast_id(m);
         let expand_to = hir_expand::ExpandTo::from_call_site(m);
         let res = MacroCall { path, ast_id, expand_to };
@@ -535,7 +537,7 @@ impl<'a> Ctx<'a> {
                     // (in other words, the knowledge that they're in an extern block must not be used).
                     // This is because an extern block can contain macros whose ItemTree's top-level items
                     // should be considered to be in an extern block too.
-                    let attrs = RawAttrs::new(self.db, &item, &self.hygiene);
+                    let attrs = RawAttrs::new(self.db, &item, self.hygiene());
                     let id: ModItem = match item {
                         ast::ExternItem::Fn(ast) => {
                             let func_id = self.lower_function(&ast)?;
@@ -616,7 +618,9 @@ impl<'a> Ctx<'a> {
     fn lower_visibility(&mut self, item: &dyn ast::HasVisibility) -> RawVisibilityId {
         let vis = match self.forced_visibility {
             Some(vis) => return vis,
-            None => RawVisibility::from_ast_with_hygiene(self.db, item.visibility(), &self.hygiene),
+            None => {
+                RawVisibility::from_ast_with_hygiene(self.db, item.visibility(), self.hygiene())
+            }
         };
 
         self.data().vis.alloc(vis)

@@ -72,8 +72,12 @@ impl ImportMap {
 
         let mut import_map = collect_import_map(db, krate);
 
-        let mut importables = import_map.map.iter().collect::<Vec<_>>();
-        importables.sort_by_cached_key(|(_, import_info)| fst_path(&import_info.path));
+        let mut importables = import_map
+            .map
+            .iter()
+            .map(|(item, info)| (item, fst_path(&info.path)))
+            .collect::<Vec<_>>();
+        importables.sort_by(|(_, fst_path), (_, fst_path2)| fst_path.cmp(fst_path2));
 
         // Build the FST, taking care not to insert duplicate values.
 
@@ -81,20 +85,20 @@ impl ImportMap {
         let mut last_batch_start = 0;
 
         for idx in 0..importables.len() {
-            let key = fst_path(&importables[last_batch_start].1.path);
-            if let Some((_, next_import_info)) = importables.get(idx + 1) {
-                if key == fst_path(&next_import_info.path) {
+            let key = &importables[last_batch_start].1;
+            if let Some((_, fst_path)) = importables.get(idx + 1) {
+                if key == fst_path {
                     continue;
                 }
             }
 
-            builder.insert(key, last_batch_start as u64).unwrap();
+            let _ = builder.insert(key, last_batch_start as u64);
 
             last_batch_start = idx + 1;
         }
 
-        import_map.fst = fst::Map::new(builder.into_inner().unwrap()).unwrap();
-        import_map.importables = importables.iter().map(|(item, _)| **item).collect();
+        import_map.fst = builder.into_map();
+        import_map.importables = importables.iter().map(|&(&item, _)| item).collect();
 
         Arc::new(import_map)
     }
