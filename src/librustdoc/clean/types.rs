@@ -914,7 +914,6 @@ crate struct DocFragment {
     crate parent_module: Option<DefId>,
     crate doc: Symbol,
     crate kind: DocFragmentKind,
-    crate need_backline: bool,
     crate indent: usize,
 }
 
@@ -930,16 +929,18 @@ crate enum DocFragmentKind {
     RawDoc,
 }
 
-// The goal of this function is to apply the `DocFragment` transformations that are required when
-// transforming into the final markdown. So the transformations in here are:
-//
-// * Applying the computed indent to each lines in each doc fragment (a `DocFragment` can contain
-//   multiple lines in case of `#[doc = ""]`).
-// * Adding backlines between `DocFragment`s and adding an extra one if required (stored in the
-//   `need_backline` field).
+/// The goal of this function is to apply the `DocFragment` transformation that is required when
+/// transforming into the final Markdown, which is applying the computed indent to each line in
+/// each doc fragment (a `DocFragment` can contain multiple lines in case of `#[doc = ""]`).
+///
+/// Note: remove the trailing newline where appropriate
 fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
     let s = frag.doc.as_str();
-    let mut iter = s.lines().peekable();
+    let mut iter = s.lines();
+    if s == "" {
+        out.push('\n');
+        return;
+    }
     while let Some(line) = iter.next() {
         if line.chars().any(|c| !c.is_whitespace()) {
             assert!(line.len() >= frag.indent);
@@ -947,11 +948,6 @@ fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
         } else {
             out.push_str(line);
         }
-        if iter.peek().is_some() {
-            out.push('\n');
-        }
-    }
-    if frag.need_backline {
         out.push('\n');
     }
 }
@@ -963,6 +959,7 @@ crate fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
     for frag in doc_strings {
         add_doc_fragment(&mut acc, frag);
     }
+    acc.pop();
     acc
 }
 
@@ -1028,7 +1025,6 @@ impl Attributes {
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
-
         let clean_attr = |(attr, parent_module): (&ast::Attribute, Option<DefId>)| {
             if let Some(value) = attr.doc_str() {
                 trace!("got doc_str={:?}", value);
@@ -1039,18 +1035,8 @@ impl Attributes {
                     DocFragmentKind::RawDoc
                 };
 
-                let frag = DocFragment {
-                    span: attr.span,
-                    doc: value,
-                    kind,
-                    parent_module,
-                    need_backline: false,
-                    indent: 0,
-                };
-
-                if let Some(prev) = doc_strings.last_mut() {
-                    prev.need_backline = true;
-                }
+                let frag =
+                    DocFragment { span: attr.span, doc: value, kind, parent_module, indent: 0 };
 
                 doc_strings.push(frag);
 
@@ -1086,6 +1072,7 @@ impl Attributes {
             }
             add_doc_fragment(&mut out, new_frag);
         }
+        out.pop();
         if out.is_empty() { None } else { Some(out) }
     }
 
@@ -1094,10 +1081,17 @@ impl Attributes {
     /// The module can be different if this is a re-export with added documentation.
     crate fn collapsed_doc_value_by_module_level(&self) -> FxHashMap<Option<DefId>, String> {
         let mut ret = FxHashMap::default();
+        if self.doc_strings.len() == 0 {
+            return ret;
+        }
+        let last_index = self.doc_strings.len() - 1;
 
-        for new_frag in self.doc_strings.iter() {
+        for (i, new_frag) in self.doc_strings.iter().enumerate() {
             let out = ret.entry(new_frag.parent_module).or_default();
             add_doc_fragment(out, new_frag);
+            if i == last_index {
+                out.pop();
+            }
         }
         ret
     }
