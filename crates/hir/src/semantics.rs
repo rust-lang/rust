@@ -210,7 +210,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     pub fn hir_file_for(&self, syntax_node: &SyntaxNode) -> HirFileId {
-        self.imp.find_file(syntax_node.clone()).file_id
+        self.imp.find_file(syntax_node).file_id
     }
 
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
@@ -362,7 +362,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     pub fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
-        let src = self.imp.find_file(src.syntax().clone()).with_value(src).cloned();
+        let src = self.imp.find_file(src.syntax()).with_value(src).cloned();
         T::to_def(&self.imp, src)
     }
 
@@ -427,7 +427,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
-        let sa = self.analyze(macro_call.syntax());
+        let sa = self.analyze_no_infer(macro_call.syntax());
         let file_id = sa.expand(self.db, InFile::new(sa.file_id, macro_call))?;
         let node = self.db.parse_or_expand(file_id)?;
         self.cache(node.clone(), file_id);
@@ -435,8 +435,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
-        let sa = self.analyze(item.syntax());
-        let src = InFile::new(sa.file_id, item.clone());
+        let src = self.find_file(item.syntax()).with_value(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src))?;
         let file_id = macro_call_id.as_file();
         let node = self.db.parse_or_expand(file_id)?;
@@ -446,9 +445,9 @@ impl<'db> SemanticsImpl<'db> {
 
     fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<SyntaxNode>> {
         let item = attr.syntax().parent().and_then(ast::Item::cast)?;
-        let sa = self.analyze(item.syntax());
-        let item = InFile::new(sa.file_id, &item);
-        let src = InFile::new(sa.file_id, attr.clone());
+        let file_id = self.find_file(item.syntax()).file_id;
+        let item = InFile::new(file_id, &item);
+        let src = InFile::new(file_id, attr.clone());
         self.with_ctx(|ctx| {
             let macro_call_ids = ctx.attr_to_derive_macro_call(item, src)?;
 
@@ -470,8 +469,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn is_attr_macro_call(&self, item: &ast::Item) -> bool {
-        let sa = self.analyze(item.syntax());
-        let src = InFile::new(sa.file_id, item.clone());
+        let file_id = self.find_file(item.syntax()).file_id;
+        let src = InFile::new(file_id, item.clone());
         self.with_ctx(|ctx| ctx.item_to_macro_call(src).is_some())
     }
 
@@ -481,11 +480,12 @@ impl<'db> SemanticsImpl<'db> {
         speculative_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, SyntaxToken)> {
-        let sa = self.analyze(actual_macro_call.syntax());
-        let macro_call = InFile::new(sa.file_id, actual_macro_call);
-        let krate = sa.resolver.krate()?;
+        let SourceAnalyzer { file_id, resolver, .. } =
+            self.analyze_no_infer(actual_macro_call.syntax());
+        let macro_call = InFile::new(file_id, actual_macro_call);
+        let krate = resolver.krate()?;
         let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
-            sa.resolver.resolve_path_as_macro(self.db.upcast(), &path)
+            resolver.resolve_path_as_macro(self.db.upcast(), &path)
         })?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
@@ -501,8 +501,8 @@ impl<'db> SemanticsImpl<'db> {
         speculative_args: &ast::Item,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, SyntaxToken)> {
-        let sa = self.analyze(actual_macro_call.syntax());
-        let macro_call = InFile::new(sa.file_id, actual_macro_call.clone());
+        let file_id = self.find_file(actual_macro_call.syntax()).file_id;
+        let macro_call = InFile::new(file_id, actual_macro_call.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call))?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
@@ -712,18 +712,18 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn original_range(&self, node: &SyntaxNode) -> FileRange {
-        let node = self.find_file(node.clone());
-        node.as_ref().original_file_range(self.db.upcast())
+        let node = self.find_file(node);
+        node.original_file_range(self.db.upcast())
     }
 
     fn original_range_opt(&self, node: &SyntaxNode) -> Option<FileRange> {
-        let node = self.find_file(node.clone());
-        node.as_ref().original_file_range_opt(self.db.upcast())
+        let node = self.find_file(node);
+        node.original_file_range_opt(self.db.upcast())
     }
 
     fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
-        let file = self.find_file(node.syntax().clone());
-        file.with_value(node).original_ast_node(self.db.upcast()).map(|it| it.value)
+        let InFile { file_id, .. } = self.find_file(node.syntax());
+        InFile::new(file_id, node).original_ast_node(self.db.upcast()).map(|it| it.value)
     }
 
     fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
@@ -744,7 +744,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         node: SyntaxNode,
     ) -> impl Iterator<Item = SyntaxNode> + Clone + '_ {
-        let node = self.find_file(node);
+        let node = self.find_file(&node);
         node.ancestors_with_macros(self.db.upcast()).map(|it| it.value)
     }
 
@@ -765,7 +765,8 @@ impl<'db> SemanticsImpl<'db> {
             gpl.lifetime_params()
                 .find(|tp| tp.lifetime().as_ref().map(|lt| lt.text()).as_ref() == Some(&text))
         })?;
-        let src = self.find_file(lifetime_param.syntax().clone()).with_value(lifetime_param);
+        let file_id = self.find_file(lifetime_param.syntax()).file_id;
+        let src = InFile::new(file_id, lifetime_param);
         ToDef::to_def(self, src)
     }
 
@@ -787,7 +788,8 @@ impl<'db> SemanticsImpl<'db> {
                     .map_or(false, |lt| lt.text() == text)
             })
         })?;
-        let src = self.find_file(label.syntax().clone()).with_value(label);
+        let file_id = self.find_file(label.syntax()).file_id;
+        let src = InFile::new(file_id, label);
         ToDef::to_def(self, src)
     }
 
@@ -846,12 +848,12 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {
         let sa = self.analyze(macro_call.syntax());
-        let macro_call = self.find_file(macro_call.syntax().clone()).with_value(macro_call);
+        let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
         sa.resolve_macro_call(self.db, macro_call)
     }
 
     fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<MacroDef> {
-        let item_in_file = self.find_file(item.syntax().clone()).with_value(item.clone());
+        let item_in_file = self.find_file(item.syntax()).with_value(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(item_in_file))?;
         Some(MacroDef { id: self.db.lookup_intern_macro_call(macro_call_id).def })
     }
@@ -902,12 +904,13 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn scope(&self, node: &SyntaxNode) -> SemanticsScope<'db> {
-        let SourceAnalyzer { file_id, resolver, .. } = self.analyze(node);
+        let SourceAnalyzer { file_id, resolver, .. } = self.analyze_no_infer(node);
         SemanticsScope { db: self.db, file_id, resolver }
     }
 
     fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
-        let SourceAnalyzer { file_id, resolver, .. } = self.analyze_with_offset(node, offset);
+        let SourceAnalyzer { file_id, resolver, .. } =
+            self.analyze_with_offset_no_infer(node, offset);
         SemanticsScope { db: self.db, file_id, resolver }
     }
 
@@ -930,12 +933,12 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze_impl(node, None, true)
     }
 
-    fn analyze_with_offset(&self, node: &SyntaxNode, offset: TextSize) -> SourceAnalyzer {
-        self.analyze_impl(node, Some(offset), true)
-    }
-
     fn analyze_no_infer(&self, node: &SyntaxNode) -> SourceAnalyzer {
         self.analyze_impl(node, None, false)
+    }
+
+    fn analyze_with_offset_no_infer(&self, node: &SyntaxNode, offset: TextSize) -> SourceAnalyzer {
+        self.analyze_impl(node, Some(offset), false)
     }
 
     fn analyze_impl(
@@ -945,8 +948,7 @@ impl<'db> SemanticsImpl<'db> {
         infer_body: bool,
     ) -> SourceAnalyzer {
         let _p = profile::span("Semantics::analyze_impl");
-        let node = self.find_file(node.clone());
-        let node = node.as_ref();
+        let node = self.find_file(node);
 
         let container = match self.with_ctx(|ctx| ctx.find_container(node)) {
             Some(it) => it,
@@ -980,7 +982,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn assert_contains_node(&self, node: &SyntaxNode) {
-        self.find_file(node.clone());
+        self.find_file(node);
     }
 
     fn lookup(&self, root_node: &SyntaxNode) -> Option<HirFileId> {
@@ -988,8 +990,8 @@ impl<'db> SemanticsImpl<'db> {
         cache.get(root_node).copied()
     }
 
-    fn find_file(&self, node: SyntaxNode) -> InFile<SyntaxNode> {
-        let root_node = find_root(&node);
+    fn find_file<'node>(&self, node: &'node SyntaxNode) -> InFile<&'node SyntaxNode> {
+        let root_node = find_root(node);
         let file_id = self.lookup(&root_node).unwrap_or_else(|| {
             panic!(
                 "\n\nFailed to lookup {:?} in this Semantics.\n\

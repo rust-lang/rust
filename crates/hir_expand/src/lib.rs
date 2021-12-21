@@ -578,12 +578,12 @@ impl<T> InFile<Option<T>> {
     }
 }
 
-impl InFile<SyntaxNode> {
+impl<'a> InFile<&'a SyntaxNode> {
     pub fn ancestors_with_macros(
         self,
         db: &dyn db::AstDatabase,
     ) -> impl Iterator<Item = InFile<SyntaxNode>> + Clone + '_ {
-        iter::successors(Some(self), move |node| match node.value.parent() {
+        iter::successors(Some(self.cloned()), move |node| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
                 let parent_node = node.file_id.call_node(db)?;
@@ -597,7 +597,7 @@ impl InFile<SyntaxNode> {
         self,
         db: &dyn db::AstDatabase,
     ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
-        iter::successors(Some(self), move |node| match node.value.parent() {
+        iter::successors(Some(self.cloned()), move |node| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
                 let parent_node = node.file_id.call_node(db)?;
@@ -611,9 +611,7 @@ impl InFile<SyntaxNode> {
             }
         })
     }
-}
 
-impl<'a> InFile<&'a SyntaxNode> {
     /// Falls back to the macro call range if the node cannot be mapped up fully.
     pub fn original_file_range(self, db: &dyn db::AstDatabase) -> FileRange {
         if let Some(res) = self.original_file_range_opt(db) {
@@ -701,7 +699,7 @@ impl InFile<SyntaxToken> {
     ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
         self.value.parent().into_iter().flat_map({
             let file_id = self.file_id;
-            move |parent| InFile::new(file_id, parent).ancestors_with_macros(db)
+            move |parent| InFile::new(file_id, &parent).ancestors_with_macros(db)
         })
     }
 }
