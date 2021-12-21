@@ -1553,7 +1553,6 @@ rustc_queries! {
         separate_provide_extern
     }
     query visible_parent_map(_: ()) -> DefIdMap<DefId> {
-        storage(ArenaCacheSelector<'tcx>)
         desc { "calculating the visible parent map" }
     }
     query trimmed_def_paths(_: ()) -> FxHashMap<DefId, Symbol> {
