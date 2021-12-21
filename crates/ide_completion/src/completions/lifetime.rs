@@ -35,7 +35,7 @@ pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) 
     ctx.scope.process_all_names(&mut |name, res| {
         if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) = res {
             if param_lifetime != Some(&*name.to_smol_str()) {
-                acc.add_resolution(ctx, name, &res);
+                acc.add_resolution(ctx, name, res);
             }
         }
     });
@@ -51,7 +51,7 @@ pub(crate) fn complete_label(acc: &mut Completions, ctx: &CompletionContext) {
     }
     ctx.scope.process_all_names(&mut |name, res| {
         if let ScopeDef::Label(_) = res {
-            acc.add_resolution(ctx, name, &res);
+            acc.add_resolution(ctx, name, res);
         }
     });
 }

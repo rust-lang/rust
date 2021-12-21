@@ -44,7 +44,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                         }
                     }
                     if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
-                        acc.add_resolution(ctx, name, &def);
+                        acc.add_resolution(ctx, name, def);
                     }
                 }
             }
@@ -64,7 +64,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                         .next()
                     {
                         if let Some(name) = next.name(ctx.db) {
-                            acc.add_resolution(ctx, name, &ScopeDef::ModuleDef(next.into()));
+                            acc.add_resolution(ctx, name, ScopeDef::ModuleDef(next.into()));
                         }
                     }
                 }
@@ -80,7 +80,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                         _ => false,
                     };
                     if add_resolution {
-                        acc.add_resolution(ctx, name, &def);
+                        acc.add_resolution(ctx, name, def);
                     }
                 }
             }
@@ -147,7 +147,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 };
 
                 if add_resolution {
-                    acc.add_resolution(ctx, name, &def);
+                    acc.add_resolution(ctx, name, def);
                 }
             }
         }

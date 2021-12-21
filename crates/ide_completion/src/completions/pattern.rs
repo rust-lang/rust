@@ -59,7 +59,7 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
             _ => false,
         };
         if add_resolution {
-            acc.add_resolution(ctx, name, &res);
+            acc.add_resolution(ctx, name, res);
         }
     });
 }

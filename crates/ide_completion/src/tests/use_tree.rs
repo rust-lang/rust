@@ -129,7 +129,7 @@ struct Bar;
 "#,
         expect![[r#"
             st Foo
-            ma foo! macro_rules! foo_
+            ma foo macro_rules! foo_
         "#]],
     );
 }
