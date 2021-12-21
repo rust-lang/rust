@@ -47,8 +47,8 @@ impl<'a> RenderContext<'a> {
         self.completion.source_range()
     }
 
-    fn is_deprecated(&self, node: impl HasAttrs) -> bool {
-        let attrs = node.attrs(self.db());
+    fn is_deprecated(&self, def: impl HasAttrs) -> bool {
+        let attrs = def.attrs(self.db());
         attrs.by_key("deprecated").exists() || attrs.by_key("rustc_deprecated").exists()
     }
 
@@ -71,8 +71,8 @@ impl<'a> RenderContext<'a> {
                 .unwrap_or(false)
     }
 
-    fn docs(&self, node: impl HasAttrs) -> Option<hir::Documentation> {
-        node.docs(self.db())
+    fn docs(&self, def: impl HasAttrs) -> Option<hir::Documentation> {
+        def.docs(self.db())
     }
 }
 

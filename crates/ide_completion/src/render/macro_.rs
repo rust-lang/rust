@@ -1,7 +1,7 @@
 //! Renderer for macro invocations.
 
 use either::Either;
-use hir::HasSource;
+use hir::{db::HirDatabase, Documentation, HasSource};
 use ide_db::SymbolKind;
 use syntax::{
     display::{fn_as_proc_macro_label, macro_label},
@@ -21,94 +21,96 @@ pub(crate) fn render_macro(
     macro_: hir::MacroDef,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_macro");
-    MacroRender::new(ctx, name, macro_).render(import_to_add)
+    render(ctx, name, macro_, import_to_add)
 }
 
-#[derive(Debug)]
-struct MacroRender<'a> {
-    ctx: RenderContext<'a>,
-    name: SmolStr,
+fn render(
+    ctx @ RenderContext { completion }: RenderContext<'_>,
+    name: hir::Name,
     macro_: hir::MacroDef,
-    docs: Option<hir::Documentation>,
-    bra: &'static str,
-    ket: &'static str,
+    import_to_add: Option<ImportEdit>,
+) -> Option<CompletionItem> {
+    let db = completion.db;
+
+    let source_range = if completion.is_immediately_after_macro_bang() {
+        cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
+        completion.token.parent().map(|it| it.text_range())
+    } else {
+        Some(ctx.source_range())
+    }?;
+
+    let name = name.to_smol_str();
+    let docs = ctx.docs(macro_);
+    let docs_str = docs.as_ref().map(Documentation::as_str).unwrap_or_default();
+    let (bra, ket) =
+        if macro_.is_fn_like() { guess_macro_braces(&name, docs_str) } else { ("", "") };
+
+    let needs_bang = macro_.is_fn_like()
+        && !matches!(completion.path_kind(), Some(PathKind::Mac | PathKind::Use));
+
+    let mut item = CompletionItem::new(
+        SymbolKind::from(macro_.kind()),
+        source_range,
+        label(&ctx, needs_bang, bra, ket, &name),
+    );
+    item.set_deprecated(ctx.is_deprecated(macro_))
+        .set_detail(detail(db, macro_))
+        .set_documentation(docs);
+
+    if let Some(import_to_add) = import_to_add {
+        item.add_import(import_to_add);
+    }
+
+    let name = &*name;
+
+    match ctx.snippet_cap() {
+        Some(cap) if needs_bang && !completion.path_is_call() => {
+            let snippet = format!("{}!{}$0{}", name, bra, ket);
+            let lookup = banged_name(name);
+            item.insert_snippet(cap, snippet).lookup_by(lookup);
+        }
+        _ if needs_bang => {
+            let banged_name = banged_name(name);
+            item.insert_text(banged_name.clone()).lookup_by(banged_name);
+        }
+        _ => {
+            cov_mark::hit!(dont_insert_macro_call_parens_unncessary);
+            item.insert_text(name);
+        }
+    };
+
+    Some(item.build())
 }
 
-impl<'a> MacroRender<'a> {
-    fn new(ctx: RenderContext<'a>, name: hir::Name, macro_: hir::MacroDef) -> MacroRender<'a> {
-        let name = name.to_smol_str();
-        let docs = ctx.docs(macro_);
-        let docs_str = docs.as_ref().map_or("", |s| s.as_str());
-        let (bra, ket) =
-            if macro_.is_fn_like() { guess_macro_braces(&name, docs_str) } else { ("", "") };
-
-        MacroRender { ctx, name, macro_, docs, bra, ket }
-    }
-
-    fn render(self, import_to_add: Option<ImportEdit>) -> Option<CompletionItem> {
-        let source_range = if self.ctx.completion.is_immediately_after_macro_bang() {
-            cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
-            self.ctx.completion.token.parent().map(|it| it.text_range())
+fn label(
+    ctx: &RenderContext<'_>,
+    needs_bang: bool,
+    bra: &str,
+    ket: &str,
+    name: &SmolStr,
+) -> SmolStr {
+    if needs_bang {
+        if ctx.snippet_cap().is_some() {
+            SmolStr::from_iter([&*name, "!", bra, "…", ket])
         } else {
-            Some(self.ctx.source_range())
-        }?;
-        let mut item =
-            CompletionItem::new(SymbolKind::from(self.macro_.kind()), source_range, self.label());
-        item.set_deprecated(self.ctx.is_deprecated(self.macro_)).set_detail(self.detail());
-
-        if let Some(import_to_add) = import_to_add {
-            item.add_import(import_to_add);
+            banged_name(name)
         }
-
-        let needs_bang = self.macro_.is_fn_like()
-            && !matches!(self.ctx.completion.path_kind(), Some(PathKind::Mac | PathKind::Use));
-        let has_parens = self.ctx.completion.path_is_call();
-
-        match self.ctx.snippet_cap() {
-            Some(cap) if needs_bang && !has_parens => {
-                let snippet = format!("{}!{}$0{}", self.name, self.bra, self.ket);
-                let lookup = self.banged_name();
-                item.insert_snippet(cap, snippet).lookup_by(lookup);
-            }
-            _ if needs_bang => {
-                let lookup = self.banged_name();
-                item.insert_text(self.banged_name()).lookup_by(lookup);
-            }
-            _ => {
-                cov_mark::hit!(dont_insert_macro_call_parens_unncessary);
-                item.insert_text(&*self.name);
-            }
-        };
-
-        item.set_documentation(self.docs);
-        Some(item.build())
+    } else {
+        name.clone()
     }
+}
 
-    fn needs_bang(&self) -> bool {
-        !matches!(self.ctx.completion.path_kind(), Some(PathKind::Mac | PathKind::Use))
-    }
+fn banged_name(name: &str) -> SmolStr {
+    SmolStr::from_iter([name, "!"])
+}
 
-    fn label(&self) -> SmolStr {
-        if !self.macro_.is_fn_like() {
-            self.name.clone()
-        } else if self.needs_bang() && self.ctx.snippet_cap().is_some() {
-            SmolStr::from_iter([&*self.name, "!", self.bra, "…", self.ket])
-        } else {
-            self.banged_name()
-        }
-    }
-
-    fn banged_name(&self) -> SmolStr {
-        SmolStr::from_iter([&*self.name, "!"])
-    }
-
-    fn detail(&self) -> Option<String> {
-        let detail = match self.macro_.source(self.ctx.db())?.value {
-            Either::Left(node) => macro_label(&node),
-            Either::Right(node) => fn_as_proc_macro_label(&node),
-        };
-        Some(detail)
-    }
+fn detail(db: &dyn HirDatabase, macro_: hir::MacroDef) -> Option<String> {
+    // FIXME: This is parsing the file!
+    let detail = match macro_.source(db)?.value {
+        Either::Left(node) => macro_label(&node),
+        Either::Right(node) => fn_as_proc_macro_label(&node),
+    };
+    Some(detail)
 }
 
 fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static str) {
@@ -147,7 +149,7 @@ mod tests {
     fn dont_insert_macro_call_parens_unncessary() {
         cov_mark::check!(dont_insert_macro_call_parens_unncessary);
         check_edit(
-            "frobnicate!",
+            "frobnicate",
             r#"
 //- /main.rs crate:main deps:foo
 use foo::$0;
@@ -161,7 +163,7 @@ use foo::frobnicate;
         );
 
         check_edit(
-            "frobnicate!",
+            "frobnicate",
             r#"
 macro_rules! frobnicate { () => () }
 fn main() { frob$0!(); }
