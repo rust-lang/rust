@@ -1100,9 +1100,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // Encode this here because we don't do it in encode_def_ids.
             record!(self.tables.expn_that_defined[def_id] <- tcx.expn_that_defined(local_def_id));
         } else {
-            record!(self.tables.children[def_id] <- md.item_ids.iter().map(|item_id| {
-                item_id.def_id.local_def_index
-            }));
+            let direct_children = md.item_ids.iter().map(|item_id| item_id.def_id.local_def_index);
+            // Foreign items are planted into their parent modules from name resolution point of view.
+            let tcx = self.tcx;
+            let foreign_item_children = md
+                .item_ids
+                .iter()
+                .filter_map(|item_id| match tcx.hir().item(*item_id).kind {
+                    hir::ItemKind::ForeignMod { items, .. } => {
+                        Some(items.iter().map(|fi_ref| fi_ref.id.def_id.local_def_index))
+                    }
+                    _ => None,
+                })
+                .flatten();
+
+            record!(self.tables.children[def_id] <- direct_children.chain(foreign_item_children));
         }
     }
 
@@ -1503,11 +1515,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record!(self.tables.kind[def_id] <- entry_kind);
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
-            hir::ItemKind::ForeignMod { items, .. } => record!(self.tables.children[def_id] <-
-                items
-                    .iter()
-                    .map(|foreign_item| foreign_item.id.def_id.local_def_index)
-            ),
             hir::ItemKind::Enum(..) => record!(self.tables.children[def_id] <-
                 self.tcx.adt_def(def_id).variants.iter().map(|v| {
                     assert!(v.def_id.is_local());
