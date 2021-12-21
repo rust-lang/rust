@@ -201,6 +201,12 @@ pub trait CrateStore: std::fmt::Debug {
         index_guess: u32,
         hash: ExpnHash,
     ) -> ExpnId;
+
+    /// Imports all `SourceFile`s from the given crate into the current session.
+    /// This normally happens automatically when we decode a `Span` from
+    /// that crate's metadata - however, the incr comp cache needs
+    /// to trigger this manually when decoding a foreign `Span`
+    fn import_source_files(&self, sess: &Session, cnum: CrateNum);
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
