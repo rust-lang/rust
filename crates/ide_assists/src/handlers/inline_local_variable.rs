@@ -36,10 +36,10 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
     let file_id = ctx.file_id();
     let range = ctx.selection_trimmed();
     let InlineData { let_stmt, delete_let, references, target } =
-        if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
-            inline_let(&ctx.sema, let_stmt, range, file_id)
-        } else if let Some(path_expr) = ctx.find_node_at_offset::<ast::PathExpr>() {
+        if let Some(path_expr) = ctx.find_node_at_offset::<ast::PathExpr>() {
             inline_usage(&ctx.sema, path_expr, range, file_id)
+        } else if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
+            inline_let(&ctx.sema, let_stmt, range, file_id)
         } else {
             None
         }?;
@@ -911,6 +911,28 @@ fn f() {
     let foo = 0;
     let bar = 0;
     $0foo + bar$0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_inline_ref_in_let() {
+        check_assist(
+            inline_local_variable,
+            r#"
+fn f() {
+    let x = {
+        let y = 0;
+        y$0
+    };
+}
+"#,
+            r#"
+fn f() {
+    let x = {
+        0
+    };
 }
 "#,
         );
