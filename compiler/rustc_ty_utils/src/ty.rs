@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
-use rustc_span::{sym, Span};
+use rustc_span::{sym, symbol::Ident};
 use rustc_trait_selection::traits;
 
 fn sized_constraint_for_ty<'tcx>(
@@ -216,19 +216,16 @@ fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItems<'_> {
     ty::AssocItems::new(items)
 }
 
-fn def_ident_span(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Span> {
-    tcx.hir()
-        .get_if_local(def_id)
-        .and_then(|node| match node {
-            // A `Ctor` doesn't have an identifier itself, but its parent
-            // struct/variant does. Compare with `hir::Map::opt_span`.
-            hir::Node::Ctor(ctor) => ctor
-                .ctor_hir_id()
-                .and_then(|ctor_id| tcx.hir().find(tcx.hir().get_parent_node(ctor_id)))
-                .and_then(|parent| parent.ident()),
-            _ => node.ident(),
-        })
-        .map(|ident| ident.span)
+fn def_ident(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ident> {
+    tcx.hir().get_if_local(def_id).and_then(|node| match node {
+        // A `Ctor` doesn't have an identifier itself, but its parent
+        // struct/variant does. Compare with `hir::Map::opt_span`.
+        hir::Node::Ctor(ctor) => ctor
+            .ctor_hir_id()
+            .and_then(|ctor_id| tcx.hir().find(tcx.hir().get_parent_node(ctor_id)))
+            .and_then(|parent| parent.ident()),
+        _ => node.ident(),
+    })
 }
 
 /// If the given `DefId` describes an item belonging to a trait,
@@ -624,7 +621,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         associated_item_def_ids,
         associated_items,
         adt_sized_constraint,
-        def_ident_span,
+        def_ident,
         param_env,
         param_env_reveal_all_normalized,
         trait_of_item,

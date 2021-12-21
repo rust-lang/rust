@@ -730,9 +730,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
     /// Builds the `type defined here` message.
     fn show_definition(&self, err: &mut DiagnosticBuilder<'_>) {
-        let mut spans: MultiSpan = if let Some(def_span) = self.tcx.def_ident_span(self.def_id) {
-            if self.tcx.sess.source_map().span_to_snippet(def_span).is_ok() {
-                def_span.into()
+        let mut spans: MultiSpan = if let Some(def_ident) = self.tcx.def_ident(self.def_id) {
+            if self.tcx.sess.source_map().span_to_snippet(def_ident.span).is_ok() {
+                def_ident.span.into()
             } else {
                 return;
             }

@@ -1,4 +1,3 @@
-use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_then};
 use clippy_utils::source::{first_line_of_span, snippet_with_applicability};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
@@ -7,6 +6,7 @@ use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{Async, AttrKind, Attribute, Fn, FnRetTy, ItemKind};
 use rustc_ast::token::CommentKind;
+use rustc_ast::attr::is_doc_hidden;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;

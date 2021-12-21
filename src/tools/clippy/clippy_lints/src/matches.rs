@@ -15,7 +15,7 @@ use clippy_utils::{
 use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use core::iter::{once, ExactSizeIterator};
 use if_chain::if_chain;
-use rustc_ast::ast::{Attribute, LitKind};
+use rustc_ast::{ast::{LitKind, Attribute}, attr::is_doc_hidden};
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -1021,7 +1021,8 @@ impl CommonPrefixSearcher<'a> {
 
 fn is_hidden(cx: &LateContext<'_>, variant_def: &VariantDef) -> bool {
     let attrs = cx.tcx.get_attrs(variant_def.def_id);
-    clippy_utils::attrs::is_doc_hidden(attrs) || clippy_utils::attrs::is_unstable(attrs)
+
+    is_doc_hidden(attrs) || clippy_utils::attrs::is_unstable(attrs)
 }
 
 #[allow(clippy::too_many_lines)]

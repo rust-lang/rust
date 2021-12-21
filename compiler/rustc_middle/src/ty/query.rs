@@ -30,7 +30,7 @@ use crate::traits::specialization_graph;
 use crate::traits::{self, ImplSource};
 use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
-use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, Ident, ParamEnvAnd, Ty, TyCtxt};
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::steal::Steal;

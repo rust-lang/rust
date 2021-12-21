@@ -1,9 +1,9 @@
-use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_ast::ast::{FieldDef, Item, ItemKind, Variant, VariantData, VisibilityKind};
+use rustc_ast::attr::is_doc_hidden;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_semver::RustcVersion;

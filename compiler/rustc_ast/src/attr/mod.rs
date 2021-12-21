@@ -580,3 +580,12 @@ impl NestedMetaItem {
         MetaItem::from_tokens(tokens).map(NestedMetaItem::MetaItem)
     }
 }
+
+/// Return true if the attributes contain `#[doc(hidden)]`
+pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
+    attrs
+        .iter()
+        .filter(|attr| attr.has_name(sym::doc))
+        .filter_map(ast::Attribute::meta_item_list)
+        .any(|l| list_contains_name(&l, sym::hidden))
+}

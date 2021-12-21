@@ -977,8 +977,8 @@ rustc_queries! {
     }
 
     /// Gets the span for the identifier of the definition.
-    query def_ident_span(def_id: DefId) -> Option<Span> {
-        desc { |tcx| "looking up span for `{}`'s identifier", tcx.def_path_str(def_id) }
+    query def_ident(def_id: DefId) -> Option<Ident> {
+        desc { |tcx| "looking up ident for `{}`'s identifier", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 
@@ -1552,9 +1552,13 @@ rustc_queries! {
         desc { "calculating the missing lang items in a crate" }
         separate_provide_extern
     }
-    query visible_parent_map(_: ()) -> DefIdMap<DefId> {
+
+    query visible_parents_map(_: ()) -> DefIdMap<smallvec::SmallVec<[DefId; 4]>> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "calculating the visible parent map" }
+    }
+    query best_visible_parent(child: DefId) -> Option<DefId> {
+        desc { "calculating best visible parent" }
     }
     query trimmed_def_paths(_: ()) -> FxHashMap<DefId, Symbol> {
         storage(ArenaCacheSelector<'tcx>)

@@ -197,8 +197,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             if let Some(def_id) = def_id {
-                if let Some(def_span) = tcx.def_ident_span(def_id) {
-                    let mut spans: MultiSpan = def_span.into();
+                if let Some(def_ident) = tcx.def_ident(def_id) {
+                    let mut spans: MultiSpan = def_ident.span.into();
 
                     let params = tcx
                         .hir()

@@ -1025,7 +1025,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let last_subpat_span = *subpat_spans.last().unwrap();
         let res_span = self.tcx.def_span(res.def_id());
-        let def_ident_span = self.tcx.def_ident_span(res.def_id()).unwrap_or(res_span);
+        let def_ident_span =
+            self.tcx.def_ident(res.def_id()).map(|ident| ident.span).unwrap_or(res_span);
         let field_def_spans = if fields.is_empty() {
             vec![res_span]
         } else {
