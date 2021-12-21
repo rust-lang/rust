@@ -115,7 +115,7 @@ impl Completions {
         if !ctx.is_visible(&func) {
             return;
         }
-        self.add_opt(render_fn(RenderContext::new(ctx), None, local_name, func));
+        self.add(render_fn(RenderContext::new(ctx), None, local_name, func));
     }
 
     pub(crate) fn add_method(
@@ -128,7 +128,7 @@ impl Completions {
         if !ctx.is_visible(&func) {
             return;
         }
-        self.add_opt(render_method(RenderContext::new(ctx), None, receiver, local_name, func));
+        self.add(render_method(RenderContext::new(ctx), None, receiver, local_name, func));
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, konst: hir::Const) {

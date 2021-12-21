@@ -1,11 +1,12 @@
 //! Renderer for function calls.
 
-use hir::{AsAssocItem, HirDisplay};
+use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
 use ide_db::SymbolKind;
 use itertools::Itertools;
 use stdx::format_to;
 
 use crate::{
+    context::CompletionContext,
     item::{CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit},
     render::{
         builder_ext::Params, compute_exact_name_match, compute_ref_match, compute_type_match,
@@ -13,14 +14,19 @@ use crate::{
     },
 };
 
+enum FuncType {
+    Function,
+    Method(Option<hir::Name>),
+}
+
 pub(crate) fn render_fn(
     ctx: RenderContext<'_>,
     import_to_add: Option<ImportEdit>,
     local_name: Option<hir::Name>,
-    fn_: hir::Function,
-) -> Option<CompletionItem> {
+    func: hir::Function,
+) -> CompletionItem {
     let _p = profile::span("render_fn");
-    Some(FunctionRender::new(ctx, None, local_name, fn_, false)?.render(import_to_add))
+    render(ctx, local_name, func, FuncType::Function, import_to_add)
 }
 
 pub(crate) fn render_method(
@@ -28,135 +34,120 @@ pub(crate) fn render_method(
     import_to_add: Option<ImportEdit>,
     receiver: Option<hir::Name>,
     local_name: Option<hir::Name>,
-    fn_: hir::Function,
-) -> Option<CompletionItem> {
-    let _p = profile::span("render_method");
-    Some(FunctionRender::new(ctx, receiver, local_name, fn_, true)?.render(import_to_add))
-}
-
-#[derive(Debug)]
-struct FunctionRender<'a> {
-    ctx: RenderContext<'a>,
-    name: hir::Name,
-    receiver: Option<hir::Name>,
     func: hir::Function,
-    is_method: bool,
+) -> CompletionItem {
+    let _p = profile::span("render_method");
+    render(ctx, local_name, func, FuncType::Method(receiver), import_to_add)
 }
 
-impl<'a> FunctionRender<'a> {
-    fn new(
-        ctx: RenderContext<'a>,
-        receiver: Option<hir::Name>,
-        local_name: Option<hir::Name>,
-        fn_: hir::Function,
-        is_method: bool,
-    ) -> Option<FunctionRender<'a>> {
-        let name = local_name.unwrap_or_else(|| fn_.name(ctx.db()));
+fn render(
+    ctx @ RenderContext { completion }: RenderContext<'_>,
+    local_name: Option<hir::Name>,
+    func: hir::Function,
+    func_type: FuncType,
+    import_to_add: Option<ImportEdit>,
+) -> CompletionItem {
+    let db = completion.db;
 
-        Some(FunctionRender { ctx, name, receiver, func: fn_, is_method })
-    }
+    let name = local_name.unwrap_or_else(|| func.name(db));
+    let params = params(completion, func, &func_type);
 
-    fn render(self, import_to_add: Option<ImportEdit>) -> CompletionItem {
-        let params = self.params();
-        let call = match &self.receiver {
-            Some(receiver) => format!("{}.{}", receiver, &self.name),
-            None => self.name.to_string(),
-        };
-        let mut item = CompletionItem::new(self.kind(), self.ctx.source_range(), call.clone());
-        item.set_documentation(self.ctx.docs(self.func))
-            .set_deprecated(
-                self.ctx.is_deprecated(self.func) || self.ctx.is_deprecated_assoc_item(self.func),
-            )
-            .detail(self.detail())
-            .add_call_parens(self.ctx.completion, call.clone(), params);
-
-        if import_to_add.is_none() {
-            let db = self.ctx.db();
-            if let Some(actm) = self.func.as_assoc_item(db) {
-                if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
-                    item.trait_name(trt.name(db).to_smol_str());
-                }
-            }
-        }
-
-        if let Some(import_to_add) = import_to_add {
-            item.add_import(import_to_add);
-        }
-        item.lookup_by(self.name.to_smol_str());
-
-        let ret_type = self.func.ret_type(self.ctx.db());
-        item.set_relevance(CompletionRelevance {
-            type_match: compute_type_match(self.ctx.completion, &ret_type),
-            exact_name_match: compute_exact_name_match(self.ctx.completion, &call),
-            ..CompletionRelevance::default()
-        });
-
-        if let Some(ref_match) = compute_ref_match(self.ctx.completion, &ret_type) {
-            // FIXME
-            // For now we don't properly calculate the edits for ref match
-            // completions on methods, so we've disabled them. See #8058.
-            if !self.is_method {
-                item.ref_match(ref_match);
-            }
-        }
-
-        item.build()
-    }
-
-    fn detail(&self) -> String {
-        let ret_ty = self.func.ret_type(self.ctx.db());
-        let mut detail = format!("fn({})", self.params_display());
-        if !ret_ty.is_unit() {
-            format_to!(detail, " -> {}", ret_ty.display(self.ctx.db()));
-        }
-        detail
-    }
-
-    fn params_display(&self) -> String {
-        if let Some(self_param) = self.func.self_param(self.ctx.db()) {
-            let params = self
-                .func
-                .assoc_fn_params(self.ctx.db())
-                .into_iter()
-                .skip(1) // skip the self param because we are manually handling that
-                .map(|p| p.ty().display(self.ctx.db()).to_string());
-
-            std::iter::once(self_param.display(self.ctx.db()).to_owned()).chain(params).join(", ")
-        } else {
-            let params = self
-                .func
-                .assoc_fn_params(self.ctx.db())
-                .into_iter()
-                .map(|p| p.ty().display(self.ctx.db()).to_string())
-                .join(", ");
-            params
-        }
-    }
-
-    fn params(&self) -> Params {
-        let (params, self_param) =
-            if self.ctx.completion.has_dot_receiver() || self.receiver.is_some() {
-                (self.func.method_params(self.ctx.db()).unwrap_or_default(), None)
-            } else {
-                let self_param = self.func.self_param(self.ctx.db());
-
-                let mut assoc_params = self.func.assoc_fn_params(self.ctx.db());
-                if self_param.is_some() {
-                    assoc_params.remove(0);
-                }
-                (assoc_params, self_param)
-            };
-
-        Params::Named(self_param, params)
-    }
-
-    fn kind(&self) -> CompletionItemKind {
-        if self.func.self_param(self.ctx.db()).is_some() {
+    // FIXME: SmolStr?
+    let call = match &func_type {
+        FuncType::Method(Some(receiver)) => format!("{}.{}", receiver, &name),
+        _ => name.to_string(),
+    };
+    let mut item = CompletionItem::new(
+        if func.self_param(db).is_some() {
             CompletionItemKind::Method
         } else {
-            SymbolKind::Function.into()
+            CompletionItemKind::SymbolKind(SymbolKind::Function)
+        },
+        ctx.source_range(),
+        call.clone(),
+    );
+    item.set_documentation(ctx.docs(func))
+        .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
+        .detail(detail(db, func))
+        .add_call_parens(completion, call.clone(), params);
+
+    if import_to_add.is_none() {
+        if let Some(actm) = func.as_assoc_item(db) {
+            if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
+                item.trait_name(trt.name(db).to_smol_str());
+            }
         }
     }
+
+    if let Some(import_to_add) = import_to_add {
+        item.add_import(import_to_add);
+    }
+    item.lookup_by(name.to_smol_str());
+
+    let ret_type = func.ret_type(db);
+    item.set_relevance(CompletionRelevance {
+        type_match: compute_type_match(completion, &ret_type),
+        exact_name_match: compute_exact_name_match(completion, &call),
+        ..CompletionRelevance::default()
+    });
+
+    if let Some(ref_match) = compute_ref_match(completion, &ret_type) {
+        // FIXME
+        // For now we don't properly calculate the edits for ref match
+        // completions on methods, so we've disabled them. See #8058.
+        if matches!(func_type, FuncType::Function) {
+            item.ref_match(ref_match);
+        }
+    }
+
+    item.build()
+}
+
+fn detail(db: &dyn HirDatabase, func: hir::Function) -> String {
+    let ret_ty = func.ret_type(db);
+    let mut detail = format!("fn({})", params_display(db, func));
+    if !ret_ty.is_unit() {
+        format_to!(detail, " -> {}", ret_ty.display(db));
+    }
+    detail
+}
+
+fn params_display(db: &dyn HirDatabase, func: hir::Function) -> String {
+    if let Some(self_param) = func.self_param(db) {
+        let assoc_fn_params = func.assoc_fn_params(db);
+        let params = assoc_fn_params
+            .iter()
+            .skip(1) // skip the self param because we are manually handling that
+            .map(|p| p.ty().display(db));
+        format!(
+            "{}{}",
+            self_param.display(db),
+            params.format_with("", |display, f| {
+                f(&", ")?;
+                f(&display)
+            })
+        )
+    } else {
+        let assoc_fn_params = func.assoc_fn_params(db);
+        assoc_fn_params.iter().map(|p| p.ty().display(db)).join(", ")
+    }
+}
+
+fn params(ctx: &CompletionContext<'_>, func: hir::Function, func_type: &FuncType) -> Params {
+    let (params, self_param) =
+        if ctx.has_dot_receiver() || matches!(func_type, FuncType::Method(Some(_))) {
+            (func.method_params(ctx.db).unwrap_or_default(), None)
+        } else {
+            let self_param = func.self_param(ctx.db);
+
+            let mut assoc_params = func.assoc_fn_params(ctx.db);
+            if self_param.is_some() {
+                assoc_params.remove(0);
+            }
+            (assoc_params, self_param)
+        };
+
+    Params::Named(self_param, params)
 }
 
 #[cfg(test)]

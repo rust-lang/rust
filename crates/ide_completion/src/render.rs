@@ -156,17 +156,16 @@ fn render_resolution_(
     let _p = profile::span("render_resolution");
     use hir::ModuleDef::*;
 
+    let db = ctx.db();
+
     let kind = match resolution {
         ScopeDef::ModuleDef(Function(func)) => {
-            return render_fn(ctx, import_to_add, Some(local_name), func)
+            return Some(render_fn(ctx, import_to_add, Some(local_name), func));
         }
         ScopeDef::ModuleDef(Variant(var)) if ctx.completion.pattern_ctx.is_none() => {
-            return Some(render_variant(ctx, import_to_add, Some(local_name), var, None))
+            return Some(render_variant(ctx, import_to_add, Some(local_name), var, None));
         }
-        ScopeDef::MacroDef(mac) => {
-            let item = render_macro(ctx, import_to_add, local_name, mac);
-            return item;
-        }
+        ScopeDef::MacroDef(mac) => return render_macro(ctx, import_to_add, local_name, mac),
         ScopeDef::Unknown => {
             let mut item = CompletionItem::new(
                 CompletionItemKind::UnresolvedReference,
@@ -206,9 +205,9 @@ fn render_resolution_(
     let local_name = local_name.to_smol_str();
     let mut item = CompletionItem::new(kind, ctx.source_range(), local_name.clone());
     if let ScopeDef::Local(local) = resolution {
-        let ty = local.ty(ctx.db());
+        let ty = local.ty(db);
         if !ty.is_unknown() {
-            item.detail(ty.display(ctx.db()).to_string());
+            item.detail(ty.display(db).to_string());
         }
 
         item.set_relevance(CompletionRelevance {
@@ -224,15 +223,15 @@ fn render_resolution_(
     };
 
     // Add `<>` for generic types
-    if matches!(
+    let type_path_no_ty_args = matches!(
         ctx.completion.path_context,
         Some(PathCompletionContext { kind: Some(PathKind::Type), has_type_args: false, .. })
-    ) && ctx.completion.config.add_call_parenthesis
-    {
+    ) && ctx.completion.config.add_call_parenthesis;
+    if type_path_no_ty_args {
         if let Some(cap) = ctx.snippet_cap() {
             let has_non_default_type_params = match resolution {
-                ScopeDef::ModuleDef(Adt(it)) => it.has_non_default_type_params(ctx.db()),
-                ScopeDef::ModuleDef(TypeAlias(it)) => it.has_non_default_type_params(ctx.db()),
+                ScopeDef::ModuleDef(Adt(it)) => it.has_non_default_type_params(db),
+                ScopeDef::ModuleDef(TypeAlias(it)) => it.has_non_default_type_params(db),
                 _ => false,
             };
             if has_non_default_type_params {
@@ -243,7 +242,7 @@ fn render_resolution_(
             }
         }
     }
-    item.set_documentation(scope_def_docs(ctx.db(), resolution))
+    item.set_documentation(scope_def_docs(db, resolution))
         .set_deprecated(scope_def_is_deprecated(&ctx, resolution));
 
     if let Some(import_to_add) = import_to_add {
