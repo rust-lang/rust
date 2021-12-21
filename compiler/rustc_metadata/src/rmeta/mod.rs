@@ -12,7 +12,7 @@ use rustc_hir::def_id::{DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
-use rustc_middle::hir::exports::Export;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir;
 use rustc_middle::thir;
@@ -350,7 +350,7 @@ enum EntryKind {
     Union(Lazy<VariantData>, ReprOptions),
     Fn(Lazy<FnData>),
     ForeignFn(Lazy<FnData>),
-    Mod(Lazy<[Export]>),
+    Mod(Lazy<[ModChild]>),
     MacroDef(Lazy<MacroDef>),
     ProcMacro(MacroKind),
     Closure,

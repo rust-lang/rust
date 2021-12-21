@@ -7,7 +7,7 @@ use rustc_data_structures::stable_map::FxHashMap;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
-use rustc_middle::hir::exports::Export;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::query::{ExternProviders, Providers};
@@ -309,7 +309,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 bfs_queue.push_back(DefId { krate: cnum, index: CRATE_DEF_INDEX });
             }
 
-            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &Export, parent: DefId| {
+            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &ModChild, parent: DefId| {
                 if !child.vis.is_public() {
                     return;
                 }
@@ -388,7 +388,7 @@ impl CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    pub fn module_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<Export> {
+    pub fn module_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<ModChild> {
         let mut result = vec![];
         self.get_crate_data(def_id.krate).for_each_module_child(
             def_id.index,

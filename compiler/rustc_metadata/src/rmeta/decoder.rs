@@ -21,7 +21,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::hir::exports::Export;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn for_each_module_child(
         &self,
         id: DefIndex,
-        mut callback: impl FnMut(Export),
+        mut callback: impl FnMut(ModChild),
         sess: &Session,
     ) {
         if let Some(data) = &self.root.proc_macro_data {
@@ -1096,7 +1096,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         self.local_def_id(def_index),
                     );
                     let ident = self.item_ident(def_index, sess);
-                    callback(Export { ident, res, vis: ty::Visibility::Public, span: ident.span });
+                    callback(ModChild {
+                        ident,
+                        res,
+                        vis: ty::Visibility::Public,
+                        span: ident.span,
+                    });
                 }
             }
             return;
@@ -1117,7 +1122,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     let vis = self.get_visibility(child_index);
                     let span = self.get_span(child_index, sess);
 
-                    callback(Export { ident, res, vis, span });
+                    callback(ModChild { ident, res, vis, span });
 
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
@@ -1129,7 +1134,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 let ctor_res =
                                     Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                                 let vis = self.get_visibility(ctor_def_id.index);
-                                callback(Export { res: ctor_res, vis, ident, span });
+                                callback(ModChild { ident, res: ctor_res, vis, span });
                             }
                         }
                         DefKind::Variant => {
@@ -1154,7 +1159,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
                             }
-                            callback(Export { res: ctor_res, ident, vis, span });
+                            callback(ModChild { ident, res: ctor_res, vis, span });
                         }
                         _ => {}
                     }

@@ -26,7 +26,7 @@ use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::bug;
-use rustc_middle::hir::exports::Export;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::ty;
 use rustc_session::cstore::CrateStore;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
@@ -938,9 +938,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_res(&mut self, child: Export) {
+    fn build_reduced_graph_for_external_crate_res(&mut self, child: ModChild) {
         let parent = self.parent_scope.module;
-        let Export { ident, res, vis, span } = child;
+        let ModChild { ident, res, vis, span } = child;
         let res = res.expect_non_local();
         let expansion = self.parent_scope.expansion;
         // Record primary definitions.

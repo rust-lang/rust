@@ -1094,7 +1094,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // code uses it). However, we skip encoding anything relating to child
         // items - we encode information about proc-macros later on.
         let reexports = if !self.is_proc_macro {
-            match tcx.module_exports(local_def_id) {
+            match tcx.module_reexports(local_def_id) {
                 Some(exports) => self.lazy(exports),
                 _ => Lazy::empty(),
             }
