@@ -2,8 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::DepKind;
-use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams, TaskDeps};
+use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
 use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVtable};
 use crate::query::job::{
@@ -516,12 +515,12 @@ where
     if query.cache_on_disk {
         let prof_timer = tcx.dep_context().profiler().incr_cache_loading();
 
-        let mut deps = TaskDeps::default();
-        deps.read_allowed = false;
-        let deps = Lock::new(deps);
-        let result = CTX::DepKind::with_deps(Some(&deps), || {
-            query.try_load_from_disk(tcx, prev_dep_node_index)
-        });
+        // The call to `with_query_deserialization` enforces that no new `DepNodes`
+        // are created during deserialization. See the docs of that method for more
+        // details.
+        let result = dep_graph
+            .with_query_deserialization(|| query.try_load_from_disk(tcx, prev_dep_node_index));
+
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         if let Some(result) = result {
