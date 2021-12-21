@@ -1,14 +1,11 @@
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 
-use rustc_ast::token::{DelimToken, TokenKind};
+use rustc_ast::token::TokenKind;
 use rustc_ast::{ast, ptr};
 use rustc_errors::Diagnostic;
-use rustc_parse::{
-    new_parser_from_file,
-    parser::{ForceCollect, Parser as RawParser},
-};
-use rustc_span::{sym, symbol::kw, Span};
+use rustc_parse::{new_parser_from_file, parser::Parser as RawParser};
+use rustc_span::{sym, Span};
 
 use crate::attr::first_attr_value_str_by_name;
 use crate::parse::session::ParseSess;

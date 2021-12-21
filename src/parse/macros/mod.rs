@@ -1,16 +1,14 @@
-use rustc_ast::token::{BinOpToken, DelimToken, Token, TokenKind};
-use rustc_ast::tokenstream::{Cursor, Spacing, TokenStream, TokenTree};
+use rustc_ast::token::{DelimToken, TokenKind};
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{ast, ptr};
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{stream_to_parser, MACRO_ARGUMENTS};
 use rustc_session::parse::ParseSess;
-use rustc_span::{
-    symbol::{self, kw},
-    BytePos, Span, Symbol, DUMMY_SP,
-};
+use rustc_span::symbol::{self, kw};
+use rustc_span::Symbol;
 
 use crate::macros::MacroArg;
-use crate::rewrite::{Rewrite, RewriteContext};
+use crate::rewrite::RewriteContext;
 
 pub(crate) mod cfg_if;
 pub(crate) mod lazy_static;
