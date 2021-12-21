@@ -654,7 +654,11 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                                             sugg
                                         }
                                     });
-                                debug!(?suggestion);
+
+                                #[cfg(not(bootstrap))]
+                                {
+                                    println!("{:?}", &suggestion);
+                                }
 
                                 ProcessResult::Error(FulfillmentErrorCode::CodeConstEquateError(
                                     expected_found,
