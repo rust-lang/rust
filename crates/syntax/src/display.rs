@@ -50,27 +50,6 @@ pub fn function_declaration(node: &ast::Fn) -> String {
     buf
 }
 
-pub fn const_label(node: &ast::Const) -> String {
-    let mut s = String::new();
-    if let Some(vis) = node.visibility() {
-        format_to!(s, "{} ", vis);
-    }
-    format_to!(s, "const ");
-    if let Some(name) = node.name() {
-        format_to!(s, "{}", name);
-    } else {
-        format_to!(s, "?");
-    }
-    format_to!(s, ": ");
-    if let Some(ty) = node.ty() {
-        format_to!(s, "{}", ty);
-    } else {
-        format_to!(s, "?");
-    }
-    format_to!(s, ";");
-    s
-}
-
 pub fn type_label(node: &ast::TypeAlias) -> String {
     let mut s = String::new();
     if let Some(vis) = node.visibility() {
