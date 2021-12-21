@@ -1,5 +1,5 @@
 //! Traits for working with Errors.
-use crate::any::TypeId;
+use crate::any::{Provider, Requisition, TypeId};
 use crate::fmt::{Debug, Display};
 use crate::{array, cell, char, fmt, num, str, time};
 
@@ -23,7 +23,7 @@ use crate::{array, cell, char, fmt, num, str, time};
 /// implementation for debugging via `source` chains.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "error"]
-pub trait Error: Debug + Display {
+pub trait Error: Debug + Display + Provider {
     /// The lower-level source of this error, if any.
     ///
     /// # Examples
@@ -113,6 +113,73 @@ pub trait Error: Debug + Display {
     #[allow(missing_docs)]
     fn cause(&self) -> Option<&dyn Error> {
         self.source()
+    }
+
+    /// Provides type based access to context intended for error reports.
+    ///
+    /// Used in conjunction with [`context`] and [`context_ref`] to extract
+    /// references to member variables from `dyn Error` trait objects.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// #![feature(provide_any)]
+    /// #![feature(error_in_core)]
+    /// use core::fmt;
+    /// use core::any::Requisition;
+    ///
+    /// #[derive(Debug)]
+    /// struct MyBacktrace {
+    ///     // ...
+    /// }
+    ///
+    /// impl MyBacktrace {
+    ///     fn new() -> MyBacktrace {
+    ///         // ...
+    ///         # MyBacktrace {}
+    ///     }
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct Error {
+    ///     backtrace: MyBacktrace,
+    /// }
+    ///
+    /// impl fmt::Display for Error {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "Example Error")
+    ///     }
+    /// }
+    ///
+    /// impl std::error::Error for Error {
+    ///     fn provide<'a>(&'a self, mut req: Requisition<'a, '_>) {
+    ///         req.provide_ref::<MyBacktrace>(&self.backtrace);
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let backtrace = MyBacktrace::new();
+    ///     let error = Error { backtrace };
+    ///     let dyn_error = &error as &dyn std::error::Error;
+    ///     let backtrace_ref = dyn_error.request_ref::<MyBacktrace>().unwrap();
+    ///
+    ///     assert!(core::ptr::eq(&error.backtrace, backtrace_ref));
+    /// }
+    /// ```
+    #[unstable(feature = "provide_any", issue = "none")]
+    fn provide<'a>(&'a self, mut req: Requisition<'a, '_>) {
+        if let Some(source) = self.source() {
+            req.provide_ref::<dyn Error + 'static>(source);
+        }
+    }
+}
+
+impl<T> Provider for T
+where
+    T: Error,
+{
+    fn provide<'a>(&'a self, req: Requisition<'a, '_>) {
+        Error::provide(self, req);
     }
 }
 
@@ -348,6 +415,11 @@ impl dyn Error + 'static {
     #[inline]
     pub fn chain(&self) -> Chain<'_> {
         Chain { current: Some(self) }
+    }
+
+    /// Request a reference to context of type `T`.
+    pub fn request_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
+        core::any::request_by_type_tag::<'_, core::any::tags::Ref<T>, _>(self)
     }
 }
 

@@ -794,7 +794,7 @@ pub trait Provider {
 
 /// Request a specific value by a given tag from the `Provider`.
 #[unstable(feature = "provide_any", issue = "none")]
-pub fn request_by_type_tag<'a, I>(provider: &'a dyn Provider) -> Option<I::Type>
+pub fn request_by_type_tag<'a, I, P: Provider + ?Sized>(provider: &'a P) -> Option<I::Type>
 where
     I: TypeTag<'a>,
 {
