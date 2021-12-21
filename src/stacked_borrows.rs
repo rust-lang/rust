@@ -111,7 +111,7 @@ pub struct GlobalState {
 pub type MemoryExtra = RefCell<GlobalState>;
 
 /// Indicates which kind of access is being performed.
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum AccessKind {
     Read,
     Write,
@@ -296,19 +296,26 @@ impl<'tcx> Stack {
     }
 
     /// Check if the given item is protected.
+    ///
+    /// The `provoking_access` argument is only used to produce diagnostics.
+    /// It is `Some` when we are granting the contained access for said tag, and it is
+    /// `None` during a deallocation.
     fn check_protector(
         item: &Item,
-        tag: Option<SbTag>,
+        provoking_access: Option<(SbTag, AccessKind)>,
         global: &GlobalState,
     ) -> InterpResult<'tcx> {
         if let SbTag::Tagged(id) = item.tag {
             if Some(id) == global.tracked_pointer_tag {
-                register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(item.clone()));
+                register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(
+                    item.clone(),
+                    provoking_access,
+                ));
             }
         }
         if let Some(call) = item.protector {
             if global.is_active(call) {
-                if let Some(tag) = tag {
+                if let Some((tag, _)) = provoking_access {
                     Err(err_sb_ub(format!(
                         "not granting access to tag {:?} because incompatible item is protected: {:?}",
                         tag, item
@@ -348,7 +355,7 @@ impl<'tcx> Stack {
             let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
             for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {:?}", item);
-                Stack::check_protector(&item, Some(tag), global)?;
+                Stack::check_protector(&item, Some((tag, access)), global)?;
             }
         } else {
             // On a read, *disable* all `Unique` above the granting item.  This ensures U2 for read accesses.
@@ -363,7 +370,7 @@ impl<'tcx> Stack {
                 let item = &mut self.borrows[idx];
                 if item.perm == Permission::Unique {
                     trace!("access: disabling item {:?}", item);
-                    Stack::check_protector(item, Some(tag), global)?;
+                    Stack::check_protector(item, Some((tag, access)), global)?;
                     item.perm = Permission::Disabled;
                 }
             }
