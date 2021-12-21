@@ -2,6 +2,7 @@
 
 use hir::{AsAssocItem, HirDisplay};
 use ide_db::SymbolKind;
+use syntax::SmolStr;
 
 use crate::{item::CompletionItem, render::RenderContext};
 
@@ -28,11 +29,10 @@ fn render(
 ) -> Option<CompletionItem> {
     let db = ctx.db();
 
-    // FIXME: smolstr?
     let name = if with_eq {
-        format!("{} = ", type_alias.name(db))
+        SmolStr::from_iter([&*type_alias.name(db).to_smol_str(), " = "])
     } else {
-        type_alias.name(db).to_string()
+        type_alias.name(db).to_smol_str()
     };
     let detail = type_alias.display(db).to_string();
 

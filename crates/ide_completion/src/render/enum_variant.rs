@@ -5,6 +5,7 @@ use std::iter;
 use hir::{db::HirDatabase, HasAttrs, HirDisplay, StructKind};
 use ide_db::SymbolKind;
 use itertools::Itertools;
+use syntax::SmolStr;
 
 use crate::{
     item::{CompletionItem, ImportEdit},
@@ -48,10 +49,10 @@ fn render(
             false,
         ),
     };
+    let qualified_name = qualified_name.to_string();
+    let short_qualified_name: SmolStr = short_qualified_name.to_string().into();
 
-    // FIXME: ModPath::to_smol_str()?
-    let mut item =
-        CompletionItem::new(SymbolKind::Variant, ctx.source_range(), qualified_name.to_string());
+    let mut item = CompletionItem::new(SymbolKind::Variant, ctx.source_range(), qualified_name);
     item.set_documentation(variant.docs(db))
         .set_deprecated(ctx.is_deprecated(variant))
         .detail(detail(db, variant, variant_kind));
@@ -60,8 +61,6 @@ fn render(
         item.add_import(import_to_add);
     }
 
-    // FIXME: ModPath::to_smol_str()?
-    let short_qualified_name = short_qualified_name.to_string();
     if variant_kind == hir::StructKind::Tuple {
         cov_mark::hit!(inserts_parens_for_tuple_enums);
         let params = Params::Anonymous(variant.fields(db).len());

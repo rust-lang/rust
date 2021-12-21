@@ -1,6 +1,7 @@
 //! Extensions for `Builder` structure required for item rendering.
 
 use itertools::Itertools;
+use syntax::SmolStr;
 
 use crate::{context::PathKind, item::Builder, patterns::ImmediateLocation, CompletionContext};
 
@@ -56,7 +57,7 @@ impl Builder {
     pub(super) fn add_call_parens(
         &mut self,
         ctx: &CompletionContext,
-        name: String,
+        name: SmolStr,
         params: Params,
     ) -> &mut Builder {
         if !self.should_add_parens(ctx) {

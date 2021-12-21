@@ -52,10 +52,9 @@ fn render(
     let name = local_name.unwrap_or_else(|| func.name(db));
     let params = params(completion, func, &func_type);
 
-    // FIXME: SmolStr?
     let call = match &func_type {
-        FuncType::Method(Some(receiver)) => format!("{}.{}", receiver, &name),
-        _ => name.to_string(),
+        FuncType::Method(Some(receiver)) => format!("{}.{}", receiver, &name).into(),
+        _ => name.to_smol_str(),
     };
     let mut item = CompletionItem::new(
         if func.self_param(db).is_some() {
@@ -66,23 +65,6 @@ fn render(
         ctx.source_range(),
         call.clone(),
     );
-    item.set_documentation(ctx.docs(func))
-        .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
-        .detail(detail(db, func))
-        .add_call_parens(completion, call.clone(), params);
-
-    if import_to_add.is_none() {
-        if let Some(actm) = func.as_assoc_item(db) {
-            if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
-                item.trait_name(trt.name(db).to_smol_str());
-            }
-        }
-    }
-
-    if let Some(import_to_add) = import_to_add {
-        item.add_import(import_to_add);
-    }
-    item.lookup_by(name.to_smol_str());
 
     let ret_type = func.ret_type(db);
     item.set_relevance(CompletionRelevance {
@@ -99,6 +81,24 @@ fn render(
             item.ref_match(ref_match);
         }
     }
+
+    item.set_documentation(ctx.docs(func))
+        .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
+        .detail(detail(db, func))
+        .add_call_parens(completion, call, params);
+
+    if import_to_add.is_none() {
+        if let Some(actm) = func.as_assoc_item(db) {
+            if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
+                item.trait_name(trt.name(db).to_smol_str());
+            }
+        }
+    }
+
+    if let Some(import_to_add) = import_to_add {
+        item.add_import(import_to_add);
+    }
+    item.lookup_by(name.to_smol_str());
 
     item.build()
 }
