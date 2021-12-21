@@ -1070,33 +1070,22 @@ mod test {
     fn not_op() {
         use AssocOp::{Add, Equal, Greater, GreaterEqual, LAnd, LOr, Less, LessEqual, NotEqual};
 
+        fn test_not(op: AssocOp, correct: &str) {
+            let sugg = Sugg::BinOp(op, "x".into(), "y".into());
+            assert_eq!((!sugg).to_string(), correct);
+        }
+
         // Invert the comparison operator.
-        let sugg = Sugg::BinOp(Equal, "1".into(), "1".into());
-        assert_eq!("1 != 1", (!sugg).to_string());
-
-        let sugg = Sugg::BinOp(NotEqual, "1".into(), "1".into());
-        assert_eq!("1 == 1", (!sugg).to_string());
-
-        let sugg = Sugg::BinOp(Less, "1".into(), "1".into());
-        assert_eq!("1 >= 1", (!sugg).to_string());
-
-        let sugg = Sugg::BinOp(LessEqual, "1".into(), "1".into());
-        assert_eq!("1 > 1", (!sugg).to_string());
-
-        let sugg = Sugg::BinOp(Greater, "1".into(), "1".into());
-        assert_eq!("1 <= 1", (!sugg).to_string());
-
-        let sugg = Sugg::BinOp(GreaterEqual, "1".into(), "1".into());
-        assert_eq!("1 < 1", (!sugg).to_string());
+        test_not(Equal, "x != y");
+        test_not(NotEqual, "x == y");
+        test_not(Less, "x >= y");
+        test_not(LessEqual, "x > y");
+        test_not(Greater, "x <= y");
+        test_not(GreaterEqual, "x < y");
 
         // Other operators are inverted like !(..).
-        let sugg = Sugg::BinOp(Add, "1".into(), "1".into());
-        assert_eq!("!(1 + 1)", (!sugg).to_string());
-
-        let sugg = Sugg::BinOp(LAnd, "1".into(), "1".into());
-        assert_eq!("!(1 && 1)", (!sugg).to_string());
-
-        let sugg = Sugg::BinOp(LOr, "1".into(), "1".into());
-        assert_eq!("!(1 || 1)", (!sugg).to_string());
+        test_not(Add, "!(x + y)");
+        test_not(LAnd, "!(x && y)");
+        test_not(LOr, "!(x || y)");
     }
 }
