@@ -1,7 +1,6 @@
 //! Completes references after dot (fields and method calls).
 
 use either::Either;
-use hir::ScopeDef;
 use rustc_hash::FxHashSet;
 
 use crate::{context::CompletionContext, patterns::ImmediateLocation, Completions};
@@ -36,24 +35,22 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path() || ctx.is_path_disallowed() || !ctx.expects_expression() {
         return;
     }
-    ctx.scope.process_all_names(&mut |name, def| {
-        if let ScopeDef::Local(local) = &def {
-            if local.is_self(ctx.db) {
-                let ty = local.ty(ctx.db);
-                complete_fields(ctx, &ty, |field, ty| match field {
-                    either::Either::Left(field) => {
-                        acc.add_field(ctx, Some(name.clone()), field, &ty)
-                    }
-                    either::Either::Right(tuple_idx) => {
-                        acc.add_tuple_field(ctx, Some(name.clone()), tuple_idx, &ty)
-                    }
-                });
-                complete_methods(ctx, &ty, |func| {
-                    acc.add_method(ctx, func, Some(name.clone()), None)
-                });
-            }
+    if let Some(func) = ctx.function_def.as_ref().and_then(|fn_| ctx.sema.to_def(fn_)) {
+        if let Some(self_) = func.self_param(ctx.db) {
+            let ty = self_.ty(ctx.db);
+            complete_fields(ctx, &ty, |field, ty| match field {
+                either::Either::Left(field) => {
+                    acc.add_field(ctx, Some(hir::known::SELF_PARAM), field, &ty)
+                }
+                either::Either::Right(tuple_idx) => {
+                    acc.add_tuple_field(ctx, Some(hir::known::SELF_PARAM), tuple_idx, &ty)
+                }
+            });
+            complete_methods(ctx, &ty, |func| {
+                acc.add_method(ctx, func, Some(hir::known::SELF_PARAM), None)
+            });
         }
-    });
+    }
 }
 
 fn complete_fields(

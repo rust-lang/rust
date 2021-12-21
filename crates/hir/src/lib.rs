@@ -1483,6 +1483,19 @@ impl SelfParam {
             .and_then(|params| params.self_param())
             .map(|value| InFile { file_id, value })
     }
+
+    pub fn ty(&self, db: &dyn HirDatabase) -> Type {
+        let resolver = self.func.resolver(db.upcast());
+        let krate = self.func.lookup(db.upcast()).container.module(db.upcast()).krate();
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let environment = db.trait_environment(self.func.into());
+
+        Type {
+            krate,
+            env: environment.clone(),
+            ty: ctx.lower_ty(&db.function_data(self.func).params[0].1),
+        }
+    }
 }
 
 impl HasVisibility for Function {
