@@ -50,7 +50,11 @@ pub(crate) fn rem_pio2(x: f64) -> (i32, f64, f64) {
 
     fn medium(x: f64, ix: u32) -> (i32, f64, f64) {
         /* rint(x/(pi/2)), Assume round-to-nearest. */
-        let f_n = x as f64 * INV_PIO2 + TO_INT - TO_INT;
+        let tmp = x as f64 * INV_PIO2 + TO_INT;
+        // force rounding of tmp to it's storage format on x87 to avoid
+        // excess precision issues.
+        #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]force_eval!(tmp);
+        let f_n = tmp - TO_INT;
         let n = f_n as i32;
         let mut r = x - f_n * PIO2_1;
         let mut w = f_n * PIO2_1T; /* 1st round, good to 85 bits */
