@@ -3,6 +3,8 @@
 macro_rules! float_rounding_test {
     { $scalar:tt, $int_scalar:tt } => {
         mod $scalar {
+            use std_float::StdFloat;
+
             type Vector<const LANES: usize> = core_simd::Simd<$scalar, LANES>;
             type Scalar = $scalar;
             type IntScalar = $int_scalar;
