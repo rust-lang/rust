@@ -1552,7 +1552,7 @@ rustc_queries! {
         desc { "calculating the missing lang items in a crate" }
         separate_provide_extern
     }
-    query visible_parent_map(_: ()) -> DefIdMap<DefId> {
+    query visible_parent_map(_: ()) -> Lrc<DefIdMap<DefId>> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "calculating the visible parent map" }
     }
