@@ -208,7 +208,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "tracing-attributes",
     "tracing-core",
     "tracing-log",
-    "tracing-serde",
     "tracing-subscriber",
     "tracing-tree",
     "typenum",
