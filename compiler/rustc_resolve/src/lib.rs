@@ -3419,27 +3419,21 @@ impl<'a> Resolver<'a> {
                     return v.clone();
                 }
 
-                let parse_attrs = || {
-                    let attrs = self.cstore().item_attrs(def_id, self.session);
-                    let attr =
-                        attrs.iter().find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
-                    let mut ret = vec![];
-                    for meta in attr.meta_item_list()? {
-                        match meta.literal()?.kind {
-                            LitKind::Int(a, _) => {
-                                ret.push(a as usize);
-                            }
-                            _ => panic!("invalid arg index"),
-                        }
+                let attr = self
+                    .cstore()
+                    .item_attrs(def_id, self.session)
+                    .into_iter()
+                    .find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
+                let mut ret = Vec::new();
+                for meta in attr.meta_item_list()? {
+                    match meta.literal()?.kind {
+                        LitKind::Int(a, _) => ret.push(a as usize),
+                        _ => panic!("invalid arg index"),
                     }
-                    Some(ret)
-                };
-
-                // Cache the lookup to avoid parsing attributes for an iterm
-                // multiple times.
-                let ret = parse_attrs();
-                self.legacy_const_generic_args.insert(def_id, ret.clone());
-                return ret;
+                }
+                // Cache the lookup to avoid parsing attributes for an iterm multiple times.
+                self.legacy_const_generic_args.insert(def_id, Some(ret.clone()));
+                return Some(ret);
             }
         }
         None
