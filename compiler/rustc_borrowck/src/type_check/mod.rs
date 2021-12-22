@@ -1916,7 +1916,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.tcx();
 
         match *ak {
-            AggregateKind::Adt(def, variant_index, substs, _, active_field_index) => {
+            AggregateKind::Adt(adt_did, variant_index, substs, _, active_field_index) => {
+                let def = tcx.adt_def(adt_did);
                 let variant = &def.variants[variant_index];
                 let adj_field_index = active_field_index.unwrap_or(field_index);
                 if let Some(field) = variant.fields.get(adj_field_index) {
@@ -2621,8 +2622,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         let (def_id, instantiated_predicates) = match aggregate_kind {
-            AggregateKind::Adt(def, _, substs, _, _) => {
-                (def.did, tcx.predicates_of(def.did).instantiate(tcx, substs))
+            AggregateKind::Adt(adt_did, _, substs, _, _) => {
+                (*adt_did, tcx.predicates_of(*adt_did).instantiate(tcx, substs))
             }
 
             // For closures, we have some **extra requirements** we

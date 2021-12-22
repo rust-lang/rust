@@ -777,7 +777,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
         adt_def.variants[variant_index].fields.iter().enumerate().map(|(idx, field_def)| {
             (Operand::Move(Place::from(Local::new(idx + 1))), field_def.ty(tcx, substs))
         }),
-        AggregateKind::Adt(adt_def, variant_index, substs, None, None),
+        AggregateKind::Adt(adt_def.did, variant_index, substs, None, None),
         source_info,
         tcx,
     )

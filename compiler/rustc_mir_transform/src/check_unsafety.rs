@@ -117,8 +117,8 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
         match rvalue {
             Rvalue::Aggregate(box ref aggregate, _) => match aggregate {
                 &AggregateKind::Array(..) | &AggregateKind::Tuple => {}
-                &AggregateKind::Adt(ref def, ..) => {
-                    match self.tcx.layout_scalar_valid_range(def.did) {
+                &AggregateKind::Adt(adt_did, ..) => {
+                    match self.tcx.layout_scalar_valid_range(adt_did) {
                         (Bound::Unbounded, Bound::Unbounded) => {}
                         _ => self.require_unsafe(
                             UnsafetyViolationKind::General,

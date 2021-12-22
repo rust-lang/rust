@@ -270,7 +270,8 @@ where
         Rvalue::Aggregate(kind, operands) => {
             // Return early if we know that the struct or enum being constructed is always
             // qualified.
-            if let AggregateKind::Adt(def, _, substs, ..) = **kind {
+            if let AggregateKind::Adt(adt_did, _, substs, ..) = **kind {
+                let def = cx.tcx.adt_def(adt_did);
                 if Q::in_adt_inherently(cx, def, substs) {
                     return true;
                 }
