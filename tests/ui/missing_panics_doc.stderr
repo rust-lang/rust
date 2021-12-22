@@ -42,7 +42,7 @@ note: first possible panic found here
    |
 LL |     todo!()
    |     ^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:22:1
