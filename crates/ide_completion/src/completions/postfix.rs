@@ -2,9 +2,9 @@
 
 mod format_like;
 
-use hir::Documentation;
+use hir::{Documentation, HasAttrs};
 use ide_db::{
-    helpers::{insert_use::ImportScope, FamousDefs, SnippetCap},
+    helpers::{insert_use::ImportScope, SnippetCap},
     ty_filter::TryEnum,
 };
 use syntax::{
@@ -59,6 +59,22 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         None => return,
     };
 
+    if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
+        if receiver_ty.impls_trait(ctx.db, drop_trait, &[]) {
+            if let &[hir::AssocItem::Function(drop_fn)] = &*drop_trait.items(ctx.db) {
+                cov_mark::hit!(postfix_drop_completion);
+                // FIXME: check that `drop` is in scope, use fully qualified path if it isn't/if shadowed
+                let mut item = postfix_snippet(
+                    "drop",
+                    "fn drop(&mut self)",
+                    &format!("drop($0{})", receiver_text),
+                );
+                item.set_documentation(drop_fn.docs(ctx.db));
+                item.add_to(acc);
+            }
+        }
+    }
+
     if !ctx.config.snippets.is_empty() {
         add_custom_postfix_completions(acc, ctx, &postfix_snippet, &receiver_text);
     }
@@ -107,7 +123,7 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         )
         .add_to(acc);
         postfix_snippet("not", "!expr", &format!("!{}", receiver_text)).add_to(acc);
-    } else if let Some(trait_) = FamousDefs(&ctx.sema, ctx.krate).core_iter_IntoIterator() {
+    } else if let Some(trait_) = ctx.famous_defs().core_iter_IntoIterator() {
         if receiver_ty.impls_trait(ctx.db, trait_, &[]) {
             postfix_snippet(
                 "for",

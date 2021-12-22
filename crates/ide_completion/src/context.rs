@@ -5,6 +5,7 @@ use hir::{Local, Name, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo};
 use ide_db::{
     active_parameter::ActiveParameter,
     base_db::{FilePosition, SourceDatabase},
+    helpers::FamousDefs,
     RootDatabase,
 };
 use syntax::{
@@ -148,6 +149,10 @@ impl<'a> CompletionContext<'a> {
 
     pub(crate) fn previous_token_is(&self, kind: SyntaxKind) -> bool {
         self.previous_token.as_ref().map_or(false, |tok| tok.kind() == kind)
+    }
+
+    pub(crate) fn famous_defs(&self) -> FamousDefs {
+        FamousDefs(&self.sema, self.krate)
     }
 
     pub(crate) fn dot_receiver(&self) -> Option<&ast::Expr> {

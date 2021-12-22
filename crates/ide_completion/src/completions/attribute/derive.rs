@@ -1,7 +1,7 @@
 //! Completion for derives
 use hir::{HasAttrs, MacroDef, MacroKind};
 use ide_db::{
-    helpers::{import_assets::ImportAssets, insert_use::ImportScope, FamousDefs},
+    helpers::{import_assets::ImportAssets, insert_use::ImportScope},
     SymbolKind,
 };
 use itertools::Itertools;
@@ -18,7 +18,7 @@ pub(super) fn complete_derive(
     ctx: &CompletionContext,
     existing_derives: &[ast::Path],
 ) {
-    let core = FamousDefs(&ctx.sema, ctx.krate).core();
+    let core = ctx.famous_defs().core();
     let existing_derives: FxHashSet<_> = existing_derives
         .into_iter()
         .filter_map(|path| ctx.scope.speculative_resolve_as_mac(&path))

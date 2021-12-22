@@ -76,7 +76,14 @@ fn complete_methods(
 ) {
     if let Some(krate) = ctx.krate {
         let mut seen_methods = FxHashSet::default();
-        let traits_in_scope = ctx.scope.visible_traits();
+        let mut traits_in_scope = ctx.scope.visible_traits();
+
+        // Remove drop from the environment as calling `Drop::drop` is not allowed
+        if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
+            cov_mark::hit!(dot_remove_drop_trait);
+            traits_in_scope.remove(&drop_trait.into());
+        }
+
         receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
             if func.self_param(ctx.db).is_some() && seen_methods.insert(func.name(ctx.db)) {
                 f(func);
@@ -707,6 +714,36 @@ fn main() {
             expect![[r#"
                 me into_iter() (as IntoIterator) fn(self) -> <Self as IntoIterator>::IntoIter
             "#]],
+        )
+    }
+
+    #[test]
+    fn postfix_drop_completion() {
+        cov_mark::check!(dot_remove_drop_trait);
+        cov_mark::check!(postfix_drop_completion);
+        check_edit(
+            "drop",
+            r#"
+//- minicore: drop
+struct Vec<T>(T);
+impl<T> Drop for Vec<T> {
+    fn drop(&mut self) {}
+}
+fn main() {
+    let x = Vec(0u32)
+    x.$0;
+}
+"#,
+            r"
+struct Vec<T>(T);
+impl<T> Drop for Vec<T> {
+    fn drop(&mut self) {}
+}
+fn main() {
+    let x = Vec(0u32)
+    drop($0x);
+}
+",
         )
     }
 }

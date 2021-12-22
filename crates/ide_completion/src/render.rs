@@ -71,6 +71,7 @@ impl<'a> RenderContext<'a> {
                 .unwrap_or(false)
     }
 
+    // FIXME: remove this
     fn docs(&self, def: impl HasAttrs) -> Option<hir::Documentation> {
         def.docs(self.db())
     }
