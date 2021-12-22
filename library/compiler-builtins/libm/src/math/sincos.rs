@@ -69,21 +69,21 @@ mod tests {
     fn with_pi() {
         let (s, c) = sincos(core::f64::consts::PI);
         assert!(
-                (s - 0.0).abs() < TOLERANCE,
-                "|{} - {}| = {} >= {}",
-                s,
-                0.0,
-                (s - 0.0).abs(),
-                TOLERANCE
-            );
+            (s - 0.0).abs() < TOLERANCE,
+            "|{} - {}| = {} >= {}",
+            s,
+            0.0,
+            (s - 0.0).abs(),
+            TOLERANCE
+        );
         assert!(
-                (c + 1.0).abs() < TOLERANCE,
-                "|{} + {}| = {} >= {}",
-                c,
-                1.0,
-                (s + 1.0).abs(),
-                TOLERANCE
-            );
+            (c + 1.0).abs() < TOLERANCE,
+            "|{} + {}| = {} >= {}",
+            c,
+            1.0,
+            (s + 1.0).abs(),
+            TOLERANCE
+        );
     }
 
     #[test]
