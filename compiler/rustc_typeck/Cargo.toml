@@ -27,3 +27,4 @@ rustc_infer = { path = "../rustc_infer" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 rustc_lint = { path = "../rustc_lint" }
+indexmap = "1.7.0"

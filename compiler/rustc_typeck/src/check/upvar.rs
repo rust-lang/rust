@@ -96,43 +96,6 @@ enum UpvarMigrationInfo {
     },
 }
 
-// This is needed becuase `HirId` does not implement `Ord`
-impl Ord for UpvarMigrationInfo {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        type SortKey = (Option<(usize, usize)>, Option<String>, Option<Span>);
-
-        let s: SortKey = match self {
-            Self::CapturingPrecise { source_expr, var_name } => {
-                let i = match source_expr {
-                    Some(h) => Some(h.index()),
-                    None => None,
-                };
-                (i, Some(var_name.to_string()), None)
-            }
-            Self::CapturingNothing { use_span } => (None, None, Some(*use_span)),
-        };
-
-        let o: SortKey = match other {
-            Self::CapturingPrecise { source_expr, var_name } => {
-                let i = match source_expr {
-                    Some(h) => Some(h.index()),
-                    None => None,
-                };
-                (i, Some(var_name.to_string()), None)
-            }
-            Self::CapturingNothing { use_span } => (None, None, Some(*use_span)),
-        };
-
-        s.cmp(&o)
-    }
-}
-
-impl PartialOrd for UpvarMigrationInfo {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
-    }
-}
-
 /// Reasons that we might issue a migration warning.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct MigrationWarningReason {
@@ -1223,8 +1186,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 capture_diagnostic.insert(key.clone());
             }
 
-            let mut capture_diagnostic = capture_diagnostic.into_iter().collect::<Vec<_>>();
-            capture_diagnostic.sort();
+            let capture_diagnostic: indexmap::IndexSet<_> =
+                capture_diagnostic.into_iter().collect();
             for captures_info in capture_diagnostic {
                 // Get the auto trait reasons of why migration is needed because of that capture, if there are any
                 let capture_trait_reasons =
