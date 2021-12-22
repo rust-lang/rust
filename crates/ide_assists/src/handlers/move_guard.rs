@@ -96,6 +96,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
 // fn handle(action: Action) {
 //     match action {
 //         Action::Move { distance } if distance > 10 => foo(),
+//         Action::Move { distance } => {}
 //         _ => (),
 //     }
 // }
@@ -175,7 +176,9 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
                     }
                 }
             } else {
+                // There's no else branch. Add a pattern without guard
                 cov_mark::hit!(move_guard_ifelse_notail);
+                edit.insert(then_arm_end, format!("\n{}{} => {{}}", spaces, match_pat));
             }
         },
     )
@@ -309,6 +312,7 @@ fn main() {
 fn main() {
     match 92 {
         x if x > 10 => false,
+        x => {}
         _ => true
     }
 }
@@ -336,6 +340,7 @@ fn main() {
 fn main() {
     match 92 {
         x if x > 10 => false,
+        x => {}
         _ => true
     }
 }
@@ -363,6 +368,7 @@ fn main() {
 fn main() {
     match 92 {
         x if x > 10 => false,
+        x => {}
         _ => true
     }
 }
@@ -401,6 +407,7 @@ fn main() {
 fn main() {
     match 92 {
         x if x > 10 => {  }
+        x => {}
         _ => true
     }
 }
@@ -430,6 +437,7 @@ fn main() {
             92;
             false
         }
+        x => {}
         _ => true
     }
 }
@@ -461,6 +469,7 @@ fn main() {
             92;
             false
         }
+        x => {}
         _ => true
     }
 }
@@ -881,6 +890,7 @@ fn main() {
             42;
             3
         }
+        x => {}
     }
 }
 "#,
