@@ -13,8 +13,8 @@ mod iter;
 mod traits;
 mod validations;
 
-use self::pattern::Pattern;
-use self::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
+use self::iter::{SplitInclusiveInternal, SplitLeftInclusiveInternal, SplitTerminatorInternal};
+use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 
 use crate::char::{self, EscapeDebugExtArgs};
 use crate::mem;
@@ -70,7 +70,10 @@ pub use iter::SplitAsciiWhitespace;
 pub use iter::SplitInclusive;
 
 #[unstable(feature = "split_inclusive_variants", issue = "none")]
-pub use iter::SplitLeftInclusive;
+pub use iter::{
+    RSplitInclusive, RSplitLeftInclusive, RSplitNInclusive, RSplitNLeftInclusive,
+    SplitLeftInclusive, SplitNInclusive, SplitNLeftInclusive,
+};
 
 #[unstable(feature = "str_internals", issue = "none")]
 pub use validations::{next_code_point, utf8_char_width};
@@ -1326,13 +1329,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
-        Split(SplitInternal {
-            start: 0,
-            end: self.len(),
-            matcher: pat.into_searcher(self),
-            allow_bookending_empty: true,
-            finished: false,
-        })
+        Split(SplitInternal::new(self, pat))
     }
 
     /// An iterator over substrings of this string slice, separated by
@@ -1366,13 +1363,7 @@ impl str {
     #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
     pub fn split_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
-        SplitInclusive(SplitInternal {
-            start: 0,
-            end: self.len(),
-            matcher: pat.into_searcher(self),
-            allow_bookending_empty: false,
-            finished: false,
-        })
+        SplitInclusive(SplitInclusiveInternal::new(self, pat))
     }
 
     /// An iterator over substrings of this string slice, separated by
@@ -1408,13 +1399,7 @@ impl str {
     #[unstable(feature = "split_inclusive_variants", issue = "none")]
     #[inline]
     pub fn split_left_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitLeftInclusive<'a, P> {
-        SplitLeftInclusive(SplitInternal {
-            start: 0,
-            end: self.len(),
-            matcher: pat.into_searcher(self),
-            allow_bookending_empty: false,
-            finished: self.is_empty(),
-        })
+        SplitLeftInclusive(SplitLeftInclusiveInternal::new(self, pat))
     }
 
     /// An iterator over substrings of the given string slice, separated by
@@ -1514,7 +1499,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
-        SplitTerminator(SplitInternal { allow_bookending_empty: false, ..self.split(pat).0 })
+        SplitTerminator(SplitTerminatorInternal::new(self, pat))
     }
 
     /// An iterator over substrings of `self`, separated by characters

@@ -67,6 +67,11 @@ pub use core::str::{MatchIndices, RMatchIndices};
 pub use core::str::{Matches, RMatches};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplit, Split};
+#[unstable(feature = "split_inclusive_variants", issue = "none")]
+pub use core::str::{
+    RSplitInclusive, RSplitLeftInclusive, RSplitNInclusive, RSplitNLeftInclusive,
+    SplitLeftInclusive, SplitNInclusive, SplitNLeftInclusive,
+};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{RSplitN, SplitN};
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -413,17 +413,17 @@ macro_rules! generate_pattern_iterators {
     {
         // Forward iterator
         forward:
+            #[$forward_stability_attribute:meta]
+            #[fused($fused_forward_stability_attribute:meta)]
             $(#[$forward_iterator_attribute:meta])*
             struct $forward_iterator:ident;
 
         // Reverse iterator
         reverse:
+            #[$reverse_stability_attribute:meta]
+            #[fused($fused_reverse_stability_attribute:meta)]
             $(#[$reverse_iterator_attribute:meta])*
             struct $reverse_iterator:ident;
-
-        // Stability of all generated items
-        stability:
-            $(#[$common_stability_attribute:meta])*
 
         // Internal almost-iterator that is being delegated to
         internal:
@@ -433,10 +433,10 @@ macro_rules! generate_pattern_iterators {
         delegate $($t:tt)*
     } => {
         $(#[$forward_iterator_attribute])*
-        $(#[$common_stability_attribute])*
+        #[$forward_stability_attribute]
         pub struct $forward_iterator<'a, P: Pattern<'a>>(pub(super) $internal_iterator<'a, P>);
 
-        $(#[$common_stability_attribute])*
+        #[$forward_stability_attribute]
         impl<'a, P> fmt::Debug for $forward_iterator<'a, P>
         where
             P: Pattern<'a, Searcher: fmt::Debug>,
@@ -448,17 +448,18 @@ macro_rules! generate_pattern_iterators {
             }
         }
 
-        $(#[$common_stability_attribute])*
+        #[$forward_stability_attribute]
         impl<'a, P: Pattern<'a>> Iterator for $forward_iterator<'a, P> {
             type Item = $iterty;
 
             #[inline]
-            fn next(&mut self) -> Option<$iterty> {
+            fn next(&mut self) -> Option<Self::Item> {
                 self.0.next()
             }
         }
 
-        $(#[$common_stability_attribute])*
+        // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+        #[$forward_stability_attribute]
         impl<'a, P> Clone for $forward_iterator<'a, P>
         where
             P: Pattern<'a, Searcher: Clone>,
@@ -469,10 +470,10 @@ macro_rules! generate_pattern_iterators {
         }
 
         $(#[$reverse_iterator_attribute])*
-        $(#[$common_stability_attribute])*
+        #[$reverse_stability_attribute]
         pub struct $reverse_iterator<'a, P: Pattern<'a>>(pub(super) $internal_iterator<'a, P>);
 
-        $(#[$common_stability_attribute])*
+        #[$reverse_stability_attribute]
         impl<'a, P> fmt::Debug for $reverse_iterator<'a, P>
         where
             P: Pattern<'a, Searcher: fmt::Debug>,
@@ -484,7 +485,7 @@ macro_rules! generate_pattern_iterators {
             }
         }
 
-        $(#[$common_stability_attribute])*
+        #[$reverse_stability_attribute]
         impl<'a, P> Iterator for $reverse_iterator<'a, P>
         where
             P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
@@ -492,12 +493,12 @@ macro_rules! generate_pattern_iterators {
             type Item = $iterty;
 
             #[inline]
-            fn next(&mut self) -> Option<$iterty> {
+            fn next(&mut self) -> Option<Self::Item> {
                 self.0.next_back()
             }
         }
 
-        $(#[$common_stability_attribute])*
+        #[$reverse_stability_attribute]
         impl<'a, P> Clone for $reverse_iterator<'a, P>
         where
             P: Pattern<'a, Searcher: Clone>,
@@ -507,305 +508,247 @@ macro_rules! generate_pattern_iterators {
             }
         }
 
-        #[stable(feature = "fused", since = "1.26.0")]
+        #[$fused_forward_stability_attribute]
         impl<'a, P: Pattern<'a>> FusedIterator for $forward_iterator<'a, P> {}
 
-        #[stable(feature = "fused", since = "1.26.0")]
+        #[$fused_reverse_stability_attribute]
         impl<'a, P> FusedIterator for $reverse_iterator<'a, P>
         where
             P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
         {}
 
-        generate_pattern_iterators!($($t)* with $(#[$common_stability_attribute])*,
-                                                $forward_iterator,
-                                                $reverse_iterator, $iterty);
+        generate_pattern_iterators!($($t)* with
+            #[$forward_stability_attribute]
+            $forward_iterator,
+            #[$reverse_stability_attribute]
+            $reverse_iterator,
+            yielding $iterty
+        );
     };
     {
-        double ended; with $(#[$common_stability_attribute:meta])*,
-                           $forward_iterator:ident,
-                           $reverse_iterator:ident, $iterty:ty
+        double ended; with
+            #[$forward_stability_attribute:meta]
+            $forward_iterator:ident,
+            #[$reverse_stability_attribute:meta]
+            $reverse_iterator:ident,
+            yielding $iterty:ty
     } => {
-        $(#[$common_stability_attribute])*
+        #[$forward_stability_attribute]
         impl<'a, P> DoubleEndedIterator for $forward_iterator<'a, P>
         where
             P: Pattern<'a, Searcher: DoubleEndedSearcher<'a>>,
         {
             #[inline]
-            fn next_back(&mut self) -> Option<$iterty> {
+            fn next_back(&mut self) -> Option<<Self as Iterator>::Item> {
                 self.0.next_back()
             }
         }
 
-        $(#[$common_stability_attribute])*
+        #[$reverse_stability_attribute]
         impl<'a, P> DoubleEndedIterator for $reverse_iterator<'a, P>
         where
             P: Pattern<'a, Searcher: DoubleEndedSearcher<'a>>,
         {
             #[inline]
-            fn next_back(&mut self) -> Option<$iterty> {
+            fn next_back(&mut self) -> Option<<Self as Iterator>::Item> {
                 self.0.next()
             }
         }
     };
     {
-        single ended; with $(#[$common_stability_attribute:meta])*,
-                           $forward_iterator:ident,
-                           $reverse_iterator:ident, $iterty:ty
+        single ended; with
+        #[$forward_stability_attribute:meta]
+        $forward_iterator:ident,
+        #[$reverse_stability_attribute:meta]
+        $reverse_iterator:ident,
+        yielding $iterty:ty
     } => {}
 }
 
-derive_pattern_clone! {
-    clone SplitInternal
-    with |s| SplitInternal { matcher: s.matcher.clone(), ..*s }
-}
+macro_rules! split_internal {
+    (
+        $split_struct:ident {
+            debug: $name_str:literal,
+            $(skip_leading_empty: $skip_leading_empty:ident,)?
+            $(skip_trailing_empty: $skip_trailing_empty:ident,)?
+            include_leading: $include_leading:literal,
+            include_trailing: $include_trailing:literal,
+            $(get_end: $get_end:ident,)?
+        }
+    ) => {
+        pub(super) struct $split_struct<'a, P: Pattern<'a>> {
+            pub(super) start: usize,
+            pub(super) end: usize,
+            pub(super) matcher: P::Searcher,
+            pub(super) finished: bool,
+            $(pub(super) $skip_leading_empty: bool,)?
+            $(pub(super) $skip_trailing_empty: bool,)?
+        }
 
-pub(super) struct SplitInternal<'a, P: Pattern<'a>> {
-    pub(super) start: usize,
-    pub(super) end: usize,
-    pub(super) matcher: P::Searcher,
-    pub(super) allow_bookending_empty: bool,
-    pub(super) finished: bool,
-}
+        derive_pattern_clone! {
+            clone $split_struct
+            with |s| $split_struct { matcher: s.matcher.clone(), ..*s }
+        }
 
-impl<'a, P> fmt::Debug for SplitInternal<'a, P>
-where
-    P: Pattern<'a, Searcher: fmt::Debug>,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitInternal")
-            .field("start", &self.start)
-            .field("end", &self.end)
-            .field("matcher", &self.matcher)
-            .field("allow_bookending_empty", &self.allow_bookending_empty)
-            .field("finished", &self.finished)
-            .finish()
-    }
-}
-
-impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
-    #[inline]
-    fn get_end(&mut self) -> Option<&'a str> {
-        if !self.finished && (self.allow_bookending_empty || self.end - self.start > 0) {
-            self.finished = true;
-            // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-            unsafe {
-                let string = self.matcher.haystack().get_unchecked(self.start..self.end);
-                Some(string)
+        impl<'a, P> fmt::Debug for $split_struct<'a, P>
+        where
+            P: Pattern<'a, Searcher: fmt::Debug>,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_struct($name_str)
+                    .field("start", &self.start)
+                    .field("end", &self.end)
+                    .field("matcher", &self.matcher)
+                    .field("finished", &self.finished)
+                    $(.field("skip_leading_empty", &self.$skip_leading_empty))?
+                    $(.field("skip_trailing_empty", &self.$skip_trailing_empty))?
+                    .finish()
             }
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        if self.finished {
-            return None;
         }
 
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match() {
-            // SAFETY: `Searcher` guarantees that `a` and `b` lie on unicode boundaries.
-            Some((a, b)) => unsafe {
-                let elt = haystack.get_unchecked(self.start..a);
-                self.start = b;
-                Some(elt)
-            },
-            None => self.get_end(),
-        }
-    }
+        impl<'a, P: Pattern<'a>> $split_struct<'a, P> {
+            #[inline]
+            pub(super) fn new(s: &'a str, pat: P) -> Self {
+                $split_struct {
+                    start: 0,
+                    end: s.len(),
+                    matcher: pat.into_searcher(s),
+                    finished: false,
+                    $($skip_leading_empty: true,)?
+                    $($skip_trailing_empty: true,)?
+                }
+            }
 
-    #[inline]
-    fn next_inclusive(&mut self) -> Option<&'a str> {
-        if self.finished {
-            return None;
-        }
+            #[inline]
+            fn next(&mut self) -> Option<&'a str> {
+                if self.finished {
+                    return None;
+                }
 
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match() {
-            // SAFETY: `Searcher` guarantees that `b` lies on unicode boundary,
-            // and self.start is either the start of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
-            Some((_, b)) => unsafe {
-                let elt = haystack.get_unchecked(self.start..b);
-                self.start = b;
-                Some(elt)
-            },
-            None => self.get_end(),
-        }
-    }
+                $(if self.$skip_leading_empty {
+                    self.$skip_leading_empty = false;
+                    match self.next() {
+                        Some(elt) if !elt.is_empty() => return Some(elt),
+                        _ => {
+                            if self.finished {
+                                return None;
+                            }
+                        }
+                    }
+                })?
 
-    #[inline]
-    fn next_left_inclusive(&mut self) -> Option<&'a str> {
-        if self.finished {
-            return None;
-        }
+                let haystack = self.matcher.haystack();
+                match self.matcher.next_match() {
+                    // SAFETY: `Searcher` guarantees that `a` and `b` lie on unicode boundaries.
+                    Some((a, b)) => unsafe {
+                        let end_idx = if $include_trailing { b } else { a };
+                        let elt = haystack.get_unchecked(self.start..end_idx);
+                        self.start = if $include_leading { a } else { b };
+                        Some(elt)
+                    },
+                    // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+                    None => unsafe {
+                        let end = haystack.get_unchecked(self.start..self.end);
+                        self.finished = true;
+                        $(if self.$skip_trailing_empty && end == "" { return None; })?
+                        Some(end)
+                    },
+                }
+            }
 
-        if !self.allow_bookending_empty {
-            self.allow_bookending_empty = true;
-            match self.next_left_inclusive() {
-                Some(elt) if !elt.is_empty() => return Some(elt),
-                _ => {
+            #[inline]
+            fn next_back(&mut self) -> Option<&'a str>
+            where
+                P::Searcher: ReverseSearcher<'a>,
+            {
+                if self.finished {
+                    return None;
+                }
+
+                $(if self.$skip_trailing_empty {
+                    self.$skip_trailing_empty = false;
+                    match self.next_back() {
+                        Some(elt) if !elt.is_empty() => return Some(elt),
+                        _ => {
+                            if self.finished {
+                                return None;
+                            }
+                        }
+                    }
+                })?
+
+                let haystack = self.matcher.haystack();
+                match self.matcher.next_match_back() {
+                    // SAFETY: `Searcher` guarantees that `a` and `b` lie on unicode boundaries.
+                    Some((a, b)) => unsafe {
+                        let start_idx = if $include_leading { a } else { b };
+                        let elt = haystack.get_unchecked(start_idx..self.end);
+                        self.end = if $include_trailing { b } else { a };
+                        Some(elt)
+                    },
+                    // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+                    None => unsafe {
+                        let end = haystack.get_unchecked(self.start..self.end);
+                        self.finished = true;
+                        $(if self.$skip_leading_empty && end == "" { return None; })?
+                        Some(end)
+                    },
+                }
+            }
+
+            $(
+                #[inline]
+                fn $get_end(&mut self) -> Option<&'a str> {
                     if self.finished {
-                        return None;
+                        None
+                    } else {
+                        self.finished = true;
+                        // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+                        Some(unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) })
                     }
                 }
-            }
-        }
+            )?
 
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match() {
-            // SAFETY: `Searcher` guarantees that `b` lies on unicode boundary,
-            // and self.start is either the start of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
-            Some((b, _)) => unsafe {
-                let elt = haystack.get_unchecked(self.start..b);
-                self.start = b;
-                Some(elt)
-            },
-            None => self.get_end(),
-        }
-    }
-
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str>
-    where
-        P::Searcher: ReverseSearcher<'a>,
-    {
-        if self.finished {
-            return None;
-        }
-
-        if !self.allow_bookending_empty {
-            self.allow_bookending_empty = true;
-            match self.next_back() {
-                Some(elt) if !elt.is_empty() => return Some(elt),
-                _ => {
-                    if self.finished {
-                        return None;
-                    }
+            #[inline]
+            #[unstable(feature = "str_split_as_str", issue = "77998")]
+            #[allow(unused)] // FIXME complete this feature
+            fn as_str(&self) -> &'a str {
+                // `Self::get_end` doesn't change `self.start`
+                if self.finished {
+                    ""
+                } else {
+                    // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+                    unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) }
                 }
             }
         }
-
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match_back() {
-            // SAFETY: `Searcher` guarantees that `a` and `b` lie on unicode boundaries.
-            Some((a, b)) => unsafe {
-                let elt = haystack.get_unchecked(b..self.end);
-                self.end = a;
-                Some(elt)
-            },
-            // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-            None => unsafe {
-                self.finished = true;
-                Some(haystack.get_unchecked(self.start..self.end))
-            },
-        }
     }
+}
 
-    #[inline]
-    fn next_back_inclusive(&mut self) -> Option<&'a str>
-    where
-        P::Searcher: ReverseSearcher<'a>,
-    {
-        if self.finished {
-            return None;
-        }
-
-        if !self.allow_bookending_empty {
-            self.allow_bookending_empty = true;
-            match self.next_back_inclusive() {
-                Some(elt) if !elt.is_empty() => return Some(elt),
-                _ => {
-                    if self.finished {
-                        return None;
-                    }
-                }
-            }
-        }
-
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match_back() {
-            // SAFETY: `Searcher` guarantees that `b` lies on unicode boundary,
-            // and self.end is either the end of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
-            Some((_, b)) => unsafe {
-                let elt = haystack.get_unchecked(b..self.end);
-                self.end = b;
-                Some(elt)
-            },
-            // SAFETY: self.start is either the start of the original string,
-            // or start of a substring that represents the part of the string that hasn't
-            // iterated yet. Either way, it is guaranteed to lie on unicode boundary.
-            // self.end is either the end of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
-            None => unsafe {
-                self.finished = true;
-                Some(haystack.get_unchecked(self.start..self.end))
-            },
-        }
-    }
-
-    #[inline]
-    fn next_back_left_inclusive(&mut self) -> Option<&'a str>
-    where
-        P::Searcher: ReverseSearcher<'a>,
-    {
-        if self.finished {
-            return None;
-        }
-
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match_back() {
-            // SAFETY: `Searcher` guarantees that `b` lies on unicode boundary,
-            // and self.end is either the end of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
-            Some((b, _)) => unsafe {
-                let elt = haystack.get_unchecked(b..self.end);
-                self.end = b;
-                if self.start == b {
-                    self.finished = true;
-                }
-                Some(elt)
-            },
-            // SAFETY: self.start is either the start of the original string,
-            // or start of a substring that represents the part of the string that hasn't
-            // iterated yet. Either way, it is guaranteed to lie on unicode boundary.
-            // self.end is either the end of the original string,
-            // or `b` was assigned to it, so it also lies on unicode boundary.
-            None => unsafe {
-                self.finished = true;
-                Some(haystack.get_unchecked(self.start..self.end))
-            },
-        }
-    }
-
-    #[inline]
-    fn as_str(&self) -> &'a str {
-        // `Self::get_end` doesn't change `self.start`
-        if self.finished {
-            return "";
-        }
-
-        // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-        unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) }
+split_internal! {
+    SplitInternal {
+        debug: "SplitInternal",
+        include_leading: false,
+        include_trailing: false,
+        get_end: get_end,
     }
 }
 
 generate_pattern_iterators! {
     forward:
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
         /// Created with the method [`split`].
         ///
         /// [`split`]: str::split
         struct Split;
     reverse:
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
         /// Created with the method [`rsplit`].
         ///
         /// [`rsplit`]: str::rsplit
         struct RSplit;
-    stability:
-        #[stable(feature = "rust1", since = "1.0.0")]
     internal:
         SplitInternal yielding (&'a str);
     delegate double ended;
@@ -853,21 +796,93 @@ impl<'a, P: Pattern<'a>> RSplit<'a, P> {
     }
 }
 
+split_internal! {
+    SplitInclusiveInternal {
+        debug: "SplitInclusiveInternal",
+        skip_trailing_empty: skip_trailing_empty,
+        include_leading: false,
+        include_trailing: true,
+        get_end: get_end,
+    }
+}
+
+generate_pattern_iterators! {
+
+    forward:
+        #[stable(feature = "split_inclusive", since = "1.51.0")]
+        #[fused(stable(feature = "split_inclusive", since = "1.51.0"))]
+        /// Created with the method [`split_inclusive`].
+        ///
+        /// [`split_inclusive`]: str::split_inclusive
+        struct SplitInclusive;
+    reverse:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`rsplit_inclusive`].
+        ///
+        /// [`rsplit_inclusive`]: str::rsplit_inclusive
+        struct RSplitInclusive;
+    internal:
+        SplitInclusiveInternal yielding (&'a str);
+    delegate double ended;
+}
+
+split_internal! {
+    SplitLeftInclusiveInternal {
+        debug: "SplitLeftInclusiveInternal",
+        skip_leading_empty: skip_leading_empty,
+        include_leading: true,
+        include_trailing: false,
+        get_end: get_end,
+    }
+}
+
 generate_pattern_iterators! {
     forward:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`split_left_inclusive`].
+        ///
+        /// [`split_left_inclusive`]: str::split_left_inclusive
+        struct SplitLeftInclusive;
+    reverse:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`rsplit_left_inclusive`].
+        ///
+        /// [`rsplit_left_inclusive`]: str::rsplit_left_inclusive
+        struct RSplitLeftInclusive;
+    internal:
+        SplitLeftInclusiveInternal yielding (&'a str);
+    delegate double ended;
+}
+
+split_internal! {
+    SplitTerminatorInternal {
+        debug: "SplitTerminatorInternal",
+        skip_trailing_empty: skip_trailing_empty,
+        include_leading: false,
+        include_trailing: false,
+    }
+}
+
+generate_pattern_iterators! {
+    forward:
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
         /// Created with the method [`split_terminator`].
         ///
         /// [`split_terminator`]: str::split_terminator
         struct SplitTerminator;
     reverse:
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
         /// Created with the method [`rsplit_terminator`].
         ///
         /// [`rsplit_terminator`]: str::rsplit_terminator
         struct RSplitTerminator;
-    stability:
-        #[stable(feature = "rust1", since = "1.0.0")]
     internal:
-        SplitInternal yielding (&'a str);
+        SplitTerminatorInternal yielding (&'a str);
     delegate double ended;
 }
 
@@ -913,84 +928,152 @@ impl<'a, P: Pattern<'a>> RSplitTerminator<'a, P> {
     }
 }
 
-derive_pattern_clone! {
-    clone SplitNInternal
-    with |s| SplitNInternal { iter: s.iter.clone(), ..*s }
-}
-
-pub(super) struct SplitNInternal<'a, P: Pattern<'a>> {
-    pub(super) iter: SplitInternal<'a, P>,
-    /// The number of splits remaining
-    pub(super) count: usize,
-}
-
-impl<'a, P> fmt::Debug for SplitNInternal<'a, P>
-where
-    P: Pattern<'a, Searcher: fmt::Debug>,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitNInternal")
-            .field("iter", &self.iter)
-            .field("count", &self.count)
-            .finish()
-    }
-}
-
-impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        match self.count {
-            0 => None,
-            1 => {
-                self.count = 0;
-                self.iter.get_end()
-            }
-            _ => {
-                self.count -= 1;
-                self.iter.next()
+macro_rules! splitn_next {
+    ($($fn:ident),*) => {$(
+        #[inline]
+        fn $fn(&mut self) -> Option<&'a str> {
+            match self.count {
+                0 => None,
+                1 => {
+                    self.count = 0;
+                    self.iter.get_end()
+                }
+                _ => {
+                    self.count -= 1;
+                    self.iter.$fn()
+                }
             }
         }
-    }
+    )*};
+}
 
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str>
-    where
-        P::Searcher: ReverseSearcher<'a>,
-    {
-        match self.count {
-            0 => None,
-            1 => {
-                self.count = 0;
-                self.iter.get_end()
-            }
-            _ => {
-                self.count -= 1;
-                self.iter.next_back()
+macro_rules! splitn_internal {
+    (
+        struct $splitn_struct:ident {
+            debug: $debug_str:literal,
+            iter: $inner_iter:ident,
+        }
+    ) => {
+        derive_pattern_clone! {
+            clone $splitn_struct
+            with |s| $splitn_struct { iter: s.iter.clone(), ..*s }
+        }
+
+        pub(super) struct $splitn_struct<'a, P: Pattern<'a>> {
+            pub(super) iter: $inner_iter<'a, P>,
+            /// The number of splits remaining
+            pub(super) count: usize,
+        }
+
+        impl<'a, P> fmt::Debug for $splitn_struct<'a, P>
+        where
+            P: Pattern<'a, Searcher: fmt::Debug>,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_struct($debug_str)
+                    .field("iter", &self.iter)
+                    .field("count", &self.count)
+                    .finish()
             }
         }
-    }
 
-    #[inline]
-    fn as_str(&self) -> &'a str {
-        self.iter.as_str()
+        impl<'a, P: Pattern<'a>> $splitn_struct<'a, P> {
+            splitn_next!(next);
+
+            #[unstable(feature = "str_split_as_str", issue = "77998")]
+            #[allow(unused)] // FIXME complete this feature?
+            fn as_str(&self) -> &'a str {
+                self.iter.as_str()
+            }
+        }
+
+        impl<'a, P: Pattern<'a>> $splitn_struct<'a, P>
+        where
+            P::Searcher: ReverseSearcher<'a>,
+        {
+            splitn_next!(next_back);
+        }
+    };
+}
+
+splitn_internal! {
+    struct SplitNInternal {
+        debug: "SplitNInternal",
+        iter: SplitInternal,
     }
 }
 
 generate_pattern_iterators! {
     forward:
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
         /// Created with the method [`splitn`].
         ///
         /// [`splitn`]: str::splitn
         struct SplitN;
     reverse:
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
         /// Created with the method [`rsplitn`].
         ///
         /// [`rsplitn`]: str::rsplitn
         struct RSplitN;
-    stability:
-        #[stable(feature = "rust1", since = "1.0.0")]
     internal:
         SplitNInternal yielding (&'a str);
+    delegate single ended;
+}
+
+splitn_internal! {
+    struct SplitNInclusiveInternal {
+        debug: "SplitNInclusiveInternal",
+        iter: SplitInclusiveInternal,
+    }
+}
+
+generate_pattern_iterators! {
+    forward:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`splitn_inclusive`].
+        ///
+        /// [`splitn_inclusive`]: str::splitn_inclusive
+        struct SplitNInclusive;
+    reverse:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`rsplitn_inclusive`].
+        ///
+        /// [`rsplitn_inclusive`]: str::rsplitn_inclusive
+        struct RSplitNInclusive;
+    internal:
+        SplitNInclusiveInternal yielding (&'a str);
+    delegate single ended;
+}
+
+splitn_internal! {
+    struct SplitNLeftInclusiveInternal {
+        debug: "SplitNLeftInclusiveInternal",
+        iter: SplitLeftInclusiveInternal,
+    }
+}
+
+generate_pattern_iterators! {
+    forward:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`splitn_left_inclusive`].
+        ///
+        /// [`splitn_left_inclusive`]: str::splitn_left_inclusive
+        struct SplitNLeftInclusive;
+    reverse:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`rsplitn_left_inclusive`].
+        ///
+        /// [`rsplitn_left_inclusive`]: str::rsplitn_left_inclusive
+        struct RSplitNLeftInclusive;
+    internal:
+        SplitNLeftInclusiveInternal yielding (&'a str);
     delegate single ended;
 }
 
@@ -1075,17 +1158,19 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
+        #[stable(feature = "str_match_indices", since = "1.5.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
         /// Created with the method [`match_indices`].
         ///
         /// [`match_indices`]: str::match_indices
         struct MatchIndices;
     reverse:
+        #[stable(feature = "str_match_indices", since = "1.5.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
         /// Created with the method [`rmatch_indices`].
         ///
         /// [`rmatch_indices`]: str::rmatch_indices
         struct RMatchIndices;
-    stability:
-        #[stable(feature = "str_match_indices", since = "1.5.0")]
     internal:
         MatchIndicesInternal yielding ((usize, &'a str));
     delegate double ended;
@@ -1132,17 +1217,19 @@ impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
+        #[stable(feature = "str_matches", since = "1.2.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
         /// Created with the method [`matches`].
         ///
         /// [`matches`]: str::matches
         struct Matches;
     reverse:
+        #[stable(feature = "str_matches", since = "1.2.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
         /// Created with the method [`rmatches`].
         ///
         /// [`rmatches`]: str::rmatches
         struct RMatches;
-    stability:
-        #[stable(feature = "str_matches", since = "1.2.0")]
     internal:
         MatchesInternal yielding (&'a str);
     delegate double ended;
@@ -1373,56 +1460,6 @@ impl<'a> SplitAsciiWhitespace<'a> {
     }
 }
 
-/// An iterator over the substrings of a string,
-/// terminated by a substring matching to a predicate function
-/// Unlike `Split`, it contains the matched part as a terminator
-/// of the subslice.
-///
-/// This struct is created by the [`split_inclusive`] method on [`str`].
-/// See its documentation for more.
-///
-/// [`split_inclusive`]: str::split_inclusive
-#[stable(feature = "split_inclusive", since = "1.51.0")]
-pub struct SplitInclusive<'a, P: Pattern<'a>>(pub(super) SplitInternal<'a, P>);
-
-#[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a>> Iterator for SplitInclusive<'a, P> {
-    type Item = &'a str;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        self.0.next_inclusive()
-    }
-}
-
-#[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitInclusive<'a, P> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitInclusive").field("0", &self.0).finish()
-    }
-}
-
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitInclusive<'a, P> {
-    fn clone(&self) -> Self {
-        SplitInclusive(self.0.clone())
-    }
-}
-
-#[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
-    for SplitInclusive<'a, P>
-{
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str> {
-        self.0.next_back_inclusive()
-    }
-}
-
-#[stable(feature = "split_inclusive", since = "1.51.0")]
-impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
-
 impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
     /// Returns remainder of the split string
     ///
@@ -1443,56 +1480,6 @@ impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
         self.0.as_str()
     }
 }
-
-/// An iterator over the substrings of a string,
-/// terminated by a substring matching to a predicate function
-/// Unlike `Split`, it contains the matched part as an initiator
-/// of the subslice.
-///
-/// This struct is created by the [`split_left_inclusive`] method on [`str`].
-/// See its documentation for more.
-///
-/// [`split_left_inclusive`]: str::split_left_inclusive
-#[unstable(feature = "split_inclusive_variants", issue = "none")]
-pub struct SplitLeftInclusive<'a, P: Pattern<'a>>(pub(super) SplitInternal<'a, P>);
-
-#[unstable(feature = "split_inclusive_variants", issue = "none")]
-impl<'a, P: Pattern<'a>> Iterator for SplitLeftInclusive<'a, P> {
-    type Item = &'a str;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        self.0.next_left_inclusive()
-    }
-}
-
-#[unstable(feature = "split_inclusive_variants", issue = "none")]
-impl<'a, P: Pattern<'a, Searcher: fmt::Debug>> fmt::Debug for SplitLeftInclusive<'a, P> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitLeftInclusive").field("0", &self.0).finish()
-    }
-}
-
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[unstable(feature = "split_inclusive_variants", issue = "none")]
-impl<'a, P: Pattern<'a, Searcher: Clone>> Clone for SplitLeftInclusive<'a, P> {
-    fn clone(&self) -> Self {
-        SplitLeftInclusive(self.0.clone())
-    }
-}
-
-#[unstable(feature = "split_inclusive_variants", issue = "none")]
-impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
-    for SplitLeftInclusive<'a, P>
-{
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str> {
-        self.0.next_back_left_inclusive()
-    }
-}
-
-#[unstable(feature = "split_inclusive_variants", issue = "none")]
-impl<'a, P: Pattern<'a>> FusedIterator for SplitLeftInclusive<'a, P> {}
 
 impl<'a, P: Pattern<'a>> SplitLeftInclusive<'a, P> {
     /// Returns remainder of the splitted string
