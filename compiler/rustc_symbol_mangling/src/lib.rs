@@ -100,9 +100,10 @@ use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::mono::{InstantiationMode, MonoItem};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::{self, Instance, InstanceDef, Ty, TyCtxt, WithOptConstParam};
 use rustc_session::config::SymbolManglingVersion;
+use rustc_span::def_id::DefId;
 use rustc_target::abi::call::FnAbi;
 
 use tracing::debug;
@@ -124,13 +125,46 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { symbol_name: symbol_name_provider, ..*providers };
+    *providers = Providers {
+        symbol_name: symbol_name_provider,
+        symbol_name_for_plain_item: symbol_name_for_plain_item_provider,
+        ..*providers
+    };
+}
+
+fn symbol_name_for_plain_item_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> ty::SymbolName<'tcx> {
+    symbol_name_provider_body(
+        tcx,
+        Instance {
+            def: InstanceDef::Item(WithOptConstParam::unknown(def_id)),
+            substs: InternalSubsts::empty(),
+        },
+    )
+}
+
+fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
+    if let Instance {
+        def: InstanceDef::Item(WithOptConstParam { did: def_id, const_param_did: None }),
+        substs,
+    } = instance
+    {
+        if substs.is_empty() {
+            return tcx.symbol_name_for_plain_item(def_id);
+        }
+    }
+    symbol_name_provider_body(tcx, instance)
 }
 
 // The `symbol_name` query provides the symbol name for calling a given
 // instance from the local crate. In particular, it will also look up the
 // correct symbol name of instances from upstream crates.
-fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
+fn symbol_name_provider_body<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> ty::SymbolName<'tcx> {
     let symbol_name = compute_symbol_name(tcx, instance, || {
         // This closure determines the instantiating crate for instances that
         // need an instantiating-crate-suffix for their symbol name, in order

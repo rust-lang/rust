@@ -965,6 +965,11 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
+    /// DO NOT call this directly - always use `symbol_name`
+    query symbol_name_for_plain_item(def_id: DefId) -> ty::SymbolName<'tcx> {
+        desc { "computing the symbol name for plain item `{}`", tcx.def_path_str(def_id) }
+    }
+
     query opt_def_kind(def_id: DefId) -> Option<DefKind> {
         desc { |tcx| "looking up definition kind of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
