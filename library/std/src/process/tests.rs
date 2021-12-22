@@ -4,6 +4,10 @@ use super::{Command, Output, Stdio};
 use crate::io::ErrorKind;
 use crate::str;
 
+fn known_command() -> Command {
+    if cfg!(windows) { Command::new("help") } else { Command::new("echo") }
+}
+
 #[cfg(target_os = "android")]
 fn shell_cmd() -> Command {
     Command::new("/system/bin/sh")
@@ -305,7 +309,7 @@ fn test_interior_nul_in_progname_is_error() {
 
 #[test]
 fn test_interior_nul_in_arg_is_error() {
-    match Command::new("rustc").arg("has-some-\0\0s-inside").spawn() {
+    match known_command().arg("has-some-\0\0s-inside").spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
@@ -313,7 +317,7 @@ fn test_interior_nul_in_arg_is_error() {
 
 #[test]
 fn test_interior_nul_in_args_is_error() {
-    match Command::new("rustc").args(&["has-some-\0\0s-inside"]).spawn() {
+    match known_command().args(&["has-some-\0\0s-inside"]).spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
@@ -321,7 +325,7 @@ fn test_interior_nul_in_args_is_error() {
 
 #[test]
 fn test_interior_nul_in_current_dir_is_error() {
-    match Command::new("rustc").current_dir("has-some-\0\0s-inside").spawn() {
+    match known_command().current_dir("has-some-\0\0s-inside").spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
