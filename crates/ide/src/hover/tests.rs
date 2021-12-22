@@ -2361,46 +2361,53 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
 fn test_hover_async_block_impl_trait_has_goto_type_action() {
     check_actions(
         r#"
-//- minicore: future
+//- /main.rs crate:main deps:core
+// we don't use minicore here so that this test doesn't randomly fail
+// when someone edits minicore
 struct S;
 fn foo() {
     let fo$0o = async { S };
 }
+//- /core.rs crate:core
+pub mod future {
+    #[lang = "future_trait"]
+    pub trait Future {}
+}
 "#,
         expect![[r#"
-                [
-                    GoToType(
-                        [
-                            HoverGotoTypeData {
-                                mod_path: "core::future::Future",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        1,
-                                    ),
-                                    full_range: 276..458,
-                                    focus_range: 315..321,
-                                    name: "Future",
-                                    kind: Trait,
-                                    description: "pub trait Future",
-                                },
+            [
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "core::future::Future",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 21..69,
+                                focus_range: 60..66,
+                                name: "Future",
+                                kind: Trait,
+                                description: "pub trait Future",
                             },
-                            HoverGotoTypeData {
-                                mod_path: "test::S",
-                                nav: NavigationTarget {
-                                    file_id: FileId(
-                                        0,
-                                    ),
-                                    full_range: 0..9,
-                                    focus_range: 7..8,
-                                    name: "S",
-                                    kind: Struct,
-                                    description: "struct S",
-                                },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "main::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..110,
+                                focus_range: 108..109,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S",
                             },
-                        ],
-                    ),
-                ]
-            "#]],
+                        },
+                    ],
+                ),
+            ]
+        "#]],
     );
 }
 
