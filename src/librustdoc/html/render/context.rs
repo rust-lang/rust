@@ -397,6 +397,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             show_type_layout,
             generate_link_to_definition,
             call_locations,
+            no_emit_shared,
             ..
         } = options;
 
@@ -516,13 +517,16 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             sources::render(&mut cx, &krate)?;
         }
 
-        // Build our search index
-        let index = build_index(&krate, &mut Rc::get_mut(&mut cx.shared).unwrap().cache, tcx);
+        if !no_emit_shared {
+            // Build our search index
+            let index = build_index(&krate, &mut Rc::get_mut(&mut cx.shared).unwrap().cache, tcx);
 
-        // Write shared runs within a flock; disable thread dispatching of IO temporarily.
-        Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-        write_shared(&cx, &krate, index, &md_opts)?;
-        Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
+            // Write shared runs within a flock; disable thread dispatching of IO temporarily.
+            Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
+            write_shared(&cx, &krate, index, &md_opts)?;
+            Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
+        }
+
         Ok((cx, krate))
     }
 
