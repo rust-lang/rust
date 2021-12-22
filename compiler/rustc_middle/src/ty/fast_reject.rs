@@ -20,7 +20,7 @@ pub type SimplifiedType = SimplifiedTypeGen<DefId>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
 pub enum SimplifiedTypeGen<D>
 where
-    D: Copy + Debug + Ord + Eq,
+    D: Copy + Debug + Eq,
 {
     BoolSimplifiedType,
     CharSimplifiedType,

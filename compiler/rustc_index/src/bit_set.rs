@@ -675,7 +675,7 @@ impl<T: Idx> SparseBitSet<T> {
 
     fn insert(&mut self, elem: T) -> bool {
         assert!(elem.index() < self.domain_size);
-        let changed = if let Some(i) = self.elems.iter().position(|&e| e >= elem) {
+        let changed = if let Some(i) = self.elems.iter().position(|&e| e.index() >= elem.index()) {
             if self.elems[i] == elem {
                 // `elem` is already in the set.
                 false
@@ -715,6 +715,10 @@ impl<T: Idx> SparseBitSet<T> {
         self.elems.iter()
     }
 
+    bit_relations_inherent_impls! {}
+}
+
+impl<T: Idx + Ord> SparseBitSet<T> {
     fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
         let mut last_leq = None;
         for e in self.iter() {
@@ -724,8 +728,6 @@ impl<T: Idx> SparseBitSet<T> {
         }
         last_leq
     }
-
-    bit_relations_inherent_impls! {}
 }
 
 /// A fixed-size bitset type with a hybrid representation: sparse when there
@@ -802,7 +804,10 @@ impl<T: Idx> HybridBitSet<T> {
     /// Returns the previous element present in the bitset from `elem`,
     /// inclusively of elem. That is, will return `Some(elem)` if elem is in the
     /// bitset.
-    pub fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T> {
+    pub fn last_set_in(&self, range: impl RangeBounds<T>) -> Option<T>
+    where
+        T: Ord,
+    {
         match self {
             HybridBitSet::Sparse(sparse) => sparse.last_set_in(range),
             HybridBitSet::Dense(dense) => dense.last_set_in(range),

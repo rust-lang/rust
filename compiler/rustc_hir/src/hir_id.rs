@@ -11,7 +11,7 @@ use std::fmt;
 /// the `local_id` part of the `HirId` changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(Encodable, Decodable)]
 pub struct HirId {
     pub owner: LocalDefId,
@@ -32,11 +32,27 @@ impl HirId {
     pub fn make_owner(owner: LocalDefId) -> Self {
         Self { owner, local_id: ItemLocalId::from_u32(0) }
     }
+
+    pub fn index(self) -> (usize, usize) {
+        (rustc_index::vec::Idx::index(self.owner), rustc_index::vec::Idx::index(self.local_id))
+    }
 }
 
 impl fmt::Display for HirId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+impl Ord for HirId {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.index()).cmp(&(other.index()))
+    }
+}
+
+impl PartialOrd for HirId {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(&other))
     }
 }
 
