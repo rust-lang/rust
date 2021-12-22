@@ -243,7 +243,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         val: Operand<'tcx>,
         source_info: SourceInfo,
     ) -> impl Iterator<Item = Statement<'tcx>> {
-        let kind = AggregateKind::Adt(self.state_adt_ref, idx, self.state_substs, None, None);
+        let kind = AggregateKind::Adt(self.state_adt_ref.did, idx, self.state_substs, None, None);
         assert_eq!(self.state_adt_ref.variants[idx].fields.len(), 1);
         let ty = self
             .tcx
