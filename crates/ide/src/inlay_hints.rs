@@ -265,12 +265,15 @@ fn is_named_constructor(
     };
     let path = expr.path()?;
 
-    // If it exists, use qualifying segment as the constructor name.
-    // If not, use the last segment.
-    let qual_seg = match path.qualifier() {
-        Some(qual) => qual.segment(),
-        None => path.segment(),
+    let callable = sema.type_of_expr(&ast::Expr::PathExpr(expr))?.original.as_callable(sema.db);
+    let callable_kind = callable.map(|it| it.kind());
+    let qual_seg = match callable_kind {
+        Some(hir::CallableKind::Function(_) | hir::CallableKind::TupleEnumVariant(_)) => {
+            path.qualifier()?.segment()
+        }
+        _ => path.segment(),
     }?;
+
     let ctor_name = match qual_seg.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
             match qual_seg.generic_arg_list().map(|it| it.generic_args()) {
@@ -1348,6 +1351,13 @@ fn main() {
 //- minicore: try, option
 use core::ops::ControlFlow;
 
+mod x {
+    pub mod y { pub struct Foo; }
+    pub struct Foo;
+    pub enum AnotherEnum {
+        Variant()
+    };
+}
 struct Struct;
 struct TupleStruct();
 
@@ -1378,6 +1388,8 @@ fn times2(value: i32) -> i32 {
 fn main() {
     let enumb = Enum::Variant(0);
 
+    let strukt = x::Foo;
+    let strukt = x::y::Foo;
     let strukt = Struct;
     let strukt = Struct::new();
 
