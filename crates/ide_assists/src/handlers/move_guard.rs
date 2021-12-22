@@ -116,26 +116,27 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
         }
     })?;
     let replace_node = replace_node.unwrap_or_else(|| if_expr.syntax().clone());
-    // Dedent if if_expr is in a BlockExpr
-    let dedent = if replace_node != *if_expr.syntax() {
-        cov_mark::hit!(move_guard_ifelse_in_block);
-        1
-    } else {
-        cov_mark::hit!(move_guard_ifelse_else_block);
-        0
-    };
-
+    let needs_dedent = replace_node != *if_expr.syntax();
     let (conds_blocks, tail) = parse_if_chain(if_expr)?;
 
-    let then_arm_end = match_arm.syntax().text_range().end();
-    let indent_level = match_arm.indent_level();
-    let spaces = "    ".repeat(indent_level.0 as _);
     acc.add(
         AssistId("move_arm_cond_to_match_guard", AssistKind::RefactorRewrite),
         "Move condition to match guard",
         replace_node.text_range(),
         |edit| {
             edit.delete(match_arm.syntax().text_range());
+            // Dedent if if_expr is in a BlockExpr
+            let dedent = if needs_dedent {
+                cov_mark::hit!(move_guard_ifelse_in_block);
+                1
+            } else {
+                cov_mark::hit!(move_guard_ifelse_else_block);
+                0
+            };
+            let then_arm_end = match_arm.syntax().text_range().end();
+            let indent_level = match_arm.indent_level();
+            let spaces = "    ".repeat(indent_level.0 as _);
+
             let mut first = true;
             for (cond, block) in conds_blocks {
                 if !first {
