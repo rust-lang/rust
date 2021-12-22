@@ -253,7 +253,6 @@ jobs:
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
 
       - name: Publish Extension (nightly)
-        # check specifically for nightly in case someone triggers a release on a feature branch
-        if: github.ref == 'refs/heads/nightly'
+        if: github.ref != 'refs/heads/release'
         working-directory: ./editors/code
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix --pre-release
