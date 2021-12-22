@@ -393,7 +393,7 @@ impl Iterator for ToLowercase {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
 impl DoubleEndedIterator for ToLowercase {
     fn next_back(&mut self) -> Option<char> {
         self.0.next_back()
@@ -427,7 +427,7 @@ impl Iterator for ToUppercase {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
 impl DoubleEndedIterator for ToUppercase {
     fn next_back(&mut self) -> Option<char> {
         self.0.next_back()
