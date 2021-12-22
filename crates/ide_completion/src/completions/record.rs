@@ -1,5 +1,5 @@
 //! Complete fields in record literals and patterns.
-use ide_db::{helpers::FamousDefs, SymbolKind};
+use ide_db::SymbolKind;
 use syntax::{ast::Expr, T};
 
 use crate::{
@@ -13,7 +13,7 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
             | ImmediateLocation::RecordExprUpdate(record_expr),
         ) => {
             let ty = ctx.sema.type_of_expr(&Expr::RecordExpr(record_expr.clone()));
-            let default_trait = FamousDefs(&ctx.sema, ctx.krate).core_default_Default();
+            let default_trait = ctx.famous_defs().core_default_Default();
             let impl_default_trait = default_trait.zip(ty).map_or(false, |(default_trait, ty)| {
                 ty.original.impls_trait(ctx.db, default_trait, &[])
             });

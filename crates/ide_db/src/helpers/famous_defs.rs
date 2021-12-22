@@ -76,6 +76,10 @@ impl FamousDefs<'_, '_> {
         self.find_enum("core:ops:ControlFlow")
     }
 
+    pub fn core_ops_Drop(&self) -> Option<Trait> {
+        self.find_trait("core:ops:Drop")
+    }
+
     pub fn core_marker_Copy(&self) -> Option<Trait> {
         self.find_trait("core:marker:Copy")
     }

@@ -36,6 +36,7 @@
 //!     bool_impl: option, fn
 //!     add:
 //!     as_ref: sized
+//!     drop:
 
 pub mod marker {
     // region:sized
@@ -118,7 +119,6 @@ pub mod clone {
 }
 // endregion:clone
 
-
 pub mod convert {
     // region:from
     pub trait From<T>: Sized {
@@ -195,6 +195,13 @@ pub mod ops {
     };
     // endregion:deref
 
+    // region:drop
+    #[lang = "drop"]
+    pub trait Drop {
+        fn drop(&mut self);
+    }
+    // endregion:drop
+
     // region:index
     mod index {
         #[lang = "index"]
@@ -236,6 +243,12 @@ pub mod ops {
     }
     pub use self::index::{Index, IndexMut};
     // endregion:index
+
+    // region:drop
+    pub mod mem {
+        pub fn drop<T>(_x: T) {}
+    }
+    // endregion:drop
 
     // region:range
     mod range {
@@ -620,13 +633,15 @@ pub mod prelude {
             clone::Clone,                       // :clone
             cmp::{Eq, PartialEq},               // :eq
             cmp::{Ord, PartialOrd},             // :ord
-            convert::{From, Into},              // :from
             convert::AsRef,                     // :as_ref
+            convert::{From, Into},              // :from
             default::Default,                   // :default
             iter::{IntoIterator, Iterator},     // :iterator
             macros::builtin::derive,            // :derive
             marker::Copy,                       // :copy
             marker::Sized,                      // :sized
+            mem::drop,                          // :drop
+            ops::Drop,                          // :drop
             ops::{Fn, FnMut, FnOnce},           // :fn
             option::Option::{self, None, Some}, // :option
             result::Result::{self, Err, Ok},    // :result
