@@ -71,8 +71,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
-        constraints.sort();
+        let constraints: indexmap::IndexSet<_> = self.constraints.outlives().iter().collect();
         for constraint in &constraints {
             let OutlivesConstraint { sup, sub, locations, category, variance_info: _ } = constraint;
             let (name, arg) = match locations {

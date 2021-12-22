@@ -33,6 +33,7 @@
 use super::FnCtxt;
 
 use crate::expr_use_visitor as euv;
+use indexmap::IndexSet;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -86,7 +87,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// Intermediate format to store the hir_id pointing to the use that resulted in the
 /// corresponding place being captured and a String which contains the captured value's
 /// name (i.e: a.b.c)
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 enum UpvarMigrationInfo {
     /// We previously captured all of `x`, but now we capture some sub-path.
     CapturingPrecise { source_expr: Option<hir::HirId>, var_name: String },
@@ -1186,8 +1187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 capture_diagnostic.insert(key.clone());
             }
 
-            let mut capture_diagnostic = capture_diagnostic.into_iter().collect::<Vec<_>>();
-            capture_diagnostic.sort();
+            let capture_diagnostic: IndexSet<_> = capture_diagnostic.into_iter().collect();
             for captures_info in capture_diagnostic {
                 // Get the auto trait reasons of why migration is needed because of that capture, if there are any
                 let capture_trait_reasons =

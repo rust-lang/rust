@@ -28,3 +28,4 @@ rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_traits = { path = "../rustc_traits" }
 rustc_span = { path = "../rustc_span" }
+indexmap = "1.7.0"

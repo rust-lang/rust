@@ -3654,6 +3654,7 @@ name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
  "either",
+ "indexmap",
  "itertools 0.9.0",
  "polonius-engine",
  "rustc_const_eval",
@@ -4568,6 +4569,7 @@ dependencies = [
 name = "rustc_typeck"
 version = "0.0.0"
 dependencies = [
+ "indexmap",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",

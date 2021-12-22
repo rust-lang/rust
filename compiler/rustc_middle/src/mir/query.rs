@@ -318,7 +318,7 @@ rustc_data_structures::static_assert_size!(ConstraintCategory, 12);
 /// order of the category, thereby influencing diagnostic output.
 ///
 /// See also `rustc_const_eval::borrow_check::constraints`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
 pub enum ConstraintCategory {
     Return(ReturnConstraint),
@@ -358,7 +358,7 @@ pub enum ConstraintCategory {
     Internal,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
 pub enum ReturnConstraint {
     Normal,

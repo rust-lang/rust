@@ -13,7 +13,7 @@ crate mod graph;
 /// constraints of the form `R1: R2`. Each constraint is identified by
 /// a unique `OutlivesConstraintIndex` and you can index into the set
 /// (`constraint_set[i]`) to access the constraint details.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Hash)]
 crate struct OutlivesConstraintSet<'tcx> {
     outlives: IndexVec<OutlivesConstraintIndex, OutlivesConstraint<'tcx>>,
 }
@@ -72,7 +72,7 @@ impl<'tcx> Index<OutlivesConstraintIndex> for OutlivesConstraintSet<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct OutlivesConstraint<'tcx> {
     // NB. The ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the

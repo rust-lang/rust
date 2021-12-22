@@ -611,8 +611,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     #[instrument(skip(self, _body), level = "debug")]
     fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
         debug!("constraints={:#?}", {
-            let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
-            constraints.sort();
+            let constraints: indexmap::IndexSet<_> = self.constraints.outlives().iter().collect();
             constraints
                 .into_iter()
                 .map(|c| (c, self.constraint_sccs.scc(c.sup), self.constraint_sccs.scc(c.sub)))
@@ -2006,7 +2005,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .unwrap_or_else(|| ObligationCauseCode::MiscObligation);
 
         // Classify each of the constraints along the path.
-        let mut categorized_path: Vec<BlameConstraint<'tcx>> = path
+        let mut categorized_path: indexmap::IndexSet<BlameConstraint<'tcx>> = path
             .iter()
             .map(|constraint| {
                 if constraint.category == ConstraintCategory::ClosureBounds {
@@ -2130,7 +2129,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         if let Some(i) = best_choice {
-            if let Some(next) = categorized_path.get(i + 1) {
+            if let Some(next) = categorized_path.get_index(i + 1) {
                 if matches!(categorized_path[i].category, ConstraintCategory::Return(_))
                     && next.category == ConstraintCategory::OpaqueType
                 {
@@ -2151,22 +2150,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 });
 
                 if let Some(field) = field {
-                    categorized_path[i].category =
+                    let mut blame_vec: Vec<_> = categorized_path.into_iter().collect();
+                    blame_vec[i].category =
                         ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
+                    let updated_categorized_path: indexmap::IndexSet<_> =
+                        blame_vec.into_iter().collect();
+                    categorized_path = updated_categorized_path
                 }
             }
 
             return categorized_path[i].clone();
         }
 
-        // If that search fails, that is.. unusual. Maybe everything
-        // is in the same SCC or something. In that case, find what
-        // appears to be the most interesting point to report to the
-        // user via an even more ad-hoc guess.
-        categorized_path.sort_by(|p0, p1| p0.category.cmp(&p1.category));
-        debug!("best_blame_constraint: sorted_path={:#?}", categorized_path);
-
-        categorized_path.remove(0)
+        categorized_path.shift_remove_index(0).unwrap()
     }
 
     crate fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
@@ -2266,7 +2262,7 @@ impl<'tcx> ClosureRegionRequirementsExt<'tcx> for ClosureRegionRequirements<'tcx
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct BlameConstraint<'tcx> {
     pub category: ConstraintCategory,
     pub from_closure: bool,
