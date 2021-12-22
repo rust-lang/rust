@@ -400,12 +400,12 @@ pub trait AddArgumentTrait {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
+#[rustc_clean(cfg="cfail5", except="hir_owner")]
 #[rustc_clean(cfg="cfail6")]
 impl AddArgumentTrait for Foo {
     #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,typeck,optimized_mir", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,typeck,optimized_mir", cfg="cfail5")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,typeck,optimized_mir,associated_item", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     fn method_name(&self, _x: u32) { }
 }
@@ -470,7 +470,7 @@ impl<TTT> AddTypeParameterToImpl<TTT> for Bar<TTT> {
     )]
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(
-        except="hir_owner,hir_owner_nodes,generics_of,fn_sig,type_of,typeck,optimized_mir",
+        except="hir_owner,hir_owner_nodes,generics_of,fn_sig,type_of,typeck,optimized_mir,associated_item",
         cfg="cfail5",
     )]
     #[rustc_clean(cfg="cfail6")]
@@ -497,7 +497,7 @@ impl ChangeSelfTypeOfImpl for u32 {
 impl ChangeSelfTypeOfImpl for u64 {
     #[rustc_clean(except="fn_sig,typeck,optimized_mir", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="fn_sig,typeck,optimized_mir", cfg="cfail5")]
+    #[rustc_clean(except="fn_sig,typeck,optimized_mir,associated_item", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     fn id(self) -> Self { self }
 }
@@ -522,7 +522,7 @@ impl<T> AddLifetimeBoundToImplParameter for T {
 impl<T: 'static> AddLifetimeBoundToImplParameter for T {
     #[rustc_clean(cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
+    #[rustc_clean(cfg="cfail5", except="associated_item")]
     #[rustc_clean(cfg="cfail6")]
     fn id(self) -> Self { self }
 }
@@ -547,7 +547,7 @@ impl<T> AddTraitBoundToImplParameter for T {
 impl<T: Clone> AddTraitBoundToImplParameter for T {
     #[rustc_clean(cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
+    #[rustc_clean(cfg="cfail5", except="associated_item")]
     #[rustc_clean(cfg="cfail6")]
     fn id(self) -> Self { self }
 }

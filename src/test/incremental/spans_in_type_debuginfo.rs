@@ -3,7 +3,7 @@
 
 // ignore-asmjs wasm2js does not support source maps yet
 // revisions:rpass1 rpass2
-// compile-flags: -Z query-dep-graph -g
+// compile-flags: -Z query-dep-graph -g -Z dep-tasks
 
 #![rustc_partition_reused(module="spans_in_type_debuginfo-structs", cfg="rpass2")]
 #![rustc_partition_reused(module="spans_in_type_debuginfo-enums", cfg="rpass2")]

@@ -56,7 +56,7 @@ struct TupleStructFieldType(i32);
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,type_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 // Note that changing the type of a field does not change the type of the struct or enum, but
 // adding/removing fields or changing a fields name or visibility does.
@@ -102,7 +102,7 @@ struct RecordStructFieldType { x: f32 }
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,type_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 // Note that changing the type of a field does not change the type of the struct or enum, but
 // adding/removing fields or changing a fields name or visibility does.
@@ -175,7 +175,7 @@ struct AddLifetimeParameterBound<'a, 'b>(&'a f32, &'b f64);
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of,type_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct AddLifetimeParameterBound<'a, 'b: 'a>(
     &'a f32,
@@ -188,7 +188,7 @@ struct AddLifetimeParameterBoundWhereClause<'a, 'b>(&'a f32, &'b f64);
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of,type_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct AddLifetimeParameterBoundWhereClause<'a, 'b>(
     &'a f32,
@@ -222,7 +222,7 @@ struct AddTypeParameterBound<T>(T);
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of,type_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct AddTypeParameterBound<T: Send>(
     T
@@ -235,7 +235,7 @@ struct AddTypeParameterBoundWhereClause<T>(T);
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,predicates_of,type_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 struct AddTypeParameterBoundWhereClause<T>(
     T
@@ -262,7 +262,7 @@ struct Visibility;
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes,type_of", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 pub struct Visibility;
 

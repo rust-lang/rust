@@ -51,7 +51,7 @@ impl std::convert::From<DepNodeIndex> for QueryInvocationId {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum DepNodeColor {
     Red,
     Green(DepNodeIndex),
@@ -285,6 +285,7 @@ impl<K: DepKind> DepGraph<K> {
                 key
             );
 
+            tracing::info!("Inserting color: {:?} {:?}", key, color);
             data.colors.insert(prev_index, color);
         }
 
@@ -1156,6 +1157,7 @@ impl DepNodeColorMap {
     }
 
     fn insert(&self, index: SerializedDepNodeIndex, color: DepNodeColor) {
+        tracing::info!("Actually storing: {:?} {:?}", index, color);
         self.values[index].store(
             match color {
                 DepNodeColor::Red => COMPRESSED_RED,
