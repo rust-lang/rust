@@ -1195,11 +1195,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_derive(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        unsatisfied_predicates: &Vec<(
+        unsatisfied_predicates: &[(
             ty::Predicate<'tcx>,
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
-        )>,
+        )],
     ) {
         let mut derives = Vec::<(String, Span, String)>::new();
         let mut traits = Vec::<Span>::new();
@@ -1236,22 +1236,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 traits.push(self.tcx.def_span(trait_pred.def_id()));
             }
         }
-        derives.sort();
-        let derives_grouped = derives.into_iter().fold(
-            Vec::<(String, Span, String)>::new(),
-            |mut acc, (self_name, self_span, trait_name)| {
-                if let Some((acc_self_name, _, ref mut traits)) = acc.last_mut() {
-                    if acc_self_name == &self_name {
-                        traits.push_str(format!(", {}", trait_name).as_str());
-                        return acc;
-                    }
-                }
-                acc.push((self_name, self_span, trait_name));
-                acc
-            },
-        );
         traits.sort();
         traits.dedup();
+
+        derives.sort();
+        derives.dedup();
+
+        let mut derives_grouped = Vec::<(String, Span, String)>::new();
+        for (self_name, self_span, trait_name) in derives.into_iter() {
+            if let Some((last_self_name, _, ref mut last_trait_names)) = derives_grouped.last_mut()
+            {
+                if last_self_name == &self_name {
+                    last_trait_names.push_str(format!(", {}", trait_name).as_str());
+                    continue;
+                }
+            }
+            derives_grouped.push((self_name, self_span, trait_name));
+        }
 
         let len = traits.len();
         if len > 0 {
