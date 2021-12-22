@@ -942,4 +942,310 @@ impl FooB for Foo {
 "#,
         )
     }
+
+    #[test]
+    fn test_assoc_type_when_trait_with_same_name_in_scope() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+pub trait Foo {}
+
+pub trait Types {
+    type Foo;
+}
+
+pub trait Behavior<T: Types> {
+    fn reproduce(&self, foo: T::Foo);
+}
+
+pub struct Impl;
+
+impl<T: Types> Behavior<T> for Impl { $0 }"#,
+            r#"
+pub trait Foo {}
+
+pub trait Types {
+    type Foo;
+}
+
+pub trait Behavior<T: Types> {
+    fn reproduce(&self, foo: T::Foo);
+}
+
+pub struct Impl;
+
+impl<T: Types> Behavior<T> for Impl {
+    fn reproduce(&self, foo: <T as Types>::Foo) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_assoc_type_on_concrete_type() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+pub trait Types {
+    type Foo;
+}
+
+impl Types for u32 {
+    type Foo = bool;
+}
+
+pub trait Behavior<T: Types> {
+    fn reproduce(&self, foo: T::Foo);
+}
+
+pub struct Impl;
+
+impl Behavior<u32> for Impl { $0 }"#,
+            r#"
+pub trait Types {
+    type Foo;
+}
+
+impl Types for u32 {
+    type Foo = bool;
+}
+
+pub trait Behavior<T: Types> {
+    fn reproduce(&self, foo: T::Foo);
+}
+
+pub struct Impl;
+
+impl Behavior<u32> for Impl {
+    fn reproduce(&self, foo: <u32 as Types>::Foo) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_assoc_type_on_concrete_type_qualified() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+pub trait Types {
+    type Foo;
+}
+
+impl Types for std::string::String {
+    type Foo = bool;
+}
+
+pub trait Behavior<T: Types> {
+    fn reproduce(&self, foo: T::Foo);
+}
+
+pub struct Impl;
+
+impl Behavior<std::string::String> for Impl { $0 }"#,
+            r#"
+pub trait Types {
+    type Foo;
+}
+
+impl Types for std::string::String {
+    type Foo = bool;
+}
+
+pub trait Behavior<T: Types> {
+    fn reproduce(&self, foo: T::Foo);
+}
+
+pub struct Impl;
+
+impl Behavior<std::string::String> for Impl {
+    fn reproduce(&self, foo: <std::string::String as Types>::Foo) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_assoc_type_on_concrete_type_multi_option_ambiguous() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+pub trait Types {
+    type Foo;
+}
+
+pub trait Types2 {
+    type Foo;
+}
+
+impl Types for u32 {
+    type Foo = bool;
+}
+
+impl Types2 for u32 {
+    type Foo = String;
+}
+
+pub trait Behavior<T: Types + Types2> {
+    fn reproduce(&self, foo: <T as Types2>::Foo);
+}
+
+pub struct Impl;
+
+impl Behavior<u32> for Impl { $0 }"#,
+            r#"
+pub trait Types {
+    type Foo;
+}
+
+pub trait Types2 {
+    type Foo;
+}
+
+impl Types for u32 {
+    type Foo = bool;
+}
+
+impl Types2 for u32 {
+    type Foo = String;
+}
+
+pub trait Behavior<T: Types + Types2> {
+    fn reproduce(&self, foo: <T as Types2>::Foo);
+}
+
+pub struct Impl;
+
+impl Behavior<u32> for Impl {
+    fn reproduce(&self, foo: <u32 as Types2>::Foo) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_assoc_type_on_concrete_type_multi_option() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+pub trait Types {
+    type Foo;
+}
+
+pub trait Types2 {
+    type Bar;
+}
+
+impl Types for u32 {
+    type Foo = bool;
+}
+
+impl Types2 for u32 {
+    type Bar = String;
+}
+
+pub trait Behavior<T: Types + Types2> {
+    fn reproduce(&self, foo: T::Bar);
+}
+
+pub struct Impl;
+
+impl Behavior<u32> for Impl { $0 }"#,
+            r#"
+pub trait Types {
+    type Foo;
+}
+
+pub trait Types2 {
+    type Bar;
+}
+
+impl Types for u32 {
+    type Foo = bool;
+}
+
+impl Types2 for u32 {
+    type Bar = String;
+}
+
+pub trait Behavior<T: Types + Types2> {
+    fn reproduce(&self, foo: T::Bar);
+}
+
+pub struct Impl;
+
+impl Behavior<u32> for Impl {
+    fn reproduce(&self, foo: <u32 as Types2>::Bar) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_assoc_type_on_concrete_type_multi_option_foreign() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+mod bar {
+    pub trait Types2 {
+        type Bar;
+    }
+}
+
+pub trait Types {
+    type Foo;
+}
+
+impl Types for u32 {
+    type Foo = bool;
+}
+
+impl bar::Types2 for u32 {
+    type Bar = String;
+}
+
+pub trait Behavior<T: Types + bar::Types2> {
+    fn reproduce(&self, foo: T::Bar);
+}
+
+pub struct Impl;
+
+impl Behavior<u32> for Impl { $0 }"#,
+            r#"
+mod bar {
+    pub trait Types2 {
+        type Bar;
+    }
+}
+
+pub trait Types {
+    type Foo;
+}
+
+impl Types for u32 {
+    type Foo = bool;
+}
+
+impl bar::Types2 for u32 {
+    type Bar = String;
+}
+
+pub trait Behavior<T: Types + bar::Types2> {
+    fn reproduce(&self, foo: T::Bar);
+}
+
+pub struct Impl;
+
+impl Behavior<u32> for Impl {
+    fn reproduce(&self, foo: <u32 as bar::Types2>::Bar) {
+        ${0:todo!()}
+    }
+}"#,
+        );
+    }
 }
