@@ -1918,133 +1918,6 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over subslices separated by elements that match
-    /// `pred`. The matched element is contained in the end of the previous
-    /// subslice as a terminator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let slice = [10, 40, 33, 20];
-    /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
-    ///
-    /// assert_eq!(iter.next().unwrap(), &[10, 40, 33]);
-    /// assert_eq!(iter.next().unwrap(), &[20]);
-    /// assert!(iter.next().is_none());
-    /// ```
-    ///
-    /// If the last element of the slice is matched,
-    /// that element will be considered the terminator of the preceding slice.
-    /// That slice will be the last item returned by the iterator.
-    ///
-    /// ```
-    /// let slice = [3, 10, 40, 33];
-    /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
-    ///
-    /// assert_eq!(iter.next().unwrap(), &[3]);
-    /// assert_eq!(iter.next().unwrap(), &[10, 40, 33]);
-    /// assert!(iter.next().is_none());
-    /// ```
-    #[stable(feature = "split_inclusive", since = "1.51.0")]
-    #[inline]
-    pub fn split_inclusive<F>(&self, pred: F) -> SplitInclusive<'_, T, F>
-    where
-        F: FnMut(&T) -> bool,
-    {
-        SplitInclusive::new(self, pred)
-    }
-
-    /// Returns an iterator over mutable subslices separated by elements that
-    /// match `pred`. The matched element is contained in the previous
-    /// subslice as a terminator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_inclusive_variants)]
-    ///
-    /// let mut v = [10, 40, 30, 20, 60, 50];
-    ///
-    /// for group in v.split_inclusive_mut(|num| *num % 3 == 0) {
-    ///     let terminator_idx = group.len()-1;
-    ///     group[terminator_idx] = 1;
-    /// }
-    /// assert_eq!(v, [10, 40, 1, 20, 1, 1]);
-    /// ```
-    #[stable(feature = "split_inclusive", since = "1.51.0")]
-    #[inline]
-    pub fn split_inclusive_mut<F>(&mut self, pred: F) -> SplitInclusiveMut<'_, T, F>
-    where
-        F: FnMut(&T) -> bool,
-    {
-        SplitInclusiveMut::new(self, pred)
-    }
-
-    /// Returns an iterator over subslices separated by elements that match
-    /// `pred`. The matched element is contained in the start of the following
-    /// subslice as an initiator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_inclusive_variants)]
-    ///
-    /// let slice = [10, 40, 33, 20];
-    /// let mut iter = slice.split_left_inclusive(|num| num % 3 == 0);
-    ///
-    /// assert_eq!(iter.next().unwrap(), &[10, 40]);
-    /// assert_eq!(iter.next().unwrap(), &[33, 20]);
-    /// assert!(iter.next().is_none());
-    /// ```
-    ///
-    /// If the last element of the slice is matched,
-    /// that element will be considered the initiator of a new slice.
-    /// That slice will be the last item returned by the iterator.
-    ///
-    /// ```
-    /// #![feature(split_inclusive_variants)]
-    ///
-    /// let slice = [3, 10, 40, 33];
-    /// let mut iter = slice.split_left_inclusive(|num| num % 3 == 0);
-    ///
-    /// assert_eq!(iter.next().unwrap(), &[3, 10, 40]);
-    /// assert_eq!(iter.next().unwrap(), &[33]);
-    /// assert!(iter.next().is_none());
-    /// ```
-    #[unstable(feature = "split_inclusive_variants", issue = "none")]
-    #[inline]
-    pub fn split_left_inclusive<F>(&self, pred: F) -> SplitLeftInclusive<'_, T, F>
-    where
-        F: FnMut(&T) -> bool,
-    {
-        SplitLeftInclusive::new(self, pred)
-    }
-
-    /// Returns an iterator over mutable subslices separated by elements that
-    /// match `pred`. The matched element is contained in the following
-    /// subslice as an initiator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_inclusive_variants)]
-    ///
-    /// let mut v = [10, 40, 30, 20, 60, 50];
-    ///
-    /// for group in v.split_left_inclusive_mut(|num| *num % 3 == 0) {
-    ///     group[0] = 1;
-    /// }
-    /// assert_eq!(v, [1, 40, 1, 20, 1, 50]);
-    /// ```
-    #[unstable(feature = "split_inclusive_variants", issue = "none")]
-    #[inline]
-    pub fn split_left_inclusive_mut<F>(&mut self, pred: F) -> SplitLeftInclusiveMut<'_, T, F>
-    where
-        F: FnMut(&T) -> bool,
-    {
-        SplitLeftInclusiveMut::new(self, pred)
-    }
-
-    /// Returns an iterator over subslices separated by elements that match
     /// `pred`, starting at the end of the slice and working backwards.
     /// The matched element is not contained in the subslices.
     ///
@@ -2104,6 +1977,68 @@ impl<T> [T] {
         F: FnMut(&T) -> bool,
     {
         RSplitMut::new(self, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`. The matched element is contained in the end of the previous
+    /// subslice as a terminator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[10, 40, 33]);
+    /// assert_eq!(iter.next().unwrap(), &[20]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// If the last element of the slice is matched,
+    /// that element will be considered the terminator of the preceding slice.
+    /// That slice will be the last item returned by the iterator.
+    ///
+    /// ```
+    /// let slice = [3, 10, 40, 33];
+    /// let mut iter = slice.split_inclusive(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[3]);
+    /// assert_eq!(iter.next().unwrap(), &[10, 40, 33]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    #[stable(feature = "split_inclusive", since = "1.51.0")]
+    #[inline]
+    pub fn split_inclusive<F>(&self, pred: F) -> SplitInclusive<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        SplitInclusive::new(self, pred)
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`. The matched element is contained in the previous
+    /// subslice as a terminator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let mut v = [10, 40, 30, 20, 60, 50];
+    ///
+    /// for group in v.split_inclusive_mut(|num| *num % 3 == 0) {
+    ///     let terminator_idx = group.len()-1;
+    ///     group[terminator_idx] = 1;
+    /// }
+    /// assert_eq!(v, [10, 40, 1, 20, 1, 1]);
+    /// ```
+    #[stable(feature = "split_inclusive", since = "1.51.0")]
+    #[inline]
+    pub fn split_inclusive_mut<F>(&mut self, pred: F) -> SplitInclusiveMut<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        SplitInclusiveMut::new(self, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -2170,6 +2105,71 @@ impl<T> [T] {
         F: FnMut(&T) -> bool,
     {
         RSplitInclusiveMut::new(self, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`. The matched element is contained in the start of the following
+    /// subslice as an initiator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let slice = [10, 40, 33, 20];
+    /// let mut iter = slice.split_left_inclusive(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[10, 40]);
+    /// assert_eq!(iter.next().unwrap(), &[33, 20]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    ///
+    /// If the last element of the slice is matched,
+    /// that element will be considered the initiator of a new slice.
+    /// That slice will be the last item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let slice = [3, 10, 40, 33];
+    /// let mut iter = slice.split_left_inclusive(|num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[3, 10, 40]);
+    /// assert_eq!(iter.next().unwrap(), &[33]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn split_left_inclusive<F>(&self, pred: F) -> SplitLeftInclusive<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        SplitLeftInclusive::new(self, pred)
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`. The matched element is contained in the following
+    /// subslice as an initiator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let mut v = [10, 40, 30, 20, 60, 50];
+    ///
+    /// for group in v.split_left_inclusive_mut(|num| *num % 3 == 0) {
+    ///     group[0] = 1;
+    /// }
+    /// assert_eq!(v, [1, 40, 1, 20, 1, 50]);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn split_left_inclusive_mut<F>(&mut self, pred: F) -> SplitLeftInclusiveMut<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        SplitLeftInclusiveMut::new(self, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -2399,60 +2399,6 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over subslices separated by elements that match
-    /// `pred`. The matched element is contained in the start of the following
-    /// subslice as an initiator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_inclusive_variants)]
-    ///
-    /// let slice = [10, 40, 33, 20, 9];
-    /// let mut iter = slice.splitn_left_inclusive(2, |num| num % 3 == 0);
-    ///
-    /// assert_eq!(iter.next().unwrap(), &[10, 40]);
-    /// assert_eq!(iter.next().unwrap(), &[33, 20, 9]);
-    /// assert!(iter.next().is_none());
-    /// ```
-    #[unstable(feature = "split_inclusive_variants", issue = "none")]
-    #[inline]
-    pub fn splitn_left_inclusive<F>(&self, n: usize, pred: F) -> SplitNLeftInclusive<'_, T, F>
-    where
-        F: FnMut(&T) -> bool,
-    {
-        SplitNLeftInclusive::new(self.split_left_inclusive(pred), n)
-    }
-
-    /// Returns an iterator over mutable subslices separated by elements that
-    /// match `pred`. The matched element is contained in the following
-    /// subslice as an initiator.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_inclusive_variants)]
-    ///
-    /// let mut v = [10, 40, 30, 20, 60, 50, 90];
-    ///
-    /// for group in v.splitn_left_inclusive_mut(2, |num| *num % 3 == 0) {
-    ///     group[0] = 1;
-    /// }
-    /// assert_eq!(v, [1, 40, 1, 20, 60, 50, 90]);
-    /// ```
-    #[unstable(feature = "split_inclusive_variants", issue = "none")]
-    #[inline]
-    pub fn splitn_left_inclusive_mut<F>(
-        &mut self,
-        n: usize,
-        pred: F,
-    ) -> SplitNLeftInclusiveMut<'_, T, F>
-    where
-        F: FnMut(&T) -> bool,
-    {
-        SplitNLeftInclusiveMut::new(self.split_left_inclusive_mut(pred), n)
-    }
-
-    /// Returns an iterator over subslices separated by elements that match
     /// `pred`, in reverse order, limited to returning at most `n` items. The
     /// matched element is contained in the end of the previous subslice as a
     /// terminator.
@@ -2505,6 +2451,60 @@ impl<T> [T] {
         F: FnMut(&T) -> bool,
     {
         RSplitNInclusiveMut::new(self.rsplit_inclusive_mut(pred), n)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`. The matched element is contained in the start of the following
+    /// subslice as an initiator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let slice = [10, 40, 33, 20, 9];
+    /// let mut iter = slice.splitn_left_inclusive(2, |num| num % 3 == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[10, 40]);
+    /// assert_eq!(iter.next().unwrap(), &[33, 20, 9]);
+    /// assert!(iter.next().is_none());
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn splitn_left_inclusive<F>(&self, n: usize, pred: F) -> SplitNLeftInclusive<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        SplitNLeftInclusive::new(self.split_left_inclusive(pred), n)
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`. The matched element is contained in the following
+    /// subslice as an initiator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let mut v = [10, 40, 30, 20, 60, 50, 90];
+    ///
+    /// for group in v.splitn_left_inclusive_mut(2, |num| *num % 3 == 0) {
+    ///     group[0] = 1;
+    /// }
+    /// assert_eq!(v, [1, 40, 1, 20, 60, 50, 90]);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn splitn_left_inclusive_mut<F>(
+        &mut self,
+        n: usize,
+        pred: F,
+    ) -> SplitNLeftInclusiveMut<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
+    {
+        SplitNLeftInclusiveMut::new(self.split_left_inclusive_mut(pred), n)
     }
 
     /// Returns an iterator over subslices separated by elements that match

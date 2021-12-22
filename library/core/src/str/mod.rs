@@ -13,7 +13,10 @@ mod iter;
 mod traits;
 mod validations;
 
-use self::iter::{SplitInclusiveInternal, SplitLeftInclusiveInternal, SplitTerminatorInternal};
+use self::iter::{
+    SplitInclusiveInternal, SplitLeftInclusiveInternal, SplitNInclusiveInternal,
+    SplitNLeftInclusiveInternal, SplitTerminatorInternal,
+};
 use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 
 use crate::char::{self, EscapeDebugExtArgs};
@@ -1332,76 +1335,6 @@ impl str {
         Split(SplitInternal::new(self, pat))
     }
 
-    /// An iterator over substrings of this string slice, separated by
-    /// characters matched by a pattern. Differs from the iterator produced by
-    /// `split` in that `split_inclusive` leaves the matched part as the
-    /// terminator of the substring.
-    ///
-    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
-    /// function or closure that determines if a character matches.
-    ///
-    /// [`char`]: prim@char
-    /// [pattern]: self::pattern
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
-    ///     .split_inclusive('\n').collect();
-    /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb."]);
-    /// ```
-    ///
-    /// If the last element of the string is matched,
-    /// that element will be considered the terminator of the preceding substring.
-    /// That substring will be the last item returned by the iterator.
-    ///
-    /// ```
-    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb.\n"
-    ///     .split_inclusive('\n').collect();
-    /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb.\n"]);
-    /// ```
-    #[stable(feature = "split_inclusive", since = "1.51.0")]
-    #[inline]
-    pub fn split_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
-        SplitInclusive(SplitInclusiveInternal::new(self, pat))
-    }
-
-    /// An iterator over substrings of this string slice, separated by
-    /// characters matched by a pattern. Differs from the iterator produced by
-    /// `split` in that `split_left_inclusive` leaves the matched part as the
-    /// initiator of the substring.
-    ///
-    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
-    /// function or closure that determines if a character matches.
-    ///
-    /// [`char`]: prim@char
-    /// [pattern]: self::pattern
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_inclusive_variants)]
-    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
-    ///     .split_left_inclusive('\n').collect();
-    /// assert_eq!(v, ["Mary had a little lamb", "\nlittle lamb", "\nlittle lamb."]);
-    /// ```
-    ///
-    /// If the last element of the string is matched,
-    /// that element will be considered the initiator of a new substring.
-    /// That substring will be the last item returned by the iterator.
-    ///
-    /// ```
-    /// #![feature(split_inclusive_variants)]
-    /// let v: Vec<&str> = "\nMary had a little lamb\nlittle lamb\nlittle lamb.\n"
-    ///     .split_left_inclusive('\n').collect();
-    /// assert_eq!(v, ["\nMary had a little lamb", "\nlittle lamb", "\nlittle lamb.", "\n"]);
-    /// ```
-    #[unstable(feature = "split_inclusive_variants", issue = "none")]
-    #[inline]
-    pub fn split_left_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitLeftInclusive<'a, P> {
-        SplitLeftInclusive(SplitLeftInclusiveInternal::new(self, pat))
-    }
-
     /// An iterator over substrings of the given string slice, separated by
     /// characters matched by a pattern and yielded in reverse order.
     ///
@@ -1452,6 +1385,182 @@ impl str {
         P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
     {
         RSplit(self.split(pat).0)
+    }
+
+    /// An iterator over substrings of this string slice, separated by
+    /// characters matched by a pattern. Differs from the iterator produced by
+    /// `split` in that `split_inclusive` leaves the matched part as the
+    /// terminator of the substring.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
+    ///     .split_inclusive('\n').collect();
+    /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb."]);
+    /// ```
+    ///
+    /// If the last element of the string is matched,
+    /// that element will be considered the terminator of the preceding substring.
+    /// That substring will be the last item returned by the iterator.
+    ///
+    /// ```
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb.\n"
+    ///     .split_inclusive('\n').collect();
+    /// assert_eq!(v, ["Mary had a little lamb\n", "little lamb\n", "little lamb.\n"]);
+    /// ```
+    ///
+    /// If the string is empty, the iterator returns [`None`].
+    ///
+    /// ```
+    /// let v: Vec<&str> = "".split_inclusive('\n').collect();
+    /// assert_eq!(v.len(), 0);
+    /// ```
+    #[stable(feature = "split_inclusive", since = "1.51.0")]
+    #[inline]
+    pub fn split_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
+        SplitInclusive(SplitInclusiveInternal::new(self, pat))
+    }
+
+    /// An iterator over substrings of this string slice, separated by
+    /// characters matched by a pattern and yielded in reverse order. Differs
+    /// from the iterator produced by `rsplit` in that `rsplit_inclusive` leaves
+    /// the matched part as the terminator of the substring.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
+    ///     .rsplit_inclusive('\n').collect();
+    /// assert_eq!(v, ["little lamb.", "little lamb\n", "Mary had a little lamb\n"]);
+    /// ```
+    ///
+    /// If the last element of the string is matched,
+    /// that element will be considered the terminator of the preceding substring.
+    /// That substring will be the first item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb.\n"
+    ///     .rsplit_inclusive('\n').collect();
+    /// assert_eq!(v, ["little lamb.\n", "little lamb\n", "Mary had a little lamb\n"]);
+    /// ```
+    ///
+    /// If the string is empty, the iterator returns [`None`].
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    /// let v: Vec<&str> = "".rsplit_inclusive('\n').collect();
+    /// assert_eq!(v.len(), 0);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn rsplit_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitInclusive<'a, P> {
+        RSplitInclusive(self.split_inclusive(pat).0)
+    }
+
+    /// An iterator over substrings of this string slice, separated by
+    /// characters matched by a pattern. Differs from the iterator produced by
+    /// `split` in that `split_left_inclusive` leaves the matched part as the
+    /// initiator of the substring.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
+    ///     .split_left_inclusive('\n').collect();
+    /// assert_eq!(v, ["Mary had a little lamb", "\nlittle lamb", "\nlittle lamb."]);
+    /// ```
+    ///
+    /// If the last element of the string is matched,
+    /// that element will be considered the initiator of a new substring.
+    /// That substring will be the last item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    /// let v: Vec<&str> = "\nMary had a little lamb\nlittle lamb\nlittle lamb.\n"
+    ///     .split_left_inclusive('\n').collect();
+    /// assert_eq!(v, ["\nMary had a little lamb", "\nlittle lamb", "\nlittle lamb.", "\n"]);
+    /// ```
+    ///
+    /// If the string is empty, the iterator returns [`None`].
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    /// let v: Vec<&str> = "".split_left_inclusive('\n').collect();
+    /// assert_eq!(v.len(), 0);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn split_left_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitLeftInclusive<'a, P> {
+        SplitLeftInclusive(SplitLeftInclusiveInternal::new(self, pat))
+    }
+
+    /// An iterator over substrings of this string slice, separated by
+    /// characters matched by a pattern and yielded in reverse order. Differs
+    /// from the iterator produced by `rsplit` in that `rsplit_left_inclusive`
+    /// leaves the matched part as the initiator of the substring.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
+    ///     .rsplit_left_inclusive('\n').collect();
+    /// assert_eq!(v, ["\nlittle lamb.", "\nlittle lamb", "Mary had a little lamb"]);
+    /// ```
+    ///
+    /// If the last element of the string is matched,
+    /// that element will be considered the terminator of the preceding substring.
+    /// That substring will be the first item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    /// let v: Vec<&str> = "\nMary had a little lamb\nlittle lamb\nlittle lamb.\n"
+    ///     .rsplit_left_inclusive('\n').collect();
+    /// assert_eq!(v, ["\n", "\nlittle lamb.", "\nlittle lamb", "\nMary had a little lamb"]);
+    /// ```
+    ///
+    /// If the string is empty, the iterator returns [`None`].
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    /// let o = "".rsplit_left_inclusive('\n').next();
+    /// assert_eq!(o, None);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn rsplit_left_inclusive<'a, P: Pattern<'a>>(
+        &'a self,
+        pat: P,
+    ) -> RSplitLeftInclusive<'a, P> {
+        RSplitLeftInclusive(self.split_left_inclusive(pat).0)
     }
 
     /// An iterator over substrings of the given string slice, separated by
@@ -1653,6 +1762,251 @@ impl str {
         P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
     {
         RSplitN(self.splitn(n, pat).0)
+    }
+
+    /// An iterator over substrings of the given string slice, separated by a
+    /// pattern, leaving the matched part as the terminator of the substring,
+    /// restricted to returning at most `n` items.
+    ///
+    /// If `n` substrings are returned, the last substring (the `n`th substring)
+    /// will contain the remainder of the string.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will not be double ended, because it is
+    /// not efficient to support.
+    ///
+    /// If the pattern allows a reverse search, the [`rsplitn_inclusive`] method can be
+    /// used.
+    ///
+    /// [`rsplitn_inclusive`]: str::rsplitn_inclusive
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = "Mary had a little lambda".splitn_inclusive(3, ' ').collect();
+    /// assert_eq!(v, ["Mary ", "had ", "a little lambda"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".splitn_inclusive(3, "X").collect();
+    /// assert_eq!(v, ["lionX", "X", "tigerXleopard"]);
+    ///
+    /// let v: Vec<&str> = "abcXdef".splitn_inclusive(1, 'X').collect();
+    /// assert_eq!(v, ["abcXdef"]);
+    ///
+    /// let v: Vec<&str> = "".splitn_inclusive(1, 'X').collect();
+    /// assert_eq!(v.len(), 0);
+    /// ```
+    ///
+    /// A more complex pattern, using a closure:
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = "abc1defXghi".splitn_inclusive(2, |c| c == '1' || c == 'X').collect();
+    /// assert_eq!(v, ["abc1", "defXghi"]);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn splitn_inclusive<'a, P: Pattern<'a>>(
+        &'a self,
+        n: usize,
+        pat: P,
+    ) -> SplitNInclusive<'a, P> {
+        SplitNInclusive(SplitNInclusiveInternal { iter: self.split_inclusive(pat).0, count: n })
+    }
+
+    /// An iterator over substrings of this string slice, separated by a
+    /// pattern, starting from the end of the string, leaving the matched part
+    /// as the terminator of the substring, restricted to returning at most `n`
+    /// items.
+    ///
+    /// If `n` substrings are returned, the last substring (the `n`th substring)
+    /// will contain the remainder of the string.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will not be double ended, because it is not
+    /// efficient to support.
+    ///
+    /// For splitting from the front, the [`splitn_inclusive`] method can be used.
+    ///
+    /// [`splitn_inclusive`]: str::splitn_inclusive
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn_inclusive(3, ' ').collect();
+    /// assert_eq!(v, ["lamb", "little ", "Mary had a "]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn_inclusive(3, 'X').collect();
+    /// assert_eq!(v, ["leopard", "tigerX", "lionXX"]);
+    ///
+    /// let v: Vec<&str> = "lion::tiger::leopard".rsplitn_inclusive(2, "::").collect();
+    /// assert_eq!(v, ["leopard", "lion::tiger::"]);
+    ///
+    /// let v: Vec<&str> = "".rsplitn_inclusive(1, 'X').collect();
+    /// assert_eq!(v.len(), 0);
+    /// ```
+    ///
+    /// A more complex pattern, using a closure:
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = "abc1defXghi".rsplitn_inclusive(2, |c| c == '1' || c == 'X').collect();
+    /// assert_eq!(v, ["ghi", "abc1defX"]);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn rsplitn_inclusive<'a, P>(&'a self, n: usize, pat: P) -> RSplitNInclusive<'a, P>
+    where
+        P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+    {
+        RSplitNInclusive(self.splitn_inclusive(n, pat).0)
+    }
+
+    /// An iterator over substrings of the given string slice, separated by a
+    /// pattern, leaving the matched part as the initiator of the substring,
+    /// restricted to returning at most `n` items.
+    ///
+    /// If `n` substrings are returned, the last substring (the `n`th substring)
+    /// will contain the remainder of the string.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will not be double ended, because it is
+    /// not efficient to support.
+    ///
+    /// If the pattern allows a reverse search, the [`rsplitn_left_inclusive`] method can be
+    /// used.
+    ///
+    /// [`rsplitn_left_inclusive`]: str::rsplitn_left_inclusive
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = "Mary had a little lambda".splitn_left_inclusive(3, ' ').collect();
+    /// assert_eq!(v, ["Mary", " had", " a little lambda"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".splitn_left_inclusive(3, "X").collect();
+    /// assert_eq!(v, ["lion", "X", "XtigerXleopard"]);
+    ///
+    /// let v: Vec<&str> = "abcXdef".splitn_left_inclusive(1, 'X').collect();
+    /// assert_eq!(v, ["abcXdef"]);
+    ///
+    /// let v: Vec<&str> = "".splitn_left_inclusive(1, 'X').collect();
+    /// assert_eq!(v.len(), 0);
+    /// ```
+    ///
+    /// A more complex pattern, using a closure:
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = "abc1defXghi".splitn_left_inclusive(2, |c| c == '1' || c == 'X').collect();
+    /// assert_eq!(v, ["abc", "1defXghi"]);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn splitn_left_inclusive<'a, P: Pattern<'a>>(
+        &'a self,
+        n: usize,
+        pat: P,
+    ) -> SplitNLeftInclusive<'a, P> {
+        SplitNLeftInclusive(SplitNLeftInclusiveInternal {
+            iter: self.split_left_inclusive(pat).0,
+            count: n,
+        })
+    }
+
+    /// An iterator over substrings of this string slice, separated by a
+    /// pattern, starting from the end of the string, leaving the matched part
+    /// as the terminator of the substring, restricted to returning at most `n`
+    /// items.
+    ///
+    /// If `n` substrings are returned, the last substring (the `n`th substring)
+    /// will contain the remainder of the string.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will not be double ended, because it is not
+    /// efficient to support.
+    ///
+    /// For splitting from the front, the [`splitn_left_inclusive`] method can be used.
+    ///
+    /// [`splitn_left_inclusive`]: str::splitn_left_inclusive
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn_left_inclusive(3, ' ').collect();
+    /// assert_eq!(v, [" lamb", " little", "Mary had a"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn_left_inclusive(3, 'X').collect();
+    /// assert_eq!(v, ["Xleopard", "Xtiger", "lionX"]);
+    ///
+    /// let v: Vec<&str> = "lion::tiger::leopard".rsplitn_left_inclusive(2, "::").collect();
+    /// assert_eq!(v, ["::leopard", "lion::tiger"]);
+    ///
+    /// let v: Vec<&str> = "".rsplitn_left_inclusive(1, 'X').collect();
+    /// assert_eq!(v.len(), 0);
+    /// ```
+    ///
+    /// A more complex pattern, using a closure:
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = "abc1defXghi".rsplitn_left_inclusive(2, |c| c == '1' || c == 'X').collect();
+    /// assert_eq!(v, ["Xghi", "abc1def"]);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn rsplitn_left_inclusive<'a, P>(&'a self, n: usize, pat: P) -> RSplitNLeftInclusive<'a, P>
+    where
+        P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+    {
+        RSplitNLeftInclusive(self.splitn_left_inclusive(n, pat).0)
     }
 
     /// Splits the string on the first occurrence of the specified delimiter and

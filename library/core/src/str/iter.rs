@@ -565,6 +565,19 @@ macro_rules! generate_pattern_iterators {
     } => {}
 }
 
+// Making this a trait suppresses some `unused` lints
+trait SplitIterInternal<'a, P: Pattern<'a>> {
+    fn next(&mut self) -> Option<&'a str>;
+
+    fn next_back(&mut self) -> Option<&'a str>
+    where
+        P::Searcher: ReverseSearcher<'a>;
+
+    fn get_end(&mut self) -> Option<&'a str>;
+
+    fn as_str(&self) -> &'a str;
+}
+
 macro_rules! split_internal {
     (
         $split_struct:ident {
@@ -573,7 +586,6 @@ macro_rules! split_internal {
             $(skip_trailing_empty: $skip_trailing_empty:ident,)?
             include_leading: $include_leading:literal,
             include_trailing: $include_trailing:literal,
-            $(get_end: $get_end:ident,)?
         }
     ) => {
         pub(super) struct $split_struct<'a, P: Pattern<'a>> {
@@ -618,7 +630,9 @@ macro_rules! split_internal {
                     $($skip_trailing_empty: true,)?
                 }
             }
+        }
 
+        impl<'a, P: Pattern<'a>> SplitIterInternal<'a, P> for $split_struct<'a, P> {
             #[inline]
             fn next(&mut self) -> Option<&'a str> {
                 if self.finished {
@@ -696,22 +710,26 @@ macro_rules! split_internal {
                 }
             }
 
-            $(
-                #[inline]
-                fn $get_end(&mut self) -> Option<&'a str> {
-                    if self.finished {
+            #[inline]
+            fn get_end(&mut self) -> Option<&'a str> {
+                if self.finished {
+                    None
+                } else {
+                    self.finished = true;
+                    // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+                    let end = unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) };
+                    if (false
+                        $(|| self.$skip_leading_empty)?
+                        $(|| self.$skip_trailing_empty)?
+                    ) && end == "" {
                         None
                     } else {
-                        self.finished = true;
-                        // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-                        Some(unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) })
+                        Some(end)
                     }
                 }
-            )?
+            }
 
             #[inline]
-            #[unstable(feature = "str_split_as_str", issue = "77998")]
-            #[allow(unused)] // FIXME complete this feature
             fn as_str(&self) -> &'a str {
                 // `Self::get_end` doesn't change `self.start`
                 if self.finished {
@@ -730,7 +748,6 @@ split_internal! {
         debug: "SplitInternal",
         include_leading: false,
         include_trailing: false,
-        get_end: get_end,
     }
 }
 
@@ -802,7 +819,6 @@ split_internal! {
         skip_trailing_empty: skip_trailing_empty,
         include_leading: false,
         include_trailing: true,
-        get_end: get_end,
     }
 }
 
@@ -833,7 +849,6 @@ split_internal! {
         skip_leading_empty: skip_leading_empty,
         include_leading: true,
         include_trailing: false,
-        get_end: get_end,
     }
 }
 
@@ -928,25 +943,6 @@ impl<'a, P: Pattern<'a>> RSplitTerminator<'a, P> {
     }
 }
 
-macro_rules! splitn_next {
-    ($($fn:ident),*) => {$(
-        #[inline]
-        fn $fn(&mut self) -> Option<&'a str> {
-            match self.count {
-                0 => None,
-                1 => {
-                    self.count = 0;
-                    self.iter.get_end()
-                }
-                _ => {
-                    self.count -= 1;
-                    self.iter.$fn()
-                }
-            }
-        }
-    )*};
-}
-
 macro_rules! splitn_internal {
     (
         struct $splitn_struct:ident {
@@ -978,7 +974,20 @@ macro_rules! splitn_internal {
         }
 
         impl<'a, P: Pattern<'a>> $splitn_struct<'a, P> {
-            splitn_next!(next);
+            #[inline]
+            fn next(&mut self) -> Option<&'a str> {
+                match self.count {
+                    0 => None,
+                    1 => {
+                        self.count = 0;
+                        self.iter.get_end()
+                    }
+                    _ => {
+                        self.count -= 1;
+                        self.iter.next()
+                    }
+                }
+            }
 
             #[unstable(feature = "str_split_as_str", issue = "77998")]
             #[allow(unused)] // FIXME complete this feature?
@@ -991,7 +1000,20 @@ macro_rules! splitn_internal {
         where
             P::Searcher: ReverseSearcher<'a>,
         {
-            splitn_next!(next_back);
+            #[inline]
+            fn next_back(&mut self) -> Option<&'a str> {
+                match self.count {
+                    0 => None,
+                    1 => {
+                        self.count = 0;
+                        self.iter.get_end()
+                    }
+                    _ => {
+                        self.count -= 1;
+                        self.iter.next_back()
+                    }
+                }
+            }
         }
     };
 }
