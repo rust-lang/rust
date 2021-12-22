@@ -63,9 +63,7 @@ fn dist_client(version: &str, release_tag: &str, target: &Target) -> Result<()> 
             r#""displayName": "rust-analyzer (nightly)""#,
         );
     }
-    if !nightly {
-        patch.replace(r#""enableProposedApi": true,"#, r#""#);
-    }
+    patch.replace(r#""enableProposedApi": true,"#, r#""#);
     patch.commit()?;
 
     Ok(())
