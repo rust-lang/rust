@@ -190,20 +190,28 @@ mod tests {
 
     #[test]
     fn test_near_pi() {
+        let arg = 3.141592025756836;
+        force_eval!(arg);
         assert_eq!(
-            rem_pio2(3.141592025756836),
+            rem_pio2(arg),
             (2, -6.278329573009626e-7, -2.1125998133974653e-23)
         );
+        let arg = 3.141592033207416;
+        force_eval!(arg);
         assert_eq!(
-            rem_pio2(3.141592033207416),
+            rem_pio2(arg),
             (2, -6.20382377148128e-7, -2.1125998133974653e-23)
         );
+        let arg = 3.141592144966125;
+        force_eval!(arg);
         assert_eq!(
-            rem_pio2(3.141592144966125),
+            rem_pio2(arg),
             (2, -5.086236681942706e-7, -2.1125998133974653e-23)
         );
+        let arg = 3.141592979431152;
+        force_eval!(arg);
         assert_eq!(
-            rem_pio2(3.141592979431152),
+            rem_pio2(arg),
             (2, 3.2584135866119817e-7, -2.1125998133974653e-23)
         );
     }
