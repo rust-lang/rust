@@ -2,7 +2,7 @@
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::is_present_in_source;
-use clippy_utils::str_utils::{self, count_match_end, count_match_start};
+use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start};
 use rustc_hir::{EnumDef, Item, ItemKind, Variant};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -157,39 +157,35 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
     }
 
     let first = &def.variants[0].ident.name.as_str();
-    let mut pre = &first[..str_utils::camel_case_until(&*first).byte_index];
-    let mut post = &first[str_utils::camel_case_start(&*first).byte_index..];
+    let mut pre = camel_case_split(first);
+    let mut post = pre.clone();
+    post.reverse();
     for var in def.variants {
         check_enum_start(cx, item_name, var);
         check_enum_end(cx, item_name, var);
         let name = var.ident.name.as_str();
-        let pre_match = count_match_start(pre, &name).byte_count;
-        pre = &pre[..pre_match];
-        let pre_camel = str_utils::camel_case_until(pre).byte_index;
-        pre = &pre[..pre_camel];
-        while let Some((next, last)) = name[pre.len()..].chars().zip(pre.chars().rev()).next() {
-            if next.is_numeric() {
-                return;
-            }
-            if next.is_lowercase() {
-                let last = pre.len() - last.len_utf8();
-                let last_camel = str_utils::camel_case_until(&pre[..last]);
-                pre = &pre[..last_camel.byte_index];
-            } else {
-                break;
-            }
-        }
 
-        let post_match = count_match_end(post, &name);
-        let post_end = post.len() - post_match.byte_count;
-        post = &post[post_end..];
-        let post_camel = str_utils::camel_case_start(post);
-        post = &post[post_camel.byte_index..];
+        let variant_split = camel_case_split(&name);
+
+        pre = pre
+            .iter()
+            .copied()
+            .zip(variant_split.iter().copied())
+            .take_while(|(a, b)| a == b)
+            .map(|e| e.0)
+            .collect();
+        post = post
+            .iter()
+            .copied()
+            .zip(variant_split.iter().rev().copied())
+            .take_while(|(a, b)| a == b)
+            .map(|e| e.0)
+            .collect();
     }
     let (what, value) = match (pre.is_empty(), post.is_empty()) {
         (true, true) => return,
-        (false, _) => ("pre", pre),
-        (true, false) => ("post", post),
+        (false, _) => ("pre", pre.join("")),
+        (true, false) => ("post", post.join("")),
     };
     span_lint_and_help(
         cx,
