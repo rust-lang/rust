@@ -43,7 +43,6 @@ impl AssocItemContainer {
 #[derive(Copy, Clone, Debug, PartialEq, HashStable, Eq, Hash)]
 pub struct AssocItem {
     pub def_id: DefId,
-    #[stable_hasher(project(name))]
     pub ident: Ident,
     pub kind: AssocKind,
     pub vis: Visibility,
