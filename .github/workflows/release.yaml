@@ -162,12 +162,12 @@ jobs:
       - run: npm ci
         working-directory: editors/code
 
-      - name: Publish Extension (release)
+      - name: Package Extension (release)
         if: github.ref == 'refs/heads/release'
         run: npx vsce package -o "../../dist/rust-analyzer-alpine-x64.vsix" --target alpine-x64
         working-directory: editors/code
 
-      - name: Publish Extension (nightly)
+      - name: Package Extension (nightly)
         if: github.ref != 'refs/heads/release'
         run: npx vsce package -o "../../dist/rust-analyzer-alpine-x64.vsix" --target alpine-x64 --pre-release
         working-directory: editors/code
