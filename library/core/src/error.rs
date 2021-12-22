@@ -76,7 +76,7 @@ pub trait Error: Debug + Display + Provider {
     /// ```
     #[stable(feature = "error_source", since = "1.30.0")]
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
+        core::any::request_by_type_tag::<'_, core::any::tags::Ref<dyn Error + 'static>, _>(self)
     }
 
     /// Gets the `TypeId` of `self`.
@@ -141,7 +141,21 @@ pub trait Error: Debug + Display + Provider {
     /// }
     ///
     /// #[derive(Debug)]
+    /// struct SourceError {
+    ///     // ...
+    /// }
+    ///
+    /// impl fmt::Display for SourceError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         write!(f, "Example Source Error")
+    ///     }
+    /// }
+    ///
+    /// impl std::error::Error for SourceError {}
+    ///
+    /// #[derive(Debug)]
     /// struct Error {
+    ///     source: SourceError,
     ///     backtrace: MyBacktrace,
     /// }
     ///
@@ -153,13 +167,16 @@ pub trait Error: Debug + Display + Provider {
     ///
     /// impl std::error::Error for Error {
     ///     fn provide<'a>(&'a self, mut req: Requisition<'a, '_>) {
-    ///         req.provide_ref::<MyBacktrace>(&self.backtrace);
+    ///         req
+    ///             .provide_ref::<MyBacktrace>(&self.backtrace)
+    ///             .provide_ref::<dyn std::error::Error + 'static>(&self.source);
     ///     }
     /// }
     ///
     /// fn main() {
     ///     let backtrace = MyBacktrace::new();
-    ///     let error = Error { backtrace };
+    ///     let source = SourceError {};
+    ///     let error = Error { source, backtrace };
     ///     let dyn_error = &error as &dyn std::error::Error;
     ///     let backtrace_ref = dyn_error.request_ref::<MyBacktrace>().unwrap();
     ///
@@ -167,11 +184,7 @@ pub trait Error: Debug + Display + Provider {
     /// }
     /// ```
     #[unstable(feature = "provide_any", issue = "none")]
-    fn provide<'a>(&'a self, mut req: Requisition<'a, '_>) {
-        if let Some(source) = self.source() {
-            req.provide_ref::<dyn Error + 'static>(source);
-        }
-    }
+    fn provide<'a>(&'a self, _req: Requisition<'a, '_>) { }
 }
 
 impl<T> Provider for T
