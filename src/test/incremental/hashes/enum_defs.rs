@@ -34,7 +34,7 @@ enum EnumVisibility { A }
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail6")]
 pub enum EnumVisibility {
     A
@@ -251,7 +251,7 @@ enum EnumChangeFieldTypeTupleStyleVariant {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumChangeFieldTypeTupleStyleVariant {
     Variant1(u32,
@@ -270,7 +270,7 @@ enum EnumChangeFieldTypeStructStyleVariant {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumChangeFieldTypeStructStyleVariant {
     Variant1,
@@ -308,7 +308,7 @@ enum EnumChangeOrderTupleStyleVariant {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumChangeOrderTupleStyleVariant {
     Variant1(
@@ -491,7 +491,7 @@ enum EnumAddLifetimeParameterBound<'a, 'b> {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,predicates_of")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,predicates_of")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,predicates_of,type_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumAddLifetimeParameterBound<'a, 'b: 'a> {
     Variant1(&'a u32),
@@ -508,7 +508,7 @@ enum EnumAddLifetimeBoundToParameter<'a, T> {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,generics_of,predicates_of")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumAddLifetimeBoundToParameter<'a, T: 'a> {
     Variant1(T),
@@ -544,7 +544,7 @@ enum EnumAddLifetimeParameterBoundWhere<'a, 'b> {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,predicates_of")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,predicates_of")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,predicates_of,type_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumAddLifetimeParameterBoundWhere<'a, 'b> where 'b: 'a {
     Variant1(&'a u32),
@@ -563,7 +563,7 @@ enum EnumAddLifetimeBoundToParameterWhere<'a, T> {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,generics_of,predicates_of")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,generics_of,predicates_of")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumAddLifetimeBoundToParameterWhere<'a, T> where T: 'a {
     Variant1(T),
@@ -599,7 +599,7 @@ enum EnumSwapUsageTypeParameters<A, B> {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumSwapUsageTypeParameters<A, B> {
     Variant1 {
@@ -622,7 +622,7 @@ enum EnumSwapUsageLifetimeParameters<'a, 'b> {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumSwapUsageLifetimeParameters<'a, 'b> {
     Variant1 {
