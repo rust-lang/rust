@@ -78,8 +78,8 @@ LL |         let _f_1 = f1.1;
 LL | }
    | -
    | |
-   | in Rust 2018, `f1` is dropped here, but in Rust 2021, only `f1.0` will be dropped here as part of the closure
    | in Rust 2018, `f1` is dropped here, but in Rust 2021, only `f1.1` will be dropped here as part of the closure
+   | in Rust 2018, `f1` is dropped here, but in Rust 2021, only `f1.0` will be dropped here as part of the closure
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `f1` to be fully captured
