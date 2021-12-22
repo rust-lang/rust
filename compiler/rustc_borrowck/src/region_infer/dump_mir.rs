@@ -5,6 +5,7 @@
 
 use super::{OutlivesConstraint, RegionInferenceContext};
 use crate::type_check::Locations;
+use indexmap::IndexSet;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::ty::TyCtxt;
 use std::io::{self, Write};
@@ -71,7 +72,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         }
 
-        let constraints: indexmap::IndexSet<_> = self.constraints.outlives().iter().collect();
+        let constraints: IndexSet<_> = self.constraints.outlives().iter().collect();
         for constraint in &constraints {
             let OutlivesConstraint { sup, sub, locations, category, variance_info: _ } = constraint;
             let (name, arg) = match locations {

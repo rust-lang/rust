@@ -20,6 +20,8 @@ use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, subst::SubstsRef, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
+use indexmap::IndexSet;
+
 use crate::{
     constraints::{
         graph::NormalConstraintGraph, ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet,
@@ -611,7 +613,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     #[instrument(skip(self, _body), level = "debug")]
     fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
         debug!("constraints={:#?}", {
-            let constraints: indexmap::IndexSet<_> = self.constraints.outlives().iter().collect();
+            let constraints: IndexSet<_> = self.constraints.outlives().iter().collect();
             constraints
                 .into_iter()
                 .map(|c| (c, self.constraint_sccs.scc(c.sup), self.constraint_sccs.scc(c.sub)))
@@ -2005,7 +2007,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .unwrap_or_else(|| ObligationCauseCode::MiscObligation);
 
         // Classify each of the constraints along the path.
-        let mut categorized_path: indexmap::IndexSet<BlameConstraint<'tcx>> = path
+        let mut categorized_path: IndexSet<BlameConstraint<'tcx>> = path
             .iter()
             .map(|constraint| {
                 if constraint.category == ConstraintCategory::ClosureBounds {
@@ -2153,8 +2155,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     let mut blame_vec: Vec<_> = categorized_path.into_iter().collect();
                     blame_vec[i].category =
                         ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
-                    let updated_categorized_path: indexmap::IndexSet<_> =
-                        blame_vec.into_iter().collect();
+                    let updated_categorized_path: IndexSet<_> = blame_vec.into_iter().collect();
                     categorized_path = updated_categorized_path
                 }
             }
