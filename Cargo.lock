@@ -539,7 +539,7 @@ dependencies = [
  "petgraph",
  "rustc-hash",
  "tracing",
- "tracing-subscriber 0.3.3",
+ "tracing-subscriber",
  "tracing-tree",
 ]
 
@@ -704,7 +704,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
- "tracing-subscriber 0.2.16",
+ "tracing-subscriber",
  "unified-diff",
  "walkdir",
  "winapi",
@@ -2103,15 +2103,6 @@ dependencies = [
  "markup5ever",
  "tendril",
  "xml5ever",
-]
-
-[[package]]
-name = "matchers"
-version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f099785f7595cc4b4553a174ce30dd7589ef93391ff414dbb67f62392b9e0ce1"
-dependencies = [
- "regex-automata",
 ]
 
 [[package]]
@@ -3854,7 +3845,7 @@ dependencies = [
  "rustc_target",
  "rustc_typeck",
  "tracing",
- "tracing-subscriber 0.2.16",
+ "tracing-subscriber",
  "tracing-tree",
  "winapi",
 ]
@@ -4633,7 +4624,7 @@ dependencies = [
  "tempfile",
  "tera",
  "tracing",
- "tracing-subscriber 0.2.16",
+ "tracing-subscriber",
  "tracing-tree",
 ]
 
@@ -5457,31 +5448,14 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ab8966ac3ca27126141f7999361cc97dd6fb4b71da04c02044fa9045d98bb96"
-dependencies = [
- "ansi_term 0.12.1",
- "lazy_static",
- "matchers 0.0.1",
- "parking_lot",
- "regex",
- "sharded-slab",
- "smallvec",
- "thread_local",
- "tracing",
- "tracing-core",
-]
-
-[[package]]
-name = "tracing-subscriber"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "245da694cc7fc4729f3f418b304cb57789f1bed2a78c575407ab8a23f53cb4d3"
 dependencies = [
  "ansi_term 0.12.1",
  "lazy_static",
- "matchers 0.1.0",
+ "matchers",
+ "parking_lot",
  "regex",
  "sharded-slab",
  "smallvec",
@@ -5501,7 +5475,7 @@ dependencies = [
  "atty",
  "tracing-core",
  "tracing-log",
- "tracing-subscriber 0.3.3",
+ "tracing-subscriber",
 ]
 
 [[package]]

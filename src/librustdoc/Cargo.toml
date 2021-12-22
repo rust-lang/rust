@@ -23,7 +23,7 @@ tracing-tree = "0.2.0"
 tera = { version = "1.10.0", default-features = false }
 
 [dependencies.tracing-subscriber]
-version = "0.2.13"
+version = "0.3.3"
 default-features = false
 features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
 
