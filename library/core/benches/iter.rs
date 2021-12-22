@@ -367,3 +367,28 @@ fn bench_partial_cmp(b: &mut Bencher) {
 fn bench_lt(b: &mut Bencher) {
     b.iter(|| (0..100000).map(black_box).lt((0..100000).map(black_box)))
 }
+
+// Ideally the compiler should be able to optimize away the range checks here and turn those
+// benchmarks into nops
+#[bench]
+fn bench_iter_enumerate_ext(b: &mut Bencher) {
+    let v = vec![0; 8000];
+
+    b.iter(|| {
+        let v = black_box(v.as_slice());
+        for (i, _) in v.iter().enumerate() {
+            assert!(i <= v.len());
+        }
+    })
+}
+
+#[bench]
+fn bench_iter_enumerate_int(b: &mut Bencher) {
+    let v = vec![0; 8000];
+    b.iter(|| {
+        let v = black_box(v.as_slice());
+        v.iter().enumerate().for_each(|(i, _)| {
+            assert!(i <= v.len());
+        })
+    })
+}

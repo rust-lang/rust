@@ -96,20 +96,7 @@ where
     where
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
-        #[inline]
-        fn enumerate<T, Acc>(
-            mut count: usize,
-            mut fold: impl FnMut(Acc, (usize, T)) -> Acc,
-        ) -> impl FnMut(Acc, T) -> Acc {
-            #[rustc_inherit_overflow_checks]
-            move |acc, item| {
-                let acc = fold(acc, (count, item));
-                count += 1;
-                acc
-            }
-        }
-
-        self.iter.fold(init, enumerate(self.count, fold))
+        <Self as EnumerateSpec<I::Item>>::fold(self, init, fold)
     }
 
     #[inline]
@@ -264,3 +251,48 @@ where
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Enumerate<I> {}
+
+trait EnumerateSpec<Item> {
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, (usize, Item)) -> Acc;
+}
+
+impl<I: Iterator> EnumerateSpec<I::Item> for Enumerate<I> {
+    #[inline]
+    default fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, (usize, I::Item)) -> Acc,
+    {
+        #[inline]
+        fn enumerate<T, Acc>(
+            mut count: usize,
+            mut fold: impl FnMut(Acc, (usize, T)) -> Acc,
+        ) -> impl FnMut(Acc, T) -> Acc {
+            #[rustc_inherit_overflow_checks]
+            move |acc, item| {
+                let acc = fold(acc, (count, item));
+                count += 1;
+                acc
+            }
+        }
+
+        self.iter.fold(init, enumerate(self.count, fold))
+    }
+}
+
+impl<I: Iterator + TrustedRandomAccessNoCoerce> EnumerateSpec<I::Item> for Enumerate<I> {
+    #[inline]
+    default fn fold<Acc, Fold>(mut self, init: Acc, mut fold: Fold) -> Acc
+    where
+        Fold: FnMut(Acc, (usize, I::Item)) -> Acc,
+    {
+        (0..self.size()).fold(init, |acc, i| {
+            // SAFETY: `i` is in bounds via the generating range and this method is consuming
+            // so there is no risk of accessing an element twice. The `count` offset is handled
+            // by __iterator_get_unchecked
+            let item = unsafe { self.__iterator_get_unchecked(i) };
+            fold(acc, item)
+        })
+    }
+}
