@@ -162,12 +162,12 @@ jobs:
       - run: npm ci
         working-directory: editors/code
 
-      - name: Publish Extension (release)
+      - name: Package Extension (release)
         if: github.ref == 'refs/heads/release'
         run: npx vsce package -o "../../dist/rust-analyzer-alpine-x64.vsix" --target alpine-x64
         working-directory: editors/code
 
-      - name: Publish Extension (nightly)
+      - name: Package Extension (nightly)
         if: github.ref != 'refs/heads/release'
         run: npx vsce package -o "../../dist/rust-analyzer-alpine-x64.vsix" --target alpine-x64 --pre-release
         working-directory: editors/code
@@ -247,12 +247,12 @@ jobs:
         working-directory: ./editors/code
 
       - name: Publish Extension (release)
-        if: github.ref == 'refs/heads/release'
+        if: github.ref == 'refs/heads/release' && github.repository == 'rust-analyzer/rust-analyzer'
         working-directory: ./editors/code
         # token from https://dev.azure.com/rust-analyzer/
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
 
       - name: Publish Extension (nightly)
-        if: github.ref != 'refs/heads/release'
+        if: github.ref != 'refs/heads/release' && github.repository == 'rust-analyzer/rust-analyzer'
         working-directory: ./editors/code
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix --pre-release

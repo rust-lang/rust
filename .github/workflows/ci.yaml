@@ -17,6 +17,7 @@ env:
 
 jobs:
   rust:
+    if: github.repository == 'rust-analyzer/rust-analyzer'
     name: Rust
     runs-on: ${{ matrix.os }}
     env:
@@ -61,6 +62,7 @@ jobs:
 
   # Weird targets to catch non-portable code
   rust-cross:
+    if: github.repository == 'rust-analyzer/rust-analyzer'
     name: Rust Cross
     runs-on: ubuntu-latest
 
@@ -97,6 +99,7 @@ jobs:
         done
 
   typescript:
+    if: github.repository == 'rust-analyzer/rust-analyzer'
     name: TypeScript
     strategy:
       fail-fast: false

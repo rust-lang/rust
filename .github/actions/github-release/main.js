@@ -5,7 +5,7 @@ const github = require('@actions/github');
 const glob = require('glob');
 
 function sleep(milliseconds) {
-  return new Promise(resolve => setTimeout(resolve, milliseconds))
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
 async function runOnce() {
@@ -20,9 +20,8 @@ async function runOnce() {
 
   core.info(`files: ${files}`);
   core.info(`name: ${name}`);
-  core.info(`token: ${token}`);
 
-  const octokit = new github.GitHub(token);
+  const octokit = github.getOctokit(token);
 
   // Delete the previous release since we can't overwrite one. This may happen
   // due to retrying an upload or it may happen because we're doing the dev
@@ -34,24 +33,24 @@ async function runOnce() {
     }
     const release_id = release.id;
     core.info(`deleting release ${release_id}`);
-    await octokit.repos.deleteRelease({ owner, repo, release_id });
+    await octokit.rest.repos.deleteRelease({ owner, repo, release_id });
   }
 
   // We also need to update the `dev` tag while we're at it on the `dev` branch.
   if (name == 'nightly') {
     try {
       core.info(`updating nightly tag`);
-      await octokit.git.updateRef({
-          owner,
-          repo,
-          ref: 'tags/nightly',
-          sha,
-          force: true,
+      await octokit.rest.git.updateRef({
+        owner,
+        repo,
+        ref: 'tags/nightly',
+        sha,
+        force: true,
       });
     } catch (e) {
-      console.log("ERROR: ", JSON.stringify(e, null, 2));
+      core.error(e);
       core.info(`creating nightly tag`);
-      await octokit.git.createTag({
+      await octokit.rest.git.createTag({
         owner,
         repo,
         tag: 'nightly',
@@ -65,7 +64,7 @@ async function runOnce() {
   // Creates an official GitHub release for this `tag`, and if this is `dev`
   // then we know that from the previous block this should be a fresh release.
   core.info(`creating a release`);
-  const release = await octokit.repos.createRelease({
+  const release = await octokit.rest.repos.createRelease({
     owner,
     repo,
     name,
@@ -73,47 +72,68 @@ async function runOnce() {
     target_commitish: sha,
     prerelease: name === 'nightly',
   });
+  const release_id = release.data.id;
 
   // Upload all the relevant assets for this release as just general blobs.
   for (const file of glob.sync(files)) {
     const size = fs.statSync(file).size;
-    core.info(`upload ${file}`);
-    await octokit.repos.uploadReleaseAsset({
-      data: fs.createReadStream(file),
-      headers: { 'content-length': size, 'content-type': 'application/octet-stream' },
-      name: path.basename(file),
-      url: release.data.upload_url,
+    const name = path.basename(file);
+
+    await runWithRetry(async function () {
+      // We can't overwrite assets, so remove existing ones from a previous try.
+      let assets = await octokit.rest.repos.listReleaseAssets({
+        owner,
+        repo,
+        release_id
+      });
+      for (const asset of assets.data) {
+        if (asset.name === name) {
+          core.info(`delete asset ${name}`);
+          const asset_id = asset.id;
+          await octokit.rest.repos.deleteReleaseAsset({ owner, repo, asset_id });
+        }
+      }
+
+      core.info(`upload ${file}`);
+      const headers = { 'content-length': size, 'content-type': 'application/octet-stream' };
+      const data = fs.createReadStream(file);
+      await octokit.rest.repos.uploadReleaseAsset({
+        data,
+        headers,
+        name,
+        url: release.data.upload_url,
+      });
     });
   }
 }
 
-async function run() {
+async function runWithRetry(f) {
   const retries = 10;
+  const maxDelay = 4000;
+  let delay = 1000;
+
   for (let i = 0; i < retries; i++) {
     try {
-      await runOnce();
+      await f();
       break;
     } catch (e) {
       if (i === retries - 1)
         throw e;
-      logError(e);
-      console.log("RETRYING after 10s");
-      await sleep(10000)
+
+      core.error(e);
+      const currentDelay = Math.round(Math.random() * delay);
+      core.info(`sleeping ${currentDelay} ms`);
+      await sleep(currentDelay);
+      delay = Math.min(delay * 2, maxDelay);
     }
   }
 }
 
-function logError(e) {
-  console.log("ERROR: ", e.message);
-  try {
-    console.log(JSON.stringify(e, null, 2));
-  } catch (e) {
-    // ignore json errors for now
-  }
-  console.log(e.stack);
+async function run() {
+  await runWithRetry(runOnce);
 }
 
 run().catch(err => {
-  logError(err);
+  core.error(err);
   core.setFailed(err.message);
 });
