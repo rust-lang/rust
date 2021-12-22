@@ -158,75 +158,51 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
                     }
                 }
             }
-            match tail {
-                Some(Tail::IfLet(e)) => {
-                    cov_mark::hit!(move_guard_ifelse_iflet_tail);
-                    let guard = format!("\n{}{} => ", spaces, match_pat);
-                    // Put the if-let expression in a block
-                    let iflet_expr: Expr = e.reset_indent().indent(1.into()).into();
-                    let iflet_block =
-                        make::block_expr(std::iter::empty(), Some(iflet_expr)).indent(indent_level);
-                    edit.insert(then_arm_end, guard);
-                    edit.insert(then_arm_end, iflet_block.syntax().text());
-                }
-                Some(Tail::Else(e)) => {
-                    cov_mark::hit!(move_guard_ifelse_else_tail);
-                    let guard = format!("\n{}{} => ", spaces, match_pat);
-                    edit.insert(then_arm_end, guard);
-                    let only_expr = e.statements().next().is_none();
-                    match &e.tail_expr() {
-                        Some(expr) if only_expr => {
-                            cov_mark::hit!(move_guard_ifelse_expr_only);
-                            edit.insert(then_arm_end, expr.syntax().text());
-                            edit.insert(then_arm_end, ",");
-                        }
-                        _ => {
-                            let to_insert = e.dedent(dedent.into()).syntax().text();
-                            edit.insert(then_arm_end, to_insert)
-                        }
+            if let Some(e) = tail {
+                cov_mark::hit!(move_guard_ifelse_else_tail);
+                let guard = format!("\n{}{} => ", spaces, match_pat);
+                edit.insert(then_arm_end, guard);
+                let only_expr = e.statements().next().is_none();
+                match &e.tail_expr() {
+                    Some(expr) if only_expr => {
+                        cov_mark::hit!(move_guard_ifelse_expr_only);
+                        edit.insert(then_arm_end, expr.syntax().text());
+                        edit.insert(then_arm_end, ",");
+                    }
+                    _ => {
+                        let to_insert = e.dedent(dedent.into()).syntax().text();
+                        edit.insert(then_arm_end, to_insert)
                     }
                 }
-                _ => {
-                    cov_mark::hit!(move_guard_ifelse_notail);
-                }
+            } else {
+                cov_mark::hit!(move_guard_ifelse_notail);
             }
         },
     )
 }
 
-#[derive(Debug)]
-enum Tail {
-    Else(BlockExpr),
-    IfLet(IfExpr),
-}
-
 // Parses an if-else-if chain to get the conditons and the then branches until we encounter an else
 // branch, an if-let branch or the end.
-fn parse_if_chain(if_expr: IfExpr) -> Option<(Vec<(Condition, BlockExpr)>, Option<Tail>)> {
+fn parse_if_chain(if_expr: IfExpr) -> Option<(Vec<(Condition, BlockExpr)>, Option<BlockExpr>)> {
     let mut conds_blocks = Vec::new();
     let mut curr_if = if_expr;
-    let mut applicable = false;
-    let tail: Option<Tail> = loop {
+    let tail = loop {
         let cond = curr_if.condition()?;
+        // Not support moving if let to arm guard
         if cond.is_pattern_cond() {
-            break Some(Tail::IfLet(curr_if));
+            return None;
         }
         conds_blocks.push((cond, curr_if.then_branch()?));
-        applicable = true;
         match curr_if.else_branch() {
             Some(ElseBranch::IfExpr(e)) => {
                 curr_if = e;
             }
             Some(ElseBranch::Block(b)) => {
-                break Some(Tail::Else(b));
+                break Some(b);
             }
             None => break None,
         }
     };
-    if !applicable {
-        // The first if branch is an if-let branch
-        return None;
-    }
     Some((conds_blocks, tail))
 }
 
@@ -853,8 +829,7 @@ fn main() {
 
     #[test]
     fn move_arm_cond_to_match_guard_elseif_iflet() {
-        cov_mark::check!(move_guard_ifelse_iflet_tail);
-        check_assist(
+        check_assist_not_applicable(
             move_arm_cond_to_match_guard,
             r#"
 fn main() {
@@ -870,23 +845,6 @@ fn main() {
         } else {
             4
         },
-    }
-}
-"#,
-            r#"
-fn main() {
-    match 92 {
-        3 => 0,
-        x if x > 10 => 1,
-        x if x > 5 => 2,
-        x => {
-            if let 4 = 4 {
-                42;
-                3
-            } else {
-                4
-            }
-        }
     }
 }
 "#,
