@@ -185,7 +185,7 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
 }
 
 // Parses an if-else-if chain to get the conditons and the then branches until we encounter an else
-// branch, an if-let branch or the end.
+// branch or the end.
 fn parse_if_chain(if_expr: IfExpr) -> Option<(Vec<(Condition, BlockExpr)>, Option<BlockExpr>)> {
     let mut conds_blocks = Vec::new();
     let mut curr_if = if_expr;
