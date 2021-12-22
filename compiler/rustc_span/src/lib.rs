@@ -1203,15 +1203,19 @@ pub struct NormalizedPos {
     pub diff: u32,
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Encodable, Decodable)]
+pub struct SourceFileIndex(pub u32);
+
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum ExternalSource {
     /// No external source has to be loaded, since the `SourceFile` represents a local crate.
     Unneeded,
     Foreign {
         kind: ExternalSourceKind,
+        /// This SourceFile's index in the files list of the source_map of its original crate.
+        original_source_index: SourceFileIndex,
         /// This SourceFile's byte-offset within the source_map of its original crate.
         original_start_pos: BytePos,
-        /// The end of this SourceFile within the source_map of its original crate.
         original_end_pos: BytePos,
     },
 }

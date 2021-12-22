@@ -36,7 +36,7 @@ use rustc_session::Session;
 use rustc_span::hygiene::{ExpnIndex, MacroKind};
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
+use rustc_span::{self, BytePos, ExpnId, Pos, SourceFileIndex, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::io;
@@ -96,7 +96,7 @@ crate struct CrateMetadata {
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
-    source_map_import_info: OnceCell<Vec<ImportedSourceFile>>,
+    source_map_import_info: OnceCell<FxHashMap<SourceFileIndex, ImportedSourceFile>>,
     /// For every definition in this crate, maps its `DefPathHash` to its `DefIndex`.
     def_path_hash_map: DefPathHashMapRef<'static>,
     /// Likewise for ExpnHash.
@@ -536,27 +536,9 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
             foreign_data.imported_source_files(sess)
         };
 
-        let source_file = {
-            // Optimize for the case that most spans within a translated item
-            // originate from the same source_file.
-            let last_source_file = &imported_source_files[decoder.last_source_file_index];
+        let file_index = SourceFileIndex::decode(decoder)?;
 
-            if lo >= last_source_file.original_start_pos && lo <= last_source_file.original_end_pos
-            {
-                last_source_file
-            } else {
-                let index = imported_source_files
-                    .binary_search_by_key(&lo, |source_file| source_file.original_start_pos)
-                    .unwrap_or_else(|index| index - 1);
-
-                // Don't try to cache the index for foreign spans,
-                // as this would require a map from CrateNums to indices
-                if tag == TAG_VALID_SPAN_LOCAL {
-                    decoder.last_source_file_index = index;
-                }
-                &imported_source_files[index]
-            }
-        };
+        let source_file = &imported_source_files[&file_index];
 
         // Make sure our binary search above is correct.
         debug_assert!(
@@ -1689,7 +1671,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     ///
     /// Proc macro crates don't currently export spans, so this function does not have
     /// to work for them.
-    fn imported_source_files(&self, sess: &Session) -> &'a [ImportedSourceFile] {
+    fn imported_source_files(
+        &self,
+        sess: &Session,
+    ) -> &'a FxHashMap<SourceFileIndex, ImportedSourceFile> {
         // Translate the virtual `/rustc/$hash` prefix back to a real directory
         // that should hold actual sources, where possible.
         //
@@ -1773,7 +1758,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             let external_source_map = self.root.source_map.decode(self);
 
             external_source_map
-                .map(|source_file_to_import| {
+                .enumerate()
+                .map(|(idx, source_file_to_import)| {
                     // We can't reuse an existing SourceFile, so allocate a new one
                     // containing the information we need.
                     let rustc_span::SourceFile {
@@ -1788,6 +1774,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         name_hash,
                         ..
                     } = source_file_to_import;
+
+                    let source_file_index = SourceFileIndex(idx as u32);
 
                     // If this file is under $sysroot/lib/rustlib/src/ but has not been remapped
                     // during rust bootstrapping by `remap-debuginfo = true`, and the user
@@ -1849,6 +1837,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         multibyte_chars,
                         non_narrow_chars,
                         normalized_pos,
+                        source_file_index,
                         start_pos,
                         end_pos,
                     );
@@ -1863,11 +1852,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         local_version.end_pos
                     );
 
-                    ImportedSourceFile {
-                        original_start_pos: start_pos,
-                        original_end_pos: end_pos,
-                        translated_source_file: local_version,
-                    }
+                    (
+                        source_file_index,
+                        ImportedSourceFile {
+                            original_start_pos: start_pos,
+                            original_end_pos: end_pos,
+                            translated_source_file: local_version,
+                        },
+                    )
                 })
                 .collect()
         })

@@ -250,6 +250,7 @@ fn t10() {
         multibyte_chars,
         non_narrow_chars,
         normalized_pos,
+        SourceFileIndex(0),
         start_pos,
         end_pos,
     );

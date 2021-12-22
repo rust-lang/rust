@@ -15,7 +15,6 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items;
 use rustc_hir::{AnonConst, GenericParamKind};
-use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::hir::map::Map;
 use rustc_middle::middle::dependency_format::Linkage;
@@ -32,7 +31,9 @@ use rustc_serialize::{opaque, Encodable, Encoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SyntaxContext};
+use rustc_span::{
+    self, ExternalSource, FileName, SourceFile, SourceFileIndex, Span, SyntaxContext,
+};
 use rustc_span::{
     hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind},
     RealFileName,
@@ -57,19 +58,15 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     interpret_allocs: FxIndexSet<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
-    // The `usize` is an index into the `MonotonicVec`
-    // that stores the `SourceFile`
-    source_file_cache: (Lrc<SourceFile>, usize),
-    // The indices (into the `SourceMap`'s `MonotonicVec`)
-    // of all of the `SourceFiles` that we need to serialize.
-    // When we serialize a `Span`, we insert the index of its
-    // `SourceFile` into the `GrowableBitSet`.
-    //
-    // This needs to be a `GrowableBitSet` and not a
-    // regular `BitSet` because we may actually import new `SourceFiles`
-    // during metadata encoding, due to executing a query
-    // with a result containing a foreign `Span`.
-    required_source_files: Option<GrowableBitSet<usize>>,
+    source_file_cache: Option<(Lrc<SourceFile>, SourceFileIndex)>,
+    /// Keep track of the files for which we have encoded spans, since these
+    /// are the files that will be encoded in our source map. We only need to
+    /// encode local files in this map, unless we are in a proc macro, where
+    /// we treat all files as local.
+    ///
+    /// We hash the pointer of the source file as an optimization.
+    required_source_files:
+        Option<(FxHashMap<*const SourceFile, SourceFileIndex>, Vec<Lrc<SourceFile>>)>,
     is_proc_macro: bool,
     hygiene_ctxt: &'a HygieneEncodeContext,
 }
@@ -245,78 +242,99 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         // The Span infrastructure should make sure that this invariant holds:
         debug_assert!(span.lo <= span.hi);
 
-        if !s.source_file_cache.0.contains(span.lo) {
-            let source_map = s.tcx.sess.source_map();
-            let source_file_index = source_map.lookup_source_file_idx(span.lo);
-            s.source_file_cache =
-                (source_map.files()[source_file_index].clone(), source_file_index);
+        // If our cache is empty, or our cached file does not contain the span
+        if !s.source_file_cache.as_ref().map_or(false, |c| c.0.contains(span.lo)) {
+            let source_file = s.tcx.sess.source_map().lookup_source_file(span.lo);
+
+            // There are two possible cases here:
+            // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
+            // crate we are writing metadata for. When the metadata for *this* crate gets
+            // deserialized, the deserializer will need to know which crate it originally came
+            // from, and what file in that crate it came from. We use `TAG_VALID_SPAN_FOREIGN`
+            // and encode the `cnum` of the crate to indicate what crate it came from, and we
+            // re-encode the `source_file_index` that we stored in the `ExternalSource` when
+            // originally importing this file into our own `SourceMap`.
+            // 2. This span comes from our own crate. No special handling is needed - we just
+            // use `TAG_VALID_SPAN_LOCAL` to let the deserializer know that it should use
+            // our own source map information. We also need to keep track of the files that we
+            // have seen while encoding spans, since we only encode files that have spans pointing
+            // to them.
+            //
+            // If we're a proc-macro crate, we always treat this as a local `Span`.
+            // In `encode_source_map`, we serialize foreign `SourceFile`s into our metadata
+            // if we're a proc-macro crate.
+            // This allows us to avoid loading the dependencies of proc-macro crates: all of
+            // the information we need to decode `Span`s is stored in the proc-macro crate.
+            let encoded_source_file_index = if !source_file.is_imported() || s.is_proc_macro {
+                let (source_files_to_file_index, files) =
+                    s.required_source_files.as_mut().expect("Already encoded SourceMap!");
+
+                // Record the fact that we need to encode the data for this `SourceFile`
+                *source_files_to_file_index.entry(&*source_file as *const _).or_insert_with(|| {
+                    files.push(source_file.clone());
+                    SourceFileIndex((files.len() - 1) as u32)
+                })
+            } else {
+                match &*source_file.external_src.lock() {
+                    ExternalSource::Foreign { original_source_index, .. } => *original_source_index,
+                    src => bug!("Unexpected external source {:?}", src),
+                }
+            };
+
+            s.source_file_cache = Some((source_file, encoded_source_file_index));
         }
 
-        if !s.source_file_cache.0.contains(span.hi) {
+        let (source_file, source_file_index_cached) = s.source_file_cache.as_mut().unwrap();
+
+        let source_file_index = *source_file_index_cached;
+        let is_local = !source_file.is_imported() || s.is_proc_macro;
+        let cnum = source_file.cnum;
+
+        if !source_file.contains(span.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
             return TAG_PARTIAL_SPAN.encode(s);
         }
 
-        let source_files = s.required_source_files.as_mut().expect("Already encoded SourceMap!");
-        // Record the fact that we need to encode the data for this `SourceFile`
-        source_files.insert(s.source_file_cache.1);
+        let len = span.hi - span.lo;
 
-        // There are two possible cases here:
-        // 1. This span comes from a 'foreign' crate - e.g. some crate upstream of the
-        // crate we are writing metadata for. When the metadata for *this* crate gets
-        // deserialized, the deserializer will need to know which crate it originally came
-        // from. We use `TAG_VALID_SPAN_FOREIGN` to indicate that a `CrateNum` should
-        // be deserialized after the rest of the span data, which tells the deserializer
-        // which crate contains the source map information.
-        // 2. This span comes from our own crate. No special hamdling is needed - we just
-        // write `TAG_VALID_SPAN_LOCAL` to let the deserializer know that it should use
-        // our own source map information.
-        //
-        // If we're a proc-macro crate, we always treat this as a local `Span`.
-        // In `encode_source_map`, we serialize foreign `SourceFile`s into our metadata
-        // if we're a proc-macro crate.
-        // This allows us to avoid loading the dependencies of proc-macro crates: all of
-        // the information we need to decode `Span`s is stored in the proc-macro crate.
-        let (tag, lo, hi) = if s.source_file_cache.0.is_imported() && !s.is_proc_macro {
-            // To simplify deserialization, we 'rebase' this span onto the crate it originally came from
-            // (the crate that 'owns' the file it references. These rebased 'lo' and 'hi' values
-            // are relative to the source map information for the 'foreign' crate whose CrateNum
+        let lo = if is_local {
+            span.lo
+        } else {
+            // To simplify deserialization, we 'rebase' this span (back) onto the crate it originally
+            // came from, the crate that 'owns' the file it references. These rebased 'lo' and 'hi'
+            // values are relative to the source map information for the 'foreign' crate whose CrateNum
             // we write into the metadata. This allows `imported_source_files` to binary
             // search through the 'foreign' crate's source map information, using the
             // deserialized 'lo' and 'hi' values directly.
             //
             // All of this logic ensures that the final result of deserialization is a 'normal'
             // Span that can be used without any additional trouble.
-            let external_start_pos = {
-                // Introduce a new scope so that we drop the 'lock()' temporary
-                match &*s.source_file_cache.0.external_src.lock() {
-                    ExternalSource::Foreign { original_start_pos, .. } => *original_start_pos,
-                    src => panic!("Unexpected external source {:?}", src),
-                }
+            let external_start_pos = match &*source_file.external_src.lock() {
+                ExternalSource::Foreign { original_start_pos, .. } => *original_start_pos,
+                src => panic!("Unexpected external source {:?}", src),
             };
-            let lo = (span.lo - s.source_file_cache.0.start_pos) + external_start_pos;
-            let hi = (span.hi - s.source_file_cache.0.start_pos) + external_start_pos;
 
-            (TAG_VALID_SPAN_FOREIGN, lo, hi)
-        } else {
-            (TAG_VALID_SPAN_LOCAL, span.lo, span.hi)
+            (span.lo - source_file.start_pos) + external_start_pos
         };
 
-        tag.encode(s)?;
+        if is_local {
+            TAG_VALID_SPAN_LOCAL.encode(s)?;
+        } else {
+            TAG_VALID_SPAN_FOREIGN.encode(s)?;
+        }
+
         lo.encode(s)?;
 
         // Encode length which is usually less than span.hi and profits more
         // from the variable-length integer encoding that we use.
-        let len = hi - lo;
         len.encode(s)?;
 
-        if tag == TAG_VALID_SPAN_FOREIGN {
-            // This needs to be two lines to avoid holding the `s.source_file_cache`
-            // while calling `cnum.encode(s)`
-            let cnum = s.source_file_cache.0.cnum;
+        if !is_local {
             cnum.encode(s)?;
         }
+
+        source_file_index.encode(s)?;
 
         Ok(())
     }
@@ -481,25 +499,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_source_map(&mut self) -> Lazy<[rustc_span::SourceFile]> {
         let source_map = self.tcx.sess.source_map();
-        let all_source_files = source_map.files();
 
         // By replacing the `Option` with `None`, we ensure that we can't
         // accidentally serialize any more `Span`s after the source map encoding
         // is done.
-        let required_source_files = self.required_source_files.take().unwrap();
+        let (_, required_source_files) = self.required_source_files.take().unwrap();
 
-        let adapted = all_source_files
+        let adapted = required_source_files
             .iter()
-            .enumerate()
-            .filter(|(idx, source_file)| {
-                // Only serialize `SourceFile`s that were used
-                // during the encoding of a `Span`
-                required_source_files.contains(*idx) &&
-                // Don't serialize imported `SourceFile`s, unless
-                // we're in a proc-macro crate.
-                (!source_file.is_imported() || self.is_proc_macro)
-            })
-            .map(|(_, source_file)| {
+            .map(|source_file| {
                 let mut adapted = match source_file.name {
                     FileName::Real(ref realname) => {
                         let mut adapted = (**source_file).clone();
@@ -2158,11 +2166,6 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // Will be filled with the root position after encoding everything.
     encoder.emit_raw_bytes(&[0, 0, 0, 0]).unwrap();
 
-    let source_map_files = tcx.sess.source_map().files();
-    let source_file_cache = (source_map_files[0].clone(), 0);
-    let required_source_files = Some(GrowableBitSet::with_capacity(source_map_files.len()));
-    drop(source_map_files);
-
     let hygiene_ctxt = HygieneEncodeContext::default();
 
     let mut ecx = EncodeContext {
@@ -2173,9 +2176,9 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         lazy_state: LazyState::NoNode,
         type_shorthands: Default::default(),
         predicate_shorthands: Default::default(),
-        source_file_cache,
+        source_file_cache: None,
         interpret_allocs: Default::default(),
-        required_source_files,
+        required_source_files: Some(Default::default()),
         is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: &hygiene_ctxt,
     };
