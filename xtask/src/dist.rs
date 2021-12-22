@@ -48,22 +48,14 @@ fn dist_client(version: &str, release_tag: &str, target: &Target) -> Result<()> 
     }
 
     let _d = pushd("./editors/code")?;
-    let nightly = release_tag == "nightly";
 
     let mut patch = Patch::new("./package.json")?;
     patch
         .replace(r#""version": "0.4.0-dev""#, &format!(r#""version": "{}""#, version))
         .replace(r#""releaseTag": null"#, &format!(r#""releaseTag": "{}""#, release_tag))
         .replace(r#""$generated-start": {},"#, "")
-        .replace(",\n                \"$generated-end\": {}", "");
-
-    if nightly {
-        patch.replace(
-            r#""displayName": "rust-analyzer""#,
-            r#""displayName": "rust-analyzer (nightly)""#,
-        );
-    }
-    patch.replace(r#""enableProposedApi": true,"#, r#""#);
+        .replace(",\n                \"$generated-end\": {}", "")
+        .replace(r#""enableProposedApi": true,"#, r#""#);
     patch.commit()?;
 
     Ok(())
