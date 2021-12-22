@@ -132,6 +132,20 @@ impl<T, A: Allocator> RawVec<T, A> {
         Self::allocate_in(capacity, AllocInit::Uninitialized, alloc)
     }
 
+    /// Attempts to create a `RawVec` (on the system heap) with exactly the
+    /// capacity and alignment requirements for a `[T; capacity]`. This is
+    /// equivalent to calling `RawVec::new` when `capacity` is `0` or `T` is
+    /// zero-sized. Note that if `T` is zero-sized this means you will
+    /// *not* get a `RawVec` with the requested capacity.
+    ///
+    /// Parameterized over the choice of allocator for the returned `RawVec`.
+    #[inline]
+    pub fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
+        let mut raw_vec = Self::new_in(alloc);
+        raw_vec.try_reserve_exact(0, capacity)?;
+        Ok(raw_vec)
+    }
+
     /// Like `with_capacity_zeroed`, but parameterized over the choice
     /// of allocator for the returned `RawVec`.
     #[cfg(not(no_global_oom_handling))]
