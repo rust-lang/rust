@@ -30,11 +30,6 @@ async function tryActivate(context: vscode.ExtensionContext) {
     const serverPath = await bootstrap(context, config, state).catch(err => {
         let message = "bootstrap error. ";
 
-        if (err.code === "EBUSY" || err.code === "ETXTBSY" || err.code === "EPERM") {
-            message += "Other vscode windows might be using rust-analyzer, ";
-            message += "you should close them and reload this window to retry. ";
-        }
-
         message += 'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
         message += 'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
 
