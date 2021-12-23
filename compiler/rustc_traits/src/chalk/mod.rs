@@ -63,7 +63,7 @@ crate fn evaluate_goal<'tcx>(
     > = chalk_ir::UCanonical {
         canonical: chalk_ir::Canonical {
             binders: chalk_ir::CanonicalVarKinds::from_iter(
-                &interner,
+                interner,
                 obligation.variables.iter().map(|v| match v.kind {
                     CanonicalVarKind::PlaceholderTy(_ty) => unimplemented!(),
                     CanonicalVarKind::PlaceholderRegion(_ui) => unimplemented!(),
@@ -89,7 +89,7 @@ crate fn evaluate_goal<'tcx>(
                     CanonicalVarKind::PlaceholderConst(_pc) => unimplemented!(),
                 }),
             ),
-            value: obligation.value.lower_into(&interner),
+            value: obligation.value.lower_into(interner),
         },
         universes: max_universe + 1,
     };
@@ -110,11 +110,11 @@ crate fn evaluate_goal<'tcx>(
         use rustc_middle::infer::canonical::CanonicalVarInfo;
 
         let mut var_values: IndexVec<BoundVar, GenericArg<'tcx>> = IndexVec::new();
-        subst.as_slice(&interner).iter().for_each(|p| {
-            var_values.push(p.lower_into(&interner));
+        subst.as_slice(interner).iter().for_each(|p| {
+            var_values.push(p.lower_into(interner));
         });
         let variables: Vec<_> = binders
-            .iter(&interner)
+            .iter(interner)
             .map(|var| {
                 let kind = match var.kind {
                     chalk_ir::VariableKind::Ty(ty_kind) => CanonicalVarKind::Ty(match ty_kind {
@@ -134,8 +134,7 @@ crate fn evaluate_goal<'tcx>(
                 CanonicalVarInfo { kind }
             })
             .collect();
-        let max_universe =
-            binders.iter(&interner).map(|v| v.skip_kind().counter).max().unwrap_or(0);
+        let max_universe = binders.iter(interner).map(|v| v.skip_kind().counter).max().unwrap_or(0);
         let sol = Canonical {
             max_universe: ty::UniverseIndex::from_usize(max_universe),
             variables: tcx.intern_canonical_var_infos(&variables),

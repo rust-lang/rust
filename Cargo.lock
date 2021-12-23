@@ -492,9 +492,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.55.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3983193cacd81f0f924acb666b7fe5e1a0d81db9f113fa69203eda7ea8ce8b6c"
+checksum = "d54e3b5f9e3425e6b119ff07568d8d006bfa5a8d6f78a9cbc3530b1e962e316c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -504,9 +504,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-engine"
-version = "0.55.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05a171ce5abbf0fbd06f221ab80ab182c7ef78603d23b858bc44e7ce8a86a396"
+checksum = "bdc891073396b167163db77123b0a3c00088edc00466cecc5531f33e3e989523"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -517,9 +517,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.55.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a522f53af971e7678f472d687e053120157b3ae26e2ebd5ecbc0f5ab124f2cb6"
+checksum = "2b79e5a1d04b79311e90c69356a2c62027853906a7e33b3e070b93c055fc3e8a"
 dependencies = [
  "bitflags",
  "chalk-derive",
@@ -528,14 +528,14 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.55.0"
+version = "0.75.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdf79fb77a567e456a170f7ec84ea6584163d4ba3f13660cd182013d34ca667c"
+checksum = "a5d2a1db6605aba70a58820bd80ac422b218913a510f1a40beef9efc5371ea1d"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
  "ena",
- "itertools 0.9.0",
+ "itertools 0.10.1",
  "petgraph",
  "rustc-hash",
  "tracing",
@@ -2107,9 +2107,9 @@ dependencies = [
 
 [[package]]
 name = "matchers"
-version = "0.0.1"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f099785f7595cc4b4553a174ce30dd7589ef93391ff414dbb67f62392b9e0ce1"
+checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
 dependencies = [
  "regex-automata",
 ]
@@ -5122,9 +5122,9 @@ dependencies = [
 
 [[package]]
 name = "synstructure"
-version = "0.12.4"
+version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
+checksum = "f36bdaa60a83aca3921b5259d5400cbf5e90fc51931376a9bd4a0eb79aa7210f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5448,48 +5448,33 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-serde"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb65ea441fbb84f9f6748fd496cf7f63ec9af5bca94dd86456978d055e8eb28b"
-dependencies = [
- "serde",
- "tracing-core",
-]
-
-[[package]]
 name = "tracing-subscriber"
-version = "0.2.16"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ab8966ac3ca27126141f7999361cc97dd6fb4b71da04c02044fa9045d98bb96"
+checksum = "245da694cc7fc4729f3f418b304cb57789f1bed2a78c575407ab8a23f53cb4d3"
 dependencies = [
  "ansi_term 0.12.1",
- "chrono",
  "lazy_static",
  "matchers",
  "parking_lot",
  "regex",
- "serde",
- "serde_json",
  "sharded-slab",
  "smallvec",
  "thread_local",
  "tracing",
  "tracing-core",
  "tracing-log",
- "tracing-serde",
 ]
 
 [[package]]
 name = "tracing-tree"
-version = "0.1.9"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1712b40907f8d9bc2bc66763ab61dec914b7123d7149e59feb0d4e2a95fc4967"
+checksum = "3ce989c9962c7f61fe084dd4a230eec784649dfc2392467c790007c3a6e134e7"
 dependencies = [
  "ansi_term 0.12.1",
  "atty",
- "termcolor",
- "tracing",
+ "tracing-core",
  "tracing-log",
  "tracing-subscriber",
 ]
