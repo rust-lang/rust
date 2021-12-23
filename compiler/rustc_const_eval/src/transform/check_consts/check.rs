@@ -795,8 +795,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
                 };
 
-                let mut nonconst_call_permission = false;
-
                 // Attempting to call a trait method?
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
@@ -843,22 +841,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
                         }
                         _ if !tcx.is_const_fn_raw(callee) => {
-                            // At this point, it is only legal when the caller is marked with
-                            // #[default_method_body_is_const], and the callee is in the same
-                            // trait.
-                            let callee_trait = tcx.trait_of_item(callee);
-                            if callee_trait.is_some() {
-                                if tcx.has_attr(caller, sym::default_method_body_is_const) {
-                                    if tcx.trait_of_item(caller) == callee_trait {
-                                        nonconst_call_permission = true;
-                                    }
-                                }
-                            }
-
-                            if !nonconst_call_permission {
-                                self.check_op(ops::FnCallNonConst(None));
-                                return;
-                            }
+                            self.check_op(ops::FnCallNonConst(None));
+                            return;
                         }
                         _ => {}
                     }
@@ -915,16 +899,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 let is_intrinsic = tcx.fn_sig(callee).abi() == RustIntrinsic;
 
                 if !tcx.is_const_fn_raw(callee) {
-                    if tcx.trait_of_item(callee).is_some() {
-                        if tcx.has_attr(callee, sym::default_method_body_is_const) {
-                            // To get to here we must have already found a const impl for the
-                            // trait, but for it to still be non-const can be that the impl is
-                            // using default method bodies.
-                            nonconst_call_permission = true;
-                        }
-                    }
-
-                    if !nonconst_call_permission {
+                    // To get to here we must have already found a const impl for the
+                    // trait, but for it to still be non-const can be that the impl is
+                    // using default method bodies.
+                    if !(tcx.trait_of_item(callee).is_some() && tcx.has_attr(callee, sym::default_method_body_is_const)) {
                         self.check_op(ops::FnCallNonConst(None));
                         return;
                     }

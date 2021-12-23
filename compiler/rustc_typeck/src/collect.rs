@@ -1986,6 +1986,17 @@ fn predicates_defined_on(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicate
 fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicates<'_> {
     let mut result = tcx.predicates_defined_on(def_id);
 
+    if tcx.has_attr(def_id, sym::default_method_body_is_const) {
+        if let Some(parent) = tcx.parent(def_id).filter(|&did| tcx.is_trait(did)) {
+            let span = rustc_span::DUMMY_SP;
+            result.predicates =
+                tcx.arena.alloc_from_iter(result.predicates.iter().copied().chain(std::iter::once((
+                    ty::TraitRef::identity(tcx, parent).with_constness(ty::BoundConstness::ConstIfConst).to_predicate(tcx),
+                    span,
+                ))));
+        }
+    }
+    
     if tcx.is_trait(def_id) {
         // For traits, add `Self: Trait` predicate. This is
         // not part of the predicates that a user writes, but it

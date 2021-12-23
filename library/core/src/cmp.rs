@@ -1243,7 +1243,8 @@ mod impls {
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl PartialEq for $t {
+            #[rustc_const_unstable(feature = "const_cmp", issue = "none")]
+            impl const PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &$t) -> bool { (*self) == (*other) }
                 #[inline]
@@ -1280,10 +1281,11 @@ mod impls {
     macro_rules! partial_ord_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl PartialOrd for $t {
+            #[rustc_const_unstable(feature = "const_cmp", issue = "none")]
+            impl const PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
-                    match (self <= other, self >= other) {
+                    match (*self <= *other, *self >= *other) {
                         (false, false) => None,
                         (false, true) => Some(Greater),
                         (true, false) => Some(Less),
@@ -1323,10 +1325,13 @@ mod impls {
     macro_rules! ord_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl PartialOrd for $t {
+            #[rustc_const_unstable(feature = "const_cmp", issue = "none")]
+            impl const PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
-                    Some(self.cmp(other))
+                    Some(if *self < *other { Less }
+                        else if *self == *other { Equal }
+                        else { Greater })
                 }
                 #[inline]
                 fn lt(&self, other: &$t) -> bool { (*self) < (*other) }

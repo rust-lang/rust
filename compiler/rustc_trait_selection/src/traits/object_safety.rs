@@ -433,7 +433,7 @@ fn virtual_call_violation_for_method<'tcx>(
     }
 
     if tcx
-        .predicates_of(method.def_id)
+        .predicates_defined_on(method.def_id)
         .predicates
         .iter()
         // A trait object can't claim to live more than the concrete type,
