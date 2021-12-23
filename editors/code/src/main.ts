@@ -276,23 +276,13 @@ async function isNixOs(): Promise<boolean> {
 }
 
 function warnAboutExtensionConflicts() {
-    const conflicting = [
-        ["rust-analyzer", "matklad.rust-analyzer"],
-        ["Rust", "rust-lang.rust"],
-    ];
-
-    const found = conflicting.filter(
-        nameId => vscode.extensions.getExtension(nameId[1]) !== undefined);
-
-    if (found.length > 1) {
-        const fst = found[0];
-        const sec = found[1];
+    if (vscode.extensions.getExtension("rust-lang.rust")) {
         vscode.window.showWarningMessage(
-            `You have both the ${fst[0]} (${fst[1]}) and ${sec[0]} (${sec[1]}) ` +
+            `You have both the rust-analyzer (matklad.rust-analyzer) and Rust (rust-lang.rust) ` +
             "plugins enabled. These are known to conflict and cause various functions of " +
             "both plugins to not work correctly. You should disable one of them.", "Got it")
             .then(() => { }, console.error);
-    };
+    }
 }
 
 /**
