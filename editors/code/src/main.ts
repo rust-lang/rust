@@ -156,14 +156,10 @@ export async function deactivate() {
     ctx = undefined;
 }
 
-async function bootstrap(config: Config, state: PersistentState): Promise<string> {
+async function bootstrap(context: vscode.ExtensionContext, config: Config, state: PersistentState): Promise<string> {
     await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
-    const path = await bootstrapServer(config, state);
-    return path;
-}
 
-async function bootstrapServer(config: Config, state: PersistentState): Promise<string> {
-    const path = await getServer(config, state);
+    const path = await getServer(context, config, state);
     if (!path) {
         throw new Error(
             "Rust Analyzer Language Server is not available. " +
@@ -228,7 +224,7 @@ async function patchelf(dest: vscode.Uri): Promise<void> {
     );
 }
 
-async function getServer(config: Config, state: PersistentState): Promise<string | undefined> {
+async function getServer(context: vscode.ExtensionContext, config: Config, state: PersistentState): Promise<string | undefined> {
     const explicitPath = serverPath(config);
     if (explicitPath) {
         if (explicitPath.startsWith("~/")) {
@@ -264,14 +260,14 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     }
     const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
     const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer-${platform}${ext}`);
-    const bundled = vscode.Uri.joinPath(config.installUri, "server", `rust-analyzer${ext}`);
+    const bundled = vscode.Uri.joinPath(context.extensionUri, "server", `rust-analyzer${ext}`);
     const bundledExists = await vscode.workspace.fs.stat(bundled).then(() => true, () => false);
     const exists = await vscode.workspace.fs.stat(dest).then(() => true, () => false);
     if (bundledExists) {
         if (!await isNixOs()) {
             return bundled.fsPath;
         }
-        if (!exists) {
+        if (!exists || config.package.version !== state.serverVersion) {
             await vscode.workspace.fs.copy(bundled, dest);
             await patchelf(dest);
         }

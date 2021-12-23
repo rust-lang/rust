@@ -30,11 +30,9 @@ export class Config {
     } = vscode.extensions.getExtension(this.extensionId)!.packageJSON;
 
     readonly globalStorageUri: vscode.Uri;
-    readonly installUri: vscode.Uri;
 
     constructor(ctx: vscode.ExtensionContext) {
         this.globalStorageUri = ctx.globalStorageUri;
-        this.installUri = ctx.extensionUri;
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
         this.refreshLogging();
     }
