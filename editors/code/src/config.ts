@@ -8,11 +8,6 @@ const NIGHTLY_TAG = "nightly";
 
 export type RunnableEnvCfg = undefined | Record<string, string> | { mask?: string; env: Record<string, string> }[];
 
-export class ProxySettings {
-    proxy?: string = undefined;
-    strictSSL: boolean = true;
-}
-
 export class Config {
     readonly extensionId = "matklad.rust-analyzer";
 
@@ -24,7 +19,6 @@ export class Config {
         "procMacro",
         "files",
         "highlighting",
-        "updates.channel",
         "lens", // works as lens.*
     ]
         .map(opt => `${this.rootSection}.${opt}`);
@@ -36,11 +30,9 @@ export class Config {
     } = vscode.extensions.getExtension(this.extensionId)!.packageJSON;
 
     readonly globalStorageUri: vscode.Uri;
-    readonly installUri: vscode.Uri;
 
     constructor(ctx: vscode.ExtensionContext) {
         this.globalStorageUri = ctx.globalStorageUri;
-        this.installUri = ctx.extensionUri;
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
         this.refreshLogging();
     }
@@ -103,21 +95,7 @@ export class Config {
         return this.get<null | string>("server.path") ?? this.get<null | string>("serverPath");
     }
     get serverExtraEnv() { return this.get<Env | null>("server.extraEnv") ?? {}; }
-    get channel() { return this.get<UpdatesChannel>("updates.channel"); }
-    get askBeforeDownload() { return this.get<boolean>("updates.askBeforeDownload"); }
     get traceExtension() { return this.get<boolean>("trace.extension"); }
-    get proxySettings(): ProxySettings {
-        const proxy = vscode
-            .workspace
-            .getConfiguration('http')
-            .get<null | string>("proxy")! || process.env["https_proxy"] || process.env["HTTPS_PROXY"];
-        const strictSSL = vscode.workspace.getConfiguration("http").get<boolean>("proxyStrictSSL") ?? true;
-
-        return {
-            proxy: proxy,
-            strictSSL: strictSSL,
-        };
-    }
 
     get inlayHints() {
         return {

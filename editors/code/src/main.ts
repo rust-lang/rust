@@ -5,12 +5,11 @@ import * as commands from './commands';
 import { activateInlayHints } from './inlay_hints';
 import { Ctx } from './ctx';
 import { Config } from './config';
-import { log, assert, isValidExecutable, isRustDocument } from './util';
+import { log, isValidExecutable, isRustDocument } from './util';
 import { PersistentState } from './persistent_state';
-import { fetchRelease, download } from './net';
 import { activateTaskProvider } from './tasks';
 import { setContextValue } from './util';
-import { exec, spawnSync } from 'child_process';
+import { exec } from 'child_process';
 
 let ctx: Ctx | undefined;
 
@@ -28,13 +27,8 @@ export async function activate(context: vscode.ExtensionContext) {
 async function tryActivate(context: vscode.ExtensionContext) {
     const config = new Config(context);
     const state = new PersistentState(context.globalState);
-    const serverPath = await bootstrap(config, state).catch(err => {
+    const serverPath = await bootstrap(context, config, state).catch(err => {
         let message = "bootstrap error. ";
-
-        if (err.code === "EBUSY" || err.code === "ETXTBSY" || err.code === "EPERM") {
-            message += "Other vscode windows might be using rust-analyzer, ";
-            message += "you should close them and reload this window to retry. ";
-        }
 
         message += 'See the logs in "OUTPUT > Rust Analyzer Client" (should open automatically). ';
         message += 'To enable verbose logs use { "rust-analyzer.trace.extension": true }';
@@ -111,10 +105,6 @@ async function initCommonContext(context: vscode.ExtensionContext, ctx: Ctx) {
         await activate(context).catch(log.error);
     });
 
-    ctx.registerCommand('updateGithubToken', ctx => async () => {
-        await queryForGithubToken(new PersistentState(ctx.globalState));
-    });
-
     ctx.registerCommand('analyzerStatus', commands.analyzerStatus);
     ctx.registerCommand('memoryUsage', commands.memoryUsage);
     ctx.registerCommand('shuffleCrateGraph', commands.shuffleCrateGraph);
@@ -161,99 +151,8 @@ export async function deactivate() {
     ctx = undefined;
 }
 
-async function bootstrap(config: Config, state: PersistentState): Promise<string> {
-    await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
-
-    if (!config.currentExtensionIsNightly) {
-        await state.updateNightlyReleaseId(undefined);
-    }
-    await bootstrapExtension(config, state);
-    const path = await bootstrapServer(config, state);
-    return path;
-}
-
-async function bootstrapExtension(config: Config, state: PersistentState): Promise<void> {
-    if (config.package.releaseTag === null) return;
-    if (config.channel === "stable") {
-        if (config.currentExtensionIsNightly) {
-            void vscode.window.showWarningMessage(
-                `You are running a nightly version of rust-analyzer extension. ` +
-                `To switch to stable, uninstall the extension and re-install it from the marketplace`
-            );
-        }
-        return;
-    };
-    if (serverPath(config)) return;
-
-    const now = Date.now();
-    const isInitialNightlyDownload = state.nightlyReleaseId === undefined;
-    if (config.currentExtensionIsNightly) {
-        // Check if we should poll github api for the new nightly version
-        // if we haven't done it during the past hour
-        const lastCheck = state.lastCheck;
-
-        const anHour = 60 * 60 * 1000;
-        const shouldCheckForNewNightly = isInitialNightlyDownload || (now - (lastCheck ?? 0)) > anHour;
-
-        if (!shouldCheckForNewNightly) return;
-    }
-
-    const latestNightlyRelease = await downloadWithRetryDialog(state, async () => {
-        return await fetchRelease("nightly", state.githubToken, config.proxySettings);
-    }).catch(async (e) => {
-        log.error(e);
-        if (isInitialNightlyDownload) {
-            await vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly: ${e}`);
-        }
-        return;
-    });
-    if (latestNightlyRelease === undefined) {
-        if (isInitialNightlyDownload) {
-            await vscode.window.showErrorMessage("Failed to download rust-analyzer nightly: empty release contents returned");
-        }
-        return;
-    }
-    if (config.currentExtensionIsNightly && latestNightlyRelease.id === state.nightlyReleaseId) return;
-
-    const userResponse = await vscode.window.showInformationMessage(
-        "New version of rust-analyzer (nightly) is available (requires reload).",
-        "Update"
-    );
-    if (userResponse !== "Update") return;
-
-    let arch = process.arch;
-    if (arch === "ia32") {
-        arch = "x64";
-    }
-    let platform = process.platform as string;
-    if (platform === "linux" && isMusl()) {
-        platform = "alpine";
-    }
-    const artifactName = `rust-analyzer-${platform}-${arch}.vsix`;
-
-    const artifact = latestNightlyRelease.assets.find(artifact => artifact.name === artifactName);
-    assert(!!artifact, `Bad release: ${JSON.stringify(latestNightlyRelease)}`);
-    const dest = vscode.Uri.joinPath(config.globalStorageUri, "rust-analyzer.vsix");
-
-    await downloadWithRetryDialog(state, async () => {
-        await download({
-            url: artifact.browser_download_url,
-            dest,
-            progressTitle: "Downloading rust-analyzer extension",
-            proxySettings: config.proxySettings,
-        });
-    });
-
-    await vscode.commands.executeCommand("workbench.extensions.installExtension", dest);
-    await vscode.workspace.fs.delete(dest);
-
-    await state.updateNightlyReleaseId(latestNightlyRelease.id);
-    await state.updateLastCheck(now);
-    await vscode.commands.executeCommand("workbench.action.reloadWindow");
-}
-
-async function bootstrapServer(config: Config, state: PersistentState): Promise<string> {
-    const path = await getServer(config, state);
+async function bootstrap(context: vscode.ExtensionContext, config: Config, state: PersistentState): Promise<string> {
+    const path = await getServer(context, config, state);
     if (!path) {
         throw new Error(
             "Rust Analyzer Language Server is not available. " +
@@ -318,7 +217,7 @@ async function patchelf(dest: vscode.Uri): Promise<void> {
     );
 }
 
-async function getServer(config: Config, state: PersistentState): Promise<string | undefined> {
+async function getServer(context: vscode.ExtensionContext, config: Config, state: PersistentState): Promise<string | undefined> {
     const explicitPath = serverPath(config);
     if (explicitPath) {
         if (explicitPath.startsWith("~/")) {
@@ -328,85 +227,39 @@ async function getServer(config: Config, state: PersistentState): Promise<string
     };
     if (config.package.releaseTag === null) return "rust-analyzer";
 
-    const platforms: { [key: string]: string } = {
-        "ia32 win32": "x86_64-pc-windows-msvc",
-        "x64 win32": "x86_64-pc-windows-msvc",
-        "x64 linux": "x86_64-unknown-linux-gnu",
-        "x64 darwin": "x86_64-apple-darwin",
-        "arm64 win32": "aarch64-pc-windows-msvc",
-        "arm64 linux": "aarch64-unknown-linux-gnu",
-        "arm64 darwin": "aarch64-apple-darwin",
-    };
-    let platform = platforms[`${process.arch} ${process.platform}`];
-    if (platform === undefined) {
-        await vscode.window.showErrorMessage(
-            "Unfortunately we don't ship binaries for your platform yet. " +
-            "You need to manually clone rust-analyzer repository and " +
-            "run `cargo xtask install --server` to build the language server from sources. " +
-            "If you feel that your platform should be supported, please create an issue " +
-            "about that [here](https://github.com/rust-analyzer/rust-analyzer/issues) and we " +
-            "will consider it."
-        );
-        return undefined;
-    }
-    if (platform === "x86_64-unknown-linux-gnu" && isMusl()) {
-        platform = "x86_64-unknown-linux-musl";
-    }
-    const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
-    const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer-${platform}${ext}`);
-    const bundled = vscode.Uri.joinPath(config.installUri, "server", `rust-analyzer${ext}`);
+    const ext = process.platform === "win32" ? ".exe" : "";
+    const bundled = vscode.Uri.joinPath(context.extensionUri, "server", `rust-analyzer${ext}`);
     const bundledExists = await vscode.workspace.fs.stat(bundled).then(() => true, () => false);
-    let exists = await vscode.workspace.fs.stat(dest).then(() => true, () => false);
     if (bundledExists) {
+        let server = bundled;
+        if (await isNixOs()) {
+            await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
+            const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer${ext}`);
+            let exists = await vscode.workspace.fs.stat(dest).then(() => true, () => false);
+            if (exists && config.package.version !== state.serverVersion) {
+                await vscode.workspace.fs.delete(dest);
+                exists = false;
+            }
+            if (!exists) {
+                await vscode.workspace.fs.copy(bundled, dest);
+                await patchelf(dest);
+                server = dest;
+            }
+        }
         await state.updateServerVersion(config.package.version);
-        if (!await isNixOs()) {
-            return bundled.fsPath;
-        }
-        if (!exists) {
-            await vscode.workspace.fs.copy(bundled, dest);
-            await patchelf(dest);
-            exists = true;
-        }
-    }
-    if (!exists) {
-        await state.updateServerVersion(undefined);
+        return server.fsPath;
     }
 
-    if (state.serverVersion === config.package.version) return dest.fsPath;
-
-    if (config.askBeforeDownload) {
-        const userResponse = await vscode.window.showInformationMessage(
-            `Language server version ${config.package.version} for rust-analyzer is not installed.`,
-            "Download now"
-        );
-        if (userResponse !== "Download now") return dest.fsPath;
-    }
-
-    const releaseTag = config.package.releaseTag;
-    const release = await downloadWithRetryDialog(state, async () => {
-        return await fetchRelease(releaseTag, state.githubToken, config.proxySettings);
-    });
-    const artifact = release.assets.find(artifact => artifact.name === `rust-analyzer-${platform}.gz`);
-    assert(!!artifact, `Bad release: ${JSON.stringify(release)}`);
-
-    await downloadWithRetryDialog(state, async () => {
-        await download({
-            url: artifact.browser_download_url,
-            dest,
-            progressTitle: "Downloading rust-analyzer server",
-            gunzip: true,
-            mode: 0o755,
-            proxySettings: config.proxySettings,
-        });
-    });
-
-    // Patching executable if that's NixOS.
-    if (await isNixOs()) {
-        await patchelf(dest);
-    }
-
-    await state.updateServerVersion(config.package.version);
-    return dest.fsPath;
+    await state.updateServerVersion(undefined);
+    await vscode.window.showErrorMessage(
+        "Unfortunately we don't ship binaries for your platform yet. " +
+        "You need to manually clone the rust-analyzer repository and " +
+        "run `cargo xtask install --server` to build the language server from sources. " +
+        "If you feel that your platform should be supported, please create an issue " +
+        "about that [here](https://github.com/rust-analyzer/rust-analyzer/issues) and we " +
+        "will consider it."
+    );
+    return undefined;
 }
 
 function serverPath(config: Config): string | null {
@@ -422,85 +275,14 @@ async function isNixOs(): Promise<boolean> {
     }
 }
 
-function isMusl(): boolean {
-    // We can detect Alpine by checking `/etc/os-release` but not Void Linux musl.
-    // Instead, we run `ldd` since it advertises the libc which it belongs to.
-    const res = spawnSync("ldd", ["--version"]);
-    return res.stderr != null && res.stderr.indexOf("musl libc") >= 0;
-}
-
-async function downloadWithRetryDialog<T>(state: PersistentState, downloadFunc: () => Promise<T>): Promise<T> {
-    while (true) {
-        try {
-            return await downloadFunc();
-        } catch (e) {
-            const selected = await vscode.window.showErrorMessage("Failed to download: " + e.message, {}, {
-                title: "Update Github Auth Token",
-                updateToken: true,
-            }, {
-                title: "Retry download",
-                retry: true,
-            }, {
-                title: "Dismiss",
-            });
-
-            if (selected?.updateToken) {
-                await queryForGithubToken(state);
-                continue;
-            } else if (selected?.retry) {
-                continue;
-            }
-            throw e;
-        };
-    }
-}
-
-async function queryForGithubToken(state: PersistentState): Promise<void> {
-    const githubTokenOptions: vscode.InputBoxOptions = {
-        value: state.githubToken,
-        password: true,
-        prompt: `
-            This dialog allows to store a Github authorization token.
-            The usage of an authorization token will increase the rate
-            limit on the use of Github APIs and can thereby prevent getting
-            throttled.
-            Auth tokens can be created at https://github.com/settings/tokens`,
-    };
-
-    const newToken = await vscode.window.showInputBox(githubTokenOptions);
-    if (newToken === undefined) {
-        // The user aborted the dialog => Do not update the stored token
-        return;
-    }
-
-    if (newToken === "") {
-        log.info("Clearing github token");
-        await state.updateGithubToken(undefined);
-    } else {
-        log.info("Storing new github token");
-        await state.updateGithubToken(newToken);
-    }
-}
-
 function warnAboutExtensionConflicts() {
-    const conflicting = [
-        ["rust-analyzer", "matklad.rust-analyzer"],
-        ["Rust", "rust-lang.rust"],
-        ["Rust", "kalitaalexey.vscode-rust"],
-    ];
-
-    const found = conflicting.filter(
-        nameId => vscode.extensions.getExtension(nameId[1]) !== undefined);
-
-    if (found.length > 1) {
-        const fst = found[0];
-        const sec = found[1];
+    if (vscode.extensions.getExtension("rust-lang.rust")) {
         vscode.window.showWarningMessage(
-            `You have both the ${fst[0]} (${fst[1]}) and ${sec[0]} (${sec[1]}) ` +
+            `You have both the rust-analyzer (matklad.rust-analyzer) and Rust (rust-lang.rust) ` +
             "plugins enabled. These are known to conflict and cause various functions of " +
             "both plugins to not work correctly. You should disable one of them.", "Got it")
             .then(() => { }, console.error);
-    };
+    }
 }
 
 /**
