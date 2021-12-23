@@ -776,8 +776,7 @@ macro_rules! iter_n {
         #[$stability]
         impl<'a, T: 'a, P> $clone for $iter_n<'a, T, P>
         where
-            P: FnMut(&T) -> bool,
-            $inner<'a, T, P>: Clone,
+            P: Clone + FnMut(&T) -> bool,
         {
             fn clone(&self) -> Self {
                 Self { inner: self.inner.clone() }
@@ -788,7 +787,7 @@ macro_rules! iter_n {
         #[$stability]
         impl<T: fmt::Debug, P> fmt::Debug for $iter_n<'_, T, P>
         where
-            P: Clone + FnMut(&T) -> bool,
+            P: FnMut(&T) -> bool,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_struct($str).field("inner", &self.inner).finish()

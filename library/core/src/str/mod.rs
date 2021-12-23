@@ -14,8 +14,8 @@ mod traits;
 mod validations;
 
 use self::iter::{
-    SplitInclusiveInternal, SplitLeftInclusiveInternal, SplitNInclusiveInternal,
-    SplitNLeftInclusiveInternal, SplitTerminatorInternal,
+    SplitEndsInternal, SplitInclusiveInternal, SplitInitiatorInternal, SplitLeftInclusiveInternal,
+    SplitNInclusiveInternal, SplitNLeftInclusiveInternal, SplitTerminatorInternal,
 };
 use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 
@@ -74,8 +74,9 @@ pub use iter::SplitInclusive;
 
 #[unstable(feature = "split_inclusive_variants", issue = "none")]
 pub use iter::{
-    RSplitInclusive, RSplitLeftInclusive, RSplitNInclusive, RSplitNLeftInclusive,
-    SplitLeftInclusive, SplitNInclusive, SplitNLeftInclusive,
+    RSplitEnds, RSplitInclusive, RSplitInitiator, RSplitLeftInclusive, RSplitNInclusive,
+    RSplitNLeftInclusive, SplitEnds, SplitInitiator, SplitLeftInclusive, SplitNInclusive,
+    SplitNLeftInclusive,
 };
 
 #[unstable(feature = "str_internals", issue = "none")]
@@ -1443,6 +1444,7 @@ impl str {
     ///
     /// ```
     /// #![feature(split_inclusive_variants)]
+    ///
     /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
     ///     .rsplit_inclusive('\n').collect();
     /// assert_eq!(v, ["little lamb.", "little lamb\n", "Mary had a little lamb\n"]);
@@ -1454,6 +1456,7 @@ impl str {
     ///
     /// ```
     /// #![feature(split_inclusive_variants)]
+    ///
     /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb.\n"
     ///     .rsplit_inclusive('\n').collect();
     /// assert_eq!(v, ["little lamb.\n", "little lamb\n", "Mary had a little lamb\n"]);
@@ -1463,6 +1466,7 @@ impl str {
     ///
     /// ```
     /// #![feature(split_inclusive_variants)]
+    ///
     /// let v: Vec<&str> = "".rsplit_inclusive('\n').collect();
     /// assert_eq!(v.len(), 0);
     /// ```
@@ -1487,6 +1491,7 @@ impl str {
     ///
     /// ```
     /// #![feature(split_inclusive_variants)]
+    ///
     /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
     ///     .split_left_inclusive('\n').collect();
     /// assert_eq!(v, ["Mary had a little lamb", "\nlittle lamb", "\nlittle lamb."]);
@@ -1498,6 +1503,7 @@ impl str {
     ///
     /// ```
     /// #![feature(split_inclusive_variants)]
+    ///
     /// let v: Vec<&str> = "\nMary had a little lamb\nlittle lamb\nlittle lamb.\n"
     ///     .split_left_inclusive('\n').collect();
     /// assert_eq!(v, ["\nMary had a little lamb", "\nlittle lamb", "\nlittle lamb.", "\n"]);
@@ -1507,6 +1513,7 @@ impl str {
     ///
     /// ```
     /// #![feature(split_inclusive_variants)]
+    ///
     /// let v: Vec<&str> = "".split_left_inclusive('\n').collect();
     /// assert_eq!(v.len(), 0);
     /// ```
@@ -1531,6 +1538,7 @@ impl str {
     ///
     /// ```
     /// #![feature(split_inclusive_variants)]
+    ///
     /// let v: Vec<&str> = "Mary had a little lamb\nlittle lamb\nlittle lamb."
     ///     .rsplit_left_inclusive('\n').collect();
     /// assert_eq!(v, ["\nlittle lamb.", "\nlittle lamb", "Mary had a little lamb"]);
@@ -1542,6 +1550,7 @@ impl str {
     ///
     /// ```
     /// #![feature(split_inclusive_variants)]
+    ///
     /// let v: Vec<&str> = "\nMary had a little lamb\nlittle lamb\nlittle lamb.\n"
     ///     .rsplit_left_inclusive('\n').collect();
     /// assert_eq!(v, ["\n", "\nlittle lamb.", "\nlittle lamb", "\nMary had a little lamb"]);
@@ -1551,6 +1560,7 @@ impl str {
     ///
     /// ```
     /// #![feature(split_inclusive_variants)]
+    ///
     /// let o = "".rsplit_left_inclusive('\n').next();
     /// assert_eq!(o, None);
     /// ```
@@ -1561,6 +1571,107 @@ impl str {
         pat: P,
     ) -> RSplitLeftInclusive<'a, P> {
         RSplitLeftInclusive(self.split_left_inclusive(pat).0)
+    }
+
+    /// An iterator over substrings of the given string slice, separated by
+    /// characters matched by a pattern.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// Equivalent to [`split`], except that the leading substring
+    /// is skipped if empty.
+    ///
+    /// [`split`]: str::split
+    ///
+    /// This method can be used for string data that is _initiated_,
+    /// rather than _separated_ by a pattern.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will be a [`DoubleEndedIterator`] if the pattern
+    /// allows a reverse search and forward/reverse search yields the same
+    /// elements. This is true for, e.g., [`char`], but not for `&str`.
+    ///
+    /// If the pattern allows a reverse search but its results might differ
+    /// from a forward search, the [`rsplit_initiator`] method can be used.
+    ///
+    /// [`rsplit_initiator`]: str::rsplit_initiator
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = ".A.B".split_initiator('.').collect();
+    /// assert_eq!(v, ["A", "B"]);
+    ///
+    /// let v: Vec<&str> = "..A..B".split_initiator(".").collect();
+    /// assert_eq!(v, ["", "A", "", "B"]);
+    ///
+    /// let v: Vec<&str> = "A.B:C.D".split_initiator(&['.', ':'][..]).collect();
+    /// assert_eq!(v, ["A", "B", "C", "D"]);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn split_initiator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitInitiator<'a, P> {
+        SplitInitiator(SplitInitiatorInternal::new(self, pat))
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by a pattern and yielded in reverse order.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// Equivalent to [`rsplit`], except that the leading substring is
+    /// skipped if empty.
+    ///
+    /// [`rsplit`]: str::rsplit
+    ///
+    /// This method can be used for string data that is _initiated_,
+    /// rather than _separated_ by a pattern.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator requires that the pattern supports a
+    /// reverse search, and it will be double ended if a forward/reverse
+    /// search yields the same elements.
+    ///
+    /// For iterating from the front, the [`split_initiator`] method can be
+    /// used.
+    ///
+    /// [`split_initiator`]: str::split_initiator
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = ".A.B".rsplit_initiator('.').collect();
+    /// assert_eq!(v, ["B", "A"]);
+    ///
+    /// let v: Vec<&str> = "..A..B".rsplit_initiator(".").collect();
+    /// assert_eq!(v, ["B", "", "A", ""]);
+    ///
+    /// let v: Vec<&str> = "A.B:C.D".rsplit_initiator(&['.', ':'][..]).collect();
+    /// assert_eq!(v, ["D", "C", "B", "A"]);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn rsplit_initiator<'a, P>(&'a self, pat: P) -> RSplitInitiator<'a, P>
+    where
+        P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+    {
+        RSplitInitiator(self.split_initiator(pat).0)
     }
 
     /// An iterator over substrings of the given string slice, separated by
@@ -1620,10 +1731,10 @@ impl str {
     /// [`char`]: prim@char
     /// [pattern]: self::pattern
     ///
-    /// Equivalent to [`split`], except that the trailing substring is
+    /// Equivalent to [`rsplit`], except that the trailing substring is
     /// skipped if empty.
     ///
-    /// [`split`]: str::split
+    /// [`rsplit`]: str::rsplit
     ///
     /// This method can be used for string data that is _terminated_,
     /// rather than _separated_ by a pattern.
@@ -1658,6 +1769,107 @@ impl str {
         P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
     {
         RSplitTerminator(self.split_terminator(pat).0)
+    }
+
+    /// An iterator over substrings of the given string slice, separated by
+    /// characters matched by a pattern.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// Equivalent to [`split`], except that the leading and trailing
+    /// substrings are skipped if empty.
+    ///
+    /// [`split`]: str::split
+    ///
+    /// This method can be used for string data that _separates_,
+    /// rather than _is separated by_, a pattern.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will be a [`DoubleEndedIterator`] if the pattern
+    /// allows a reverse search and forward/reverse search yields the same
+    /// elements. This is true for, e.g., [`char`], but not for `&str`.
+    ///
+    /// If the pattern allows a reverse search but its results might differ
+    /// from a forward search, the [`rsplit_ends`] method can be used.
+    ///
+    /// [`rsplit_ends`]: str::rsplit_ends
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = ".A.B.".split_ends('.').collect();
+    /// assert_eq!(v, ["A", "B"]);
+    ///
+    /// let v: Vec<&str> = "..A..B..".split_ends(".").collect();
+    /// assert_eq!(v, ["", "A", "", "B", ""]);
+    ///
+    /// let v: Vec<&str> = "A.B:C.D".split_ends(&['.', ':'][..]).collect();
+    /// assert_eq!(v, ["A", "B", "C", "D"]);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn split_ends<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitEnds<'a, P> {
+        SplitEnds(SplitEndsInternal::new(self, pat))
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by a pattern and yielded in reverse order.
+    ///
+    /// The [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    ///
+    /// Equivalent to [`rsplit`], except that the leading and trailing
+    /// substring are skipped if empty.
+    ///
+    /// [`rsplit`]: str::rsplit
+    ///
+    /// This method can be used for string data that _separates_,
+    /// rather than _is separated by_, a pattern.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator requires that the pattern supports a
+    /// reverse search, and it will be double ended if a forward/reverse
+    /// search yields the same elements.
+    ///
+    /// For iterating from the front, the [`split_ends`] method can be
+    /// used.
+    ///
+    /// [`split_ends`]: str::split_ends
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// let v: Vec<&str> = ".A.B.".rsplit_ends('.').collect();
+    /// assert_eq!(v, ["B", "A"]);
+    ///
+    /// let v: Vec<&str> = "..A..B..".rsplit_ends(".").collect();
+    /// assert_eq!(v, ["", "B", "", "A", ""]);
+    ///
+    /// let v: Vec<&str> = "A.B:C.D".rsplit_ends(&['.', ':'][..]).collect();
+    /// assert_eq!(v, ["D", "C", "B", "A"]);
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn rsplit_ends<'a, P>(&'a self, pat: P) -> RSplitEnds<'a, P>
+    where
+        P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+    {
+        RSplitEnds(self.split_ends(pat).0)
     }
 
     /// An iterator over substrings of the given string slice, separated by a
@@ -2047,6 +2259,97 @@ impl str {
         let (start, end) = delimiter.into_searcher(self).next_match_back()?;
         // SAFETY: `Searcher` is known to return valid indices.
         unsafe { Some((self.get_unchecked(..start), self.get_unchecked(end..))) }
+    }
+    /// Splits the string on the first occurrence of the specified delimiter and
+    /// returns prefix including delimiter and suffix after delimiter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// assert_eq!("cfg".split_once_inclusive('='), None);
+    /// assert_eq!("cfg=foo".split_once_inclusive('='), Some(("cfg=", "foo")));
+    /// assert_eq!("cfg=foo=bar".split_once_inclusive('='), Some(("cfg=", "foo=bar")));
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn split_once_inclusive<'a, P: Pattern<'a>>(
+        &'a self,
+        delimiter: P,
+    ) -> Option<(&'a str, &'a str)> {
+        let (_, end) = delimiter.into_searcher(self).next_match()?;
+        // SAFETY: `Searcher` is known to return valid indices.
+        unsafe { Some((self.get_unchecked(..end), self.get_unchecked(end..))) }
+    }
+
+    /// Splits the string on the last occurrence of the specified delimiter and
+    /// returns prefix including delimiter and suffix after delimiter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// assert_eq!("cfg".rsplit_once_inclusive('='), None);
+    /// assert_eq!("cfg=foo".rsplit_once_inclusive('='), Some(("cfg=", "foo")));
+    /// assert_eq!("cfg=foo=bar".rsplit_once_inclusive('='), Some(("cfg=foo=", "bar")));
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn rsplit_once_inclusive<'a, P>(&'a self, delimiter: P) -> Option<(&'a str, &'a str)>
+    where
+        P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+    {
+        let (_, end) = delimiter.into_searcher(self).next_match_back()?;
+        // SAFETY: `Searcher` is known to return valid indices.
+        unsafe { Some((self.get_unchecked(..end), self.get_unchecked(end..))) }
+    }
+
+    /// Splits the string on the first occurrence of the specified delimiter and
+    /// returns prefix before delimiter and suffix including delimiter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// assert_eq!("cfg".split_once_left_inclusive('='), None);
+    /// assert_eq!("cfg=foo".split_once_left_inclusive('='), Some(("cfg", "=foo")));
+    /// assert_eq!("cfg=foo=bar".split_once_left_inclusive('='), Some(("cfg", "=foo=bar")));
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn split_once_left_inclusive<'a, P: Pattern<'a>>(
+        &'a self,
+        delimiter: P,
+    ) -> Option<(&'a str, &'a str)> {
+        let (start, _) = delimiter.into_searcher(self).next_match()?;
+        // SAFETY: `Searcher` is known to return valid indices.
+        unsafe { Some((self.get_unchecked(..start), self.get_unchecked(start..))) }
+    }
+
+    /// Splits the string on the last occurrence of the specified delimiter and
+    /// returns prefix before delimiter and suffix including delimiter.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(split_inclusive_variants)]
+    ///
+    /// assert_eq!("cfg".rsplit_once_left_inclusive('='), None);
+    /// assert_eq!("cfg=foo".rsplit_once_left_inclusive('='), Some(("cfg", "=foo")));
+    /// assert_eq!("cfg=foo=bar".rsplit_once_left_inclusive('='), Some(("cfg=foo", "=bar")));
+    /// ```
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[inline]
+    pub fn rsplit_once_left_inclusive<'a, P>(&'a self, delimiter: P) -> Option<(&'a str, &'a str)>
+    where
+        P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+    {
+        let (start, _) = delimiter.into_searcher(self).next_match_back()?;
+        // SAFETY: `Searcher` is known to return valid indices.
+        unsafe { Some((self.get_unchecked(..start), self.get_unchecked(start..))) }
     }
 
     /// An iterator over the disjoint matches of a pattern within the given string

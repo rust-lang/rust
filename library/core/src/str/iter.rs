@@ -872,6 +872,35 @@ generate_pattern_iterators! {
 }
 
 split_internal! {
+    SplitInitiatorInternal {
+        debug: "SplitInitiatorInternal",
+        skip_leading_empty: skip_leading_empty,
+        include_leading: false,
+        include_trailing: false,
+    }
+}
+
+generate_pattern_iterators! {
+    forward:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`split_initiator`].
+        ///
+        /// [`split_initiator`]: str::split_initiator
+        struct SplitInitiator;
+    reverse:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`rsplit_initiator`].
+        ///
+        /// [`rsplit_initiator`]: str::rsplit_initiator
+        struct RSplitInitiator;
+    internal:
+        SplitInitiatorInternal yielding (&'a str);
+    delegate double ended;
+}
+
+split_internal! {
     SplitTerminatorInternal {
         debug: "SplitTerminatorInternal",
         skip_trailing_empty: skip_trailing_empty,
@@ -897,6 +926,36 @@ generate_pattern_iterators! {
         struct RSplitTerminator;
     internal:
         SplitTerminatorInternal yielding (&'a str);
+    delegate double ended;
+}
+
+split_internal! {
+    SplitEndsInternal {
+        debug: "SplitEndsInternal",
+        skip_leading_empty: skip_leading_empty,
+        skip_trailing_empty: skip_trailing_empty,
+        include_leading: false,
+        include_trailing: false,
+    }
+}
+
+generate_pattern_iterators! {
+    forward:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`split_ends`].
+        ///
+        /// [`split_ends`]: str::split_ends
+        struct SplitEnds;
+    reverse:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`rsplit_ends`].
+        ///
+        /// [`rsplit_ends`]: str::rsplit_ends
+        struct RSplitEnds;
+    internal:
+        SplitEndsInternal yielding (&'a str);
     delegate double ended;
 }
 
