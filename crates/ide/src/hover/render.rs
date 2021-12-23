@@ -360,7 +360,13 @@ pub(super) fn definition(
         Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_docs(db, it),
         Definition::Variant(it) => label_and_docs(db, it),
-        Definition::Const(it) => label_value_and_docs(db, it, |it| it.value(db)),
+        Definition::Const(it) => label_value_and_docs(db, it, |it| {
+            let body = it.eval(db);
+            match body {
+                Ok(x) => Some(format!("{}", x)),
+                Err(_) => it.value(db).map(|x| format!("{}", x)),
+            }
+        }),
         Definition::Static(it) => label_value_and_docs(db, it, |it| it.value(db)),
         Definition::Trait(it) => label_and_docs(db, it),
         Definition::TypeAlias(it) => label_and_docs(db, it),

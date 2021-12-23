@@ -31,7 +31,7 @@ pub mod db;
 
 mod display;
 
-use std::{iter, ops::ControlFlow, sync::Arc};
+use std::{collections::HashMap, iter, ops::ControlFlow, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId};
@@ -50,7 +50,7 @@ use hir_def::{
 use hir_expand::{name::name, MacroCallKind, MacroDefKind};
 use hir_ty::{
     autoderef,
-    consteval::ConstExt,
+    consteval::{eval_const, ComputedExpr, ConstEvalCtx, ConstEvalError, ConstExt},
     could_unify,
     diagnostics::BodyValidationDiagnostic,
     method_resolution::{self, TyFingerprint},
@@ -1531,6 +1531,23 @@ impl Const {
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let ty = ctx.lower_ty(&data.type_ref);
         Type::new_with_resolver_inner(db, krate.id, &resolver, ty)
+    }
+
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<ComputedExpr, ConstEvalError> {
+        let body = db.body(self.id.into());
+        let root = &body.exprs[body.body_expr];
+        let infer = db.infer_query(self.id.into());
+        let infer = infer.as_ref();
+        let result = eval_const(
+            root,
+            ConstEvalCtx {
+                exprs: &body.exprs,
+                pats: &body.pats,
+                local_data: HashMap::default(),
+                infer,
+            },
+        );
+        result
     }
 }
 
