@@ -129,7 +129,8 @@ pub trait Any: 'static {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: 'static + ?Sized> Any for T {
+#[rustc_const_unstable(feature = "const_any", issue = "92224")]
+impl<T: 'static + ?Sized> const Any for T {
     fn type_id(&self) -> TypeId {
         TypeId::of::<T>()
     }
@@ -183,8 +184,9 @@ impl dyn Any {
     /// is_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub fn is<T: Any>(&self) -> bool {
+    pub const fn is<T: Any>(&self) -> bool {
         // Get `TypeId` of the type this function is instantiated with.
         let t = TypeId::of::<T>();
 
@@ -215,8 +217,9 @@ impl dyn Any {
     /// print_if_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+    pub const fn downcast_ref<T: Any>(&self) -> Option<&T> {
         if self.is::<T>() {
             // SAFETY: just checked whether we are pointing to the correct type, and we can rely on
             // that check for memory safety because we have implemented Any for all types; no other
@@ -251,8 +254,9 @@ impl dyn Any {
     /// assert_eq!(&s, "starlord");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+    pub const fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
             // SAFETY: just checked whether we are pointing to the correct type, and we can rely on
             // that check for memory safety because we have implemented Any for all types; no other
@@ -284,8 +288,9 @@ impl dyn Any {
     /// The contained value must be of type `T`. Calling this method
     /// with the incorrect type is *undefined behavior*.
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
+    pub const unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
         debug_assert!(self.is::<T>());
         // SAFETY: caller guarantees that T is the correct type
         unsafe { &*(self as *const dyn Any as *const T) }
@@ -314,8 +319,9 @@ impl dyn Any {
     /// The contained value must be of type `T`. Calling this method
     /// with the incorrect type is *undefined behavior*.
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
+    pub const unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
         debug_assert!(self.is::<T>());
         // SAFETY: caller guarantees that T is the correct type
         unsafe { &mut *(self as *mut dyn Any as *mut T) }
@@ -342,8 +348,9 @@ impl dyn Any + Send {
     /// is_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub fn is<T: Any>(&self) -> bool {
+    pub const fn is<T: Any>(&self) -> bool {
         <dyn Any>::is::<T>(self)
     }
 
@@ -366,8 +373,9 @@ impl dyn Any + Send {
     /// print_if_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+    pub const fn downcast_ref<T: Any>(&self) -> Option<&T> {
         <dyn Any>::downcast_ref::<T>(self)
     }
 
@@ -394,8 +402,9 @@ impl dyn Any + Send {
     /// assert_eq!(&s, "starlord");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+    pub const fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         <dyn Any>::downcast_mut::<T>(self)
     }
 
@@ -419,8 +428,9 @@ impl dyn Any + Send {
     ///
     /// Same as the method on the type `dyn Any`.
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
+    pub const unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
         // SAFETY: guaranteed by caller
         unsafe { <dyn Any>::downcast_ref_unchecked::<T>(self) }
     }
@@ -447,8 +457,9 @@ impl dyn Any + Send {
     ///
     /// Same as the method on the type `dyn Any`.
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
+    pub const unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
         // SAFETY: guaranteed by caller
         unsafe { <dyn Any>::downcast_mut_unchecked::<T>(self) }
     }
@@ -474,8 +485,9 @@ impl dyn Any + Send + Sync {
     /// is_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub fn is<T: Any>(&self) -> bool {
+    pub const fn is<T: Any>(&self) -> bool {
         <dyn Any>::is::<T>(self)
     }
 
@@ -498,8 +510,9 @@ impl dyn Any + Send + Sync {
     /// print_if_string(&"cookie monster".to_string());
     /// ```
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+    pub const fn downcast_ref<T: Any>(&self) -> Option<&T> {
         <dyn Any>::downcast_ref::<T>(self)
     }
 
@@ -526,8 +539,9 @@ impl dyn Any + Send + Sync {
     /// assert_eq!(&s, "starlord");
     /// ```
     #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+    pub const fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         <dyn Any>::downcast_mut::<T>(self)
     }
 
@@ -547,8 +561,9 @@ impl dyn Any + Send + Sync {
     /// }
     /// ```
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
+    pub const unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
         // SAFETY: guaranteed by caller
         unsafe { <dyn Any>::downcast_ref_unchecked::<T>(self) }
     }
@@ -571,8 +586,9 @@ impl dyn Any + Send + Sync {
     /// assert_eq!(*x.downcast_ref::<usize>().unwrap(), 2);
     /// ```
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
+    #[rustc_const_unstable(feature = "const_any", issue = "92224")]
     #[inline]
-    pub unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
+    pub const unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
         // SAFETY: guaranteed by caller
         unsafe { <dyn Any>::downcast_mut_unchecked::<T>(self) }
     }
@@ -594,7 +610,7 @@ impl dyn Any + Send + Sync {
 /// While `TypeId` implements `Hash`, `PartialOrd`, and `Ord`, it is worth
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, Eq, PartialOrd, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
     t: u64,
@@ -621,6 +637,15 @@ impl TypeId {
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId { t: intrinsics::type_id::<T>() }
+    }
+}
+
+// FIXME: This can be replaced by a macro once `const derive` is implemented.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_any", issue = "92224")]
+impl const PartialEq for TypeId {
+    fn eq(&self, other: &Self) -> bool {
+        self.t == other.t
     }
 }
 

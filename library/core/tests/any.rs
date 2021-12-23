@@ -23,6 +23,19 @@ fn any_referenced() {
 }
 
 #[test]
+fn const_any_referenced() {
+    const {
+        let (a, b) = (&5 as &dyn Any, &Test as &dyn Any);
+
+        assert!(a.is::<i32>());
+        assert!(!b.is::<i32>());
+
+        assert!(!a.is::<Test>());
+        assert!(b.is::<Test>());
+    }
+}
+
+#[test]
 fn any_owning() {
     let (a, b, c) =
         (box 5_usize as Box<dyn Any>, box TEST as Box<dyn Any>, box Test as Box<dyn Any>);
@@ -52,6 +65,23 @@ fn any_downcast_ref() {
     match a.downcast_ref::<Test>() {
         None => {}
         x => panic!("Unexpected value {:?}", x),
+    }
+}
+
+#[test]
+fn const_any_downcast_ref() {
+    const {
+        let a = &5_usize as &dyn Any;
+
+        match a.downcast_ref::<usize>() {
+            Some(&5) => {}
+            _ => panic!("Unexpected value"),
+        }
+
+        match a.downcast_ref::<Test>() {
+            None => {}
+            _ => panic!("Unexpected value"),
+        }
     }
 }
 
@@ -110,9 +140,27 @@ fn any_fixed_vec() {
 }
 
 #[test]
+fn const_any_fixed_vec() {
+    const {
+        let test = [0_usize; 8];
+        let test = &test as &dyn Any;
+        assert!(test.is::<[usize; 8]>());
+        assert!(!test.is::<[usize; 10]>());
+    }
+}
+
+#[test]
 fn any_unsized() {
     fn is_any<T: Any + ?Sized>() {}
     is_any::<[i32]>();
+}
+
+#[test]
+fn const_any_unsized() {
+    const {
+        const fn is_any<T: Any + ?Sized>() {}
+        is_any::<[i32]>();
+    }
 }
 
 #[test]

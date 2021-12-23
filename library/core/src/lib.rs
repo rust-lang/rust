@@ -100,6 +100,7 @@
 #![feature(const_align_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_alloc_layout)]
+#![feature(const_any)]
 #![feature(const_arguments_as_str)]
 #![feature(const_array_into_iter_constructors)]
 #![feature(const_bigint_helper_methods)]
