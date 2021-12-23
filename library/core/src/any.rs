@@ -610,7 +610,7 @@ impl dyn Any + Send + Sync {
 /// While `TypeId` implements `Hash`, `PartialOrd`, and `Ord`, it is worth
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
-#[derive(Clone, Copy, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialOrd, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
     t: u64,
@@ -640,13 +640,21 @@ impl TypeId {
     }
 }
 
-// FIXME: This can be replaced by a macro once `const derive` is implemented.
+// FIXME: This can be replaced by a derive macro once `const derive` is implemented.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_any", issue = "92224")]
 impl const PartialEq for TypeId {
     fn eq(&self, other: &Self) -> bool {
         self.t == other.t
     }
+}
+
+// FIXME: This can be replaced by a derive macro once `const derive` is implemented.
+// FIXME: `assert_receiver_is_total_eq` should be marked with `default_method_body_is_const`.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_any", issue = "92224")]
+impl const Eq for TypeId {
+    fn assert_receiver_is_total_eq(&self) {}
 }
 
 /// Returns the name of a type as a string slice.
