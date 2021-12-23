@@ -303,24 +303,6 @@
                     "default": true,
                     "description": "Whether inlay hints font size should be smaller than editor's font size."
                 },
-                "rust-analyzer.updates.channel": {
-                    "type": "string",
-                    "enum": [
-                        "stable",
-                        "nightly"
-                    ],
-                    "default": "stable",
-                    "markdownEnumDescriptions": [
-                        "`stable` updates are shipped weekly, they don't contain cutting-edge features from VSCode proposed APIs but have less bugs in general.",
-                        "`nightly` updates are shipped daily (extension updates automatically by downloading artifacts directly from GitHub), they contain cutting-edge features and latest bug fixes. These releases help us get your feedback very quickly and speed up rust-analyzer development **drastically**."
-                    ],
-                    "markdownDescription": "Choose `nightly` updates to get the latest features and bug fixes every day. While `stable` releases occur weekly and don't contain cutting-edge features from VSCode proposed APIs."
-                },
-                "rust-analyzer.updates.askBeforeDownload": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Whether to ask for permission before downloading any files from the Internet."
-                },
                 "rust-analyzer.server.path": {
                     "type": [
                         "null",
