@@ -107,6 +107,16 @@ There's a test for the cargo wrapper in the `test-cargo-miri` directory; run
 `./run-test.py` in there to execute it. Like `./miri test`, this respects the
 `MIRI_TEST_TARGET` environment variable to execute the test for another target.
 
+### Using a modified standard library
+
+Miri re-builds the standard library into a custom sysroot, so it is fairly easy
+to test Miri against a modified standard library -- you do not even have to
+build Miri yourself, the Miri shipped by `rustup` will work. All you have to do
+is set the `MIRI_LIB_SRC` environment variable to the `library` folder of a
+`rust-lang/rust` repository checkout. Note that changing files in that directory
+does not automatically trigger a re-build of the standard library; you have to
+clear the Miri build cache manually (on Linux, `rm -rf ~/.cache/miri`).
+
 ## Configuring `rust-analyzer`
 
 To configure `rust-analyzer` and VS Code for working on Miri, save the following

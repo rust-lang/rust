@@ -306,6 +306,12 @@ Moreover, Miri recognizes some environment variables:
   Miri executions, also [see "Testing the Miri driver" in `CONTRIBUTING.md`][testing-miri].
 * `MIRIFLAGS` (recognized by `cargo miri` and the test suite) defines extra
   flags to be passed to Miri.
+* `MIRI_LIB_SRC` defines the directory where Miri expects the sources of the
+  standard library that it will build and use for interpretation. This directory
+  must point to the `library` subdirectory of a `rust-lang/rust` repository
+  checkout. Note that changing files in that directory does not automatically
+  trigger a re-build of the standard library; you have to clear the Miri build
+  cache manually (on Linux, `rm -rf ~/.cache/miri`).
 * `MIRI_SYSROOT` (recognized by `cargo miri` and the test suite)
   indicates the sysroot to use.  To do the same thing with `miri`
   directly, use the `--sysroot` flag.
