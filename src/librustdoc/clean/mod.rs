@@ -96,9 +96,9 @@ impl Clean<Attributes> for [ast::Attribute] {
     }
 }
 
-impl Clean<GenericBound> for hir::GenericBound<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericBound {
-        match *self {
+impl Clean<Option<GenericBound>> for hir::GenericBound<'_> {
+    fn clean(&self, cx: &mut DocContext<'_>) -> Option<GenericBound> {
+        Some(match *self {
             hir::GenericBound::Outlives(lt) => GenericBound::Outlives(lt.clean(cx)),
             hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
                 let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
@@ -118,9 +118,16 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
                 )
             }
             hir::GenericBound::Trait(ref t, modifier) => {
+                // `T: ~const Drop` is not equivalent to `T: Drop`, and we don't currently document `~const` bounds
+                // because of its experimental status, so just don't show these.
+                if Some(t.trait_ref.trait_def_id().unwrap()) == cx.tcx.lang_items().drop_trait()
+                    && hir::TraitBoundModifier::MaybeConst == modifier
+                {
+                    return None;
+                }
                 GenericBound::TraitBound(t.clean(cx), modifier)
             }
-        }
+        })
     }
 }
 
@@ -255,14 +262,14 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
                     .collect();
                 WherePredicate::BoundPredicate {
                     ty: wbp.bounded_ty.clean(cx),
-                    bounds: wbp.bounds.iter().map(|x| x.clean(cx)).collect(),
+                    bounds: wbp.bounds.iter().filter_map(|x| x.clean(cx)).collect(),
                     bound_params,
                 }
             }
 
             hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
                 lifetime: wrp.lifetime.clean(cx),
-                bounds: wrp.bounds.iter().map(|x| x.clean(cx)).collect(),
+                bounds: wrp.bounds.iter().filter_map(|x| x.clean(cx)).collect(),
             },
 
             hir::WherePredicate::EqPredicate(ref wrp) => {
@@ -276,7 +283,7 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Option<WherePredicate> {
         let bound_predicate = self.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(pred) => Some(bound_predicate.rebind(pred).clean(cx)),
+            ty::PredicateKind::Trait(pred) => bound_predicate.rebind(pred).clean(cx),
             ty::PredicateKind::RegionOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::TypeOutlives(pred) => pred.clean(cx),
             ty::PredicateKind::Projection(pred) => Some(pred.clean(cx)),
@@ -293,14 +300,22 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
     }
 }
 
-impl<'a> Clean<WherePredicate> for ty::PolyTraitPredicate<'a> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> WherePredicate {
+impl<'a> Clean<Option<WherePredicate>> for ty::PolyTraitPredicate<'a> {
+    fn clean(&self, cx: &mut DocContext<'_>) -> Option<WherePredicate> {
+        // `T: ~const Drop` is not equivalent to `T: Drop`, and we don't currently document `~const` bounds
+        // because of its experimental status, so just don't show these.
+        if self.skip_binder().constness == ty::BoundConstness::ConstIfConst
+            && Some(self.skip_binder().trait_ref.def_id) == cx.tcx.lang_items().drop_trait()
+        {
+            return None;
+        }
+
         let poly_trait_ref = self.map_bound(|pred| pred.trait_ref);
-        WherePredicate::BoundPredicate {
+        Some(WherePredicate::BoundPredicate {
             ty: poly_trait_ref.skip_binder().self_ty().clean(cx),
             bounds: vec![poly_trait_ref.clean(cx)],
             bound_params: Vec::new(),
-        }
+        })
     }
 }
 
@@ -427,7 +442,7 @@ impl Clean<GenericParamDef> for hir::GenericParam<'_> {
                 self.name.ident().name,
                 GenericParamDefKind::Type {
                     did: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
-                    bounds: self.bounds.iter().map(|x| x.clean(cx)).collect(),
+                    bounds: self.bounds.iter().filter_map(|x| x.clean(cx)).collect(),
                     default: default.map(|t| t.clean(cx)).map(Box::new),
                     synthetic,
                 },
@@ -942,7 +957,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     TyMethodItem(t)
                 }
                 hir::TraitItemKind::Type(bounds, ref default) => {
-                    let bounds = bounds.iter().map(|x| x.clean(cx)).collect();
+                    let bounds = bounds.iter().filter_map(|x| x.clean(cx)).collect();
                     let default = default.map(|t| t.clean(cx));
                     AssocTypeItem(bounds, default)
                 }
@@ -1352,7 +1367,7 @@ impl Clean<Type> for hir::Ty<'_> {
             TyKind::OpaqueDef(item_id, _) => {
                 let item = cx.tcx.hir().item(item_id);
                 if let hir::ItemKind::OpaqueTy(ref ty) = item.kind {
-                    ImplTrait(ty.bounds.iter().map(|x| x.clean(cx)).collect())
+                    ImplTrait(ty.bounds.iter().filter_map(|x| x.clean(cx)).collect())
                 } else {
                     unreachable!()
                 }
@@ -1756,7 +1771,7 @@ fn clean_maybe_renamed_item(
                 kind: ConstantKind::Local { body: body_id, def_id },
             }),
             ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
-                bounds: ty.bounds.iter().map(|x| x.clean(cx)).collect(),
+                bounds: ty.bounds.iter().filter_map(|x| x.clean(cx)).collect(),
                 generics: ty.generics.clean(cx),
             }),
             ItemKind::TyAlias(hir_ty, ref generics) => {
@@ -1778,7 +1793,7 @@ fn clean_maybe_renamed_item(
             }),
             ItemKind::TraitAlias(ref generics, bounds) => TraitAliasItem(TraitAlias {
                 generics: generics.clean(cx),
-                bounds: bounds.iter().map(|x| x.clean(cx)).collect(),
+                bounds: bounds.iter().filter_map(|x| x.clean(cx)).collect(),
             }),
             ItemKind::Union(ref variant_data, ref generics) => UnionItem(Union {
                 generics: generics.clean(cx),
@@ -1809,7 +1824,7 @@ fn clean_maybe_renamed_item(
                     unsafety,
                     items,
                     generics: generics.clean(cx),
-                    bounds: bounds.iter().map(|x| x.clean(cx)).collect(),
+                    bounds: bounds.iter().filter_map(|x| x.clean(cx)).collect(),
                     is_auto: is_auto.clean(cx),
                 })
             }
@@ -2096,9 +2111,9 @@ impl Clean<TypeBindingKind> for hir::TypeBindingKind<'_> {
             hir::TypeBindingKind::Equality { ref ty } => {
                 TypeBindingKind::Equality { ty: ty.clean(cx) }
             }
-            hir::TypeBindingKind::Constraint { bounds } => {
-                TypeBindingKind::Constraint { bounds: bounds.iter().map(|b| b.clean(cx)).collect() }
-            }
+            hir::TypeBindingKind::Constraint { bounds } => TypeBindingKind::Constraint {
+                bounds: bounds.iter().filter_map(|b| b.clean(cx)).collect(),
+            },
         }
     }
 }
