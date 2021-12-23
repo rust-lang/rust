@@ -525,7 +525,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
     fn item_child_by_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, name: &str) -> Option<Res> {
         match tcx.def_kind(def_id) {
             DefKind::Mod | DefKind::Enum | DefKind::Trait => tcx
-                .item_children(def_id)
+                .module_children(def_id)
                 .iter()
                 .find(|item| item.ident.name.as_str() == name)
                 .map(|child| child.res.expect_non_local()),

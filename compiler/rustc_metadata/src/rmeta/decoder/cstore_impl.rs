@@ -196,9 +196,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let r = *cdata.dep_kind.lock();
         r
     }
-    item_children => {
+    module_children => {
         let mut result = SmallVec::<[_; 8]>::new();
-        cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
+        cdata.for_each_module_child(def_id.index, |child| result.push(child), tcx.sess);
         tcx.arena.alloc_slice(&result)
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
@@ -342,7 +342,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             };
 
             while let Some(def) = bfs_queue.pop_front() {
-                for child in tcx.item_children(def).iter() {
+                for child in tcx.module_children(def).iter() {
                     add_child(bfs_queue, child, def);
                 }
             }
@@ -388,9 +388,9 @@ impl CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    pub fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<Export> {
+    pub fn module_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<Export> {
         let mut result = vec![];
-        self.get_crate_data(def_id.krate).each_child_of_item(
+        self.get_crate_data(def_id.krate).for_each_module_child(
             def_id.index,
             |child| result.push(child),
             sess,

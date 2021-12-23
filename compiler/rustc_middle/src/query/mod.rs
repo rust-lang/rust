@@ -1528,7 +1528,7 @@ rustc_queries! {
         desc { "fetching what a crate is named" }
         separate_provide_extern
     }
-    query item_children(def_id: DefId) -> &'tcx [Export] {
+    query module_children(def_id: DefId) -> &'tcx [Export] {
         desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }

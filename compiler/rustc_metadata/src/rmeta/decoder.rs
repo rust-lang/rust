@@ -1079,7 +1079,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     /// including both proper items and reexports.
     /// Module here is understood in name resolution sense - it can be a `mod` item,
     /// or a crate root, or an enum, or a trait.
-    fn each_child_of_item(&self, id: DefIndex, mut callback: impl FnMut(Export), sess: &Session) {
+    fn for_each_module_child(
+        &self,
+        id: DefIndex,
+        mut callback: impl FnMut(Export),
+        sess: &Session,
+    ) {
         if let Some(data) = &self.root.proc_macro_data {
             // If we are loading as a proc macro, we want to return
             // the view of this crate as a proc macro crate.
@@ -1164,7 +1169,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 }
             }
             EntryKind::Enum(..) | EntryKind::Trait(..) => {}
-            _ => bug!("`each_child_of_item` is called on a non-module: {:?}", self.def_kind(id)),
+            _ => bug!("`for_each_module_child` is called on a non-module: {:?}", self.def_kind(id)),
         }
     }
 
