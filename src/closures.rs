@@ -236,21 +236,21 @@ fn rewrite_closure_fn_decl(
     context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<(String, usize)> {
+    let immovable = if movability == ast::Movability::Static {
+        "static "
+    } else {
+        ""
+    };
     let is_async = if asyncness.is_async() { "async " } else { "" };
     let mover = if capture == ast::CaptureBy::Value {
         "move "
     } else {
         ""
     };
-    let immovable = if movability == ast::Movability::Static {
-        "static "
-    } else {
-        ""
-    };
     // 4 = "|| {".len(), which is overconservative when the closure consists of
     // a single expression.
     let nested_shape = shape
-        .shrink_left(is_async.len() + mover.len() + immovable.len())?
+        .shrink_left(immovable.len() + is_async.len() + mover.len())?
         .sub_width(4)?;
 
     // 1 = |
@@ -288,7 +288,7 @@ fn rewrite_closure_fn_decl(
         .tactic(tactic)
         .preserve_newline(true);
     let list_str = write_list(&item_vec, &fmt)?;
-    let mut prefix = format!("{}{}{}|{}|", is_async, immovable, mover, list_str);
+    let mut prefix = format!("{}{}{}|{}|", immovable, is_async, mover, list_str);
 
     if !ret_str.is_empty() {
         if prefix.contains('\n') {
