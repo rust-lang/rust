@@ -185,7 +185,10 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
     let (what, value) = match (pre.is_empty(), post.is_empty()) {
         (true, true) => return,
         (false, _) => ("pre", pre.join("")),
-        (true, false) => ("post", post.join("")),
+        (true, false) => {
+            post.reverse();
+            ("post", post.join(""))
+        },
     };
     span_lint_and_help(
         cx,

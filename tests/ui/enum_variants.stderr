@@ -96,7 +96,7 @@ LL | | }
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
-error: all variants have the same postfix: `DataI`
+error: all variants have the same postfix: `IData`
   --> $DIR/enum_variants.rs:136:1
    |
 LL | / enum IDataRequest {
@@ -108,7 +108,7 @@ LL | | }
    |
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
-error: all variants have the same postfix: `DataIH`
+error: all variants have the same postfix: `HIData`
   --> $DIR/enum_variants.rs:142:1
    |
 LL | / enum HIDataRequest {
