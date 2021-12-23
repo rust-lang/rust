@@ -377,7 +377,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                 });
                 let adt = Box::new(AggregateKind::Adt(
-                    adt_def,
+                    adt_def.did,
                     variant_index,
                     substs,
                     user_ty,

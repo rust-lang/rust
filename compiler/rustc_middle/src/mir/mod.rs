@@ -2268,7 +2268,7 @@ pub enum AggregateKind<'tcx> {
     /// active field number and is present only for union expressions
     /// -- e.g., for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
-    Adt(&'tcx AdtDef, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
+    Adt(DefId, VariantIdx, SubstsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<usize>),
 
     Closure(DefId, SubstsRef<'tcx>),
     Generator(DefId, SubstsRef<'tcx>, hir::Movability),
@@ -2427,28 +2427,26 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }
 
-                    AggregateKind::Adt(adt_def, variant, substs, _user_ty, _) => {
-                        let variant_def = &adt_def.variants[variant];
-
-                        let name = ty::tls::with(|tcx| {
+                    AggregateKind::Adt(adt_did, variant, substs, _user_ty, _) => {
+                        ty::tls::with(|tcx| {
                             let mut name = String::new();
+                            let variant_def = &tcx.adt_def(adt_did).variants[variant];
                             let substs = tcx.lift(substs).expect("could not lift for printing");
                             FmtPrinter::new(tcx, &mut name, Namespace::ValueNS)
                                 .print_def_path(variant_def.def_id, substs)?;
-                            Ok(name)
-                        })?;
 
-                        match variant_def.ctor_kind {
-                            CtorKind::Const => fmt.write_str(&name),
-                            CtorKind::Fn => fmt_tuple(fmt, &name),
-                            CtorKind::Fictive => {
-                                let mut struct_fmt = fmt.debug_struct(&name);
-                                for (field, place) in iter::zip(&variant_def.fields, places) {
-                                    struct_fmt.field(field.ident.as_str(), place);
+                            match variant_def.ctor_kind {
+                                CtorKind::Const => fmt.write_str(&name),
+                                CtorKind::Fn => fmt_tuple(fmt, &name),
+                                CtorKind::Fictive => {
+                                    let mut struct_fmt = fmt.debug_struct(&name);
+                                    for (field, place) in iter::zip(&variant_def.fields, places) {
+                                        struct_fmt.field(field.ident.as_str(), place);
+                                    }
+                                    struct_fmt.finish()
                                 }
-                                struct_fmt.finish()
                             }
-                        }
+                        })
                     }
 
                     AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {

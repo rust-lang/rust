@@ -22,7 +22,8 @@ pub fn expand_aggregate<'tcx>(
 ) -> impl Iterator<Item = Statement<'tcx>> + TrustedLen {
     let mut set_discriminant = None;
     let active_field_index = match kind {
-        AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
+        AggregateKind::Adt(adt_did, variant_index, _, _, active_field_index) => {
+            let adt_def = tcx.adt_def(adt_did);
             if adt_def.is_enum() {
                 set_discriminant = Some(Statement {
                     kind: StatementKind::SetDiscriminant { place: Box::new(lhs), variant_index },
