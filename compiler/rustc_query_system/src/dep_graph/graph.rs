@@ -185,20 +185,20 @@ impl<K: DepKind> DepGraph<K> {
     ///
     /// `A -> B -> C`
     ///
-    /// Suppose that decoding the result of query `B` required invoking
-    /// a query `D`. If we did not create a fresh `TaskDeps` when
-    /// decoding `B`, we might would still be using the `TaskDeps` for query `A`
+    /// Suppose that decoding the result of query `B` required re-computing
+    /// the query `C`. If we did not create a fresh `TaskDeps` when
+    /// decoding `B`, we would still be using the `TaskDeps` for query `A`
     /// (if we needed to re-execute `A`). This would cause us to create
-    /// a new edge `A -> D`. If this edge did not previously
+    /// a new edge `A -> C`. If this edge did not previously
     /// exist in the `DepGraph`, then we could end up with a different
     /// `DepGraph` at the end of compilation, even if there were no
     /// meaningful changes to the overall program (e.g. a newline was added).
     /// In addition, this edge might cause a subsequent compilation run
-    /// to try to force `D` before marking other necessary nodes green. If
-    /// `D` did not exist in the new compilation session, then we might
+    /// to try to force `C` before marking other necessary nodes green. If
+    /// `C` did not exist in the new compilation session, then we could
     /// get an ICE. Normally, we would have tried (and failed) to mark
     /// some other query green (e.g. `item_children`) which was used
-    /// to obtain `D`, which would prevent us from ever trying to force
+    /// to obtain `C`, which would prevent us from ever trying to force
     /// a non-existent `D`.
     ///
     /// It might be possible to enforce that all `DepNode`s read during
@@ -208,7 +208,12 @@ impl<K: DepKind> DepGraph<K> {
     /// of `B`, this would result in an edge `B -> D`. If that edge already
     /// existed (with the same `DepPathHash`es), then it should be correct
     /// to allow the invocation of the query to proceed during deserialization
-    /// of a query result. However, this would require additional complexity
+    /// of a query result. We would merely assert that the dep-graph fragment
+    /// that would have been added by invoking `C` while decoding `B`
+    /// is equivalent to the dep-graph fragment that we already instantiated for B
+    /// (at the point where we successfully marked B as green).
+    ///
+    /// However, this would require additional complexity
     /// in the query infrastructure, and is not currently needed by the
     /// decoding of any query results. Should the need arise in the future,
     /// we should consider extending the query system with this functionality.
