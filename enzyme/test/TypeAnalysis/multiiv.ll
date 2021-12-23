@@ -37,7 +37,7 @@ entry:
 
 ; CHECK: compute_loops - {} |
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %a = call i64* @ptr1(): {[-1]:Pointer, [0,0]:Integer, [0,1]:Integer, [0,2]:Integer, [0,3]:Integer, [0,4]:Integer, [0,5]:Integer, [0,6]:Integer, [0,7]:Integer}
+; CHECK-NEXT:   %a = call i64* @ptr1(): {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT:   %b = call double* @ptr2(): {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT:   %pair1 = insertvalue { i64*, double* } undef, i64* %a, 0: {[0]:Pointer, [0,0]:Integer, [0,1]:Integer, [0,2]:Integer, [0,3]:Integer, [0,4]:Integer, [0,5]:Integer, [0,6]:Integer, [0,7]:Integer, [8]:Anything, [9]:Anything, [10]:Anything, [11]:Anything, [12]:Anything, [13]:Anything, [14]:Anything, [15]:Anything}
 ; CHECK-NEXT:   %pair2 = insertvalue { i64*, double* } %pair1, double* %b, 1: {[-1]:Pointer, [0,0]:Integer, [0,1]:Integer, [0,2]:Integer, [0,3]:Integer, [0,4]:Integer, [0,5]:Integer, [0,6]:Integer, [0,7]:Integer, [8,0]:Float@double}

@@ -2477,8 +2477,9 @@ public:
     }
     assert(size != 0);
 
-    auto vd = TR.query(orig_dst).Data0().AtMost(size);
-    vd |= TR.query(orig_src).Data0().AtMost(size);
+    auto &DL = gutils->newFunc->getParent()->getDataLayout();
+    auto vd = TR.query(orig_dst).Data0().ShiftIndices(DL, 0, size, 0);
+    vd |= TR.query(orig_src).Data0().ShiftIndices(DL, 0, size, 0);
 
     // llvm::errs() << "MIT: " << MTI << "|size: " << size << " vd: " <<
     // vd.str() << "\n";
@@ -4228,7 +4229,8 @@ public:
     if (auto ci = dyn_cast<ConstantInt>(len_arg)) {
       size = ci->getLimitedValue();
     }
-    auto vd = TR.query(origArg).Data0().AtMost(size);
+    auto &DL = gutils->newFunc->getParent()->getDataLayout();
+    auto vd = TR.query(origArg).Data0().ShiftIndices(DL, 0, size, 0);
     if (!vd.isKnownPastPointer()) {
       if (looseTypeAnalysis) {
         if (isa<CastInst>(origArg) &&

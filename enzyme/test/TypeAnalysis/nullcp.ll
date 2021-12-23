@@ -97,7 +97,7 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   br i1 %cmp, label %if.end, label %if.then: {}
 ; CHECK-NEXT: if.then
 ; CHECK-NEXT:   %0 = bitcast double* %dst to i8*: {[-1]:Pointer, [-1,32]:Float@double}
-; CHECK-NEXT:   %1 = bitcast double* %src to i8*: {[-1]:Pointer, [-1,0]:Anything, [-1,32]:Float@double}
+; CHECK-NEXT:   %1 = bitcast double* %src to i8*: {[-1]:Pointer, [-1,-1]:Anything}
 ; CHECK-NEXT:   %mul = shl i64 %n, 3: {[-1]:Integer}
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 8 %0, i8* align 8 %1, i64 %mul, i1 false): {}
 ; CHECK-NEXT:   br label %if.end: {}

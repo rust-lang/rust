@@ -418,7 +418,20 @@ public:
       }
       assert(pair.first.size() != 0);
 
-      if (pair.first[0] == 0 || pair.first[0] == -1) {
+      if (pair.first[0] == -1) {
+        std::vector<int> next;
+        for (size_t i = 1; i < pair.first.size(); ++i)
+          next.push_back(pair.first[i]);
+        Result.insert(next, pair.second);
+      }
+    }
+    for (const auto &pair : mapping) {
+      if (pair.first.size() == 0) {
+        llvm::errs() << str() << "\n";
+      }
+      assert(pair.first.size() != 0);
+
+      if (pair.first[0] == 0) {
         std::vector<int> next;
         for (size_t i = 1; i < pair.first.size(); ++i)
           next.push_back(pair.first[i]);
@@ -514,27 +527,32 @@ public:
     for (auto &pair : staging) {
       auto &pnext = pair.first;
       for (auto &pair2 : pair.second) {
-        auto &dt = pair2.first;
-        auto &set = pair2.second;
+        auto dt = pair2.first;
+        const auto &set = pair2.second;
 
         bool legalCombine = set.count(-1);
 
         // See if we can canonicalize the outermost index into a -1
         if (!legalCombine) {
           size_t chunk = 1;
-          if (auto flt = dt.isFloat()) {
-            if (flt->isFloatTy()) {
-              chunk = 4;
-            } else if (flt->isDoubleTy()) {
-              chunk = 8;
-            } else if (flt->isHalfTy()) {
-              chunk = 2;
-            } else {
-              llvm::errs() << *flt << "\n";
-              assert(0 && "unhandled float type");
-            }
-          } else if (dt == BaseType::Pointer) {
+          // Implicit pointer
+          if (set.size() > 0) {
             chunk = dl.getPointerSizeInBits() / 8;
+          } else {
+            if (auto flt = dt.isFloat()) {
+              if (flt->isFloatTy()) {
+                chunk = 4;
+              } else if (flt->isDoubleTy()) {
+                chunk = 8;
+              } else if (flt->isHalfTy()) {
+                chunk = 2;
+              } else {
+                llvm::errs() << *flt << "\n";
+                assert(0 && "unhandled float type");
+              }
+            } else if (dt == BaseType::Pointer) {
+              chunk = dl.getPointerSizeInBits() / 8;
+            }
           }
 
           legalCombine = true;
@@ -593,8 +611,8 @@ public:
     for (auto &pair : staging) {
       auto &pnext = pair.first;
       for (auto &pair2 : pair.second) {
-        auto &dt = pair2.first;
-        auto &set = pair2.second;
+        auto dt = pair2.first;
+        const auto &set = pair2.second;
 
         // llvm::errs() << " - set: {";
         // for(auto s : set) llvm::errs() << s << ", ";
@@ -605,19 +623,23 @@ public:
         // See if we can canonicalize the outermost index into a -1
         if (!legalCombine) {
           size_t chunk = 1;
-          if (auto flt = dt.isFloat()) {
-            if (flt->isFloatTy()) {
-              chunk = 4;
-            } else if (flt->isDoubleTy()) {
-              chunk = 8;
-            } else if (flt->isHalfTy()) {
-              chunk = 2;
-            } else {
-              llvm::errs() << *flt << "\n";
-              assert(0 && "unhandled float type");
-            }
-          } else if (dt == BaseType::Pointer) {
+          if (set.size() > 0) {
             chunk = dl.getPointerSizeInBits() / 8;
+          } else {
+            if (auto flt = dt.isFloat()) {
+              if (flt->isFloatTy()) {
+                chunk = 4;
+              } else if (flt->isDoubleTy()) {
+                chunk = 8;
+              } else if (flt->isHalfTy()) {
+                chunk = 2;
+              } else {
+                llvm::errs() << *flt << "\n";
+                assert(0 && "unhandled float type");
+              }
+            } else if (dt == BaseType::Pointer) {
+              chunk = dl.getPointerSizeInBits() / 8;
+            }
           }
 
           legalCombine = true;
@@ -820,19 +842,6 @@ public:
       if (pair.second != ConcreteType(BaseType::Anything))
         continue;
       dat.insert(pair.first, pair.second);
-    }
-    return dat;
-  }
-
-  /// Select mappings in range [0, max), preserving -1's
-  TypeTree AtMost(size_t max) const {
-    assert(max > 0);
-    TypeTree dat;
-    for (const auto &pair : mapping) {
-      if (pair.first.size() == 0 || pair.first[0] == -1 ||
-          (size_t)pair.first[0] < max) {
-        dat.insert(pair.first, pair.second);
-      }
     }
     return dat;
   }

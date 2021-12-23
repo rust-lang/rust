@@ -39,8 +39,8 @@ bb:
 
 ; CHECK: caller - {} |
 ; CHECK-NEXT: bb
-; CHECK-NEXT:   %gep = getelementptr [2 x float], [2 x float] addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a, i32 0, i64 0: {[-1]:Pointer, [-1,-1]:Float@float}
+; CHECK-NEXT:   %gep = getelementptr [2 x float], [2 x float] addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a, i32 0, i64 0: {[-1]:Pointer, [-1,0]:Float@float}
 ; CHECK-NEXT:   %tmp18 = load float, float addrspace(3)* %gep, align 4, !tbaa !5: {[-1]:Float@float}
-; CHECK-NEXT:   %gep3 = getelementptr [2 x float], [2 x float] addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a, i32 0, i64 1: {[-1]:Pointer, [-1,0]:Float@float}
+; CHECK-NEXT:   %gep3 = getelementptr [2 x float], [2 x float] addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a, i32 0, i64 1: {[-1]:Pointer, [-1,-1]:Float@float}
 ; CHECK-NEXT:   %tmp38 = load float, float addrspace(3)* %gep3, align 4, !tbaa !5: {[-1]:Float@float}
 ; CHECK-NEXT:   ret void: {}

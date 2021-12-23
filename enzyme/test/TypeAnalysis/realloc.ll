@@ -13,8 +13,8 @@ entry:
 ; CHECK: caller - {} |{[-1,-1]:Float@double}:{} 
 ; CHECK-NEXT: double* %inp: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %ptr = bitcast double* %inp to i8*: {[-1]:Pointer, [-1,0]:Float@double}
-; CHECK-NEXT:   %res = call i8* @realloc(i8* %ptr, i64 16): {[-1]:Pointer, [-1,0]:Float@double}
+; CHECK-NEXT:   %ptr = bitcast double* %inp to i8*: {[-1]:Pointer, [-1,-1]:Float@double}
+; CHECK-NEXT:   %res = call i8* @realloc(i8* %ptr, i64 16): {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Float@double}
 ; CHECK-NEXT:   ret void: {}
 
 declare dso_local noalias i8* @realloc(i8* nocapture, i64)

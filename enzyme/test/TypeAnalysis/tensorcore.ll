@@ -16,7 +16,7 @@ entry:
 }
 
 ; LCHECK: tload - {} |{}:{} 
-; LCHECK-NEXT: i8 addrspace(1)* %in: {[0]:Float@half}
+; LCHECK-NEXT: i8 addrspace(1)* %in: {[-1]:Pointer, [-1,0]:Float@half}
 ; LCHECK-NEXT: entry
 ; LCHECK-NEXT:   %res = call { <2 x half>, <2 x half>, <2 x half>, <2 x half>, <2 x half>, <2 x half>, <2 x half>, <2 x half> } @llvm.nvvm.wmma.m16n16k16.load.a.col.stride.f16.p1i8(i8 addrspace(1)* %in, i32 16): {[-1]:Float@half}
 ; LCHECK-NEXT:   ret void: {}
@@ -46,7 +46,7 @@ entry:
 }
 
 ; SCHECK: tstore - {} |{}:{} {}:{} 
-; SCHECK-NEXT: i8 addrspace(1)* %out: {[0]:Float@float}
+; SCHECK-NEXT: i8 addrspace(1)* %out: {[-1]:Pointer, [-1,0]:Float@float}
 ; SCHECK-NEXT: i8* %in: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float, [-1,12]:Float@float, [-1,16]:Float@float, [-1,20]:Float@float, [-1,24]:Float@float, [-1,28]:Float@float}
 ; SCHECK-NEXT: entry
 ; SCHECK-NEXT:   %p = bitcast i8* %in to float*: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float, [-1,12]:Float@float, [-1,16]:Float@float, [-1,20]:Float@float, [-1,24]:Float@float, [-1,28]:Float@float}

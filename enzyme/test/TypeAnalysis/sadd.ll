@@ -14,6 +14,6 @@ entry:
 
 ; CHECK: caller - {} |
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %sadded = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 3, i64 1): {[0]:Integer, [8]:Integer}
-; CHECK-NEXT:   %res = extractvalue { i64, i1 } %sadded, 0: {[0]:Integer}
+; CHECK-NEXT:   %sadded = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 3, i64 1): {[-1]:Integer}
+; CHECK-NEXT:   %res = extractvalue { i64, i1 } %sadded, 0: {[-1]:Integer}
 ; CHECK-NEXT:   ret void: {}
