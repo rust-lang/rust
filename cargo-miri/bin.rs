@@ -1,5 +1,5 @@
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
@@ -341,8 +341,11 @@ fn setup(subcommand: MiriCommand) {
         ask_to_run(cmd, ask_user, "install a recent enough xargo");
     }
 
-    // Determine where the rust sources are located.  `XARGO_RUST_SRC` env var trumps everything.
-    let rust_src = match std::env::var_os("XARGO_RUST_SRC") {
+    // Determine where the rust sources are located.  The env vars manually setting the source
+    // (`MIRI_LIB_SRC`, `XARGO_RUST_SRC`) trump auto-detection.
+    let rust_src_env_var =
+        std::env::var_os("MIRI_LIB_SRC").or_else(|| std::env::var_os("XARGO_RUST_SRC"));
+    let rust_src = match rust_src_env_var {
         Some(path) => {
             let path = PathBuf::from(path);
             // Make path absolute if possible.
@@ -375,6 +378,13 @@ fn setup(subcommand: MiriCommand) {
     };
     if !rust_src.exists() {
         show_error(format!("given Rust source directory `{}` does not exist.", rust_src.display()));
+    }
+    if rust_src.file_name().and_then(OsStr::to_str) != Some("library") {
+        show_error(format!(
+            "given Rust source directory `{}` does not seem to be the `library` subdirectory of \
+             a Rust source checkout.",
+            rust_src.display()
+        ));
     }
 
     // Next, we need our own libstd. Prepare a xargo project for that purpose.
