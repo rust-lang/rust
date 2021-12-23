@@ -1,3 +1,169 @@
+Version 1.58.0 (2022-01-13)
+==========================
+
+Language
+--------
+
+- [Format strings can now capture arguments simply by writing `{ident}` in the string.][90473]
+- [`*const T` pointers can now be dereferenced in const contexts.][89551]
+- [The rules for when a generic struct implements `Unsize` have been relaxed.][90417]
+
+Compiler
+--------
+
+- [Add LLVM CFI support to the Rust compiler][89652]
+- [Stabilize -Z strip as -C strip][90058]
+- [Add support for LLVM coverage mapping format versions 5 and 6][91207]
+- [Emit LLVM optimization remarks when enabled with `-Cremark`][90833]
+- [Update the minimum external LLVM to 12][90175]
+- [Add `x86_64-unknown-none` at Tier 3*][89062]
+- [Build musl dist artifacts with debuginfo enabled][90733]
+- [Fix CVE-2021-42574][90462]
+- [Don't abort compilation after giving a lint error][87337]
+- [Error messages point at the source of trait bound obligations in more places][89580]
+- [Link with default MACOSX_DEPLOYMENT_TARGET if not otherwise specified.][90499]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [Add #[must_use] to Rc::downgrade][89833]
+- [Add #[must_use] to expensive computations][89835]
+- [Add #[must_use] to mem/ptr functions][89839]
+- [Add #[must_use] to remaining core functions][89897]
+- [Add #[must_use] to remaining alloc functions][89899]
+- [Add #[must_use] to len and is_empty][89786]
+- [Add #[must_use] to thread::Builder][89789]
+- [Add #[must_use] to alloc functions that would leak memory][90427]
+- [Add #[must_use] to remaining std functions (A-N)][90430]
+- [Add #[must_use] to remaining std functions (O-Z)][90431]
+- [Windows: Resolve `process::Command` program without using the current directory][87704]
+- [Paths are automatically canonicalized on Windows for operations that support it][89174]
+- [Re-enable `copy[_nonoverlapping]()` debug-checks][90041]
+- [Implement `RefUnwindSafe` for `Rc<T>`][87467]
+- [Make RSplit<T, P>: Clone not require T: Clone][90117]
+- [unix: Make `std::thread::available_concurrency` support process-limited number of CPUs][89310]
+- [Implement `Termination` for `Result<Infallible, E>`][88601]
+
+Stabilized APIs
+---------------
+
+- [`Metadata::is_symlink`][89677]
+- [`Path::is_symlink`][89677]
+- [`{integer}::saturating_div`][88624]
+- [`Option::unwrap_unchecked`][89951]
+- [`NonZero::is_power_of_two`][91301]
+- [`unix::process::ExitStatusExt::core_dumped`][88300]
+- [`unix::process::ExitStatusExt::stopped_signal`][88300]
+- [`unix::process::ExitStatusExt::continued`][88300]
+- [`unix::process::ExitStatusExt::into_raw`][88300]
+
+These APIs are now usable in const contexts:
+
+- [Partially stabilize `duration_consts_2`][89542]
+- [`Duration::new`][89542]
+- [`Duration::checked_add`][89542]
+- [`Duration::saturating_add`][89542]
+- [`Duration::checked_sub`][89542]
+- [`Duration::saturating_sub`][89542]
+- [`Duration::checked_mul`][89542]
+- [`Duration::saturating_mul`][89542]
+- [`Duration::checked_div`][89542]
+- [`Duration::as_secs_f64`][89542]
+- [`Duration::as_secs_f32`][89542]
+- [`Duration::from_secs_f64`][89542]
+- [`Duration::from_secs_f32`][89542]
+- [`Duration::mul_f64`][89542]
+- [`Duration::mul_f32`][89542]
+- [`Duration::div_f64`][89542]
+- [`Duration::div_f32`][89542]
+- [`Duration::div_duration_f64`][89542]
+- [`Duration::div_duration_f32`][89542]
+- [`MaybeUninit::as_ptr`][90896]
+- [`MaybeUninit::as_mut_ptr`][90896]
+- [`MaybeUninit::assume_init`][90896]
+- [`MaybeUninit::assume_init_ref`][90896]
+
+Cargo
+-----
+
+- [Add --message-format for install command][cargo/10107]
+- [Warn when alias shadows external subcommand][cargo/10082]
+
+Misc
+----
+
+- [Show all Deref implementations recursively in rustdoc][90183]
+- [Use computed visibility in rustdoc][88447]
+
+Compatibility Notes
+-------------------
+
+- [All proc-macro backward-compatibility lints are now deny-by-default.][88041]
+- [proc_macro: Append .0 to unsuffixed float if it would otherwise become int token][90297]
+- [Refactor weak symbols in std::sys::unix][90846]
+- `RUSTFLAGS` is no longer set for build scripts. This change was made in
+  1.55, but the release notes did not highlight this change. Build scripts
+  should use `CARGO_ENCODED_RUSTFLAGS` instead. See the
+  [documentation](https://doc.rust-lang.org/nightly/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts)
+  for more details.
+- [rustdoc doctest: detect `fn main` after an unexpected semicolon][91026]
+
+Internal Changes
+----------------
+
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+- [Try all stable method candidates first before trying unstable ones][90329]
+- [Implement coherence checks for negative trait impls][90104]
+- [Add rustc lint, warning when iterating over hashmaps][89558]
+- [Optimize live point computation][90491]
+- [Enable verification for 1/32th of queries loaded from disk][90361]
+- [Implement version of normalize_erasing_regions that allows for normalization failure][91255]
+
+[87337]: https://github.com/rust-lang/rust/pull/87337/
+[87467]: https://github.com/rust-lang/rust/pull/87467/
+[87704]: https://github.com/rust-lang/rust/pull/87704/
+[88041]: https://github.com/rust-lang/rust/pull/88041/
+[88300]: https://github.com/rust-lang/rust/pull/88300/
+[88447]: https://github.com/rust-lang/rust/pull/88447/
+[88601]: https://github.com/rust-lang/rust/pull/88601/
+[88624]: https://github.com/rust-lang/rust/pull/88624/
+[89062]: https://github.com/rust-lang/rust/pull/89062/
+[89174]: https://github.com/rust-lang/rust/pull/89174/
+[89542]: https://github.com/rust-lang/rust/pull/89542/
+[89551]: https://github.com/rust-lang/rust/pull/89551/
+[89558]: https://github.com/rust-lang/rust/pull/89558/
+[89580]: https://github.com/rust-lang/rust/pull/89580/
+[89652]: https://github.com/rust-lang/rust/pull/89652/
+[89677]: https://github.com/rust-lang/rust/pull/89677/
+[89951]: https://github.com/rust-lang/rust/pull/89951/
+[90058]: https://github.com/rust-lang/rust/pull/90058/
+[90104]: https://github.com/rust-lang/rust/pull/90104/
+[90117]: https://github.com/rust-lang/rust/pull/90117/
+[90175]: https://github.com/rust-lang/rust/pull/90175/
+[90183]: https://github.com/rust-lang/rust/pull/90183/
+[90297]: https://github.com/rust-lang/rust/pull/90297/
+[90329]: https://github.com/rust-lang/rust/pull/90329/
+[90361]: https://github.com/rust-lang/rust/pull/90361/
+[90417]: https://github.com/rust-lang/rust/pull/90417/
+[90473]: https://github.com/rust-lang/rust/pull/90473/
+[90491]: https://github.com/rust-lang/rust/pull/90491/
+[90733]: https://github.com/rust-lang/rust/pull/90733/
+[90833]: https://github.com/rust-lang/rust/pull/90833/
+[90846]: https://github.com/rust-lang/rust/pull/90846/
+[90896]: https://github.com/rust-lang/rust/pull/90896/
+[91026]: https://github.com/rust-lang/rust/pull/91026/
+[91207]: https://github.com/rust-lang/rust/pull/91207/
+[91255]: https://github.com/rust-lang/rust/pull/91255/
+[91301]: https://github.com/rust-lang/rust/pull/91301/
+[cargo/10082]: https://github.com/rust-lang/cargo/pull/10082/
+[cargo/10107]: https://github.com/rust-lang/cargo/pull/10107/
+
 Version 1.57.0 (2021-12-02)
 ==========================
 
