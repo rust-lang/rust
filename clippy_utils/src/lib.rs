@@ -75,7 +75,7 @@ use rustc_hir::{
     def, Arm, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind, FnDecl,
     ForeignItem, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local,
     MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem,
-    TraitItemKind, TraitRef, TyKind, UnOp,
+    TraitItemKind, TraitRef, TyKind, UnOp, ArrayLen
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -675,8 +675,9 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             _ => false,
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
-        ExprKind::Repeat(x, y) => if_chain! {
-            if let ExprKind::Lit(ref const_lit) = cx.tcx.hir().body(y.body).value.kind;
+        ExprKind::Repeat(x, len) => if_chain! {
+            if let ArrayLen::Body(len) = len;
+            if let ExprKind::Lit(ref const_lit) = cx.tcx.hir().body(len.body).value.kind;
             if let LitKind::Int(v, _) = const_lit.node;
             if v <= 32 && is_default_equivalent(cx, x);
             then {
