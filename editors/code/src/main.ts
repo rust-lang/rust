@@ -279,7 +279,6 @@ function warnAboutExtensionConflicts() {
     const conflicting = [
         ["rust-analyzer", "matklad.rust-analyzer"],
         ["Rust", "rust-lang.rust"],
-        ["Rust", "kalitaalexey.vscode-rust"],
     ];
 
     const found = conflicting.filter(
