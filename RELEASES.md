@@ -102,11 +102,6 @@ Compatibility Notes
 - [proc_macro: Append .0 to unsuffixed float if it would otherwise become int token][90297]
 - [Refactor weak symbols in std::sys::unix][90846]
 - [rustdoc now rejects some unexpected semicolons in doctests][91026]
-- `RUSTFLAGS` is no longer set for build scripts. This change was made in
-  1.55, but the release notes did not highlight this change. Build scripts
-  should use `CARGO_ENCODED_RUSTFLAGS` instead. See the
-  [documentation](https://doc.rust-lang.org/nightly/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts)
-  for more details.
 
 Internal Changes
 ----------------
@@ -551,6 +546,10 @@ Compatibility Notes
   `Command` would cause them to be ASCII-uppercased.
 - [Rustdoc will now warn on using rustdoc lints that aren't prefixed
   with `rustdoc::`][86849]
+- `RUSTFLAGS` is no longer set for build scripts. Build scripts
+  should use `CARGO_ENCODED_RUSTFLAGS` instead. See the
+  [documentation](https://doc.rust-lang.org/nightly/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts)
+  for more details.
 
 [86849]: https://github.com/rust-lang/rust/pull/86849
 [86513]: https://github.com/rust-lang/rust/pull/86513
