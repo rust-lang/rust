@@ -112,9 +112,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 let (dest, active_field_index) = match **kind {
-                    mir::AggregateKind::Adt(adt_def, variant_index, _, _, active_field_index) => {
+                    mir::AggregateKind::Adt(adt_did, variant_index, _, _, active_field_index) => {
                         dest.codegen_set_discr(&mut bx, variant_index);
-                        if adt_def.is_enum() {
+                        if bx.tcx().adt_def(adt_did).is_enum() {
                             (dest.project_downcast(&mut bx, variant_index), active_field_index)
                         } else {
                             (dest, active_field_index)
