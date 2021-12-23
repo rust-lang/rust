@@ -113,7 +113,15 @@ window.initSearch = function(rawSearchIndex) {
     var INPUTS_DATA = 0;
     var OUTPUT_DATA = 1;
     var NO_TYPE_FILTER = -1;
-    var currentResults, index, searchIndex;
+    /**
+     *  @type {Array<Row>}
+     */
+    var searchIndex;
+    /**
+     *  @type {Array<string>}
+     */
+    var searchWords;
+    var currentResults;
     var ALIASES = {};
     var params = searchState.getQueryStringParams();
 
@@ -126,12 +134,15 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     /**
-     * Executes the query and builds an index of results
-     * @param  {[Object]} query      [The user query]
-     * @param  {[type]} searchWords  [The list of search words to query
-     *                                against]
-     * @param  {[type]} filterCrates [Crate to search in if defined]
-     * @return {[type]}              [A search index of results]
+     * Executes the query and returns a list of results for each results tab.
+     * @param  {Object}        query          - The user query
+     * @param  {Array<string>} searchWords    - The list of search words to query against
+     * @param  {string}        [filterCrates] - Crate to search in
+     * @return {{
+     *   in_args: Array<?>,
+     *   returned: Array<?>,
+     *   others: Array<?>
+     * }}
      */
     function execQuery(query, searchWords, filterCrates) {
         function itemTypeFromName(typename) {
@@ -847,11 +858,11 @@ window.initSearch = function(rawSearchIndex) {
      * This could be written functionally, but I wanted to minimise
      * functions on stack.
      *
-     * @param  {[string]} name   [The name of the result]
-     * @param  {[string]} path   [The path of the result]
-     * @param  {[string]} keys   [The keys to be used (["file", "open"])]
-     * @param  {[object]} parent [The parent of the result]
-     * @return {boolean}       [Whether the result is valid or not]
+     * @param  {string} name   - The name of the result
+     * @param  {string} path   - The path of the result
+     * @param  {string} keys   - The keys to be used (["file", "open"])
+     * @param  {Object} parent - The parent of the result
+     * @return {boolean}       - Whether the result is valid or not
      */
     function validateResult(name, path, keys, parent) {
         for (var i = 0, len = keys.length; i < len; ++i) {
@@ -872,8 +883,14 @@ window.initSearch = function(rawSearchIndex) {
         return true;
     }
 
+    /**
+     * Parse a string into a query object.
+     *
+     * @param {string} raw - The text that the user typed.
+     * @returns {ParsedQuery}
+     */
     function getQuery(raw) {
-        var matches, type, query;
+        var matches, type = "", query;
         query = raw;
 
         matches = query.match(/^(fn|mod|struct|enum|trait|type|const|macro)\s*:\s*/i);
@@ -974,6 +991,12 @@ window.initSearch = function(rawSearchIndex) {
         return tmp;
     }
 
+    /**
+     * Render a set of search results for a single tab.
+     * @param {Array<?>}    array   - The search results for this tab
+     * @param {ParsedQuery} query
+     * @param {boolean}     display - True if this is the active tab
+     */
     function addTab(array, query, display) {
         var extraClass = "";
         if (display === true) {
@@ -1083,7 +1106,7 @@ window.initSearch = function(rawSearchIndex) {
 
         currentResults = query.id;
 
-        var ret_others = addTab(results.others, query);
+        var ret_others = addTab(results.others, query, true);
         var ret_in_args = addTab(results.in_args, query, false);
         var ret_returned = addTab(results.returned, query, false);
 
@@ -1253,6 +1276,12 @@ window.initSearch = function(rawSearchIndex) {
         return undefined;
     }
 
+    /**
+     * Perform a search based on the current state of the search input element
+     * and display the results.
+     * @param {Event}   [e]       - The event that triggered this search, if any
+     * @param {boolean} [forced]
+     */
     function search(e, forced) {
         var params = searchState.getQueryStringParams();
         var query = getQuery(searchState.input.value.trim());
@@ -1287,11 +1316,14 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         var filterCrates = getFilterCrates();
-        showResults(execSearch(query, index, filterCrates), params.go_to_first);
+        showResults(execSearch(query, searchWords, filterCrates), params["go_to_first"]);
     }
 
     function buildIndex(rawSearchIndex) {
         searchIndex = [];
+        /**
+         * @type {Array<string>}
+         */
         var searchWords = [];
         var i, word;
         var currentIndex = 0;
@@ -1304,6 +1336,38 @@ window.initSearch = function(rawSearchIndex) {
 
             var crateSize = 0;
 
+            /**
+             * The raw search data for a given crate. `n`, `t`, `d`, and `q`, `i`, and `f`
+             * are arrays with the same length. n[i] contains the name of an item.
+             * t[i] contains the type of that item (as a small integer that represents an
+             * offset in `itemTypes`). d[i] contains the description of that item.
+             *
+             * q[i] contains the full path of the item, or an empty string indicating
+             * "same as q[i-1]".
+             *
+             * i[i], f[i] are a mystery.
+             *
+             * `a` defines aliases with an Array of pairs: [name, offset], where `offset`
+             * points into the n/t/d/q/i/f arrays.
+             *
+             * `doc` contains the description of the crate.
+             *
+             * `p` is a mystery and isn't the same length as n/t/d/q/i/f.
+             *
+             * @type {{
+             *   doc: string,
+             *   a: Object,
+             *   n: Array<string>,
+             *   t: Array<Number>,
+             *   d: Array<string>,
+             *   q: Array<string>,
+             *   i: Array<Number>,
+             *   f: Array<Array<?>>,
+             *   p: Array<Object>,
+             * }}
+             */
+            var crateCorpus = rawSearchIndex[crate];
+
             searchWords.push(crate);
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
@@ -1313,7 +1377,7 @@ window.initSearch = function(rawSearchIndex) {
                 ty: 1, // == ExternCrate
                 name: crate,
                 path: "",
-                desc: rawSearchIndex[crate].doc,
+                desc: crateCorpus.doc,
                 parent: undefined,
                 type: null,
                 id: id,
@@ -1324,23 +1388,23 @@ window.initSearch = function(rawSearchIndex) {
             currentIndex += 1;
 
             // an array of (Number) item types
-            var itemTypes = rawSearchIndex[crate].t;
+            var itemTypes = crateCorpus.t;
             // an array of (String) item names
-            var itemNames = rawSearchIndex[crate].n;
+            var itemNames = crateCorpus.n;
             // an array of (String) full paths (or empty string for previous path)
-            var itemPaths = rawSearchIndex[crate].q;
+            var itemPaths = crateCorpus.q;
             // an array of (String) descriptions
-            var itemDescs = rawSearchIndex[crate].d;
+            var itemDescs = crateCorpus.d;
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
-            var itemParentIdxs = rawSearchIndex[crate].i;
+            var itemParentIdxs = crateCorpus.i;
             // an array of (Object | null) the type of the function, if any
-            var itemFunctionSearchTypes = rawSearchIndex[crate].f;
+            var itemFunctionSearchTypes = crateCorpus.f;
             // an array of [(Number) item type,
             //              (String) name]
-            var paths = rawSearchIndex[crate].p;
+            var paths = crateCorpus.p;
             // an array of [(String) alias name
             //             [Number] index to items]
-            var aliases = rawSearchIndex[crate].a;
+            var aliases = crateCorpus.a;
 
             // convert `rawPaths` entries into object form
             var len = paths.length;
@@ -1406,6 +1470,16 @@ window.initSearch = function(rawSearchIndex) {
         return searchWords;
     }
 
+    /**
+     * Callback for when the search form is submitted.
+     * @param {Event} [e] - The event that triggered this call, if any
+     */
+    function onSearchSubmit(e) {
+        e.preventDefault();
+        searchState.clearInputTimeout();
+        search();
+    }
+
     function registerSearchEvents() {
         var searchAfter500ms = function() {
             searchState.clearInputTimeout();
@@ -1421,11 +1495,7 @@ window.initSearch = function(rawSearchIndex) {
         };
         searchState.input.onkeyup = searchAfter500ms;
         searchState.input.oninput = searchAfter500ms;
-        document.getElementsByClassName("search-form")[0].onsubmit = function(e) {
-            e.preventDefault();
-            searchState.clearInputTimeout();
-            search();
-        };
+        document.getElementsByClassName("search-form")[0].onsubmit = onSearchSubmit;
         searchState.input.onchange = function(e) {
             if (e.target !== document.activeElement) {
                 // To prevent doing anything when it's from a blur event.
@@ -1546,7 +1616,7 @@ window.initSearch = function(rawSearchIndex) {
         };
     }
 
-    index = buildIndex(rawSearchIndex);
+    searchWords = buildIndex(rawSearchIndex);
     registerSearchEvents();
     // If there's a search term in the URL, execute the search now.
     if (searchState.getQueryStringParams().search) {

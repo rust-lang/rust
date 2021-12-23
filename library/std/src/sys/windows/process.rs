@@ -704,6 +704,19 @@ fn make_command_line(prog: &OsStr, args: &[Arg], force_quotes: bool) -> io::Resu
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
+
+    // CreateFileW has special handling for .bat and .cmd files, which means we
+    // need to add an extra pair of quotes surrounding the whole command line
+    // so they are properly passed on to the script.
+    // See issue #91991.
+    let is_batch_file = Path::new(prog)
+        .extension()
+        .map(|ext| ext.eq_ignore_ascii_case("cmd") || ext.eq_ignore_ascii_case("bat"))
+        .unwrap_or(false);
+    if is_batch_file {
+        cmd.push(b'"' as u16);
+    }
+
     // Always quote the program name so CreateProcess doesn't interpret args as
     // part of the name if the binary wasn't found first time.
     append_arg(&mut cmd, prog, Quote::Always)?;
@@ -714,6 +727,9 @@ fn make_command_line(prog: &OsStr, args: &[Arg], force_quotes: bool) -> io::Resu
             Arg::Raw(arg) => (arg, Quote::Never),
         };
         append_arg(&mut cmd, arg, quote)?;
+    }
+    if is_batch_file {
+        cmd.push(b'"' as u16);
     }
     return Ok(cmd);
 

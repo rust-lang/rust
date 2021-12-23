@@ -223,13 +223,14 @@ where
 
 crate fn run(
     krate: clean::Crate,
-    renderopts: config::RenderOptions,
+    mut renderopts: config::RenderOptions,
     cache: formats::cache::Cache,
     tcx: TyCtxt<'_>,
     options: ScrapeExamplesOptions,
 ) -> interface::Result<()> {
     let inner = move || -> Result<(), String> {
         // Generates source files for examples
+        renderopts.no_emit_shared = true;
         let (cx, _) = Context::init(krate, renderopts, cache, tcx).map_err(|e| e.to_string())?;
 
         // Collect CrateIds corresponding to provided target crates

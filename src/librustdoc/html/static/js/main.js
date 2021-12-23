@@ -420,6 +420,13 @@ function hideThemeButtonState() {
         return document.getElementById("help");
     }
 
+    /**
+     * Show the help popup.
+     *
+     * @param {boolean} display    - Whether to show or hide the popup
+     * @param {Event}   ev         - The event that triggered this call
+     * @param {Element} [help]     - The help element if it already exists
+     */
     function displayHelp(display, ev, help) {
         if (display) {
             help = help ? help : getHelpElement(true);

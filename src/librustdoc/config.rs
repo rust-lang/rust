@@ -272,7 +272,10 @@ crate struct RenderOptions {
     crate emit: Vec<EmitType>,
     /// If `true`, HTML source pages will generate links for items to their definition.
     crate generate_link_to_definition: bool,
+    /// Set of function-call locations to include as examples
     crate call_locations: AllCallLocations,
+    /// If `true`, Context::init will not emit shared files.
+    crate no_emit_shared: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -732,6 +735,7 @@ impl Options {
                 emit,
                 generate_link_to_definition,
                 call_locations,
+                no_emit_shared: false,
             },
             crate_name,
             output_format,
