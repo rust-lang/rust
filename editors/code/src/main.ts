@@ -27,7 +27,7 @@ export async function activate(context: vscode.ExtensionContext) {
 async function tryActivate(context: vscode.ExtensionContext) {
     const config = new Config(context);
     const state = new PersistentState(context.globalState);
-    const serverPath = await bootstrap(config, state).catch(err => {
+    const serverPath = await bootstrap(context, config, state).catch(err => {
         let message = "bootstrap error. ";
 
         if (err.code === "EBUSY" || err.code === "ETXTBSY" || err.code === "EPERM") {
@@ -157,8 +157,6 @@ export async function deactivate() {
 }
 
 async function bootstrap(context: vscode.ExtensionContext, config: Config, state: PersistentState): Promise<string> {
-    await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
-
     const path = await getServer(context, config, state);
     if (!path) {
         throw new Error(
@@ -244,35 +242,42 @@ async function getServer(context: vscode.ExtensionContext, config: Config, state
         "arm64 darwin": "aarch64-apple-darwin",
     };
     let platform = platforms[`${process.arch} ${process.platform}`];
-    if (platform === undefined) {
-        await vscode.window.showErrorMessage(
-            "Unfortunately we don't ship binaries for your platform yet. " +
-            "You need to manually clone rust-analyzer repository and " +
-            "run `cargo xtask install --server` to build the language server from sources. " +
-            "If you feel that your platform should be supported, please create an issue " +
-            "about that [here](https://github.com/rust-analyzer/rust-analyzer/issues) and we " +
-            "will consider it."
-        );
-        return undefined;
-    }
-    if (platform === "x86_64-unknown-linux-gnu" && isMusl()) {
-        platform = "x86_64-unknown-linux-musl";
-    }
-    const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
-    const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer-${platform}${ext}`);
-    const bundled = vscode.Uri.joinPath(context.extensionUri, "server", `rust-analyzer${ext}`);
-    const bundledExists = await vscode.workspace.fs.stat(bundled).then(() => true, () => false);
-    const exists = await vscode.workspace.fs.stat(dest).then(() => true, () => false);
-    if (bundledExists) {
-        if (!await isNixOs()) {
-            return bundled.fsPath;
+    if (platform) {
+        if (platform === "x86_64-unknown-linux-gnu" && isMusl()) {
+            platform = "x86_64-unknown-linux-musl";
         }
-        if (!exists || config.package.version !== state.serverVersion) {
-            await vscode.workspace.fs.copy(bundled, dest);
-            await patchelf(dest);
+        const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
+        const bundled = vscode.Uri.joinPath(context.extensionUri, "server", `rust-analyzer${ext}`);
+        const bundledExists = await vscode.workspace.fs.stat(bundled).then(() => true, () => false);
+        if (bundledExists) {
+            let server = bundled;
+            if (await isNixOs()) {
+                await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
+                const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer-${platform}${ext}`);
+                let exists = await vscode.workspace.fs.stat(dest).then(() => true, () => false);
+                if (exists && config.package.version !== state.serverVersion) {
+                    await vscode.workspace.fs.delete(dest);
+                    exists = false;
+                }
+                if (!exists) {
+                    await vscode.workspace.fs.copy(bundled, dest);
+                    await patchelf(dest);
+                    server = dest;
+                }
+            }
+            await state.updateServerVersion(config.package.version);
+            return server.fsPath;
         }
     }
-    return dest.fsPath;
+    await vscode.window.showErrorMessage(
+        "Unfortunately we don't ship binaries for your platform yet. " +
+        "You need to manually clone rust-analyzer repository and " +
+        "run `cargo xtask install --server` to build the language server from sources. " +
+        "If you feel that your platform should be supported, please create an issue " +
+        "about that [here](https://github.com/rust-analyzer/rust-analyzer/issues) and we " +
+        "will consider it."
+    );
+    return undefined;
 }
 
 function serverPath(config: Config): string | null {
