@@ -1540,11 +1540,11 @@ impl Const {
         let infer = infer.as_ref();
         let result = eval_const(
             root,
-            ConstEvalCtx {
+            &mut ConstEvalCtx {
                 exprs: &body.exprs,
                 pats: &body.pats,
                 local_data: HashMap::default(),
-                infer,
+                infer: &mut |x| infer[x].clone(),
             },
         );
         result

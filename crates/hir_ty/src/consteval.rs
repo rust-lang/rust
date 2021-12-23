@@ -4,14 +4,13 @@ use std::{collections::HashMap, convert::TryInto, fmt::Display};
 
 use chalk_ir::{IntTy, Scalar};
 use hir_def::{
-    builtin_type::BuiltinUint,
     expr::{ArithOp, BinaryOp, Expr, Literal, Pat},
     type_ref::ConstScalar,
 };
 use hir_expand::name::Name;
-use la_arena::Arena;
+use la_arena::{Arena, Idx};
 
-use crate::{Const, ConstData, ConstValue, InferenceResult, Interner, TyKind};
+use crate::{Const, ConstData, ConstValue, Interner, Ty, TyKind};
 
 /// Extension trait for [`Const`]
 pub trait ConstExt {
@@ -41,12 +40,11 @@ impl ConstExt for Const {
     }
 }
 
-#[derive(Clone)]
 pub struct ConstEvalCtx<'a> {
     pub exprs: &'a Arena<Expr>,
     pub pats: &'a Arena<Pat>,
     pub local_data: HashMap<Name, ComputedExpr>,
-    pub infer: &'a InferenceResult,
+    pub infer: &'a mut dyn FnMut(Idx<Expr>) -> Ty,
 }
 
 #[derive(Debug, Clone)]
@@ -57,7 +55,7 @@ pub enum ConstEvalError {
     Panic(String),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ComputedExpr {
     Literal(Literal),
     Tuple(Box<[ComputedExpr]>),
@@ -130,11 +128,11 @@ fn is_valid(scalar: &Scalar, value: i128) -> bool {
     }
 }
 
-pub fn eval_const(expr: &Expr, mut ctx: ConstEvalCtx<'_>) -> Result<ComputedExpr, ConstEvalError> {
+pub fn eval_const(expr: &Expr, ctx: &mut ConstEvalCtx<'_>) -> Result<ComputedExpr, ConstEvalError> {
     match expr {
         Expr::Literal(l) => Ok(ComputedExpr::Literal(l.clone())),
         &Expr::UnaryOp { expr, op } => {
-            let ty = &ctx.infer[expr];
+            let ty = &(ctx.infer)(expr);
             let ev = eval_const(&ctx.exprs[expr], ctx)?;
             match op {
                 hir_def::expr::UnaryOp::Deref => Err(ConstEvalError::NotSupported("deref")),
@@ -190,9 +188,9 @@ pub fn eval_const(expr: &Expr, mut ctx: ConstEvalCtx<'_>) -> Result<ComputedExpr
             }
         }
         &Expr::BinaryOp { lhs, rhs, op } => {
-            let ty = &ctx.infer[lhs];
-            let lhs = eval_const(&ctx.exprs[lhs], ctx.clone())?;
-            let rhs = eval_const(&ctx.exprs[rhs], ctx.clone())?;
+            let ty = &(ctx.infer)(lhs);
+            let lhs = eval_const(&ctx.exprs[lhs], ctx)?;
+            let rhs = eval_const(&ctx.exprs[rhs], ctx)?;
             let op = op.ok_or(ConstEvalError::IncompleteExpr)?;
             let v1 = match lhs {
                 ComputedExpr::Literal(Literal::Int(v, _)) => v,
@@ -241,6 +239,7 @@ pub fn eval_const(expr: &Expr, mut ctx: ConstEvalCtx<'_>) -> Result<ComputedExpr
             }
         }
         Expr::Block { statements, tail, .. } => {
+            let mut prev_values = HashMap::<Name, Option<ComputedExpr>>::default();
             for statement in &**statements {
                 match statement {
                     &hir_def::expr::Statement::Let { pat, initializer, .. } => {
@@ -252,21 +251,33 @@ pub fn eval_const(expr: &Expr, mut ctx: ConstEvalCtx<'_>) -> Result<ComputedExpr
                             }
                         };
                         let value = match initializer {
-                            Some(x) => eval_const(&ctx.exprs[x], ctx.clone())?,
+                            Some(x) => eval_const(&ctx.exprs[x], ctx)?,
                             None => continue,
                         };
-                        ctx.local_data.insert(name, value);
+                        if !prev_values.contains_key(&name) {
+                            let prev = ctx.local_data.insert(name.clone(), value);
+                            prev_values.insert(name, prev);
+                        } else {
+                            ctx.local_data.insert(name, value);
+                        }
                     }
                     &hir_def::expr::Statement::Expr { .. } => {
                         return Err(ConstEvalError::NotSupported("this kind of statement"))
                     }
                 }
             }
-            let tail_expr = match tail {
-                &Some(x) => &ctx.exprs[x],
-                None => return Ok(ComputedExpr::Tuple(Box::new([]))),
+            let r = match tail {
+                &Some(x) => eval_const(&ctx.exprs[x], ctx),
+                None => Ok(ComputedExpr::Tuple(Box::new([]))),
             };
-            eval_const(tail_expr, ctx)
+            // clean up local data, so caller will receive the exact map that passed to us
+            for (name, val) in prev_values {
+                match val {
+                    Some(x) => ctx.local_data.insert(name, x),
+                    None => ctx.local_data.remove(&name),
+                };
+            }
+            r
         }
         Expr::Path(p) => {
             let name = p.mod_path().as_ident().ok_or(ConstEvalError::NotSupported("big paths"))?;
@@ -280,12 +291,16 @@ pub fn eval_const(expr: &Expr, mut ctx: ConstEvalCtx<'_>) -> Result<ComputedExpr
     }
 }
 
-// FIXME: support more than just evaluating literals
-pub fn eval_usize(expr: &Expr) -> Option<u64> {
-    match expr {
-        Expr::Literal(Literal::Uint(v, None | Some(BuiltinUint::Usize))) => (*v).try_into().ok(),
-        _ => None,
+pub fn eval_usize(expr: Idx<Expr>, mut ctx: ConstEvalCtx<'_>) -> Option<u64> {
+    let expr = &ctx.exprs[expr];
+    if let Ok(ce) = eval_const(&expr, &mut ctx) {
+        match ce {
+            ComputedExpr::Literal(Literal::Int(x, _)) => return x.try_into().ok(),
+            ComputedExpr::Literal(Literal::Uint(x, _)) => return x.try_into().ok(),
+            _ => {}
+        }
     }
+    None
 }
 
 /// Interns a possibly-unknown target usize
