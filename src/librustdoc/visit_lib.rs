@@ -3,9 +3,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::sym;
-
-use crate::clean::{AttributesExt, NestedAttributesExt};
 
 // FIXME: this may not be exhaustive, but is sufficient for rustdocs current uses
 
@@ -39,7 +36,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
 
     // Updates node level and returns the updated level
     fn update(&mut self, did: DefId, level: Option<AccessLevel>) -> Option<AccessLevel> {
-        let is_hidden = self.tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden);
+        let is_hidden = self.tcx.is_doc_hidden(did);
 
         let old_level = self.access_levels.map.get(&did).cloned();
         // Accessibility levels can only grow
