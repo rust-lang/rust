@@ -20,7 +20,7 @@ error[E0080]: evaluation of constant value failed
 LL | const C: () = std::unreachable!();
    |               ^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_2021.rs:12:15
    |
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `std::unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:15:15
@@ -28,7 +28,7 @@ error[E0080]: evaluation of constant value failed
 LL | const D: () = std::unimplemented!();
    |               ^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'not implemented', $DIR/const_panic_2021.rs:15:15
    |
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `std::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:18:15
@@ -60,7 +60,7 @@ error[E0080]: evaluation of constant value failed
 LL | const C_CORE: () = core::unreachable!();
    |                    ^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic_2021.rs:27:20
    |
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `core::unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:30:20
@@ -68,7 +68,7 @@ error[E0080]: evaluation of constant value failed
 LL | const D_CORE: () = core::unimplemented!();
    |                    ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'not implemented', $DIR/const_panic_2021.rs:30:20
    |
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `core::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_2021.rs:33:20
