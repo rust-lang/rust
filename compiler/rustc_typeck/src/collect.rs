@@ -182,7 +182,7 @@ crate fn placeholder_type_error<'tcx>(
         sugg.push((span, format!(", {}", type_name)));
     }
 
-    let mut err = bad_placeholder_type(tcx, placeholder_types, kind);
+    let mut err = bad_placeholder(tcx, "type", placeholder_types, kind);
 
     // Suggest, but only if it is not a function in const or static
     if suggest {
@@ -314,8 +314,9 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Utility types and common code for the above passes.
 
-fn bad_placeholder_type<'tcx>(
+fn bad_placeholder<'tcx>(
     tcx: TyCtxt<'tcx>,
+    placeholder_kind: &'static str,
     mut spans: Vec<Span>,
     kind: &'static str,
 ) -> rustc_errors::DiagnosticBuilder<'tcx> {
@@ -326,7 +327,8 @@ fn bad_placeholder_type<'tcx>(
         tcx.sess,
         spans.clone(),
         E0121,
-        "the type placeholder `_` is not allowed within types on item signatures for {}",
+        "the {} placeholder `_` is not allowed within types on item signatures for {}",
+        placeholder_kind,
         kind
     );
     for span in spans {
@@ -393,7 +395,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         _: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> &'tcx Const<'tcx> {
-        bad_placeholder_type(self.tcx(), vec![span], "generic").emit();
+        bad_placeholder(self.tcx(), "const", vec![span], "generic").emit();
         // Typeck doesn't expect erased regions to be returned from `type_of`.
         let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match r {
             ty::ReErased => self.tcx.lifetimes.re_static,
@@ -1482,7 +1484,11 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                     // `enum` discriminants (i.e. `D` in `enum Foo { Bar = D }`),
                     // as they shouldn't be able to cause query cycle errors.
                     Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
-                    | Node::Variant(Variant { disr_expr: Some(ref constant), .. })
+                        if constant.hir_id() == hir_id =>
+                    {
+                        Some(parent_def_id.to_def_id())
+                    }
+                    Node::Variant(Variant { disr_expr: Some(ref constant), .. })
                         if constant.hir_id == hir_id =>
                     {
                         Some(parent_def_id.to_def_id())
@@ -1788,7 +1794,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 
                     let mut visitor = PlaceholderHirTyCollector::default();
                     visitor.visit_ty(ty);
-                    let mut diag = bad_placeholder_type(tcx, visitor.0, "return type");
+                    let mut diag = bad_placeholder(tcx, "type", visitor.0, "return type");
                     let ret_ty = fn_sig.skip_binder().output();
                     if !ret_ty.references_error() {
                         if !ret_ty.is_closure() {
