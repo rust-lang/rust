@@ -1,6 +1,7 @@
 // run-rustfix
 #![warn(clippy::neg_multiply)]
 #![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::precedence)]
+#![allow(unused)]
 
 use std::ops::Mul;
 
