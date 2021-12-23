@@ -274,11 +274,78 @@ impl Expect {
             line_start += line.len();
         }
         let (literal_start, line_indent) = target_line.unwrap();
-        let literal_length =
-            file[literal_start..].find("]]").expect("Couldn't find matching `]]` for `expect![[`.");
-        let literal_range = literal_start..literal_start + literal_length;
+
+        let literal_len = locate_end(&file[literal_start..])
+            .expect("Couldn't find matching `]]` for `expect![[`.");
+        let literal_range = literal_start..literal_start + literal_len;
         Location { line_indent, literal_range }
     }
+}
+
+fn locate_end(lit_to_eof: &str) -> Option<usize> {
+    if lit_to_eof.chars().skip_while(|c| c.is_whitespace()).take(2).eq([']', ']'].iter().cloned()) {
+        // expect![[ ]]
+        Some(0)
+    } else {
+        // expect![["foo"]]
+        find_str_lit_len(lit_to_eof)
+    }
+}
+
+/// Parses a string literal, returning the byte index of its last character
+/// (either a quote or a hash).
+fn find_str_lit_len(str_lit_to_eof: &str) -> Option<usize> {
+    use StrLitKind::*;
+    #[derive(Clone, Copy)]
+    enum StrLitKind {
+        Normal,
+        Raw(usize),
+    }
+
+    fn try_find_n_hashes(
+        s: &mut impl Iterator<Item = char>,
+        desired_hashes: usize,
+    ) -> Option<(usize, Option<char>)> {
+        let mut n = 0;
+        loop {
+            match s.next()? {
+                '#' => n += 1,
+                c => return Some((n, Some(c))),
+            }
+
+            if n == desired_hashes {
+                return Some((n, None));
+            }
+        }
+    }
+
+    let mut s = str_lit_to_eof.chars();
+    let kind = match s.next()? {
+        '"' => Normal,
+        'r' => {
+            let (n, c) = try_find_n_hashes(&mut s, usize::MAX)?;
+            if c != Some('"') { return None; }
+            Raw(n)
+        }
+        _ => return None,
+    };
+
+    let mut oldc = None;
+    loop {
+        let c = oldc.take().or_else(|| s.next())?;
+        match (c, kind) {
+            ('\\', Normal) => { let _escaped = s.next()?; }
+            ('"', Normal | Raw(0)) => break,
+            ('"', Raw(n)) => {
+                let (seen, c) = try_find_n_hashes(&mut s, n)?;
+                if seen == n { break; }
+                oldc = c;
+            }
+            _ => {}
+        }
+    }
+
+    Some(str_lit_to_eof.len() - s.as_str().len())
 }
 
 impl ExpectFile {
@@ -660,5 +727,49 @@ line1
   line2
 "#]],
         );
+    }
+
+    #[test]
+    fn test_locate() {
+        macro_rules! check_locate {
+            ($( [[$s:literal]] ),* $(,)?) => {$({
+                let lit = stringify!($s);
+                let with_trailer = format!("{} \t]]\n", lit);
+                assert_eq!(locate_end(&with_trailer), Some(lit.len()));
+            })*};
+        }
+
+        // Check that we handle string literals containing "]]" correctly.
+        check_locate!(
+            [[r#"{ arr: [[1, 2], [3, 4]], other: "foo" } "#]],
+            [["]]"]],
+            [["\"]]"]],
+            [[r#""]]"#]],
+        );
+
+        // Check `expect![[  ]]` as well.
+        assert_eq!(locate_end(" ]]"), Some(0));
+    }
+
+    #[test]
+    fn test_find_str_lit_len() {
+        macro_rules! check_str_lit_len {
+            ($( $s:literal ),* $(,)?) => {$({
+                let lit = stringify!($s);
+                assert_eq!(find_str_lit_len(lit), Some(lit.len()));
+            })*}
+        }
+
+        check_str_lit_len![
+            r##"foa\""#"##,
+            r##"
+
+                asdf][]]""""#
+            "##,
+            "",
+            "\"",
+            "\"\"",
+            "#\"#\"#",
+        ];
     }
 }
