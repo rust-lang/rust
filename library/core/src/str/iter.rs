@@ -573,7 +573,7 @@ trait SplitIterInternal<'a, P: Pattern<'a>> {
     where
         P::Searcher: ReverseSearcher<'a>;
 
-    fn get_end(&mut self) -> Option<&'a str>;
+    fn finish(&mut self) -> Option<&'a str>;
 
     fn as_str(&self) -> &'a str;
 }
@@ -711,7 +711,7 @@ macro_rules! split_internal {
             }
 
             #[inline]
-            fn get_end(&mut self) -> Option<&'a str> {
+            fn finish(&mut self) -> Option<&'a str> {
                 if self.finished {
                     None
                 } else {
@@ -731,7 +731,7 @@ macro_rules! split_internal {
 
             #[inline]
             fn as_str(&self) -> &'a str {
-                // `Self::get_end` doesn't change `self.start`
+                // `Self::finish` doesn't change `self.start`
                 if self.finished {
                     ""
                 } else {
@@ -823,7 +823,6 @@ split_internal! {
 }
 
 generate_pattern_iterators! {
-
     forward:
         #[stable(feature = "split_inclusive", since = "1.51.0")]
         #[fused(stable(feature = "split_inclusive", since = "1.51.0"))]
@@ -980,7 +979,7 @@ macro_rules! splitn_internal {
                     0 => None,
                     1 => {
                         self.count = 0;
-                        self.iter.get_end()
+                        self.iter.finish()
                     }
                     _ => {
                         self.count -= 1;
@@ -1006,7 +1005,7 @@ macro_rules! splitn_internal {
                     0 => None,
                     1 => {
                         self.count = 0;
-                        self.iter.get_end()
+                        self.iter.finish()
                     }
                     _ => {
                         self.count -= 1;

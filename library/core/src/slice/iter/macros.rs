@@ -397,14 +397,272 @@ macro_rules! iterator {
     }
 }
 
+macro_rules! split_iter {
+    (
+        #[$stability:meta]
+        #[fused($fused_stability:meta)]
+        $(#[$outer:meta])*
+        struct $split_iter:ident<
+            $(shared_ref: & $lt:lifetime)?
+            $(mut_ref: & $m_lt:lifetime)?
+        > {
+            #[$debug_stability:meta]
+            debug: $debug_name:literal,
+            include_leading: $include_leading:literal,
+            include_trailing: $include_trailing:literal,
+        }
+    ) => {
+        $(#[$outer])*
+        #[$stability]
+        pub struct $split_iter<$($lt)? $($m_lt)?, T: $($lt)? $($m_lt)?, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            // Used for `SplitWhitespace` and `SplitAsciiWhitespace` `as_str` methods
+            pub(crate) v: &$($lt)?$($m_lt mut)? [T],
+            pred: P,
+            // Used for `SplitAsciiWhitespace` `as_str` method
+            pub(crate) finished: bool,
+        }
+
+        impl<$($lt)?$($m_lt)?, T: $($lt)?$($m_lt)?, P: FnMut(&T) -> bool> $split_iter<$($lt)?$($m_lt)?, T, P> {
+            #[inline]
+            pub(super) fn new(slice: &$($lt)?$($m_lt mut)? [T], pred: P) -> Self {
+                Self {
+                    v: slice,
+                    pred,
+                    finished: false,
+                }
+            }
+        }
+
+        #[$debug_stability]
+        impl<T: fmt::Debug, P> fmt::Debug for $split_iter<'_, T, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_struct($debug_name)
+                    .field("v", &self.v)
+                    .field("finished", &self.finished)
+                    .finish()
+            }
+        }
+
+        split_iter! {
+            #[$stability]
+            impl Clone for $split_iter<$(shared_ref: &$lt)? $(mut_ref: &$m_lt)?> {}
+        }
+
+        #[$stability]
+        impl<$($lt)?$($m_lt)?, T, P> Iterator for $split_iter<$($lt)?$($m_lt)?, T, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            type Item = &$($lt)?$($m_lt mut)? [T];
+
+            #[inline]
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.finished {
+                    return None;
+                }
+
+                if $include_leading && self.v.is_empty() {
+                    self.finished = true;
+                    return None;
+                }
+
+                let offset = if $include_leading {
+                    // The first index of self.v is already checked and found to match
+                    // by the last iteration, so we start searching a new match
+                    // one index to the right.
+                    1
+                } else {
+                    0
+                };
+
+                let idx_opt = {
+                    // work around borrowck limitations
+                    let pred = &mut self.pred;
+                    self.v[offset..].iter().position(|x| (*pred)(x)).map(|i| i + offset)
+                };
+
+                match idx_opt {
+                    None => {
+                        self.finished = true;
+                        if $include_trailing && self.v.is_empty() {
+                            return None;
+                        }
+                        $(let ret: & $lt [T] = self.v;)?
+                        $(let ret: & $m_lt mut [T] = mem::replace(&mut self.v, &mut []);)?
+                        Some(ret)
+                    },
+                    Some(idx) => {
+                        // For shared ref iters
+                        $(
+                            let ret_end = if $include_trailing { idx + 1 } else { idx };
+                            let ret: &$lt [T] = &self.v[..ret_end];
+                            let v_start = if $include_leading { idx } else { idx + 1 };
+                            self.v = &self.v[v_start..];
+                            Some(ret)
+                        )?
+
+                        // For mut ref iters
+                        $(
+                            // Assert that include_leading and include_trailing are not both true
+                            const _: [(); 0 - !{ const A: bool = !($include_leading && $include_trailing); A } as usize] = [];
+                            let tmp: &$m_lt mut [T] = mem::replace(&mut self.v, &mut []);
+                            let split_idx = if $include_trailing { idx + 1 } else { idx };
+                            let (head, tail) = tmp.split_at_mut(split_idx);
+                            let tail_start = if ($include_leading ^ $include_trailing) { 0 } else { 1 };
+                            self.v = &mut tail[tail_start..];
+                            Some(head)
+                        )?
+                    }
+                }
+            }
+
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                if self.finished {
+                    (0, Some(0))
+                } else {
+                    // If the predicate doesn't match anything, we yield one slice
+                    // for exclusive iterators, and zero for inclusive ones.
+                    // If it matches every element, we yield `len() + 1` empty slices.
+                    let min = if $include_leading || $include_trailing { 0 } else { 1 };
+                    (min, Some(self.v.len() + min))
+                }
+            }
+        }
+
+        #[$stability]
+        impl<$($lt)?$($m_lt)?, T, P> DoubleEndedIterator for $split_iter<$($lt)?$($m_lt)?, T, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            #[inline]
+            fn next_back(&mut self) -> Option<<Self as Iterator>::Item> {
+                if self.finished {
+                    return None;
+                }
+
+                if $include_trailing && self.v.is_empty() {
+                    self.finished = true;
+                    return None;
+                }
+
+                let offset = if $include_trailing {
+                    // The last index of self.v is already checked and found to match
+                    // by the last iteration, so we start searching a new match
+                    // one index to the left.
+                    1
+                } else {
+                    0
+                };
+
+                let idx_opt = {
+                    // work around borrowck limitations
+                    let pred = &mut self.pred;
+                    self.v[..(self.v.len() - offset)].iter().rposition(|x| (*pred)(x))
+                };
+
+                match idx_opt {
+                    None => {
+                        self.finished = true;
+                        if $include_leading && self.v.is_empty() {
+                            return None;
+                        }
+                        $(let ret: & $lt [T] = self.v;)?
+                        $(let ret: & $m_lt mut [T] = mem::replace(&mut self.v, &mut []);)?
+                        Some(ret)
+                    },
+                    Some(idx) => {
+                        // For shared ref iters
+                        $(
+                            let ret_start = if $include_leading { idx } else { idx + 1 };
+                            let ret: &$lt [T] = &self.v[ret_start..];
+                            let v_end = if $include_trailing { idx + 1 } else { idx };
+                            self.v = &self.v[..v_end];
+                            Some(ret)
+                        )?
+
+                        // For mut ref iters
+                        $(
+                            // Assert that include_leading and include_trailing are not both true
+                            const _: [(); 0 - !{ const A: bool = !($include_leading && $include_trailing); A } as usize] = [];
+                            let tmp: &$m_lt mut [T] = mem::replace(&mut self.v, &mut []);
+                            let split_idx = if $include_trailing { idx + 1 } else { idx };
+                            let (head, tail) = tmp.split_at_mut(split_idx);
+                            let tail_start = if ($include_leading ^ $include_trailing) { 0 } else { 1 };
+                            self.v = head;
+                            let ret = &mut tail[tail_start..];
+                            Some(ret)
+                        )?
+                    }
+                }
+            }
+        }
+
+        impl<$($lt)? $($m_lt)?, T, P> SplitIter for $split_iter<$($lt)? $($m_lt)?, T, P>
+        where
+            P: FnMut(&T) -> bool,
+        {
+            #[inline]
+            fn finish(&mut self) -> Option<<Self as Iterator>::Item> {
+                if self.finished {
+                    None
+                } else {
+                    self.finished = true;
+                    $(let ret: & $lt [T] = self.v;)?
+                    $(let ret: & $m_lt mut [T] = mem::replace(&mut self.v, &mut []);)?
+                    if ($include_leading || $include_trailing) && ret.is_empty() {
+                        None
+                    } else {
+                        Some(ret)
+                    }
+                }
+            }
+        }
+
+        #[$fused_stability]
+        impl<T, P> FusedIterator for $split_iter<'_, T, P> where P: FnMut(&T) -> bool {}
+    };
+
+    (
+        #[$stability:meta]
+        impl Clone for $split_iter:ident<shared_ref: & $lt:lifetime> {}
+    ) => {
+        // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
+        #[$stability]
+        impl<$lt, T, P> Clone for $split_iter<$lt, T, P>
+        where
+            P: Clone + FnMut(&T) -> bool,
+        {
+            fn clone(&self) -> Self {
+                Self {
+                    v: self.v,
+                    pred: self.pred.clone(),
+                    finished: self.finished
+                }
+            }
+        }
+    };
+
+    (
+        #[$stability:meta]
+        impl Clone for $split_iter:ident<mut_ref: & $m_lt:lifetime> {}
+    ) => {};
+}
+
 macro_rules! reverse_iter {
-    ($(
-        #[$stablility:meta]
+    (
+        #[$stability:meta]
         $(#[$outer:meta])*
         $vis:vis struct $rev:ident { $str:literal ; $inner:ident } $(: $clone:ident)?
-    )*) => {$(
+    ) => {
         $(#[$outer])*
-        #[$stablility]
+        #[$stability]
         $vis struct $rev<'a, T: 'a, P>
         where
             P: FnMut(&T) -> bool,
@@ -419,7 +677,7 @@ macro_rules! reverse_iter {
             }
         }
 
-        #[$stablility]
+        #[$stability]
         impl<T: fmt::Debug, P> fmt::Debug for $rev<'_, T, P>
         where
             P: FnMut(&T) -> bool,
@@ -434,7 +692,7 @@ macro_rules! reverse_iter {
 
         $(
         // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-        #[$stablility]
+        #[$stability]
         impl<'a, T, P> $clone for $rev<'a, T, P>
         where
             P: Clone + FnMut(&T) -> bool,
@@ -445,7 +703,7 @@ macro_rules! reverse_iter {
         }
         )?
 
-        #[$stablility]
+        #[$stability]
         impl<'a, T, P> Iterator for $rev<'a, T, P>
         where
             P: FnMut(&T) -> bool,
@@ -463,7 +721,7 @@ macro_rules! reverse_iter {
             }
         }
 
-        #[$stablility]
+        #[$stability]
         impl<'a, T, P> DoubleEndedIterator for $rev<'a, T, P>
         where
             P: FnMut(&T) -> bool,
@@ -474,10 +732,10 @@ macro_rules! reverse_iter {
             }
         }
 
-        #[$stablility]
+        #[$stability]
         impl<T, P> FusedIterator for $rev<'_, T, P> where P: FnMut(&T) -> bool {}
 
-        #[$stablility]
+        #[$stability]
         impl<'a, T, P> SplitIter for $rev<'a, T, P>
         where
             P: FnMut(&T) -> bool,
@@ -487,19 +745,19 @@ macro_rules! reverse_iter {
                 self.inner.finish()
             }
         }
-    )*};
+    };
 }
 
 #[allow(unused)]
 macro_rules! iter_n {
-    ($(
-        #[$stablility:meta]
-        #[fused($fused_stablility:meta)]
+    (
+        #[$stability:meta]
+        #[fused($fused_stability:meta)]
         $(#[$outer:meta])*
         $vis:vis struct $iter_n:ident { $str:literal ; $inner:ident } $(: $clone:ident)?
-    )*) => {$(
+    ) => {
         $(#[$outer])*
-        #[$stablility]
+        #[$stability]
         pub struct $iter_n<'a, T: 'a, P>
         where
             P: FnMut(&T) -> bool,
@@ -515,7 +773,7 @@ macro_rules! iter_n {
         }
 
         $(
-        #[$stablility]
+        #[$stability]
         impl<'a, T: 'a, P> $clone for $iter_n<'a, T, P>
         where
             P: FnMut(&T) -> bool,
@@ -527,7 +785,7 @@ macro_rules! iter_n {
         }
         )?
 
-        #[$stablility]
+        #[$stability]
         impl<T: fmt::Debug, P> fmt::Debug for $iter_n<'_, T, P>
         where
             P: Clone + FnMut(&T) -> bool,
@@ -537,7 +795,7 @@ macro_rules! iter_n {
             }
         }
 
-        #[$stablility]
+        #[$stability]
         impl<'a, T, P> Iterator for $iter_n<'a, T, P>
         where
             P: FnMut(&T) -> bool,
@@ -555,7 +813,7 @@ macro_rules! iter_n {
             }
         }
 
-        #[$fused_stablility]
+        #[$fused_stability]
         impl<'a, T, P> FusedIterator for $iter_n<'a, T, P> where P: FnMut(&T) -> bool {}
-    )*};
+    };
 }

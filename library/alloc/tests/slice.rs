@@ -1236,7 +1236,7 @@ fn test_rsplitnator() {
 
 #[test]
 fn test_split_iterators_size_hint() {
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, PartialEq, Eq)]
     enum Bounds {
         Lower,
         Upper,
@@ -1267,8 +1267,9 @@ fn test_split_iterators_size_hint() {
 
         // p: predicate, b: bound selection
         for (p, b) in [
-            // with a predicate always returning false, the split*-iterators
-            // become maximally short, so the size_hint lower bounds are tight
+            // with a predicate always returning false, the non-inclusive
+            // split*-iterators become maximally short, so the size_hint
+            // lower bounds are tight
             ((|_| false) as fn(&_) -> _, Bounds::Lower),
             // with a predicate always returning true, the split*-iterators
             // become maximally long, so the size_hint upper bounds are tight
@@ -1279,8 +1280,10 @@ fn test_split_iterators_size_hint() {
 
             a(v.split(p), b, "split");
             a(v.split_mut(p), b, "split_mut");
-            a(v.split_inclusive(p), b, "split_inclusive");
-            a(v.split_inclusive_mut(p), b, "split_inclusive_mut");
+            if b == Bounds::Upper {
+                a(v.split_inclusive(p), b, "split_inclusive");
+                a(v.split_inclusive_mut(p), b, "split_inclusive_mut");
+            }
             a(v.rsplit(p), b, "rsplit");
             a(v.rsplit_mut(p), b, "rsplit_mut");
 
