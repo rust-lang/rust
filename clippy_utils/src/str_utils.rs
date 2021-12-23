@@ -74,8 +74,9 @@ pub fn camel_case_start(s: &str) -> StrIndex {
 /// Returns `StrIndex` of the last camel-case component of `s[idx..]`.
 ///
 /// ```
-/// assert_eq!(camel_case_start("AbcDef", 0), StrIndex::new(0, 0));
-/// assert_eq!(camel_case_start("AbcDef", 1), StrIndex::new(3, 3));
+/// # use clippy_utils::str_utils::{camel_case_start_from_idx, StrIndex};
+/// assert_eq!(camel_case_start_from_idx("AbcDef", 0), StrIndex::new(0, 0));
+/// assert_eq!(camel_case_start_from_idx("AbcDef", 1), StrIndex::new(3, 3));
 /// ```
 pub fn camel_case_start_from_idx(s: &str, start_idx: usize) -> StrIndex {
     let char_count = s.chars().count();
@@ -119,7 +120,10 @@ pub fn camel_case_start_from_idx(s: &str, start_idx: usize) -> StrIndex {
 /// Get the indexes of camel case components of a string `s`
 ///
 /// ```
-/// assert_eq!(camel_case_indexes("AbcDef"), vec![StrIndex::new(0, 0), StrIndex::new(3, 3)])
+/// # use clippy_utils::str_utils::{camel_case_indexes, StrIndex};
+/// assert_eq!(camel_case_indexes("AbcDef"), vec![StrIndex::new(0, 0), StrIndex::new(3, 3),
+/// StrIndex::new(6, 6)]);
+/// assert_eq!(camel_case_indexes("abcDef"), vec![StrIndex::new(3, 3), StrIndex::new(6, 6)]);
 /// ```
 pub fn camel_case_indexes(s: &str) -> Vec<StrIndex> {
     let mut result = Vec::new();
@@ -138,6 +142,7 @@ pub fn camel_case_indexes(s: &str) -> Vec<StrIndex> {
 /// Split camel case string into a vector of its components
 ///
 /// ```
+/// # use clippy_utils::str_utils::{camel_case_split, StrIndex};
 /// assert_eq!(camel_case_split("AbcDef"), vec!["Abc", "Def"]);
 /// ```
 pub fn camel_case_split(s: &str) -> Vec<&str> {
@@ -289,16 +294,15 @@ mod test {
     }
 
     #[test]
+    fn camel_case_start_from_idx_full() {
+        assert_eq!(camel_case_start_from_idx("AbcDef", 0), StrIndex::new(0, 0));
+        assert_eq!(camel_case_start_from_idx("AbcDef", 1), StrIndex::new(3, 3));
+        assert_eq!(camel_case_start_from_idx("AbcDef", 4), StrIndex::new(6, 6));
+    }
+
+    #[test]
     fn camel_case_indexes_full() {
-        assert_eq!(
-            camel_case_indexes("AbcDef"),
-            vec![StrIndex::new(0, 0), StrIndex::new(3, 3)]
-        );
-        assert_eq!(
-            camel_case_indexes("abcDef"),
-            vec![StrIndex::new(0, 0), StrIndex::new(3, 3)]
-        );
-        assert_eq!(camel_case_indexes("Abc\u{f6}\u{f6}DD"), vec![StrIndex::new(5, 7)]);
+        assert_eq!(camel_case_indexes("Abc\u{f6}\u{f6}DD"), vec![StrIndex::new(7, 9)]);
     }
 
     #[test]
