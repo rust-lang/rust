@@ -1,11 +1,3 @@
-error: operator precedence can trip the unwary
-  --> $DIR/neg_multiply.rs:38:5
-   |
-LL |     0xcafe | 0xff00 * -1;
-   |     ^^^^^^^^^^^^^^^^^^^^ help: consider parenthesizing your expression: `0xcafe | (0xff00 * -1)`
-   |
-   = note: `-D clippy::precedence` implied by `-D warnings`
-
 error: this multiplication by -1 can be written more succinctly
   --> $DIR/neg_multiply.rs:28:5
    |
@@ -44,5 +36,5 @@ error: this multiplication by -1 can be written more succinctly
 LL |     0xcafe | 0xff00 * -1;
    |              ^^^^^^^^^^^ help: consider using: `-0xff00`
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
