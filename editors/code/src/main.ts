@@ -9,7 +9,7 @@ import { log, isValidExecutable, isRustDocument } from './util';
 import { PersistentState } from './persistent_state';
 import { activateTaskProvider } from './tasks';
 import { setContextValue } from './util';
-import { exec, spawnSync } from 'child_process';
+import { exec } from 'child_process';
 
 let ctx: Ctx | undefined;
 
@@ -227,43 +227,30 @@ async function getServer(context: vscode.ExtensionContext, config: Config, state
     };
     if (config.package.releaseTag === null) return "rust-analyzer";
 
-    const platforms: { [key: string]: string } = {
-        "ia32 win32": "x86_64-pc-windows-msvc",
-        "x64 win32": "x86_64-pc-windows-msvc",
-        "x64 linux": "x86_64-unknown-linux-gnu",
-        "x64 darwin": "x86_64-apple-darwin",
-        "arm64 win32": "aarch64-pc-windows-msvc",
-        "arm64 linux": "aarch64-unknown-linux-gnu",
-        "arm64 darwin": "aarch64-apple-darwin",
-    };
-    let platform = platforms[`${process.arch} ${process.platform}`];
-    if (platform) {
-        if (platform === "x86_64-unknown-linux-gnu" && isMusl()) {
-            platform = "x86_64-unknown-linux-musl";
-        }
-        const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
-        const bundled = vscode.Uri.joinPath(context.extensionUri, "server", `rust-analyzer${ext}`);
-        const bundledExists = await vscode.workspace.fs.stat(bundled).then(() => true, () => false);
-        if (bundledExists) {
-            let server = bundled;
-            if (await isNixOs()) {
-                await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
-                const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer-${platform}${ext}`);
-                let exists = await vscode.workspace.fs.stat(dest).then(() => true, () => false);
-                if (exists && config.package.version !== state.serverVersion) {
-                    await vscode.workspace.fs.delete(dest);
-                    exists = false;
-                }
-                if (!exists) {
-                    await vscode.workspace.fs.copy(bundled, dest);
-                    await patchelf(dest);
-                    server = dest;
-                }
+    const ext = process.platform === "win32" ? ".exe" : "";
+    const bundled = vscode.Uri.joinPath(context.extensionUri, "server", `rust-analyzer${ext}`);
+    const bundledExists = await vscode.workspace.fs.stat(bundled).then(() => true, () => false);
+    if (bundledExists) {
+        let server = bundled;
+        if (await isNixOs()) {
+            await vscode.workspace.fs.createDirectory(config.globalStorageUri).then();
+            const dest = vscode.Uri.joinPath(config.globalStorageUri, `rust-analyzer${ext}`);
+            let exists = await vscode.workspace.fs.stat(dest).then(() => true, () => false);
+            if (exists && config.package.version !== state.serverVersion) {
+                await vscode.workspace.fs.delete(dest);
+                exists = false;
             }
-            await state.updateServerVersion(config.package.version);
-            return server.fsPath;
+            if (!exists) {
+                await vscode.workspace.fs.copy(bundled, dest);
+                await patchelf(dest);
+                server = dest;
+            }
         }
+        await state.updateServerVersion(config.package.version);
+        return server.fsPath;
     }
+
+    await state.updateServerVersion(undefined);
     await vscode.window.showErrorMessage(
         "Unfortunately we don't ship binaries for your platform yet. " +
         "You need to manually clone rust-analyzer repository and " +
@@ -286,13 +273,6 @@ async function isNixOs(): Promise<boolean> {
     } catch {
         return false;
     }
-}
-
-function isMusl(): boolean {
-    // We can detect Alpine by checking `/etc/os-release` but not Void Linux musl.
-    // Instead, we run `ldd` since it advertises the libc which it belongs to.
-    const res = spawnSync("ldd", ["--version"]);
-    return res.stderr != null && res.stderr.indexOf("musl libc") >= 0;
 }
 
 function warnAboutExtensionConflicts() {
