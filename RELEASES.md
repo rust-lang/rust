@@ -46,41 +46,36 @@ Libraries
 Stabilized APIs
 ---------------
 
-- [`Metadata::is_symlink`][89677]
-- [`Path::is_symlink`][89677]
-- [`{integer}::saturating_div`][88624]
-- [`Option::unwrap_unchecked`][89951]
-- [`NonZero::is_power_of_two`][91301]
-- [`unix::process::ExitStatusExt::core_dumped`][88300]
-- [`unix::process::ExitStatusExt::stopped_signal`][88300]
-- [`unix::process::ExitStatusExt::continued`][88300]
-- [`unix::process::ExitStatusExt::into_raw`][88300]
+- [`Metadata::is_symlink`]
+- [`Path::is_symlink`]
+- [`{integer}::saturating_div`]
+- [`Option::unwrap_unchecked`]
+- [`NonZero{unsigned}::is_power_of_two`]
 
 These APIs are now usable in const contexts:
 
-- [Partially stabilize `duration_consts_2`][89542]
-- [`Duration::new`][89542]
-- [`Duration::checked_add`][89542]
-- [`Duration::saturating_add`][89542]
-- [`Duration::checked_sub`][89542]
-- [`Duration::saturating_sub`][89542]
-- [`Duration::checked_mul`][89542]
-- [`Duration::saturating_mul`][89542]
-- [`Duration::checked_div`][89542]
-- [`Duration::as_secs_f64`][89542]
-- [`Duration::as_secs_f32`][89542]
-- [`Duration::from_secs_f64`][89542]
-- [`Duration::from_secs_f32`][89542]
-- [`Duration::mul_f64`][89542]
-- [`Duration::mul_f32`][89542]
-- [`Duration::div_f64`][89542]
-- [`Duration::div_f32`][89542]
-- [`Duration::div_duration_f64`][89542]
-- [`Duration::div_duration_f32`][89542]
-- [`MaybeUninit::as_ptr`][90896]
-- [`MaybeUninit::as_mut_ptr`][90896]
-- [`MaybeUninit::assume_init`][90896]
-- [`MaybeUninit::assume_init_ref`][90896]
+- [`Duration::new`]
+- [`Duration::checked_add`]
+- [`Duration::saturating_add`]
+- [`Duration::checked_sub`]
+- [`Duration::saturating_sub`]
+- [`Duration::checked_mul`]
+- [`Duration::saturating_mul`]
+- [`Duration::checked_div`]
+- [`Duration::as_secs_f64`]
+- [`Duration::as_secs_f32`]
+- [`Duration::from_secs_f64`]
+- [`Duration::from_secs_f32`]
+- [`Duration::mul_f64`]
+- [`Duration::mul_f32`]
+- [`Duration::div_f64`]
+- [`Duration::div_f32`]
+- [`Duration::div_duration_f64`]
+- [`Duration::div_duration_f32`]
+- [`MaybeUninit::as_ptr`]
+- [`MaybeUninit::as_mut_ptr`]
+- [`MaybeUninit::assume_init`]
+- [`MaybeUninit::assume_init_ref`]
 
 Cargo
 -----
@@ -89,7 +84,7 @@ Cargo
 - [Warn when alias shadows external subcommand][cargo/10082]
 
 Rustdoc
-----
+-------
 
 - [Show all Deref implementations recursively in rustdoc][90183]
 - [Use computed visibility in rustdoc][88447]
@@ -155,6 +150,37 @@ and related tools.
 [91301]: https://github.com/rust-lang/rust/pull/91301/
 [cargo/10082]: https://github.com/rust-lang/cargo/pull/10082/
 [cargo/10107]: https://github.com/rust-lang/cargo/pull/10107/
+[`Metadata::is_symlink`]: https://doc.rust-lang.org/stable/std/fs/struct.Metadata.html#method.is_symlink
+[`Path::is_symlink`]: https://doc.rust-lang.org/stable/std/path/struct.Path.html#method.is_symlink
+[`{integer}::saturating_div`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.saturating_div
+[`Option::unwrap_unchecked`]: https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.unwrap_unchecked
+[`NonZero{unsigned}::is_power_of_two`]: https://doc.rust-lang.org/stable/std/num/struct.NonZeroU8.html#method.is_power_of_two
+[`unix::process::ExitStatusExt::core_dumped`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.core_dumped
+[`unix::process::ExitStatusExt::stopped_signal`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.stopped_signal
+[`unix::process::ExitStatusExt::continued`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.continued
+[`unix::process::ExitStatusExt::into_raw`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.into_raw
+[`Duration::new`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.new
+[`Duration::checked_add`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.checked_add
+[`Duration::saturating_add`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.saturating_add
+[`Duration::checked_sub`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.checked_sub
+[`Duration::saturating_sub`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.saturating_sub
+[`Duration::checked_mul`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.checked_mul
+[`Duration::saturating_mul`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.saturating_mul
+[`Duration::checked_div`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.checked_div
+[`Duration::as_secs_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.as_secs_f64
+[`Duration::as_secs_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.as_secs_f32
+[`Duration::from_secs_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.from_secs_f64
+[`Duration::from_secs_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.from_secs_f32
+[`Duration::mul_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.mul_f64
+[`Duration::mul_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.mul_f32
+[`Duration::div_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_f64
+[`Duration::div_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_f32
+[`Duration::div_duration_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_duration_f64
+[`Duration::div_duration_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_duration_f32
+[`MaybeUninit::as_ptr`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.as_ptr
+[`MaybeUninit::as_mut_ptr`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.as_mut_ptr
+[`MaybeUninit::assume_init`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init
+[`MaybeUninit::assume_init_ref`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_ref
 
 Version 1.57.0 (2021-12-02)
 ==========================
