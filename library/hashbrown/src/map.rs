@@ -1096,8 +1096,12 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
-        self.table.get(hash, equivalent_key(k))
+        if self.table.is_empty() {
+            None
+        } else {
+            let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
+            self.table.get(hash, equivalent_key(k))
+        }
     }
 
     /// Returns the key-value pair corresponding to the supplied key, with a mutable reference to value.
@@ -1204,8 +1208,12 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
-        self.table.get_mut(hash, equivalent_key(k))
+        if self.table.is_empty() {
+            None
+        } else {
+            let hash = make_hash::<K, Q, S>(&self.hash_builder, k);
+            self.table.get_mut(hash, equivalent_key(k))
+        }
     }
 
     /// Attempts to get mutable references to `N` values in the map at once.
