@@ -36,8 +36,6 @@
         "test": "node ./out/tests/runTests.js"
     },
     "dependencies": {
-        "https-proxy-agent": "^5.0.0",
-        "node-fetch": "^3.0.3",
         "vscode-languageclient": "8.0.0-next.2",
         "d3": "^7.2.0",
         "d3-graphviz": "^4.0.0"
