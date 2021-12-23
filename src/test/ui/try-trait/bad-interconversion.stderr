@@ -10,6 +10,9 @@ LL |     Ok(Err(123_i32)?)
    = help: the following implementations were found:
              <u8 as From<NonZeroU8>>
              <u8 as From<bool>>
+             <i128 as From<NonZeroI128>>
+             <i128 as From<bool>>
+           and 60 others
    = note: required because of the requirements on the impl of `FromResidual<Result<Infallible, i32>>` for `Result<u64, u8>`
 
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`

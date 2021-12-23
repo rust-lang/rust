@@ -4,6 +4,8 @@ error[E0277]: the trait bound `u32: Signed` is not satisfied
 LL |     is_defaulted::<&'static u32>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Signed` is not implemented for `u32`
    |
+   = help: the following implementations were found:
+             <i32 as Signed>
 note: required because of the requirements on the impl of `Defaulted` for `&'static u32`
   --> $DIR/typeck-default-trait-impl-precedence.rs:10:19
    |

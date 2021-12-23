@@ -40,6 +40,21 @@ use suggestions::InferCtxtExt as _;
 
 pub use rustc_infer::traits::error_reporting::*;
 
+// When outputting impl candidates, prefer showing those that are more similar.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum CandidateSimilarity {
+    Exact,
+    Simplified,
+    Fuzzy,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ImplCandidate<'tcx> {
+    pub trait_ref: ty::TraitRef<'tcx>,
+    pub similarity: CandidateSimilarity,
+}
+
 pub trait InferCtxtExt<'tcx> {
     fn report_fulfillment_errors(
         &self,
@@ -1143,18 +1158,18 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
         error: &MismatchedProjectionTypes<'tcx>,
     );
 
-    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool;
+    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>, strip_references: StripReferences) -> bool;
 
     fn describe_generator(&self, body_id: hir::BodyId) -> Option<&'static str>;
 
     fn find_similar_impl_candidates(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Vec<ty::TraitRef<'tcx>>;
+    ) -> Vec<ImplCandidate<'tcx>>;
 
     fn report_similar_impl_candidates(
         &self,
-        impl_candidates: Vec<ty::TraitRef<'tcx>>,
+        impl_candidates: Vec<ImplCandidate<'tcx>>,
         err: &mut DiagnosticBuilder<'_>,
     );
 
@@ -1446,7 +1461,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         });
     }
 
-    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>, strip_references: StripReferences) -> bool {
         /// returns the fuzzy category of a given type, or None
         /// if the type can be equated to any type.
         fn type_category(t: Ty<'_>) -> Option<u32> {
@@ -1478,6 +1493,23 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
 
+        let strip_reference = |mut t: Ty<'tcx>| -> Ty<'tcx> {
+            loop {
+                match t.kind() {
+                    ty::Ref(_, inner, _) | ty::RawPtr(ty::TypeAndMut { ty: inner, .. }) => {
+                        t = inner
+                    }
+                    _ => break t,
+                }
+            }
+        };
+
+        let (a, b) = if strip_references == StripReferences::Yes {
+            (strip_reference(a), strip_reference(b))
+        } else {
+            (a, b)
+        };
+
         match (type_category(a), type_category(b)) {
             (Some(cat_a), Some(cat_b)) => match (a.kind(), b.kind()) {
                 (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => def_a == def_b,
@@ -1500,7 +1532,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
     fn find_similar_impl_candidates(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Vec<ty::TraitRef<'tcx>> {
+    ) -> Vec<ImplCandidate<'tcx>> {
         // We simplify params and strip references here.
         //
         // This both removes a lot of unhelpful suggestions, e.g.
@@ -1518,32 +1550,67 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         let all_impls = self.tcx.all_impls(trait_ref.def_id());
 
         match simp {
-            Some(simp) => all_impls
-                .filter_map(|def_id| {
-                    let imp = self.tcx.impl_trait_ref(def_id).unwrap();
-                    let imp_simp = fast_reject::simplify_type(
-                        self.tcx,
-                        imp.self_ty(),
-                        SimplifyParams::Yes,
-                        StripReferences::Yes,
-                    );
-                    if let Some(imp_simp) = imp_simp {
-                        if simp != imp_simp {
+            Some(simp) => {
+                all_impls
+                    .filter_map(|def_id| {
+                        if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
                             return None;
                         }
-                    }
-                    if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
-                        return None;
-                    }
-                    Some(imp)
-                })
-                .collect(),
+
+                        let imp = self.tcx.impl_trait_ref(def_id).unwrap();
+
+                        // Check for exact match.
+                        if trait_ref.skip_binder().self_ty() == imp.self_ty() {
+                            return Some(ImplCandidate {
+                                trait_ref: imp,
+                                similarity: CandidateSimilarity::Exact,
+                            });
+                        }
+
+                        // Check for match between simplified types.
+                        let imp_simp = fast_reject::simplify_type(
+                            self.tcx,
+                            imp.self_ty(),
+                            SimplifyParams::Yes,
+                            StripReferences::Yes,
+                        );
+                        if let Some(imp_simp) = imp_simp {
+                            if simp == imp_simp {
+                                return Some(ImplCandidate {
+                                    trait_ref: imp,
+                                    similarity: CandidateSimilarity::Simplified,
+                                });
+                            }
+                        }
+
+                        // Check for fuzzy match.
+                        // Pass `StripReferences::Yes` because although we do want to
+                        // be fuzzier than `simplify_type`, we don't want to be
+                        // *too* fuzzy.
+                        if self.fuzzy_match_tys(
+                            trait_ref.skip_binder().self_ty(),
+                            imp.self_ty(),
+                            StripReferences::Yes,
+                        ) {
+                            return Some(ImplCandidate {
+                                trait_ref: imp,
+                                similarity: CandidateSimilarity::Fuzzy,
+                            });
+                        }
+
+                        None
+                    })
+                    .collect()
+            }
             None => all_impls
                 .filter_map(|def_id| {
                     if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
                         return None;
                     }
-                    self.tcx.impl_trait_ref(def_id)
+                    self.tcx.impl_trait_ref(def_id).map(|trait_ref| ImplCandidate {
+                        trait_ref,
+                        similarity: CandidateSimilarity::Unknown,
+                    })
                 })
                 .collect(),
         }
@@ -1551,7 +1618,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
     fn report_similar_impl_candidates(
         &self,
-        impl_candidates: Vec<ty::TraitRef<'tcx>>,
+        impl_candidates: Vec<ImplCandidate<'tcx>>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
         if impl_candidates.is_empty() {
@@ -1575,13 +1642,24 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         };
 
         // Sort impl candidates so that ordering is consistent for UI tests.
-        let mut normalized_impl_candidates =
-            impl_candidates.iter().copied().map(normalize).collect::<Vec<String>>();
-
-        // Sort before taking the `..end` range,
         // because the ordering of `impl_candidates` may not be deterministic:
         // https://github.com/rust-lang/rust/pull/57475#issuecomment-455519507
-        normalized_impl_candidates.sort();
+        //
+        // Prefer more similar candidates first, then sort lexicographically
+        // by their normalized string representation.
+        let mut normalized_impl_candidates_and_similarities = impl_candidates
+            .into_iter()
+            .map(|ImplCandidate { trait_ref, similarity }| {
+                let normalized = normalize(trait_ref);
+                (similarity, normalized)
+            })
+            .collect::<Vec<_>>();
+        normalized_impl_candidates_and_similarities.sort();
+
+        let normalized_impl_candidates = normalized_impl_candidates_and_similarities
+            .into_iter()
+            .map(|(_, normalized)| normalized)
+            .collect::<Vec<_>>();
 
         err.help(&format!(
             "the following implementations were found:{}{}",
@@ -1744,7 +1822,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                let impl_candidates = self.find_similar_impl_candidates(trait_ref);
+                let impl_candidates = self
+                    .find_similar_impl_candidates(trait_ref)
+                    .into_iter()
+                    .map(|candidate| candidate.trait_ref)
+                    .collect();
                 let mut err = self.emit_inference_failure_err(
                     body_id,
                     span,
