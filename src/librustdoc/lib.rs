@@ -63,14 +63,12 @@ extern crate rustc_trait_selection;
 extern crate rustc_typeck;
 extern crate test;
 
+// See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+// about jemalloc.
 #[cfg(feature = "jemalloc")]
 extern crate tikv_jemalloc_sys;
 #[cfg(feature = "jemalloc")]
 use tikv_jemalloc_sys as jemalloc_sys;
-#[cfg(feature = "jemalloc")]
-extern crate tikv_jemallocator;
-#[cfg(feature = "jemalloc")]
-use tikv_jemallocator as jemallocator;
 
 use std::default::Default;
 use std::env;
@@ -125,15 +123,9 @@ mod visit;
 mod visit_ast;
 mod visit_lib;
 
-// See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
-// about jemallocator
-#[cfg(feature = "jemalloc")]
-#[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
 pub fn main() {
     // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
-    // about jemalloc-sys
+    // about jemalloc.
     #[cfg(feature = "jemalloc")]
     {
         use std::os::raw::{c_int, c_void};
@@ -152,10 +144,6 @@ pub fn main() {
         #[used]
         static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
 
-        // On OSX, jemalloc doesn't directly override malloc/free, but instead
-        // registers itself with the allocator's zone APIs in a ctor. However,
-        // the linker doesn't seem to consider ctors as "used" when statically
-        // linking, so we need to explicitly depend on the function.
         #[cfg(target_os = "macos")]
         {
             extern "C" {
