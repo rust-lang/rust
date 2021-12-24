@@ -77,6 +77,9 @@ pub fn camel_case_start(s: &str) -> StrIndex {
 /// # use clippy_utils::str_utils::{camel_case_start_from_idx, StrIndex};
 /// assert_eq!(camel_case_start_from_idx("AbcDef", 0), StrIndex::new(0, 0));
 /// assert_eq!(camel_case_start_from_idx("AbcDef", 1), StrIndex::new(3, 3));
+/// assert_eq!(camel_case_start_from_idx("AbcDefGhi", 0), StrIndex::new(0, 0));
+/// assert_eq!(camel_case_start_from_idx("AbcDefGhi", 1), StrIndex::new(3, 3));
+/// assert_eq!(camel_case_start_from_idx("Abcdefg", 1), StrIndex::new(7, 7));
 /// ```
 pub fn camel_case_start_from_idx(s: &str, start_idx: usize) -> StrIndex {
     let char_count = s.chars().count();
@@ -94,7 +97,7 @@ pub fn camel_case_start_from_idx(s: &str, start_idx: usize) -> StrIndex {
     let mut last_index = StrIndex::new(char_count, s.len());
     for (char_index, (byte_index, c)) in iter {
         if byte_index < start_idx {
-            continue;
+            break;
         }
         if down {
             if c.is_uppercase() {
@@ -120,12 +123,17 @@ pub fn camel_case_start_from_idx(s: &str, start_idx: usize) -> StrIndex {
 /// Get the indexes of camel case components of a string `s`
 ///
 /// ```
-/// # use clippy_utils::str_utils::{camel_case_indexes, StrIndex};
-/// assert_eq!(camel_case_indexes("AbcDef"), vec![StrIndex::new(0, 0), StrIndex::new(3, 3),
-/// StrIndex::new(6, 6)]);
-/// assert_eq!(camel_case_indexes("abcDef"), vec![StrIndex::new(3, 3), StrIndex::new(6, 6)]);
+/// # use clippy_utils::str_utils::{camel_case_indices, StrIndex};
+/// assert_eq!(
+///     camel_case_indices("AbcDef"),
+///     vec![StrIndex::new(0, 0), StrIndex::new(3, 3), StrIndex::new(6, 6)]
+/// );
+/// assert_eq!(
+///     camel_case_indices("abcDef"),
+///     vec![StrIndex::new(3, 3), StrIndex::new(6, 6)]
+/// );
 /// ```
-pub fn camel_case_indexes(s: &str) -> Vec<StrIndex> {
+pub fn camel_case_indices(s: &str) -> Vec<StrIndex> {
     let mut result = Vec::new();
     let mut str_idx = camel_case_start(s);
 
@@ -146,20 +154,15 @@ pub fn camel_case_indexes(s: &str) -> Vec<StrIndex> {
 /// assert_eq!(camel_case_split("AbcDef"), vec!["Abc", "Def"]);
 /// ```
 pub fn camel_case_split(s: &str) -> Vec<&str> {
-    let offsets = camel_case_indexes(s);
-    let mut idxs_iter = offsets.iter().map(|str_idx| str_idx.byte_index).peekable();
-    let idxs: Vec<usize> = if let Some(&idx) = idxs_iter.peek() {
-        if idx == 0 {
-            idxs_iter.collect()
-        } else {
-            Vec::<usize>::from([0]).into_iter().chain(idxs_iter).collect()
-        }
-    } else {
-        return vec![s];
-    };
-    let split_points: Vec<(&usize, &usize)> = idxs[..idxs.len() - 1].iter().zip(&idxs[1..]).collect();
+    let mut offsets = camel_case_indices(s)
+        .iter()
+        .map(|e| e.byte_index)
+        .collect::<Vec<usize>>();
+    if offsets[0] != 0 {
+        offsets.insert(0, 0);
+    }
 
-    split_points.iter().map(|(&start, &stop)| &s[start..stop]).collect()
+    offsets.windows(2).map(|w| &s[w[0]..w[1]]).collect()
 }
 
 /// Dealing with sting comparison can be complicated, this struct ensures that both the
@@ -298,11 +301,14 @@ mod test {
         assert_eq!(camel_case_start_from_idx("AbcDef", 0), StrIndex::new(0, 0));
         assert_eq!(camel_case_start_from_idx("AbcDef", 1), StrIndex::new(3, 3));
         assert_eq!(camel_case_start_from_idx("AbcDef", 4), StrIndex::new(6, 6));
+        assert_eq!(camel_case_start_from_idx("AbcDefGhi", 0), StrIndex::new(0, 0));
+        assert_eq!(camel_case_start_from_idx("AbcDefGhi", 1), StrIndex::new(3, 3));
+        assert_eq!(camel_case_start_from_idx("Abcdefg", 1), StrIndex::new(7, 7));
     }
 
     #[test]
-    fn camel_case_indexes_full() {
-        assert_eq!(camel_case_indexes("Abc\u{f6}\u{f6}DD"), vec![StrIndex::new(7, 9)]);
+    fn camel_case_indices_full() {
+        assert_eq!(camel_case_indices("Abc\u{f6}\u{f6}DD"), vec![StrIndex::new(7, 9)]);
     }
 
     #[test]

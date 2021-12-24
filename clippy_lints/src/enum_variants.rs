@@ -115,9 +115,9 @@ impl EnumVariantNames {
 }
 
 impl_lint_pass!(EnumVariantNames => [
-                ENUM_VARIANT_NAMES,
-                MODULE_NAME_REPETITIONS,
-                MODULE_INCEPTION
+    ENUM_VARIANT_NAMES,
+    MODULE_NAME_REPETITIONS,
+    MODULE_INCEPTION
 ]);
 
 fn check_enum_start(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) {
@@ -169,17 +169,15 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
 
         pre = pre
             .iter()
-            .copied()
-            .zip(variant_split.iter().copied())
+            .zip(variant_split.iter())
             .take_while(|(a, b)| a == b)
-            .map(|e| e.0)
+            .map(|e| *e.0)
             .collect();
         post = post
             .iter()
-            .copied()
-            .zip(variant_split.iter().rev().copied())
+            .zip(variant_split.iter().rev())
             .take_while(|(a, b)| a == b)
-            .map(|e| e.0)
+            .map(|e| *e.0)
             .collect();
     }
     let (what, value) = match (pre.is_empty(), post.is_empty()) {
