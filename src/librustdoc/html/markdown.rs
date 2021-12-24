@@ -538,7 +538,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
         }
 
         let event = self.inner.next();
-        if let Some((Event::Start(Tag::Heading(level)), _)) = event {
+        if let Some((Event::Start(Tag::Heading(level, _, _)), _)) = event {
             let mut id = String::new();
             for event in &mut self.inner {
                 match &event.0 {
@@ -560,7 +560,8 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
                 self.buf.push_front((Event::Html(format!("{} ", sec).into()), 0..0));
             }
 
-            let level = std::cmp::min(level + (self.heading_offset as u32), MAX_HEADER_LEVEL);
+            let level =
+                std::cmp::min(level as u32 + (self.heading_offset as u32), MAX_HEADER_LEVEL);
             self.buf.push_back((Event::Html(format!("</a></h{}>", level).into()), 0..0));
 
             let start_tags = format!(
@@ -773,7 +774,7 @@ crate fn find_testable_code<T: doctest::Tester>(
                 tests.add_test(text, block_info, line);
                 prev_offset = offset.start;
             }
-            Event::Start(Tag::Heading(level)) => {
+            Event::Start(Tag::Heading(level, _, _)) => {
                 register_header = Some(level as u32);
             }
             Event::Text(ref s) if register_header.is_some() => {
@@ -1053,7 +1054,7 @@ impl Markdown<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| &*link.original_text == broken_link.reference)
+                .find(|link| link.original_text.as_str() == &*broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
         };
 
@@ -1134,7 +1135,7 @@ impl MarkdownSummaryLine<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| &*link.original_text == broken_link.reference)
+                .find(|link| link.original_text.as_str() == &*broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
         };
 
@@ -1168,7 +1169,7 @@ fn markdown_summary_with_limit(
     let mut replacer = |broken_link: BrokenLink<'_>| {
         link_names
             .iter()
-            .find(|link| &*link.original_text == broken_link.reference)
+            .find(|link| link.original_text.as_str() == &*broken_link.reference)
             .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
     };
 
@@ -1311,10 +1312,10 @@ crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
     };
 
     let mut push = |link: BrokenLink<'_>| {
-        let span = span_for_link(&CowStr::Borrowed(link.reference), link.span);
+        let span = span_for_link(&link.reference, link.span);
         links.borrow_mut().push(MarkdownLink {
             kind: LinkType::ShortcutUnknown,
-            link: link.reference.to_owned(),
+            link: link.reference.to_string(),
             range: span,
         });
         None
