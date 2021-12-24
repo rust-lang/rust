@@ -66,6 +66,9 @@ fn unwrap_or_else_default() {
 
     let with_default_type = Some(1);
     with_default_type.unwrap_or_else(u64::default);
+
+    let with_default_type: Option<Vec<u64>> = None;
+    with_default_type.unwrap_or_else(Vec::new);
 }
 
 fn main() {}
