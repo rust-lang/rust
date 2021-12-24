@@ -6,6 +6,7 @@ use crate::mir;
 use crate::ty;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_query_system::ich::StableHashingContext;
 use std::cell::RefCell;
@@ -17,12 +18,12 @@ where
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         thread_local! {
-            static CACHE: RefCell<FxHashMap<(usize, usize), Fingerprint>> =
+            static CACHE: RefCell<FxHashMap<(usize, usize, HashingControls), Fingerprint>> =
                 RefCell::new(Default::default());
         }
 
         let hash = CACHE.with(|cache| {
-            let key = (self.as_ptr() as usize, self.len());
+            let key = (self.as_ptr() as usize, self.len(), hcx.hashing_controls());
             if let Some(&hash) = cache.borrow().get(&key) {
                 return hash;
             }

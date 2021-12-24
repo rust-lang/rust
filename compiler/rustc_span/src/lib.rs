@@ -42,6 +42,7 @@ pub mod hygiene;
 use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnKind, MacroKind};
 pub use hygiene::{ExpnData, ExpnHash, ExpnId, LocalExpnId, SyntaxContext};
+use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefPathHash, LocalDefId, LOCAL_CRATE};
 pub mod lev_distance;
@@ -2062,6 +2063,7 @@ pub trait HashStableContext {
         &mut self,
         span: &SpanData,
     ) -> Option<(Lrc<SourceFile>, usize, BytePos, usize, BytePos)>;
+    fn hashing_controls(&self) -> HashingControls;
 }
 
 impl<CTX> HashStable<CTX> for Span

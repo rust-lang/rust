@@ -3,6 +3,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashingControls, NodeIdHashingMode};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -27,19 +28,11 @@ pub struct StableHashingContext<'a> {
     definitions: &'a Definitions,
     cstore: &'a dyn CrateStore,
     pub(super) body_resolver: BodyResolver<'a>,
-    hash_spans: bool,
-    pub(super) node_id_hashing_mode: NodeIdHashingMode,
-
     // Very often, we are hashing something that does not need the
     // `CachingSourceMapView`, so we initialize it lazily.
     raw_source_map: &'a SourceMap,
     caching_source_map: Option<CachingSourceMapView<'a>>,
-}
-
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum NodeIdHashingMode {
-    Ignore,
-    HashDefPath,
+    pub(super) hashing_controls: HashingControls,
 }
 
 /// The `BodyResolver` allows mapping a `BodyId` to the corresponding `hir::Body`.
@@ -72,8 +65,10 @@ impl<'a> StableHashingContext<'a> {
             cstore,
             caching_source_map: None,
             raw_source_map: sess.source_map(),
-            hash_spans: hash_spans_initial,
-            node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
+            hashing_controls: HashingControls {
+                hash_spans: hash_spans_initial,
+                node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
+            },
         }
     }
 
@@ -133,10 +128,10 @@ impl<'a> StableHashingContext<'a> {
 
     #[inline]
     pub fn while_hashing_spans<F: FnOnce(&mut Self)>(&mut self, hash_spans: bool, f: F) {
-        let prev_hash_spans = self.hash_spans;
-        self.hash_spans = hash_spans;
+        let prev_hash_spans = self.hashing_controls.hash_spans;
+        self.hashing_controls.hash_spans = hash_spans;
         f(self);
-        self.hash_spans = prev_hash_spans;
+        self.hashing_controls.hash_spans = prev_hash_spans;
     }
 
     #[inline]
@@ -145,10 +140,10 @@ impl<'a> StableHashingContext<'a> {
         mode: NodeIdHashingMode,
         f: F,
     ) {
-        let prev = self.node_id_hashing_mode;
-        self.node_id_hashing_mode = mode;
+        let prev = self.hashing_controls.node_id_hashing_mode;
+        self.hashing_controls.node_id_hashing_mode = mode;
         f(self);
-        self.node_id_hashing_mode = prev;
+        self.hashing_controls.node_id_hashing_mode = prev;
     }
 
     #[inline]
@@ -183,6 +178,10 @@ impl<'a> StableHashingContext<'a> {
         }
         IGNORED_ATTRIBUTES.with(|attrs| attrs.contains(&name))
     }
+
+    pub fn hashing_controls(&self) -> HashingControls {
+        self.hashing_controls.clone()
+    }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
@@ -195,7 +194,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::NodeId {
 impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     #[inline]
     fn hash_spans(&self) -> bool {
-        self.hash_spans
+        self.hashing_controls.hash_spans
     }
 
     #[inline]
@@ -214,6 +213,11 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         span: &SpanData,
     ) -> Option<(Lrc<SourceFile>, usize, BytePos, usize, BytePos)> {
         self.source_map().span_data_to_lines_and_cols(span)
+    }
+
+    #[inline]
+    fn hashing_controls(&self) -> HashingControls {
+        self.hashing_controls.clone()
     }
 }
 
