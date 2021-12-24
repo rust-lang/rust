@@ -26,13 +26,8 @@ pub(super) fn check<'tcx>(
     let is_default_eq = match &u_arg.kind {
         hir::ExprKind::Path(qpath) => {
             if let Some(repl_def_id) = cx.qpath_res(qpath, u_arg.hir_id).opt_def_id() {
-                if is_diag_trait_item(cx, repl_def_id, sym::Default)
+                is_diag_trait_item(cx, repl_def_id, sym::Default)
                     || is_default_equivalent_ctor(cx, repl_def_id, qpath)
-                {
-                    true
-                } else {
-                    false
-                }
             } else {
                 false
             }
