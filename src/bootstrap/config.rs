@@ -6,7 +6,6 @@
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -392,7 +391,6 @@ derive_merge! {
         build: Option<String>,
         host: Option<Vec<String>>,
         target: Option<Vec<String>>,
-        // This is ignored, the rust code always gets the build directory from the `BUILD_DIR` env variable
         build_dir: Option<String>,
         cargo: Option<String>,
         rustc: Option<String>,
@@ -588,18 +586,6 @@ derive_merge! {
 }
 
 impl Config {
-    fn path_from_python(var_key: &str) -> PathBuf {
-        match env::var_os(var_key) {
-            Some(var_val) => Self::normalize_python_path(var_val),
-            _ => panic!("expected '{}' to be set", var_key),
-        }
-    }
-
-    /// Normalizes paths from Python slightly. We don't trust paths from Python (#49785).
-    fn normalize_python_path(path: OsString) -> PathBuf {
-        Path::new(&path).components().collect()
-    }
-
     pub fn default_opts() -> Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
@@ -625,7 +611,7 @@ impl Config {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         // Undo `src/bootstrap`
         config.src = manifest_dir.parent().unwrap().parent().unwrap().to_owned();
-        config.out = Config::path_from_python("BUILD_DIR");
+        config.out = PathBuf::from("build");
 
         config.initial_cargo = PathBuf::from(env!("CARGO"));
         config.initial_rustc = PathBuf::from(env!("RUSTC"));
@@ -654,12 +640,6 @@ impl Config {
         }
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
-
-        if config.dry_run {
-            let dir = config.out.join("tmp-dry-run");
-            t!(fs::create_dir_all(&dir));
-            config.out = dir;
-        }
 
         #[cfg(test)]
         let get_toml = |_| TomlConfig::default();
@@ -694,6 +674,19 @@ impl Config {
         }
 
         let build = toml.build.unwrap_or_default();
+
+        set(&mut config.out, build.build_dir.map(String::into));
+        t!(fs::create_dir_all(&config.out));
+        config.out = t!(
+            config.out.canonicalize(),
+            format!("failed to canonicalize {}", config.out.display())
+        );
+
+        if config.dry_run {
+            let dir = config.out.join("tmp-dry-run");
+            t!(fs::create_dir_all(&dir));
+            config.out = dir;
+        }
 
         config.hosts = if let Some(arg_host) = flags.host {
             arg_host
