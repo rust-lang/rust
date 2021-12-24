@@ -251,7 +251,7 @@ enum EnumChangeFieldTypeTupleStyleVariant {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumChangeFieldTypeTupleStyleVariant {
     Variant1(u32,
@@ -270,7 +270,7 @@ enum EnumChangeFieldTypeStructStyleVariant {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumChangeFieldTypeStructStyleVariant {
     Variant1,
@@ -308,7 +308,7 @@ enum EnumChangeOrderTupleStyleVariant {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,type_of")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 enum EnumChangeOrderTupleStyleVariant {
     Variant1(
