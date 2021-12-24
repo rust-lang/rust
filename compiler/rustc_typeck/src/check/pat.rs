@@ -1,6 +1,7 @@
 use crate::check::FnCtxt;
 use rustc_ast as ast;
 
+use rustc_ast_pretty::pprust::state::ColonsBeforeParams;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -1381,7 +1382,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let has_shorthand_field_name = field_patterns.iter().any(|field| field.is_shorthand);
             if has_shorthand_field_name {
                 let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
-                    s.print_qpath(qpath, false)
+                    s.print_qpath(qpath, ColonsBeforeParams(false))
                 });
                 let mut err = struct_span_err!(
                     self.tcx.sess,
@@ -1543,7 +1544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<DiagnosticBuilder<'tcx>> {
         if let (CtorKind::Fn, PatKind::Struct(qpath, ..)) = (variant.ctor_kind, &pat.kind) {
             let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
-                s.print_qpath(qpath, false)
+                s.print_qpath(qpath, ColonsBeforeParams(false))
             });
             let mut err = struct_span_err!(
                 self.tcx.sess,

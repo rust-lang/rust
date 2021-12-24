@@ -15,6 +15,7 @@ use rustc_ast::{
     PatKind, Path, PathSegment, QSelf, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
+use rustc_ast_pretty::pprust::state::PrintConst;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
@@ -1059,7 +1060,7 @@ impl<'a> Parser<'a> {
                 let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
-                    s.print_mutability(mut_ty.mutbl, false);
+                    s.print_mutability(mut_ty.mutbl, PrintConst(false));
                     s.popen();
                     s.print_type(&mut_ty.ty);
                     s.print_type_bounds(" +", &bounds);

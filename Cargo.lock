@@ -4694,6 +4694,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_arena",
  "rustc_ast",
+ "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
  "rustc_errors",

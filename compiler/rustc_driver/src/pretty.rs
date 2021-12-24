@@ -2,6 +2,7 @@
 
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
+use rustc_ast_pretty::pprust::state::IsExpanded;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir_pretty as pprust_hir;
@@ -390,7 +391,7 @@ pub fn print_after_parsing(
                     src_name,
                     src,
                     annotation.pp_ann(),
-                    false,
+                    IsExpanded(false),
                     parse.edition,
                 )
             })
@@ -432,7 +433,7 @@ pub fn print_after_hir_lowering<'tcx>(
                     src_name,
                     src,
                     annotation.pp_ann(),
-                    true,
+                    IsExpanded(true),
                     parse.edition,
                 )
             })

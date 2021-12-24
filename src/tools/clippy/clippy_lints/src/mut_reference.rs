@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
+use rustc_ast_pretty::pprust::state::ColonsBeforeParams;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::subst::Subst;
@@ -40,7 +41,9 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                         cx,
                         arguments,
                         cx.typeck_results().expr_ty(fn_expr),
-                        &rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false)),
+                        &rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+                            s.print_qpath(path, ColonsBeforeParams(false))
+                        }),
                         "function",
                     );
                 }

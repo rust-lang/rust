@@ -17,6 +17,7 @@ use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use core::iter::{once, ExactSizeIterator};
 use if_chain::if_chain;
 use rustc_ast::ast::{Attribute, LitKind};
+use rustc_ast_pretty::pprust::state::ColonsBeforeParams;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -855,12 +856,14 @@ fn check_single_match_opt_like(
             if !inner.iter().all(is_wild) {
                 return;
             }
-            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false))
+            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+                s.print_qpath(path, ColonsBeforeParams(false))
+            })
         },
         PatKind::Binding(BindingAnnotation::Unannotated, .., ident, None) => ident.to_string(),
-        PatKind::Path(ref path) => {
-            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false))
-        },
+        PatKind::Path(ref path) => rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+            s.print_qpath(path, ColonsBeforeParams(false))
+        }),
         _ => return,
     };
 
@@ -958,7 +961,9 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
     if is_type_diagnostic_item(cx, ex_ty, sym::Result) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, inner, _) = arm.pat.kind {
-                let path_str = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false));
+                let path_str = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+                    s.print_qpath(path, ColonsBeforeParams(false))
+                });
                 if path_str == "Err" {
                     let mut matching_wild = inner.iter().any(is_wild);
                     let mut ident_bind_name = String::from("_");
