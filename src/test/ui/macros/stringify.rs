@@ -243,7 +243,9 @@ fn test_expr() {
                 #![attr]
             }
         ),
-        "{\n    #![attr]\n}",
+        "{\n\
+        \x20   #![attr]\n\
+        }",
     );
 
     // ExprKind::Async
@@ -498,7 +500,13 @@ fn test_item() {
                 Struct { t: T },
             }
         ),
-        "enum Enum<T> where T: 'a {\n    Unit,\n    Tuple(T),\n    Struct {\n        t: T,\n    },\n}",
+        "enum Enum<T> where T: 'a {\n\
+        \x20   Unit,\n\
+        \x20   Tuple(T),\n\
+        \x20   Struct {\n\
+        \x20       t: T,\n\
+        \x20   },\n\
+        }",
     );
 
     // ItemKind::Struct
@@ -535,7 +543,9 @@ fn test_item() {
                 t: T,
             }
         ),
-        "struct Struct<T> where T: 'a {\n    t: T,\n}",
+        "struct Struct<T> where T: 'a {\n\
+        \x20   t: T,\n\
+        }",
     );
 
     // ItemKind::Union
@@ -551,7 +561,9 @@ fn test_item() {
                 t: T,
             }
         ),
-        "union Union<T> where T: 'a {\n    t: T,\n}",
+        "union Union<T> where T: 'a {\n\
+        \x20   t: T,\n\
+        }",
     );
 
     // ItemKind::Trait
