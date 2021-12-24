@@ -4,9 +4,11 @@ use crate::native_libs;
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_map::FxHashMap;
+use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
@@ -195,6 +197,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
+    traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
+
     implementations_of_trait => {
         cdata.get_implementations_for_trait(tcx, Some(other))
     }
@@ -284,6 +288,28 @@ pub fn provide(providers: &mut Providers) {
             let modules: FxHashMap<DefId, ForeignModule> =
                 foreign_modules::collect(tcx).into_iter().map(|m| (m.def_id, m)).collect();
             Lrc::new(modules)
+        },
+        traits_in_crate: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+
+            #[derive(Default)]
+            struct TraitsVisitor {
+                traits: Vec<DefId>,
+            }
+            impl ItemLikeVisitor<'_> for TraitsVisitor {
+                fn visit_item(&mut self, item: &hir::Item<'_>) {
+                    if let hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) = item.kind {
+                        self.traits.push(item.def_id.to_def_id());
+                    }
+                }
+                fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
+                fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
+                fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
+            }
+
+            let mut visitor = TraitsVisitor::default();
+            tcx.hir().visit_all_item_likes(&mut visitor);
+            tcx.arena.alloc_slice(&visitor.traits)
         },
 
         // Returns a map from a sufficiently visible external item (i.e., an

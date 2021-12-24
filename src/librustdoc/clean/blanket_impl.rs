@@ -19,7 +19,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
 
         trace!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
-        for &trait_def_id in self.cx.tcx.all_traits(()).iter() {
+        for trait_def_id in self.cx.tcx.all_traits() {
             if !self.cx.cache.access_levels.is_public(trait_def_id)
                 || self.cx.generated_synthetics.get(&(ty, trait_def_id)).is_some()
             {

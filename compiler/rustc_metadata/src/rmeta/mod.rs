@@ -222,6 +222,7 @@ crate struct CrateRoot<'tcx> {
     diagnostic_items: Lazy<[(Symbol, DefIndex)]>,
     native_libraries: Lazy<[NativeLib]>,
     foreign_modules: Lazy<[ForeignModule]>,
+    traits: Lazy<[DefIndex]>,
     impls: Lazy<[TraitImpls]>,
     interpret_alloc_index: Lazy<[u32]>,
     proc_macro_data: Option<ProcMacroData>,

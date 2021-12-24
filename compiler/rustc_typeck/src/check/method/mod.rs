@@ -7,7 +7,7 @@ mod prelude2021;
 pub mod probe;
 mod suggest;
 
-pub use self::suggest::{SelfSource, TraitInfo};
+pub use self::suggest::SelfSource;
 pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
@@ -31,7 +31,6 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use self::probe::{IsSuggestion, ProbeScope};
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    suggest::provide(providers);
     probe::provide(providers);
 }
 
