@@ -283,6 +283,13 @@ public:
   /// BaseType::Unknown
   bool operator&=(const ConcreteType CT) { return andIn(CT); }
 
+  /// Keep only mappings where the type is not an `Anything`
+  ConcreteType PurgeAnything() const {
+    if (SubTypeEnum == BaseType::Anything)
+      return BaseType::Unknown;
+    return *this;
+  }
+
   /// Set this to the logical `binop` of itself and RHS, using the Binop Op,
   /// returning true if this was changed.
   /// This function will error on an invalid type combination

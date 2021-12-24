@@ -299,18 +299,23 @@ void getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
       int Off = (int)ai.getLimitedValue();
 
       getConstantAnalysis(Op, TA, analysis);
-      auto mid = analysis[Op].ShiftIndices(DL, /*init offset*/ 0,
-                                           /*maxSize*/ ObjSize,
-                                           /*addOffset*/ Off);
-
+      auto mid = analysis[Op];
       if (TA.fntypeinfo.Function->getParent()
               ->getDataLayout()
               .getTypeSizeInBits(CA->getType()) >= 16) {
         mid.ReplaceIntWithAnything();
       }
 
-      Result |= mid;
+      Result |= mid.ShiftIndices(DL, /*init offset*/ 0,
+                                 /*maxSize*/ ObjSize,
+                                 /*addOffset*/ Off);
     }
+    Result = Result.CanonicalizeValue(
+        (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
+             CA->getType()) +
+         7) /
+            8,
+        DL);
     return;
   }
 
@@ -318,7 +323,6 @@ void getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
   // the subtypes
   if (auto CD = dyn_cast<ConstantDataSequential>(Val)) {
     TypeTree &Result = analysis[Val];
-
     for (unsigned i = 0, size = CD->getNumElements(); i < size; ++i) {
       assert(TA.fntypeinfo.Function);
       auto Op = CD->getElementAsConstant(i);
@@ -349,18 +353,24 @@ void getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
       int Off = (int)ai.getLimitedValue();
 
       getConstantAnalysis(Op, TA, analysis);
-      auto mid = analysis[Op].ShiftIndices(DL, /*init offset*/ 0,
-                                           /*maxSize*/ ObjSize,
-                                           /*addOffset*/ Off);
-
+      auto mid = analysis[Op];
       if (TA.fntypeinfo.Function->getParent()
               ->getDataLayout()
               .getTypeSizeInBits(CD->getType()) >= 16) {
         mid.ReplaceIntWithAnything();
       }
+      Result |= mid.ShiftIndices(DL, /*init offset*/ 0,
+                                 /*maxSize*/ ObjSize,
+                                 /*addOffset*/ Off);
 
       Result |= mid;
     }
+    Result = Result.CanonicalizeValue(
+        (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
+             CD->getType()) +
+         7) /
+            8,
+        DL);
     return;
   }
 
@@ -849,12 +859,12 @@ void TypeAnalyzer::considerTBAA() {
             (DL.getTypeSizeInBits(SI->getValueOperand()->getType()) + 7) / 8;
         updateAnalysis(SI->getPointerOperand(),
                        vdptr
+                           // Don't propagate "Anything" into ptr
+                           .PurgeAnything()
                            // Cut off any values outside of store
                            .ShiftIndices(DL, /*init offset*/ 0,
                                          /*max size*/ StoreSize,
                                          /*new offset*/ 0)
-                           // Don't propagate "Anything" into ptr
-                           .PurgeAnything()
                            .Only(-1),
                        SI);
         TypeTree req = vdptr.Only(-1);
@@ -863,12 +873,12 @@ void TypeAnalyzer::considerTBAA() {
         auto LoadSize = (DL.getTypeSizeInBits(LI->getType()) + 7) / 8;
         updateAnalysis(LI->getPointerOperand(),
                        vdptr
+                           // Don't propagate "Anything" into ptr
+                           .PurgeAnything()
                            // Cut off any values outside of load
                            .ShiftIndices(DL, /*init offset*/ 0,
                                          /*max size*/ LoadSize,
                                          /*new offset*/ 0)
-                           // Don't propagate "Anything" into ptr
-                           .PurgeAnything()
                            .Only(-1),
                        LI);
         TypeTree req = vdptr.Only(-1);
@@ -1125,12 +1135,12 @@ void TypeAnalyzer::visitCmpInst(CmpInst &cmp) {
   if (direction & UP) {
     updateAnalysis(
         cmp.getOperand(0),
-        TypeTree(getAnalysis(cmp.getOperand(1)).Data0().PurgeAnything()[{}])
+        TypeTree(getAnalysis(cmp.getOperand(1)).Inner0().PurgeAnything())
             .Only(-1),
         &cmp);
     updateAnalysis(
         cmp.getOperand(1),
-        TypeTree(getAnalysis(cmp.getOperand(0)).Data0().PurgeAnything()[{}])
+        TypeTree(getAnalysis(cmp.getOperand(0)).Inner0().PurgeAnything())
             .Only(-1),
         &cmp);
   }
@@ -1194,8 +1204,9 @@ void TypeAnalyzer::visitStoreInst(StoreInst &I) {
   // Only propagate mappings in range that aren't "Anything" into the pointer
   auto ptr = TypeTree(BaseType::Pointer);
   auto purged = getAnalysis(I.getValueOperand())
+                    .PurgeAnything()
                     .ShiftIndices(DL, /*start*/ 0, StoreSize, /*addOffset*/ 0)
-                    .PurgeAnything();
+                    .ReplaceMinus();
   ptr |= purged;
 
   if (direction & UP) {
@@ -2460,13 +2471,13 @@ void TypeAnalyzer::visitMemTransferCommon(llvm::CallInst &MTI) {
 
   auto &dl = MTI.getParent()->getParent()->getParent()->getDataLayout();
   TypeTree res = getAnalysis(MTI.getArgOperand(0))
+                     .PurgeAnything()
                      .Data0()
-                     .ShiftIndices(dl, 0, sz, 0)
-                     .PurgeAnything();
+                     .ShiftIndices(dl, 0, sz, 0);
   TypeTree res2 = getAnalysis(MTI.getArgOperand(1))
+                      .PurgeAnything()
                       .Data0()
-                      .ShiftIndices(dl, 0, sz, 0)
-                      .PurgeAnything();
+                      .ShiftIndices(dl, 0, sz, 0);
 
   bool Legal = true;
   res.checkedOrIn(res2, /*PointerIntSame*/ false, Legal);
@@ -3772,11 +3783,11 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
 
       auto &dl = call.getParent()->getParent()->getParent()->getDataLayout();
       TypeTree res = getAnalysis(call.getArgOperand(0))
+                         .PurgeAnything()
                          .Data0()
-                         .ShiftIndices(dl, 0, sz, 0)
-                         .PurgeAnything();
+                         .ShiftIndices(dl, 0, sz, 0);
       TypeTree res2 =
-          getAnalysis(&call).Data0().ShiftIndices(dl, 0, sz, 0).PurgeAnything();
+          getAnalysis(&call).PurgeAnything().Data0().ShiftIndices(dl, 0, sz, 0);
 
       res.orIn(res2, /*PointerIntSame*/ false);
       res.insert({}, BaseType::Pointer);
@@ -4524,6 +4535,9 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
 
   TypeResults STR = interprocedural.analyzeFunction(typeInfo);
 
+  if (EnzymePrintType)
+    llvm::errs() << " ending IPO of " << call << "\n";
+
   if (hasUp) {
     auto a = fn.arg_begin();
 #if LLVM_VERSION_MAJOR >= 14
@@ -4533,6 +4547,9 @@ void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
 #endif
     {
       auto dt = STR.query(a);
+      if (EnzymePrintType)
+        llvm::errs() << " updating " << *arg << " = " << dt.str()
+                     << "  via IPO of " << call << " arg " << *a << "\n";
       updateAnalysis(arg, dt, &call);
       ++a;
     }

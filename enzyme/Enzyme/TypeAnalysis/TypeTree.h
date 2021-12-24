@@ -826,6 +826,21 @@ public:
     return dat;
   }
 
+  /// Replace -1 with 0
+  TypeTree ReplaceMinus() const {
+    TypeTree dat;
+    for (const auto pair : mapping) {
+      if (pair.second == ConcreteType(BaseType::Anything))
+        continue;
+      std::vector<int> nex = pair.first;
+      for (auto &v : nex)
+        if (v == -1)
+          v = 0;
+      dat.insert(nex, pair.second);
+    }
+    return dat;
+  }
+
   /// Replace all integer subtypes with anything
   void ReplaceIntWithAnything() {
     for (auto &pair : mapping) {

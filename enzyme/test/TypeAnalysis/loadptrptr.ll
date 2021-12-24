@@ -23,11 +23,11 @@ entry:
 !5 = !{!"Simple C++ TBAA"}
 
 ; CHECK: caller - {} |{}:{}
-; CHECK-NEXT: i64* %q: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,-1]:Integer}
+; CHECK-NEXT: i64* %q: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Integer, [-1,0,1]:Integer, [-1,0,2]:Integer, [-1,0,3]:Integer, [-1,0,4]:Integer, [-1,0,5]:Integer, [-1,0,6]:Integer, [-1,0,7]:Integer}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %p = bitcast i64* %q to i64**: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,-1]:Integer}
+; CHECK-NEXT:   %p = bitcast i64* %q to i64**: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Integer, [-1,0,1]:Integer, [-1,0,2]:Integer, [-1,0,3]:Integer, [-1,0,4]:Integer, [-1,0,5]:Integer, [-1,0,6]:Integer, [-1,0,7]:Integer}
 ; CHECK-NEXT:   %x = alloca i64, align 8: {[-1]:Pointer, [-1,-1]:Integer}
 ; CHECK-NEXT:   store i64 132, i64* %x, align 8: {}
 ; CHECK-NEXT:   store i64* %x, i64** %p, align 8: {}
-; CHECK-NEXT:   %ld = load i64*, i64** %p, align 8: {[-1]:Pointer, [-1,-1]:Integer}
+; CHECK-NEXT:   %ld = load i64*, i64** %p, align 8: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT:   ret void: {}
