@@ -664,6 +664,22 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
     false
 }
 
+/// Return true if the expr is equal to `Default::default` when evaluated.
+pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) -> bool {
+    if_chain! {
+        if let hir::ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
+        if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
+        if is_diag_trait_item(cx, repl_def_id, sym::Default)
+            || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
+        then {
+            true
+        }
+        else {
+            false
+        }
+    }
+}
+
 /// Returns true if the expr is equal to `Default::default()` of it's type when evaluated.
 /// It doesn't cover all cases, for example indirect function calls (some of std
 /// functions are supported) but it is the best we have.
@@ -686,18 +702,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
                 false
             }
         },
-        ExprKind::Call(repl_func, _) => if_chain! {
-            if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
-            if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
-            if is_diag_trait_item(cx, repl_def_id, sym::Default)
-                || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
-            then {
-                true
-            }
-            else {
-                false
-            }
-        },
+        ExprKind::Call(repl_func, _) => is_default_equivalent_call(cx, repl_func),
         ExprKind::Path(qpath) => is_lang_ctor(cx, qpath, OptionNone),
         ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
         _ => false,
