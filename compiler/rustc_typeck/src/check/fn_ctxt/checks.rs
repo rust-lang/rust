@@ -96,34 +96,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// method calls and overloaded operators.
     pub(in super::super) fn check_argument_types(
         &self,
-        sp: Span,
-        expr: &'tcx hir::Expr<'tcx>,
-        fn_inputs: &[Ty<'tcx>],
-        expected_arg_tys: &[Ty<'tcx>],
-        args: &'tcx [hir::Expr<'tcx>],
+        // Span enclosing the call site
+        call_span: Span,
+        // Expression of the call site
+        call_expr: &'tcx hir::Expr<'tcx>,
+        // Types (as defined in the *signature* of the target function)
+        formal_input_tys: &[Ty<'tcx>],
+        // More specific expected types, after unifying with caller output types
+        expected_input_tys: &[Ty<'tcx>],
+        // The expressions for each provided argument
+        provided_args: &'tcx [hir::Expr<'tcx>],
+        // Whether the function is variadic, for example when imported from C
         c_variadic: bool,
+        // Whether the arguments have been bundled in a tuple (ex: closures)
         tuple_arguments: TupleArgumentsFlag,
-        def_id: Option<DefId>,
+        // The DefId for the function being called, for better error messages
+        fn_def_id: Option<DefId>,
     ) {
         let tcx = self.tcx;
         // Grab the argument types, supplying fresh type variables
         // if the wrong number of arguments were supplied
-        let supplied_arg_count = if tuple_arguments == DontTupleArguments { args.len() } else { 1 };
+        let supplied_arg_count =
+            if tuple_arguments == DontTupleArguments { provided_args.len() } else { 1 };
 
         // All the input types from the fn signature must outlive the call
         // so as to validate implied bounds.
-        for (&fn_input_ty, arg_expr) in iter::zip(fn_inputs, args) {
+        for (&fn_input_ty, arg_expr) in iter::zip(formal_input_tys, provided_args) {
             self.register_wf_obligation(fn_input_ty.into(), arg_expr.span, traits::MiscObligation);
         }
 
-        let expected_arg_count = fn_inputs.len();
+        let expected_arg_count = formal_input_tys.len();
 
         let param_count_error = |expected_count: usize,
                                  arg_count: usize,
                                  error_code: &str,
                                  c_variadic: bool,
                                  sugg_unit: bool| {
-            let (span, start_span, args, ctor_of) = match &expr.kind {
+            let (span, start_span, args, ctor_of) = match &call_expr.kind {
                 hir::ExprKind::Call(
                     hir::Expr {
                         span,
@@ -156,14 +165,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     &args[1..], // Skip the receiver.
                     None,       // methods are never ctors
                 ),
-                k => span_bug!(sp, "checking argument types on a non-call: `{:?}`", k),
+                k => span_bug!(call_span, "checking argument types on a non-call: `{:?}`", k),
             };
-            let arg_spans = if args.is_empty() {
+            let arg_spans = if provided_args.is_empty() {
                 // foo()
                 // ^^^-- supplied 0 arguments
                 // |
                 // expected 2 arguments
-                vec![tcx.sess.source_map().next_point(start_span).with_hi(sp.hi())]
+                vec![tcx.sess.source_map().next_point(start_span).with_hi(call_span.hi())]
             } else {
                 // foo(1, 2, 3)
                 // ^^^ -  -  - supplied 3 arguments
@@ -196,7 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
 
-            if let Some(def_id) = def_id {
+            if let Some(def_id) = fn_def_id {
                 if let Some(def_span) = tcx.def_ident_span(def_id) {
                     let mut spans: MultiSpan = def_span.into();
 
@@ -218,7 +227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             if sugg_unit {
-                let sugg_span = tcx.sess.source_map().end_point(expr.span);
+                let sugg_span = tcx.sess.source_map().end_point(call_expr.span);
                 // remove closing `)` from the span
                 let sugg_span = sugg_span.shrink_to_lo();
                 err.span_suggestion(
@@ -240,15 +249,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.emit();
         };
 
-        let mut expected_arg_tys = expected_arg_tys.to_vec();
+        let mut expected_arg_tys = expected_input_tys.to_vec();
 
         let formal_tys = if tuple_arguments == TupleArguments {
-            let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
+            let tuple_type = self.structurally_resolved_type(call_span, formal_input_tys[0]);
             match tuple_type.kind() {
-                ty::Tuple(arg_types) if arg_types.len() != args.len() => {
-                    param_count_error(arg_types.len(), args.len(), "E0057", false, false);
+                ty::Tuple(arg_types) if arg_types.len() != provided_args.len() => {
+                    param_count_error(arg_types.len(), provided_args.len(), "E0057", false, false);
                     expected_arg_tys = vec![];
-                    self.err_args(args.len())
+                    self.err_args(provided_args.len())
                 }
                 ty::Tuple(arg_types) => {
                     expected_arg_tys = match expected_arg_tys.get(0) {
@@ -263,21 +272,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     struct_span_err!(
                         tcx.sess,
-                        sp,
+                        call_span,
                         E0059,
                         "cannot use call notation; the first type parameter \
                          for the function trait is neither a tuple nor unit"
                     )
                     .emit();
                     expected_arg_tys = vec![];
-                    self.err_args(args.len())
+                    self.err_args(provided_args.len())
                 }
             }
         } else if expected_arg_count == supplied_arg_count {
-            fn_inputs.to_vec()
+            formal_input_tys.to_vec()
         } else if c_variadic {
             if supplied_arg_count >= expected_arg_count {
-                fn_inputs.to_vec()
+                formal_input_tys.to_vec()
             } else {
                 param_count_error(expected_arg_count, supplied_arg_count, "E0060", true, false);
                 expected_arg_tys = vec![];
@@ -287,8 +296,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // is the missing argument of type `()`?
             let sugg_unit = if expected_arg_tys.len() == 1 && supplied_arg_count == 0 {
                 self.resolve_vars_if_possible(expected_arg_tys[0]).is_unit()
-            } else if fn_inputs.len() == 1 && supplied_arg_count == 0 {
-                self.resolve_vars_if_possible(fn_inputs[0]).is_unit()
+            } else if formal_input_tys.len() == 1 && supplied_arg_count == 0 {
+                self.resolve_vars_if_possible(formal_input_tys[0]).is_unit()
             } else {
                 false
             };
@@ -322,13 +331,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the call. This helps coercions.
             if check_closures {
                 self.select_obligations_where_possible(false, |errors| {
-                    self.point_at_type_arg_instead_of_call_if_possible(errors, expr);
+                    self.point_at_type_arg_instead_of_call_if_possible(errors, call_expr);
                     self.point_at_arg_instead_of_call_if_possible(
                         errors,
                         &final_arg_types,
-                        expr,
-                        sp,
-                        &args,
+                        call_expr,
+                        call_span,
+                        &provided_args,
                     );
                 })
             }
@@ -339,11 +348,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let t = if c_variadic {
                 expected_arg_count
             } else if tuple_arguments == TupleArguments {
-                args.len()
+                provided_args.len()
             } else {
                 supplied_arg_count
             };
-            for (i, arg) in args.iter().take(t).enumerate() {
+            for (i, arg) in provided_args.iter().take(t).enumerate() {
                 // Warn only for the first loop (the "no closures" one).
                 // Closure arguments themselves can't be diverging, but
                 // a previous argument can, e.g., `foo(panic!(), || {})`.
@@ -380,13 +389,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let _ = self.resolve_vars_with_obligations_and_mutate_fulfillment(
                     coerce_ty,
                     |errors| {
-                        self.point_at_type_arg_instead_of_call_if_possible(errors, expr);
+                        self.point_at_type_arg_instead_of_call_if_possible(errors, call_expr);
                         self.point_at_arg_instead_of_call_if_possible(
                             errors,
                             &final_arg_types,
-                            expr,
-                            sp,
-                            args,
+                            call_expr,
+                            call_span,
+                            provided_args,
                         );
                     },
                 );
@@ -410,7 +419,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit()
             }
 
-            for arg in args.iter().skip(expected_arg_count) {
+            for arg in provided_args.iter().skip(expected_arg_count) {
                 let arg_ty = self.check_expr(&arg);
 
                 // There are a few types which get autopromoted when passed via varargs
