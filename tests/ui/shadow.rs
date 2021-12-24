@@ -47,6 +47,8 @@ fn syntax() {
     let _ = |[x]: [u32; 1]| {
         let x = 1;
     };
+    let y = Some(1);
+    if let Some(y) = y {}
 }
 
 fn negative() {

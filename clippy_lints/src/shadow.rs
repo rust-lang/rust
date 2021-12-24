@@ -220,14 +220,14 @@ fn is_self_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, mut expr: &Expr<'_>, hir_
     }
 }
 
-/// Finds the "init" expression for a pattern: `let <pat> = <init>;` or
+/// Finds the "init" expression for a pattern: `let <pat> = <init>;` (or `if let`) or
 /// `match <init> { .., <pat> => .., .. }`
 fn find_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     for (_, node) in cx.tcx.hir().parent_iter(hir_id) {
         let init = match node {
             Node::Arm(_) | Node::Pat(_) => continue,
             Node::Expr(expr) => match expr.kind {
-                ExprKind::Match(e, _, _) => Some(e),
+                ExprKind::Match(e, _, _) | ExprKind::Let(_, e, _) => Some(e),
                 _ => None,
             },
             Node::Local(local) => local.init,
