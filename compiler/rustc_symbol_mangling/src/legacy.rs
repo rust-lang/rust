@@ -134,7 +134,6 @@ fn get_symbol_hash<'tcx>(
                 // Especially, `VtableShim`s and `ReifyShim`s may overlap with their original
                 // instances without this.
                 discriminant(&instance.def).hash_stable(hcx, &mut hasher);
-
             });
         });
     });

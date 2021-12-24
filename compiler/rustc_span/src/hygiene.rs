@@ -32,8 +32,8 @@ use crate::{HashStableContext, Span, DUMMY_SP};
 use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, NodeIdHashingMode};
 use rustc_data_structures::stable_hasher::HashingControls;
+use rustc_data_structures::stable_hasher::{HashStable, NodeIdHashingMode, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::vec::IndexVec;
@@ -94,11 +94,9 @@ rustc_index::newtype_index! {
 // with a non-default mode. With this check in place, we can avoid the need
 // to maintain separate versions of `ExpnData` hashes for each permutation
 // of `HashingControls` settings.
-fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str) {
-    let default = HashingControls {
-        hash_spans: true,
-        node_id_hashing_mode: NodeIdHashingMode::HashDefPath
-    };
+fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, _msg: &str) {
+    let default =
+        HashingControls { hash_spans: true, node_id_hashing_mode: NodeIdHashingMode::HashDefPath };
     let current = ctx.hashing_controls();
     if current != default {
         //panic!("Attempted hashing of {msg} with non-default HashingControls: {:?}", current);

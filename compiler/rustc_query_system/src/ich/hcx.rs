@@ -68,7 +68,7 @@ impl<'a> StableHashingContext<'a> {
             hashing_controls: HashingControls {
                 hash_spans: hash_spans_initial,
                 node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
-            }
+            },
         }
     }
 
