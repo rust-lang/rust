@@ -687,7 +687,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         link_name: Symbol,
     ) -> InterpResult<'tcx, ()> {
         self.check_abi(abi, exp_abi)?;
-        if let Some(body) = self.eval_context_mut().lookup_exported_symbol(link_name)? {
+        if let Some((body, _)) = self.eval_context_mut().lookup_exported_symbol(link_name)? {
             throw_machine_stop!(TerminationInfo::SymbolShimClashing {
                 link_name,
                 span: body.span.data(),

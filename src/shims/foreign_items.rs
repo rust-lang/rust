@@ -1,4 +1,5 @@
 use std::{
+    collections::hash_map::Entry,
     convert::{TryFrom, TryInto},
     iter,
 };
@@ -34,7 +35,7 @@ pub enum EmulateByNameResult<'mir, 'tcx> {
     /// Jumping has already been taken care of.
     AlreadyJumped,
     /// A MIR body has been found for the function
-    MirBody(&'mir mir::Body<'tcx>),
+    MirBody(&'mir mir::Body<'tcx>, ty::Instance<'tcx>),
     /// The item is not supported.
     NotSupported,
 }
@@ -135,81 +136,91 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn lookup_exported_symbol(
         &mut self,
         link_name: Symbol,
-    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
+    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
         // If the result was cached, just return it.
-        if let Some(instance) = this.machine.exported_symbols_cache.get(&link_name) {
-            return instance.map(|instance| this.load_mir(instance.def, None)).transpose();
-        }
-
-        // Find it if it was not cached.
-        let mut instance_and_crate: Option<(ty::Instance<'_>, CrateNum)> = None;
-        // `dependency_formats` includes all the transitive informations needed to link a crate,
-        // which is what we need here since we need to dig out `exported_symbols` from all transitive
-        // dependencies.
-        let dependency_formats = tcx.dependency_formats(());
-        let dependency_format = dependency_formats
-            .iter()
-            .find(|(crate_type, _)| *crate_type == CrateType::Executable)
-            .expect("interpreting a non-executable crate");
-        for cnum in
-            iter::once(LOCAL_CRATE).chain(dependency_format.1.iter().enumerate().filter_map(
-                |(num, &linkage)| (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1)),
-            ))
-        {
-            // We can ignore `_export_level` here: we are a Rust crate, and everything is exported
-            // from a Rust crate.
-            for &(symbol, _export_level) in tcx.exported_symbols(cnum) {
-                if let ExportedSymbol::NonGeneric(def_id) = symbol {
-                    let attrs = tcx.codegen_fn_attrs(def_id);
-                    let symbol_name = if let Some(export_name) = attrs.export_name {
-                        export_name
-                    } else if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
-                        tcx.item_name(def_id)
-                    } else {
-                        // Skip over items without an explicitly defined symbol name.
-                        continue;
-                    };
-                    if symbol_name == link_name {
-                        if let Some((original_instance, original_cnum)) = instance_and_crate {
-                            // Make sure we are consistent wrt what is 'first' and 'second'.
-                            let original_span = tcx.def_span(original_instance.def_id()).data();
-                            let span = tcx.def_span(def_id).data();
-                            if original_span < span {
-                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
-                                    link_name,
-                                    first: original_span,
-                                    first_crate: tcx.crate_name(original_cnum),
-                                    second: span,
-                                    second_crate: tcx.crate_name(cnum),
-                                });
+        // (Cannot use `or_insert` since the code below might have to throw an error.)
+        let entry = this.machine.exported_symbols_cache.entry(link_name);
+        let instance = *match entry {
+            Entry::Occupied(e) => e.into_mut(),
+            Entry::Vacant(e) => {
+                // Find it if it was not cached.
+                let mut instance_and_crate: Option<(ty::Instance<'_>, CrateNum)> = None;
+                // `dependency_formats` includes all the transitive informations needed to link a crate,
+                // which is what we need here since we need to dig out `exported_symbols` from all transitive
+                // dependencies.
+                let dependency_formats = tcx.dependency_formats(());
+                let dependency_format = dependency_formats
+                    .iter()
+                    .find(|(crate_type, _)| *crate_type == CrateType::Executable)
+                    .expect("interpreting a non-executable crate");
+                for cnum in iter::once(LOCAL_CRATE).chain(
+                    dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
+                        (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
+                    }),
+                ) {
+                    // We can ignore `_export_level` here: we are a Rust crate, and everything is exported
+                    // from a Rust crate.
+                    for &(symbol, _export_level) in tcx.exported_symbols(cnum) {
+                        if let ExportedSymbol::NonGeneric(def_id) = symbol {
+                            let attrs = tcx.codegen_fn_attrs(def_id);
+                            let symbol_name = if let Some(export_name) = attrs.export_name {
+                                export_name
+                            } else if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+                                tcx.item_name(def_id)
                             } else {
-                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
-                                    link_name,
-                                    first: span,
-                                    first_crate: tcx.crate_name(cnum),
-                                    second: original_span,
-                                    second_crate: tcx.crate_name(original_cnum),
-                                });
+                                // Skip over items without an explicitly defined symbol name.
+                                continue;
+                            };
+                            if symbol_name == link_name {
+                                if let Some((original_instance, original_cnum)) = instance_and_crate
+                                {
+                                    // Make sure we are consistent wrt what is 'first' and 'second'.
+                                    let original_span =
+                                        tcx.def_span(original_instance.def_id()).data();
+                                    let span = tcx.def_span(def_id).data();
+                                    if original_span < span {
+                                        throw_machine_stop!(
+                                            TerminationInfo::MultipleSymbolDefinitions {
+                                                link_name,
+                                                first: original_span,
+                                                first_crate: tcx.crate_name(original_cnum),
+                                                second: span,
+                                                second_crate: tcx.crate_name(cnum),
+                                            }
+                                        );
+                                    } else {
+                                        throw_machine_stop!(
+                                            TerminationInfo::MultipleSymbolDefinitions {
+                                                link_name,
+                                                first: span,
+                                                first_crate: tcx.crate_name(cnum),
+                                                second: original_span,
+                                                second_crate: tcx.crate_name(original_cnum),
+                                            }
+                                        );
+                                    }
+                                }
+                                if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
+                                    throw_ub_format!(
+                                        "attempt to call an exported symbol that is not defined as a function"
+                                    );
+                                }
+                                instance_and_crate = Some((ty::Instance::mono(tcx, def_id), cnum));
                             }
                         }
-                        if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-                            throw_ub_format!(
-                                "attempt to call an exported symbol that is not defined as a function"
-                            );
-                        }
-                        instance_and_crate = Some((ty::Instance::mono(tcx, def_id), cnum));
                     }
                 }
-            }
-        }
 
-        let instance = instance_and_crate.map(|ic| ic.0);
-        // Cache it and load its MIR, if found.
-        this.machine.exported_symbols_cache.try_insert(link_name, instance).unwrap();
-        instance.map(|instance| this.load_mir(instance.def, None)).transpose()
+                e.insert(instance_and_crate.map(|ic| ic.0))
+            }
+        };
+        match instance {
+            None => Ok(None), // no symbol with this name
+            Some(instance) => Ok(Some((this.load_mir(instance.def, None)?, instance))),
+        }
     }
 
     /// Emulates calling a foreign item, failing if the item is not supported.
@@ -225,7 +236,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         args: &[OpTy<'tcx, Tag>],
         ret: Option<(&PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: StackPopUnwind,
-    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
+    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
         let link_name = this
@@ -253,7 +264,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         this.check_abi_and_shim_symbol_clash(abi, Abi::Rust, link_name)?;
                         let panic_impl_id = tcx.lang_items().panic_impl().unwrap();
                         let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
-                        return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
+                        return Ok(Some((
+                            &*this.load_mir(panic_impl_instance.def, None)?,
+                            panic_impl_instance,
+                        )));
                     }
                     #[rustfmt::skip]
                     | "exit"
@@ -297,7 +311,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.go_to_block(ret);
             }
             EmulateByNameResult::AlreadyJumped => (),
-            EmulateByNameResult::MirBody(mir) => return Ok(Some(mir)),
+            EmulateByNameResult::MirBody(mir, instance) => return Ok(Some((mir, instance))),
             EmulateByNameResult::NotSupported => {
                 if let Some(body) = this.lookup_exported_symbol(link_name)? {
                     return Ok(Some(body));
@@ -328,11 +342,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         match allocator_kind {
             AllocatorKind::Global => {
-                let body = this
+                let (body, instance) = this
                     .lookup_exported_symbol(symbol)?
                     .expect("symbol should be present if there is a global allocator");
 
-                Ok(EmulateByNameResult::MirBody(body))
+                Ok(EmulateByNameResult::MirBody(body, instance))
             }
             AllocatorKind::Default => {
                 default(this)?;

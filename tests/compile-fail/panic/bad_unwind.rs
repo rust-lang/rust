@@ -1,9 +1,7 @@
-// error-pattern: calling a function with ABI C-unwind using caller ABI C
+// error-pattern: unwinding past a stack frame that does not allow unwinding
 #![feature(c_unwind)]
 
 //! Unwinding when the caller ABI is "C" (without "-unwind") is UB.
-//! Currently we detect the ABI mismatch; we could probably allow such calls in principle one day
-//! but then we have to detect the unexpected unwinding.
 
 extern "C-unwind" fn unwind() {
     panic!();
