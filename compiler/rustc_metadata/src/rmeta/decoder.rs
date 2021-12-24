@@ -41,10 +41,10 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{self, BytePos, ExpnId, Pos, Span, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
-use std::io;
-use std::mem;
+use smallvec::SmallVec;
 use std::num::NonZeroUsize;
 use std::path::Path;
+use std::{io, iter, mem};
 use tracing::debug;
 
 pub(super) use cstore_impl::provide;
@@ -1000,7 +1000,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .map(|index| self.get_variant(&self.kind(index), index, did))
                 .collect()
         } else {
-            std::iter::once(self.get_variant(&kind, item_id, did)).collect()
+            iter::once(self.get_variant(&kind, item_id, did)).collect()
         };
 
         tcx.alloc_adt_def(did, adt_kind, variants, repr)
@@ -1055,96 +1055,69 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     /// including both proper items and reexports.
     /// Module here is understood in name resolution sense - it can be a `mod` item,
     /// or a crate root, or an enum, or a trait.
-    fn for_each_module_child(
+    fn get_module_children(
         self,
         id: DefIndex,
-        mut callback: impl FnMut(ModChild),
-        sess: &Session,
-    ) {
-        if let Some(data) = &self.root.proc_macro_data {
-            // If we are loading as a proc macro, we want to return
-            // the view of this crate as a proc macro crate.
-            if id == CRATE_DEF_INDEX {
-                for def_index in data.macros.decode(self) {
-                    let raw_macro = self.raw_proc_macro(def_index);
-                    let res = Res::Def(
-                        DefKind::Macro(macro_kind(raw_macro)),
-                        self.local_def_id(def_index),
-                    );
-                    let ident = self.item_ident(def_index, sess);
-                    callback(ModChild {
-                        ident,
-                        res,
-                        vis: ty::Visibility::Public,
-                        span: ident.span,
-                        macro_rules: false,
-                    });
-                }
+        sess: &'a Session,
+    ) -> impl Iterator<Item = ModChild> + 'a {
+        // If we are loading as a proc macro, we want to return
+        // the view of this crate as a proc macro crate.
+        let is_proc_macro = self.root.proc_macro_data.is_some();
+        let proc_macros = match &self.root.proc_macro_data {
+            Some(data) if id == CRATE_DEF_INDEX => data.macros,
+            _ => Lazy::empty(),
+        };
+        let proc_macros = proc_macros.decode(self).map(move |def_index| {
+            let ident = self.item_ident(def_index, sess);
+            let macro_kind = match self.raw_proc_macro(def_index) {
+                ProcMacro::CustomDerive { .. } => MacroKind::Derive,
+                ProcMacro::Attr { .. } => MacroKind::Attr,
+                ProcMacro::Bang { .. } => MacroKind::Bang,
+            };
+            ModChild {
+                ident,
+                res: Res::Def(DefKind::Macro(macro_kind), self.local_def_id(def_index)),
+                vis: ty::Visibility::Public,
+                span: ident.span,
+                macro_rules: false,
             }
-            return;
-        }
+        });
 
         // Iterate over all children.
-        if let Some(children) = self.root.tables.children.get(self, id) {
-            for child_index in children.decode((self, sess)) {
-                if let Some(ident) = self.opt_item_ident(child_index, sess) {
-                    let kind = self.def_kind(child_index);
-                    let def_id = self.local_def_id(child_index);
-                    let res = Res::Def(kind, def_id);
-                    let vis = self.get_visibility(child_index);
-                    let span = self.get_span(child_index, sess);
-                    let macro_rules = match kind {
-                        DefKind::Macro(..) => match self.kind(child_index) {
-                            EntryKind::MacroDef(_, macro_rules) => macro_rules,
-                            _ => unreachable!(),
-                        },
-                        _ => false,
-                    };
+        let proper_items = match self.root.tables.children.get(self, id) {
+            Some(children) if !is_proc_macro => children,
+            _ => Lazy::empty(),
+        };
+        let proper_items = proper_items.decode((self, sess)).map(move |child_index| {
+            let mut result = SmallVec::<[_; 2]>::new();
 
-                    callback(ModChild { ident, res, vis, span, macro_rules });
+            if let Some(ident) = self.opt_item_ident(child_index, sess) {
+                let kind = self.def_kind(child_index);
+                let def_id = self.local_def_id(child_index);
+                let res = Res::Def(kind, def_id);
+                let vis = self.get_visibility(child_index);
+                let span = self.get_span(child_index, sess);
+                let macro_rules = match kind {
+                    DefKind::Macro(..) => match self.kind(child_index) {
+                        EntryKind::MacroDef(_, macro_rules) => macro_rules,
+                        _ => unreachable!(),
+                    },
+                    _ => false,
+                };
 
-                    // For non-re-export structs and variants add their constructors to children.
-                    // Re-export lists automatically contain constructors when necessary.
-                    match kind {
-                        DefKind::Struct => {
-                            if let Some((ctor_def_id, ctor_kind)) =
-                                self.get_ctor_def_id_and_kind(child_index)
-                            {
-                                let ctor_res =
-                                    Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
-                                let vis = self.get_visibility(ctor_def_id.index);
-                                callback(ModChild {
-                                    ident,
-                                    res: ctor_res,
-                                    vis,
-                                    span,
-                                    macro_rules: false,
-                                });
-                            }
-                        }
-                        DefKind::Variant => {
-                            // Braced variants, unlike structs, generate unusable names in
-                            // value namespace, they are reserved for possible future use.
-                            // It's ok to use the variant's id as a ctor id since an
-                            // error will be reported on any use of such resolution anyway.
-                            let (ctor_def_id, ctor_kind) = self
-                                .get_ctor_def_id_and_kind(child_index)
-                                .unwrap_or((def_id, CtorKind::Fictive));
+                result.push(ModChild { ident, res, vis, span, macro_rules });
+
+                // For non-re-export structs and variants add their constructors to children.
+                // Re-export lists automatically contain constructors when necessary.
+                match kind {
+                    DefKind::Struct => {
+                        if let Some((ctor_def_id, ctor_kind)) =
+                            self.get_ctor_def_id_and_kind(child_index)
+                        {
                             let ctor_res =
-                                Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id);
-                            let mut vis = self.get_visibility(ctor_def_id.index);
-                            if ctor_def_id == def_id && vis.is_public() {
-                                // For non-exhaustive variants lower the constructor visibility to
-                                // within the crate. We only need this for fictive constructors,
-                                // for other constructors correct visibilities
-                                // were already encoded in metadata.
-                                let mut attrs = self.get_item_attrs(def_id.index, sess);
-                                if attrs.any(|item| item.has_name(sym::non_exhaustive)) {
-                                    let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
-                                    vis = ty::Visibility::Restricted(crate_def_id);
-                                }
-                            }
-                            callback(ModChild {
+                                Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
+                            let vis = self.get_visibility(ctor_def_id.index);
+                            result.push(ModChild {
                                 ident,
                                 res: ctor_res,
                                 vis,
@@ -1152,21 +1125,52 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 macro_rules: false,
                             });
                         }
-                        _ => {}
                     }
+                    DefKind::Variant => {
+                        // Braced variants, unlike structs, generate unusable names in
+                        // value namespace, they are reserved for possible future use.
+                        // It's ok to use the variant's id as a ctor id since an
+                        // error will be reported on any use of such resolution anyway.
+                        let (ctor_def_id, ctor_kind) = self
+                            .get_ctor_def_id_and_kind(child_index)
+                            .unwrap_or((def_id, CtorKind::Fictive));
+                        let ctor_res =
+                            Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id);
+                        let mut vis = self.get_visibility(ctor_def_id.index);
+                        if ctor_def_id == def_id && vis.is_public() {
+                            // For non-exhaustive variants lower the constructor visibility to
+                            // within the crate. We only need this for fictive constructors,
+                            // for other constructors correct visibilities
+                            // were already encoded in metadata.
+                            let mut attrs = self.get_item_attrs(def_id.index, sess);
+                            if attrs.any(|item| item.has_name(sym::non_exhaustive)) {
+                                let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
+                                vis = ty::Visibility::Restricted(crate_def_id);
+                            }
+                        }
+                        result.push(ModChild {
+                            ident,
+                            res: ctor_res,
+                            vis,
+                            span,
+                            macro_rules: false,
+                        });
+                    }
+                    _ => {}
                 }
-            }
-        }
+            };
 
-        match self.kind(id) {
-            EntryKind::Mod(exports) => {
-                for exp in exports.decode((self, sess)) {
-                    callback(exp);
-                }
-            }
-            EntryKind::Enum(..) | EntryKind::Trait(..) => {}
-            _ => bug!("`for_each_module_child` is called on a non-module: {:?}", self.def_kind(id)),
-        }
+            result
+        });
+
+        let exports = match self.kind(id) {
+            EntryKind::Mod(exports) if !is_proc_macro => exports,
+            EntryKind::Mod(..) | EntryKind::Enum(..) | EntryKind::Trait(..) => Lazy::empty(),
+            _ => bug!("`get_module_children` is called on a non-module: {:?}", self.def_kind(id)),
+        };
+        let exports = exports.decode((self, sess));
+
+        proc_macros.chain(proper_items.flatten()).chain(exports)
     }
 
     fn is_ctfe_mir_available(self, id: DefIndex) -> bool {
@@ -1876,15 +1880,5 @@ impl CrateMetadata {
         }
 
         None
-    }
-}
-
-// Cannot be implemented on 'ProcMacro', as libproc_macro
-// does not depend on librustc_ast
-fn macro_kind(raw: &ProcMacro) -> MacroKind {
-    match raw {
-        ProcMacro::CustomDerive { .. } => MacroKind::Derive,
-        ProcMacro::Attr { .. } => MacroKind::Attr,
-        ProcMacro::Bang { .. } => MacroKind::Bang,
     }
 }

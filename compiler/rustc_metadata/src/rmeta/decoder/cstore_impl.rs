@@ -20,7 +20,6 @@ use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, Symbol};
 
 use rustc_data_structures::sync::Lrc;
-use smallvec::SmallVec;
 use std::any::Any;
 
 macro_rules! provide_one {
@@ -205,9 +204,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         r
     }
     module_children => {
-        let mut result = SmallVec::<[_; 8]>::new();
-        cdata.for_each_module_child(def_id.index, |child| result.push(child), tcx.sess);
-        tcx.arena.alloc_slice(&result)
+        tcx.arena.alloc_from_iter(cdata.get_module_children(def_id.index, tcx.sess))
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
     defined_lang_items => { tcx.arena.alloc_from_iter(cdata.get_lang_items()) }
@@ -400,14 +397,12 @@ impl CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    pub fn module_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<ModChild> {
-        let mut result = vec![];
-        self.get_crate_data(def_id.krate).for_each_module_child(
-            def_id.index,
-            |child| result.push(child),
-            sess,
-        );
-        result
+    pub fn module_children_untracked<'a>(
+        &'a self,
+        def_id: DefId,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = ModChild> + 'a {
+        self.get_crate_data(def_id.krate).get_module_children(def_id.index, sess)
     }
 
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
