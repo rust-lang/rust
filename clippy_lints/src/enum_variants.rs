@@ -18,6 +18,12 @@ declare_clippy_lint! {
     /// Enumeration variant names should specify their variant,
     /// not repeat the enumeration name.
     ///
+    /// ### Limitations
+    /// Characters with no casing will be considered when comparing prefixes/suffixes
+    /// This applies to numbers and non-ascii characters without casing
+    /// e.g. `Foo1` and `Foo2` is considered to have different prefixes
+    /// (the prefixes are `Foo1` and `Foo2` respectively), as also `Bar螃`, `Bar蟹`
+    ///
     /// ### Example
     /// ```rust
     /// enum Cake {
