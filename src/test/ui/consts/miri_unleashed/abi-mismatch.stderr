@@ -4,7 +4,7 @@ error[E0080]: could not evaluate static initializer
 LL |     my_fn();
    |     ^^^^^^^
    |     |
-   |     calling a function with ABI C using caller ABI Rust
+   |     calling a function with calling convention C using calling convention Rust
    |     inside `call_rust_fn` at $DIR/abi-mismatch.rs:10:5
 ...
 LL | static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });

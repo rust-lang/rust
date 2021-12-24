@@ -8,7 +8,10 @@ use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpError, InvalidProgramInfo};
-use rustc_middle::ty::layout::{self, LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
+use rustc_middle::ty::layout::{
+    self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
+    TyAndLayout,
+};
 use rustc_middle::ty::{
     self, query::TyCtxtAt, subst::SubstsRef, ParamEnv, Ty, TyCtxt, TypeFoldable,
 };
@@ -16,7 +19,7 @@ use rustc_mir_dataflow::storage::AlwaysLiveLocals;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Limit;
 use rustc_span::{Pos, Span};
-use rustc_target::abi::{Align, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
     AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
@@ -330,6 +333,24 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> LayoutOfHelpers<'tcx> for InterpC
         _: Ty<'tcx>,
     ) -> InterpErrorInfo<'tcx> {
         err_inval!(Layout(err)).into()
+    }
+}
+
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> FnAbiOfHelpers<'tcx> for InterpCx<'mir, 'tcx, M> {
+    type FnAbiOfResult = InterpResult<'tcx, &'tcx FnAbi<'tcx, Ty<'tcx>>>;
+
+    fn handle_fn_abi_err(
+        &self,
+        err: FnAbiError<'tcx>,
+        _span: Span,
+        _fn_abi_request: FnAbiRequest<'tcx>,
+    ) -> InterpErrorInfo<'tcx> {
+        match err {
+            FnAbiError::Layout(err) => err_inval!(Layout(err)).into(),
+            FnAbiError::AdjustForForeignAbi(err) => {
+                err_inval!(FnAbiAdjustForForeignAbi(err)).into()
+            }
+        }
     }
 }
 

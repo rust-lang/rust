@@ -207,7 +207,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _args: &[OpTy<'tcx>],
         _ret: Option<(&PlaceTy<'tcx>, BasicBlock)>,
         _unwind: StackPopUnwind,
-    ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
+    ) -> InterpResult<'tcx, Option<(&'mir Body<'tcx>, ty::Instance<'tcx>)>> {
         Ok(None)
     }
 

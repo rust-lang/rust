@@ -260,7 +260,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         args: &[OpTy<'tcx>],
         _ret: Option<(&PlaceTy<'tcx>, mir::BasicBlock)>,
         _unwind: StackPopUnwind, // unwinding is not supported in consts
-    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
+    ) -> InterpResult<'tcx, Option<(&'mir mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         debug!("find_mir_or_eval_fn: {:?}", instance);
 
         // Only check non-glue functions
@@ -279,11 +279,21 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
             if let Some(new_instance) = ecx.hook_special_const_fn(instance, args)? {
                 // We call another const fn instead.
-                return Self::find_mir_or_eval_fn(ecx, new_instance, _abi, args, _ret, _unwind);
+                // However, we return the *original* instance to make backtraces work out
+                // (and we hope this does not confuse the FnAbi checks too much).
+                return Ok(Self::find_mir_or_eval_fn(
+                    ecx,
+                    new_instance,
+                    _abi,
+                    args,
+                    _ret,
+                    _unwind,
+                )?
+                .map(|(body, _instance)| (body, instance)));
             }
         }
         // This is a const fn. Call it.
-        Ok(Some(ecx.load_mir(instance.def, None)?))
+        Ok(Some((ecx.load_mir(instance.def, None)?, instance)))
     }
 
     fn call_intrinsic(

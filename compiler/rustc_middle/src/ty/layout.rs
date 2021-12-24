@@ -2581,9 +2581,12 @@ impl<'tcx> ty::Instance<'tcx> {
     // for `Instance` (e.g. typeck would use `Ty::fn_sig` instead),
     // or should go through `FnAbi` instead, to avoid losing any
     // adjustments `fn_abi_of_instance` might be performing.
-    fn fn_sig_for_fn_abi(&self, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        // FIXME(davidtwco,eddyb): A `ParamEnv` should be passed through to this function.
-        let ty = self.ty(tcx, ty::ParamEnv::reveal_all());
+    fn fn_sig_for_fn_abi(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> ty::PolyFnSig<'tcx> {
+        let ty = self.ty(tcx, param_env);
         match *ty.kind() {
             ty::FnDef(..) => {
                 // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
@@ -2965,7 +2968,7 @@ fn fn_abi_of_instance<'tcx>(
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
     let (param_env, (instance, extra_args)) = query.into_parts();
 
-    let sig = instance.fn_sig_for_fn_abi(tcx);
+    let sig = instance.fn_sig_for_fn_abi(tcx, param_env);
 
     let caller_location = if instance.def.requires_caller_location(tcx) {
         Some(tcx.caller_location_ty())
