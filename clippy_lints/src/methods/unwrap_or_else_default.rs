@@ -1,8 +1,9 @@
 //! Lint for `some_result_or_option.unwrap_or_else(Default::default)`
 
 use super::UNWRAP_OR_ELSE_DEFAULT;
-use clippy_utils::{diagnostics::span_lint_and_sugg, is_trait_item, source::snippet_with_applicability, ty::is_type_diagnostic_item,
-                   is_default_equivalent_ctor, is_diag_trait_item
+use clippy_utils::{
+    diagnostics::span_lint_and_sugg, is_default_equivalent_ctor, is_diag_trait_item, is_trait_item,
+    source::snippet_with_applicability, ty::is_type_diagnostic_item,
 };
 use rustc_hir::ExprKind;
 
@@ -28,7 +29,8 @@ pub(super) fn check<'tcx>(
         ExprKind::Path(qpath) => {
             if let Some(repl_def_id) = cx.qpath_res(qpath, u_arg.hir_id).opt_def_id() {
                 if is_diag_trait_item(cx, repl_def_id, sym::Default)
-                    || is_default_equivalent_ctor(cx, repl_def_id, qpath) {
+                    || is_default_equivalent_ctor(cx, repl_def_id, qpath)
+                {
                     true
                 } else {
                     false
@@ -37,7 +39,7 @@ pub(super) fn check<'tcx>(
                 false
             }
         },
-        _ => {false}
+        _ => false,
     };
 
     if_chain! {
