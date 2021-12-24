@@ -536,8 +536,8 @@ impl Step for Rustdoc {
         // to build rustdoc.
         //
         let mut features = Vec::new();
-        if builder.config.jemalloc {
-            features.push("jemalloc".to_string());
+        if builder.config.mimalloc {
+            features.push("mimalloc".to_string());
         }
 
         let cargo = prepare_tool_cargo(

@@ -582,9 +582,9 @@ changelog-seen = 2
 # Map debuginfo paths to `/rust/$sha/...`, generally only set for releases
 #remap-debuginfo = false
 
-# Link the compiler against `jemalloc`, where on Linux and OSX it should
+# Link the compiler against `mimalloc`, where on Linux and OSX it should
 # override the default allocator for rustc and LLVM.
-#jemalloc = false
+#mimalloc = false
 
 # Run tests in various test suites with the "nll compare mode" in addition to
 # running the tests in normal mode. Largely only used on CI and during local

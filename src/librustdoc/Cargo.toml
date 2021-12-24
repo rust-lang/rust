@@ -31,7 +31,7 @@ features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
 expect-test = "1.0"
 
 [features]
-jemalloc = []
+mimalloc = []
 
 [package.metadata.rust-analyzer]
 rustc_private = true

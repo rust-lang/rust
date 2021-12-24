@@ -151,7 +151,7 @@ pub struct Config {
     pub hosts: Vec<TargetSelection>,
     pub targets: Vec<TargetSelection>,
     pub local_rebuild: bool,
-    pub jemalloc: bool,
+    pub mimalloc: bool,
     pub control_flow_guard: bool,
 
     // dist misc
@@ -512,7 +512,7 @@ struct Rust {
     verify_llvm_ir: Option<bool>,
     thin_lto_import_instr_limit: Option<u32>,
     remap_debuginfo: Option<bool>,
-    jemalloc: Option<bool>,
+    mimalloc: Option<bool>,
     test_compare_mode: Option<bool>,
     llvm_libunwind: Option<String>,
     control_flow_guard: Option<bool>,
@@ -878,7 +878,7 @@ impl Config {
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
-            set(&mut config.jemalloc, rust.jemalloc);
+            set(&mut config.mimalloc, rust.mimalloc);
             set(&mut config.test_compare_mode, rust.test_compare_mode);
             config.llvm_libunwind = rust
                 .llvm_libunwind

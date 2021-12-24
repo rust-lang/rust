@@ -110,7 +110,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.i686-unknown-linux-gnu.linker=clang \
       --build=i686-unknown-linux-gnu \
       --set llvm.ninja=false \
-      --set rust.jemalloc
+      --set rust.mimalloc
 ENV SCRIPT python3 ../x.py dist --build $HOSTS --host $HOSTS --target $HOSTS
 ENV CARGO_TARGET_I686_UNKNOWN_LINUX_GNU_LINKER=clang
 

@@ -14,4 +14,4 @@ path = "main.rs"
 rustdoc = { path = "../../librustdoc" }
 
 [features]
-jemalloc = ['rustdoc/jemalloc']
+mimalloc = ['rustdoc/mimalloc']

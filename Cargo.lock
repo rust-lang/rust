@@ -889,6 +889,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cty"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
+
+[[package]]
 name = "curl"
 version = "0.4.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1237,12 +1243,6 @@ name = "fs-err"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bcd1163ae48bda72a20ae26d66a04d3094135cadab911cff418ae5e33f253431"
-
-[[package]]
-name = "fs_extra"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f2a4a2034423744d2cc7ca2068453168dcdb82c438419e639a26bd87839c674"
 
 [[package]]
 name = "fst"
@@ -1941,6 +1941,16 @@ name = "libm"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
+
+[[package]]
+name = "libmimalloc-sys"
+version = "0.1.23"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9636c194f9db483f4d0adf2f99a65011a99f904bd222bbd67fb4df4f37863c30"
+dependencies = [
+ "cc",
+ "cty",
+]
 
 [[package]]
 name = "libnghttp2-sys"
@@ -3479,10 +3489,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
+ "libmimalloc-sys",
  "rustc_codegen_ssa",
  "rustc_driver",
- "tikv-jemalloc-sys",
- "tikv-jemallocator",
 ]
 
 [[package]]
@@ -5302,27 +5311,6 @@ dependencies = [
 [[package]]
 name = "tier-check"
 version = "0.1.0"
-
-[[package]]
-name = "tikv-jemalloc-sys"
-version = "0.4.1+5.2.1-patched"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a26331b05179d4cb505c8d6814a7e18d298972f0a551b0e3cefccff927f86d3"
-dependencies = [
- "cc",
- "fs_extra",
- "libc",
-]
-
-[[package]]
-name = "tikv-jemallocator"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c14a5a604eb8715bc5785018a37d00739b180bcf609916ddf4393d33d49ccdf"
-dependencies = [
- "libc",
- "tikv-jemalloc-sys",
-]
 
 [[package]]
 name = "time"
