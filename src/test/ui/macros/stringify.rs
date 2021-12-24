@@ -116,10 +116,7 @@ fn test_expr() {
 
     // ExprKind::Binary
     assert_eq!(stringify_expr!(true || false), "true || false");
-    assert_eq!(
-        stringify_expr!(true || false && false),
-        "true || false && false",
-    );
+    assert_eq!(stringify_expr!(true || false && false), "true || false && false");
 
     // ExprKind::Unary
     assert_eq!(stringify_expr!(*expr), "*expr");
@@ -180,10 +177,7 @@ fn test_expr() {
     // ExprKind::While
     assert_eq!(stringify_expr!(while true {}), "while true {}");
     assert_eq!(stringify_expr!('a: while true {}), "'a: while true {}");
-    assert_eq!(
-        stringify_expr!(while let true = true {}),
-        "while let true = true {}",
-    );
+    assert_eq!(stringify_expr!(while let true = true {}), "while let true = true {}");
 
     // ExprKind::ForLoop
     assert_eq!(stringify_expr!(for _ in x {}), "for _ in x {}");
@@ -328,14 +322,8 @@ fn test_expr() {
     assert_eq!(stringify_expr!(Struct { x, .. }), "Struct{x, ..}");
     assert_eq!(stringify_expr!(Struct { x, ..base }), "Struct{x, ..base}");
     assert_eq!(stringify_expr!(Struct { x: true }), "Struct{x: true,}");
-    assert_eq!(
-        stringify_expr!(Struct { x: true, .. }),
-        "Struct{x: true, ..}",
-    );
-    assert_eq!(
-        stringify_expr!(Struct { x: true, ..base }),
-        "Struct{x: true, ..base}",
-    );
+    assert_eq!(stringify_expr!(Struct { x: true, .. }), "Struct{x: true, ..}");
+    assert_eq!(stringify_expr!(Struct { x: true, ..base }), "Struct{x: true, ..base}");
 
     // ExprKind::Repeat
     assert_eq!(stringify_expr!([(); 0]), "[(); 0]");
@@ -501,7 +489,10 @@ fn test_item() {
     );
     assert_eq!(
         stringify_item!(
-            enum Enum<T> where T: 'a {
+            enum Enum<T>
+            where
+                T: 'a,
+            {
                 Unit,
                 Tuple(T),
                 Struct { t: T },
@@ -660,10 +651,7 @@ fn test_pat() {
     // PatKind::Struct
     assert_eq!(stringify_pat!(Struct {}), "Struct {  }"); // FIXME
     assert_eq!(stringify_pat!(Struct::<u8> {}), "Struct::<u8> {  }");
-    assert_eq!(
-        stringify_pat!(Struct::<'static> {}),
-        "Struct::<'static> {  }",
-    );
+    assert_eq!(stringify_pat!(Struct::<'static> {}), "Struct::<'static> {  }");
     assert_eq!(stringify_pat!(Struct { x }), "Struct { x }");
     assert_eq!(stringify_pat!(Struct { x: _x }), "Struct { x: _x }");
     assert_eq!(stringify_pat!(Struct { .. }), "Struct { .. }");
@@ -682,10 +670,7 @@ fn test_pat() {
     assert_eq!(stringify_pat!(Tuple(x)), "Tuple(x)");
     assert_eq!(stringify_pat!(Tuple(..)), "Tuple(..)");
     assert_eq!(stringify_pat!(Tuple(x, ..)), "Tuple(x, ..)");
-    assert_eq!(
-        stringify_pat!(<Struct as Trait>::Type()),
-        "<Struct as Trait>::Type()",
-    );
+    assert_eq!(stringify_pat!(<Struct as Trait>::Type()), "<Struct as Trait>::Type()");
 
     // PatKind::Or
     assert_eq!(stringify_pat!(true | false), "true | false");
@@ -696,10 +681,7 @@ fn test_pat() {
     assert_eq!(stringify_pat!(crate::Path), "crate::Path");
     assert_eq!(stringify_pat!(Path::<u8>), "Path::<u8>");
     assert_eq!(stringify_pat!(Path::<'static>), "Path::<'static>");
-    assert_eq!(
-        stringify_pat!(<Struct as Trait>::Type),
-        "<Struct as Trait>::Type",
-    );
+    assert_eq!(stringify_pat!(<Struct as Trait>::Type), "<Struct as Trait>::Type");
 
     // PatKind::Tuple
     assert_eq!(stringify_pat!(()), "()");
@@ -826,10 +808,7 @@ fn test_ty() {
     assert_eq!(stringify_ty!(PhantomData::<T>), "PhantomData<T>");
     assert_eq!(stringify_ty!(Fn() -> !), "Fn() -> !");
     assert_eq!(stringify_ty!(Fn(u8) -> !), "Fn(u8) -> !");
-    assert_eq!(
-        stringify_ty!(<Struct as Trait>::Type),
-        "<Struct as Trait>::Type",
-    );
+    assert_eq!(stringify_ty!(<Struct as Trait>::Type), "<Struct as Trait>::Type");
 
     // TyKind::TraitObject
     assert_eq!(stringify_ty!(dyn Send), "dyn Send");
@@ -874,14 +853,8 @@ fn test_vis() {
     assert_eq!(stringify_vis!(pub(in super)), "pub(super) ");
     assert_eq!(stringify_vis!(pub(in path::to)), "pub(in path::to) ");
     assert_eq!(stringify_vis!(pub(in ::path::to)), "pub(in ::path::to) ");
-    assert_eq!(
-        stringify_vis!(pub(in self::path::to)),
-        "pub(in self::path::to) ",
-    );
-    assert_eq!(
-        stringify_vis!(pub(in super::path::to)),
-        "pub(in super::path::to) ",
-    );
+    assert_eq!(stringify_vis!(pub(in self::path::to)), "pub(in self::path::to) ");
+    assert_eq!(stringify_vis!(pub(in super::path::to)), "pub(in super::path::to) ");
 
     // VisibilityKind::Inherited
     // Directly calling `stringify_vis!()` does not work.
