@@ -2484,7 +2484,7 @@ impl FnRetTy<'_> {
     }
 }
 
-#[derive(Encodable, Debug)]
+#[derive(Encodable, Debug, HashStable_Generic)]
 pub struct Mod<'hir> {
     /// A span from the first token past `{` to the last token until `}`.
     /// For `mod foo;`, the inner span ranges from the first token

@@ -3,8 +3,7 @@
 
 use crate::ich::hcx::BodyResolver;
 use crate::ich::{NodeIdHashingMode, StableHashingContext};
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use std::mem;
 
@@ -45,28 +44,6 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
             id.hash_stable(hcx, hasher);
         })
-    }
-
-    #[inline]
-    fn hash_hir_mod(&mut self, module: &hir::Mod<'_>, hasher: &mut StableHasher) {
-        let hcx = self;
-        let hir::Mod { inner: ref inner_span, ref item_ids } = *module;
-
-        inner_span.hash_stable(hcx, hasher);
-
-        // Combining the `DefPathHash`s directly is faster than feeding them
-        // into the hasher. Because we use a commutative combine, we also don't
-        // have to sort the array.
-        let item_ids_hash = item_ids
-            .iter()
-            .map(|id| {
-                let def_path_hash = id.to_stable_hash_key(hcx);
-                def_path_hash.0
-            })
-            .fold(Fingerprint::ZERO, |a, b| a.combine_commutative(b));
-
-        item_ids.len().hash_stable(hcx, hasher);
-        item_ids_hash.hash_stable(hcx, hasher);
     }
 
     fn hash_hir_expr(&mut self, expr: &hir::Expr<'_>, hasher: &mut StableHasher) {
