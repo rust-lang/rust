@@ -275,7 +275,12 @@ impl Expect {
         }
         let (literal_start, line_indent) = target_line.unwrap();
 
-        let literal_len = locate_end(&file[literal_start..])
+        let lit_to_eof = &file[literal_start..];
+        let lit_to_eof_trimmed = lit_to_eof.trim_start();
+
+        let literal_start = literal_start + (lit_to_eof.len() - lit_to_eof_trimmed.len());
+
+        let literal_len = locate_end(lit_to_eof_trimmed)
             .expect("Couldn't find matching `]]` for `expect![[`.");
         let literal_range = literal_start..literal_start + literal_len;
         Location { line_indent, literal_range }
@@ -283,7 +288,9 @@ impl Expect {
 }
 
 fn locate_end(lit_to_eof: &str) -> Option<usize> {
-    if lit_to_eof.chars().skip_while(|c| c.is_whitespace()).take(2).eq([']', ']'].iter().cloned()) {
+    assert!(lit_to_eof.chars().next().map_or(true, |c| !c.is_whitespace()));
+
+    if lit_to_eof.starts_with("]]") {
         // expect![[ ]]
         Some(0)
     } else {
@@ -748,7 +755,7 @@ line1
         );
 
         // Check `expect![[  ]]` as well.
-        assert_eq!(locate_end(" ]]"), Some(0));
+        assert_eq!(locate_end("]]"), Some(0));
     }
 
     #[test]
