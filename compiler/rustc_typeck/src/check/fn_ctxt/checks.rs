@@ -73,7 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let method = method.unwrap();
         // HACK(eddyb) ignore self in the definition (see above).
-        let expected_arg_tys = self.expected_inputs_for_expected_output(
+        let expected_input_tys = self.expected_inputs_for_expected_output(
             sp,
             expected,
             method.sig.output(),
@@ -83,7 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             sp,
             expr,
             &method.sig.inputs()[1..],
-            &expected_arg_tys[..],
+            &expected_input_tys[..],
             args_no_rcvr,
             method.sig.c_variadic,
             tuple_arguments,
@@ -249,18 +249,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.emit();
         };
 
-        let mut expected_arg_tys = expected_input_tys.to_vec();
+        let mut expected_input_tys = expected_input_tys.to_vec();
 
-        let formal_tys = if tuple_arguments == TupleArguments {
+        let formal_input_tys = if tuple_arguments == TupleArguments {
             let tuple_type = self.structurally_resolved_type(call_span, formal_input_tys[0]);
             match tuple_type.kind() {
                 ty::Tuple(arg_types) if arg_types.len() != provided_args.len() => {
                     param_count_error(arg_types.len(), provided_args.len(), "E0057", false, false);
-                    expected_arg_tys = vec![];
+                    expected_input_tys = vec![];
                     self.err_args(provided_args.len())
                 }
                 ty::Tuple(arg_types) => {
-                    expected_arg_tys = match expected_arg_tys.get(0) {
+                    expected_input_tys = match expected_input_tys.get(0) {
                         Some(&ty) => match ty.kind() {
                             ty::Tuple(ref tys) => tys.iter().map(|k| k.expect_ty()).collect(),
                             _ => vec![],
@@ -278,7 +278,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                          for the function trait is neither a tuple nor unit"
                     )
                     .emit();
-                    expected_arg_tys = vec![];
+                    expected_input_tys = vec![];
                     self.err_args(provided_args.len())
                 }
             }
@@ -289,13 +289,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 formal_input_tys.to_vec()
             } else {
                 param_count_error(expected_arg_count, supplied_arg_count, "E0060", true, false);
-                expected_arg_tys = vec![];
+                expected_input_tys = vec![];
                 self.err_args(supplied_arg_count)
             }
         } else {
             // is the missing argument of type `()`?
-            let sugg_unit = if expected_arg_tys.len() == 1 && supplied_arg_count == 0 {
-                self.resolve_vars_if_possible(expected_arg_tys[0]).is_unit()
+            let sugg_unit = if expected_input_tys.len() == 1 && supplied_arg_count == 0 {
+                self.resolve_vars_if_possible(expected_input_tys[0]).is_unit()
             } else if formal_input_tys.len() == 1 && supplied_arg_count == 0 {
                 self.resolve_vars_if_possible(formal_input_tys[0]).is_unit()
             } else {
@@ -303,18 +303,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             param_count_error(expected_arg_count, supplied_arg_count, "E0061", false, sugg_unit);
 
-            expected_arg_tys = vec![];
+            expected_input_tys = vec![];
             self.err_args(supplied_arg_count)
         };
 
         debug!(
-            "check_argument_types: formal_tys={:?}",
-            formal_tys.iter().map(|t| self.ty_to_string(*t)).collect::<Vec<String>>()
+            "check_argument_types: formal_input_tys={:?}",
+            formal_input_tys.iter().map(|t| self.ty_to_string(*t)).collect::<Vec<String>>()
         );
 
-        // If there is no expectation, expect formal_tys.
-        let expected_arg_tys =
-            if !expected_arg_tys.is_empty() { expected_arg_tys } else { formal_tys.clone() };
+        // If there is no expectation, expect formal_input_tys.
+        let expected_input_tys = if !expected_input_tys.is_empty() {
+            expected_input_tys
+        } else {
+            formal_input_tys.clone()
+        };
 
         let mut final_arg_types: Vec<(usize, Ty<'_>, Ty<'_>)> = vec![];
 
@@ -366,12 +369,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
-                let formal_ty = formal_tys[i];
+                let formal_ty = formal_input_tys[i];
                 debug!("checking argument {}: {:?} = {:?}", i, arg, formal_ty);
 
                 // The special-cased logic below has three functions:
                 // 1. Provide as good of an expected type as possible.
-                let expected = Expectation::rvalue_hint(self, expected_arg_tys[i]);
+                let expected = Expectation::rvalue_hint(self, expected_input_tys[i]);
 
                 let checked_ty = self.check_expr_with_expectation(&arg, expected);
 
