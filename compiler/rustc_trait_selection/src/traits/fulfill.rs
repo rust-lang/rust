@@ -27,7 +27,6 @@ use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation};
 
 use crate::traits::error_reporting::InferCtxtExt as _;
-use crate::traits::error_reporting::InferCtxtPrivExt;
 use crate::traits::project::PolyProjectionObligation;
 use crate::traits::project::ProjectionCacheKeyExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;

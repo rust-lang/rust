@@ -8,7 +8,7 @@ use rustc_apfloat::{
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
+use crate::ty::{self, Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
     AllocId, AllocRange, Allocation, InterpResult, Pointer, PointerArithmetic, Provenance,
@@ -455,6 +455,78 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
     pub fn to_f64(self) -> InterpResult<'static, Double> {
         // Going through `u64` to check size and truncation.
         Ok(Double::from_bits(self.to_u64()?.into()))
+    }
+
+    #[inline]
+    pub fn try_to_string(self, t: Ty<'tcx>) -> Option<String> {
+        #[cfg(target_pointer_width = "32")]
+        fn usize_to_string<Tag: Provenance>(scalar: Scalar<Tag>) -> Option<String> {
+            scalar.to_u32().map_or_else(|_| None, |v| Some(format!("{}", v)))
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        fn usize_to_string<Tag: Provenance>(scalar: Scalar<Tag>) -> Option<String> {
+            scalar.to_u64().map_or_else(|_| None, |v| Some(format!("{}", v)))
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        fn isize_to_string<Tag: Provenance>(scalar: Scalar<Tag>) -> Option<String> {
+            scalar.to_i32().map_or_else(|_| None, |v| Some(format!("{}", v)))
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        fn isize_to_string<Tag: Provenance>(scalar: Scalar<Tag>) -> Option<String> {
+            scalar.to_i64().map_or_else(|_| None, |v| Some(format!("{}", v)))
+        }
+
+        #[cfg(target_pointer_width = "128")]
+        fn isize_to_string<Tag: Provenance>(scalar: Scalar<Tag>) -> Option<String> {
+            scalar.to_i128().map_or_else(|_| None, |v| Some(format!("{}", v)))
+        }
+
+        #[cfg(target_pointer_width = "128")]
+        fn usize_to_string<Tag: Provenance>(scalar: Scalar<Tag>) -> Option<String> {
+            scalar.to_u128().map_or_else(|_| None, |v| Some(format!("{}", v)))
+        }
+
+        match self {
+            Scalar::Int(_) => match t.kind() {
+                ty::Int(ty::IntTy::Isize) => isize_to_string(self),
+                ty::Int(ty::IntTy::I8) => {
+                    self.to_i8().map_or_else(|_| None, |v| Some(format!("{}", v)))
+                }
+                ty::Int(ty::IntTy::I16) => {
+                    self.to_i16().map_or_else(|_| None, |v| Some(format!("{}", v)))
+                }
+                ty::Int(ty::IntTy::I32) => {
+                    self.to_i32().map_or_else(|_| None, |v| Some(format!("{}", v)))
+                }
+                ty::Int(ty::IntTy::I64) => {
+                    self.to_i64().map_or_else(|_| None, |v| Some(format!("{}", v)))
+                }
+                ty::Int(ty::IntTy::I128) => {
+                    self.to_i128().map_or_else(|_| None, |v| Some(format!("{}", v)))
+                }
+                ty::Uint(ty::UintTy::Usize) => usize_to_string(self),
+                ty::Uint(ty::UintTy::U8) => {
+                    self.to_u8().map_or_else(|_| None, |v| Some(format!("{}", v)))
+                }
+                ty::Uint(ty::UintTy::U16) => {
+                    self.to_u16().map_or_else(|_| None, |v| Some(format!("{}", v)))
+                }
+                ty::Uint(ty::UintTy::U32) => {
+                    self.to_u32().map_or_else(|_| None, |v| Some(format!("{}", v)))
+                }
+                ty::Uint(ty::UintTy::U64) => {
+                    self.to_u64().map_or_else(|_| None, |v| Some(format!("{}", v)))
+                }
+                ty::Uint(ty::UintTy::U128) => {
+                    self.to_u128().map_or_else(|_| None, |v| Some(format!("{}", v)))
+                }
+                _ => None,
+            },
+            Scalar::Ptr(_, _) => Some(format!("{}", self)),
+        }
     }
 }
 

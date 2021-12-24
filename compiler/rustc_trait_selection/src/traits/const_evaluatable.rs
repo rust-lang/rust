@@ -284,18 +284,22 @@ impl<'tcx> AbstractConst<'tcx> {
                         return Some(PrintStyle::NoBraces(s));
                     }
                 }
-                ty::ConstKind::Value(ConstValue::Scalar(scalar)) => match scalar.to_i64() {
-                    Ok(s) => {
-                        let s = format!("{}", s);
+                ty::ConstKind::Value(ConstValue::Scalar(scalar)) => {
+                    debug!("ct.ty: {:?}", ct.ty);
+                    let test_string = scalar.try_to_string(ct.ty);
+                    debug!(?test_string);
 
-                        if applied_subst {
-                            return Some(PrintStyle::Braces(None, s));
-                        } else {
-                            return Some(PrintStyle::NoBraces(s));
+                    match scalar.try_to_string(ct.ty) {
+                        Some(s) => {
+                            if applied_subst {
+                                return Some(PrintStyle::Braces(None, s));
+                            } else {
+                                return Some(PrintStyle::NoBraces(s));
+                            }
                         }
+                        None => return None,
                     }
-                    Err(_) => return None,
-                },
+                }
                 _ => return None,
             },
             abstract_const::Node::Binop(op, l, r) => {

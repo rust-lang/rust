@@ -88,6 +88,11 @@ pub trait InferCtxtExt<'tcx> {
         found_args: Vec<ArgKind>,
         is_closure: bool,
     ) -> DiagnosticBuilder<'tcx>;
+
+    fn try_create_suggestion_for_mismatched_const(
+        &self,
+        expected_found: ExpectedFound<&'tcx ty::Const<'tcx>>,
+    ) -> Option<String>;
 }
 
 impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
@@ -1091,9 +1096,19 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         err
     }
+
+    fn try_create_suggestion_for_mismatched_const(
+        &self,
+        expected_found: ExpectedFound<&'tcx ty::Const<'tcx>>,
+    ) -> Option<String> {
+        match AbstractConst::from_const(self.tcx, expected_found.found) {
+            Ok(Some(f_abstract)) => f_abstract.try_print_with_replacing_substs(self.tcx),
+            _ => None,
+        }
+    }
 }
 
-trait InferCtxtPrivExt<'hir, 'tcx> {
+pub trait InferCtxtPrivExt<'hir, 'tcx> {
     // returns if `cond` not occurring implies that `error` does not occur - i.e., that
     // `error` occurring implies that `cond` occurs.
     fn error_implies(&self, cond: ty::Predicate<'tcx>, error: ty::Predicate<'tcx>) -> bool;
@@ -1202,11 +1217,6 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
         obligated_types: &mut Vec<&ty::TyS<'tcx>>,
         cause_code: &ObligationCauseCode<'tcx>,
     ) -> bool;
-
-    fn try_create_suggestion_for_mismatched_const(
-        &self,
-        expected_found: ExpectedFound<&'tcx ty::Const<'tcx>>,
-    ) -> Option<String>;
 }
 
 impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
@@ -1525,16 +1535,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     self.tcx.impl_trait_ref(def_id)
                 })
                 .collect(),
-        }
-    }
-
-    fn try_create_suggestion_for_mismatched_const(
-        &self,
-        expected_found: ExpectedFound<&'tcx ty::Const<'tcx>>,
-    ) -> Option<String> {
-        match AbstractConst::from_const(self.tcx, expected_found.found) {
-            Ok(Some(f_abstract)) => f_abstract.try_print_with_replacing_substs(self.tcx),
-            _ => None,
         }
     }
 
