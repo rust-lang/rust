@@ -637,7 +637,7 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
 
 /// Returns true if the `def_id` associated with the `path` is recognized as a "default-equivalent"
 /// constructor from the std library
-fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<'_>) -> bool {
+pub fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<'_>) -> bool {
     let std_types_symbols = &[
         sym::String,
         sym::Vec,

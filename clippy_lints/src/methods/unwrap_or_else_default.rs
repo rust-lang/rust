@@ -1,10 +1,11 @@
 //! Lint for `some_result_or_option.unwrap_or_else(Default::default)`
 
 use super::UNWRAP_OR_ELSE_DEFAULT;
-use clippy_utils::{
-    diagnostics::span_lint_and_sugg, is_default_equivalent, is_trait_item, source::snippet_with_applicability,
-    ty::is_type_diagnostic_item,
+use clippy_utils::{diagnostics::span_lint_and_sugg, is_trait_item, source::snippet_with_applicability, ty::is_type_diagnostic_item,
+                   is_default_equivalent_ctor, is_diag_trait_item
 };
+use rustc_hir::ExprKind;
+
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -23,9 +24,25 @@ pub(super) fn check<'tcx>(
     let is_option = is_type_diagnostic_item(cx, recv_ty, sym::Option);
     let is_result = is_type_diagnostic_item(cx, recv_ty, sym::Result);
 
+    let is_default_eq = match &u_arg.kind {
+        ExprKind::Path(qpath) => {
+            if let Some(repl_def_id) = cx.qpath_res(qpath, u_arg.hir_id).opt_def_id() {
+                if is_diag_trait_item(cx, repl_def_id, sym::Default)
+                    || is_default_equivalent_ctor(cx, repl_def_id, qpath) {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        },
+        _ => {false}
+    };
+
     if_chain! {
         if is_option || is_result;
-        if is_trait_item(cx, u_arg, sym::Default) || is_default_equivalent(cx, u_arg);
+        if is_trait_item(cx, u_arg, sym::Default) || is_default_eq;
         then {
             let mut applicability = Applicability::MachineApplicable;
 
