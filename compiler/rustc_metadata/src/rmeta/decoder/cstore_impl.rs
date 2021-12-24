@@ -388,9 +388,7 @@ impl CStore {
     }
 
     pub fn ctor_def_id_and_kind_untracked(&self, def: DefId) -> Option<(DefId, CtorKind)> {
-        self.get_crate_data(def.krate).get_ctor_def_id(def.index).map(|ctor_def_id| {
-            (ctor_def_id, self.get_crate_data(def.krate).get_ctor_kind(def.index))
-        })
+        self.get_crate_data(def.krate).get_ctor_def_id_and_kind(def.index)
     }
 
     pub fn visibility_untracked(&self, def: DefId) -> Visibility {
@@ -439,8 +437,8 @@ impl CStore {
         )
     }
 
-    pub fn associated_item_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::AssocItem {
-        self.get_crate_data(def.krate).get_associated_item(def.index, sess)
+    pub fn fn_has_self_parameter_untracked(&self, def: DefId) -> bool {
+        self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index)
     }
 
     pub fn crate_source_untracked(&self, cnum: CrateNum) -> CrateSource {
