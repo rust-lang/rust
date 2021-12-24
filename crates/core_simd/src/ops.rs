@@ -1,4 +1,4 @@
-use crate::simd::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 use core::ops::{Add, Mul};
 use core::ops::{BitAnd, BitOr, BitXor};
 use core::ops::{Div, Rem, Sub};
@@ -70,8 +70,7 @@ macro_rules! int_divrem_guard {
         if $rhs.lanes_eq(Simd::splat(0)).any() {
             panic!($zero);
         } else if <$int>::MIN != 0
-            && $lhs.lanes_eq(Simd::splat(<$int>::MIN)) & $rhs.lanes_eq(Simd::splat(-1 as _))
-                != Mask::splat(false)
+            && ($lhs.lanes_eq(Simd::splat(<$int>::MIN)) & $rhs.lanes_eq(Simd::splat(-1 as _))).any()
         {
             panic!($overflow);
         } else {
