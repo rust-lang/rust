@@ -1,3 +1,4 @@
+use crate::fx::FxHashMap;
 use crate::sip128::SipHasher128;
 use rustc_index::bit_set;
 use rustc_index::vec;
@@ -584,3 +585,28 @@ fn stable_hash_reduce<HCX, I, C, F>(
         }
     }
 }
+
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
+pub enum NodeIdHashingMode {
+    Ignore,
+    HashDefPath,
+}
+
+/// Controls what data we do or not not hash.
+/// Whenever a `HashStable` implementation caches its
+/// result, it needs to include `HashingControls` as part
+/// of the key, to ensure that is does not produce an incorrect
+/// result (for example, using a `Fingerprint` produced while
+/// hashing `Span`s when a `Fingeprint` without `Span`s is
+/// being requested)
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
+pub struct HashingControls {
+    pub hash_spans: bool,
+    pub node_id_hashing_mode: NodeIdHashingMode,
+}
+
+/// A cache for use by `HashStable` implementations. It includes
+/// a `HashingControls` as part of the key, to prevent using
+/// a result computed under one `HashingControls` with a different
+/// `HashingControls`
+pub type StableHashCache<K, V> = FxHashMap<(K, HashingControls), V>;

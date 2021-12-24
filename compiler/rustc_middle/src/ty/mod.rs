@@ -1597,6 +1597,7 @@ pub enum VariantDiscr {
 #[derive(Debug, HashStable, TyEncodable, TyDecodable)]
 pub struct FieldDef {
     pub did: DefId,
+    #[stable_hasher(project(name))]
     pub ident: Ident,
     pub vis: Visibility,
 }

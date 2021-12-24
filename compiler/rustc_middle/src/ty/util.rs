@@ -137,7 +137,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
         hcx.while_hashing_spans(false, |hcx| {
             hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+                tracing::info!("Hashing:      {:?}", ty);
                 ty.hash_stable(hcx, &mut hasher);
+                tracing::info!("Done hashing: {:?}", ty);
             });
         });
         hasher.finish()
