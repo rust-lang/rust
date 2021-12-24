@@ -65,3 +65,18 @@ const fn test_write_bytes_in_const_contexts() {
     assert!(TEST2[1] == 16843009);
     assert!(TEST2[2] == 3);
 }
+
+#[test]
+fn test_hints_in_const_contexts() {
+    use core::intrinsics::{likely, unlikely};
+
+    // In const contexts, they just return their argument.
+    const {
+        assert!(true == likely(true));
+        assert!(false == likely(false));
+        assert!(true == unlikely(true));
+        assert!(false == unlikely(false));
+        assert!(42u32 == core::intrinsics::black_box(42u32));
+        assert!(42u32 == core::hint::black_box(42u32));
+    }
+}
