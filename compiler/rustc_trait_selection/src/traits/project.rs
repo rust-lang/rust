@@ -1400,8 +1400,17 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // Any type with multiple potential metadata types is therefore not eligible.
                 let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
 
-                // FIXME: should this normalize?
-                let tail = selcx.tcx().struct_tail_without_normalization(self_ty);
+                let tail = selcx.tcx().struct_tail_with_normalize(self_ty, |ty| {
+                    normalize_with_depth(
+                        selcx,
+                        obligation.param_env,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth + 1,
+                        ty,
+                    )
+                    .value
+                });
+
                 match tail.kind() {
                     ty::Bool
                     | ty::Char
@@ -1435,7 +1444,12 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     | ty::Bound(..)
                     | ty::Placeholder(..)
                     | ty::Infer(..)
-                    | ty::Error(_) => false,
+                    | ty::Error(_) => {
+                        if tail.has_infer_types() {
+                            candidate_set.mark_ambiguous();
+                        }
+                        false
+                    },
                 }
             }
             super::ImplSource::Param(..) => {
@@ -1640,18 +1654,30 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
     _: ImplSourcePointeeData,
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
-
     let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
-    let substs = tcx.mk_substs([self_ty.into()].iter());
 
+    let mut obligations = vec![];
+    let metadata_ty = self_ty.ptr_metadata_ty(tcx, |ty| {
+        normalize_with_depth_to(
+            selcx,
+            obligation.param_env,
+            obligation.cause.clone(),
+            obligation.recursion_depth + 1,
+            ty,
+            &mut obligations,
+        )
+    });
+
+    let substs = tcx.mk_substs([self_ty.into()].iter());
     let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
 
     let predicate = ty::ProjectionPredicate {
         projection_ty: ty::ProjectionTy { substs, item_def_id: metadata_def_id },
-        ty: self_ty.ptr_metadata_ty(tcx),
+        ty: metadata_ty,
     };
 
     confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
+        .with_addl_obligations(obligations)
 }
 
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(

@@ -2143,9 +2143,12 @@ impl<'tcx> TyS<'tcx> {
     }
 
     /// Returns the type of metadata for (potentially fat) pointers to this type.
-    pub fn ptr_metadata_ty(&'tcx self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        // FIXME: should this normalize?
-        let tail = tcx.struct_tail_without_normalization(self);
+    pub fn ptr_metadata_ty(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
+    ) -> Ty<'tcx> {
+        let tail = tcx.struct_tail_with_normalize(self, normalize);
         match tail.kind() {
             // Sized types
             ty::Infer(ty::IntVar(_) | ty::FloatVar(_))

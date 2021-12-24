@@ -192,7 +192,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn struct_tail_with_normalize(
         self,
         mut ty: Ty<'tcx>,
-        normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>,
+        mut normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
     ) -> Ty<'tcx> {
         let recursion_limit = self.recursion_limit();
         for iteration in 0.. {
