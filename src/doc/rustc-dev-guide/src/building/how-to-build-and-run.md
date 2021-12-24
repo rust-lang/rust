@@ -11,6 +11,12 @@ see [the next page](./prerequisites.md).
 
 ## Get the source code
 
+The main repository is [`rust-lang/rust`][repo]. This contains the compiler,
+the standard library (including `core`, `alloc`, `test`, `proc_macro`, etc),
+and a bunch of tools (e.g. `rustdoc`, the bootstrapping infrastructure, etc).
+
+[repo]: https://github.com/rust-lang/rust
+
 The very first step to work on `rustc` is to clone the repository:
 
 ```bash
@@ -18,35 +24,49 @@ git clone https://github.com/rust-lang/rust.git
 cd rust
 ```
 
+There are also submodules for things like LLVM, `clippy`, `miri`, etc. The
+build tool will automatically clone and sync these for you. But if you want to,
+you can do the following:
+
+```sh
+# first time
+git submodule update --init --recursive
+
+# subsequent times (to pull new commits)
+git submodule update
+```
+
 ## Create a `config.toml`
 
-To start, run `./x.py setup`. This will create a `config.toml` with reasonable defaults.
+To start, run `./x.py setup`. This will do some initialization and create a
+`config.toml` for you with reasonable defaults. These defaults are specified
+indirectly via the `profile` setting, which points to one of the TOML files in
+`src/bootstrap/defaults.`
 
-You may also want to change some of the following settings (and possibly others, such as
+Alternatively, you can write `config.toml` by hand. See `config.toml.example`
+for all the available settings and explanations of them. The following settings
+are of particular interest, and `config.toml.example` has full explanations.
+
+You may want to change some of the following settings (and possibly others, such as
 `llvm.ccache`):
 
 ```toml
 [llvm]
 # Whether to use Rust CI built LLVM instead of locally building it.
-download-ci-llvm = true
-
-# Indicates whether the LLVM assertions are enabled or not
-assertions = true
+download-ci-llvm = true     # Download a pre-built LLVM?
+assertions = true           # LLVM assertions on?
+ccache = "/path/to/ccache"  # Use ccache when building LLVM?
 
 [rust]
-# Whether or not to leave debug! and trace! calls in the rust binary.
-# Overrides the `debug-assertions` option, if defined.
-#
-# Defaults to rust.debug-assertions value
-#
-# If you see a message from `tracing` saying
-# `max_level_info` is enabled and means logging won't be shown,
-# set this value to `true`.
-debug-logging = true
-
-# Whether to always use incremental compilation when building rustc
-incremental = true
+debug-logging = true        # Leave debug! and trace! calls in rustc?
+incremental = true          # Build rustc with incremental compilation?
 ```
+
+If you set `download-ci-llvm = true`, in some circumstances, such as when
+updating the version of LLVM used by `rustc`, you may want to temporarily
+disable this feature. See the ["Updating LLVM" section] for more.
+
+["Updating LLVM" section]: https://rustc-dev-guide.rust-lang.org/backend/updating-llvm.html?highlight=download-ci-llvm#feature-updates
 
 If you have already built `rustc` and you change settings related to LLVM, then you may have to
 execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x.py

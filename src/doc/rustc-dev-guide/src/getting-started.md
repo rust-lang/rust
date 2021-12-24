@@ -44,59 +44,24 @@ just create noise, so we ask that you be mindful of the fact that the
 
 ## Cloning and Building
 
-The main repository is [`rust-lang/rust`][repo]. This contains the compiler,
-the standard library (including `core`, `alloc`, `test`, `proc_macro`, etc),
-and a bunch of tools (e.g. `rustdoc`, the bootstrapping infrastructure, etc).
-
-[repo]: https://github.com/rust-lang/rust
-
-There are also a bunch of submodules for things like LLVM, `clippy`, `miri`,
-etc. You don't need to clone these immediately, but the build tool will
-automatically clone and sync them (more on this later).
-
-[**Take a look at the "Suggested Workflows" chapter for some helpful
-advice.**][suggested]
-
-[suggested]: ./building/suggested.md
-
 ### System Requirements
 
-[**See this chapter for detailed software requirements.**](./building/prerequisites.md)
-Most notably, you will need Python 2 or 3 to run `x.py`.
+Internet access is required.
 
-There are no hard hardware requirements, but building the compiler is
-computationally expensive, so a beefier machine will help, and I wouldn't
-recommend trying to build on a Raspberry Pi :P
+The most notable software requirement is that you will need Python 2 or 3, but
+there are various others.
 
-- Recommended >=30GB of free disk space; otherwise, you will have to keep
-  clearing incremental caches. More space is better, the compiler is a bit of a
-  hog; it's a problem we are aware of.
-- Recommended >=8GB RAM.
-- Recommended >=2 cores; having more cores really helps.
-- You will need an internet connection to build; the bootstrapping process
-  involves updating git submodules and downloading a beta compiler. It doesn't
-  need to be super fast, but that can help.
+The following hardware is recommended.
+* 30GB+ of free disk space.
+* 8GB+ RAM
+* 2+ cores
 
-Building the compiler takes more than half an hour on my moderately powerful
-laptop. The first time you build the compiler, LLVM will also be built unless
-you use CI-built LLVM ([see below][configsec]).
+More powerful machines will lead to much faster builds. There are various
+strategies to work around lesser hardware in the following chapters.
 
-[configsec]: #configuring-the-compiler
+See [this chapter][prereqs] for more details about software and hardware prerequisites.
 
-Like `cargo`, the build system will use as many cores as possible. Sometimes
-this can cause you to run low on memory. You can use `-j` to adjust the number
-concurrent jobs. If a full build takes more than ~45 minutes to an hour,
-you are probably spending most of the time swapping memory in and out;
-try using `-j1`.
-
-On a slow machine, the build times for rustc are very painful. Consider using
-`./x.py check` instead of a full build and letting the automated tests run
-when you push to GitHub.
-
-If you don't have too much free disk space, you may want to turn off
-incremental compilation ([see below][configsec]). This will make
-compilation take longer (especially after a rebase),
-but will save a ton of space from the incremental caches.
+[prereqs]: ./building/prerequisites.md
 
 ### Cloning
 
@@ -104,26 +69,19 @@ You can just do a normal git clone:
 
 ```sh
 git clone https://github.com/rust-lang/rust.git
+cd rust
 ```
 
-You don't need to clone the submodules at this time. But if you want to, you
-can do the following:
+### `x.py` Intro
 
-```sh
-# first time
-git submodule update --init --recursive
+`rustc` is a [bootstrapping] compiler, which makes it more complex than a
+typical Rust program. As a result, you cannot use Cargo to build it. Instead
+you must use the special tool `x.py`. It is used for the things Cargo is
+normally used for: building, testing, creating releases, formatting, etc.
 
-# subsequent times (to pull new commits)
-git submodule update
-```
+[bootstrapping]: ./building/bootstrapping.md
 
 ### Configuring the Compiler
-
-The compiler has a configuration file which contains a ton of settings. We will
-provide some recommendations here that should work for most, but [check out
-this chapter for more info][config].
-
-[config]: ./building/how-to-build-and-run.md#create-a-configtoml
 
 In the top level of the repo:
 
@@ -131,62 +89,12 @@ In the top level of the repo:
 $ ./x.py setup
 ```
 
-This will walk you through an interactive setup for `x.py` that looks like this:
+This will do some initialization and walk you through an interactive setup to
+create `config.toml`, the primary configuration file.
 
-```
-$ ./x.py setup
-Welcome to the Rust project! What do you want to do with x.py?
-a) Contribute to the standard library
-b) Contribute to the compiler
-c) Contribute to the compiler, and also modify LLVM or codegen
-d) Install Rust from source
-Please choose one (a/b/c/d): a
-`x.py` will now use the configuration at /home/joshua/rustc2/src/bootstrap/defaults/config.toml.library
-To get started, try one of the following commands:
-- `x.py check`
-- `x.py build`
-- `x.py test library/std`
-- `x.py doc`
-For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html
-```
+See [this chapter][config] for more info about configuration.
 
-Note that by default, `./x.py setup` will use CI-built LLVM if available for your
-platform so that you don't need to build LLVM in addition to building the
-compiler. In some circumstances, such as when updating the version of LLVM used
-by `rustc`, you may want to temporarily disable this feature. See the ["Updating
-LLVM" section] for more.
-
-If you want to download LLVM from CI without running `./x.py setup`, you can set
-the `download-ci-llvm` option to `true` in your `config.toml`:
-
-```toml
-[llvm]
-download-ci-llvm = true
-```
-
-["Updating LLVM" section]: https://rustc-dev-guide.rust-lang.org/backend/updating-llvm.html?highlight=download-ci-llvm#feature-updates
-
-### `x.py` Intro
-
-`rustc` is a _bootstrapping_ compiler, which means that it is written in Rust
-and thus needs to be compiled by itself. So where do you
-get the original compiler from? We use the current beta compiler
-to build a new compiler. Then, we use that compiler to build itself. Thus,
-`rustc` has a 2-stage build. You can read more about bootstrapping
-[here][boot], but you don't need to know much more to contribute.
-
-[boot]: ./building/bootstrapping.md
-
-We have a special tool `x.py` that drives this process. It is used for
-building the compiler, the standard libraries, and `rustdoc`. It is also used
-for driving CI and building the final release artifacts.
-
-Unfortunately, a proper 2-stage build takes a long time depending on your
-hardware, but it is the only correct way to build everything (e.g. it's what
-the CI and release processes use). **However, in most cases, you can get by
-without a full 2-stage build**. In the following section, we give instructions
-for how to do "the correct thing", but then we also give various tips to speed
-things up.
+[config]: ./building/how-to-build-and-run.md#create-a-configtoml
 
 ### Building and Testing `rustc`
 
