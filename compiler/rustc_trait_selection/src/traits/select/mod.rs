@@ -2413,7 +2413,7 @@ impl<'tcx> TraitObligationExt<'tcx> for TraitObligation<'tcx> {
         // chain. Ideally, we should have a way to configure this either
         // by using -Z verbose or just a CLI argument.
         let derived_cause = DerivedObligationCause {
-            parent_trait_ref: obligation.predicate.to_poly_trait_ref(),
+            parent_trait_pred: obligation.predicate,
             parent_code: obligation.cause.clone_code(),
         };
         let derived_code = variant(derived_cause);

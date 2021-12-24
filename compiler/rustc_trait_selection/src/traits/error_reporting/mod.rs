@@ -205,6 +205,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         self.note_obligation_cause_code(
             &mut err,
             &obligation.predicate,
+            obligation.param_env,
             obligation.cause.code(),
             &mut vec![],
             &mut Default::default(),
@@ -288,7 +289,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 match bound_predicate.skip_binder() {
                     ty::PredicateKind::Trait(trait_predicate) => {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
-                        let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
+                        let mut trait_predicate = self.resolve_vars_if_possible(trait_predicate);
+
+                        trait_predicate.remap_constness_diag(obligation.param_env);
+                        let predicate_is_const = ty::BoundConstness::ConstIfConst
+                            == trait_predicate.skip_binder().constness;
 
                         if self.tcx.sess.has_errors() && trait_predicate.references_error() {
                             return;
@@ -332,11 +337,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             span,
                             E0277,
                             "{}",
-                            message.unwrap_or_else(|| format!(
-                                "the trait bound `{}` is not satisfied{}",
-                                trait_ref.without_const().to_predicate(tcx),
-                                post_message,
-                            ))
+                            (!predicate_is_const).then(|| message).flatten().unwrap_or_else(
+                                || format!(
+                                    "the trait bound `{}` is not satisfied{}",
+                                    trait_predicate, post_message,
+                                )
+                            )
                         );
 
                         if is_try_conversion {
@@ -384,7 +390,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             format!(
                                 "{}the trait `{}` is not implemented for `{}`",
                                 pre_message,
-                                trait_ref.print_only_trait_path(),
+                                trait_predicate.print_modifiers_and_trait_path(),
                                 trait_ref.skip_binder().self_ty(),
                             )
                         };
@@ -392,7 +398,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         if self.suggest_add_reference_to_arg(
                             &obligation,
                             &mut err,
-                            &trait_ref,
+                            trait_predicate,
                             have_alt_message,
                         ) {
                             self.note_obligation_cause(&mut err, &obligation);
@@ -435,18 +441,28 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err.span_label(enclosing_scope_span, s.as_str());
                         }
 
-                        self.suggest_dereferences(&obligation, &mut err, trait_ref);
-                        self.suggest_fn_call(&obligation, &mut err, trait_ref);
-                        self.suggest_remove_reference(&obligation, &mut err, trait_ref);
-                        self.suggest_semicolon_removal(&obligation, &mut err, span, trait_ref);
+                        self.suggest_dereferences(&obligation, &mut err, trait_predicate);
+                        self.suggest_fn_call(&obligation, &mut err, trait_predicate);
+                        self.suggest_remove_reference(&obligation, &mut err, trait_predicate);
+                        self.suggest_semicolon_removal(
+                            &obligation,
+                            &mut err,
+                            span,
+                            trait_predicate,
+                        );
                         self.note_version_mismatch(&mut err, &trait_ref);
                         self.suggest_remove_await(&obligation, &mut err);
 
                         if Some(trait_ref.def_id()) == tcx.lang_items().try_trait() {
-                            self.suggest_await_before_try(&mut err, &obligation, trait_ref, span);
+                            self.suggest_await_before_try(
+                                &mut err,
+                                &obligation,
+                                trait_predicate,
+                                span,
+                            );
                         }
 
-                        if self.suggest_impl_trait(&mut err, span, &obligation, trait_ref) {
+                        if self.suggest_impl_trait(&mut err, span, &obligation, trait_predicate) {
                             err.emit();
                             return;
                         }
@@ -494,7 +510,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             // which is somewhat confusing.
                             self.suggest_restricting_param_bound(
                                 &mut err,
-                                trait_ref,
+                                trait_predicate,
                                 obligation.cause.body_id,
                             );
                         } else if !have_alt_message {
@@ -506,7 +522,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // Changing mutability doesn't make a difference to whether we have
                         // an `Unsize` impl (Fixes ICE in #71036)
                         if !is_unsize {
-                            self.suggest_change_mut(&obligation, &mut err, trait_ref);
+                            self.suggest_change_mut(&obligation, &mut err, trait_predicate);
                         }
 
                         // If this error is due to `!: Trait` not implemented but `(): Trait` is
@@ -1121,7 +1137,7 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
     fn mk_trait_obligation_with_new_self_ty(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_ref: ty::PolyTraitPredicate<'tcx>,
         new_self_ty: Ty<'tcx>,
     ) -> PredicateObligation<'tcx>;
 
@@ -1540,7 +1556,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
     ) -> Option<(String, Option<Span>)> {
         match code {
             ObligationCauseCode::BuiltinDerivedObligation(data) => {
-                let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
+                let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                 match self.get_parent_trait_ref(&data.parent_code) {
                     Some(t) => Some(t),
                     None => {
@@ -1593,21 +1609,20 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
     fn mk_trait_obligation_with_new_self_ty(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_ref: ty::PolyTraitPredicate<'tcx>,
         new_self_ty: Ty<'tcx>,
     ) -> PredicateObligation<'tcx> {
         assert!(!new_self_ty.has_escaping_bound_vars());
 
-        let trait_ref = trait_ref.map_bound_ref(|tr| ty::TraitRef {
-            substs: self.tcx.mk_substs_trait(new_self_ty, &tr.substs[1..]),
+        let trait_pred = trait_ref.map_bound_ref(|tr| ty::TraitPredicate {
+            trait_ref: ty::TraitRef {
+                substs: self.tcx.mk_substs_trait(new_self_ty, &tr.trait_ref.substs[1..]),
+                ..tr.trait_ref
+            },
             ..*tr
         });
 
-        Obligation::new(
-            ObligationCause::dummy(),
-            param_env,
-            trait_ref.without_const().to_predicate(self.tcx),
-        )
+        Obligation::new(ObligationCause::dummy(), param_env, trait_pred.to_predicate(self.tcx))
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -2008,6 +2023,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             self.note_obligation_cause_code(
                 err,
                 &obligation.predicate,
+                obligation.param_env,
                 obligation.cause.code(),
                 &mut vec![],
                 &mut Default::default(),
@@ -2155,7 +2171,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         cause_code: &ObligationCauseCode<'tcx>,
     ) -> bool {
         if let ObligationCauseCode::BuiltinDerivedObligation(ref data) = cause_code {
-            let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
+            let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
             let self_ty = parent_trait_ref.skip_binder().self_ty();
             if obligated_types.iter().any(|ot| ot == &self_ty) {
                 return true;

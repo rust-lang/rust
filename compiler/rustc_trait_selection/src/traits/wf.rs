@@ -306,10 +306,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
         let extend = |obligation: traits::PredicateObligation<'tcx>| {
             let mut cause = cause.clone();
-            if let Some(parent_trait_ref) = obligation.predicate.to_opt_poly_trait_pred() {
+            if let Some(parent_trait_pred) = obligation.predicate.to_opt_poly_trait_pred() {
                 let derived_cause = traits::DerivedObligationCause {
-                    // FIXME(fee1-dead): when improving error messages, change this to PolyTraitPredicate
-                    parent_trait_ref: parent_trait_ref.map_bound(|t| t.trait_ref),
+                    parent_trait_pred,
                     parent_code: obligation.cause.clone_code(),
                 };
                 *cause.make_mut_code() =

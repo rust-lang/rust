@@ -402,7 +402,7 @@ impl ObligationCauseCode<'_> {
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ObligationCauseCode<'_>, 40);
+static_assert_size!(ObligationCauseCode<'_>, 48);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum StatementAsExpression {
@@ -440,11 +440,11 @@ pub struct IfExpressionCause {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
 pub struct DerivedObligationCause<'tcx> {
-    /// The trait reference of the parent obligation that led to the
+    /// The trait predicate of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to
-    /// derived obligations, so we just store the trait reference here
+    /// derived obligations, so we just store the trait predicate here
     /// directly.
-    pub parent_trait_ref: ty::PolyTraitRef<'tcx>,
+    pub parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
 
     /// The parent trait had this cause.
     pub parent_code: Lrc<ObligationCauseCode<'tcx>>,
