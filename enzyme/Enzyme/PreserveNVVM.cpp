@@ -69,8 +69,7 @@ public:
             "jn",         "erf",     "erfinv",    "erfc",   "erfcx",  "erfcinv",
             "normcdfinv", "normcdf", "lgamma",    "ldexp",  "scalbn", "frexp",
             "modf",       "fmod",    "remainder", "remquo", "powi",   "tgamma",
-            "round",      "fdim",    "ilogb",     "logb",
-
+            "round",      "fdim",    "ilogb",     "logb",   "isinf",  "pow",
             "sqrt"}) {
         std::string nvname = "__nv_" + name;
         std::string llname = "llvm." + name + ".";
@@ -91,12 +90,16 @@ public:
       if (Begin) {
         F.removeFnAttr(Attribute::AlwaysInline);
         F.addFnAttr(Attribute::NoInline);
+        // As a side effect, enforces arguments
+        // cannot be erased.
+        F.setLinkage(Function::LinkageTypes::ExternalLinkage);
         F.addFnAttr("implements", found->second.second);
         F.addFnAttr("enzyme_math", found->second.first);
         changed = true;
       } else {
         F.addFnAttr(Attribute::AlwaysInline);
         F.removeFnAttr(Attribute::NoInline);
+        F.setLinkage(Function::LinkageTypes::InternalLinkage);
       }
     }
     return changed;
