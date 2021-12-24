@@ -3442,7 +3442,6 @@ impl<'a> Resolver<'a> {
                 let attr = self
                     .cstore()
                     .item_attrs_untracked(def_id, self.session)
-                    .into_iter()
                     .find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
