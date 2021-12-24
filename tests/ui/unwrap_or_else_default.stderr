@@ -32,4 +32,3 @@ LL |     with_default_type.unwrap_or_else(Vec::new);
 
 error: aborting due to 5 previous errors
 
-
