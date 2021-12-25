@@ -142,6 +142,13 @@ macro_rules! extract_msrv_attr {
     };
 }
 
+/// Returns `true` if the span comes from a macro expansion, no matter if from a
+/// macro by example or from a procedural macro
+#[must_use]
+pub fn in_macro(span: Span) -> bool {
+    span.from_expansion() && !matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
+}
+
 /// Returns `true` if the two spans come from differing expansions (i.e., one is
 /// from a macro and one isn't).
 #[must_use]
