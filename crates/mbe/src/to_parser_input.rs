@@ -4,8 +4,8 @@
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 use tt::buffer::TokenBuffer;
 
-pub(crate) fn to_parser_tokens(buffer: &TokenBuffer) -> parser::Tokens {
-    let mut res = parser::Tokens::default();
+pub(crate) fn to_parser_input(buffer: &TokenBuffer) -> parser::Input {
+    let mut res = parser::Input::default();
 
     let mut current = buffer.begin();
 

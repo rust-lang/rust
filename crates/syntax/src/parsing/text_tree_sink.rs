@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use parser::{LexedStr, ParseError, TreeSink};
+use parser::LexedStr;
 
 use crate::{
     ast,
@@ -12,10 +12,37 @@ use crate::{
     SyntaxTreeBuilder, TextRange,
 };
 
-/// Bridges the parser with our specific syntax tree representation.
-///
-/// `TextTreeSink` also handles attachment of trivia (whitespace) to nodes.
-pub(crate) struct TextTreeSink<'a> {
+pub(crate) fn build_tree(
+    lexed: LexedStr<'_>,
+    parser_output: parser::Output,
+    synthetic_root: bool,
+) -> (GreenNode, Vec<SyntaxError>, bool) {
+    let mut builder = Builder::new(lexed);
+
+    if synthetic_root {
+        builder.enter(SyntaxKind::SOURCE_FILE);
+    }
+
+    for event in parser_output.iter() {
+        match event {
+            parser::Step::Token { kind, n_input_tokens: n_raw_tokens } => {
+                builder.token(kind, n_raw_tokens)
+            }
+            parser::Step::Enter { kind } => builder.enter(kind),
+            parser::Step::Exit => builder.exit(),
+            parser::Step::Error { msg } => {
+                let text_pos = builder.lexed.text_start(builder.pos).try_into().unwrap();
+                builder.inner.error(msg.to_string(), text_pos);
+            }
+        }
+    }
+    if synthetic_root {
+        builder.exit()
+    }
+    builder.build()
+}
+
+struct Builder<'a> {
     lexed: LexedStr<'a>,
     pos: usize,
     state: State,
@@ -28,61 +55,12 @@ enum State {
     PendingFinish,
 }
 
-impl<'a> TreeSink for TextTreeSink<'a> {
-    fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
-        match mem::replace(&mut self.state, State::Normal) {
-            State::PendingStart => unreachable!(),
-            State::PendingFinish => self.inner.finish_node(),
-            State::Normal => (),
-        }
-        self.eat_trivias();
-        self.do_token(kind, n_tokens as usize);
-    }
-
-    fn start_node(&mut self, kind: SyntaxKind) {
-        match mem::replace(&mut self.state, State::Normal) {
-            State::PendingStart => {
-                self.inner.start_node(kind);
-                // No need to attach trivias to previous node: there is no
-                // previous node.
-                return;
-            }
-            State::PendingFinish => self.inner.finish_node(),
-            State::Normal => (),
-        }
-
-        let n_trivias =
-            (self.pos..self.lexed.len()).take_while(|&it| self.lexed.kind(it).is_trivia()).count();
-        let leading_trivias = self.pos..self.pos + n_trivias;
-        let n_attached_trivias = n_attached_trivias(
-            kind,
-            leading_trivias.rev().map(|it| (self.lexed.kind(it), self.lexed.text(it))),
-        );
-        self.eat_n_trivias(n_trivias - n_attached_trivias);
-        self.inner.start_node(kind);
-        self.eat_n_trivias(n_attached_trivias);
-    }
-
-    fn finish_node(&mut self) {
-        match mem::replace(&mut self.state, State::PendingFinish) {
-            State::PendingStart => unreachable!(),
-            State::PendingFinish => self.inner.finish_node(),
-            State::Normal => (),
-        }
-    }
-
-    fn error(&mut self, error: ParseError) {
-        let text_pos = self.lexed.text_start(self.pos).try_into().unwrap();
-        self.inner.error(error, text_pos);
-    }
-}
-
-impl<'a> TextTreeSink<'a> {
-    pub(super) fn new(lexed: parser::LexedStr<'a>) -> Self {
+impl<'a> Builder<'a> {
+    fn new(lexed: parser::LexedStr<'a>) -> Self {
         Self { lexed, pos: 0, state: State::PendingStart, inner: SyntaxTreeBuilder::default() }
     }
 
-    pub(super) fn finish_eof(mut self) -> (GreenNode, Vec<SyntaxError>, bool) {
+    fn build(mut self) -> (GreenNode, Vec<SyntaxError>, bool) {
         match mem::replace(&mut self.state, State::Normal) {
             State::PendingFinish => {
                 self.eat_trivias();
@@ -106,9 +84,46 @@ impl<'a> TextTreeSink<'a> {
         (node, errors, is_eof)
     }
 
-    pub(super) fn finish(self) -> (GreenNode, Vec<SyntaxError>) {
-        let (node, errors, _eof) = self.finish_eof();
-        (node, errors)
+    fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
+        match mem::replace(&mut self.state, State::Normal) {
+            State::PendingStart => unreachable!(),
+            State::PendingFinish => self.inner.finish_node(),
+            State::Normal => (),
+        }
+        self.eat_trivias();
+        self.do_token(kind, n_tokens as usize);
+    }
+
+    fn enter(&mut self, kind: SyntaxKind) {
+        match mem::replace(&mut self.state, State::Normal) {
+            State::PendingStart => {
+                self.inner.start_node(kind);
+                // No need to attach trivias to previous node: there is no
+                // previous node.
+                return;
+            }
+            State::PendingFinish => self.inner.finish_node(),
+            State::Normal => (),
+        }
+
+        let n_trivias =
+            (self.pos..self.lexed.len()).take_while(|&it| self.lexed.kind(it).is_trivia()).count();
+        let leading_trivias = self.pos..self.pos + n_trivias;
+        let n_attached_trivias = n_attached_trivias(
+            kind,
+            leading_trivias.rev().map(|it| (self.lexed.kind(it), self.lexed.text(it))),
+        );
+        self.eat_n_trivias(n_trivias - n_attached_trivias);
+        self.inner.start_node(kind);
+        self.eat_n_trivias(n_attached_trivias);
+    }
+
+    fn exit(&mut self) {
+        match mem::replace(&mut self.state, State::PendingFinish) {
+            State::PendingStart => unreachable!(),
+            State::PendingFinish => self.inner.finish_node(),
+            State::Normal => (),
+        }
     }
 
     fn eat_trivias(&mut self) {

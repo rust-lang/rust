@@ -1,6 +1,5 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
-use parser::{ParseError, TreeSink};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
@@ -11,7 +10,7 @@ use syntax::{
 use tt::buffer::{Cursor, TokenBuffer};
 
 use crate::{
-    to_parser_tokens::to_parser_tokens, tt_iter::TtIter, ExpandError, ParserEntryPoint, TokenMap,
+    to_parser_input::to_parser_input, tt_iter::TtIter, ExpandError, ParserEntryPoint, TokenMap,
 };
 
 /// Convert the syntax node to a `TokenTree` (what macro
@@ -55,9 +54,19 @@ pub fn token_tree_to_syntax_node(
         }
         _ => TokenBuffer::from_subtree(tt),
     };
-    let parser_tokens = to_parser_tokens(&buffer);
+    let parser_input = to_parser_input(&buffer);
+    let parser_output = parser::parse(&parser_input, entry_point);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
-    parser::parse(&parser_tokens, &mut tree_sink, entry_point);
+    for event in parser_output.iter() {
+        match event {
+            parser::Step::Token { kind, n_input_tokens: n_raw_tokens } => {
+                tree_sink.token(kind, n_raw_tokens)
+            }
+            parser::Step::Enter { kind } => tree_sink.start_node(kind),
+            parser::Step::Exit => tree_sink.finish_node(),
+            parser::Step::Error { msg } => tree_sink.error(msg.to_string()),
+        }
+    }
     if tree_sink.roots.len() != 1 {
         return Err(ExpandError::ConversionError);
     }
@@ -643,7 +652,7 @@ fn delim_to_str(d: tt::DelimiterKind, closing: bool) -> &'static str {
     &texts[idx..texts.len() - (1 - idx)]
 }
 
-impl<'a> TreeSink for TtTreeSink<'a> {
+impl<'a> TtTreeSink<'a> {
     fn token(&mut self, kind: SyntaxKind, mut n_tokens: u8) {
         if kind == LIFETIME_IDENT {
             n_tokens = 2;
@@ -741,7 +750,7 @@ impl<'a> TreeSink for TtTreeSink<'a> {
         *self.roots.last_mut().unwrap() -= 1;
     }
 
-    fn error(&mut self, error: ParseError) {
+    fn error(&mut self, error: String) {
         self.inner.error(error, self.text_pos)
     }
 }
