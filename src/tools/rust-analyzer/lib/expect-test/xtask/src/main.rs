@@ -1,6 +1,6 @@
 use std::env;
 
-use xaction::{cargo_toml, cmd, cp, git, push_rustup_toolchain, rm_rf, section, Result};
+use xaction::{cargo_toml, cmd, git, push_rustup_toolchain, section, Result};
 
 const MSRV: &str = "1.45.0";
 
