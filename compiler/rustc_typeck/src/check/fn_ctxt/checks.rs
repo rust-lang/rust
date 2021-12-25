@@ -315,13 +315,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         assert_eq!(expected_input_tys.len(), formal_input_tys.len());
 
+        let provided_arg_count: usize = provided_args.len();
+
         // Keep track of the fully coerced argument types
-        let mut final_arg_types: Vec<(usize, Ty<'_>, Ty<'_>)> = vec![];
+        let mut final_arg_types: Vec<Option<(Ty<'_>, Ty<'_>)>> = vec![None; provided_arg_count];
 
         // We introduce a helper function to demand that a given argument satisfy a given input
         // This is more complicated than just checking type equality, as arguments could be coerced
         // This version writes those types back so further type checking uses the narrowed types
-        let demand_compatible = |idx, final_arg_types: &mut Vec<(usize, Ty<'tcx>, Ty<'tcx>)>| {
+        let demand_compatible = |idx, final_arg_types: &mut Vec<Option<(Ty<'tcx>, Ty<'tcx>)>>| {
             let formal_input_ty: Ty<'tcx> = formal_input_tys[idx];
             let expected_input_ty: Ty<'tcx> = expected_input_tys[idx];
             let provided_arg = &provided_args[idx];
@@ -340,7 +342,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
 
             // Keep track of these for below
-            final_arg_types.push((idx, checked_ty, coerced_ty));
+            final_arg_types[idx] = Some((checked_ty, coerced_ty));
 
             // Cause selection errors caused by resolving a single argument to point at the
             // argument and not the call. This is otherwise redundant with the `demand_coerce`
@@ -975,7 +977,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn point_at_arg_instead_of_call_if_possible(
         &self,
         errors: &mut Vec<traits::FulfillmentError<'tcx>>,
-        final_arg_types: &[(usize, Ty<'tcx>, Ty<'tcx>)],
+        final_arg_types: &[Option<(Ty<'tcx>, Ty<'tcx>)>],
         expr: &'tcx hir::Expr<'tcx>,
         call_sp: Span,
         args: &'tcx [hir::Expr<'tcx>],
@@ -1030,8 +1032,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `FulfillmentError`.
             let mut referenced_in = final_arg_types
                 .iter()
-                .map(|&(i, checked_ty, _)| (i, checked_ty))
-                .chain(final_arg_types.iter().map(|&(i, _, coerced_ty)| (i, coerced_ty)))
+                .enumerate()
+                .filter_map(|(i, arg)| match arg {
+                    Some((checked_ty, coerce_ty)) => Some([(i, *checked_ty), (i, *coerce_ty)]),
+                    _ => None,
+                })
+                .flatten()
                 .flat_map(|(i, ty)| {
                     let ty = self.resolve_vars_if_possible(ty);
                     // We walk the argument type because the argument's type could have
