@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::default::Default;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::lazy::SyncOnceCell as OnceCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -904,7 +904,7 @@ impl<I: Iterator<Item = ast::NestedMetaItem> + IntoIterator<Item = ast::NestedMe
 /// Included files are kept separate from inline doc comments so that proper line-number
 /// information can be given when a doctest fails. Sugared doc comments and "raw" doc comments are
 /// kept separate because of issue #42760.
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 crate struct DocFragment {
     crate span: rustc_span::Span,
     /// The module this doc-comment came from.
@@ -1139,15 +1139,6 @@ impl PartialEq for Attributes {
 }
 
 impl Eq for Attributes {}
-
-impl Hash for Attributes {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.doc_strings.hash(hasher);
-        for attr in &self.other_attrs {
-            attr.id.hash(hasher);
-        }
-    }
-}
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericBound {
