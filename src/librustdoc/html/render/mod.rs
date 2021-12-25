@@ -1105,12 +1105,18 @@ fn render_assoc_items_inner(
     }
 
     if !traits.is_empty() {
-        let deref_impl =
-            traits.iter().find(|t| t.trait_did() == cx.tcx().lang_items().deref_trait());
-        if let Some(impl_) = deref_impl {
-            let has_deref_mut =
-                traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
-            render_deref_methods(w, cx, impl_, containing_item, has_deref_mut, derefs);
+        let mut deref_methods = |w: &mut Buffer| {
+            let deref_impl =
+                traits.iter().find(|t| t.trait_did() == cx.tcx().lang_items().deref_trait());
+            if let Some(impl_) = deref_impl {
+                let has_deref_mut =
+                    traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+                render_deref_methods(w, cx, impl_, containing_item, has_deref_mut, derefs);
+            }
+        };
+
+        if !cx.shared.show_deref_methods_last {
+            deref_methods(w);
         }
 
         // If we were already one level into rendering deref methods, we don't want to render
@@ -1160,6 +1166,10 @@ fn render_assoc_items_inner(
             );
             render_impls(cx, w, &blanket_impl, containing_item);
             w.write_str("</div>");
+        }
+
+        if cx.shared.show_deref_methods_last {
+            deref_methods(w);
         }
     }
 }
@@ -2003,12 +2013,18 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
         }
 
         if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
-            if let Some(impl_) =
-                v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
-            {
-                let mut derefs = FxHashSet::default();
-                derefs.insert(did);
-                sidebar_deref_methods(cx, out, impl_, v, &mut derefs);
+            let deref_methods = |out: &mut Buffer| {
+                if let Some(impl_) =
+                    v.iter().find(|i| i.trait_did() == cx.tcx().lang_items().deref_trait())
+                {
+                    let mut derefs = FxHashSet::default();
+                    derefs.insert(did);
+                    sidebar_deref_methods(cx, out, impl_, v, &mut derefs);
+                }
+            };
+
+            if !cx.shared.show_deref_methods_last {
+                deref_methods(out);
             }
 
             let format_impls = |impls: Vec<&Impl>| {
@@ -2076,6 +2092,10 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                         Blanket Implementations</a></h3>",
                 );
                 write_sidebar_links(out, blanket_format);
+            }
+
+            if cx.shared.show_deref_methods_last {
+                deref_methods(out);
             }
         }
     }

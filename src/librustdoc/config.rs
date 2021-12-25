@@ -276,6 +276,8 @@ crate struct RenderOptions {
     crate call_locations: AllCallLocations,
     /// If `true`, Context::init will not emit shared files.
     crate no_emit_shared: bool,
+    /// If `true`, "Methods From Deref" will be displayed after all other sections.
+    crate show_deref_methods_last: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -658,6 +660,7 @@ impl Options {
         let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
         let extern_html_root_takes_precedence =
             matches.opt_present("extern-html-root-takes-precedence");
+        let show_deref_methods_last = matches.opt_present("show-deref-methods-last");
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
             diag.struct_err(
@@ -736,6 +739,7 @@ impl Options {
                 generate_link_to_definition,
                 call_locations,
                 no_emit_shared: false,
+                show_deref_methods_last,
             },
             crate_name,
             output_format,

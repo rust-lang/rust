@@ -626,6 +626,13 @@ fn opts() -> Vec<RustcOptGroup> {
                 "path to function call information (for displaying examples in the documentation)",
             )
         }),
+        unstable("show-deref-methods-last", |o| {
+            o.optflagmulti(
+                "",
+                "show-deref-methods-last",
+                "display trait implementations before methods from deref",
+            )
+        }),
         // deprecated / removed options
         stable("plugin-path", |o| {
             o.optmulti(

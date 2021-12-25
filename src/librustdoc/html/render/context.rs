@@ -127,6 +127,8 @@ crate struct SharedContext<'tcx> {
     crate cache: Cache,
 
     crate call_locations: AllCallLocations,
+    /// If `true`, "Methods From Deref" will be displayed after all other sections.
+    crate show_deref_methods_last: bool,
 }
 
 impl SharedContext<'_> {
@@ -398,6 +400,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_link_to_definition,
             call_locations,
             no_emit_shared,
+            show_deref_methods_last,
             ..
         } = options;
 
@@ -485,6 +488,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             span_correspondance_map: matches,
             cache,
             call_locations,
+            show_deref_methods_last,
         };
 
         // Add the default themes to the `Vec` of stylepaths
