@@ -24,8 +24,8 @@ mod syntax_kind;
 mod event;
 mod parser;
 mod grammar;
-mod tokens;
-mod tree_traversal;
+mod input;
+mod output;
 
 #[cfg(test)]
 mod tests;
@@ -33,10 +33,10 @@ mod tests;
 pub(crate) use token_set::TokenSet;
 
 pub use crate::{
+    input::Input,
     lexed_str::LexedStr,
+    output::{Output, Step},
     syntax_kind::SyntaxKind,
-    tokens::Tokens,
-    tree_traversal::{TraversalStep, TreeTraversal},
 };
 
 /// rust-analyzer parser allows you to choose one of the possible entry points.
@@ -62,11 +62,19 @@ pub enum ParserEntryPoint {
 }
 
 /// Parse given tokens into the given sink as a rust file.
-pub fn parse_source_file(tokens: &Tokens) -> TreeTraversal {
-    parse(tokens, ParserEntryPoint::SourceFile)
+pub fn parse_source_file(inp: &Input) -> Output {
+    parse(inp, ParserEntryPoint::SourceFile)
 }
 
-pub fn parse(tokens: &Tokens, entry_point: ParserEntryPoint) -> TreeTraversal {
+/// Parses the given [`Input`] into [`Output`] assuming that the top-level
+/// syntactic construct is the given [`ParserEntryPoint`].
+///
+/// Both input and output here are fairly abstract. The overall flow is that the
+/// caller has some "real" tokens, converts them to [`Input`], parses them to
+/// [`Output`], and then converts that into a "real" tree. The "real" tree is
+/// made of "real" tokens, so this all hinges on rather tight coordination of
+/// indices between the four stages.
+pub fn parse(inp: &Input, entry_point: ParserEntryPoint) -> Output {
     let entry_point: fn(&'_ mut parser::Parser) = match entry_point {
         ParserEntryPoint::SourceFile => grammar::entry_points::source_file,
         ParserEntryPoint::Path => grammar::entry_points::path,
@@ -84,7 +92,7 @@ pub fn parse(tokens: &Tokens, entry_point: ParserEntryPoint) -> TreeTraversal {
         ParserEntryPoint::Attr => grammar::entry_points::attr,
     };
 
-    let mut p = parser::Parser::new(tokens);
+    let mut p = parser::Parser::new(inp);
     entry_point(&mut p);
     let events = p.finish();
     event::process(events)
@@ -107,7 +115,7 @@ impl Reparser {
     ///
     /// Tokens must start with `{`, end with `}` and form a valid brace
     /// sequence.
-    pub fn parse(self, tokens: &Tokens) -> TreeTraversal {
+    pub fn parse(self, tokens: &Input) -> Output {
         let Reparser(r) = self;
         let mut p = parser::Parser::new(tokens);
         r(&mut p);

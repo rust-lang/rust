@@ -7,7 +7,7 @@ use limit::Limit;
 
 use crate::{
     event::Event,
-    tokens::Tokens,
+    input::Input,
     SyntaxKind::{self, EOF, ERROR, TOMBSTONE},
     TokenSet, T,
 };
@@ -22,7 +22,7 @@ use crate::{
 /// "start expression, consume number literal,
 /// finish expression". See `Event` docs for more.
 pub(crate) struct Parser<'t> {
-    tokens: &'t Tokens,
+    inp: &'t Input,
     pos: usize,
     events: Vec<Event>,
     steps: Cell<u32>,
@@ -31,8 +31,8 @@ pub(crate) struct Parser<'t> {
 static PARSER_STEP_LIMIT: Limit = Limit::new(15_000_000);
 
 impl<'t> Parser<'t> {
-    pub(super) fn new(tokens: &'t Tokens) -> Parser<'t> {
-        Parser { tokens, pos: 0, events: Vec::new(), steps: Cell::new(0) }
+    pub(super) fn new(inp: &'t Input) -> Parser<'t> {
+        Parser { inp, pos: 0, events: Vec::new(), steps: Cell::new(0) }
     }
 
     pub(crate) fn finish(self) -> Vec<Event> {
@@ -55,7 +55,7 @@ impl<'t> Parser<'t> {
         assert!(PARSER_STEP_LIMIT.check(steps as usize).is_ok(), "the parser seems stuck");
         self.steps.set(steps + 1);
 
-        self.tokens.kind(self.pos + n)
+        self.inp.kind(self.pos + n)
     }
 
     /// Checks if the current token is `kind`.
@@ -91,7 +91,7 @@ impl<'t> Parser<'t> {
             T![<<=] => self.at_composite3(n, T![<], T![<], T![=]),
             T![>>=] => self.at_composite3(n, T![>], T![>], T![=]),
 
-            _ => self.tokens.kind(self.pos + n) == kind,
+            _ => self.inp.kind(self.pos + n) == kind,
         }
     }
 
@@ -130,17 +130,17 @@ impl<'t> Parser<'t> {
     }
 
     fn at_composite2(&self, n: usize, k1: SyntaxKind, k2: SyntaxKind) -> bool {
-        self.tokens.kind(self.pos + n) == k1
-            && self.tokens.kind(self.pos + n + 1) == k2
-            && self.tokens.is_joint(self.pos + n)
+        self.inp.kind(self.pos + n) == k1
+            && self.inp.kind(self.pos + n + 1) == k2
+            && self.inp.is_joint(self.pos + n)
     }
 
     fn at_composite3(&self, n: usize, k1: SyntaxKind, k2: SyntaxKind, k3: SyntaxKind) -> bool {
-        self.tokens.kind(self.pos + n) == k1
-            && self.tokens.kind(self.pos + n + 1) == k2
-            && self.tokens.kind(self.pos + n + 2) == k3
-            && self.tokens.is_joint(self.pos + n)
-            && self.tokens.is_joint(self.pos + n + 1)
+        self.inp.kind(self.pos + n) == k1
+            && self.inp.kind(self.pos + n + 1) == k2
+            && self.inp.kind(self.pos + n + 2) == k3
+            && self.inp.is_joint(self.pos + n)
+            && self.inp.is_joint(self.pos + n + 1)
     }
 
     /// Checks if the current token is in `kinds`.
@@ -150,7 +150,7 @@ impl<'t> Parser<'t> {
 
     /// Checks if the current token is contextual keyword with text `t`.
     pub(crate) fn at_contextual_kw(&self, kw: SyntaxKind) -> bool {
-        self.tokens.contextual_kind(self.pos) == kw
+        self.inp.contextual_kind(self.pos) == kw
     }
 
     /// Starts a new node in the syntax tree. All nodes and tokens

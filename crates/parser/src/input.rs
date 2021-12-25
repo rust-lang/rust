@@ -1,26 +1,26 @@
-//! Input for the parser -- a sequence of tokens.
-//!
-//! As of now, parser doesn't have access to the *text* of the tokens, and makes
-//! decisions based solely on their classification. Unlike `LexerToken`, the
-//! `Tokens` doesn't include whitespace and comments.
+//! See [`Input`].
 
 use crate::SyntaxKind;
 
 #[allow(non_camel_case_types)]
 type bits = u64;
 
-/// Main input to the parser.
+/// Input for the parser -- a sequence of tokens.
 ///
-/// A sequence of tokens represented internally as a struct of arrays.
+/// As of now, parser doesn't have access to the *text* of the tokens, and makes
+/// decisions based solely on their classification. Unlike `LexerToken`, the
+/// `Tokens` doesn't include whitespace and comments. Main input to the parser.
+///
+/// Struct of arrays internally, but this shouldn't really matter.
 #[derive(Default)]
-pub struct Tokens {
+pub struct Input {
     kind: Vec<SyntaxKind>,
     joint: Vec<bits>,
     contextual_kind: Vec<SyntaxKind>,
 }
 
 /// `pub` impl used by callers to create `Tokens`.
-impl Tokens {
+impl Input {
     #[inline]
     pub fn push(&mut self, kind: SyntaxKind) {
         self.push_impl(kind, SyntaxKind::EOF)
@@ -63,7 +63,7 @@ impl Tokens {
 }
 
 /// pub(crate) impl used by the parser to consume `Tokens`.
-impl Tokens {
+impl Input {
     pub(crate) fn kind(&self, idx: usize) -> SyntaxKind {
         self.kind.get(idx).copied().unwrap_or(SyntaxKind::EOF)
     }
@@ -76,7 +76,7 @@ impl Tokens {
     }
 }
 
-impl Tokens {
+impl Input {
     fn bit_index(&self, n: usize) -> (usize, usize) {
         let idx = n / (bits::BITS as usize);
         let b_idx = n % (bits::BITS as usize);

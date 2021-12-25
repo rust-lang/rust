@@ -89,7 +89,7 @@ fn reparse_block(
     let text = get_text_after_edit(node.clone().into(), edit);
 
     let lexed = parser::LexedStr::new(text.as_str());
-    let parser_tokens = lexed.to_tokens();
+    let parser_input = lexed.to_input();
     if !is_balanced(&lexed) {
         return None;
     }

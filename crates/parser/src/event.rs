@@ -10,7 +10,7 @@
 use std::mem;
 
 use crate::{
-    tree_traversal::TreeTraversal,
+    output::Output,
     SyntaxKind::{self, *},
 };
 
@@ -87,8 +87,8 @@ impl Event {
 }
 
 /// Generate the syntax tree with the control of events.
-pub(super) fn process(mut events: Vec<Event>) -> TreeTraversal {
-    let mut res = TreeTraversal::default();
+pub(super) fn process(mut events: Vec<Event>) -> Output {
+    let mut res = Output::default();
     let mut forward_parents = Vec::new();
 
     for i in 0..events.len() {

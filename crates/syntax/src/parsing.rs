@@ -12,9 +12,9 @@ pub(crate) use crate::parsing::reparsing::incremental_reparse;
 
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let lexed = parser::LexedStr::new(text);
-    let parser_tokens = lexed.to_tokens();
-    let tree_traversal = parser::parse_source_file(&parser_tokens);
-    let (node, errors, _eof) = build_tree(lexed, tree_traversal, false);
+    let parser_input = lexed.to_input();
+    let parser_output = parser::parse_source_file(&parser_input);
+    let (node, errors, _eof) = build_tree(lexed, parser_output, false);
     (node, errors)
 }
 
@@ -27,9 +27,9 @@ pub(crate) fn parse_text_as<T: AstNode>(
     if lexed.errors().next().is_some() {
         return Err(());
     }
-    let parser_tokens = lexed.to_tokens();
-    let tree_traversal = parser::parse(&parser_tokens, entry_point);
-    let (node, errors, eof) = build_tree(lexed, tree_traversal, true);
+    let parser_input = lexed.to_input();
+    let parser_output = parser::parse(&parser_input, entry_point);
+    let (node, errors, eof) = build_tree(lexed, parser_output, true);
 
     if !errors.is_empty() || !eof {
         return Err(());

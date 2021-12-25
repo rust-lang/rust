@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use parser::{LexedStr, TreeTraversal};
+use parser::LexedStr;
 
 use crate::{
     ast,
@@ -14,7 +14,7 @@ use crate::{
 
 pub(crate) fn build_tree(
     lexed: LexedStr<'_>,
-    tree_traversal: TreeTraversal,
+    parser_output: parser::Output,
     synthetic_root: bool,
 ) -> (GreenNode, Vec<SyntaxError>, bool) {
     let mut builder = TextTreeSink::new(lexed);
@@ -23,14 +23,14 @@ pub(crate) fn build_tree(
         builder.start_node(SyntaxKind::SOURCE_FILE);
     }
 
-    for event in tree_traversal.iter() {
+    for event in parser_output.iter() {
         match event {
-            parser::TraversalStep::Token { kind, n_raw_tokens } => {
+            parser::Step::Token { kind, n_input_tokens: n_raw_tokens } => {
                 builder.token(kind, n_raw_tokens)
             }
-            parser::TraversalStep::EnterNode { kind } => builder.start_node(kind),
-            parser::TraversalStep::LeaveNode => builder.finish_node(),
-            parser::TraversalStep::Error { msg } => {
+            parser::Step::Enter { kind } => builder.start_node(kind),
+            parser::Step::Exit => builder.finish_node(),
+            parser::Step::Error { msg } => {
                 let text_pos = builder.lexed.text_start(builder.pos).try_into().unwrap();
                 builder.inner.error(msg.to_string(), text_pos);
             }
@@ -45,7 +45,7 @@ pub(crate) fn build_tree(
 /// Bridges the parser with our specific syntax tree representation.
 ///
 /// `TextTreeSink` also handles attachment of trivia (whitespace) to nodes.
-pub(crate) struct TextTreeSink<'a> {
+struct TextTreeSink<'a> {
     lexed: LexedStr<'a>,
     pos: usize,
     state: State,

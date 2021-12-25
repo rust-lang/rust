@@ -122,8 +122,8 @@ impl<'a> LexedStr<'a> {
         self.error.iter().map(|it| (it.token as usize, it.msg.as_str()))
     }
 
-    pub fn to_tokens(&self) -> crate::Tokens {
-        let mut res = crate::Tokens::default();
+    pub fn to_input(&self) -> crate::Input {
+        let mut res = crate::Input::default();
         let mut was_joint = false;
         for i in 0..self.len() {
             let kind = self.kind(i);

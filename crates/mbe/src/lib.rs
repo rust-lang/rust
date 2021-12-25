@@ -10,7 +10,7 @@ mod parser;
 mod expander;
 mod syntax_bridge;
 mod tt_iter;
-mod to_parser_tokens;
+mod to_parser_input;
 
 #[cfg(test)]
 mod benchmark;

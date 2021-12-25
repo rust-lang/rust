@@ -10,7 +10,7 @@ use syntax::{
 use tt::buffer::{Cursor, TokenBuffer};
 
 use crate::{
-    to_parser_tokens::to_parser_tokens, tt_iter::TtIter, ExpandError, ParserEntryPoint, TokenMap,
+    to_parser_input::to_parser_input, tt_iter::TtIter, ExpandError, ParserEntryPoint, TokenMap,
 };
 
 /// Convert the syntax node to a `TokenTree` (what macro
@@ -54,17 +54,17 @@ pub fn token_tree_to_syntax_node(
         }
         _ => TokenBuffer::from_subtree(tt),
     };
-    let parser_tokens = to_parser_tokens(&buffer);
-    let tree_traversal = parser::parse(&parser_tokens, entry_point);
+    let parser_input = to_parser_input(&buffer);
+    let parser_output = parser::parse(&parser_input, entry_point);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
-    for event in tree_traversal.iter() {
+    for event in parser_output.iter() {
         match event {
-            parser::TraversalStep::Token { kind, n_raw_tokens } => {
+            parser::Step::Token { kind, n_input_tokens: n_raw_tokens } => {
                 tree_sink.token(kind, n_raw_tokens)
             }
-            parser::TraversalStep::EnterNode { kind } => tree_sink.start_node(kind),
-            parser::TraversalStep::LeaveNode => tree_sink.finish_node(),
-            parser::TraversalStep::Error { msg } => tree_sink.error(msg.to_string()),
+            parser::Step::Enter { kind } => tree_sink.start_node(kind),
+            parser::Step::Exit => tree_sink.finish_node(),
+            parser::Step::Error { msg } => tree_sink.error(msg.to_string()),
         }
     }
     if tree_sink.roots.len() != 1 {

@@ -1,7 +1,7 @@
 //! A "Parser" structure for token trees. We use this when parsing a declarative
 //! macro definition into a list of patterns and templates.
 
-use crate::{to_parser_tokens::to_parser_tokens, ExpandError, ExpandResult, ParserEntryPoint};
+use crate::{to_parser_input::to_parser_input, ExpandError, ExpandResult, ParserEntryPoint};
 
 use syntax::SyntaxKind;
 use tt::buffer::TokenBuffer;
@@ -94,23 +94,23 @@ impl<'a> TtIter<'a> {
         entry_point: ParserEntryPoint,
     ) -> ExpandResult<Option<tt::TokenTree>> {
         let buffer = TokenBuffer::from_tokens(self.inner.as_slice());
-        let parser_tokens = to_parser_tokens(&buffer);
-        let tree_traversal = parser::parse(&parser_tokens, entry_point);
+        let parser_input = to_parser_input(&buffer);
+        let tree_traversal = parser::parse(&parser_input, entry_point);
 
         let mut cursor = buffer.begin();
         let mut error = false;
         for step in tree_traversal.iter() {
             match step {
-                parser::TraversalStep::Token { kind, mut n_raw_tokens } => {
+                parser::Step::Token { kind, mut n_input_tokens } => {
                     if kind == SyntaxKind::LIFETIME_IDENT {
-                        n_raw_tokens = 2;
+                        n_input_tokens = 2;
                     }
-                    for _ in 0..n_raw_tokens {
+                    for _ in 0..n_input_tokens {
                         cursor = cursor.bump_subtree();
                     }
                 }
-                parser::TraversalStep::EnterNode { .. } | parser::TraversalStep::LeaveNode => (),
-                parser::TraversalStep::Error { .. } => error = true,
+                parser::Step::Enter { .. } | parser::Step::Exit => (),
+                parser::Step::Error { .. } => error = true,
             }
         }
 
