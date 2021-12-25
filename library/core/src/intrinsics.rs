@@ -1918,6 +1918,12 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub fn const_allocate(size: usize, align: usize) -> *mut u8;
 
+    /// Deallocate a memory which allocated by `intrinsics::const_allocate` at compile time.
+    /// Should not be called at runtime.
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    #[cfg(not(bootstrap))]
+    pub fn const_deallocate(ptr: *mut u8, size: usize, align: usize);
+
     /// Determines whether the raw bytes of the two values are equal.
     ///
     /// This is particularly handy for arrays, since it allows things like just
