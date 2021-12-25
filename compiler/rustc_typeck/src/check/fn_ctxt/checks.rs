@@ -321,6 +321,55 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut final_arg_types: Vec<(usize, Ty<'_>, Ty<'_>)> = vec![];
 
+        // We introduce a helper function to demand that a given argument satisfy a given input
+        // This is more complicated than just checking type equality, as arguments could be coerced
+        // This version writes those types back so further type checking uses the narrowed types
+        let demand_compatible = |idx, final_arg_types: &mut Vec<(usize, Ty<'tcx>, Ty<'tcx>)>| {
+            let formal_input_ty: Ty<'tcx> = formal_input_tys[idx];
+            let expected_input_ty: Ty<'tcx> = expected_input_tys[idx];
+            let provided_arg = &provided_args[idx];
+
+            debug!("checking argument {}: {:?} = {:?}", idx, provided_arg, formal_input_ty);
+
+            // The special-cased logic below has three functions:
+            // 1. Provide as good of an expected type as possible.
+            let expectation = Expectation::rvalue_hint(self, expected_input_ty);
+
+            let checked_ty = self.check_expr_with_expectation(provided_arg, expectation);
+
+            // 2. Coerce to the most detailed type that could be coerced
+            //    to, which is `expected_ty` if `rvalue_hint` returns an
+            //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
+            let coerced_ty = expectation.only_has_type(self).unwrap_or(formal_input_ty);
+
+            // Keep track of these for below
+            final_arg_types.push((idx, checked_ty, coerced_ty));
+
+            // Cause selection errors caused by resolving a single argument to point at the
+            // argument and not the call. This is otherwise redundant with the `demand_coerce`
+            // call immediately after, but it lets us customize the span pointed to in the
+            // fulfillment error to be more accurate.
+            let _ =
+                self.resolve_vars_with_obligations_and_mutate_fulfillment(coerced_ty, |errors| {
+                    self.point_at_type_arg_instead_of_call_if_possible(errors, call_expr);
+                    self.point_at_arg_instead_of_call_if_possible(
+                        errors,
+                        &final_arg_types,
+                        call_expr,
+                        call_span,
+                        provided_args,
+                    );
+                });
+
+            // We're processing function arguments so we definitely want to use
+            // two-phase borrows.
+            self.demand_coerce(&provided_arg, checked_ty, coerced_ty, None, AllowTwoPhase::Yes);
+
+            // 3. Relate the expected type and the formal one,
+            //    if the expected type was used for the coercion.
+            self.demand_suptype(provided_arg.span, formal_input_ty, coerced_ty);
+        };
+
         // Check the arguments.
         // We do this in a pretty awful way: first we type-check any arguments
         // that are not closures, then we type-check the closures. This is so
@@ -369,47 +418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
-                let formal_ty = formal_input_tys[i];
-                debug!("checking argument {}: {:?} = {:?}", i, arg, formal_ty);
-
-                // The special-cased logic below has three functions:
-                // 1. Provide as good of an expected type as possible.
-                let expected = Expectation::rvalue_hint(self, expected_input_tys[i]);
-
-                let checked_ty = self.check_expr_with_expectation(&arg, expected);
-
-                // 2. Coerce to the most detailed type that could be coerced
-                //    to, which is `expected_ty` if `rvalue_hint` returns an
-                //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
-                let coerce_ty = expected.only_has_type(self).unwrap_or(formal_ty);
-
-                final_arg_types.push((i, checked_ty, coerce_ty));
-
-                // Cause selection errors caused by resolving a single argument to point at the
-                // argument and not the call. This is otherwise redundant with the `demand_coerce`
-                // call immediately after, but it lets us customize the span pointed to in the
-                // fulfillment error to be more accurate.
-                let _ = self.resolve_vars_with_obligations_and_mutate_fulfillment(
-                    coerce_ty,
-                    |errors| {
-                        self.point_at_type_arg_instead_of_call_if_possible(errors, call_expr);
-                        self.point_at_arg_instead_of_call_if_possible(
-                            errors,
-                            &final_arg_types,
-                            call_expr,
-                            call_span,
-                            provided_args,
-                        );
-                    },
-                );
-
-                // We're processing function arguments so we definitely want to use
-                // two-phase borrows.
-                self.demand_coerce(&arg, checked_ty, coerce_ty, None, AllowTwoPhase::Yes);
-
-                // 3. Relate the expected type and the formal one,
-                //    if the expected type was used for the coercion.
-                self.demand_suptype(arg.span, formal_ty, coerce_ty);
+                demand_compatible(i, &mut final_arg_types);
             }
         }
 
