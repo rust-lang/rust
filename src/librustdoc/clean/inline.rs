@@ -17,7 +17,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::clean::{
     self, clean_fn_decl_from_did_and_sig, clean_ty_generics, utils, Attributes, AttributesExt,
-    Clean, ImplKind, ItemId, NestedAttributesExt, Type, Visibility,
+    Clean, ImplKind, ItemId, Type, Visibility,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -421,7 +421,7 @@ crate fn build_impl(
                                 associated_trait.def_id,
                             )
                             .unwrap(); // SAFETY: For all impl items there exists trait item that has the same name.
-                        !tcx.get_attrs(trait_item.def_id).lists(sym::doc).has_word(sym::hidden)
+                        !tcx.is_doc_hidden(trait_item.def_id)
                     } else {
                         true
                     }
@@ -456,7 +456,7 @@ crate fn build_impl(
     let mut stack: Vec<&Type> = vec![&for_];
 
     if let Some(did) = trait_.as_ref().map(|t| t.def_id()) {
-        if tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
+        if tcx.is_doc_hidden(did) {
             return;
         }
     }
@@ -466,7 +466,7 @@ crate fn build_impl(
 
     while let Some(ty) = stack.pop() {
         if let Some(did) = ty.def_id(&cx.cache) {
-            if tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden) {
+            if tcx.is_doc_hidden(did) {
                 return;
             }
         }
