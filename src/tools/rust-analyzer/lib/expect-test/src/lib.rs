@@ -284,8 +284,8 @@ impl Expect {
 
         let literal_start = literal_start + (lit_to_eof.len() - lit_to_eof_trimmed.len());
 
-        let literal_len = locate_end(lit_to_eof_trimmed)
-            .expect("Couldn't find matching `]]` for `expect![[`.");
+        let literal_len =
+            locate_end(lit_to_eof_trimmed).expect("Couldn't find matching `]]` for `expect![[`.");
         let literal_range = literal_start..literal_start + literal_len;
         Location { line_indent, literal_range }
     }
@@ -335,7 +335,9 @@ fn find_str_lit_len(str_lit_to_eof: &str) -> Option<usize> {
         '"' => Normal,
         'r' => {
             let (n, c) = try_find_n_hashes(&mut s, usize::MAX)?;
-            if c != Some('"') { return None; }
+            if c != Some('"') {
+                return None;
+            }
             Raw(n)
         }
         _ => return None,
@@ -345,11 +347,16 @@ fn find_str_lit_len(str_lit_to_eof: &str) -> Option<usize> {
     loop {
         let c = oldc.take().or_else(|| s.next())?;
         match (c, kind) {
-            ('\\', Normal) => { let _escaped = s.next()?; }
-            ('"', Normal | Raw(0)) => break,
+            ('\\', Normal) => {
+                let _escaped = s.next()?;
+            }
+            ('"', Normal) => break,
+            ('"', Raw(0)) => break,
             ('"', Raw(n)) => {
                 let (seen, c) = try_find_n_hashes(&mut s, n)?;
-                if seen == n { break; }
+                if seen == n {
+                    break;
+                }
                 oldc = c;
             }
             _ => {}
