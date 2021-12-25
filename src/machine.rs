@@ -323,6 +323,9 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Corresponds to -Zmiri-mute-stdout-stderr and doesn't write the output but acts as if it succeeded.
     pub(crate) mute_stdout_stderr: bool,
+
+    /// Whether weak memory emulation is enabled
+    pub(crate) weak_memory: bool,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
@@ -378,6 +381,7 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             check_alignment: config.check_alignment,
             cmpxchg_weak_failure_rate: config.cmpxchg_weak_failure_rate,
             mute_stdout_stderr: config.mute_stdout_stderr,
+            weak_memory: config.weak_memory_emulation,
         }
     }
 

@@ -318,6 +318,7 @@ fn main() {
             miri_config.stacked_borrows = false;
         } else if arg == "-Zmiri-disable-data-race-detector" {
             miri_config.data_race_detector = false;
+            miri_config.weak_memory_emulation = false;
         } else if arg == "-Zmiri-disable-alignment-check" {
             miri_config.check_alignment = miri::AlignmentCheck::None;
         } else if arg == "-Zmiri-symbolic-alignment-check" {
@@ -340,6 +341,8 @@ fn main() {
                 isolation_enabled = Some(false);
             }
             miri_config.isolated_op = miri::IsolatedOp::Allow;
+        } else if arg == "-Zmiri-disable-weak-memory-emulation" {
+            miri_config.weak_memory_emulation = false;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-isolation-error=") {
             if matches!(isolation_enabled, Some(false)) {
                 panic!("-Zmiri-isolation-error cannot be used along with -Zmiri-disable-isolation");
