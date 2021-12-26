@@ -132,10 +132,9 @@ impl Iterator for IndexRange {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let original_len = self.len();
-        self.take_prefix(n);
-        if n > original_len { Err(original_len) } else { Ok(()) }
+    fn advance_by(&mut self, n: usize) -> usize {
+        let taken = self.take_prefix(n);
+        n - taken.len()
     }
 }
 
@@ -151,10 +150,9 @@ impl DoubleEndedIterator for IndexRange {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        let original_len = self.len();
-        self.take_suffix(n);
-        if n > original_len { Err(original_len) } else { Ok(()) }
+    fn advance_back_by(&mut self, n: usize) -> usize {
+        let taken = self.take_suffix(n);
+        n - taken.len()
     }
 }
 

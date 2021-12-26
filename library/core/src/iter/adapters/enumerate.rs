@@ -114,17 +114,10 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        match self.iter.advance_by(n) {
-            ret @ Ok(_) => {
-                self.count += n;
-                ret
-            }
-            ret @ Err(advanced) => {
-                self.count += advanced;
-                ret
-            }
-        }
+    fn advance_by(&mut self, n: usize) -> usize {
+        let n = self.iter.advance_by(n);
+        self.count += n;
+        n
     }
 
     #[rustc_inherit_overflow_checks]
@@ -208,7 +201,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         // we do not need to update the count since that only tallies the number of items
         // consumed from the front. consuming items from the back can never reduce that.
         self.iter.advance_back_by(n)

@@ -54,14 +54,14 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> usize {
         if self.inner.len < n {
             let len = self.inner.len;
             self.inner.clear();
-            Err(len)
+            len - n
         } else {
             self.inner.drain(..n);
-            Ok(())
+            0
         }
     }
 
@@ -182,14 +182,14 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         let len = self.inner.len;
         if len >= n {
             self.inner.truncate(len - n);
-            Ok(())
+            0
         } else {
             self.inner.clear();
-            Err(len)
+            n - len
         }
     }
 

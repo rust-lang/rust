@@ -213,7 +213,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> usize {
         let step_size = self.len().min(n);
         let to_drop = ptr::slice_from_raw_parts_mut(self.ptr as *mut T, step_size);
         if T::IS_ZST {
@@ -227,10 +227,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         unsafe {
             ptr::drop_in_place(to_drop);
         }
-        if step_size < n {
-            return Err(step_size);
-        }
-        Ok(())
+        n - step_size
     }
 
     #[inline]
@@ -313,7 +310,7 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         let step_size = self.len().min(n);
         if T::IS_ZST {
             // SAFETY: same as for advance_by()
@@ -327,10 +324,7 @@ impl<T, A: Allocator> DoubleEndedIterator for IntoIter<T, A> {
         unsafe {
             ptr::drop_in_place(to_drop);
         }
-        if step_size < n {
-            return Err(step_size);
-        }
-        Ok(())
+        n - step_size
     }
 }
 

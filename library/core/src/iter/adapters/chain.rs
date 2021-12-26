@@ -95,38 +95,33 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let mut rem = n;
-
+    fn advance_by(&mut self, mut n: usize) -> usize {
         if let Some(ref mut a) = self.a {
-            match a.advance_by(rem) {
-                Ok(()) => return Ok(()),
-                Err(k) => rem -= k,
+            n = a.advance_by(n);
+            if n == 0 {
+                return n;
             }
             self.a = None;
         }
 
         if let Some(ref mut b) = self.b {
-            match b.advance_by(rem) {
-                Ok(()) => return Ok(()),
-                Err(k) => rem -= k,
-            }
+            n = b.advance_by(n);
             // we don't fuse the second iterator
         }
 
-        if rem == 0 { Ok(()) } else { Err(n - rem) }
+        n
     }
 
     #[inline]
     fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
         if let Some(ref mut a) = self.a {
-            match a.advance_by(n) {
-                Ok(()) => match a.next() {
-                    None => n = 0,
+            n = match a.advance_by(n) {
+                0 => match a.next() {
+                    None => 0,
                     x => return x,
                 },
-                Err(k) => n -= k,
-            }
+                k => k,
+            };
 
             self.a = None;
         }
@@ -186,38 +181,33 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        let mut rem = n;
-
+    fn advance_back_by(&mut self, mut n: usize) -> usize {
         if let Some(ref mut b) = self.b {
-            match b.advance_back_by(rem) {
-                Ok(()) => return Ok(()),
-                Err(k) => rem -= k,
+            n = b.advance_back_by(n);
+            if n == 0 {
+                return n;
             }
             self.b = None;
         }
 
         if let Some(ref mut a) = self.a {
-            match a.advance_back_by(rem) {
-                Ok(()) => return Ok(()),
-                Err(k) => rem -= k,
-            }
+            n = a.advance_back_by(n);
             // we don't fuse the second iterator
         }
 
-        if rem == 0 { Ok(()) } else { Err(n - rem) }
+        n
     }
 
     #[inline]
     fn nth_back(&mut self, mut n: usize) -> Option<Self::Item> {
         if let Some(ref mut b) = self.b {
-            match b.advance_back_by(n) {
-                Ok(()) => match b.next_back() {
-                    None => n = 0,
+            n = match b.advance_back_by(n) {
+                0 => match b.next_back() {
+                    None => 0,
                     x => return x,
                 },
-                Err(k) => n -= k,
-            }
+                k => k,
+            };
 
             self.b = None;
         }

@@ -73,13 +73,16 @@ fn test_iterator_skip_nth() {
 
 #[test]
 fn test_skip_advance_by() {
-    assert_eq!((0..0).skip(10).advance_by(0), Ok(()));
-    assert_eq!((0..0).skip(10).advance_by(1), Err(0));
-    assert_eq!((0u128..(usize::MAX as u128) + 1).skip(usize::MAX).advance_by(usize::MAX), Err(1));
-    assert_eq!((0u128..u128::MAX).skip(usize::MAX).advance_by(1), Ok(()));
+    assert_eq!((0..0).skip(10).advance_by(0), 0);
+    assert_eq!((0..0).skip(10).advance_by(1), 1);
+    assert_eq!(
+        (0u128..(usize::MAX as u128) + 1).skip(usize::MAX - 10).advance_by(usize::MAX - 5),
+        usize::MAX - 16
+    );
+    assert_eq!((0u128..u128::MAX).skip(usize::MAX - 10).advance_by(20), 0);
 
-    assert_eq!((0..2).skip(1).advance_back_by(10), Err(1));
-    assert_eq!((0..0).skip(1).advance_back_by(0), Ok(()));
+    assert_eq!((0..2).skip(1).advance_back_by(10), 9);
+    assert_eq!((0..0).skip(1).advance_back_by(0), 0);
 }
 
 #[test]

@@ -75,7 +75,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> usize {
         self.inner.advance_by(n)
     }
 
@@ -120,7 +120,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         self.inner.advance_back_by(n)
     }
 }
@@ -236,7 +236,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> usize {
         self.inner.advance_by(n)
     }
 
@@ -281,7 +281,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         self.inner.advance_back_by(n)
     }
 }
@@ -552,19 +552,19 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> usize {
         #[inline]
         #[rustc_inherit_overflow_checks]
         fn advance<U: Iterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
             match iter.advance_by(n) {
-                Ok(()) => ControlFlow::Break(()),
-                Err(advanced) => ControlFlow::Continue(n - advanced),
+                0 => ControlFlow::Break(()),
+                remaining => ControlFlow::Continue(remaining),
             }
         }
 
         match self.iter_try_fold(n, advance) {
-            ControlFlow::Continue(remaining) if remaining > 0 => Err(n - remaining),
-            _ => Ok(()),
+            ControlFlow::Continue(remaining) => remaining,
+            _ => 0,
         }
     }
 
@@ -642,19 +642,19 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         #[inline]
         #[rustc_inherit_overflow_checks]
         fn advance<U: DoubleEndedIterator>(n: usize, iter: &mut U) -> ControlFlow<(), usize> {
             match iter.advance_back_by(n) {
-                Ok(()) => ControlFlow::Break(()),
-                Err(advanced) => ControlFlow::Continue(n - advanced),
+                0 => ControlFlow::Break(()),
+                remaining => ControlFlow::Continue(remaining),
             }
         }
 
         match self.iter_try_rfold(n, advance) {
-            ControlFlow::Continue(remaining) if remaining > 0 => Err(n - remaining),
-            _ => Ok(()),
+            ControlFlow::Continue(remaining) => remaining,
+            _ => 0,
         }
     }
 }

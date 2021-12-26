@@ -80,10 +80,10 @@ impl<A: Clone> Iterator for Repeat<A> {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> usize {
         // Advancing an infinite iterator of a single element is a no-op.
         let _ = n;
-        Ok(())
+        0
     }
 
     #[inline]
@@ -109,10 +109,10 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         // Advancing an infinite iterator of a single element is a no-op.
         let _ = n;
-        Ok(())
+        0
     }
 
     #[inline]

@@ -26,7 +26,7 @@ impl<I: Iterator> Iterator for ByRefSized<'_, I> {
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> usize {
         I::advance_by(self.0, n)
     }
 
@@ -62,7 +62,7 @@ impl<I: DoubleEndedIterator> DoubleEndedIterator for ByRefSized<'_, I> {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         I::advance_back_by(self.0, n)
     }
 

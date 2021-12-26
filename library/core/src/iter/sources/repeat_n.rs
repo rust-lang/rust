@@ -137,7 +137,7 @@ impl<A: Clone> Iterator for RepeatN<A> {
     }
 
     #[inline]
-    fn advance_by(&mut self, skip: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, skip: usize) -> usize {
         let len = self.count;
 
         if skip >= len {
@@ -145,10 +145,10 @@ impl<A: Clone> Iterator for RepeatN<A> {
         }
 
         if skip > len {
-            Err(len)
+            skip - len
         } else {
             self.count = len - skip;
-            Ok(())
+            0
         }
     }
 
@@ -178,7 +178,7 @@ impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         self.advance_by(n)
     }
 

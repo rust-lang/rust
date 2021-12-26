@@ -128,34 +128,21 @@ where
 
     #[inline]
     #[rustc_inherit_overflow_checks]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let mut rem = n;
-        let step_one = self.n.saturating_add(rem);
+    fn advance_by(&mut self, mut n: usize) -> usize {
+        let skip_inner = self.n;
+        let skip_and_advance = skip_inner.saturating_add(n);
 
-        match self.iter.advance_by(step_one) {
-            Ok(_) => {
-                rem -= step_one - self.n;
-                self.n = 0;
-            }
-            Err(advanced) => {
-                let advanced_without_skip = advanced.saturating_sub(self.n);
-                self.n = self.n.saturating_sub(advanced);
-                return if n == 0 { Ok(()) } else { Err(advanced_without_skip) };
-            }
+        let remainder = self.iter.advance_by(skip_and_advance);
+        let advanced_inner = skip_and_advance - remainder;
+        n -= advanced_inner.saturating_sub(skip_inner);
+        self.n = self.n.saturating_sub(advanced_inner);
+
+        // skip_and_advance may have saturated
+        if unlikely(remainder == 0 && n > 0) {
+            n = self.iter.advance_by(n);
         }
 
-        // step_one calculation may have saturated
-        if unlikely(rem > 0) {
-            return match self.iter.advance_by(rem) {
-                ret @ Ok(_) => ret,
-                Err(advanced) => {
-                    rem -= advanced;
-                    Err(n - rem)
-                }
-            };
-        }
-
-        Ok(())
+        n
     }
 }
 
@@ -209,13 +196,13 @@ where
     impl_fold_via_try_fold! { rfold -> try_rfold }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         let min = crate::cmp::min(self.len(), n);
-        return match self.iter.advance_back_by(min) {
-            ret @ Ok(_) if n <= min => ret,
-            Ok(_) => Err(min),
-            _ => panic!("ExactSizeIterator contract violation"),
+        let rem = self.iter.advance_back_by(min);
+        if rem != 0 {
+            panic!("ExactSizeIterator contract violation");
         };
+        n - min
     }
 }
 

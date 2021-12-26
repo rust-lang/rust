@@ -38,7 +38,7 @@ where
     }
 
     #[inline]
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_by(&mut self, n: usize) -> usize {
         self.iter.advance_back_by(n)
     }
 
@@ -83,7 +83,7 @@ where
     }
 
     #[inline]
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+    fn advance_back_by(&mut self, n: usize) -> usize {
         self.iter.advance_by(n)
     }
 

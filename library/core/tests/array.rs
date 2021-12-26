@@ -1,4 +1,4 @@
-use core::array;
+use core::{array, assert_eq};
 use core::convert::TryFrom;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -535,17 +535,17 @@ fn array_intoiter_advance_by() {
     let mut it = IntoIterator::into_iter(a);
 
     let r = it.advance_by(1);
-    assert_eq!(r, Ok(()));
+    assert_eq!(r, 0);
     assert_eq!(it.len(), 99);
     assert_eq!(counter.get(), 1);
 
     let r = it.advance_by(0);
-    assert_eq!(r, Ok(()));
+    assert_eq!(r, 0);
     assert_eq!(it.len(), 99);
     assert_eq!(counter.get(), 1);
 
     let r = it.advance_by(11);
-    assert_eq!(r, Ok(()));
+    assert_eq!(r, 0);
     assert_eq!(it.len(), 88);
     assert_eq!(counter.get(), 12);
 
@@ -557,17 +557,17 @@ fn array_intoiter_advance_by() {
     assert_eq!(counter.get(), 13);
 
     let r = it.advance_by(123456);
-    assert_eq!(r, Err(87));
+    assert_eq!(r, 123456 - 87);
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 
     let r = it.advance_by(0);
-    assert_eq!(r, Ok(()));
+    assert_eq!(r, 0);
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 
     let r = it.advance_by(10);
-    assert_eq!(r, Err(0));
+    assert_eq!(r, 10);
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 }
@@ -588,17 +588,17 @@ fn array_intoiter_advance_back_by() {
     let mut it = IntoIterator::into_iter(a);
 
     let r = it.advance_back_by(1);
-    assert_eq!(r, Ok(()));
+    assert_eq!(r, 0);
     assert_eq!(it.len(), 99);
     assert_eq!(counter.get(), 1);
 
     let r = it.advance_back_by(0);
-    assert_eq!(r, Ok(()));
+    assert_eq!(r, 0);
     assert_eq!(it.len(), 99);
     assert_eq!(counter.get(), 1);
 
     let r = it.advance_back_by(11);
-    assert_eq!(r, Ok(()));
+    assert_eq!(r, 0);
     assert_eq!(it.len(), 88);
     assert_eq!(counter.get(), 12);
 
@@ -610,17 +610,17 @@ fn array_intoiter_advance_back_by() {
     assert_eq!(counter.get(), 13);
 
     let r = it.advance_back_by(123456);
-    assert_eq!(r, Err(87));
+    assert_eq!(r, 123456 - 87);
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 
     let r = it.advance_back_by(0);
-    assert_eq!(r, Ok(()));
+    assert_eq!(r, 0);
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 
     let r = it.advance_back_by(10);
-    assert_eq!(r, Err(0));
+    assert_eq!(r, 10);
     assert_eq!(it.len(), 0);
     assert_eq!(counter.get(), 100);
 }
@@ -679,8 +679,8 @@ fn array_into_iter_fold() {
 
     let a = [1, 2, 3, 4, 5, 6];
     let mut it = a.into_iter();
-    it.advance_by(1).unwrap();
-    it.advance_back_by(2).unwrap();
+    assert_eq!(it.advance_by(1), 0);
+    assert_eq!(it.advance_back_by(2), 0);
     let s = it.fold(10, |a, b| 10 * a + b);
     assert_eq!(s, 10234);
 }
@@ -695,8 +695,8 @@ fn array_into_iter_rfold() {
 
     let a = [1, 2, 3, 4, 5, 6];
     let mut it = a.into_iter();
-    it.advance_by(1).unwrap();
-    it.advance_back_by(2).unwrap();
+    assert_eq!(it.advance_by(1), 0);
+    assert_eq!(it.advance_back_by(2), 0);
     let s = it.rfold(10, |a, b| 10 * a + b);
     assert_eq!(s, 10432);
 }

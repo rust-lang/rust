@@ -55,13 +55,13 @@ impl<'a, T> Iterator for Iter<'a, T> {
         }
     }
 
-    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
-        let m = match self.i1.advance_by(n) {
-            Ok(_) => return Ok(()),
-            Err(m) => m,
-        };
+    fn advance_by(&mut self, n: usize) -> usize {
+        let remaining = self.i1.advance_by(n);
+        if remaining == 0 {
+            return 0;
+        }
         mem::swap(&mut self.i1, &mut self.i2);
-        self.i1.advance_by(n - m).map_err(|o| o + m)
+        self.i1.advance_by(remaining)
     }
 
     #[inline]
@@ -125,14 +125,13 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
         }
     }
 
-    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        let m = match self.i2.advance_back_by(n) {
-            Ok(_) => return Ok(()),
-            Err(m) => m,
-        };
-
+    fn advance_back_by(&mut self, n: usize) -> usize {
+        let remaining = self.i2.advance_back_by(n);
+        if remaining == 0 {
+            return 0;
+        }
         mem::swap(&mut self.i1, &mut self.i2);
-        self.i2.advance_back_by(n - m).map_err(|o| m + o)
+        self.i2.advance_back_by(remaining)
     }
 
     fn rfold<Acc, F>(self, accum: Acc, mut f: F) -> Acc
