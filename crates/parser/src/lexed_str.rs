@@ -122,31 +122,6 @@ impl<'a> LexedStr<'a> {
         self.error.iter().map(|it| (it.token as usize, it.msg.as_str()))
     }
 
-    pub fn to_input(&self) -> crate::Input {
-        let mut res = crate::Input::default();
-        let mut was_joint = false;
-        for i in 0..self.len() {
-            let kind = self.kind(i);
-            if kind.is_trivia() {
-                was_joint = false
-            } else {
-                if kind == SyntaxKind::IDENT {
-                    let token_text = self.text(i);
-                    let contextual_kw = SyntaxKind::from_contextual_keyword(token_text)
-                        .unwrap_or(SyntaxKind::IDENT);
-                    res.push_ident(contextual_kw);
-                } else {
-                    if was_joint {
-                        res.was_joint();
-                    }
-                    res.push(kind);
-                }
-                was_joint = true;
-            }
-        }
-        res
-    }
-
     fn push(&mut self, kind: SyntaxKind, offset: usize) {
         self.kind.push(kind);
         self.start.push(offset as u32);
