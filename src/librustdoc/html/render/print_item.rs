@@ -32,6 +32,7 @@ use crate::html::highlight;
 use crate::html::layout::Page;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 
+use crate::clean::inline::join_paths;
 use serde::Serialize;
 
 const ITEM_TABLE_OPEN: &str = "<div class=\"item-table\">";
@@ -874,7 +875,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             cx.current.join("/")
         } else {
             let (ref path, _) = cache.external_paths[&it.def_id.expect_def_id()];
-            path[..path.len() - 1].join("/")
+            join_paths(path.parent().iter_paths(), "/")
         },
         ty = it.type_(),
         name = *it.name.as_ref().unwrap()

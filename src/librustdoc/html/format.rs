@@ -21,6 +21,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_target::spec::abi::Abi;
 
+use crate::clean::inline::{FullyQualifiedName, FullyQualifiedNameIter};
 use crate::clean::{self, utils::find_nearest_parent_module, ExternalCrate, ItemId, PrimitiveType};
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
@@ -501,11 +502,11 @@ crate enum HrefError {
     NotInExternalCache,
 }
 
-crate fn href_with_root_path(
+crate fn href_with_root_path<'a>(
     did: DefId,
-    cx: &Context<'_>,
+    cx: &'a Context<'_>,
     root_path: Option<&str>,
-) -> Result<(String, ItemType, Vec<String>), HrefError> {
+) -> Result<(String, ItemType, &'a FullyQualifiedName), HrefError> {
     let tcx = cx.tcx();
     let def_kind = tcx.def_kind(did);
     let did = match def_kind {
@@ -517,8 +518,12 @@ crate fn href_with_root_path(
     };
     let cache = cx.cache();
     let relative_to = &cx.current;
-    fn to_module_fqp(shortty: ItemType, fqp: &[String]) -> &[String] {
-        if shortty == ItemType::Module { fqp } else { &fqp[..fqp.len() - 1] }
+    fn to_module_fqp(shortty: ItemType, fqp: &FullyQualifiedName) -> FullyQualifiedNameIter<'_> {
+        if shortty == ItemType::Module {
+            fqp.iter()
+        } else {
+            FullyQualifiedNameIter::new(fqp.iter().parent())
+        }
     }
 
     if !did.is_local()
@@ -530,7 +535,7 @@ crate fn href_with_root_path(
     }
 
     let mut is_remote = false;
-    let (fqp, shortty, mut url_parts) = match cache.paths.get(&did) {
+    let (fqp, shortty, mut url_parts): (&FullyQualifiedName, _, _) = match cache.paths.get(&did) {
         Some(&(ref fqp, shortty)) => (fqp, shortty, {
             let module_fqp = to_module_fqp(shortty, fqp);
             debug!(?fqp, ?shortty, ?module_fqp);
@@ -547,7 +552,7 @@ crate fn href_with_root_path(
                             is_remote = true;
                             let s = s.trim_end_matches('/');
                             let mut builder = UrlPartsBuilder::singleton(s);
-                            builder.extend(module_fqp.iter().map(String::as_str));
+                            builder.extend(module_fqp.iter_paths());
                             builder
                         }
                         ExternalLocation::Local => href_relative_parts(module_fqp, relative_to),
@@ -566,41 +571,48 @@ crate fn href_with_root_path(
         }
     }
     debug!(?url_parts);
-    let last = &fqp.last().unwrap()[..];
     match shortty {
         ItemType::Module => {
             url_parts.push("index.html");
         }
         _ => {
-            let filename = format!("{}.{}.html", shortty.as_str(), last);
+            let filename = format!("{}.{}.html", shortty.as_str(), fqp.iter().last());
             url_parts.push(&filename);
         }
     }
-    Ok((url_parts.finish(), shortty, fqp.to_vec()))
+    Ok((url_parts.finish(), shortty, fqp))
 }
 
-crate fn href(did: DefId, cx: &Context<'_>) -> Result<(String, ItemType, Vec<String>), HrefError> {
+crate fn href<'a>(
+    did: DefId,
+    cx: &'a Context<'_>,
+) -> Result<(String, ItemType, &'a FullyQualifiedName), HrefError> {
     href_with_root_path(did, cx, None)
 }
 
 /// Both paths should only be modules.
 /// This is because modules get their own directories; that is, `std::vec` and `std::vec::Vec` will
 /// both need `../iter/trait.Iterator.html` to get at the iterator trait.
-crate fn href_relative_parts(fqp: &[String], relative_to_fqp: &[String]) -> UrlPartsBuilder {
-    for (i, (f, r)) in fqp.iter().zip(relative_to_fqp.iter()).enumerate() {
+crate fn href_relative_parts(
+    fqp: FullyQualifiedNameIter<'_>,
+    relative_to_fqp: &[String],
+) -> UrlPartsBuilder {
+    for (i, (f, r)) in fqp.iter_paths().zip(relative_to_fqp.iter()).enumerate() {
         // e.g. linking to std::iter from std::vec (`dissimilar_part_count` will be 1)
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
-            let fqp_module = fqp[i..fqp.len()].iter().map(String::as_str);
+            let fqp_module = fqp.iter_paths().skip(i);
             return iter::repeat("..").take(dissimilar_part_count).chain(fqp_module).collect();
         }
     }
+
+    let path_count = fqp.path_count();
     // e.g. linking to std::sync::atomic from std::sync
-    if relative_to_fqp.len() < fqp.len() {
-        fqp[relative_to_fqp.len()..fqp.len()].iter().map(String::as_str).collect()
+    if relative_to_fqp.len() < path_count {
+        fqp.iter_paths().skip(relative_to_fqp.len()).collect()
     // e.g. linking to std::sync from std::sync::atomic
-    } else if fqp.len() < relative_to_fqp.len() {
-        let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
+    } else if path_count < relative_to_fqp.len() {
+        let dissimilar_part_count = relative_to_fqp.len() - path_count;
         iter::repeat("..").take(dissimilar_part_count).collect()
     // linking to the same module
     } else {
@@ -629,11 +641,7 @@ fn resolved_path<'cx>(
     } else {
         let path = if use_absolute {
             if let Ok((_, _, fqp)) = href(did, cx) {
-                format!(
-                    "{}::{}",
-                    fqp[..fqp.len() - 1].join("::"),
-                    anchor(did, fqp.last().unwrap(), cx)
-                )
+                format!("{}::{}", fqp.parent().as_str(), anchor(did, fqp.iter().last(), cx))
             } else {
                 last.name.to_string()
             }
@@ -741,7 +749,7 @@ crate fn anchor<'a, 'cx: 'a>(
                 short_ty,
                 url,
                 short_ty,
-                fqp.join("::"),
+                fqp.as_str(),
                 text
             )
         } else {
@@ -959,7 +967,7 @@ fn fmt_type<'cx>(
                         url = url,
                         shortty = ItemType::AssocType,
                         name = name,
-                        path = path.join("::")
+                        path = path
                     )?;
                 }
                 _ => write!(f, "{}", name)?,

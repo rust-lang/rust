@@ -6,6 +6,7 @@ use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
+use crate::clean::inline::{join_paths, FullyQualifiedName};
 use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
@@ -39,11 +40,11 @@ crate struct Cache {
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    crate paths: FxHashMap<DefId, (Vec<String>, ItemType)>,
+    crate paths: FxHashMap<DefId, (FullyQualifiedName, ItemType)>,
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    crate external_paths: FxHashMap<DefId, (Vec<String>, ItemType)>,
+    crate external_paths: FxHashMap<DefId, (FullyQualifiedName, ItemType)>,
 
     /// Maps local `DefId`s of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
@@ -55,7 +56,7 @@ crate struct Cache {
     /// to the path used if the corresponding type is inlined. By
     /// doing this, we can detect duplicate impls on a trait page, and only display
     /// the impl for the inlined type.
-    crate exact_paths: FxHashMap<DefId, Vec<String>>,
+    crate exact_paths: FxHashMap<DefId, FullyQualifiedName>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
@@ -155,7 +156,9 @@ impl Cache {
             let dst = &render_options.output;
             let location = e.location(extern_url, extern_url_takes_precedence, dst, tcx);
             cx.cache.extern_locations.insert(e.crate_num, location);
-            cx.cache.external_paths.insert(e.def_id(), (vec![name.to_string()], ItemType::Module));
+            cx.cache
+                .external_paths
+                .insert(e.def_id(), (FullyQualifiedName::new(name.to_string()), ItemType::Module));
         }
 
         // FIXME: avoid this clone (requires implementing Default manually)
@@ -166,7 +169,13 @@ impl Cache {
             // If that restriction is ever lifted, this will have to include the relative paths instead.
             cx.cache.external_paths.insert(
                 def_id,
-                (vec![crate_name.to_string(), prim.as_sym().to_string()], ItemType::Primitive),
+                (
+                    FullyQualifiedName::from_paths(&[
+                        crate_name.to_string(),
+                        prim.as_sym().to_string(),
+                    ]),
+                    ItemType::Primitive,
+                ),
             );
         }
 
@@ -254,7 +263,12 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 | clean::VariantItem(..) => (
                     (
                         Some(*self.cache.parent_stack.last().expect("parent_stack is empty")),
-                        Some(&self.cache.stack[..self.cache.stack.len() - 1]),
+                        Some(join_paths(
+                            self.cache.stack[..self.cache.stack.len() - 1]
+                                .iter()
+                                .map(|s| s.as_str()),
+                            "::",
+                        )),
                     ),
                     false,
                 ),
@@ -275,14 +289,19 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                                 | ItemType::Struct
                                 | ItemType::Union
                                 | ItemType::Enum,
-                            )) => Some(&fqp[..fqp.len() - 1]),
-                            Some(..) => Some(&*self.cache.stack),
+                            )) => Some(String::from(fqp.parent().as_str())),
+                            Some(..) => {
+                                Some(join_paths(self.cache.stack.iter().map(|s| s.as_str()), "::"))
+                            }
                             None => None,
                         };
                         ((Some(*last), path), true)
                     }
                 }
-                _ => ((None, Some(&*self.cache.stack)), false),
+                _ => (
+                    (None, Some(join_paths(self.cache.stack.iter().map(|s| s.as_str()), "::"))),
+                    false,
+                ),
             };
 
             match parent {
@@ -299,7 +318,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                         self.cache.search_index.push(IndexItem {
                             ty: item.type_(),
                             name: s.to_string(),
-                            path: path.join("::"),
+                            path,
                             desc,
                             parent,
                             parent_idx: None,
@@ -355,15 +374,16 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     {
                         self.cache.paths.insert(
                             item.def_id.expect_def_id(),
-                            (self.cache.stack.clone(), item.type_()),
+                            (FullyQualifiedName::from_paths(&self.cache.stack), item.type_()),
                         );
                     }
                 }
             }
             clean::PrimitiveItem(..) => {
-                self.cache
-                    .paths
-                    .insert(item.def_id.expect_def_id(), (self.cache.stack.clone(), item.type_()));
+                self.cache.paths.insert(
+                    item.def_id.expect_def_id(),
+                    (FullyQualifiedName::from_paths(&self.cache.stack), item.type_()),
+                );
             }
 
             clean::ExternCrateItem { .. }

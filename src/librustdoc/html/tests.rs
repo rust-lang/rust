@@ -1,9 +1,12 @@
+use crate::clean::inline::FullyQualifiedName;
 use crate::html::format::href_relative_parts;
 
 fn assert_relative_path(expected: &str, relative_to_fqp: &[&str], fqp: &[&str]) {
     let relative_to_fqp: Vec<String> = relative_to_fqp.iter().copied().map(String::from).collect();
     let fqp: Vec<String> = fqp.iter().copied().map(String::from).collect();
-    assert_eq!(expected, href_relative_parts(&fqp, &relative_to_fqp).finish());
+
+    let fqp = FullyQualifiedName::from_paths(&fqp);
+    assert_eq!(expected, href_relative_parts(fqp.iter(), &relative_to_fqp).finish());
 }
 
 #[test]

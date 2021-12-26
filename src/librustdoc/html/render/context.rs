@@ -228,11 +228,11 @@ impl<'tcx> Context<'tcx> {
         } else {
             if let Some(&(ref names, ty)) = self.cache().paths.get(&it.def_id.expect_def_id()) {
                 let mut path = String::new();
-                for name in &names[..names.len() - 1] {
+                for name in names.parent().iter_paths() {
                     path.push_str(name);
                     path.push('/');
                 }
-                path.push_str(&item_path(ty, names.last().unwrap()));
+                path.push_str(&item_path(ty, names.iter().last()));
                 match self.shared.redirections {
                     Some(ref redirections) => {
                         let mut current_path = String::new();
@@ -240,7 +240,7 @@ impl<'tcx> Context<'tcx> {
                             current_path.push_str(name);
                             current_path.push('/');
                         }
-                        current_path.push_str(&item_path(ty, names.last().unwrap()));
+                        current_path.push_str(&item_path(ty, names.iter().last()));
                         redirections.borrow_mut().insert(current_path, path);
                     }
                     None => return layout::redirect(&format!("{}{}", self.root_path(), path)),

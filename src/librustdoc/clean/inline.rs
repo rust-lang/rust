@@ -1,6 +1,6 @@
 //! Support for inlining external documentation into the current AST.
 
-use std::iter::once;
+use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 
 use rustc_ast as ast;
@@ -158,18 +158,126 @@ crate fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
     cx.tcx.get_attrs(did)
 }
 
+#[derive(Debug, Clone)]
+pub struct FullyQualifiedName {
+    path: String,
+}
+
+impl FullyQualifiedName {
+    #[inline]
+    pub(crate) fn new(path: String) -> Self {
+        Self { path }
+    }
+
+    #[inline]
+    pub(crate) fn from_paths(items: &[String]) -> Self {
+        Self { path: items.join("::") }
+    }
+
+    #[inline]
+    pub(crate) fn as_str(&self) -> &str {
+        &self.path
+    }
+
+    #[inline]
+    pub(crate) fn add_path<D: Display>(&mut self, path: D) {
+        std::fmt::Write::write_fmt(&mut self.path, format_args!("::{}", path)).unwrap();
+    }
+
+    #[inline]
+    pub(crate) fn iter(&self) -> FullyQualifiedNameIter<'_> {
+        self.path.as_str().into()
+    }
+
+    #[inline]
+    pub(crate) fn parent(&self) -> FullyQualifiedNameIter<'_> {
+        self.iter().parent().into()
+    }
+
+    pub(crate) fn to_parts(&self) -> Vec<String> {
+        self.iter().iter_paths().map(String::from).collect()
+    }
+}
+
+impl Display for FullyQualifiedName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.path)
+    }
+}
+
+#[derive(Debug)]
+pub struct FullyQualifiedNameIter<'a> {
+    path: &'a str,
+}
+
+impl<'a> From<&'a str> for FullyQualifiedNameIter<'a> {
+    fn from(path: &'a str) -> Self {
+        Self { path }
+    }
+}
+
+impl<'a> FullyQualifiedNameIter<'a> {
+    #[inline]
+    pub(crate) fn new(path: &'a str) -> Self {
+        Self { path }
+    }
+
+    #[inline]
+    pub(crate) fn path_count(&self) -> usize {
+        self.iter_paths().count()
+    }
+
+    #[inline]
+    pub(crate) fn iter_paths(&self) -> impl Iterator<Item = &'a str> {
+        self.path.split("::")
+    }
+
+    #[inline]
+    pub(crate) fn parent(&self) -> &'a str {
+        match self.path.rfind("::") {
+            Some(index) => &self.path[..index],
+            None => "",
+        }
+    }
+
+    #[inline]
+    pub(crate) fn last(&self) -> &'a str {
+        match self.path.rfind("::") {
+            Some(index) => &self.path[index + 2..],
+            None => self.path,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn as_str(&self) -> &'a str {
+        self.path
+    }
+}
+
+pub(crate) fn join_paths<'a, I: Iterator<Item = &'a str>>(paths: I, separator: &str) -> String {
+    let mut result = String::new();
+    for path in paths {
+        if !result.is_empty() {
+            result.push_str(separator);
+        }
+        result.push_str(path);
+    }
+    result
+}
+
 /// Record an external fully qualified name in the external_paths cache.
 ///
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) {
     let crate_name = cx.tcx.crate_name(did.krate).to_string();
+    let mut fqn = FullyQualifiedName::new(crate_name);
 
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
         // Filter out extern blocks
-        (elem.data != DefPathData::ForeignMod).then(|| elem.data.to_string())
+        (elem.data != DefPathData::ForeignMod).then(|| elem.data)
     });
-    let fqn = if let ItemType::Macro = kind {
+    if let ItemType::Macro = kind {
         // Check to see if it is a macro 2.0 or built-in macro
         if matches!(
             CStore::from_tcx(cx.tcx).load_macro_untracked(did, cx.sess()),
@@ -177,12 +285,16 @@ crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) 
                 if matches!(&def.kind, ast::ItemKind::MacroDef(ast_def)
                     if !ast_def.macro_rules)
         ) {
-            once(crate_name).chain(relative).collect()
+            for item in relative {
+                fqn.add_path(item.to_string());
+            }
         } else {
-            vec![crate_name, relative.last().expect("relative was empty")]
+            fqn.add_path(relative.last().expect("relative was empty").to_string());
         }
     } else {
-        once(crate_name).chain(relative).collect()
+        for item in relative {
+            fqn.add_path(item.to_string());
+        }
     };
 
     if did.is_local() {

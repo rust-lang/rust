@@ -16,6 +16,7 @@ use rustc_span::Span;
 
 use std::mem;
 
+use crate::clean::inline::FullyQualifiedName;
 use crate::clean::{self, cfg::Cfg, AttributesExt, NestedAttributesExt};
 use crate::core;
 
@@ -43,13 +44,16 @@ impl Module<'hir> {
 }
 
 // FIXME: Should this be replaced with tcx.def_path_str?
-fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
-    let crate_name = tcx.crate_name(did.krate).to_string();
+fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> FullyQualifiedName {
+    let mut fqn = FullyQualifiedName::new(tcx.crate_name(did.krate).to_string());
     let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| {
         // Filter out extern blocks
-        (elem.data != DefPathData::ForeignMod).then(|| elem.data.to_string())
+        (elem.data != DefPathData::ForeignMod).then(|| elem.data)
     });
-    std::iter::once(crate_name).chain(relative).collect()
+    for item in relative {
+        fqn.add_path(item);
+    }
+    fqn
 }
 
 crate fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut node: hir::HirId) -> bool {
@@ -71,7 +75,7 @@ crate struct RustdocVisitor<'a, 'tcx> {
     inlining: bool,
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
-    exact_paths: FxHashMap<DefId, Vec<String>>,
+    exact_paths: FxHashMap<DefId, FullyQualifiedName>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {

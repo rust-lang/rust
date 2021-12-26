@@ -109,19 +109,20 @@ impl JsonRenderer<'tcx> {
                         types::Item {
                             id: from_item_id(id.into()),
                             crate_id: id.krate.as_u32(),
-                            name: self
-                                .cache
-                                .paths
-                                .get(&id)
-                                .unwrap_or_else(|| {
-                                    self.cache
-                                        .external_paths
-                                        .get(&id)
-                                        .expect("Trait should either be in local or external paths")
-                                })
-                                .0
-                                .last()
-                                .map(Clone::clone),
+                            name: Some(
+                                self.cache
+                                    .paths
+                                    .get(&id)
+                                    .unwrap_or_else(|| {
+                                        self.cache.external_paths.get(&id).expect(
+                                            "Trait should either be in local or external paths",
+                                        )
+                                    })
+                                    .0
+                                    .iter()
+                                    .last()
+                                    .to_string(),
+                            ),
                             visibility: types::Visibility::Public,
                             inner: types::ItemEnum::Trait(trait_item.clone().into_tcx(self.tcx)),
                             span: None,
@@ -231,7 +232,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                         from_item_id(k.into()),
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
-                            path,
+                            path: path.to_parts(),
                             kind: kind.into_tcx(self.tcx),
                         },
                     )

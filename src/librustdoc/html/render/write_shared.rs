@@ -568,11 +568,11 @@ pub(super) fn write_shared(
         );
 
         let mut mydst = dst.clone();
-        for part in &remote_path[..remote_path.len() - 1] {
+        for part in remote_path.parent().iter_paths() {
             mydst.push(part);
         }
         cx.shared.ensure_dir(&mydst)?;
-        mydst.push(&format!("{}.{}.js", remote_item_type, remote_path[remote_path.len() - 1]));
+        mydst.push(&format!("{}.{}.js", remote_item_type, remote_path.iter().last()));
 
         let (mut all_implementors, _) =
             try_err!(collect(&mydst, krate.name(cx.tcx()).as_str(), "implementors"), &mydst);

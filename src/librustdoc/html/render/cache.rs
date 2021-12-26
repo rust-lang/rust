@@ -38,7 +38,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap().to_string(),
-                path: fqp[..fqp.len() - 1].join("::"),
+                path: String::from(fqp.parent().as_str()),
                 desc,
                 parent: Some(did),
                 parent_idx: None,
@@ -90,7 +90,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                     lastpathid += 1;
 
                     if let Some(&(ref fqp, short)) = paths.get(&defid) {
-                        crate_paths.push((short, fqp.last().unwrap().clone()));
+                        crate_paths.push((short, String::from(fqp.iter().last())));
                         Some(pathid)
                     } else {
                         None
