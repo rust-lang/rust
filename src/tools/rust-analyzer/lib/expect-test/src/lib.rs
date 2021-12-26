@@ -141,6 +141,7 @@
 //! bump.
 use std::{
     collections::HashMap,
+    convert::TryInto,
     env, fmt, fs, mem,
     ops::Range,
     panic,
@@ -268,9 +269,25 @@ impl Expect {
         let mut line_start = 0;
         for (i, line) in lines_with_ends(file).enumerate() {
             if i == self.position.line as usize - 1 {
-                let pat = "expect![[";
-                let offset = line.find(pat).unwrap();
-                let literal_start = line_start + offset + pat.len();
+                // `column` points to the first character of the macro invocation:
+                //
+                //    expect![[ ... ]]
+                //    ^
+                //
+                // Seek past the exclam, then skip any whitespace and
+                // delimiters to get to our argument.
+                let byte_offset = line
+                    .char_indices()
+                    .skip((self.position.column - 1).try_into().unwrap())
+                    .skip_while(|&(_, c)| c != '!')
+                    .skip(1)
+                    .skip_while(|&(_, c)| c.is_whitespace())
+                    .skip_while(|&(_, c)| matches!(c, '[' | '(' | '{'))
+                    .next()
+                    .expect("Failed to parse macro invocation")
+                    .0;
+
+                let literal_start = line_start + byte_offset;
                 let indent = line.chars().take_while(|&it| it == ' ').count();
                 target_line = Some((literal_start, indent));
                 break;
