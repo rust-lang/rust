@@ -2894,7 +2894,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 }
             }
         } else if attr.has_name(sym::instruction_set) {
-            codegen_fn_attrs.instruction_set = match attr.meta().map(|i| i.kind) {
+            codegen_fn_attrs.instruction_set = match attr.meta_kind() {
                 Some(MetaItemKind::List(ref items)) => match items.as_slice() {
                     [NestedMetaItem::MetaItem(set)] => {
                         let segments =
@@ -2999,7 +2999,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         if !attr.has_name(sym::inline) {
             return ia;
         }
-        match attr.meta().map(|i| i.kind) {
+        match attr.meta_kind() {
             Some(MetaItemKind::Word) => InlineAttr::Hint,
             Some(MetaItemKind::List(ref items)) => {
                 inline_span = Some(attr.span);
@@ -3038,7 +3038,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             return ia;
         }
         let err = |sp, s| struct_span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s).emit();
-        match attr.meta().map(|i| i.kind) {
+        match attr.meta_kind() {
             Some(MetaItemKind::Word) => {
                 err(attr.span, "expected one argument");
                 ia
