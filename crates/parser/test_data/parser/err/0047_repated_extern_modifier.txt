@@ -10,6 +10,6 @@ SOURCE_FILE
       EXTERN_KW "extern"
       WHITESPACE " "
       STRING "\"C\""
-  WHITESPACE "\r\n"
+  WHITESPACE "\n"
 error 10: expected existential, fn, trait or impl
 error 21: expected existential, fn, trait or impl
