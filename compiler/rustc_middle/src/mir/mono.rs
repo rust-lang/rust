@@ -7,7 +7,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
-use rustc_index::vec::Idx;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
@@ -348,35 +347,33 @@ impl<'tcx> CodegenUnit<'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> Vec<(MonoItem<'tcx>, (Linkage, Visibility))> {
         // The codegen tests rely on items being process in the same order as
-        // they appear in the file, so for local items, we sort by node_id first
+        // they appear in the file, so for local items, we sort by span first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
+        pub struct ItemSortKey<'tcx>(Option<Span>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
-            ItemSortKey(
-                match item {
-                    MonoItem::Fn(ref instance) => {
-                        match instance.def {
-                            // We only want to take HirIds of user-defined
-                            // instances into account. The others don't matter for
-                            // the codegen tests and can even make item order
-                            // unstable.
-                            InstanceDef::Item(def) => def.did.as_local().map(Idx::index),
-                            InstanceDef::VTableShim(..)
-                            | InstanceDef::ReifyShim(..)
-                            | InstanceDef::Intrinsic(..)
-                            | InstanceDef::FnPtrShim(..)
-                            | InstanceDef::Virtual(..)
-                            | InstanceDef::ClosureOnceShim { .. }
-                            | InstanceDef::DropGlue(..)
-                            | InstanceDef::CloneShim(..) => None,
-                        }
+            let span = match item {
+                MonoItem::Fn(ref instance) => {
+                    match instance.def {
+                        // We only want to take HirIds of user-defined
+                        // instances into account. The others don't matter for
+                        // the codegen tests and can even make item order
+                        // unstable.
+                        InstanceDef::Item(def) => tcx.hir().span_if_local(def.did),
+                        InstanceDef::VTableShim(..)
+                        | InstanceDef::ReifyShim(..)
+                        | InstanceDef::Intrinsic(..)
+                        | InstanceDef::FnPtrShim(..)
+                        | InstanceDef::Virtual(..)
+                        | InstanceDef::ClosureOnceShim { .. }
+                        | InstanceDef::DropGlue(..)
+                        | InstanceDef::CloneShim(..) => None,
                     }
-                    MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.def_id.index()),
-                },
-                item.symbol_name(tcx),
-            )
+                }
+                MonoItem::Static(def_id) => tcx.hir().span_if_local(def_id),
+                MonoItem::GlobalAsm(item_id) => Some(tcx.def_span(item_id.def_id)),
+            };
+            ItemSortKey(span, item.symbol_name(tcx))
         }
 
         let mut items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
