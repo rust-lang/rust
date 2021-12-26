@@ -208,8 +208,8 @@ pub(super) fn check_fn<'a, 'tcx>(
         // case that a newcomer might make, returning a bare trait, and in that case we populate
         // the tail expression's type so that the suggestion will be correct, but ignore all other
         // possible cases.
-        fcx.check_expr(&body.value);
         fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
+        fcx.check_expr(&body.value);
     } else {
         fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
         fcx.check_return_expr(&body.value, false);

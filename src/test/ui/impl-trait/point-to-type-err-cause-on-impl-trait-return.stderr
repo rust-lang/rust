@@ -236,19 +236,37 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn hat() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = note: if all the returned values were of the same type you could use `impl std::fmt::Display` as the return type
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = note: you can create a new `enum` with a variant for each returned type
-help: return a boxed trait object instead
+help: use some type `T` that is `T: Sized` as the return type if all return paths have the same type
    |
-LL ~ fn hat() -> Box<dyn std::fmt::Display> {
-LL |     match 13 {
-LL |         0 => {
-LL ~             return Box::new(0i32);
-LL |         }
-LL |         _ => {
- ...
+LL | fn hat() -> T {
+   |             ~
+help: use `impl std::fmt::Display` as the return type if all return paths have the same type but you want to expose only the trait in the signature
+   |
+LL | fn hat() -> impl std::fmt::Display {
+   |             ~~~~~~~~~~~~~~~~~~~~~~
+help: use a boxed trait object if all return paths implement trait `std::fmt::Display`
+   |
+LL | fn hat() -> Box<dyn std::fmt::Display> {
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:77:13
+   |
+LL | fn pug() -> dyn std::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: use some type `T` that is `T: Sized` as the return type if all return paths have the same type
+   |
+LL | fn pug() -> T {
+   |             ~
+help: use `impl std::fmt::Display` as the return type if all return paths have the same type but you want to expose only the trait in the signature
+   |
+LL | fn pug() -> impl std::fmt::Display {
+   |             ~~~~~~~~~~~~~~~~~~~~~~
+help: use a boxed trait object if all return paths implement trait `std::fmt::Display`
+   |
+LL | fn pug() -> Box<dyn std::fmt::Display> {
+   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:80:14
@@ -261,25 +279,6 @@ LL | |         1 => 1u32,
 LL | |         _ => 2u32,
 LL | |     }
    | |_____- `match` arms have incompatible types
-
-error[E0746]: return type cannot have an unboxed trait object
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:77:13
-   |
-LL | fn pug() -> dyn std::fmt::Display {
-   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = note: for information on trait objects, see <https://doc.rust-lang.org/book/ch17-02-trait-objects.html#using-trait-objects-that-allow-for-values-of-different-types>
-   = note: if all the returned values were of the same type you could use `impl std::fmt::Display` as the return type
-   = note: for information on `impl Trait`, see <https://doc.rust-lang.org/book/ch10-02-traits.html#returning-types-that-implement-traits>
-   = note: you can create a new `enum` with a variant for each returned type
-help: return a boxed trait object instead
-   |
-LL ~ fn pug() -> Box<dyn std::fmt::Display> {
-LL |     match 13 {
-LL ~         0 => Box::new(0i32),
-LL ~         1 => Box::new(1u32),
-LL ~         _ => Box::new(2u32),
-   |
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:89:9

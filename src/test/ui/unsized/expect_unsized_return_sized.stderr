@@ -1,0 +1,36 @@
+error[E0277]: the size for values of type `(dyn Foo<'a> + 'static)` cannot be known at compilation time
+  --> $DIR/expect_unsized_return_sized.rs:4:11
+   |
+LL | fn or<'a>(first: dyn Foo<'a>) -> dyn Foo<'a> {
+   |           ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Foo<'a> + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | fn or<'a>(first: &dyn Foo<'a>) -> dyn Foo<'a> {
+   |                  +
+
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/expect_unsized_return_sized.rs:4:34
+   |
+LL | fn or<'a>(first: dyn Foo<'a>) -> dyn Foo<'a> {
+   |                                  ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: use some type `T` that is `T: Sized` as the return type if all return paths have the same type
+   |
+LL | fn or<'a>(first: dyn Foo<'a>) -> T {
+   |                                  ~
+help: use `impl Foo<'a>` as the return type if all return paths have the same type but you want to expose only the trait in the signature
+   |
+LL | fn or<'a>(first: dyn Foo<'a>) -> impl Foo<'a> {
+   |                                  ~~~~~~~~~~~~
+help: use a boxed trait object if all return paths implement trait `Foo<'a>`
+   |
+LL | fn or<'a>(first: dyn Foo<'a>) -> Box<dyn Foo<'a>> {
+   |                                  ~~~~~~~~~~~~~~~~
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0746.
+For more information about an error, try `rustc --explain E0277`.
