@@ -175,6 +175,7 @@ fn update_expect() -> bool {
 /// Leading indentation is stripped.
 #[macro_export]
 macro_rules! expect {
+    [$data:literal] => { $crate::expect![[$data]] };
     [[$data:literal]] => {$crate::Expect {
         position: $crate::Position {
             file: file!(),
@@ -184,6 +185,7 @@ macro_rules! expect {
         data: $data,
         indent: true,
     }};
+    [] => { $crate::expect![[""]] };
     [[]] => { $crate::expect![[""]] };
 }
 
@@ -336,7 +338,7 @@ impl Expect {
         let literal_start = literal_start + (lit_to_eof.len() - lit_to_eof_trimmed.len());
 
         let literal_len =
-            locate_end(lit_to_eof_trimmed).expect("Couldn't find matching `]]` for `expect![[`.");
+            locate_end(lit_to_eof_trimmed).expect("Couldn't find closing delimiter for `expect!`.");
         let literal_range = literal_start..literal_start + literal_len;
         Location { line_indent, literal_range }
     }
@@ -345,7 +347,8 @@ impl Expect {
 fn locate_end(lit_to_eof: &str) -> Option<usize> {
     assert!(lit_to_eof.chars().next().map_or(true, |c| !c.is_whitespace()));
 
-    if lit_to_eof.starts_with("]]") {
+    let first = lit_to_eof.chars().next()?;
+    if matches!(first, ']' | '}' | ')') {
         // expect![[ ]]
         Some(0)
     } else {
