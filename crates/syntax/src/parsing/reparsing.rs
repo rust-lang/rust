@@ -10,7 +10,7 @@ use parser::Reparser;
 use text_edit::Indel;
 
 use crate::{
-    parsing::text_tree_sink::build_tree,
+    parsing::build_tree,
     syntax_node::{GreenNode, GreenToken, NodeOrToken, SyntaxElement, SyntaxNode},
     SyntaxError,
     SyntaxKind::*,

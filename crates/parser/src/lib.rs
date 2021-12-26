@@ -26,6 +26,7 @@ mod parser;
 mod grammar;
 mod input;
 mod output;
+mod shortcuts;
 
 #[cfg(test)]
 mod tests;
@@ -36,6 +37,7 @@ pub use crate::{
     input::Input,
     lexed_str::LexedStr,
     output::{Output, Step},
+    shortcuts::StrStep,
     syntax_kind::SyntaxKind,
 };
 
