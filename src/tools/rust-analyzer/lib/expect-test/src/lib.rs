@@ -32,19 +32,22 @@
 //! This becomes very useful when you have a lot of tests with verbose and
 //! potentially changing expected output.
 //!
-//! Under the hood, `expect!` macro uses `file!` and `line!` to record source
-//! position at compile time. At runtime, this position is used to patch the
-//! file in-place, if `UPDATE_EXPECT` is set.
+//! Under the hood, the `expect!` macro uses `file!`, `line!` and `column!` to
+//! record source position at compile time. At runtime, this position is used
+//! to patch the file in-place, if `UPDATE_EXPECT` is set.
 //!
 //! # Guide
 //!
 //! `expect!` returns an instance of `Expect` struct, which holds position
-//! information and a string literal. Use `Expect::assert_eq` for string
-//! comparison. Use `Expect::assert_debug_eq` for verbose debug comparison. Note
-//! that leading indentation is automatically removed.
+//! information and a string literal. Importing `expect!` under a different
+//! name is supported; `UPDATE_EXPECT` will continue to work.
+//!
+//! Use `Expect::assert_eq` for string comparison. Use
+//! `Expect::assert_debug_eq` for verbose debug comparison. Note that leading
+//! indentation is automatically removed.
 //!
 //! ```
-//! use expect_test::expect;
+//! use expect_test::expect as ex; // Note the renaming
 //!
 //! #[derive(Debug)]
 //! struct Foo {
@@ -52,7 +55,7 @@
 //! }
 //!
 //! let actual = Foo { value: 92 };
-//! let expected = expect![["
+//! let expected = ex![["
 //!     Foo {
 //!         value: 92,
 //!     }
