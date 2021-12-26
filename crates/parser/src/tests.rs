@@ -9,7 +9,7 @@ use expect_test::expect_file;
 use crate::LexedStr;
 
 #[test]
-fn valid_lexes_input() {
+fn lex_valid() {
     for case in TestCase::list("lexer/ok") {
         let actual = lex(&case.text);
         expect_file![case.txt].assert_eq(&actual)
@@ -17,7 +17,7 @@ fn valid_lexes_input() {
 }
 
 #[test]
-fn invalid_lexes_input() {
+fn lex_invalid() {
     for case in TestCase::list("lexer/err") {
         let actual = lex(&case.text);
         expect_file![case.txt].assert_eq(&actual)
@@ -37,6 +37,61 @@ fn lex(text: &str) -> String {
         writeln!(res, "{:?} {:?}{}", kind, text, error).unwrap();
     }
     res
+}
+
+#[test]
+fn parse_valid() {
+    for case in TestCase::list("parser/ok") {
+        let (actual, errors) = parse(&case.text);
+        assert!(!errors, "errors in an OK file {}:\n{}", case.rs.display(), actual);
+        expect_file![case.txt].assert_eq(&actual);
+    }
+}
+
+#[test]
+fn parse_invalid() {
+    for case in TestCase::list("parser/err") {
+        let (actual, errors) = parse(&case.text);
+        assert!(errors, "no errors in an ERR file {}:\n{}", case.rs.display(), actual);
+        expect_file![case.txt].assert_eq(&actual)
+    }
+}
+
+fn parse(text: &str) -> (String, bool) {
+    let lexed = LexedStr::new(text);
+    let input = lexed.to_input();
+    let output = crate::parse_source_file(&input);
+
+    let mut buf = String::new();
+    let mut errors = Vec::new();
+    let mut indent = String::new();
+    lexed.intersperse_trivia(&output, false, &mut |step| match step {
+        crate::StrStep::Token { kind, text } => {
+            write!(buf, "{}", indent).unwrap();
+            write!(buf, "{:?} {:?}\n", kind, text).unwrap();
+        }
+        crate::StrStep::Enter { kind } => {
+            write!(buf, "{}", indent).unwrap();
+            write!(buf, "{:?}\n", kind).unwrap();
+            indent.push_str("  ");
+        }
+        crate::StrStep::Exit => {
+            indent.pop();
+            indent.pop();
+        }
+        crate::StrStep::Error { msg, pos } => errors.push(format!("error {}: {}\n", pos, msg)),
+    });
+
+    for (token, msg) in lexed.errors() {
+        let pos = lexed.text_start(token);
+        errors.push(format!("error {}: {}\n", pos, msg));
+    }
+
+    let has_errors = !errors.is_empty();
+    for e in errors {
+        buf.push_str(&e);
+    }
+    (buf, has_errors)
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]

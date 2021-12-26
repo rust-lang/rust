@@ -1,0 +1,33 @@
+SOURCE_FILE
+  ERROR
+    R_CURLY "}"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    SEMICOLON ";"
+  WHITESPACE "\n\n"
+  ERROR
+    R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  ERROR
+    R_CURLY "}"
+  WHITESPACE "\n"
+error 0: unmatched `}`
+error 14: unmatched `}`
+error 29: unmatched `}`
