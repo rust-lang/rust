@@ -73,6 +73,7 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     clauses.extend(
         lifetimes.into_iter().map(|(lt, bounds)| WP::RegionPredicate { lifetime: lt, bounds }),
     );
+    clauses.extend(equalities.map(|(lhs, rhs)| WP::EqPredicate { lhs, rhs }));
     clauses.extend(params.into_iter().map(|(k, (bounds, params))| WP::BoundPredicate {
         ty: clean::Generic(k),
         bounds,
@@ -83,7 +84,6 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
         bounds,
         bound_params,
     }));
-    clauses.extend(equalities.map(|(lhs, rhs)| WP::EqPredicate { lhs, rhs }));
     clauses
 }
 
