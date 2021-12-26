@@ -50,7 +50,7 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
 
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates
-    equalities.retain(|&(ref lhs, ref rhs)| {
+    let equalities = equalities.into_iter().filter(|&(ref lhs, ref rhs)| {
         let (self_, trait_did, name) = if let Some(p) = lhs.projection() {
             p
         } else {
@@ -83,7 +83,7 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
         bounds,
         bound_params,
     }));
-    clauses.extend(equalities.into_iter().map(|(lhs, rhs)| WP::EqPredicate { lhs, rhs }));
+    clauses.extend(equalities.map(|(lhs, rhs)| WP::EqPredicate { lhs, rhs }));
     clauses
 }
 
