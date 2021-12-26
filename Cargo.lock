@@ -175,7 +175,6 @@ dependencies = [
  "filetime",
  "getopts",
  "ignore",
- "lazy_static",
  "libc",
  "merge",
  "num_cpus",
