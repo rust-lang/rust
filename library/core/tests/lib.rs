@@ -46,6 +46,7 @@
 #![feature(sort_internals)]
 #![feature(slice_take)]
 #![feature(slice_from_ptr_range)]
+#![feature(split_as_slice)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_write_slice)]
