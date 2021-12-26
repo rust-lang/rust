@@ -8,6 +8,20 @@ LL |     &X(*Y)
    = note: all function arguments must have a statically known size
    = help: unsized fn params are gated as an unstable feature
 
-error: aborting due to previous error
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/issue-30355.rs:5:6
+   |
+LL |     &X(*Y)
+   |      ^ doesn't have a size known at compile-time
+   |
+   = help: within `X`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `X`
+  --> $DIR/issue-30355.rs:1:12
+   |
+LL | pub struct X([u8]);
+   |            ^
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

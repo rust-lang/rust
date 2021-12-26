@@ -8,6 +8,7 @@
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::Constness;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
@@ -51,6 +52,38 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidate: SelectionCandidate<'tcx>,
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
+        let mut obligation = obligation;
+        let new_obligation;
+
+        // HACK(const_trait_impl): the surrounding environment is remapped to a non-const context
+        // because nested obligations might be actually `~const` then (incorrectly) requiring
+        // const impls. for example:
+        // ```
+        // pub trait Super {}
+        // pub trait Sub: Super {}
+        //
+        // impl<A> const Super for &A where A: ~const Super {}
+        // impl<A> const Sub for &A where A: ~const Sub {}
+        // ```
+        //
+        // The procedure to check the code above without the remapping code is as follows:
+        // ```
+        // CheckWf(impl const Sub for &A where A: ~const Sub) // <- const env
+        // CheckPredicate(&A: Super)
+        // CheckPredicate(A: ~const Super) // <- still const env, failure
+        // ```
+        if obligation.param_env.constness() == Constness::Const
+            && obligation.predicate.skip_binder().constness == ty::BoundConstness::NotConst
+        {
+            new_obligation = TraitObligation {
+                cause: obligation.cause.clone(),
+                param_env: obligation.param_env.without_const(),
+                ..*obligation
+            };
+
+            obligation = &new_obligation;
+        }
+
         match candidate {
             BuiltinCandidate { has_nested } => {
                 let data = self.confirm_builtin_candidate(obligation, has_nested);
