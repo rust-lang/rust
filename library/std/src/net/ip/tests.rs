@@ -77,10 +77,10 @@ fn test_from_str_ipv4_in_ipv6() {
     let none: Option<Ipv4Addr> = "::127.0.0.1:".parse().ok();
     assert_eq!(None, none);
     // not enough groups
-    let none: Option<Ipv6Addr> = "1.2.3.4.5:127.0.0.1".parse().ok();
+    let none: Option<Ipv6Addr> = "1:2:3:4:5:127.0.0.1".parse().ok();
     assert_eq!(None, none);
     // too many groups
-    let none: Option<Ipv6Addr> = "1.2.3.4.5:6:7:127.0.0.1".parse().ok();
+    let none: Option<Ipv6Addr> = "1:2:3:4:5:6:7:127.0.0.1".parse().ok();
     assert_eq!(None, none);
 }
 
