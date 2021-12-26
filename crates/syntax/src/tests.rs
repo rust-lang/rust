@@ -1,4 +1,3 @@
-mod sourcegen_tests;
 mod sourcegen_ast;
 mod ast_src;
 
@@ -51,14 +50,8 @@ fn benchmark_parser() {
 }
 
 #[test]
-fn parser_tests() {
-    dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], "rast", |text, path| {
-        let parse = SourceFile::parse(text);
-        let errors = parse.errors();
-        assert_errors_are_absent(errors, path);
-        parse.debug_dump()
-    });
-    dir_tests(&test_data_dir(), &["parser/err", "parser/inline/err"], "rast", |text, path| {
+fn validation_tests() {
+    dir_tests(&test_data_dir(), &["parser/validation"], "rast", |text, path| {
         let parse = SourceFile::parse(text);
         let errors = parse.errors();
         assert_errors_are_present(errors, path);
@@ -177,14 +170,6 @@ fn test_data_dir() -> PathBuf {
 
 fn assert_errors_are_present(errors: &[SyntaxError], path: &Path) {
     assert!(!errors.is_empty(), "There should be errors in the file {:?}", path.display());
-}
-fn assert_errors_are_absent(errors: &[SyntaxError], path: &Path) {
-    assert_eq!(
-        errors,
-        &[] as &[SyntaxError],
-        "There should be no errors in the file {:?}",
-        path.display(),
-    );
 }
 
 fn fragment_parser_dir_test<T, F>(ok_paths: &[&str], err_paths: &[&str], f: F)
