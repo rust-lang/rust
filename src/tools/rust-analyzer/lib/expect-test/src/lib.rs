@@ -14,7 +14,7 @@
 //! use expect_test::expect;
 //!
 //! let actual = 2 + 2;
-//! let expected = expect![["5"]];
+//! let expected = expect!["5"]; // or expect![["5"]]
 //! expected.assert_eq(&actual.to_string())
 //! ```
 //!
@@ -25,7 +25,7 @@
 //! ```no_run
 //! # use expect_test::expect;
 //! let actual = 2 + 2;
-//! let expected = expect![["4"]];
+//! let expected = expect!["4"];
 //! expected.assert_eq(&actual.to_string())
 //! ```
 //!
@@ -152,7 +152,7 @@ use std::{
 use once_cell::sync::{Lazy, OnceCell};
 
 const HELP: &str = "
-You can update all `expect![[]]` tests by running:
+You can update all `expect!` tests by running:
 
     env UPDATE_EXPECT=1 cargo test
 
@@ -170,6 +170,7 @@ fn update_expect() -> bool {
 /// expect![["
 ///     Foo { value: 92 }
 /// "]];
+/// expect![r#"{"Foo": 92}"#];
 /// ```
 ///
 /// Leading indentation is stripped.
