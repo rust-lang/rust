@@ -141,9 +141,7 @@ crate fn print_generic_bounds<'a, 'tcx: 'a>(
     display_fn(move |f| {
         let mut bounds_dup = FxHashSet::default();
 
-        for (i, bound) in
-            bounds.iter().filter(|b| bounds_dup.insert(b.print(cx).to_string())).enumerate()
-        {
+        for (i, bound) in bounds.iter().filter(|b| bounds_dup.insert(b.clone())).enumerate() {
             if i > 0 {
                 f.write_str(" + ")?;
             }
