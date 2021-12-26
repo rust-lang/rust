@@ -89,11 +89,11 @@ rustc_index::newtype_index! {
     }
 }
 
-// Assert that the provided `HashStableContext` is configured with the 'default'
-// `HashingControls`. We should always have bailed out before getting to here
-// with a non-default mode. With this check in place, we can avoid the need
-// to maintain separate versions of `ExpnData` hashes for each permutation
-// of `HashingControls` settings.
+/// Assert that the provided `HashStableContext` is configured with the 'default'
+/// `HashingControls`. We should always have bailed out before getting to here
+/// with a non-default mode. With this check in place, we can avoid the need
+/// to maintain separate versions of `ExpnData` hashes for each permutation
+/// of `HashingControls` settings.
 fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str) {
     match ctx.hashing_controls() {
         // Ideally, we would also check that `node_id_hashing_mode` was always
@@ -105,7 +105,13 @@ fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str)
         // FIXME: Enforce that we don't end up transitively hashing any `HirId`s,
         // or ensure that this method is always invoked with the same
         // `NodeIdHashingMode`
-        HashingControls { hash_spans: true, node_id_hashing_mode: _ } => {}
+        //
+        // Note that we require that `hash_spans` be set according to the global
+        // `-Z incremental-ignore-spans` option. Normally, this option is disabled,
+        // which will cause us to require that this method always be called with `Span` hashing
+        // enabled.
+        HashingControls { hash_spans, node_id_hashing_mode: _ }
+            if hash_spans == !ctx.debug_opts_incremental_ignore_spans() => {}
         other => panic!("Attempted hashing of {msg} with non-default HashingControls: {:?}", other),
     }
 }

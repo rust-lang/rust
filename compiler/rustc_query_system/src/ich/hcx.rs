@@ -27,6 +27,7 @@ fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
 pub struct StableHashingContext<'a> {
     definitions: &'a Definitions,
     cstore: &'a dyn CrateStore,
+    sess: &'a Session,
     pub(super) body_resolver: BodyResolver<'a>,
     // Very often, we are hashing something that does not need the
     // `CachingSourceMapView`, so we initialize it lazily.
@@ -63,6 +64,7 @@ impl<'a> StableHashingContext<'a> {
             body_resolver: BodyResolver::Forbidden,
             definitions,
             cstore,
+            sess,
             caching_source_map: None,
             raw_source_map: sess.source_map(),
             hashing_controls: HashingControls {
@@ -195,6 +197,11 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     #[inline]
     fn hash_spans(&self) -> bool {
         self.hashing_controls.hash_spans
+    }
+
+    #[inline]
+    fn debug_opts_incremental_ignore_spans(&self) -> bool {
+        self.sess.opts.debugging_opts.incremental_ignore_spans
     }
 
     #[inline]
