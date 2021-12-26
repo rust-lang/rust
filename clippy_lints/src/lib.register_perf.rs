@@ -10,6 +10,7 @@ store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
     LintId::of(large_const_arrays::LARGE_CONST_ARRAYS),
     LintId::of(large_enum_variant::LARGE_ENUM_VARIANT),
     LintId::of(loops::MANUAL_MEMCPY),
+    LintId::of(loops::MISSING_SPIN_LOOP),
     LintId::of(loops::NEEDLESS_COLLECT),
     LintId::of(methods::EXPECT_FUN_CALL),
     LintId::of(methods::EXTEND_WITH_DRAIN),

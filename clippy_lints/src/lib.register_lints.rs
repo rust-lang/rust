@@ -221,6 +221,7 @@ store.register_lints(&[
     loops::ITER_NEXT_LOOP,
     loops::MANUAL_FLATTEN,
     loops::MANUAL_MEMCPY,
+    loops::MISSING_SPIN_LOOP,
     loops::MUT_RANGE_BOUND,
     loops::NEEDLESS_COLLECT,
     loops::NEEDLESS_RANGE_LOOP,
