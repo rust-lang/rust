@@ -47,7 +47,7 @@ toml = "0.5"
 time = "0.1"
 ignore = "0.4.10"
 opener = "0.5"
-merge = "0.1.0"
+merge = { version = "0.1.0", default-features = false, features = ["std"] }
 once_cell = "1.7.2"
 
 [target.'cfg(windows)'.dependencies.winapi]
