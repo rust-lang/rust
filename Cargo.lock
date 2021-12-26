@@ -1082,6 +1082,7 @@ dependencies = [
  "expect-test",
  "limit",
  "rustc-ap-rustc_lexer",
+ "sourcegen",
 ]
 
 [[package]]

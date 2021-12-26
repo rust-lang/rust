@@ -1,3 +1,5 @@
+mod sourcegen_inline_tests;
+
 use std::{
     fmt::Write,
     fs,
@@ -9,7 +11,7 @@ use expect_test::expect_file;
 use crate::LexedStr;
 
 #[test]
-fn lex_valid() {
+fn lex_ok() {
     for case in TestCase::list("lexer/ok") {
         let actual = lex(&case.text);
         expect_file![case.txt].assert_eq(&actual)
@@ -17,7 +19,7 @@ fn lex_valid() {
 }
 
 #[test]
-fn lex_invalid() {
+fn lex_err() {
     for case in TestCase::list("lexer/err") {
         let actual = lex(&case.text);
         expect_file![case.txt].assert_eq(&actual)
@@ -40,7 +42,7 @@ fn lex(text: &str) -> String {
 }
 
 #[test]
-fn parse_valid() {
+fn parse_ok() {
     for case in TestCase::list("parser/ok") {
         let (actual, errors) = parse(&case.text);
         assert!(!errors, "errors in an OK file {}:\n{}", case.rs.display(), actual);
@@ -49,8 +51,26 @@ fn parse_valid() {
 }
 
 #[test]
-fn parse_invalid() {
+fn parse_inline_ok() {
+    for case in TestCase::list("parser/inline/ok") {
+        let (actual, errors) = parse(&case.text);
+        assert!(!errors, "errors in an OK file {}:\n{}", case.rs.display(), actual);
+        expect_file![case.txt].assert_eq(&actual);
+    }
+}
+
+#[test]
+fn parse_err() {
     for case in TestCase::list("parser/err") {
+        let (actual, errors) = parse(&case.text);
+        assert!(errors, "no errors in an ERR file {}:\n{}", case.rs.display(), actual);
+        expect_file![case.txt].assert_eq(&actual)
+    }
+}
+
+#[test]
+fn parse_inline_err() {
+    for case in TestCase::list("parser/inline/err") {
         let (actual, errors) = parse(&case.text);
         assert!(errors, "no errors in an ERR file {}:\n{}", case.rs.display(), actual);
         expect_file![case.txt].assert_eq(&actual)

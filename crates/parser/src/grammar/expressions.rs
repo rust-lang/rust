@@ -463,13 +463,6 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 //     x.0.bar;
 //     x.0();
 // }
-
-// test_err bad_tuple_index_expr
-// fn foo() {
-//     x.0.;
-//     x.1i32;
-//     x.0x01;
-// }
 fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]));
     let m = lhs.precede(p);

@@ -1,0 +1,13 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Never"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    NEVER_TYPE
+      BANG "!"
+    SEMICOLON ";"
+  WHITESPACE "\n"

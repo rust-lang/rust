@@ -1,0 +1,12 @@
+SOURCE_FILE
+  MODULE
+    MOD_KW "mod"
+    WHITESPACE " "
+    NAME
+      IDENT "b"
+    WHITESPACE " "
+    ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE " "
+      R_CURLY "}"
+  WHITESPACE "\n"
