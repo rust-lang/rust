@@ -64,6 +64,28 @@ fn reads_value(loc: &AtomicUsize, val: usize) -> usize {
 }
 
 // https://plv.mpi-sws.org/scfix/paper.pdf
+// Test case SB
+fn test_sc_store_buffering() {
+    let x = static_atomic(0);
+    let y = static_atomic(0);
+
+    let j1 = spawn(move || {
+        x.store(1, SeqCst);
+        y.load(SeqCst)
+    });
+
+    let j2 = spawn(move || {
+        y.store(1, SeqCst);
+        x.load(SeqCst)
+    });
+
+    let a = j1.join().unwrap();
+    let b = j2.join().unwrap();
+
+    assert_ne!((a, b), (0, 0));
+}
+
+// https://plv.mpi-sws.org/scfix/paper.pdf
 // 2.2 Second Problem: SC Fences are Too Weak
 fn test_rwc_syncs() {
     /*
@@ -247,6 +269,7 @@ pub fn main() {
     // prehaps each function should be its own test case so they
     // can be run in parallel
     for _ in 0..500 {
+        test_sc_store_buffering();
         test_mixed_access();
         test_load_buffering_acq_rel();
         test_message_passing();

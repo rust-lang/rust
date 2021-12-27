@@ -12,7 +12,7 @@
 //! The implementation also models races with memory allocation and deallocation via treating allocation and
 //! deallocation as a type of write internally for detecting data-races.
 //!
-//! This does not explore weak memory orders and so can still miss data-races
+//! Weak memory orders are explored but not all weak behaviours are exhibited, so it can still miss data-races
 //! but should not report false-positives
 //!
 //! Data-race definition from(<https://en.cppreference.com/w/cpp/language/memory_model#Threads_and_data_races>):
@@ -28,22 +28,6 @@
 //! can never hold and hence a data-race can never be reported in that vector index again.
 //! This means that the thread-index can be safely re-used, starting on the next timestamp for the newly created
 //! thread.
-//!
-//! The sequentially consistent ordering corresponds to the ordering that the threads
-//! are currently scheduled, this means that the data-race detector has no additional
-//! logic for sequentially consistent accesses at the moment since they are indistinguishable
-//! from acquire/release operations. If weak memory orderings are explored then this
-//! may need to change or be updated accordingly.
-//!
-//! Per the C++ spec for the memory model a sequentially consistent operation:
-//!   "A load operation with this memory order performs an acquire operation,
-//!    a store performs a release operation, and read-modify-write performs
-//!    both an acquire operation and a release operation, plus a single total
-//!    order exists in which all threads observe all modifications in the same
-//!    order (see Sequentially-consistent ordering below) "
-//! So in the absence of weak memory effects a seq-cst load & a seq-cst store is identical
-//! to an acquire load and a release store given the global sequentially consistent order
-//! of the schedule.
 //!
 //! The timestamps used in the data-race detector assign each sequence of non-atomic operations
 //! followed by a single atomic or concurrent operation a single timestamp.
@@ -67,6 +51,7 @@ use std::{
     mem,
 };
 
+use rustc_const_eval::interpret::alloc_range;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::{mir, ty::layout::TyAndLayout};
@@ -115,10 +100,10 @@ pub enum AtomicFenceOp {
 /// of a thread, contains the happens-before clock and
 /// additional metadata to model atomic fence operations.
 #[derive(Clone, Default, Debug)]
-struct ThreadClockSet {
+pub struct ThreadClockSet {
     /// The increasing clock representing timestamps
     /// that happen-before this thread.
-    clock: VClock,
+    pub clock: VClock,
 
     /// The set of timestamps that will happen-before this
     /// thread once it performs an acquire fence.
@@ -127,6 +112,12 @@ struct ThreadClockSet {
     /// The last timestamp of happens-before relations that
     /// have been released by this thread by a fence.
     fence_release: VClock,
+
+    pub fence_seqcst: VClock,
+
+    pub write_seqcst: VClock,
+
+    pub read_seqcst: VClock,
 }
 
 impl ThreadClockSet {
@@ -169,7 +160,7 @@ pub struct DataRace;
 /// common case where no atomic operations
 /// exists on the memory cell.
 #[derive(Clone, PartialEq, Eq, Default, Debug)]
-struct AtomicMemoryCellClocks {
+pub struct AtomicMemoryCellClocks {
     /// The clock-vector of the timestamp of the last atomic
     /// read operation performed by each thread.
     /// This detects potential data-races between atomic read
@@ -514,7 +505,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         atomic: AtomicReadOp,
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_ref();
+        // This will read from the last store in the modification order of this location. In case
+        // weak memory emulation is enabled, this may not be the store we will pick to actually read from and return.
+        // This is fine with StackedBorrow and race checks because they don't concern metadata on
+        // the *value* (including the associated provenance if this is an AtomicPtr) at this location.
+        // Only metadata on the location itself is used.
         let scalar = this.allow_data_races_ref(move |this| this.read_scalar(&place.into()))?;
+
+        if let Some(global) = &this.machine.data_race {
+            let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
+            if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
+                if atomic == AtomicReadOp::SeqCst {
+                    global.sc_read();
+                }
+                let mut rng = this.machine.rng.borrow_mut();
+                let loaded = alloc_buffers.buffered_read(
+                    alloc_range(base_offset, place.layout.size),
+                    global,
+                    atomic == AtomicReadOp::SeqCst,
+                    &mut *rng,
+                    || this.validate_atomic_load(place, atomic),
+                )?;
+
+                return Ok(loaded.unwrap_or(scalar));
+            }
+        }
+
         this.validate_atomic_load(place, atomic)?;
         Ok(scalar)
     }
@@ -528,7 +544,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.allow_data_races_mut(move |this| this.write_scalar(val, &(*dest).into()))?;
-        this.validate_atomic_store(dest, atomic)
+
+        this.validate_atomic_store(dest, atomic)?;
+        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr)?;
+        if let (
+            crate::AllocExtra { weak_memory: Some(alloc_buffers), .. },
+            crate::Evaluator { data_race: Some(global), .. },
+        ) = this.get_alloc_extra_mut(alloc_id)?
+        {
+            if atomic == AtomicWriteOp::SeqCst {
+                global.sc_write();
+            }
+            let size = dest.layout.size;
+            alloc_buffers.buffered_write(
+                val,
+                alloc_range(base_offset, size),
+                global,
+                atomic == AtomicWriteOp::SeqCst,
+            )?;
+        }
+
+        Ok(())
     }
 
     /// Perform an atomic operation on a memory location.
@@ -550,6 +586,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         this.allow_data_races_mut(|this| this.write_immediate(*val, &(*place).into()))?;
 
         this.validate_atomic_rmw(place, atomic)?;
+
+        this.buffered_atomic_rmw(val.to_scalar_or_uninit(), place, atomic)?;
         Ok(old)
     }
 
@@ -565,7 +603,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 
         let old = this.allow_data_races_mut(|this| this.read_scalar(&place.into()))?;
         this.allow_data_races_mut(|this| this.write_scalar(new, &(*place).into()))?;
+
         this.validate_atomic_rmw(place, atomic)?;
+
+        this.buffered_atomic_rmw(new, place, atomic)?;
         Ok(old)
     }
 
@@ -584,14 +625,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         let lt = this.binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar()?.to_bool()?;
 
         let new_val = if min {
-            if lt { &old } else { &rhs }
+            if lt {
+                &old
+            } else {
+                &rhs
+            }
         } else {
-            if lt { &rhs } else { &old }
+            if lt {
+                &rhs
+            } else {
+                &old
+            }
         };
 
         this.allow_data_races_mut(|this| this.write_immediate(**new_val, &(*place).into()))?;
 
         this.validate_atomic_rmw(place, atomic)?;
+
+        this.buffered_atomic_rmw(new_val.to_scalar_or_uninit(), place, atomic)?;
 
         // Return the old value.
         Ok(old)
@@ -642,12 +693,54 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         if cmpxchg_success {
             this.allow_data_races_mut(|this| this.write_scalar(new, &(*place).into()))?;
             this.validate_atomic_rmw(place, success)?;
+            this.buffered_atomic_rmw(new, place, success)?;
         } else {
             this.validate_atomic_load(place, fail)?;
+            // A failed compare exchange is equivalent to a load, reading from the latest store
+            // in the modification order.
+            // Since `old` is only a value and not the store element, we need to separately
+            // find it in our store buffer and perform load_impl on it.
+            if let Some(global) = &this.machine.data_race {
+                if fail == AtomicReadOp::SeqCst {
+                    global.sc_read();
+                }
+                let size = place.layout.size;
+                let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
+                if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
+                    if global.multi_threaded.get() {
+                        alloc_buffers.read_from_last_store(alloc_range(base_offset, size), global);
+                    }
+                }
+            }
         }
 
         // Return the old value.
         Ok(res)
+    }
+
+    fn buffered_atomic_rmw(
+        &mut self,
+        new_val: ScalarMaybeUninit<Tag>,
+        place: &MPlaceTy<'tcx, Tag>,
+        atomic: AtomicRwOp,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr)?;
+        if let (
+            crate::AllocExtra { weak_memory: Some(alloc_buffers), .. },
+            crate::Evaluator { data_race: Some(global), .. },
+        ) = this.get_alloc_extra_mut(alloc_id)?
+        {
+            if atomic == AtomicRwOp::SeqCst {
+                global.sc_read();
+                global.sc_write();
+            }
+            let size = place.layout.size;
+            let range = alloc_range(base_offset, size);
+            alloc_buffers.read_from_last_store(range, global);
+            alloc_buffers.buffered_write(new_val, range, global, atomic == AtomicRwOp::SeqCst)?;
+        }
+        Ok(())
     }
 
     /// Update the data-race detector for an atomic read occurring at the
@@ -723,7 +816,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     fn validate_atomic_fence(&mut self, atomic: AtomicFenceOp) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if let Some(data_race) = &mut this.machine.data_race {
-            data_race.maybe_perform_sync_operation(move |index, mut clocks| {
+            data_race.maybe_perform_sync_operation(|index, mut clocks| {
                 log::trace!("Atomic fence on {:?} with ordering {:?}", index, atomic);
 
                 // Apply data-race detection for the current fences
@@ -736,6 +829,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                 if atomic != AtomicFenceOp::Acquire {
                     // Either Release | AcqRel | SeqCst
                     clocks.apply_release_fence();
+                }
+                if atomic == AtomicFenceOp::SeqCst {
+                    data_race.last_sc_fence.borrow_mut().set_at_index(&clocks.clock, index);
+                    clocks.fence_seqcst.join(&data_race.last_sc_fence.borrow());
+                    clocks.write_seqcst.join(&data_race.last_sc_write.borrow());
                 }
 
                 // Increment timestamp in case of release semantics.
@@ -1116,6 +1214,12 @@ pub struct GlobalState {
     /// The associated vector index will be moved into re-use candidates
     /// after the join operation occurs.
     terminated_threads: RefCell<FxHashMap<ThreadId, VectorIdx>>,
+
+    /// The timestamp of last SC fence performed by each thread
+    last_sc_fence: RefCell<VClock>,
+
+    /// The timestamp of last SC write performed by each thread
+    last_sc_write: RefCell<VClock>,
 }
 
 impl GlobalState {
@@ -1131,6 +1235,8 @@ impl GlobalState {
             active_thread_count: Cell::new(1),
             reuse_candidates: RefCell::new(FxHashSet::default()),
             terminated_threads: RefCell::new(FxHashMap::default()),
+            last_sc_fence: RefCell::new(VClock::default()),
+            last_sc_write: RefCell::new(VClock::default()),
         };
 
         // Setup the main-thread since it is not explicitly created:
@@ -1445,7 +1551,7 @@ impl GlobalState {
     /// Load the current vector clock in use and the current set of thread clocks
     /// in use for the vector.
     #[inline]
-    fn current_thread_state(&self) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
+    pub fn current_thread_state(&self) -> (VectorIdx, Ref<'_, ThreadClockSet>) {
         let index = self.current_index();
         let ref_vector = self.vector_clocks.borrow();
         let clocks = Ref::map(ref_vector, |vec| &vec[index]);
@@ -1455,7 +1561,7 @@ impl GlobalState {
     /// Load the current vector clock in use and the current set of thread clocks
     /// in use for the vector mutably for modification.
     #[inline]
-    fn current_thread_state_mut(&self) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
+    pub fn current_thread_state_mut(&self) -> (VectorIdx, RefMut<'_, ThreadClockSet>) {
         let index = self.current_index();
         let ref_vector = self.vector_clocks.borrow_mut();
         let clocks = RefMut::map(ref_vector, |vec| &mut vec[index]);
@@ -1467,5 +1573,17 @@ impl GlobalState {
     #[inline]
     fn current_index(&self) -> VectorIdx {
         self.current_index.get()
+    }
+
+    // SC ATOMIC STORE rule in the paper.
+    fn sc_write(&self) {
+        let (index, clocks) = self.current_thread_state();
+        self.last_sc_write.borrow_mut().set_at_index(&clocks.clock, index);
+    }
+
+    // SC ATOMIC READ rule in the paper.
+    fn sc_read(&self) {
+        let (.., mut clocks) = self.current_thread_state_mut();
+        clocks.read_seqcst.join(&self.last_sc_fence.borrow());
     }
 }

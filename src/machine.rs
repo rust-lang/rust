@@ -190,6 +190,9 @@ pub struct AllocExtra {
     /// Data race detection via the use of a vector-clock,
     ///  this is only added if it is enabled.
     pub data_race: Option<data_race::AllocExtra>,
+    /// Weak memory emulation via the use of store buffers,
+    ///  this is only added if it is enabled.
+    pub weak_memory: Option<weak_memory::AllocExtra>,
 }
 
 /// Precomputed layouts of primitive types
@@ -630,9 +633,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         } else {
             None
         };
+        let buffer_alloc = if ecx.machine.weak_memory {
+            // FIXME: if this is an atomic obejct, we want to supply its initial value
+            // while allocating the store buffer here.
+            Some(weak_memory::AllocExtra::new_allocation(alloc.size()))
+        } else {
+            None
+        };
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.convert_tag_add_extra(
             &ecx.tcx,
-            AllocExtra { stacked_borrows: stacks, data_race: race_alloc },
+            AllocExtra { stacked_borrows: stacks, data_race: race_alloc, weak_memory: buffer_alloc },
             |ptr| Evaluator::tag_alloc_base_pointer(ecx, ptr),
         );
         Cow::Owned(alloc)

@@ -45,6 +45,7 @@ mod stacked_borrows;
 mod sync;
 mod thread;
 mod vector_clock;
+mod weak_memory;
 
 // Establish a "crate-wide prelude": we often import `crate::*`.
 
