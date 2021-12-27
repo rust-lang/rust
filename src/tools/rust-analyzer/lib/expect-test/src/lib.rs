@@ -566,25 +566,31 @@ impl Patchwork {
     }
 }
 
-fn format_patch(desired_indent: Option<usize>, patch: &str) -> String {
-    let mut max_hashes = 0;
-    let mut cur_hashes = 0;
-    for byte in patch.bytes() {
-        if byte != b'#' {
-            cur_hashes = 0;
-            continue;
-        }
-        cur_hashes += 1;
-        max_hashes = max_hashes.max(cur_hashes);
+fn lit_kind_for_patch(patch: &str) -> StrLitKind {
+    let has_dquote = patch.chars().any(|c| c == '"');
+    if !has_dquote {
+        let has_bslash_or_newline = patch.chars().any(|c| matches!(c, '\\' | '\n'));
+        return if has_bslash_or_newline {
+            StrLitKind::Raw(1)
+        } else {
+            StrLitKind::Normal
+        };
     }
-    let hashes = &"#".repeat(max_hashes + 1);
+
+    // Find the maximum number of hashes that follow a double quote in the string.
+    // We need to use one more than that to delimit the string.
+    let leading_hashes = |s: &str| s.chars().take_while(|&c| c == '#').count();
+    let max_hashes = patch.split('"').map(leading_hashes).max().unwrap();
+    StrLitKind::Raw(max_hashes + 1)
+}
+
+fn format_patch(desired_indent: Option<usize>, patch: &str) -> String {
+    let lit_kind = lit_kind_for_patch(patch);
     let indent = desired_indent.map(|it| " ".repeat(it));
     let is_multiline = patch.contains('\n');
 
     let mut buf = String::new();
-    buf.push('r');
-    buf.push_str(hashes);
-    buf.push('"');
+    lit_kind.write_start(&mut buf).unwrap();
     if is_multiline {
         buf.push('\n');
     }
@@ -604,8 +610,7 @@ fn format_patch(desired_indent: Option<usize>, patch: &str) -> String {
             buf.push_str(indent);
         }
     }
-    buf.push('"');
-    buf.push_str(hashes);
+    lit_kind.write_end(&mut buf).unwrap();
     buf
 }
 
