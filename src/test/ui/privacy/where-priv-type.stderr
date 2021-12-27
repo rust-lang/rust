@@ -1,0 +1,82 @@
+warning: private type `PrivTy` in public interface (error E0446)
+  --> $DIR/where-priv-type.rs:19:1
+   |
+LL | / pub struct S
+LL | |
+LL | |
+LL | | where
+LL | |     PrivTy:
+LL | | {}
+   | |__^
+   |
+   = note: `#[warn(private_in_public)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+warning: private type `PrivTy` in public interface (error E0446)
+  --> $DIR/where-priv-type.rs:27:1
+   |
+LL | / pub enum E
+LL | |
+LL | |
+LL | | where
+LL | |     PrivTy:
+LL | | {}
+   | |__^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+warning: private type `PrivTy` in public interface (error E0446)
+  --> $DIR/where-priv-type.rs:35:1
+   |
+LL | / pub fn f()
+LL | |
+LL | |
+LL | | where
+LL | |     PrivTy:
+   | |___________^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+error[E0446]: private type `PrivTy` in public interface
+  --> $DIR/where-priv-type.rs:43:1
+   |
+LL |   struct PrivTy;
+   |   -------------- `PrivTy` declared as private
+...
+LL | / impl S
+LL | |
+LL | | where
+LL | |     PrivTy:
+...  |
+LL | |     {}
+LL | | }
+   | |_^ can't leak private type
+
+warning: private type `PrivTy` in public interface (error E0446)
+  --> $DIR/where-priv-type.rs:48:5
+   |
+LL | /     pub fn f()
+LL | |
+LL | |
+LL | |     where
+LL | |         PrivTy:
+   | |_______________^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+
+error[E0446]: private type `fn(u8) -> u8 {my_const_fn}` in public interface
+  --> $DIR/where-priv-type.rs:80:5
+   |
+LL |     type AssocTy = Const<{ my_const_fn(U) }>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
+...
+LL | const fn my_const_fn(val: u8) -> u8 {
+   | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
+
+error: aborting due to 2 previous errors; 4 warnings emitted
+
+For more information about this error, try `rustc --explain E0446`.
