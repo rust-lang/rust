@@ -2239,9 +2239,9 @@ dependencies = [
 
 [[package]]
 name = "mimallocate-sys"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40f7fce1d2b85a787a1dc11f59afab35d1fee036a5267b7e1d2013de1ba6eb83"
+checksum = "e3a60aa763b2d53b874b186ecd188c6241b9a8eb8b1deae51190d68915e99d90"
 dependencies = [
  "cc",
 ]

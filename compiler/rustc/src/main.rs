@@ -46,8 +46,7 @@ fn main() {
         // linking, so we need to explicitly depend on the function.
         #[cfg(target_os = "macos")]
         #[used]
-        static _F7: unsafe extern "C" fn() =
-            mimallocate_sys::_mi_macos_override_malloc;
+        static _F7: unsafe extern "C" fn() = mimallocate_sys::_mi_macos_override_malloc;
     }
 
     rustc_driver::set_sigpipe_handler();

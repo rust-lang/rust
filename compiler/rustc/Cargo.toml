@@ -11,7 +11,7 @@ rustc_driver = { path = "../rustc_driver" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 
 [dependencies.mimallocate-sys]
-version = '0.1.0'
+version = '0.1.1'
 optional = true
 
 [features]
