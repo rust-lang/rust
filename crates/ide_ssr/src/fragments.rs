@@ -19,3 +19,14 @@ pub(crate) fn ty(s: &str) -> Result<SyntaxNode, ()> {
     let node = parse.tree().syntax().descendants().find_map(ast::Type::cast).ok_or(())?;
     Ok(node.syntax().clone())
 }
+
+pub(crate) fn item(s: &str) -> Result<SyntaxNode, ()> {
+    let template = "{}";
+    let input = template.replace("{}", s);
+    let parse = syntax::SourceFile::parse(&input);
+    if !parse.errors().is_empty() {
+        return Err(());
+    }
+    let node = parse.tree().syntax().descendants().find_map(ast::Item::cast).ok_or(())?;
+    Ok(node.syntax().clone())
+}
