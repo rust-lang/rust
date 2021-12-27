@@ -52,12 +52,14 @@ pub use crate::{
 #[derive(Debug)]
 pub enum PrefixEntryPoint {
     Vis,
+    Block,
 }
 
 impl PrefixEntryPoint {
     pub fn parse(&self, input: &Input) -> Output {
         let entry_point: fn(&'_ mut parser::Parser) = match self {
             PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
+            PrefixEntryPoint::Block => grammar::entry::prefix::block,
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);

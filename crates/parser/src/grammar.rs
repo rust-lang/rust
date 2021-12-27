@@ -53,6 +53,10 @@ pub(crate) mod entry {
         pub(crate) fn vis(p: &mut Parser) {
             let _ = opt_visibility(p, false);
         }
+
+        pub(crate) fn block(p: &mut Parser) {
+            expressions::block_expr(p);
+        }
     }
 }
 

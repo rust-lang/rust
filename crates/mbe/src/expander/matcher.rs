@@ -695,7 +695,11 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
         "ty" => ParserEntryPoint::Type,
         "pat" | "pat_param" => ParserEntryPoint::Pattern, // FIXME: edition2021
         "stmt" => ParserEntryPoint::Statement,
-        "block" => ParserEntryPoint::Block,
+        "block" => {
+            return input
+                .expect_fragment2(parser::PrefixEntryPoint::Block)
+                .map(|tt| tt.map(Fragment::Tokens));
+        }
         "meta" => ParserEntryPoint::MetaItem,
         "item" => ParserEntryPoint::Item,
         _ => {
@@ -725,7 +729,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                         .map_err(|()| err!())
                 }
                 // `vis` is optional
-                "vis" => Ok(input.eat_vis()),
+                "vis" => Ok(input.expect_fragment2(parser::PrefixEntryPoint::Vis).value),
                 _ => Err(ExpandError::UnexpectedToken),
             };
             return tt_result.map(|it| it.map(Fragment::Tokens)).into();
@@ -892,10 +896,6 @@ impl<'a> TtIter<'a> {
             ],
         }
         .into())
-    }
-
-    fn eat_vis(&mut self) -> Option<tt::TokenTree> {
-        self.expect_fragment2(parser::PrefixEntryPoint::Vis).value
     }
 
     fn eat_char(&mut self, c: char) -> Option<tt::TokenTree> {
