@@ -1,5 +1,5 @@
 error: written amount is not handled. Use `Write::write_all` instead
-  --> $DIR/unused_io_amount.rs:7:5
+  --> $DIR/unused_io_amount.rs:9:5
    |
 LL |     s.write(b"test")?;
    |     ^^^^^^^^^^^^^^^^^
@@ -7,55 +7,55 @@ LL |     s.write(b"test")?;
    = note: `-D clippy::unused-io-amount` implied by `-D warnings`
 
 error: read amount is not handled. Use `Read::read_exact` instead
-  --> $DIR/unused_io_amount.rs:9:5
+  --> $DIR/unused_io_amount.rs:11:5
    |
 LL |     s.read(&mut buf)?;
    |     ^^^^^^^^^^^^^^^^^
 
 error: written amount is not handled. Use `Write::write_all` instead
-  --> $DIR/unused_io_amount.rs:14:5
+  --> $DIR/unused_io_amount.rs:16:5
    |
 LL |     s.write(b"test").unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: read amount is not handled. Use `Read::read_exact` instead
-  --> $DIR/unused_io_amount.rs:16:5
+  --> $DIR/unused_io_amount.rs:18:5
    |
 LL |     s.read(&mut buf).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: read amount is not handled
-  --> $DIR/unused_io_amount.rs:20:5
+  --> $DIR/unused_io_amount.rs:22:5
    |
 LL |     s.read_vectored(&mut [io::IoSliceMut::new(&mut [])])?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: written amount is not handled
-  --> $DIR/unused_io_amount.rs:21:5
+  --> $DIR/unused_io_amount.rs:23:5
    |
 LL |     s.write_vectored(&[io::IoSlice::new(&[])])?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: read amount is not handled. Use `Read::read_exact` instead
-  --> $DIR/unused_io_amount.rs:28:5
+  --> $DIR/unused_io_amount.rs:30:5
    |
 LL |     reader.read(&mut result).ok()?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: read amount is not handled. Use `Read::read_exact` instead
-  --> $DIR/unused_io_amount.rs:37:5
+  --> $DIR/unused_io_amount.rs:39:5
    |
 LL |     reader.read(&mut result).or_else(|err| Err(err))?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: read amount is not handled. Use `Read::read_exact` instead
-  --> $DIR/unused_io_amount.rs:49:5
+  --> $DIR/unused_io_amount.rs:51:5
    |
 LL |     reader.read(&mut result).or(Err(Error::Kind))?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: read amount is not handled. Use `Read::read_exact` instead
-  --> $DIR/unused_io_amount.rs:56:5
+  --> $DIR/unused_io_amount.rs:58:5
    |
 LL | /     reader
 LL | |         .read(&mut result)
@@ -64,5 +64,41 @@ LL | |         .or(Err(Error::Kind))
 LL | |         .expect("error");
    | |________________________^
 
-error: aborting due to 10 previous errors
+error: written amount is not handled. Use `AsyncWriteExt::write_all` instead
+  --> $DIR/unused_io_amount.rs:67:5
+   |
+LL |     w.write(b"hello world").await.unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: read amount is not handled. Use `AsyncReadExt::read_exact` instead
+  --> $DIR/unused_io_amount.rs:72:5
+   |
+LL |     r.read(&mut buf[..]).await.unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: written amount is not handled. Use `AsyncWriteExt::write_all` instead
+  --> $DIR/unused_io_amount.rs:85:9
+   |
+LL |         w.write(b"hello world").await?;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: read amount is not handled. Use `AsyncReadExt::read_exact` instead
+  --> $DIR/unused_io_amount.rs:93:9
+   |
+LL |         r.read(&mut buf[..]).await.or(Err(Error::Kind))?;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: written amount is not handled. Use `AsyncWriteExt::write_all` instead
+  --> $DIR/unused_io_amount.rs:101:5
+   |
+LL |     w.write(b"hello world").await.unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: read amount is not handled. Use `AsyncReadExt::read_exact` instead
+  --> $DIR/unused_io_amount.rs:106:5
+   |
+LL |     r.read(&mut buf[..]).await.unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
 

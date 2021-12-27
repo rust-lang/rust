@@ -64,6 +64,10 @@ pub const FROM_ITERATOR: [&str; 5] = ["core", "iter", "traits", "collect", "From
 pub const FROM_ITERATOR_METHOD: [&str; 6] = ["core", "iter", "traits", "collect", "FromIterator", "from_iter"];
 pub const FROM_STR_METHOD: [&str; 5] = ["core", "str", "traits", "FromStr", "from_str"];
 pub const FUTURE_FROM_GENERATOR: [&str; 3] = ["core", "future", "from_generator"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+pub const FUTURES_IO_ASYNCREADEXT: [&str; 3] = ["futures_util", "io", "AsyncReadExt"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+pub const FUTURES_IO_ASYNCWRITEEXT: [&str; 3] = ["futures_util", "io", "AsyncWriteExt"];
 pub const HASH: [&str; 3] = ["core", "hash", "Hash"];
 pub const HASHMAP_CONTAINS_KEY: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "contains_key"];
 pub const HASHMAP_ENTRY: [&str; 5] = ["std", "collections", "hash", "map", "Entry"];
@@ -194,6 +198,10 @@ pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
 pub const TO_OWNED_METHOD: [&str; 4] = ["alloc", "borrow", "ToOwned", "to_owned"];
 pub const TO_STRING_METHOD: [&str; 4] = ["alloc", "string", "ToString", "to_string"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+pub const TOKIO_IO_ASYNCREADEXT: [&str; 5] = ["tokio", "io", "util", "async_read_ext", "AsyncReadExt"];
+#[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
+pub const TOKIO_IO_ASYNCWRITEEXT: [&str; 5] = ["tokio", "io", "util", "async_write_ext", "AsyncWriteExt"];
 pub const TRY_FROM: [&str; 4] = ["core", "convert", "TryFrom", "try_from"];
 pub const VEC_AS_MUT_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_mut_slice"];
 pub const VEC_AS_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_slice"];

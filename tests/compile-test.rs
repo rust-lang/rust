@@ -21,6 +21,7 @@ const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal-lints");
 static TEST_DEPENDENCIES: &[&str] = &[
     "clippy_utils",
     "derive_new",
+    "futures",
     "if_chain",
     "itertools",
     "quote",
@@ -28,6 +29,7 @@ static TEST_DEPENDENCIES: &[&str] = &[
     "serde",
     "serde_derive",
     "syn",
+    "tokio",
     "parking_lot",
 ];
 
@@ -38,6 +40,8 @@ extern crate clippy_utils;
 #[allow(unused_extern_crates)]
 extern crate derive_new;
 #[allow(unused_extern_crates)]
+extern crate futures;
+#[allow(unused_extern_crates)]
 extern crate if_chain;
 #[allow(unused_extern_crates)]
 extern crate itertools;
@@ -47,6 +51,8 @@ extern crate parking_lot;
 extern crate quote;
 #[allow(unused_extern_crates)]
 extern crate syn;
+#[allow(unused_extern_crates)]
+extern crate tokio;
 
 /// Produces a string with an `--extern` flag for all UI test crate
 /// dependencies.
