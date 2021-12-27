@@ -74,8 +74,8 @@ impl ParsedRule {
         };
 
         let raw_template_stmt = raw_template.map(ast::Stmt::parse);
-        if let raw_template_expr @ Some(Ok(_)) = raw_template.map(ast::Expr::parse) {
-            builder.try_add(ast::Expr::parse(&raw_pattern), raw_template_expr);
+        if let raw_template_expr @ Some(Ok(_)) = raw_template.map(fragments::expr) {
+            builder.try_add2(fragments::expr(&raw_pattern), raw_template_expr);
         } else {
             builder.try_add(ast::Expr::parse(&raw_pattern), raw_template_stmt.clone());
         }

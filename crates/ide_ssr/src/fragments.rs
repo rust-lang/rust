@@ -35,3 +35,17 @@ pub(crate) fn item(s: &str) -> Result<SyntaxNode, ()> {
     }
     Ok(node.syntax().clone())
 }
+
+pub(crate) fn expr(s: &str) -> Result<SyntaxNode, ()> {
+    let template = "const _: () = {};";
+    let input = template.replace("{}", s);
+    let parse = syntax::SourceFile::parse(&input);
+    if !parse.errors().is_empty() {
+        return Err(());
+    }
+    let node = parse.tree().syntax().descendants().find_map(ast::Expr::cast).ok_or(())?;
+    if node.to_string() != s {
+        return Err(());
+    }
+    Ok(node.syntax().clone())
+}
