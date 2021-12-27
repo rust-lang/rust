@@ -694,7 +694,11 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
         "expr" => ParserEntryPoint::Expr,
         "ty" => ParserEntryPoint::Type,
         "pat" | "pat_param" => ParserEntryPoint::Pattern, // FIXME: edition2021
-        "stmt" => ParserEntryPoint::Statement,
+        "stmt" => {
+            return input
+                .expect_fragment2(parser::PrefixEntryPoint::Stmt)
+                .map(|tt| tt.map(Fragment::Tokens));
+        }
         "block" => {
             return input
                 .expect_fragment2(parser::PrefixEntryPoint::Block)

@@ -53,6 +53,7 @@ pub use crate::{
 pub enum PrefixEntryPoint {
     Vis,
     Block,
+    Stmt,
 }
 
 impl PrefixEntryPoint {
@@ -60,6 +61,7 @@ impl PrefixEntryPoint {
         let entry_point: fn(&'_ mut parser::Parser) = match self {
             PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
             PrefixEntryPoint::Block => grammar::entry::prefix::block,
+            PrefixEntryPoint::Stmt => grammar::entry::prefix::stmt,
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);
@@ -77,13 +79,10 @@ pub enum ParserEntryPoint {
     SourceFile,
     Path,
     Expr,
-    Statement,
     StatementOptionalSemi,
     Type,
     Pattern,
     Item,
-    Block,
-    // Visibility,
     MetaItem,
     Items,
     Statements,
@@ -111,10 +110,7 @@ pub fn parse(inp: &Input, entry_point: ParserEntryPoint) -> Output {
         ParserEntryPoint::Type => grammar::entry_points::type_,
         ParserEntryPoint::Pattern => grammar::entry_points::pattern,
         ParserEntryPoint::Item => grammar::entry_points::item,
-        ParserEntryPoint::Block => grammar::entry_points::block_expr,
-        // ParserEntryPoint::Visibility => grammar::entry_points::visibility,
         ParserEntryPoint::MetaItem => grammar::entry_points::meta_item,
-        ParserEntryPoint::Statement => grammar::entry_points::stmt,
         ParserEntryPoint::StatementOptionalSemi => grammar::entry_points::stmt_optional_semi,
         ParserEntryPoint::Items => grammar::entry_points::macro_items,
         ParserEntryPoint::Statements => grammar::entry_points::macro_stmts,

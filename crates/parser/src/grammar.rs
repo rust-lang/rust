@@ -57,6 +57,10 @@ pub(crate) mod entry {
         pub(crate) fn block(p: &mut Parser) {
             expressions::block_expr(p);
         }
+
+        pub(crate) fn stmt(p: &mut Parser) {
+            expressions::stmt(p, expressions::StmtWithSemi::No, true);
+        }
     }
 }
 
@@ -70,8 +74,6 @@ pub(crate) mod entry_points {
         m.complete(p, SOURCE_FILE);
     }
 
-    pub(crate) use expressions::block_expr;
-
     pub(crate) use paths::type_path as path;
 
     pub(crate) use patterns::pattern_single as pattern;
@@ -80,10 +82,6 @@ pub(crate) mod entry_points {
 
     pub(crate) fn expr(p: &mut Parser) {
         let _ = expressions::expr(p);
-    }
-
-    pub(crate) fn stmt(p: &mut Parser) {
-        expressions::stmt(p, expressions::StmtWithSemi::No, true);
     }
 
     pub(crate) fn stmt_optional_semi(p: &mut Parser) {
