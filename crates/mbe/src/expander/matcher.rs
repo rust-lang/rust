@@ -726,10 +726,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                         .map_err(|()| err!())
                 }
                 // `vis` is optional
-                "vis" => match input.eat_vis() {
-                    Some(vis) => Ok(Some(vis)),
-                    None => Ok(None),
-                },
+                "vis" => Ok(input.eat_vis()),
                 _ => Err(ExpandError::UnexpectedToken),
             };
             return tt_result.map(|it| it.map(Fragment::Tokens)).into();
@@ -899,14 +896,7 @@ impl<'a> TtIter<'a> {
     }
 
     fn eat_vis(&mut self) -> Option<tt::TokenTree> {
-        let mut fork = self.clone();
-        match fork.expect_fragment(Visibility) {
-            ExpandResult { value: tt, err: None } => {
-                *self = fork;
-                tt
-            }
-            ExpandResult { value: _, err: Some(_) } => None,
-        }
+        self.expect_fragment(Visibility).value
     }
 
     fn eat_char(&mut self, c: char) -> Option<tt::TokenTree> {
