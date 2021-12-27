@@ -36,6 +36,20 @@ pub(crate) fn item(s: &str) -> Result<SyntaxNode, ()> {
     Ok(node.syntax().clone_subtree())
 }
 
+pub(crate) fn pat(s: &str) -> Result<SyntaxNode, ()> {
+    let template = "const _: () = {let {} = ();};";
+    let input = template.replace("{}", s);
+    let parse = syntax::SourceFile::parse(&input);
+    if !parse.errors().is_empty() {
+        return Err(());
+    }
+    let node = parse.tree().syntax().descendants().find_map(ast::Pat::cast).ok_or(())?;
+    if node.to_string() != s {
+        return Err(());
+    }
+    Ok(node.syntax().clone_subtree())
+}
+
 pub(crate) fn expr(s: &str) -> Result<SyntaxNode, ()> {
     let template = "const _: () = {};";
     let input = template.replace("{}", s);

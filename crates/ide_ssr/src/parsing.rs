@@ -4,12 +4,12 @@
 //! placeholders, which start with `$`. For replacement templates, this is the final form. For
 //! search patterns, we go further and parse the pattern as each kind of thing that we can match.
 //! e.g. expressions, type references etc.
+use rustc_hash::{FxHashMap, FxHashSet};
+use std::{fmt::Display, str::FromStr};
+use syntax::{SmolStr, SyntaxKind, SyntaxNode, T};
 
 use crate::errors::bail;
 use crate::{fragments, SsrError, SsrPattern, SsrRule};
-use rustc_hash::{FxHashMap, FxHashSet};
-use std::{fmt::Display, str::FromStr};
-use syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, T};
 
 #[derive(Debug)]
 pub(crate) struct ParsedRule {
@@ -75,14 +75,14 @@ impl ParsedRule {
 
         let raw_template_stmt = raw_template.map(fragments::stmt);
         if let raw_template_expr @ Some(Ok(_)) = raw_template.map(fragments::expr) {
-            builder.try_add2(fragments::expr(&raw_pattern), raw_template_expr);
+            builder.try_add(fragments::expr(&raw_pattern), raw_template_expr);
         } else {
-            builder.try_add2(fragments::expr(&raw_pattern), raw_template_stmt.clone());
+            builder.try_add(fragments::expr(&raw_pattern), raw_template_stmt.clone());
         }
-        builder.try_add2(fragments::ty(&raw_pattern), raw_template.map(fragments::ty));
-        builder.try_add2(fragments::item(&raw_pattern), raw_template.map(fragments::item));
-        builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));
-        builder.try_add2(fragments::stmt(&raw_pattern), raw_template_stmt);
+        builder.try_add(fragments::ty(&raw_pattern), raw_template.map(fragments::ty));
+        builder.try_add(fragments::item(&raw_pattern), raw_template.map(fragments::item));
+        builder.try_add(fragments::pat(&raw_pattern), raw_template.map(fragments::pat));
+        builder.try_add(fragments::stmt(&raw_pattern), raw_template_stmt);
         builder.build()
     }
 }
@@ -93,27 +93,7 @@ struct RuleBuilder {
 }
 
 impl RuleBuilder {
-    fn try_add<T: AstNode, T2: AstNode>(
-        &mut self,
-        pattern: Result<T, ()>,
-        template: Option<Result<T2, ()>>,
-    ) {
-        match (pattern, template) {
-            (Ok(pattern), Some(Ok(template))) => self.rules.push(ParsedRule {
-                placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
-                pattern: pattern.syntax().clone(),
-                template: Some(template.syntax().clone()),
-            }),
-            (Ok(pattern), None) => self.rules.push(ParsedRule {
-                placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
-                pattern: pattern.syntax().clone(),
-                template: None,
-            }),
-            _ => {}
-        }
-    }
-
-    fn try_add2(
+    fn try_add(
         &mut self,
         pattern: Result<SyntaxNode, ()>,
         template: Option<Result<SyntaxNode, ()>>,
