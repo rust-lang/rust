@@ -6,7 +6,6 @@
 //! needs to determine it somehow. We do this in a stupid way -- by pasting SSR
 //! rule into different contexts and checking what works.
 
-use parser::SyntaxKind;
 use syntax::{ast, AstNode, SyntaxNode};
 
 pub(crate) fn ty(s: &str) -> Result<SyntaxNode, ()> {
@@ -17,6 +16,9 @@ pub(crate) fn ty(s: &str) -> Result<SyntaxNode, ()> {
         return Err(());
     }
     let node = parse.tree().syntax().descendants().find_map(ast::Type::cast).ok_or(())?;
+    if node.to_string() != s {
+        return Err(());
+    }
     Ok(node.syntax().clone())
 }
 
@@ -28,5 +30,8 @@ pub(crate) fn item(s: &str) -> Result<SyntaxNode, ()> {
         return Err(());
     }
     let node = parse.tree().syntax().descendants().find_map(ast::Item::cast).ok_or(())?;
+    if node.to_string() != s {
+        return Err(());
+    }
     Ok(node.syntax().clone())
 }
