@@ -65,6 +65,10 @@ pub(crate) mod entry {
         pub(crate) fn pat(p: &mut Parser) {
             patterns::pattern_single(p);
         }
+
+        pub(crate) fn ty(p: &mut Parser) {
+            types::type_(p);
+        }
     }
 }
 
@@ -79,8 +83,6 @@ pub(crate) mod entry_points {
     }
 
     pub(crate) use paths::type_path as path;
-
-    pub(crate) use types::type_;
 
     pub(crate) fn expr(p: &mut Parser) {
         let _ = expressions::expr(p);

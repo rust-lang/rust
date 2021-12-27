@@ -56,6 +56,7 @@ pub enum PrefixEntryPoint {
     Block,
     Stmt,
     Pat,
+    Ty,
 }
 
 impl PrefixEntryPoint {
@@ -65,6 +66,7 @@ impl PrefixEntryPoint {
             PrefixEntryPoint::Block => grammar::entry::prefix::block,
             PrefixEntryPoint::Stmt => grammar::entry::prefix::stmt,
             PrefixEntryPoint::Pat => grammar::entry::prefix::pat,
+            PrefixEntryPoint::Ty => grammar::entry::prefix::ty,
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);
@@ -110,7 +112,7 @@ pub fn parse(inp: &Input, entry_point: ParserEntryPoint) -> Output {
         ParserEntryPoint::SourceFile => grammar::entry_points::source_file,
         ParserEntryPoint::Path => grammar::entry_points::path,
         ParserEntryPoint::Expr => grammar::entry_points::expr,
-        ParserEntryPoint::Type => grammar::entry_points::type_,
+        ParserEntryPoint::Type => grammar::entry::prefix::ty,
         ParserEntryPoint::Pattern => grammar::entry::prefix::pat,
         ParserEntryPoint::Item => grammar::entry_points::item,
         ParserEntryPoint::MetaItem => grammar::entry_points::meta_item,

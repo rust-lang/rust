@@ -692,7 +692,11 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
     let fragment = match kind {
         "path" => ParserEntryPoint::Path,
         "expr" => ParserEntryPoint::Expr,
-        "ty" => ParserEntryPoint::Type,
+        "ty" => {
+            return input
+                .expect_fragment2(parser::PrefixEntryPoint::Ty)
+                .map(|tt| tt.map(Fragment::Tokens));
+        }
         // FIXME: These two should actually behave differently depending on the edition.
         //
         // https://doc.rust-lang.org/edition-guide/rust-2021/or-patterns-macro-rules.html
