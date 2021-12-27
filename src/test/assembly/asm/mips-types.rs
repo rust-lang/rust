@@ -48,28 +48,6 @@ extern "Rust" {
     fn dont_merge(s: &str);
 }
 
-macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
-    #[no_mangle]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!($func));
-
-        let y;
-        asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
-        y
-    }
-};}
-
-macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
-    #[no_mangle]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!($func));
-
-        let y;
-        asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
-        y
-    }
-};}
-
 // mips32-LABEL: sym_static_32:
 // mips32: #APP
 // mips32: lw $3, %got(extern_static)
@@ -110,18 +88,22 @@ pub unsafe fn sym_fn_64() {
     asm!("ld $v1, {}", sym extern_func);
 }
 
+macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
+    #[no_mangle]
+    pub unsafe fn $func(x: $ty) -> $ty {
+        dont_merge(stringify!($func));
+
+        let y;
+        asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
+        y
+    }
+};}
+
 // CHECK-LABEL: reg_f32:
 // CHECK: #APP
 // CHECK: mov.s $f{{[0-9]+}}, $f{{[0-9]+}}
 // CHECK: #NO_APP
 check!(reg_f32, f32, freg, "mov.s");
-
-// CHECK-LABEL: f0_f32:
-// CHECK: #APP
-// CHECK: mov.s $f0, $f0
-// CHECK: #NO_APP
-#[no_mangle]
-check_reg!(f0_f32, f32, "$f0", "mov.s");
 
 // CHECK-LABEL: reg_f32_64:
 // CHECK: #APP
@@ -129,26 +111,11 @@ check_reg!(f0_f32, f32, "$f0", "mov.s");
 // CHECK: #NO_APP
 check!(reg_f32_64, f32, freg, "mov.d");
 
-// CHECK-LABEL: f0_f32_64:
-// CHECK: #APP
-// CHECK: mov.d $f0, $f0
-// CHECK: #NO_APP
-#[no_mangle]
-check_reg!(f0_f32_64, f32, "$f0", "mov.d");
-
 // CHECK-LABEL: reg_f64:
 // CHECK: #APP
 // CHECK: mov.d $f{{[0-9]+}}, $f{{[0-9]+}}
 // CHECK: #NO_APP
-#[no_mangle]
 check!(reg_f64, f64, freg, "mov.d");
-
-// CHECK-LABEL: f0_f64:
-// CHECK: #APP
-// CHECK: mov.d $f0, $f0
-// CHECK: #NO_APP
-#[no_mangle]
-check_reg!(f0_f64, f64, "$f0", "mov.d");
 
 // CHECK-LABEL: reg_ptr:
 // CHECK: #APP
@@ -199,6 +166,35 @@ check!(reg_i16, i16, reg, "move");
 // mips64: #NO_APP
 #[cfg(mips64)]
 check!(reg_i64, i64, reg, "move");
+
+macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
+    #[no_mangle]
+    pub unsafe fn $func(x: $ty) -> $ty {
+        dont_merge(stringify!($func));
+
+        let y;
+        asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
+        y
+    }
+};}
+
+// CHECK-LABEL: f0_f32:
+// CHECK: #APP
+// CHECK: mov.s $f0, $f0
+// CHECK: #NO_APP
+check_reg!(f0_f32, f32, "$f0", "mov.s");
+
+// CHECK-LABEL: f0_f32_64:
+// CHECK: #APP
+// CHECK: mov.d $f0, $f0
+// CHECK: #NO_APP
+check_reg!(f0_f32_64, f32, "$f0", "mov.d");
+
+// CHECK-LABEL: f0_f64:
+// CHECK: #APP
+// CHECK: mov.d $f0, $f0
+// CHECK: #NO_APP
+check_reg!(f0_f64, f64, "$f0", "mov.d");
 
 // CHECK-LABEL: r8_ptr:
 // CHECK: #APP

@@ -34,28 +34,6 @@ impl Copy for i32 {}
 impl Copy for i64 {}
 impl Copy for ptr {}
 
-macro_rules! check {
-    ($func:ident $ty:ident $class:ident) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!("{} = {}", out($class) y, in($class) x);
-            y
-        }
-    };
-}
-
-macro_rules! check_reg {
-    ($func:ident $ty:ident $reg:tt) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            let y;
-            asm!(concat!($reg, " = ", $reg), lateout($reg) y, in($reg) x);
-            y
-        }
-    };
-}
-
 extern "C" {
     fn extern_func();
 }
@@ -67,6 +45,17 @@ extern "C" {
 #[no_mangle]
 pub unsafe fn sym_fn() {
     asm!("call {}", sym extern_func);
+}
+
+macro_rules! check {
+    ($func:ident $ty:ident $class:ident) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!("{} = {}", out($class) y, in($class) x);
+            y
+        }
+    };
 }
 
 // CHECK-LABEL: reg_i8:
@@ -110,6 +99,17 @@ check!(wreg_i16 i16 wreg);
 // CHECK: w{{[0-9]+}} = w{{[0-9]+}}
 // CHECK: #NO_APP
 check!(wreg_i32 i32 wreg);
+
+macro_rules! check_reg {
+    ($func:ident $ty:ident $reg:tt) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            let y;
+            asm!(concat!($reg, " = ", $reg), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
 
 // CHECK-LABEL: r0_i8:
 // CHECK: #APP

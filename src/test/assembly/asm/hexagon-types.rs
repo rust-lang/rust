@@ -37,40 +37,6 @@ extern "C" {
     static extern_static: u8;
 }
 
-macro_rules! check {
-    ($func:ident $ty:ident $class:ident) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
-            let y;
-            asm!("{} = {}", out($class) y, in($class) x);
-            y
-        }
-    };
-}
-
-macro_rules! check_reg {
-    ($func:ident $ty:ident $reg:tt) => {
-        #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
-            let y;
-            asm!(concat!($reg, " = ", $reg), lateout($reg) y, in($reg) x);
-            y
-        }
-    };
-}
-
 // CHECK-LABEL: sym_static:
 // CHECK: InlineAsm Start
 // CHECK: r0 = {{#+}}extern_static
@@ -120,6 +86,23 @@ pub unsafe fn packet() {
     }}", out(reg) _, in(reg) &val);
 }
 
+macro_rules! check {
+    ($func:ident $ty:ident $class:ident) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            // Hack to avoid function merging
+            extern "Rust" {
+                fn dont_merge(s: &str);
+            }
+            dont_merge(stringify!($func));
+
+            let y;
+            asm!("{} = {}", out($class) y, in($class) x);
+            y
+        }
+    };
+}
+
 // CHECK-LABEL: reg_ptr:
 // CHECK: InlineAsm Start
 // CHECK: r{{[0-9]+}} = r{{[0-9]+}}
@@ -149,6 +132,23 @@ check!(reg_i8 i8 reg);
 // CHECK: r{{[0-9]+}} = r{{[0-9]+}}
 // CHECK: InlineAsm End
 check!(reg_i16 i16 reg);
+
+macro_rules! check_reg {
+    ($func:ident $ty:ident $reg:tt) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $ty) -> $ty {
+            // Hack to avoid function merging
+            extern "Rust" {
+                fn dont_merge(s: &str);
+            }
+            dont_merge(stringify!($func));
+
+            let y;
+            asm!(concat!($reg, " = ", $reg), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
 
 // CHECK-LABEL: r0_ptr:
 // CHECK: InlineAsm Start

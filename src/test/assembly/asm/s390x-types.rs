@@ -47,28 +47,6 @@ extern "Rust" {
     fn dont_merge(s: &str);
 }
 
-macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
-    #[no_mangle]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!($func));
-
-        let y;
-        asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
-        y
-    }
-};}
-
-macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
-    #[no_mangle]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        dont_merge(stringify!($func));
-
-        let y;
-        asm!(concat!($mov, " %", $reg, ", %", $reg), lateout($reg) y, in($reg) x);
-        y
-    }
-};}
-
 // CHECK-LABEL: sym_fn_32:
 // CHECK: #APP
 // CHECK: brasl %r14, extern_func
@@ -87,6 +65,17 @@ pub unsafe fn sym_fn_32() {
 pub unsafe fn sym_static() {
     asm!("brasl %r14, {}", sym extern_static);
 }
+
+macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
+    #[no_mangle]
+    pub unsafe fn $func(x: $ty) -> $ty {
+        dont_merge(stringify!($func));
+
+        let y;
+        asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
+        y
+    }
+};}
 
 // CHECK-LABEL: reg_i8:
 // CHECK: #APP
@@ -129,6 +118,17 @@ check!(reg_f64, f64, freg, "ldr");
 // CHECK: lgr %r{{[0-9]+}}, %r{{[0-9]+}}
 // CHECK: #NO_APP
 check!(reg_ptr, ptr, reg, "lgr");
+
+macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
+    #[no_mangle]
+    pub unsafe fn $func(x: $ty) -> $ty {
+        dont_merge(stringify!($func));
+
+        let y;
+        asm!(concat!($mov, " %", $reg, ", %", $reg), lateout($reg) y, in($reg) x);
+        y
+    }
+};}
 
 // CHECK-LABEL: r0_i8:
 // CHECK: #APP
