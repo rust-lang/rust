@@ -83,41 +83,45 @@ pub(crate) mod entry {
             attributes::meta(p);
         }
     }
+
+    pub(crate) mod top {
+        use super::*;
+
+        pub(crate) fn source_file(p: &mut Parser) {
+            let m = p.start();
+            p.eat(SHEBANG);
+            items::mod_contents(p, false);
+            m.complete(p, SOURCE_FILE);
+        }
+
+        pub(crate) fn macro_stmts(p: &mut Parser) {
+            let m = p.start();
+
+            while !p.at(EOF) {
+                if p.at(T![;]) {
+                    p.bump(T![;]);
+                    continue;
+                }
+
+                expressions::stmt(p, expressions::StmtWithSemi::Optional, true);
+            }
+
+            m.complete(p, MACRO_STMTS);
+        }
+
+        pub(crate) fn macro_items(p: &mut Parser) {
+            let m = p.start();
+            items::mod_contents(p, false);
+            m.complete(p, MACRO_ITEMS);
+        }
+    }
 }
 
 pub(crate) mod entry_points {
     use super::*;
 
-    pub(crate) fn source_file(p: &mut Parser) {
-        let m = p.start();
-        p.eat(SHEBANG);
-        items::mod_contents(p, false);
-        m.complete(p, SOURCE_FILE);
-    }
-
     pub(crate) fn stmt_optional_semi(p: &mut Parser) {
         expressions::stmt(p, expressions::StmtWithSemi::Optional, false);
-    }
-
-    pub(crate) fn macro_items(p: &mut Parser) {
-        let m = p.start();
-        items::mod_contents(p, false);
-        m.complete(p, MACRO_ITEMS);
-    }
-
-    pub(crate) fn macro_stmts(p: &mut Parser) {
-        let m = p.start();
-
-        while !p.at(EOF) {
-            if p.at(T![;]) {
-                p.bump(T![;]);
-                continue;
-            }
-
-            expressions::stmt(p, expressions::StmtWithSemi::Optional, true);
-        }
-
-        m.complete(p, MACRO_STMTS);
     }
 
     pub(crate) fn attr(p: &mut Parser) {

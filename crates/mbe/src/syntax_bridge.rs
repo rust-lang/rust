@@ -9,9 +9,7 @@ use syntax::{
 };
 use tt::buffer::{Cursor, TokenBuffer};
 
-use crate::{
-    to_parser_input::to_parser_input, tt_iter::TtIter, ExpandError, ParserEntryPoint, TokenMap,
-};
+use crate::{to_parser_input::to_parser_input, tt_iter::TtIter, ExpandError, TokenMap};
 
 /// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).
@@ -46,7 +44,7 @@ pub fn syntax_node_to_token_tree_censored(
 
 pub fn token_tree_to_syntax_node(
     tt: &tt::Subtree,
-    entry_point: ParserEntryPoint,
+    entry_point: parser::TopEntryPoint,
 ) -> Result<(Parse<SyntaxNode>, TokenMap), ExpandError> {
     let buffer = match tt {
         tt::Subtree { delimiter: None, token_trees } => {
@@ -55,7 +53,7 @@ pub fn token_tree_to_syntax_node(
         _ => TokenBuffer::from_subtree(tt),
     };
     let parser_input = to_parser_input(&buffer);
-    let parser_output = parser::parse(&parser_input, entry_point);
+    let parser_output = entry_point.parse(&parser_input);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
     for event in parser_output.iter() {
         match event {

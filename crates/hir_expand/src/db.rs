@@ -497,11 +497,11 @@ fn token_tree_to_syntax_node(
     expand_to: ExpandTo,
 ) -> Result<(Parse<SyntaxNode>, mbe::TokenMap), ExpandError> {
     let entry_point = match expand_to {
-        ExpandTo::Statements => mbe::ParserEntryPoint::Statements,
-        ExpandTo::Items => mbe::ParserEntryPoint::Items,
-        ExpandTo::Pattern => mbe::ParserEntryPoint::Pattern,
-        ExpandTo::Type => mbe::ParserEntryPoint::Type,
-        ExpandTo::Expr => mbe::ParserEntryPoint::Expr,
+        ExpandTo::Statements => mbe::TopEntryPoint::MacroStmts,
+        ExpandTo::Items => mbe::TopEntryPoint::MacroItems,
+        ExpandTo::Pattern => mbe::TopEntryPoint::Pattern,
+        ExpandTo::Type => mbe::TopEntryPoint::Type,
+        ExpandTo::Expr => mbe::TopEntryPoint::Expr,
     };
     mbe::token_tree_to_syntax_node(tt, entry_point)
 }
