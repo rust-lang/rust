@@ -72,6 +72,9 @@ pub(crate) mod entry {
         pub(crate) fn expr(p: &mut Parser) {
             let _ = expressions::expr(p);
         }
+        pub(crate) fn path(p: &mut Parser) {
+            let _ = paths::type_path(p);
+        }
     }
 }
 
@@ -83,12 +86,6 @@ pub(crate) mod entry_points {
         p.eat(SHEBANG);
         items::mod_contents(p, false);
         m.complete(p, SOURCE_FILE);
-    }
-
-    pub(crate) use paths::type_path as path;
-
-    pub(crate) fn expr(p: &mut Parser) {
-        let _ = expressions::expr(p);
     }
 
     pub(crate) fn stmt_optional_semi(p: &mut Parser) {
