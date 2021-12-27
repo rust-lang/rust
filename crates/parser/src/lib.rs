@@ -41,6 +41,30 @@ pub use crate::{
     syntax_kind::SyntaxKind,
 };
 
+/// Parse a syntactic construct at the *start* of the input.
+///
+/// This is used by macro-by-example parser to implement things like `$i:item`.
+///
+/// Note that this is generally non-optional -- the result is intentionally not
+/// `Option<Output>`. The way MBE work, by the time we *try* to parse `$e:expr`
+/// we already commit to expression. In other words, this API by design can't be
+/// used to implement "rollback and try another alternative" logic.
+pub enum PrefixEntryPoint {
+    Vis,
+}
+
+impl PrefixEntryPoint {
+    pub fn parse(self, input: &Input) -> Output {
+        let entry_point: fn(&'_ mut parser::Parser) = match self {
+            PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
+        };
+        let mut p = parser::Parser::new(input);
+        entry_point(&mut p);
+        let events = p.finish();
+        event::process(events)
+    }
+}
+
 /// rust-analyzer parser allows you to choose one of the possible entry points.
 ///
 /// The primary consumer of this API are declarative macros, `$x:expr` matchers

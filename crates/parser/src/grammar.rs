@@ -44,6 +44,18 @@ use crate::{
     TokenSet, T,
 };
 
+pub(crate) mod entry {
+    use super::*;
+
+    pub(crate) mod prefix {
+        use super::*;
+
+        pub(crate) fn vis(p: &mut Parser) {
+            let _ = opt_visibility(p, false);
+        }
+    }
+}
+
 pub(crate) mod entry_points {
     use super::*;
 
