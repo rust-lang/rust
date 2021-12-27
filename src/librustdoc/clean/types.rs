@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::default::Default;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::lazy::SyncOnceCell as OnceCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -254,11 +254,11 @@ impl ExternalCrate {
                             as_keyword(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
                         }
                         hir::ItemKind::Use(path, hir::UseKind::Single)
-                            if tcx.visibility(id.def_id).is_public() =>
-                        {
-                            as_keyword(path.res.expect_non_local())
-                                .map(|(_, prim)| (id.def_id.to_def_id(), prim))
-                        }
+                        if tcx.visibility(id.def_id).is_public() =>
+                            {
+                                as_keyword(path.res.expect_non_local())
+                                    .map(|(_, prim)| (id.def_id.to_def_id(), prim))
+                            }
                         _ => None,
                     }
                 })
@@ -320,13 +320,13 @@ impl ExternalCrate {
                             as_primitive(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
                         }
                         hir::ItemKind::Use(path, hir::UseKind::Single)
-                            if tcx.visibility(id.def_id).is_public() =>
-                        {
-                            as_primitive(path.res.expect_non_local()).map(|(_, prim)| {
-                                // Pretend the primitive is local.
-                                (id.def_id.to_def_id(), prim)
-                            })
-                        }
+                        if tcx.visibility(id.def_id).is_public() =>
+                            {
+                                as_primitive(path.res.expect_non_local()).map(|(_, prim)| {
+                                    // Pretend the primitive is local.
+                                    (id.def_id.to_def_id(), prim)
+                                })
+                            }
                         _ => None,
                     }
                 })
@@ -885,7 +885,7 @@ crate trait NestedAttributesExt {
 }
 
 impl<I: Iterator<Item = ast::NestedMetaItem> + IntoIterator<Item = ast::NestedMetaItem>>
-    NestedAttributesExt for I
+NestedAttributesExt for I
 {
     fn has_word(self, word: Symbol) -> bool {
         self.into_iter().any(|attr| attr.is_word() && attr.has_name(word))
@@ -904,7 +904,7 @@ impl<I: Iterator<Item = ast::NestedMetaItem> + IntoIterator<Item = ast::NestedMe
 /// Included files are kept separate from inline doc comments so that proper line-number
 /// information can be given when a doctest fails. Sugared doc comments and "raw" doc comments are
 /// kept separate because of issue #42760.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct DocFragment {
     crate span: rustc_span::Span,
     /// The module this doc-comment came from.
@@ -1131,14 +1131,23 @@ impl PartialEq for Attributes {
     fn eq(&self, rhs: &Self) -> bool {
         self.doc_strings == rhs.doc_strings
             && self
-                .other_attrs
-                .iter()
-                .map(|attr| attr.id)
-                .eq(rhs.other_attrs.iter().map(|attr| attr.id))
+            .other_attrs
+            .iter()
+            .map(|attr| attr.id)
+            .eq(rhs.other_attrs.iter().map(|attr| attr.id))
     }
 }
 
 impl Eq for Attributes {}
+
+impl Hash for Attributes {
+    fn hash<H: Hasher>(&self, hasher: &mut H) {
+        self.doc_strings.hash(hasher);
+        for attr in &self.other_attrs {
+            attr.id.hash(hasher);
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericBound {
@@ -1554,22 +1563,11 @@ impl Type {
 
     /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
     ///
-    /// See [`Self::def_id_no_primitives`] for more.
+    /// See [`Self::def_id`] for more.
     ///
     /// [clean]: crate::clean
     crate fn def_id(&self, cache: &Cache) -> Option<DefId> {
         self.inner_def_id(Some(cache))
-    }
-
-    /// Use this method to get the [`DefId`] of a [`clean`] AST node.
-    /// This will return [`None`] when called on a primitive [`clean::Type`].
-    /// Use [`Self::def_id`] if you want to include primitives.
-    ///
-    /// [`clean`]: crate::clean
-    /// [`clean::Type`]: crate::clean::Type
-    // FIXME: get rid of this function and always use `def_id`
-    crate fn def_id_no_primitives(&self) -> Option<DefId> {
-        self.inner_def_id(None)
     }
 }
 

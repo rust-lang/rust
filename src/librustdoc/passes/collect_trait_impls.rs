@@ -10,6 +10,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
+use crate::formats::cache::Cache;
 
 crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",
@@ -47,7 +48,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                 inline::build_impl(cx, None, def_id, None, &mut new_items);
 
                 // FIXME(eddyb) is this `doc(hidden)` check needed?
-                if !cx.tcx.is_doc_hidden(def_id) {
+                if !cx.tcx.get_attrs(def_id).lists(sym::doc).has_word(sym::hidden) {
                     let impls = get_auto_trait_and_blanket_impls(cx, def_id);
                     new_items.extend(impls.filter(|i| cx.inlined.insert(i.def_id)));
                 }
@@ -64,6 +65,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
         map: &FxHashMap<DefId, &Type>,
         cleaner: &mut BadImplStripper,
         type_did: DefId,
+        c:&Cache,
     ) {
         if let Some(target) = map.get(&type_did) {
             debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
@@ -76,7 +78,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                     return;
                 }
                 cleaner.items.insert(target_did.into());
-                add_deref_target(cx, map, cleaner, target_did);
+                add_deref_target(cx, map, cleaner, target_did,c);
             }
         }
     }
@@ -85,7 +87,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
     for it in &new_items {
         if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
             if trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait()
-                && cleaner.keep_impl(for_, true)
+                && cleaner.keep_impl(for_, true,&cx.cache)
             {
                 let target = items
                     .iter()
@@ -100,13 +102,13 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                 } else if let Some(did) = target.def_id(&cx.cache) {
                     cleaner.items.insert(did.into());
                 }
-                if let Some(for_did) = for_.def_id_no_primitives() {
+                if let Some(for_did) = for_.def_id(&cx.cache) {
                     if type_did_to_deref_target.insert(for_did, target).is_none() {
                         // Since only the `DefId` portion of the `Type` instances is known to be same for both the
                         // `Deref` target type and the impl for type positions, this map of types is keyed by
                         // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
                         if cleaner.keep_impl_with_def_id(for_did.into()) {
-                            add_deref_target(cx, &type_did_to_deref_target, &mut cleaner, for_did);
+                            add_deref_target(cx, &type_did_to_deref_target, &mut cleaner, for_did,&cx.cache);
                         }
                     }
                 }
@@ -119,6 +121,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
             cleaner.keep_impl(
                 for_,
                 trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
+                &cx.cache
             ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
                 || kind.is_blanket()
         } else {
@@ -176,7 +179,13 @@ impl<'a, 'tcx> DocVisitor for SyntheticImplCollector<'a, 'tcx> {
     fn visit_item(&mut self, i: &Item) {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
-            if !self.cx.tcx.is_doc_hidden(i.def_id.expect_def_id()) {
+            if !self
+                .cx
+                .tcx
+                .get_attrs(i.def_id.expect_def_id())
+                .lists(sym::doc)
+                .has_word(sym::hidden)
+            {
                 self.impls
                     .extend(get_auto_trait_and_blanket_impls(self.cx, i.def_id.expect_def_id()));
             }
@@ -211,13 +220,13 @@ struct BadImplStripper {
 }
 
 impl BadImplStripper {
-    fn keep_impl(&self, ty: &Type, is_deref: bool) -> bool {
+    fn keep_impl(&self, ty: &Type, is_deref: bool, c:&Cache) -> bool {
         if let Generic(_) = ty {
             // keep impls made on generics
             true
         } else if let Some(prim) = ty.primitive_type() {
             self.prims.contains(&prim)
-        } else if let Some(did) = ty.def_id_no_primitives() {
+        } else if let Some(did) = ty.def_id(c) {
             is_deref || self.keep_impl_with_def_id(did.into())
         } else {
             false

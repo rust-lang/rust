@@ -121,8 +121,8 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
 
     impl<'a> Serialize for CrateData<'a> {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+            where
+                S: Serializer,
         {
             let has_aliases = !self.aliases.is_empty();
             let mut crate_data =
@@ -182,12 +182,12 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
             paths: crate_paths,
             aliases: &aliases,
         })
-        .expect("failed serde conversion")
-        // All these `replace` calls are because we have to go through JS string for JSON content.
-        .replace(r#"\"#, r"\\")
-        .replace(r#"'"#, r"\'")
-        // We need to escape double quotes for the JSON.
-        .replace("\\\"", "\\\\\"")
+            .expect("failed serde conversion")
+            // All these `replace` calls are because we have to go through JS string for JSON content.
+            .replace(r#"\"#, r"\\")
+            .replace(r#"'"#, r"\'")
+            // We need to escape double quotes for the JSON.
+            .replace("\\\"", "\\\\\"")
     )
 }
 
@@ -261,7 +261,7 @@ crate fn get_real_types<'tcx>(
         tcx: TyCtxt<'_>,
         ty: Type,
         mut generics: Vec<TypeWithKind>,
-        _cache: &Cache,
+        cache: &Cache,
     ) {
         let is_full_generic = ty.is_full_generic();
 
@@ -320,7 +320,7 @@ crate fn get_real_types<'tcx>(
             // We remove the name of the full generic because we have no use for it.
             index_ty.name = Some(String::new());
             res.push(TypeWithKind::from((index_ty, ItemType::Generic)));
-        } else if let Some(kind) = ty.def_id_no_primitives().map(|did| tcx.def_kind(did).into()) {
+        } else if let Some(kind) = ty.def_id(cache).map(|did| tcx.def_kind(did).into()) {
             res.push(TypeWithKind::from((index_ty, kind)));
         } else if ty.is_primitive() {
             // This is a primitive, let's store it as such.
@@ -339,7 +339,7 @@ crate fn get_real_types<'tcx>(
         // First we check if the bounds are in a `where` predicate...
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
             WherePredicate::BoundPredicate { ty, .. } => {
-                ty.def_id_no_primitives() == arg.def_id_no_primitives()
+                ty.def_id(cache) == arg.def_id(cache)
             }
             _ => false,
         }) {
@@ -413,7 +413,7 @@ crate fn get_all_types<'tcx>(
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            if let Some(kind) = arg.type_.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
+            if let Some(kind) = arg.type_.def_id(cache).map(|did| tcx.def_kind(did).into())
             {
                 all_types.push(TypeWithKind::from((get_index_type(&arg.type_, vec![]), kind)));
             }
@@ -426,7 +426,7 @@ crate fn get_all_types<'tcx>(
             get_real_types(generics, return_type, tcx, 0, &mut ret_types, cache);
             if ret_types.is_empty() {
                 if let Some(kind) =
-                    return_type.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
+                return_type.def_id(cache).map(|did| tcx.def_kind(did).into())
                 {
                     ret_types.push(TypeWithKind::from((get_index_type(return_type, vec![]), kind)));
                 }
