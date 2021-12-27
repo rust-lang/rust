@@ -61,6 +61,10 @@ pub(crate) mod entry {
         pub(crate) fn stmt(p: &mut Parser) {
             expressions::stmt(p, expressions::StmtWithSemi::No, true);
         }
+
+        pub(crate) fn pat(p: &mut Parser) {
+            patterns::pattern_single(p);
+        }
     }
 }
 
@@ -75,8 +79,6 @@ pub(crate) mod entry_points {
     }
 
     pub(crate) use paths::type_path as path;
-
-    pub(crate) use patterns::pattern_single as pattern;
 
     pub(crate) use types::type_;
 

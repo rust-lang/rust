@@ -693,7 +693,14 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
         "path" => ParserEntryPoint::Path,
         "expr" => ParserEntryPoint::Expr,
         "ty" => ParserEntryPoint::Type,
-        "pat" | "pat_param" => ParserEntryPoint::Pattern, // FIXME: edition2021
+        // FIXME: These two should actually behave differently depending on the edition.
+        //
+        // https://doc.rust-lang.org/edition-guide/rust-2021/or-patterns-macro-rules.html
+        "pat" | "pat_param" => {
+            return input
+                .expect_fragment2(parser::PrefixEntryPoint::Pat)
+                .map(|tt| tt.map(Fragment::Tokens));
+        }
         "stmt" => {
             return input
                 .expect_fragment2(parser::PrefixEntryPoint::Stmt)

@@ -43,7 +43,8 @@ pub use crate::{
 
 /// Parse a syntactic construct at the *start* of the input.
 ///
-/// This is used by macro-by-example parser to implement things like `$i:item`.
+/// This is used by macro-by-example parser to implement things like `$i:item`
+/// and the naming of variants follows the naming of macro fragments.
 ///
 /// Note that this is generally non-optional -- the result is intentionally not
 /// `Option<Output>`. The way MBE work, by the time we *try* to parse `$e:expr`
@@ -54,6 +55,7 @@ pub enum PrefixEntryPoint {
     Vis,
     Block,
     Stmt,
+    Pat,
 }
 
 impl PrefixEntryPoint {
@@ -62,6 +64,7 @@ impl PrefixEntryPoint {
             PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
             PrefixEntryPoint::Block => grammar::entry::prefix::block,
             PrefixEntryPoint::Stmt => grammar::entry::prefix::stmt,
+            PrefixEntryPoint::Pat => grammar::entry::prefix::pat,
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);
@@ -108,7 +111,7 @@ pub fn parse(inp: &Input, entry_point: ParserEntryPoint) -> Output {
         ParserEntryPoint::Path => grammar::entry_points::path,
         ParserEntryPoint::Expr => grammar::entry_points::expr,
         ParserEntryPoint::Type => grammar::entry_points::type_,
-        ParserEntryPoint::Pattern => grammar::entry_points::pattern,
+        ParserEntryPoint::Pattern => grammar::entry::prefix::pat,
         ParserEntryPoint::Item => grammar::entry_points::item,
         ParserEntryPoint::MetaItem => grammar::entry_points::meta_item,
         ParserEntryPoint::StatementOptionalSemi => grammar::entry_points::stmt_optional_semi,
