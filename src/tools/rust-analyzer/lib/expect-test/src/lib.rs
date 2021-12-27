@@ -39,15 +39,12 @@
 //! # Guide
 //!
 //! `expect!` returns an instance of `Expect` struct, which holds position
-//! information and a string literal. Importing `expect!` under a different
-//! name is supported; `UPDATE_EXPECT` will continue to work.
-//!
-//! Use `Expect::assert_eq` for string comparison. Use
-//! `Expect::assert_debug_eq` for verbose debug comparison. Note that leading
-//! indentation is automatically removed.
+//! information and a string literal. Use `Expect::assert_eq` for string
+//! comparison. Use `Expect::assert_debug_eq` for verbose debug comparison. Note
+//! that leading indentation is automatically removed.
 //!
 //! ```
-//! use expect_test::expect as ex; // Note the renaming
+//! use expect_test::expect;
 //!
 //! #[derive(Debug)]
 //! struct Foo {
@@ -55,7 +52,7 @@
 //! }
 //!
 //! let actual = Foo { value: 92 };
-//! let expected = ex![["
+//! let expected = expect![["
 //!     Foo {
 //!         value: 92,
 //!     }
