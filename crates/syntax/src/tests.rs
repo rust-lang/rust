@@ -60,15 +60,6 @@ fn validation_tests() {
 }
 
 #[test]
-fn expr_parser_tests() {
-    fragment_parser_dir_test(
-        &["parser/fragments/expr/ok"],
-        &["parser/fragments/expr/err"],
-        crate::ast::Expr::parse,
-    );
-}
-
-#[test]
 fn path_parser_tests() {
     fragment_parser_dir_test(
         &["parser/fragments/path/ok"],
@@ -83,15 +74,6 @@ fn pattern_parser_tests() {
         &["parser/fragments/pattern/ok"],
         &["parser/fragments/pattern/err"],
         crate::ast::Pat::parse,
-    );
-}
-
-#[test]
-fn stmt_parser_tests() {
-    fragment_parser_dir_test(
-        &["parser/fragments/stmt/ok"],
-        &["parser/fragments/stmt/err"],
-        crate::ast::Stmt::parse,
     );
 }
 

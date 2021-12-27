@@ -81,7 +81,6 @@ impl ParsedRule {
         }
         builder.try_add2(fragments::ty(&raw_pattern), raw_template.map(fragments::ty));
         builder.try_add2(fragments::item(&raw_pattern), raw_template.map(fragments::item));
-        builder.try_add(ast::Path::parse(&raw_pattern), raw_template.map(ast::Path::parse));
         builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));
         builder.try_add2(fragments::stmt(&raw_pattern), raw_template_stmt);
         builder.build()

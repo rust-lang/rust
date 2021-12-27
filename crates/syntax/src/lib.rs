@@ -201,13 +201,6 @@ impl ast::Attr {
     }
 }
 
-impl ast::Stmt {
-    /// Returns `text`, parsed as statement, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::StatementOptionalSemi)
-    }
-}
-
 /// Matches a `SyntaxNode` against an `ast` type.
 ///
 /// # Example:
