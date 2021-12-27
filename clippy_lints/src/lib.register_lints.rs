@@ -178,6 +178,7 @@ store.register_lints(&[
     inherent_impl::MULTIPLE_INHERENT_IMPL,
     inherent_to_string::INHERENT_TO_STRING,
     inherent_to_string::INHERENT_TO_STRING_SHADOW_DISPLAY,
+    init_numbered_fields::INIT_NUMBERED_FIELDS,
     inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
     int_plus_one::INT_PLUS_ONE,
     integer_division::INTEGER_DIVISION,
