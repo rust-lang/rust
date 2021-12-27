@@ -144,7 +144,6 @@ pub enum ParserEntryPoint {
     Type,
     Pattern,
     Item,
-    MetaItem,
     Attr,
 }
 
@@ -168,7 +167,6 @@ pub fn parse(inp: &Input, entry_point: ParserEntryPoint) -> Output {
         ParserEntryPoint::Type => grammar::entry::prefix::ty,
         ParserEntryPoint::Pattern => grammar::entry::prefix::pat,
         ParserEntryPoint::Item => grammar::entry::prefix::item,
-        ParserEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
         ParserEntryPoint::StatementOptionalSemi => grammar::entry_points::stmt_optional_semi,
         ParserEntryPoint::Attr => grammar::entry_points::attr,
     };
