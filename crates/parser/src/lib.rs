@@ -57,6 +57,7 @@ pub enum PrefixEntryPoint {
     Stmt,
     Pat,
     Ty,
+    Expr,
 }
 
 impl PrefixEntryPoint {
@@ -67,6 +68,7 @@ impl PrefixEntryPoint {
             PrefixEntryPoint::Stmt => grammar::entry::prefix::stmt,
             PrefixEntryPoint::Pat => grammar::entry::prefix::pat,
             PrefixEntryPoint::Ty => grammar::entry::prefix::ty,
+            PrefixEntryPoint::Expr => grammar::entry::prefix::expr,
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);

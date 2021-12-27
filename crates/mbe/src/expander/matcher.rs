@@ -691,7 +691,11 @@ fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter) -> Result<(), ExpandError> {
 fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
         "path" => ParserEntryPoint::Path,
-        "expr" => ParserEntryPoint::Expr,
+        "expr" => {
+            return input
+                .expect_fragment2(parser::PrefixEntryPoint::Expr)
+                .map(|tt| tt.map(Fragment::Expr));
+        }
         "ty" => {
             return input
                 .expect_fragment2(parser::PrefixEntryPoint::Ty)

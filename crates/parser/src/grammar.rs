@@ -69,6 +69,9 @@ pub(crate) mod entry {
         pub(crate) fn ty(p: &mut Parser) {
             types::type_(p);
         }
+        pub(crate) fn expr(p: &mut Parser) {
+            let _ = expressions::expr(p);
+        }
     }
 }
 
