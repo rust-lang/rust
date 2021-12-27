@@ -6,11 +6,11 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::visit::DocVisitor;
 
+use crate::formats::cache::Cache;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
-use crate::formats::cache::Cache;
 
 crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",
@@ -65,7 +65,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
         map: &FxHashMap<DefId, &Type>,
         cleaner: &mut BadImplStripper,
         type_did: DefId,
-        c:&Cache,
+        c: &Cache,
     ) {
         if let Some(target) = map.get(&type_did) {
             debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
@@ -78,7 +78,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                     return;
                 }
                 cleaner.items.insert(target_did.into());
-                add_deref_target(cx, map, cleaner, target_did,c);
+                add_deref_target(cx, map, cleaner, target_did, c);
             }
         }
     }
@@ -87,7 +87,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
     for it in &new_items {
         if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
             if trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait()
-                && cleaner.keep_impl(for_, true,&cx.cache)
+                && cleaner.keep_impl(for_, true, &cx.cache)
             {
                 let target = items
                     .iter()
@@ -108,7 +108,13 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                         // `Deref` target type and the impl for type positions, this map of types is keyed by
                         // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
                         if cleaner.keep_impl_with_def_id(for_did.into()) {
-                            add_deref_target(cx, &type_did_to_deref_target, &mut cleaner, for_did,&cx.cache);
+                            add_deref_target(
+                                cx,
+                                &type_did_to_deref_target,
+                                &mut cleaner,
+                                for_did,
+                                &cx.cache,
+                            );
                         }
                     }
                 }
@@ -121,7 +127,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
             cleaner.keep_impl(
                 for_,
                 trait_.as_ref().map(|t| t.def_id()) == cx.tcx.lang_items().deref_trait(),
-                &cx.cache
+                &cx.cache,
             ) || trait_.as_ref().map_or(false, |t| cleaner.keep_impl_with_def_id(t.def_id().into()))
                 || kind.is_blanket()
         } else {
@@ -220,7 +226,7 @@ struct BadImplStripper {
 }
 
 impl BadImplStripper {
-    fn keep_impl(&self, ty: &Type, is_deref: bool, c:&Cache) -> bool {
+    fn keep_impl(&self, ty: &Type, is_deref: bool, c: &Cache) -> bool {
         if let Generic(_) = ty {
             // keep impls made on generics
             true

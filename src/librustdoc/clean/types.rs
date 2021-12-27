@@ -254,11 +254,11 @@ impl ExternalCrate {
                             as_keyword(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
                         }
                         hir::ItemKind::Use(path, hir::UseKind::Single)
-                        if tcx.visibility(id.def_id).is_public() =>
-                            {
-                                as_keyword(path.res.expect_non_local())
-                                    .map(|(_, prim)| (id.def_id.to_def_id(), prim))
-                            }
+                            if tcx.visibility(id.def_id).is_public() =>
+                        {
+                            as_keyword(path.res.expect_non_local())
+                                .map(|(_, prim)| (id.def_id.to_def_id(), prim))
+                        }
                         _ => None,
                     }
                 })
@@ -320,13 +320,13 @@ impl ExternalCrate {
                             as_primitive(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
                         }
                         hir::ItemKind::Use(path, hir::UseKind::Single)
-                        if tcx.visibility(id.def_id).is_public() =>
-                            {
-                                as_primitive(path.res.expect_non_local()).map(|(_, prim)| {
-                                    // Pretend the primitive is local.
-                                    (id.def_id.to_def_id(), prim)
-                                })
-                            }
+                            if tcx.visibility(id.def_id).is_public() =>
+                        {
+                            as_primitive(path.res.expect_non_local()).map(|(_, prim)| {
+                                // Pretend the primitive is local.
+                                (id.def_id.to_def_id(), prim)
+                            })
+                        }
                         _ => None,
                     }
                 })
@@ -885,7 +885,7 @@ crate trait NestedAttributesExt {
 }
 
 impl<I: Iterator<Item = ast::NestedMetaItem> + IntoIterator<Item = ast::NestedMetaItem>>
-NestedAttributesExt for I
+    NestedAttributesExt for I
 {
     fn has_word(self, word: Symbol) -> bool {
         self.into_iter().any(|attr| attr.is_word() && attr.has_name(word))
@@ -1131,10 +1131,10 @@ impl PartialEq for Attributes {
     fn eq(&self, rhs: &Self) -> bool {
         self.doc_strings == rhs.doc_strings
             && self
-            .other_attrs
-            .iter()
-            .map(|attr| attr.id)
-            .eq(rhs.other_attrs.iter().map(|attr| attr.id))
+                .other_attrs
+                .iter()
+                .map(|attr| attr.id)
+                .eq(rhs.other_attrs.iter().map(|attr| attr.id))
     }
 }
 
