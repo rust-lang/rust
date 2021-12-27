@@ -52,7 +52,7 @@ impl<'a> ReadBuf<'a> {
 
     /// Creates a new `ReadBuf` from a fully uninitialized buffer.
     ///
-    /// Use `assume_init` if part of the buffer is known to be already inintialized.
+    /// Use `assume_init` if part of the buffer is known to be already initialized.
     #[inline]
     pub fn uninit(buf: &'a mut [MaybeUninit<u8>]) -> ReadBuf<'a> {
         ReadBuf { buf, filled: 0, initialized: 0 }
@@ -145,7 +145,7 @@ impl<'a> ReadBuf<'a> {
                 byte.write(0);
             }
 
-            // SAFETY: we just inintialized uninit bytes, and the previous bytes were already init
+            // SAFETY: we just initialized uninit bytes, and the previous bytes were already init
             unsafe {
                 self.assume_init(n);
             }
