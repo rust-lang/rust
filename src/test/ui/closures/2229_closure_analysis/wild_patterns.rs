@@ -3,7 +3,7 @@
 #![feature(rustc_attrs)]
 
 // Test to ensure that we can handle cases where
-// let statements create no bindings are intialized
+// let statements create no bindings are initialized
 // using a Place expression
 //
 // Note: Currently when feature `capture_disjoint_fields` is enabled
