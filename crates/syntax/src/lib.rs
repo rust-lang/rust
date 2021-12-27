@@ -201,13 +201,6 @@ impl ast::Item {
     }
 }
 
-impl ast::Type {
-    /// Returns `text`, parsed as an type reference, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::Type)
-    }
-}
-
 impl ast::Attr {
     /// Returns `text`, parsed as an attribute, but only if it has no errors.
     pub fn parse(text: &str) -> Result<Self, ()> {

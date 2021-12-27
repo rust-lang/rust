@@ -141,7 +141,6 @@ pub enum ParserEntryPoint {
     Path,
     Expr,
     StatementOptionalSemi,
-    Type,
     Pattern,
     Item,
     Attr,
@@ -164,7 +163,6 @@ pub fn parse(inp: &Input, entry_point: ParserEntryPoint) -> Output {
     let entry_point: fn(&'_ mut parser::Parser) = match entry_point {
         ParserEntryPoint::Path => grammar::entry::prefix::path,
         ParserEntryPoint::Expr => grammar::entry::prefix::expr,
-        ParserEntryPoint::Type => grammar::entry::prefix::ty,
         ParserEntryPoint::Pattern => grammar::entry::prefix::pat,
         ParserEntryPoint::Item => grammar::entry::prefix::item,
         ParserEntryPoint::StatementOptionalSemi => grammar::entry_points::stmt_optional_semi,

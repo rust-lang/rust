@@ -6,7 +6,7 @@
 //! e.g. expressions, type references etc.
 
 use crate::errors::bail;
-use crate::{SsrError, SsrPattern, SsrRule};
+use crate::{fragments, SsrError, SsrPattern, SsrRule};
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::{fmt::Display, str::FromStr};
 use syntax::{ast, AstNode, SmolStr, SyntaxKind, SyntaxNode, T};
@@ -79,7 +79,7 @@ impl ParsedRule {
         } else {
             builder.try_add(ast::Expr::parse(&raw_pattern), raw_template_stmt.clone());
         }
-        builder.try_add(ast::Type::parse(&raw_pattern), raw_template.map(ast::Type::parse));
+        builder.try_add2(fragments::ty(&raw_pattern), raw_template.map(fragments::ty));
         builder.try_add(ast::Item::parse(&raw_pattern), raw_template.map(ast::Item::parse));
         builder.try_add(ast::Path::parse(&raw_pattern), raw_template.map(ast::Path::parse));
         builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));
@@ -108,6 +108,26 @@ impl RuleBuilder {
             (Ok(pattern), None) => self.rules.push(ParsedRule {
                 placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
                 pattern: pattern.syntax().clone(),
+                template: None,
+            }),
+            _ => {}
+        }
+    }
+
+    fn try_add2(
+        &mut self,
+        pattern: Result<SyntaxNode, ()>,
+        template: Option<Result<SyntaxNode, ()>>,
+    ) {
+        match (pattern, template) {
+            (Ok(pattern), Some(Ok(template))) => self.rules.push(ParsedRule {
+                placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
+                pattern,
+                template: Some(template),
+            }),
+            (Ok(pattern), None) => self.rules.push(ParsedRule {
+                placeholders_by_stand_in: self.placeholders_by_stand_in.clone(),
+                pattern,
                 template: None,
             }),
             _ => {}

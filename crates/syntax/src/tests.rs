@@ -96,15 +96,6 @@ fn item_parser_tests() {
 }
 
 #[test]
-fn type_parser_tests() {
-    fragment_parser_dir_test(
-        &["parser/fragments/type/ok"],
-        &["parser/fragments/type/err"],
-        crate::ast::Type::parse,
-    );
-}
-
-#[test]
 fn stmt_parser_tests() {
     fragment_parser_dir_test(
         &["parser/fragments/stmt/ok"],
