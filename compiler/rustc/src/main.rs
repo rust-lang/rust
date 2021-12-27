@@ -20,39 +20,34 @@
 
 fn main() {
     // See the comment at the top of this file for an explanation of this.
-    #[cfg(feature = "libmimalloc-sys")]
+    #[cfg(feature = "mimallocate-sys")]
     {
         use std::os::raw::{c_int, c_void};
 
         #[used]
-        static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = libmimalloc_sys::mi_calloc;
+        static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = mimallocate_sys::mi_calloc;
         #[used]
         static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
-            libmimalloc_sys::mi_posix_memalign;
+            mimallocate_sys::mi_posix_memalign;
         #[used]
         static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void =
-            libmimalloc_sys::mi_aligned_alloc;
+            mimallocate_sys::mi_aligned_alloc;
         #[used]
-        static _F4: unsafe extern "C" fn(usize) -> *mut c_void = libmimalloc_sys::mi_malloc;
+        static _F4: unsafe extern "C" fn(usize) -> *mut c_void = mimallocate_sys::mi_malloc;
         #[used]
         static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void =
-            libmimalloc_sys::mi_realloc;
+            mimallocate_sys::mi_realloc;
         #[used]
-        static _F6: unsafe extern "C" fn(*mut c_void) = libmimalloc_sys::mi_free;
+        static _F6: unsafe extern "C" fn(*mut c_void) = mimallocate_sys::mi_free;
 
         // On OSX, mimalloc doesn't directly override malloc/free, but instead
         // registers itself with the allocator's zone APIs in a ctor. However,
         // the linker doesn't seem to consider ctors as "used" when statically
         // linking, so we need to explicitly depend on the function.
         #[cfg(target_os = "macos")]
-        {
-            extern "C" {
-                fn _mi_macos_override_malloc();
-            }
-
-            #[used]
-            static _F7: unsafe extern "C" fn() = _mi_macos_override_malloc;
-        }
+        #[used]
+        static _F7: unsafe extern "C" fn() =
+            mimallocate_sys::_mi_macos_override_malloc;
     }
 
     rustc_driver::set_sigpipe_handler();

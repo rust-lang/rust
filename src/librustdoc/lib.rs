@@ -66,9 +66,9 @@ extern crate test;
 // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
 // about mimalloc.
 #[cfg(feature = "mimalloc")]
-extern crate libmimalloc_sys;
+extern crate mimallocate_sys;
 #[cfg(feature = "mimalloc")]
-use libmimalloc_sys as mimalloc_sys;
+use mimallocate_sys as mimalloc_sys;
 
 use std::default::Default;
 use std::env;

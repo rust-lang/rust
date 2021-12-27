@@ -10,13 +10,11 @@ rustc_driver = { path = "../rustc_driver" }
 # crate is intended to be used by codegen backends, which may not be in-tree.
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 
-[dependencies.libmimalloc-sys]
-version = '0.1.20'
+[dependencies.mimallocate-sys]
+version = '0.1.0'
 optional = true
-default-features = false
-features = ['extended', 'override']
 
 [features]
-mimalloc = ['libmimalloc-sys']
+mimalloc = ['mimallocate-sys']
 llvm = ['rustc_driver/llvm']
 max_level_info = ['rustc_driver/max_level_info']
