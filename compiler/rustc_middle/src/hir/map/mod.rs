@@ -1,7 +1,7 @@
 use crate::hir::Owner;
 use crate::ty::{DefIdTree, TyCtxt};
 use rustc_ast as ast;
-use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
+use rustc_data_structures::sync::{par_for_each_in, par_iter, ParallelIterator, Send, Sync};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -510,10 +510,6 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
-        #[cfg(parallel_compiler)]
-        use rustc_rayon::iter::IndexedParallelIterator;
-
         par_iter(&*self.krate().owners).for_each(|&owner| {
             let owner_info = self.tcx.lower_to_hir(owner).unwrap();
             par_iter(owner_info.nodes.bodies.range(..)).for_each(|(local_id, _)| {
@@ -666,7 +662,6 @@ impl<'hir> Map<'hir> {
 
     #[cfg(parallel_compiler)]
     pub fn par_for_each_module(self, f: impl Fn(LocalDefId) + Sync) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
         par_iter_submodules(self.tcx, CRATE_DEF_ID, &f);
 
         fn par_iter_submodules<F>(tcx: TyCtxt<'_>, module: LocalDefId, f: &F)
