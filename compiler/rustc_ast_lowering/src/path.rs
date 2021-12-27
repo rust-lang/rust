@@ -277,7 +277,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // See rustc_resolve::late::lifetimes::LifetimeContext::add_missing_lifetime_specifiers_label
             let elided_lifetime_span = if generic_args.span.is_empty() {
                 // If there are no brackets, use the identifier span.
-                path_span
+                // HACK: we use find_ancestor_inside to properly suggest elided spans in paths
+                // originating from macros, since the segment's span might be from a macro arg.
+                segment.ident.span.find_ancestor_inside(path_span).unwrap_or(path_span)
             } else if generic_args.is_empty() {
                 // If there are brackets, but not generic arguments, then use the opening bracket
                 generic_args.span.with_hi(generic_args.span.lo() + BytePos(1))
