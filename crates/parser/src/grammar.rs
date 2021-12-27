@@ -86,10 +86,6 @@ pub(crate) mod entry_points {
         expressions::stmt(p, expressions::StmtWithSemi::Optional, false);
     }
 
-    pub(crate) fn visibility(p: &mut Parser) {
-        let _ = opt_visibility(p, false);
-    }
-
     // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
     pub(crate) fn meta_item(p: &mut Parser) {
         attributes::meta(p);

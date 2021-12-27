@@ -146,6 +146,63 @@ impl<'a> TtIter<'a> {
         ExpandResult { value: res, err }
     }
 
+    pub(crate) fn expect_fragment2(
+        &mut self,
+        entry_point: parser::PrefixEntryPoint,
+    ) -> ExpandResult<Option<tt::TokenTree>> {
+        let buffer = TokenBuffer::from_tokens(self.inner.as_slice());
+        let parser_input = to_parser_input(&buffer);
+        let tree_traversal = entry_point.parse(&parser_input);
+
+        let mut cursor = buffer.begin();
+        let mut error = false;
+        for step in tree_traversal.iter() {
+            match step {
+                parser::Step::Token { kind, mut n_input_tokens } => {
+                    if kind == SyntaxKind::LIFETIME_IDENT {
+                        n_input_tokens = 2;
+                    }
+                    for _ in 0..n_input_tokens {
+                        cursor = cursor.bump_subtree();
+                    }
+                }
+                parser::Step::Enter { .. } | parser::Step::Exit => (),
+                parser::Step::Error { .. } => error = true,
+            }
+        }
+
+        let mut err = if !cursor.is_root() || error {
+            Some(err!("expected {:?}", entry_point))
+        } else {
+            None
+        };
+
+        let mut curr = buffer.begin();
+        let mut res = vec![];
+
+        if cursor.is_root() {
+            while curr != cursor {
+                if let Some(token) = curr.token_tree() {
+                    res.push(token);
+                }
+                curr = curr.bump();
+            }
+        }
+        self.inner = self.inner.as_slice()[res.len()..].iter();
+        if res.is_empty() && err.is_none() {
+            err = Some(err!("no tokens consumed"));
+        }
+        let res = match res.len() {
+            1 => Some(res[0].cloned()),
+            0 => None,
+            _ => Some(tt::TokenTree::Subtree(tt::Subtree {
+                delimiter: None,
+                token_trees: res.into_iter().map(|it| it.cloned()).collect(),
+            })),
+        };
+        ExpandResult { value: res, err }
+    }
+
     pub(crate) fn peek_n(&self, n: usize) -> Option<&tt::TokenTree> {
         self.inner.as_slice().get(n)
     }

@@ -49,12 +49,13 @@ pub use crate::{
 /// `Option<Output>`. The way MBE work, by the time we *try* to parse `$e:expr`
 /// we already commit to expression. In other words, this API by design can't be
 /// used to implement "rollback and try another alternative" logic.
+#[derive(Debug)]
 pub enum PrefixEntryPoint {
     Vis,
 }
 
 impl PrefixEntryPoint {
-    pub fn parse(self, input: &Input) -> Output {
+    pub fn parse(&self, input: &Input) -> Output {
         let entry_point: fn(&'_ mut parser::Parser) = match self {
             PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
         };
@@ -80,7 +81,7 @@ pub enum ParserEntryPoint {
     Pattern,
     Item,
     Block,
-    Visibility,
+    // Visibility,
     MetaItem,
     Items,
     Statements,
@@ -109,7 +110,7 @@ pub fn parse(inp: &Input, entry_point: ParserEntryPoint) -> Output {
         ParserEntryPoint::Pattern => grammar::entry_points::pattern,
         ParserEntryPoint::Item => grammar::entry_points::item,
         ParserEntryPoint::Block => grammar::entry_points::block_expr,
-        ParserEntryPoint::Visibility => grammar::entry_points::visibility,
+        // ParserEntryPoint::Visibility => grammar::entry_points::visibility,
         ParserEntryPoint::MetaItem => grammar::entry_points::meta_item,
         ParserEntryPoint::Statement => grammar::entry_points::stmt,
         ParserEntryPoint::StatementOptionalSemi => grammar::entry_points::stmt_optional_semi,

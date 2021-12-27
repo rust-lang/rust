@@ -895,7 +895,7 @@ impl<'a> TtIter<'a> {
     }
 
     fn eat_vis(&mut self) -> Option<tt::TokenTree> {
-        self.expect_fragment(ParserEntryPoint::Visibility).value
+        self.expect_fragment2(parser::PrefixEntryPoint::Vis).value
     }
 
     fn eat_char(&mut self, c: char) -> Option<tt::TokenTree> {
