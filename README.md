@@ -155,6 +155,10 @@ cognitive-complexity-threshold = 30
 See the [list of lints](https://rust-lang.github.io/rust-clippy/master/index.html) for more information about which
 lints can be configured and the meaning of the variables.
 
+Note that configuration changes will not apply for code that has already been compiled and cached under `./target/`;
+for example, adding a new string to `doc-valid-idents` may still result in Clippy flagging that string. To be sure that
+any configuration changes are applied, you may want to run `cargo clean` and re-compile your crate from scratch.
+
 To deactivate the “for further information visit *lint-link*” message you can
 define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
 
