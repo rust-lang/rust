@@ -226,8 +226,8 @@ fn token_is_method_call_receiver(token: &SyntaxToken) -> bool {
 
 fn parse_as_kind(code: &str, kind: SyntaxKind) -> Option<SyntaxNode> {
     if ast::Expr::can_cast(kind) {
-        if let Ok(expr) = ast::Expr::parse(code) {
-            return Some(expr.syntax().clone());
+        if let Ok(expr) = fragments::expr(code) {
+            return Some(expr);
         }
     }
     if ast::Item::can_cast(kind) {
