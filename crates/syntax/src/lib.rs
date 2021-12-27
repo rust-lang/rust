@@ -180,13 +180,6 @@ impl ast::Path {
     }
 }
 
-impl ast::Pat {
-    /// Returns `text`, parsed as a pattern, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::Pattern)
-    }
-}
-
 impl ast::Expr {
     /// Returns `text`, parsed as an expression, but only if it has no errors.
     pub fn parse(text: &str) -> Result<Self, ()> {
