@@ -73,17 +73,17 @@ impl ParsedRule {
             rules: Vec::new(),
         };
 
-        let raw_template_stmt = raw_template.map(ast::Stmt::parse);
+        let raw_template_stmt = raw_template.map(fragments::stmt);
         if let raw_template_expr @ Some(Ok(_)) = raw_template.map(fragments::expr) {
             builder.try_add2(fragments::expr(&raw_pattern), raw_template_expr);
         } else {
-            builder.try_add(ast::Expr::parse(&raw_pattern), raw_template_stmt.clone());
+            builder.try_add2(fragments::expr(&raw_pattern), raw_template_stmt.clone());
         }
         builder.try_add2(fragments::ty(&raw_pattern), raw_template.map(fragments::ty));
         builder.try_add2(fragments::item(&raw_pattern), raw_template.map(fragments::item));
         builder.try_add(ast::Path::parse(&raw_pattern), raw_template.map(ast::Path::parse));
         builder.try_add(ast::Pat::parse(&raw_pattern), raw_template.map(ast::Pat::parse));
-        builder.try_add(ast::Stmt::parse(&raw_pattern), raw_template_stmt);
+        builder.try_add2(fragments::stmt(&raw_pattern), raw_template_stmt);
         builder.build()
     }
 }
