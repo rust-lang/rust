@@ -2064,7 +2064,11 @@ impl<'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'tcx> {
             // Subitems of trait impls have inherited publicity.
             hir::ItemKind::Impl(ref impl_) => {
                 let impl_vis = ty::Visibility::of_impl(item.def_id, tcx, &Default::default());
-                self.check(item.def_id, impl_vis).generics().predicates();
+                // check that private components do not appear in the generics or predicates of inherent impls
+                // this check is intentionally NOT performed for impls of traits, per #90586
+                if impl_.of_trait.is_none() {
+                    self.check(item.def_id, impl_vis).generics().predicates();
+                }
                 for impl_item_ref in impl_.items {
                     let impl_item_vis = if impl_.of_trait.is_none() {
                         min(tcx.visibility(impl_item_ref.id.def_id), impl_vis, tcx)

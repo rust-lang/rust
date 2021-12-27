@@ -1508,7 +1508,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             } else {
                 self.check_expr_has_type_or_error(base_expr, adt_ty, |_| {
-                    let base_ty = self.check_expr(base_expr);
+                    let base_ty = self.typeck_results.borrow().node_type(base_expr.hir_id);
                     let same_adt = match (adt_ty.kind(), base_ty.kind()) {
                         (ty::Adt(adt, _), ty::Adt(base_adt, _)) if adt == base_adt => true,
                         _ => false,

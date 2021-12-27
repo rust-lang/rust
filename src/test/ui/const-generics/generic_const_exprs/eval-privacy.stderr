@@ -1,36 +1,5 @@
-warning: private type `fn(u8) -> u8 {my_const_fn}` in public interface (error E0446)
-  --> $DIR/eval-privacy.rs:12:1
-   |
-LL | / impl<const U: u8> Trait for Const<U>
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     }
-LL | | }
-   | |_^
-   |
-   = note: `#[warn(private_in_public)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
-
-warning: private type `fn(u8) -> u8 {my_const_fn}` in public interface (error E0446)
-  --> $DIR/eval-privacy.rs:12:1
-   |
-LL | / impl<const U: u8> Trait for Const<U>
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     }
-LL | | }
-   | |_^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
-
 error[E0446]: private type `fn(u8) -> u8 {my_const_fn}` in public interface
-  --> $DIR/eval-privacy.rs:21:5
+  --> $DIR/eval-privacy.rs:16:5
    |
 LL |     type AssocTy = Const<{ my_const_fn(U) }>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't leak private type
@@ -38,6 +7,6 @@ LL |     type AssocTy = Const<{ my_const_fn(U) }>;
 LL | const fn my_const_fn(val: u8) -> u8 {
    | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
 
-error: aborting due to previous error; 2 warnings emitted
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0446`.
