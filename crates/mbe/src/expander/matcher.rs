@@ -61,7 +61,6 @@
 
 use std::rc::Rc;
 
-use parser::ParserEntryPoint;
 use smallvec::{smallvec, SmallVec};
 use syntax::SmolStr;
 
@@ -690,41 +689,21 @@ fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter) -> Result<(), ExpandError> {
 
 fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
-        "path" => {
-            return input
-                .expect_fragment2(parser::PrefixEntryPoint::Path)
-                .map(|tt| tt.map(Fragment::Tokens));
-        }
-        "expr" => {
-            return input
-                .expect_fragment2(parser::PrefixEntryPoint::Expr)
-                .map(|tt| tt.map(Fragment::Expr));
-        }
-        "ty" => {
-            return input
-                .expect_fragment2(parser::PrefixEntryPoint::Ty)
-                .map(|tt| tt.map(Fragment::Tokens));
-        }
+        "path" => parser::PrefixEntryPoint::Path,
+        "ty" => parser::PrefixEntryPoint::Ty,
         // FIXME: These two should actually behave differently depending on the edition.
         //
         // https://doc.rust-lang.org/edition-guide/rust-2021/or-patterns-macro-rules.html
-        "pat" | "pat_param" => {
+        "pat" | "pat_param" => parser::PrefixEntryPoint::Pat,
+        "stmt" => parser::PrefixEntryPoint::Stmt,
+        "block" => parser::PrefixEntryPoint::Block,
+        "meta" => parser::PrefixEntryPoint::MetaItem,
+        "item" => parser::PrefixEntryPoint::Item,
+        "expr" => {
             return input
-                .expect_fragment2(parser::PrefixEntryPoint::Pat)
-                .map(|tt| tt.map(Fragment::Tokens));
+                .expect_fragment(parser::PrefixEntryPoint::Expr)
+                .map(|tt| tt.map(Fragment::Expr))
         }
-        "stmt" => {
-            return input
-                .expect_fragment2(parser::PrefixEntryPoint::Stmt)
-                .map(|tt| tt.map(Fragment::Tokens));
-        }
-        "block" => {
-            return input
-                .expect_fragment2(parser::PrefixEntryPoint::Block)
-                .map(|tt| tt.map(Fragment::Tokens));
-        }
-        "meta" => ParserEntryPoint::MetaItem,
-        "item" => ParserEntryPoint::Item,
         _ => {
             let tt_result = match kind {
                 "ident" => input
@@ -752,14 +731,13 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                         .map_err(|()| err!())
                 }
                 // `vis` is optional
-                "vis" => Ok(input.expect_fragment2(parser::PrefixEntryPoint::Vis).value),
+                "vis" => Ok(input.expect_fragment(parser::PrefixEntryPoint::Vis).value),
                 _ => Err(ExpandError::UnexpectedToken),
             };
             return tt_result.map(|it| it.map(Fragment::Tokens)).into();
         }
     };
-    let result = input.expect_fragment(fragment);
-    result.map(|tt| if kind == "expr" { tt.map(Fragment::Expr) } else { tt.map(Fragment::Tokens) })
+    input.expect_fragment(fragment).map(|it| it.map(Fragment::Tokens))
 }
 
 fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &MetaTemplate) {

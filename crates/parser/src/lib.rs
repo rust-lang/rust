@@ -59,6 +59,8 @@ pub enum PrefixEntryPoint {
     Ty,
     Expr,
     Path,
+    Item,
+    MetaItem,
 }
 
 impl PrefixEntryPoint {
@@ -71,6 +73,8 @@ impl PrefixEntryPoint {
             PrefixEntryPoint::Ty => grammar::entry::prefix::ty,
             PrefixEntryPoint::Expr => grammar::entry::prefix::expr,
             PrefixEntryPoint::Path => grammar::entry::prefix::path,
+            PrefixEntryPoint::Item => grammar::entry::prefix::item,
+            PrefixEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);
@@ -118,8 +122,8 @@ pub fn parse(inp: &Input, entry_point: ParserEntryPoint) -> Output {
         ParserEntryPoint::Expr => grammar::entry::prefix::expr,
         ParserEntryPoint::Type => grammar::entry::prefix::ty,
         ParserEntryPoint::Pattern => grammar::entry::prefix::pat,
-        ParserEntryPoint::Item => grammar::entry_points::item,
-        ParserEntryPoint::MetaItem => grammar::entry_points::meta_item,
+        ParserEntryPoint::Item => grammar::entry::prefix::item,
+        ParserEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
         ParserEntryPoint::StatementOptionalSemi => grammar::entry_points::stmt_optional_semi,
         ParserEntryPoint::Items => grammar::entry_points::macro_items,
         ParserEntryPoint::Statements => grammar::entry_points::macro_stmts,

@@ -106,7 +106,7 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
     let mut res = Vec::new();
 
     while iter.peek_n(0).is_some() {
-        let expanded = iter.expect_fragment(ParserEntryPoint::Expr);
+        let expanded = iter.expect_fragment(parser::PrefixEntryPoint::Expr);
 
         res.push(match expanded.value {
             None => break,

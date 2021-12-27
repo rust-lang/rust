@@ -75,6 +75,13 @@ pub(crate) mod entry {
         pub(crate) fn path(p: &mut Parser) {
             let _ = paths::type_path(p);
         }
+        pub(crate) fn item(p: &mut Parser) {
+            items::item_or_macro(p, true);
+        }
+        // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
+        pub(crate) fn meta_item(p: &mut Parser) {
+            attributes::meta(p);
+        }
     }
 }
 
@@ -90,15 +97,6 @@ pub(crate) mod entry_points {
 
     pub(crate) fn stmt_optional_semi(p: &mut Parser) {
         expressions::stmt(p, expressions::StmtWithSemi::Optional, false);
-    }
-
-    // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
-    pub(crate) fn meta_item(p: &mut Parser) {
-        attributes::meta(p);
-    }
-
-    pub(crate) fn item(p: &mut Parser) {
-        items::item_or_macro(p, true);
     }
 
     pub(crate) fn macro_items(p: &mut Parser) {
