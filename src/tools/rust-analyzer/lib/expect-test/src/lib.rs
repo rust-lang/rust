@@ -238,6 +238,40 @@ impl fmt::Display for Position {
     }
 }
 
+#[derive(Clone, Copy)]
+enum StrLitKind {
+    Normal,
+    Raw(usize),
+}
+
+impl StrLitKind {
+    fn write_start(self, w: &mut impl std::fmt::Write) -> std::fmt::Result {
+        match self {
+            Self::Normal => write!(w, "\""),
+            Self::Raw(n) => {
+                write!(w, "r")?;
+                for _ in 0..n {
+                    write!(w, "#")?;
+                }
+                write!(w, "\"")
+            }
+        }
+    }
+
+    fn write_end(self, w: &mut impl std::fmt::Write) -> std::fmt::Result {
+        match self {
+            Self::Normal => write!(w, "\""),
+            Self::Raw(n) => {
+                write!(w, "\"")?;
+                for _ in 0..n {
+                    write!(w, "#")?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
 impl Expect {
     /// Checks if this expect is equal to `actual`.
     pub fn assert_eq(&self, actual: &str) {
@@ -324,11 +358,6 @@ fn locate_end(lit_to_eof: &str) -> Option<usize> {
 /// (either a quote or a hash).
 fn find_str_lit_len(str_lit_to_eof: &str) -> Option<usize> {
     use StrLitKind::*;
-    #[derive(Clone, Copy)]
-    enum StrLitKind {
-        Normal,
-        Raw(usize),
-    }
 
     fn try_find_n_hashes(
         s: &mut impl Iterator<Item = char>,
