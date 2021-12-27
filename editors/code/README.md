@@ -4,8 +4,6 @@ Provides support for rust-analyzer: novel LSP server for the Rust programming la
 
 **Note** the extension may cause conflicts with the official Rust extension. It is recommended to disable the Rust extension when using the rust-analyzer extension.
 
-**Note** the project is in alpha status: it is already useful in practice, but can't be considered stable.
-
 ## Sponsor
 
 Work on rust-analyzer is sponsored by
