@@ -809,7 +809,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
     })
 }
 
-pub fn expand_asm<'cx>(
+pub(super) fn expand_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
@@ -836,7 +836,7 @@ pub fn expand_asm<'cx>(
     }
 }
 
-pub fn expand_global_asm<'cx>(
+pub(super) fn expand_global_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     tts: TokenStream,
