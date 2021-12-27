@@ -4,7 +4,7 @@
 
 extern crate reexports;
 
-// @has 'foo/macro.addr_of.html' '//*[@class="docblock item-decl"]' 'pub macro addr_of($place : expr) {'
+// @has 'foo/macro.addr_of.html' '//*[@class="docblock item-decl"]' 'pub macro addr_of($place:expr) {'
 pub use reexports::addr_of;
 // @!has 'foo/macro.addr_of_crate.html'
 pub(crate) use reexports::addr_of_crate;
@@ -60,7 +60,7 @@ use reexports::UnionLocal;
 
 pub mod outer {
     pub mod inner {
-        // @has 'foo/outer/inner/macro.addr_of.html' '//*[@class="docblock item-decl"]' 'pub macro addr_of($place : expr) {'
+        // @has 'foo/outer/inner/macro.addr_of.html' '//*[@class="docblock item-decl"]' 'pub macro addr_of($place:expr) {'
         pub use reexports::addr_of;
         // @!has 'foo/outer/inner/macro.addr_of_crate.html'
         pub(crate) use reexports::addr_of_crate;
