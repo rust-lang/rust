@@ -144,7 +144,7 @@ line. (You can swap `clippy::all` with the specific lint category you are target
 ## Configuration
 
 Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a basic `variable =
-value` mapping eg.
+value` mapping e.g.
 
 ```toml
 avoid-breaking-exported-api = false
@@ -197,7 +197,7 @@ And to warn on `lint_name`, run
 cargo clippy -- -W clippy::lint_name
 ```
 
-This also works with lint groups. For example you
+This also works with lint groups. For example, you
 can run Clippy with warnings for all lints enabled:
 ```terminal
 cargo clippy -- -W clippy::pedantic
@@ -232,7 +232,7 @@ fn main() {
 You can also omit the patch version when specifying the MSRV, so `msrv = 1.30`
 is equivalent to `msrv = 1.30.0`.
 
-Note: `custom_inner_attributes` is an unstable feature so it has to be enabled explicitly.
+Note: `custom_inner_attributes` is an unstable feature, so it has to be enabled explicitly.
 
 Lints that recognize this configuration option can be found [here](https://rust-lang.github.io/rust-clippy/master/index.html#msrv)
 
