@@ -570,10 +570,25 @@ impl Display for Arguments<'_> {
 /// There are a number of helper methods on the [`Formatter`] struct to help you with manual
 /// implementations, such as [`debug_struct`].
 ///
+/// [`debug_struct`]: Formatter::debug_struct
+///
+/// For custom cases, it's also possible to implement `Debug` using the [`write!`] macro:
+/// ```
+/// # use std::fmt;
+/// # struct Point {
+/// #     x: i32,
+/// #     y: i32,
+/// # }
+///
+/// impl fmt::Debug for Point {
+///     fn fmt(&self, f: &mut fmt::Formatter <'_>) -> fmt::Result {
+///         write!(f, "Point [{} {}]", self.x, self.y)
+///     }
+/// }
+/// ```
+///
 /// `Debug` implementations using either `derive` or the debug builder API
 /// on [`Formatter`] support pretty-printing using the alternate flag: `{:#?}`.
-///
-/// [`debug_struct`]: Formatter::debug_struct
 ///
 /// Pretty-printing with `#?`:
 ///
