@@ -187,13 +187,6 @@ impl ast::Expr {
     }
 }
 
-impl ast::Attr {
-    /// Returns `text`, parsed as an attribute, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::Attr)
-    }
-}
-
 /// Matches a `SyntaxNode` against an `ast` type.
 ///
 /// # Example:
