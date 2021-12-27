@@ -1,7 +1,5 @@
 //! Renderer for `enum` variants.
 
-use std::iter;
-
 use hir::{db::HirDatabase, HasAttrs, HirDisplay, StructKind};
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -43,11 +41,7 @@ fn render(
             );
             (path, short, true)
         }
-        None => (
-            hir::ModPath::from_segments(hir::PathKind::Plain, iter::once(name.clone())),
-            hir::ModPath::from_segments(hir::PathKind::Plain, iter::once(name)),
-            false,
-        ),
+        None => (name.clone().into(), name.into(), false),
     };
     let qualified_name = qualified_name.to_string();
     let short_qualified_name: SmolStr = short_qualified_name.to_string().into();
