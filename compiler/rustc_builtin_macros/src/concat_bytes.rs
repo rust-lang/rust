@@ -154,7 +154,7 @@ pub fn expand_concat_bytes(
                         }
                     }
                 } else {
-                    cx.span_err(count.value.span, "repeat count is not a number");
+                    cx.span_err(count.value.span, "repeat count is not a positive number");
                 }
             }
             ast::ExprKind::Lit(ref lit) => match lit.kind {

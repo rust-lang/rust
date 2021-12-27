@@ -127,19 +127,19 @@ error: numeric literal is not a `u8`
 LL |     concat_bytes!([5u16]);
    |                    ^^^^
 
-error: repeat count is not a number
+error: repeat count is not a positive number
   --> $DIR/concat-bytes-error.rs:42:23
    |
 LL |     concat_bytes!([3; ()]);
    |                       ^^
 
-error: repeat count is not a number
+error: repeat count is not a positive number
   --> $DIR/concat-bytes-error.rs:43:23
    |
 LL |     concat_bytes!([3; -2]);
    |                       ^^
 
-error: repeat count is not a number
+error: repeat count is not a positive number
   --> $DIR/concat-bytes-error.rs:44:25
    |
 LL |     concat_bytes!([pie; -2]);
@@ -159,7 +159,7 @@ error: cannot concatenate float literals
 LL |     concat_bytes!([2.2; 0]);
    |                    ^^^
 
-error: repeat count is not a number
+error: repeat count is not a positive number
   --> $DIR/concat-bytes-error.rs:47:25
    |
 LL |     concat_bytes!([5.5; ()]);
