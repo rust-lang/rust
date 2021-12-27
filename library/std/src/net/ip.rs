@@ -1826,7 +1826,7 @@ impl fmt::Display for Ipv6Addr {
                 }
             }
         } else {
-            // Slow path: write the address to a local buffer, the use f.pad.
+            // Slow path: write the address to a local buffer, then use f.pad.
             // Defined recursively by using the fast path to write to the
             // buffer.
 
