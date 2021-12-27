@@ -61,17 +61,16 @@
 
 use std::rc::Rc;
 
+use parser::ParserEntryPoint;
+use smallvec::{smallvec, SmallVec};
+use syntax::SmolStr;
+
 use crate::{
-    expander::{Binding, Bindings, Fragment},
+    expander::{Binding, Bindings, ExpandResult, Fragment},
     parser::{Op, RepeatKind, Separator},
     tt_iter::TtIter,
     ExpandError, MetaTemplate,
 };
-
-use super::ExpandResult;
-use parser::ParserEntryPoint::*;
-use smallvec::{smallvec, SmallVec};
-use syntax::SmolStr;
 
 impl Bindings {
     fn push_optional(&mut self, name: &SmolStr) {
@@ -691,14 +690,14 @@ fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter) -> Result<(), ExpandError> {
 
 fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
-        "path" => Path,
-        "expr" => Expr,
-        "ty" => Type,
-        "pat" | "pat_param" => Pattern, // FIXME: edition2021
-        "stmt" => Statement,
-        "block" => Block,
-        "meta" => MetaItem,
-        "item" => Item,
+        "path" => ParserEntryPoint::Path,
+        "expr" => ParserEntryPoint::Expr,
+        "ty" => ParserEntryPoint::Type,
+        "pat" | "pat_param" => ParserEntryPoint::Pattern, // FIXME: edition2021
+        "stmt" => ParserEntryPoint::Statement,
+        "block" => ParserEntryPoint::Block,
+        "meta" => ParserEntryPoint::MetaItem,
+        "item" => ParserEntryPoint::Item,
         _ => {
             let tt_result = match kind {
                 "ident" => input
@@ -896,7 +895,7 @@ impl<'a> TtIter<'a> {
     }
 
     fn eat_vis(&mut self) -> Option<tt::TokenTree> {
-        self.expect_fragment(Visibility).value
+        self.expect_fragment(ParserEntryPoint::Visibility).value
     }
 
     fn eat_char(&mut self, c: char) -> Option<tt::TokenTree> {
