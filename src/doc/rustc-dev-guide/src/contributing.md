@@ -397,9 +397,9 @@ in the same way as other pull requests.
 [`src/doc`]: https://github.com/rust-lang/rust/tree/master/src/doc
 [`lib.rs`]: https://github.com/rust-lang/rust/blob/master/library/std/src/lib.rs#L1
 
-To find documentation-related issues, sort by the [T-doc label][tdoc].
+To find documentation-related issues, sort by the [A-docs label][adocs].
 
-[tdoc]: https://github.com/rust-lang/rust/issues?q=is%3Aopen%20is%3Aissue%20label%3AT-doc
+[adocs]: https://github.com/rust-lang/rust/issues?q=is%3Aopen%20is%3Aissue%20label%3AA-docs
 
 You can find documentation style guidelines in [RFC 1574][rfc1574].
 
