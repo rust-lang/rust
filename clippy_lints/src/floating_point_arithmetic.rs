@@ -654,26 +654,52 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue) &&
                (F32(180_f32) == lvalue || F64(180_f64) == lvalue)
             {
+                let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, ".."));
+                if_chain! {
+                    if let ExprKind::Lit(ref literal) = mul_lhs.kind;
+                    if let ast::LitKind::Float(ref value, float_type) = literal.node;
+                    if float_type == ast::LitFloatType::Unsuffixed;
+                    then {
+                        if value.as_str().ends_with('.') {
+                            proposal = format!("{}0_f64.to_degrees()", Sugg::hir(cx, mul_lhs, ".."));
+                        } else {
+                            proposal = format!("{}_f64.to_degrees()", Sugg::hir(cx, mul_lhs, ".."));
+                        }
+                    }
+                }
                 span_lint_and_sugg(
                     cx,
                     SUBOPTIMAL_FLOPS,
                     expr.span,
                     "conversion to degrees can be done more accurately",
                     "consider using",
-                    format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..")),
+                    proposal,
                     Applicability::MachineApplicable,
                 );
             } else if
                 (F32(180_f32) == rvalue || F64(180_f64) == rvalue) &&
                 (F32(f32_consts::PI) == lvalue || F64(f64_consts::PI) == lvalue)
             {
+                let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, ".."));
+                if_chain! {
+                    if let ExprKind::Lit(ref literal) = mul_lhs.kind;
+                    if let ast::LitKind::Float(ref value, float_type) = literal.node;
+                    if float_type == ast::LitFloatType::Unsuffixed;
+                    then {
+                        if value.as_str().ends_with('.') {
+                            proposal = format!("{}0_f64.to_radians()", Sugg::hir(cx, mul_lhs, ".."));
+                        } else {
+                            proposal = format!("{}_f64.to_radians()", Sugg::hir(cx, mul_lhs, ".."));
+                        }
+                    }
+                }
                 span_lint_and_sugg(
                     cx,
                     SUBOPTIMAL_FLOPS,
                     expr.span,
                     "conversion to radians can be done more accurately",
                     "consider using",
-                    format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..")),
+                    proposal,
                     Applicability::MachineApplicable,
                 );
             }
