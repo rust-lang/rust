@@ -73,6 +73,7 @@ declare_clippy_lint! {
 enum RetReplacement {
     Empty,
     Block,
+    Unit,
 }
 
 declare_lint_pass!(Return => [LET_AND_RETURN, NEEDLESS_RETURN]);
@@ -212,7 +213,7 @@ fn check_final_expr<'tcx>(
         // (except for unit type functions) so we don't match it
         ExprKind::Match(_, arms, MatchSource::Normal) => {
             for arm in arms.iter() {
-                check_final_expr(cx, arm.body, Some(arm.body.span), RetReplacement::Block);
+                check_final_expr(cx, arm.body, Some(arm.body.span), RetReplacement::Unit);
             }
         },
         ExprKind::DropTemps(expr) => check_final_expr(cx, expr, None, RetReplacement::Empty),
@@ -256,6 +257,17 @@ fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, inner_span: Option<Spa
                     "unneeded `return` statement",
                     "replace `return` with an empty block",
                     "{}".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            },
+            RetReplacement::Unit => {
+                span_lint_and_sugg(
+                    cx,
+                    NEEDLESS_RETURN,
+                    ret_span,
+                    "unneeded `return` statement",
+                    "replace `return` with a unit value",
+                    "()".to_string(),
                     Applicability::MachineApplicable,
                 );
             },
