@@ -237,7 +237,7 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
 ///
 /// Important note: It goes through generics recursively. So if you have
 /// `T: Option<Result<(), ()>>`, it'll go into `Option` and then into `Result`.
-crate fn get_real_types<'tcx>(
+fn get_real_types<'tcx>(
     generics: &Generics,
     arg: &Type,
     tcx: TyCtxt<'tcx>,
@@ -377,7 +377,7 @@ crate fn get_real_types<'tcx>(
 ///
 /// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
 /// `[u32, Display, Option]`.
-crate fn get_all_types<'tcx>(
+fn get_all_types<'tcx>(
     generics: &Generics,
     decl: &FnDecl,
     tcx: TyCtxt<'tcx>,
