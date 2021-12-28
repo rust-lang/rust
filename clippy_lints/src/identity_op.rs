@@ -62,8 +62,8 @@ impl<'tcx> LateLintPass<'tcx> for IdentityOp {
 
 fn is_allowed(cx: &LateContext<'_>, cmp: BinOp, left: &Expr<'_>, right: &Expr<'_>) -> bool {
     // This lint applies to integers
-    !cx.typeck_results().expr_ty(left).is_integral()
-        || !cx.typeck_results().expr_ty(right).is_integral()
+    !cx.typeck_results().expr_ty(left).peel_refs().is_integral()
+        || !cx.typeck_results().expr_ty(right).peel_refs().is_integral()
         // `1 << 0` is a common pattern in bit manipulation code
         || (cmp.node == BinOpKind::Shl
             && constant_simple(cx, cx.typeck_results(), right) == Some(Constant::Int(0))
