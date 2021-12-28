@@ -80,12 +80,12 @@ fn parse_inline_err() {
 fn parse(text: &str) -> (String, bool) {
     let lexed = LexedStr::new(text);
     let input = lexed.to_input();
-    let output = crate::parse_source_file(&input);
+    let output = crate::TopEntryPoint::SourceFile.parse(&input);
 
     let mut buf = String::new();
     let mut errors = Vec::new();
     let mut indent = String::new();
-    lexed.intersperse_trivia(&output, false, &mut |step| match step {
+    lexed.intersperse_trivia(&output, &mut |step| match step {
         crate::StrStep::Token { kind, text } => {
             write!(buf, "{}", indent).unwrap();
             write!(buf, "{:?} {:?}\n", kind, text).unwrap();

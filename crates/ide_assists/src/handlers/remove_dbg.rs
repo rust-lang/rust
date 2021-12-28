@@ -36,9 +36,8 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let input_expressions = input_expressions
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
-        .map(|mut tokens| ast::Expr::parse(&tokens.join("")))
-        .collect::<Result<Vec<ast::Expr>, _>>()
-        .ok()?;
+        .map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join("")))
+        .collect::<Option<Vec<ast::Expr>>>()?;
 
     let parent = macro_call.syntax().parent()?;
     let (range, text) = match &*input_expressions {

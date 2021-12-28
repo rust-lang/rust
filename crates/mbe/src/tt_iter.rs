@@ -1,7 +1,7 @@
 //! A "Parser" structure for token trees. We use this when parsing a declarative
 //! macro definition into a list of patterns and templates.
 
-use crate::{to_parser_input::to_parser_input, ExpandError, ExpandResult, ParserEntryPoint};
+use crate::{to_parser_input::to_parser_input, ExpandError, ExpandResult};
 
 use syntax::SyntaxKind;
 use tt::buffer::TokenBuffer;
@@ -91,11 +91,11 @@ impl<'a> TtIter<'a> {
 
     pub(crate) fn expect_fragment(
         &mut self,
-        entry_point: ParserEntryPoint,
+        entry_point: parser::PrefixEntryPoint,
     ) -> ExpandResult<Option<tt::TokenTree>> {
         let buffer = TokenBuffer::from_tokens(self.inner.as_slice());
         let parser_input = to_parser_input(&buffer);
-        let tree_traversal = parser::parse(&parser_input, entry_point);
+        let tree_traversal = entry_point.parse(&parser_input);
 
         let mut cursor = buffer.begin();
         let mut error = false;

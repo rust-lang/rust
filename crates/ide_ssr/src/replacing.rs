@@ -1,5 +1,6 @@
 //! Code for applying replacement templates for matches that have previously been found.
 
+use crate::fragments;
 use crate::{resolving::ResolvedRule, Match, SsrMatches};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -225,12 +226,13 @@ fn token_is_method_call_receiver(token: &SyntaxToken) -> bool {
 
 fn parse_as_kind(code: &str, kind: SyntaxKind) -> Option<SyntaxNode> {
     if ast::Expr::can_cast(kind) {
-        if let Ok(expr) = ast::Expr::parse(code) {
-            return Some(expr.syntax().clone());
+        if let Ok(expr) = fragments::expr(code) {
+            return Some(expr);
         }
-    } else if ast::Item::can_cast(kind) {
-        if let Ok(item) = ast::Item::parse(code) {
-            return Some(item.syntax().clone());
+    }
+    if ast::Item::can_cast(kind) {
+        if let Ok(item) = fragments::item(code) {
+            return Some(item);
         }
     }
     None

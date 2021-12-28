@@ -67,7 +67,11 @@ pub fn get_path_at_cursor_in_tt(cursor: &ast::Ident) -> Option<ast::Path> {
         .filter_map(SyntaxElement::into_token)
         .take_while(|tok| tok != cursor);
 
-    ast::Path::parse(&path_tokens.chain(iter::once(cursor.clone())).join("")).ok()
+    syntax::hacks::parse_expr_from_str(&path_tokens.chain(iter::once(cursor.clone())).join(""))
+        .and_then(|expr| match expr {
+            ast::Expr::PathExpr(it) => it.path(),
+            _ => None,
+        })
 }
 
 /// Parses and resolves the path at the cursor position in the given attribute, if it is a derive.
@@ -323,7 +327,12 @@ pub fn parse_tt_as_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Pat
     let paths = input_expressions
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
-        .filter_map(|mut tokens| ast::Path::parse(&tokens.join("")).ok())
+        .filter_map(|mut tokens| {
+            syntax::hacks::parse_expr_from_str(&tokens.join("")).and_then(|expr| match expr {
+                ast::Expr::PathExpr(it) => it.path(),
+                _ => None,
+            })
+        })
         .collect();
     Some(paths)
 }

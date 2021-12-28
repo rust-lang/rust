@@ -40,6 +40,7 @@ pub mod ast;
 pub mod fuzz;
 pub mod utils;
 pub mod ted;
+pub mod hacks;
 
 use std::{marker::PhantomData, sync::Arc};
 
@@ -164,61 +165,6 @@ impl SourceFile {
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
         Parse { green, errors: Arc::new(errors), _ty: PhantomData }
-    }
-}
-
-// FIXME: `parse` functions shouldn't hang directly from AST nodes, and they
-// shouldn't return `Result`.
-//
-// We need a dedicated module for parser entry points, and they should always
-// return `Parse`.
-
-impl ast::Path {
-    /// Returns `text`, parsed as a path, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::Path)
-    }
-}
-
-impl ast::Pat {
-    /// Returns `text`, parsed as a pattern, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::Pattern)
-    }
-}
-
-impl ast::Expr {
-    /// Returns `text`, parsed as an expression, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::Expr)
-    }
-}
-
-impl ast::Item {
-    /// Returns `text`, parsed as an item, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::Item)
-    }
-}
-
-impl ast::Type {
-    /// Returns `text`, parsed as an type reference, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::Type)
-    }
-}
-
-impl ast::Attr {
-    /// Returns `text`, parsed as an attribute, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::Attr)
-    }
-}
-
-impl ast::Stmt {
-    /// Returns `text`, parsed as statement, but only if it has no errors.
-    pub fn parse(text: &str) -> Result<Self, ()> {
-        parsing::parse_text_as(text, parser::ParserEntryPoint::StatementOptionalSemi)
     }
 }
 

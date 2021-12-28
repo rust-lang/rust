@@ -61,17 +61,15 @@
 
 use std::rc::Rc;
 
+use smallvec::{smallvec, SmallVec};
+use syntax::SmolStr;
+
 use crate::{
-    expander::{Binding, Bindings, Fragment},
+    expander::{Binding, Bindings, ExpandResult, Fragment},
     parser::{Op, RepeatKind, Separator},
     tt_iter::TtIter,
     ExpandError, MetaTemplate,
 };
-
-use super::ExpandResult;
-use parser::ParserEntryPoint::*;
-use smallvec::{smallvec, SmallVec};
-use syntax::SmolStr;
 
 impl Bindings {
     fn push_optional(&mut self, name: &SmolStr) {
@@ -691,14 +689,21 @@ fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter) -> Result<(), ExpandError> {
 
 fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragment>> {
     let fragment = match kind {
-        "path" => Path,
-        "expr" => Expr,
-        "ty" => Type,
-        "pat" | "pat_param" => Pattern, // FIXME: edition2021
-        "stmt" => Statement,
-        "block" => Block,
-        "meta" => MetaItem,
-        "item" => Item,
+        "path" => parser::PrefixEntryPoint::Path,
+        "ty" => parser::PrefixEntryPoint::Ty,
+        // FIXME: These two should actually behave differently depending on the edition.
+        //
+        // https://doc.rust-lang.org/edition-guide/rust-2021/or-patterns-macro-rules.html
+        "pat" | "pat_param" => parser::PrefixEntryPoint::Pat,
+        "stmt" => parser::PrefixEntryPoint::Stmt,
+        "block" => parser::PrefixEntryPoint::Block,
+        "meta" => parser::PrefixEntryPoint::MetaItem,
+        "item" => parser::PrefixEntryPoint::Item,
+        "expr" => {
+            return input
+                .expect_fragment(parser::PrefixEntryPoint::Expr)
+                .map(|tt| tt.map(Fragment::Expr))
+        }
         _ => {
             let tt_result = match kind {
                 "ident" => input
@@ -726,17 +731,13 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                         .map_err(|()| err!())
                 }
                 // `vis` is optional
-                "vis" => match input.eat_vis() {
-                    Some(vis) => Ok(Some(vis)),
-                    None => Ok(None),
-                },
+                "vis" => Ok(input.expect_fragment(parser::PrefixEntryPoint::Vis).value),
                 _ => Err(ExpandError::UnexpectedToken),
             };
             return tt_result.map(|it| it.map(Fragment::Tokens)).into();
         }
     };
-    let result = input.expect_fragment(fragment);
-    result.map(|tt| if kind == "expr" { tt.map(Fragment::Expr) } else { tt.map(Fragment::Tokens) })
+    input.expect_fragment(fragment).map(|it| it.map(Fragment::Tokens))
 }
 
 fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &MetaTemplate) {
@@ -896,17 +897,6 @@ impl<'a> TtIter<'a> {
             ],
         }
         .into())
-    }
-
-    fn eat_vis(&mut self) -> Option<tt::TokenTree> {
-        let mut fork = self.clone();
-        match fork.expect_fragment(Visibility) {
-            ExpandResult { value: tt, err: None } => {
-                *self = fork;
-                tt
-            }
-            ExpandResult { value: _, err: Some(_) } => None,
-        }
     }
 
     fn eat_char(&mut self, c: char) -> Option<tt::TokenTree> {

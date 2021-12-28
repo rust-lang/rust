@@ -309,7 +309,7 @@ fn parse_comma_sep_expr(input: ast::TokenTree) -> Option<Vec<ast::Expr>> {
         input_expressions
             .into_iter()
             .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
-            .filter_map(|mut tokens| ast::Expr::parse(&tokens.join("")).ok())
+            .filter_map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join("")))
             .collect::<Vec<ast::Expr>>(),
     )
 }

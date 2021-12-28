@@ -11,7 +11,7 @@ use hir_def::{
 };
 use hir_expand::{hygiene::Hygiene, MacroDefId};
 use hir_ty::db::HirDatabase;
-use syntax::ast;
+use syntax::{ast, AstNode};
 
 use crate::{
     Adt, AssocItem, Const, ConstParam, Enum, Field, Function, GenericParam, Impl, LifetimeParam,
@@ -147,8 +147,18 @@ fn resolve_doc_path(
         // FIXME
         AttrDefId::MacroDefId(_) => return None,
     };
-    let path = ast::Path::parse(link).ok()?;
-    let modpath = ModPath::from_src(db.upcast(), path, &Hygiene::new_unhygienic())?;
+
+    let modpath = {
+        let ast_path = ast::SourceFile::parse(&format!("type T = {};", link))
+            .syntax_node()
+            .descendants()
+            .find_map(ast::Path::cast)?;
+        if ast_path.to_string() != link {
+            return None;
+        }
+        ModPath::from_src(db.upcast(), ast_path, &Hygiene::new_unhygienic())?
+    };
+
     let resolved = resolver.resolve_module_path_in_items(db.upcast(), &modpath);
     let resolved = if resolved == PerNs::none() {
         resolver.resolve_module_path_in_trait_assoc_items(db.upcast(), &modpath)?

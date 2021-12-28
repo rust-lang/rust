@@ -41,63 +41,95 @@ pub use crate::{
     syntax_kind::SyntaxKind,
 };
 
-/// rust-analyzer parser allows you to choose one of the possible entry points.
+/// Parse a prefix of the input as a given syntactic construct.
 ///
-/// The primary consumer of this API are declarative macros, `$x:expr` matchers
-/// are implemented by calling into the parser with non-standard entry point.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum ParserEntryPoint {
-    SourceFile,
-    Path,
-    Expr,
-    Statement,
-    StatementOptionalSemi,
-    Type,
-    Pattern,
-    Item,
+/// This is used by macro-by-example parser to implement things like `$i:item`
+/// and the naming of variants follows the naming of macro fragments.
+///
+/// Note that this is generally non-optional -- the result is intentionally not
+/// `Option<Output>`. The way MBE work, by the time we *try* to parse `$e:expr`
+/// we already commit to expression. In other words, this API by design can't be
+/// used to implement "rollback and try another alternative" logic.
+#[derive(Debug)]
+pub enum PrefixEntryPoint {
+    Vis,
     Block,
-    Visibility,
+    Stmt,
+    Pat,
+    Ty,
+    Expr,
+    Path,
+    Item,
     MetaItem,
-    Items,
-    Statements,
-    Attr,
 }
 
-/// Parse given tokens into the given sink as a rust file.
-pub fn parse_source_file(inp: &Input) -> Output {
-    parse(inp, ParserEntryPoint::SourceFile)
+impl PrefixEntryPoint {
+    pub fn parse(&self, input: &Input) -> Output {
+        let entry_point: fn(&'_ mut parser::Parser) = match self {
+            PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
+            PrefixEntryPoint::Block => grammar::entry::prefix::block,
+            PrefixEntryPoint::Stmt => grammar::entry::prefix::stmt,
+            PrefixEntryPoint::Pat => grammar::entry::prefix::pat,
+            PrefixEntryPoint::Ty => grammar::entry::prefix::ty,
+            PrefixEntryPoint::Expr => grammar::entry::prefix::expr,
+            PrefixEntryPoint::Path => grammar::entry::prefix::path,
+            PrefixEntryPoint::Item => grammar::entry::prefix::item,
+            PrefixEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
+        };
+        let mut p = parser::Parser::new(input);
+        entry_point(&mut p);
+        let events = p.finish();
+        event::process(events)
+    }
 }
 
-/// Parses the given [`Input`] into [`Output`] assuming that the top-level
-/// syntactic construct is the given [`ParserEntryPoint`].
+/// Parse the whole of the input as a given syntactic construct.
 ///
-/// Both input and output here are fairly abstract. The overall flow is that the
-/// caller has some "real" tokens, converts them to [`Input`], parses them to
-/// [`Output`], and then converts that into a "real" tree. The "real" tree is
-/// made of "real" tokens, so this all hinges on rather tight coordination of
-/// indices between the four stages.
-pub fn parse(inp: &Input, entry_point: ParserEntryPoint) -> Output {
-    let entry_point: fn(&'_ mut parser::Parser) = match entry_point {
-        ParserEntryPoint::SourceFile => grammar::entry_points::source_file,
-        ParserEntryPoint::Path => grammar::entry_points::path,
-        ParserEntryPoint::Expr => grammar::entry_points::expr,
-        ParserEntryPoint::Type => grammar::entry_points::type_,
-        ParserEntryPoint::Pattern => grammar::entry_points::pattern,
-        ParserEntryPoint::Item => grammar::entry_points::item,
-        ParserEntryPoint::Block => grammar::entry_points::block_expr,
-        ParserEntryPoint::Visibility => grammar::entry_points::visibility,
-        ParserEntryPoint::MetaItem => grammar::entry_points::meta_item,
-        ParserEntryPoint::Statement => grammar::entry_points::stmt,
-        ParserEntryPoint::StatementOptionalSemi => grammar::entry_points::stmt_optional_semi,
-        ParserEntryPoint::Items => grammar::entry_points::macro_items,
-        ParserEntryPoint::Statements => grammar::entry_points::macro_stmts,
-        ParserEntryPoint::Attr => grammar::entry_points::attr,
-    };
+/// This covers two main use-cases:
+///
+///   * Parsing a Rust file.
+///   * Parsing a result of macro expansion.
+///
+/// That is, for something like
+///
+/// ```
+/// quick_check! {
+///    fn prop() {}
+/// }
+/// ```
+///
+/// the input to the macro will be parsed with [`PrefixEntryPoint::Item`], and
+/// the result will be [`TopEntryPoint::Items`].
+///
+/// This *should* (but currently doesn't) guarantee that all input is consumed.
+#[derive(Debug)]
+pub enum TopEntryPoint {
+    SourceFile,
+    MacroStmts,
+    MacroItems,
+    Pattern,
+    Type,
+    Expr,
+    MetaItem,
+}
 
-    let mut p = parser::Parser::new(inp);
-    entry_point(&mut p);
-    let events = p.finish();
-    event::process(events)
+impl TopEntryPoint {
+    pub fn parse(&self, input: &Input) -> Output {
+        let entry_point: fn(&'_ mut parser::Parser) = match self {
+            TopEntryPoint::SourceFile => grammar::entry::top::source_file,
+            TopEntryPoint::MacroStmts => grammar::entry::top::macro_stmts,
+            TopEntryPoint::MacroItems => grammar::entry::top::macro_items,
+            // FIXME
+            TopEntryPoint::Pattern => grammar::entry::prefix::pat,
+            TopEntryPoint::Type => grammar::entry::prefix::ty,
+            TopEntryPoint::Expr => grammar::entry::prefix::expr,
+            TopEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
+        };
+        let mut p = parser::Parser::new(input);
+        entry_point(&mut p);
+        let events = p.finish();
+        event::process(events)
+    }
 }
 
 /// A parsing function for a specific braced-block.

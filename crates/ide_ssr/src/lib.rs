@@ -71,6 +71,7 @@ mod from_comment;
 mod matching;
 mod nester;
 mod parsing;
+mod fragments;
 mod replacing;
 mod resolving;
 mod search;

@@ -1,1 +1,0 @@
-Result<Foo, Bar

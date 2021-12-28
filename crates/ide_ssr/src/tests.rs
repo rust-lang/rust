@@ -332,6 +332,15 @@ fn ssr_struct_lit() {
 }
 
 #[test]
+fn ssr_struct_def() {
+    assert_ssr_transform(
+        "struct Foo { $f: $t } ==>> struct Foo($t);",
+        r#"struct Foo { field: i32 }"#,
+        expect![[r#"struct Foo(i32);"#]],
+    )
+}
+
+#[test]
 fn ignores_whitespace() {
     assert_matches("1+2", "fn f() -> i32 {1  +  2}", &["1  +  2"]);
     assert_matches("1 + 2", "fn f() -> i32 {1+2}", &["1+2"]);
@@ -791,6 +800,19 @@ fn replace_type() {
         expect![[
             "struct Result<T, E> {} struct Option<T> {} fn f1() -> Option<Vec<Error>> {foo()}"
         ]],
+    );
+    assert_ssr_transform(
+        "dyn Trait<$a> ==>> DynTrait<$a>",
+        r#"
+trait Trait<T> {}
+struct DynTrait<T> {}
+fn f1() -> dyn Trait<Vec<Error>> {foo()}
+"#,
+        expect![[r#"
+trait Trait<T> {}
+struct DynTrait<T> {}
+fn f1() -> DynTrait<Vec<Error>> {foo()}
+"#]],
     );
 }
 

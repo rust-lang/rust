@@ -212,15 +212,14 @@ fn validate_snippet(
 ) -> Option<(Box<[GreenNode]>, String, Option<Box<str>>)> {
     let mut imports = Vec::with_capacity(requires.len());
     for path in requires.iter() {
-        let path = ast::Path::parse(path).ok()?;
-        let valid_use_path = path.segments().all(|seg| {
-            matches!(seg.kind(), Some(ast::PathSegmentKind::Name(_)))
-                || seg.generic_arg_list().is_none()
-        });
-        if !valid_use_path {
+        let use_path = ast::SourceFile::parse(&format!("use {};", path))
+            .syntax_node()
+            .descendants()
+            .find_map(ast::Path::cast)?;
+        if use_path.syntax().text() != path.as_str() {
             return None;
         }
-        let green = path.syntax().green().into_owned();
+        let green = use_path.syntax().green().into_owned();
         imports.push(green);
     }
     let snippet = snippet.iter().join("\n");

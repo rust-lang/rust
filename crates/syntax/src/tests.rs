@@ -60,60 +60,6 @@ fn validation_tests() {
 }
 
 #[test]
-fn expr_parser_tests() {
-    fragment_parser_dir_test(
-        &["parser/fragments/expr/ok"],
-        &["parser/fragments/expr/err"],
-        crate::ast::Expr::parse,
-    );
-}
-
-#[test]
-fn path_parser_tests() {
-    fragment_parser_dir_test(
-        &["parser/fragments/path/ok"],
-        &["parser/fragments/path/err"],
-        crate::ast::Path::parse,
-    );
-}
-
-#[test]
-fn pattern_parser_tests() {
-    fragment_parser_dir_test(
-        &["parser/fragments/pattern/ok"],
-        &["parser/fragments/pattern/err"],
-        crate::ast::Pat::parse,
-    );
-}
-
-#[test]
-fn item_parser_tests() {
-    fragment_parser_dir_test(
-        &["parser/fragments/item/ok"],
-        &["parser/fragments/item/err"],
-        crate::ast::Item::parse,
-    );
-}
-
-#[test]
-fn type_parser_tests() {
-    fragment_parser_dir_test(
-        &["parser/fragments/type/ok"],
-        &["parser/fragments/type/err"],
-        crate::ast::Type::parse,
-    );
-}
-
-#[test]
-fn stmt_parser_tests() {
-    fragment_parser_dir_test(
-        &["parser/fragments/stmt/ok"],
-        &["parser/fragments/stmt/err"],
-        crate::ast::Stmt::parse,
-    );
-}
-
-#[test]
 fn parser_fuzz_tests() {
     for (_, text) in collect_rust_files(&test_data_dir(), &["parser/fuzz-failures"]) {
         fuzz::check_parser(&text)
@@ -170,24 +116,6 @@ fn test_data_dir() -> PathBuf {
 
 fn assert_errors_are_present(errors: &[SyntaxError], path: &Path) {
     assert!(!errors.is_empty(), "There should be errors in the file {:?}", path.display());
-}
-
-fn fragment_parser_dir_test<T, F>(ok_paths: &[&str], err_paths: &[&str], f: F)
-where
-    T: crate::AstNode,
-    F: Fn(&str) -> Result<T, ()>,
-{
-    dir_tests(&test_data_dir(), ok_paths, "rast", |text, path| match f(text) {
-        Ok(node) => format!("{:#?}", crate::ast::AstNode::syntax(&node)),
-        Err(_) => panic!("Failed to parse '{:?}'", path),
-    });
-    dir_tests(&test_data_dir(), err_paths, "rast", |text, path| {
-        if f(text).is_ok() {
-            panic!("'{:?}' successfully parsed when it should have errored", path);
-        } else {
-            "ERROR\n".to_owned()
-        }
-    });
 }
 
 /// Calls callback `f` with input code and file paths for each `.rs` file in `test_data_dir`

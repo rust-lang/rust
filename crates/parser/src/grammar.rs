@@ -44,72 +44,76 @@ use crate::{
     TokenSet, T,
 };
 
-pub(crate) mod entry_points {
+pub(crate) mod entry {
     use super::*;
 
-    pub(crate) fn source_file(p: &mut Parser) {
-        let m = p.start();
-        p.eat(SHEBANG);
-        items::mod_contents(p, false);
-        m.complete(p, SOURCE_FILE);
-    }
+    pub(crate) mod prefix {
+        use super::*;
 
-    pub(crate) use expressions::block_expr;
-
-    pub(crate) use paths::type_path as path;
-
-    pub(crate) use patterns::pattern_single as pattern;
-
-    pub(crate) use types::type_;
-
-    pub(crate) fn expr(p: &mut Parser) {
-        let _ = expressions::expr(p);
-    }
-
-    pub(crate) fn stmt(p: &mut Parser) {
-        expressions::stmt(p, expressions::StmtWithSemi::No, true);
-    }
-
-    pub(crate) fn stmt_optional_semi(p: &mut Parser) {
-        expressions::stmt(p, expressions::StmtWithSemi::Optional, false);
-    }
-
-    pub(crate) fn visibility(p: &mut Parser) {
-        let _ = opt_visibility(p, false);
-    }
-
-    // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
-    pub(crate) fn meta_item(p: &mut Parser) {
-        attributes::meta(p);
-    }
-
-    pub(crate) fn item(p: &mut Parser) {
-        items::item_or_macro(p, true);
-    }
-
-    pub(crate) fn macro_items(p: &mut Parser) {
-        let m = p.start();
-        items::mod_contents(p, false);
-        m.complete(p, MACRO_ITEMS);
-    }
-
-    pub(crate) fn macro_stmts(p: &mut Parser) {
-        let m = p.start();
-
-        while !p.at(EOF) {
-            if p.at(T![;]) {
-                p.bump(T![;]);
-                continue;
-            }
-
-            expressions::stmt(p, expressions::StmtWithSemi::Optional, true);
+        pub(crate) fn vis(p: &mut Parser) {
+            let _ = opt_visibility(p, false);
         }
 
-        m.complete(p, MACRO_STMTS);
+        pub(crate) fn block(p: &mut Parser) {
+            expressions::block_expr(p);
+        }
+
+        pub(crate) fn stmt(p: &mut Parser) {
+            expressions::stmt(p, expressions::StmtWithSemi::No, true);
+        }
+
+        pub(crate) fn pat(p: &mut Parser) {
+            patterns::pattern_single(p);
+        }
+
+        pub(crate) fn ty(p: &mut Parser) {
+            types::type_(p);
+        }
+        pub(crate) fn expr(p: &mut Parser) {
+            let _ = expressions::expr(p);
+        }
+        pub(crate) fn path(p: &mut Parser) {
+            let _ = paths::type_path(p);
+        }
+        pub(crate) fn item(p: &mut Parser) {
+            items::item_or_macro(p, true);
+        }
+        // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
+        pub(crate) fn meta_item(p: &mut Parser) {
+            attributes::meta(p);
+        }
     }
 
-    pub(crate) fn attr(p: &mut Parser) {
-        attributes::outer_attrs(p);
+    pub(crate) mod top {
+        use super::*;
+
+        pub(crate) fn source_file(p: &mut Parser) {
+            let m = p.start();
+            p.eat(SHEBANG);
+            items::mod_contents(p, false);
+            m.complete(p, SOURCE_FILE);
+        }
+
+        pub(crate) fn macro_stmts(p: &mut Parser) {
+            let m = p.start();
+
+            while !p.at(EOF) {
+                if p.at(T![;]) {
+                    p.bump(T![;]);
+                    continue;
+                }
+
+                expressions::stmt(p, expressions::StmtWithSemi::Optional, true);
+            }
+
+            m.complete(p, MACRO_STMTS);
+        }
+
+        pub(crate) fn macro_items(p: &mut Parser) {
+            let m = p.start();
+            items::mod_contents(p, false);
+            m.complete(p, MACRO_ITEMS);
+        }
     }
 }
 
