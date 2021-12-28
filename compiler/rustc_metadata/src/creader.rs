@@ -102,30 +102,23 @@ struct CrateDump<'a>(&'a CStore);
 impl<'a> std::fmt::Debug for CrateDump<'a> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(fmt, "resolved crates:")?;
-        // `iter_crate_data` does not allow returning values. Thus we use a mutable variable here
-        // that aggregates the value (and any errors that could happen).
-        let mut res = Ok(());
-        self.0.iter_crate_data(|cnum, data| {
-            res = res.and(
-                try {
-                    writeln!(fmt, "  name: {}", data.name())?;
-                    writeln!(fmt, "  cnum: {}", cnum)?;
-                    writeln!(fmt, "  hash: {}", data.hash())?;
-                    writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
-                    let CrateSource { dylib, rlib, rmeta } = data.source();
-                    if let Some(dylib) = dylib {
-                        writeln!(fmt, "  dylib: {}", dylib.0.display())?;
-                    }
-                    if let Some(rlib) = rlib {
-                        writeln!(fmt, "   rlib: {}", rlib.0.display())?;
-                    }
-                    if let Some(rmeta) = rmeta {
-                        writeln!(fmt, "   rmeta: {}", rmeta.0.display())?;
-                    }
-                },
-            );
-        });
-        res
+        for (cnum, data) in self.0.iter_crate_data() {
+            writeln!(fmt, "  name: {}", data.name())?;
+            writeln!(fmt, "  cnum: {}", cnum)?;
+            writeln!(fmt, "  hash: {}", data.hash())?;
+            writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
+            let CrateSource { dylib, rlib, rmeta } = data.source();
+            if let Some(dylib) = dylib {
+                writeln!(fmt, "  dylib: {}", dylib.0.display())?;
+            }
+            if let Some(rlib) = rlib {
+                writeln!(fmt, "   rlib: {}", rlib.0.display())?;
+            }
+            if let Some(rmeta) = rmeta {
+                writeln!(fmt, "   rmeta: {}", rmeta.0.display())?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -154,12 +147,10 @@ impl CStore {
         self.metas[cnum] = Some(Lrc::new(data));
     }
 
-    crate fn iter_crate_data(&self, mut f: impl FnMut(CrateNum, &CrateMetadata)) {
-        for (cnum, data) in self.metas.iter_enumerated() {
-            if let Some(data) = data {
-                f(cnum, data);
-            }
-        }
+    crate fn iter_crate_data(&self) -> impl Iterator<Item = (CrateNum, &CrateMetadata)> {
+        self.metas
+            .iter_enumerated()
+            .filter_map(|(cnum, data)| data.as_ref().map(|data| (cnum, &**data)))
     }
 
     fn push_dependencies_in_postorder(&self, deps: &mut Vec<CrateNum>, cnum: CrateNum) {
@@ -178,7 +169,9 @@ impl CStore {
     crate fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
         let mut deps = Vec::new();
         if cnum == LOCAL_CRATE {
-            self.iter_crate_data(|cnum, _| self.push_dependencies_in_postorder(&mut deps, cnum));
+            for (cnum, _) in self.iter_crate_data() {
+                self.push_dependencies_in_postorder(&mut deps, cnum);
+            }
         } else {
             self.push_dependencies_in_postorder(&mut deps, cnum);
         }
@@ -263,21 +256,17 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn existing_match(&self, name: Symbol, hash: Option<Svh>, kind: PathKind) -> Option<CrateNum> {
-        let mut ret = None;
-        self.cstore.iter_crate_data(|cnum, data| {
+        for (cnum, data) in self.cstore.iter_crate_data() {
             if data.name() != name {
                 tracing::trace!("{} did not match {}", data.name(), name);
-                return;
+                continue;
             }
 
             match hash {
-                Some(hash) if hash == data.hash() => {
-                    ret = Some(cnum);
-                    return;
-                }
+                Some(hash) if hash == data.hash() => return Some(cnum),
                 Some(hash) => {
                     debug!("actual hash {} did not match expected {}", hash, data.hash());
-                    return;
+                    continue;
                 }
                 None => {}
             }
@@ -301,10 +290,10 @@ impl<'a> CrateLoader<'a> {
                             || source.rlib.as_ref().map(|(p, _)| p) == Some(l)
                             || source.rmeta.as_ref().map(|(p, _)| p) == Some(l)
                     }) {
-                        ret = Some(cnum);
+                        return Some(cnum);
                     }
                 }
-                return;
+                continue;
             }
 
             // Alright, so we've gotten this far which means that `data` has the
@@ -321,15 +310,16 @@ impl<'a> CrateLoader<'a> {
                 .expect("No sources for crate")
                 .1;
             if kind.matches(prev_kind) {
-                ret = Some(cnum);
+                return Some(cnum);
             } else {
                 debug!(
                     "failed to load existing crate {}; kind {:?} did not match prev_kind {:?}",
                     name, kind, prev_kind
                 );
             }
-        });
-        ret
+        }
+
+        None
     }
 
     fn verify_no_symbol_conflicts(&self, root: &CrateRoot<'_>) -> Result<(), CrateError> {
@@ -339,17 +329,14 @@ impl<'a> CrateLoader<'a> {
         }
 
         // Check for conflicts with any crate loaded so far
-        let mut res = Ok(());
-        self.cstore.iter_crate_data(|_, other| {
-            if other.stable_crate_id() == root.stable_crate_id() && // same stable crate id
-               other.hash() != root.hash()
-            {
-                // but different SVH
-                res = Err(CrateError::SymbolConflictsOthers(root.name()));
+        for (_, other) in self.cstore.iter_crate_data() {
+            // Same stable crate id but different SVH
+            if other.stable_crate_id() == root.stable_crate_id() && other.hash() != root.hash() {
+                return Err(CrateError::SymbolConflictsOthers(root.name()));
             }
-        });
+        }
 
-        res
+        Ok(())
     }
 
     fn verify_no_stable_crate_id_hash_conflicts(
@@ -607,13 +594,14 @@ impl<'a> CrateLoader<'a> {
             locator.triple == self.sess.opts.target_triple || locator.is_proc_macro;
         Ok(Some(if can_reuse_cratenum {
             let mut result = LoadResult::Loaded(library);
-            self.cstore.iter_crate_data(|cnum, data| {
+            for (cnum, data) in self.cstore.iter_crate_data() {
                 if data.name() == root.name() && root.hash() == data.hash() {
                     assert!(locator.hash.is_none());
                     info!("load success, going to previous cnum: {}", cnum);
                     result = LoadResult::Previous(cnum);
+                    break;
                 }
-            });
+            }
             result
         } else {
             LoadResult::Loaded(library)
@@ -711,7 +699,7 @@ impl<'a> CrateLoader<'a> {
         let mut needs_panic_runtime =
             self.sess.contains_name(&krate.attrs, sym::needs_panic_runtime);
 
-        self.cstore.iter_crate_data(|cnum, data| {
+        for (cnum, data) in self.cstore.iter_crate_data() {
             needs_panic_runtime = needs_panic_runtime || data.needs_panic_runtime();
             if data.is_panic_runtime() {
                 // Inject a dependency from all #![needs_panic_runtime] to this
@@ -721,7 +709,7 @@ impl<'a> CrateLoader<'a> {
                 });
                 runtime_found = runtime_found || data.dep_kind() == CrateDepKind::Explicit;
             }
-        });
+        }
 
         // If an explicitly linked and matching panic runtime was found, or if
         // we just don't need one at all, then we're done here and there's
@@ -813,11 +801,9 @@ impl<'a> CrateLoader<'a> {
         // Check to see if we actually need an allocator. This desire comes
         // about through the `#![needs_allocator]` attribute and is typically
         // written down in liballoc.
-        let mut needs_allocator = self.sess.contains_name(&krate.attrs, sym::needs_allocator);
-        self.cstore.iter_crate_data(|_, data| {
-            needs_allocator = needs_allocator || data.needs_allocator();
-        });
-        if !needs_allocator {
+        if !self.sess.contains_name(&krate.attrs, sym::needs_allocator)
+            && !self.cstore.iter_crate_data().any(|(_, data)| data.needs_allocator())
+        {
             return;
         }
 
@@ -838,23 +824,19 @@ impl<'a> CrateLoader<'a> {
         // global allocator.
         let mut global_allocator =
             self.cstore.has_global_allocator.then(|| Symbol::intern("this crate"));
-        self.cstore.iter_crate_data(|_, data| {
-            if !data.has_global_allocator() {
-                return;
-            }
-            match global_allocator {
-                Some(other_crate) => {
-                    self.sess.err(&format!(
-                        "the `#[global_allocator]` in {} \
-                                            conflicts with global \
-                                            allocator in: {}",
+        for (_, data) in self.cstore.iter_crate_data() {
+            if data.has_global_allocator() {
+                match global_allocator {
+                    Some(other_crate) => self.sess.err(&format!(
+                        "the `#[global_allocator]` in {} conflicts with global allocator in: {}",
                         other_crate,
                         data.name()
-                    ));
+                    )),
+                    None => global_allocator = Some(data.name()),
                 }
-                None => global_allocator = Some(data.name()),
             }
-        });
+        }
+
         if global_allocator.is_some() {
             self.cstore.allocator_kind = Some(AllocatorKind::Global);
             return;
@@ -864,19 +846,12 @@ impl<'a> CrateLoader<'a> {
         // allocator. At this point our allocator request is typically fulfilled
         // by the standard library, denoted by the `#![default_lib_allocator]`
         // attribute.
-        let mut has_default = self.sess.contains_name(&krate.attrs, sym::default_lib_allocator);
-        self.cstore.iter_crate_data(|_, data| {
-            if data.has_default_lib_allocator() {
-                has_default = true;
-            }
-        });
-
-        if !has_default {
+        if !self.sess.contains_name(&krate.attrs, sym::default_lib_allocator)
+            && !self.cstore.iter_crate_data().any(|(_, data)| data.has_default_lib_allocator())
+        {
             self.sess.err(
-                "no global memory allocator found but one is \
-                           required; link to std or \
-                           add `#[global_allocator]` to a static item \
-                           that implements the GlobalAlloc trait",
+                "no global memory allocator found but one is required; link to std or add \
+                 `#[global_allocator]` to a static item that implements the GlobalAlloc trait",
             );
         }
         self.cstore.allocator_kind = Some(AllocatorKind::Default);
@@ -916,14 +891,12 @@ impl<'a> CrateLoader<'a> {
         // crate provided for this compile, but in order for this compilation to
         // be successfully linked we need to inject a dependency (to order the
         // crates on the command line correctly).
-        self.cstore.iter_crate_data(|cnum, data| {
-            if !needs_dep(data) {
-                return;
+        for (cnum, data) in self.cstore.iter_crate_data() {
+            if needs_dep(data) {
+                info!("injecting a dep from {} to {}", cnum, krate);
+                data.add_dependency(krate);
             }
-
-            info!("injecting a dep from {} to {}", cnum, krate);
-            data.add_dependency(krate);
-        });
+        }
     }
 
     fn report_unused_deps(&mut self, krate: &ast::Crate) {
