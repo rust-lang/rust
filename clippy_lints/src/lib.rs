@@ -332,6 +332,7 @@ mod ptr_eq;
 mod ptr_offset_with_cast;
 mod question_mark;
 mod ranges;
+mod recursive_format_impl;
 mod redundant_clone;
 mod redundant_closure_call;
 mod redundant_else;
@@ -364,7 +365,6 @@ mod swap;
 mod tabs_in_doc_comments;
 mod temporary_assignment;
 mod to_digit_is_some;
-mod to_string_in_display;
 mod trailing_empty_array;
 mod trait_bounds;
 mod transmute;
@@ -704,7 +704,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(modulo_arithmetic::ModuloArithmetic));
     store.register_early_pass(|| Box::new(reference::DerefAddrOf));
     store.register_early_pass(|| Box::new(double_parens::DoubleParens));
-    store.register_late_pass(|| Box::new(to_string_in_display::ToStringInDisplay::new()));
+    store.register_late_pass(|| Box::new(recursive_format_impl::RecursiveFormatImpl::new()));
     store.register_early_pass(|| Box::new(unsafe_removed_from_name::UnsafeNameRemoval));
     store.register_early_pass(|| Box::new(else_if_without_else::ElseIfWithoutElse));
     store.register_early_pass(|| Box::new(int_plus_one::IntPlusOne));
@@ -938,6 +938,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::disallowed_type", "clippy::disallowed_types");
     ls.register_renamed("clippy::disallowed_method", "clippy::disallowed_methods");
     ls.register_renamed("clippy::ref_in_deref", "clippy::needless_borrow");
+    ls.register_renamed("clippy::to_string_in_display", "clippy::recursive_format_impl");
 
     // uplifted lints
     ls.register_renamed("clippy::invalid_ref", "invalid_value");

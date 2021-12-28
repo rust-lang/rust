@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::macros::{FormatArgsArg, FormatArgsExpn};
+use clippy_utils::is_diag_trait_item;
+use clippy_utils::macros::{is_format_macro, FormatArgsArg, FormatArgsExpn};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_diag_trait_item, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -65,21 +65,6 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FormatArgs => [FORMAT_IN_FORMAT_ARGS, TO_STRING_IN_FORMAT_ARGS]);
 
-const FORMAT_MACRO_PATHS: &[&[&str]] = &[
-    &paths::FORMAT_ARGS_MACRO,
-    &paths::ASSERT_EQ_MACRO,
-    &paths::ASSERT_MACRO,
-    &paths::ASSERT_NE_MACRO,
-    &paths::EPRINT_MACRO,
-    &paths::EPRINTLN_MACRO,
-    &paths::PRINT_MACRO,
-    &paths::PRINTLN_MACRO,
-    &paths::WRITE_MACRO,
-    &paths::WRITELN_MACRO,
-];
-
-const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[sym::format_macro, sym::std_panic_macro];
-
 impl<'tcx> LateLintPass<'tcx> for FormatArgs {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
@@ -87,12 +72,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
             let expr_expn_data = expr.span.ctxt().outer_expn_data();
             let outermost_expn_data = outermost_expn_data(expr_expn_data);
             if let Some(macro_def_id) = outermost_expn_data.macro_def_id;
-            if FORMAT_MACRO_PATHS
-                .iter()
-                .any(|path| match_def_path(cx, macro_def_id, path))
-                || FORMAT_MACRO_DIAG_ITEMS
-                    .iter()
-                    .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, macro_def_id));
+            if is_format_macro(cx, macro_def_id);
             if let ExpnKind::Macro(_, name) = outermost_expn_data.kind;
             if let Some(args) = format_args.args();
             then {
