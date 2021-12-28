@@ -24,7 +24,7 @@ use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
-use crate::html::render::cache::ExternalLocation;
+use crate::html::render::search_index::ExternalLocation;
 use crate::json::conversions::{from_item_id, IntoWithTcx};
 
 #[derive(Clone)]

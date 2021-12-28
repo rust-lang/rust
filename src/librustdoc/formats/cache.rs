@@ -12,7 +12,7 @@ use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
 use crate::html::markdown::short_markdown_summary;
-use crate::html::render::cache::{get_index_search_type, ExternalLocation};
+use crate::html::render::search_index::{get_index_search_type, ExternalLocation};
 use crate::html::render::IndexItem;
 
 /// This cache is used to store information about the [`clean::Crate`] being

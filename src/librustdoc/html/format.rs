@@ -24,7 +24,7 @@ use rustc_target::spec::abi::Abi;
 use crate::clean::{self, utils::find_nearest_parent_module, ExternalCrate, ItemId, PrimitiveType};
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
-use crate::html::render::cache::ExternalLocation;
+use crate::html::render::search_index::ExternalLocation;
 use crate::html::render::Context;
 
 use super::url_parts_builder::UrlPartsBuilder;

@@ -13,8 +13,8 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::FileName;
 use rustc_span::symbol::sym;
 
-use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
+use super::search_index::{build_index, ExternalLocation};
 use super::templates;
 use super::write_shared::write_shared;
 use super::{

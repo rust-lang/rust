@@ -38,7 +38,7 @@ use crate::clean::Clean;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::html::render::cache::ExternalLocation;
+use crate::html::render::search_index::ExternalLocation;
 use crate::html::render::Context;
 
 crate use self::FnRetTy::*;
