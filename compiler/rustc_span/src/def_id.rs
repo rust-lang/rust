@@ -2,7 +2,6 @@ use crate::HashStableContext;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::AtomicRef;
-use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::borrow::Borrow;
@@ -328,17 +327,6 @@ pub struct LocalDefId {
 }
 
 pub const CRATE_DEF_ID: LocalDefId = LocalDefId { local_def_index: CRATE_DEF_INDEX };
-
-impl Idx for LocalDefId {
-    #[inline]
-    fn new(idx: usize) -> Self {
-        LocalDefId { local_def_index: Idx::new(idx) }
-    }
-    #[inline]
-    fn index(self) -> usize {
-        self.local_def_index.index()
-    }
-}
 
 impl LocalDefId {
     #[inline]
