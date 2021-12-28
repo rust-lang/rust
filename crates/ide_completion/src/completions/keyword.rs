@@ -19,7 +19,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         cov_mark::hit!(no_keyword_completion_in_record_lit);
         return;
     }
-    if ctx.attribute_under_caret.is_some() {
+    if ctx.fake_attribute_under_caret.is_some() {
         cov_mark::hit!(no_keyword_completion_in_attr_of_expr);
         return;
     }

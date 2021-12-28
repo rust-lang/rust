@@ -26,7 +26,7 @@ mod lint;
 mod repr;
 
 pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let attribute = ctx.attribute_under_caret.as_ref()?;
+    let attribute = ctx.fake_attribute_under_caret.as_ref()?;
     let name_ref = match attribute.path() {
         Some(p) => Some(p.as_single_name_ref()?),
         None => None,
@@ -34,7 +34,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
     match (name_ref, attribute.token_tree()) {
         (Some(path), Some(tt)) if tt.l_paren_token().is_some() => match path.text().as_str() {
             "repr" => repr::complete_repr(acc, ctx, tt),
-            "derive" => derive::complete_derive(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?),
+            "derive" => derive::complete_derive(acc, ctx, ctx.attr.as_ref()?),
             "feature" => lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?, FEATURES),
             "allow" | "warn" | "deny" | "forbid" => {
                 let existing_lints = parse_tt_as_comma_sep_paths(tt)?;

@@ -10,7 +10,7 @@ use hir_def::{
     resolver::{self, HasResolver, Resolver, TypeNs},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
-use hir_expand::{name::AsName, ExpansionInfo};
+use hir_expand::{name::AsName, ExpansionInfo, MacroCallLoc};
 use hir_ty::{associated_type_shorthand_candidates, Interner};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -158,6 +158,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     /// If `item` has an attribute macro attached to it, expands it.
     pub fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
         self.imp.expand_attr_macro(item)
+    }
+
+    pub fn resolve_derive_macro(&self, derive: &ast::Attr) -> Option<Vec<MacroDef>> {
+        self.imp.resolve_derive_macro(derive)
     }
 
     pub fn expand_derive_macro(&self, derive: &ast::Attr) -> Option<Vec<SyntaxNode>> {
@@ -441,6 +445,25 @@ impl<'db> SemanticsImpl<'db> {
         let node = self.db.parse_or_expand(file_id)?;
         self.cache(node.clone(), file_id);
         Some(node)
+    }
+
+    fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<MacroDef>> {
+        let item = attr.syntax().parent().and_then(ast::Item::cast)?;
+        let file_id = self.find_file(item.syntax()).file_id;
+        let item = InFile::new(file_id, &item);
+        let src = InFile::new(file_id, attr.clone());
+        self.with_ctx(|ctx| {
+            let macro_call_ids = ctx.attr_to_derive_macro_call(item, src)?;
+
+            let res = macro_call_ids
+                .iter()
+                .map(|&call| {
+                    let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call);
+                    MacroDef { id: loc.def }
+                })
+                .collect();
+            Some(res)
+        })
     }
 
     fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<SyntaxNode>> {

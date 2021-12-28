@@ -13,17 +13,10 @@ use crate::{
     item::CompletionItem, Completions, ImportEdit,
 };
 
-pub(super) fn complete_derive(
-    acc: &mut Completions,
-    ctx: &CompletionContext,
-    existing_derives: &[ast::Path],
-) {
+pub(super) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, attr: &ast::Attr) {
     let core = ctx.famous_defs().core();
-    let existing_derives: FxHashSet<_> = existing_derives
-        .into_iter()
-        .filter_map(|path| ctx.scope.speculative_resolve_as_mac(&path))
-        .filter(|mac| mac.kind() == MacroKind::Derive)
-        .collect();
+    let existing_derives: FxHashSet<_> =
+        ctx.sema.resolve_derive_macro(attr).into_iter().flatten().collect();
 
     for (name, mac) in get_derives_in_scope(ctx) {
         if existing_derives.contains(&mac) {
