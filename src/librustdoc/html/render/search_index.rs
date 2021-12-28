@@ -13,16 +13,6 @@ use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
 
-/// Indicates where an external crate can be found.
-crate enum ExternalLocation {
-    /// Remote URL root of the external crate
-    Remote(String),
-    /// This external crate can be found in the local doc/ folder
-    Local,
-    /// The external crate could not be found.
-    Unknown,
-}
-
 /// Builds the search index from the collected metadata
 crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<'tcx>) -> String {
     let mut defid_to_pathid = FxHashMap::default();

@@ -6,13 +6,13 @@ use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
-use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
+use crate::clean::{self, types::ExternalLocation, ExternalCrate, ItemId, PrimitiveType};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
 use crate::html::markdown::short_markdown_summary;
-use crate::html::render::search_index::{get_index_search_type, ExternalLocation};
+use crate::html::render::search_index::get_index_search_type;
 use crate::html::render::IndexItem;
 
 /// This cache is used to store information about the [`clean::Crate`] being

@@ -38,7 +38,6 @@ use crate::clean::Clean;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::html::render::search_index::ExternalLocation;
 use crate::html::render::Context;
 
 crate use self::FnRetTy::*;
@@ -335,6 +334,16 @@ impl ExternalCrate {
             tcx.item_children(root).iter().map(|item| item.res).filter_map(as_primitive).collect()
         }
     }
+}
+
+/// Indicates where an external crate can be found.
+crate enum ExternalLocation {
+    /// Remote URL root of the external crate
+    Remote(String),
+    /// This external crate can be found in the local doc/ folder
+    Local,
+    /// The external crate could not be found.
+    Unknown,
 }
 
 /// Anything with a source location and set of attributes and, optionally, a
