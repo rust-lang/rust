@@ -7,7 +7,7 @@ use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{FnDecl, FnRetTy, GenericBound, Generics, Type, WherePredicate};
+use crate::clean::types::{FnRetTy, Function, GenericBound, Generics, Type, WherePredicate};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
@@ -186,9 +186,9 @@ crate fn get_index_search_type<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> Option<IndexItemFunctionType> {
     let (mut inputs, mut output) = match *item.kind {
-        clean::FunctionItem(ref f) => get_all_types(&f.generics, &f.decl, tcx),
-        clean::MethodItem(ref m, _) => get_all_types(&m.generics, &m.decl, tcx),
-        clean::TyMethodItem(ref m) => get_all_types(&m.generics, &m.decl, tcx),
+        clean::FunctionItem(ref f) => get_all_types(f, tcx),
+        clean::MethodItem(ref m, _) => get_all_types(m, tcx),
+        clean::TyMethodItem(ref m) => get_all_types(m, tcx),
         _ => return None,
     };
 
@@ -378,10 +378,12 @@ fn get_real_types<'tcx>(
 /// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
 /// `[u32, Display, Option]`.
 fn get_all_types<'tcx>(
-    generics: &Generics,
-    decl: &FnDecl,
+    func: &Function,
     tcx: TyCtxt<'tcx>,
 ) -> (Vec<TypeWithKind>, Vec<TypeWithKind>) {
+    let decl = &func.decl;
+    let generics = &func.generics;
+
     let mut all_types = Vec::new();
     for arg in decl.inputs.values.iter() {
         if arg.type_.is_self_type() {
