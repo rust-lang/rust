@@ -9,59 +9,19 @@
 use syntax::{ast, AstNode, SyntaxNode};
 
 pub(crate) fn ty(s: &str) -> Result<SyntaxNode, ()> {
-    let template = "type T = {};";
-    let input = template.replace("{}", s);
-    let parse = syntax::SourceFile::parse(&input);
-    if !parse.errors().is_empty() {
-        return Err(());
-    }
-    let node = parse.tree().syntax().descendants().find_map(ast::Type::cast).ok_or(())?;
-    if node.to_string() != s {
-        return Err(());
-    }
-    Ok(node.syntax().clone_subtree())
+    fragment::<ast::Type>("type T = {};", s)
 }
 
 pub(crate) fn item(s: &str) -> Result<SyntaxNode, ()> {
-    let template = "{}";
-    let input = template.replace("{}", s);
-    let parse = syntax::SourceFile::parse(&input);
-    if !parse.errors().is_empty() {
-        return Err(());
-    }
-    let node = parse.tree().syntax().descendants().find_map(ast::Item::cast).ok_or(())?;
-    if node.to_string() != s {
-        return Err(());
-    }
-    Ok(node.syntax().clone_subtree())
+    fragment::<ast::Item>("{}", s)
 }
 
 pub(crate) fn pat(s: &str) -> Result<SyntaxNode, ()> {
-    let template = "const _: () = {let {} = ();};";
-    let input = template.replace("{}", s);
-    let parse = syntax::SourceFile::parse(&input);
-    if !parse.errors().is_empty() {
-        return Err(());
-    }
-    let node = parse.tree().syntax().descendants().find_map(ast::Pat::cast).ok_or(())?;
-    if node.to_string() != s {
-        return Err(());
-    }
-    Ok(node.syntax().clone_subtree())
+    fragment::<ast::Pat>("const _: () = {let {} = ();};", s)
 }
 
 pub(crate) fn expr(s: &str) -> Result<SyntaxNode, ()> {
-    let template = "const _: () = {};";
-    let input = template.replace("{}", s);
-    let parse = syntax::SourceFile::parse(&input);
-    if !parse.errors().is_empty() {
-        return Err(());
-    }
-    let node = parse.tree().syntax().descendants().find_map(ast::Expr::cast).ok_or(())?;
-    if node.to_string() != s {
-        return Err(());
-    }
-    Ok(node.syntax().clone_subtree())
+    fragment::<ast::Expr>("const _: () = {};", s)
 }
 
 pub(crate) fn stmt(s: &str) -> Result<SyntaxNode, ()> {
@@ -78,6 +38,20 @@ pub(crate) fn stmt(s: &str) -> Result<SyntaxNode, ()> {
         node.syntax().last_token().map(|it| it.detach());
     }
     if node.to_string() != s {
+        return Err(());
+    }
+    Ok(node.syntax().clone_subtree())
+}
+
+fn fragment<T: AstNode>(template: &str, s: &str) -> Result<SyntaxNode, ()> {
+    let s = s.trim();
+    let input = template.replace("{}", s);
+    let parse = syntax::SourceFile::parse(&input);
+    if !parse.errors().is_empty() {
+        return Err(());
+    }
+    let node = parse.tree().syntax().descendants().find_map(T::cast).ok_or(())?;
+    if node.syntax().text() != s {
         return Err(());
     }
     Ok(node.syntax().clone_subtree())
