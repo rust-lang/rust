@@ -2,7 +2,9 @@
 
 #![deny(rustdoc::private_doc_tests)]
 
-mod foo {
+pub fn foo() {}
+
+mod private {
     /// re-exported doc test
     ///
     /// ```
@@ -11,4 +13,4 @@ mod foo {
     pub fn bar() {}
 }
 
-pub use foo::bar;
+pub use private::bar;
