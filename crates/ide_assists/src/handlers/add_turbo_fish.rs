@@ -89,11 +89,11 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             Some(cap) => {
                 let snip = format!("::<${{0:{}}}>", fish_head);
                 builder.insert_snippet(cap, ident.text_range().end(), snip)
-            },
+            }
             None => {
                 let snip = format!("::<{}>", fish_head);
                 builder.insert(ident.text_range().end(), snip);
-            },
+            }
         },
     )
 }
