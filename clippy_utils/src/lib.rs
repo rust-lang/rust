@@ -1,8 +1,9 @@
 #![feature(box_patterns)]
+#![feature(control_flow_enum)]
 #![feature(in_band_lifetimes)]
 #![feature(let_else)]
+#![feature(once_cell)]
 #![feature(rustc_private)]
-#![feature(control_flow_enum)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
@@ -60,9 +61,12 @@ pub use self::hir_utils::{both, count_eq, eq_expr_value, over, SpanlessEq, Spanl
 
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
+use std::lazy::SyncOnceCell;
+use std::sync::{Mutex, MutexGuard};
 
 use if_chain::if_chain;
 use rustc_ast::ast::{self, Attribute, LitKind};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -87,6 +91,7 @@ use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable, UpvarCapture};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym;
@@ -2139,17 +2144,16 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     false
 }
 
-struct VisitConstTestStruct<'tcx> {
+struct TestItemNamesVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     names: Vec<Symbol>,
-    found: bool,
 }
-impl<'hir> ItemLikeVisitor<'hir> for VisitConstTestStruct<'hir> {
+
+impl<'hir> ItemLikeVisitor<'hir> for TestItemNamesVisitor<'hir> {
     fn visit_item(&mut self, item: &Item<'_>) {
         if let ItemKind::Const(ty, _body) = item.kind {
             if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
                 // We could also check for the type name `test::TestDescAndFn`
-                // and the `#[rustc_test_marker]` attribute?
                 if let Res::Def(DefKind::Struct, _) = path.res {
                     let has_test_marker = self
                         .tcx
@@ -2157,8 +2161,8 @@ impl<'hir> ItemLikeVisitor<'hir> for VisitConstTestStruct<'hir> {
                         .attrs(item.hir_id())
                         .iter()
                         .any(|a| a.has_name(sym::rustc_test_marker));
-                    if has_test_marker && self.names.contains(&item.ident.name) {
-                        self.found = true;
+                    if has_test_marker {
+                        self.names.push(item.ident.name);
                     }
                 }
             }
@@ -2169,32 +2173,42 @@ impl<'hir> ItemLikeVisitor<'hir> for VisitConstTestStruct<'hir> {
     fn visit_foreign_item(&mut self, _: &ForeignItem<'_>) {}
 }
 
+static TEST_ITEM_NAMES_CACHE: SyncOnceCell<Mutex<FxHashMap<LocalDefId, Vec<Symbol>>>> = SyncOnceCell::new();
+
+fn with_test_item_names(tcx: TyCtxt<'tcx>, module: LocalDefId, f: impl Fn(&[Symbol]) -> bool) -> bool {
+    let cache = TEST_ITEM_NAMES_CACHE.get_or_init(|| Mutex::new(FxHashMap::default()));
+    let mut map: MutexGuard<'_, FxHashMap<LocalDefId, Vec<Symbol>>> = cache.lock().unwrap();
+    match map.entry(module) {
+        Entry::Occupied(entry) => f(entry.get()),
+        Entry::Vacant(entry) => {
+            let mut visitor = TestItemNamesVisitor { tcx, names: Vec::new() };
+            tcx.hir().visit_item_likes_in_module(module, &mut visitor);
+            visitor.names.sort_unstable();
+            f(&*entry.insert(visitor.names))
+        },
+    }
+}
+
 /// Checks if the function containing the given `HirId` is a `#[test]` function
 ///
 /// Note: If you use this function, please add a `#[test]` case in `tests/ui_test`.
 pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
-    let names: Vec<_> = tcx
-        .hir()
-        .parent_iter(id)
-        // Since you can nest functions we need to collect all until we leave
-        // function scope
-        .filter_map(|(_id, node)| {
-            if let Node::Item(item) = node {
-                if let ItemKind::Fn(_, _, _) = item.kind {
-                    return Some(item.ident.name);
+    with_test_item_names(tcx, tcx.parent_module(id), |names| {
+        tcx.hir()
+            .parent_iter(id)
+            // Since you can nest functions we need to collect all until we leave
+            // function scope
+            .any(|(_id, node)| {
+                if let Node::Item(item) = node {
+                    if let ItemKind::Fn(_, _, _) = item.kind {
+                        // Note that we have sorted the item names in the visitor,
+                        // so the binary_search gets the same as `contains`, but faster.
+                        return names.binary_search(&item.ident.name).is_ok();
+                    }
                 }
-            }
-            None
-        })
-        .collect();
-    let parent_mod = tcx.parent_module(id);
-    let mut vis = VisitConstTestStruct {
-        tcx,
-        names,
-        found: false,
-    };
-    tcx.hir().visit_item_likes_in_module(parent_mod, &mut vis);
-    vis.found
+                false
+            })
+    })
 }
 
 /// Checks whether item either has `test` attribute applied, or
