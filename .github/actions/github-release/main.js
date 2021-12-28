@@ -21,7 +21,12 @@ async function runOnce() {
   core.info(`files: ${files}`);
   core.info(`name: ${name}`);
 
-  const octokit = github.getOctokit(token);
+  const options = {
+    request: {
+      timeout: 30000,
+    }
+  };
+  const octokit = github.getOctokit(token, options);
 
   // Delete the previous release since we can't overwrite one. This may happen
   // due to retrying an upload or it may happen because we're doing the dev
