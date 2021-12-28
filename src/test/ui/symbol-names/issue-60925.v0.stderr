@@ -4,7 +4,7 @@ error: symbol-name(_RNvMNtCsCRATE_HASH_11issue_609253fooINtB<REF>_3FooNtNtB<REF>
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<issue_60925[HASH]::foo::Foo<issue_60925[HASH]::llvm::Foo>>::foo)
+error: demangling(<issue_60925[775bc577f14ef671]::foo::Foo<issue_60925[775bc577f14ef671]::llvm::Foo>>::foo)
   --> $DIR/issue-60925.rs:21:9
    |
 LL |         #[rustc_symbol_name]
