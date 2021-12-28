@@ -2115,10 +2115,13 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 let spans_suggs: Vec<_> = formatters
                     .into_iter()
                     .zip(spans_with_counts.iter())
-                    .filter_map(|(fmt, (span, _))| {
-                        if let Some(formatter) = fmt { Some((formatter, span)) } else { None }
+                    .filter_map(|(formatter, (span, _))| {
+                        if let Some(formatter) = formatter {
+                            Some((*span, formatter(name)))
+                        } else {
+                            None
+                        }
                     })
-                    .map(|(formatter, span)| (*span, formatter(name)))
                     .collect();
                 if spans_suggs.is_empty() {
                     // If all the spans come from macros, we cannot extract snippets and then
