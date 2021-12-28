@@ -1104,42 +1104,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             let children = self.root.tables.children.get(self, id).unwrap_or_else(Lazy::empty);
 
             for child_index in children.decode((self, sess)) {
-                // Get the item.
-                let child_kind = match self.maybe_kind(child_index) {
-                    Some(child_kind) => child_kind,
-                    None => continue,
-                };
-
-                // Hand off the item to the callback.
-                match child_kind {
-                    // FIXME(eddyb) Don't encode these in children.
-                    EntryKind::ForeignMod => {
-                        let child_children = self
-                            .root
-                            .tables
-                            .children
-                            .get(self, child_index)
-                            .unwrap_or_else(Lazy::empty);
-                        for child_index in child_children.decode((self, sess)) {
-                            let kind = self.def_kind(child_index);
-                            callback(Export {
-                                res: Res::Def(kind, self.local_def_id(child_index)),
-                                ident: self.item_ident(child_index, sess),
-                                vis: self.get_visibility(child_index),
-                                span: self
-                                    .root
-                                    .tables
-                                    .span
-                                    .get(self, child_index)
-                                    .unwrap()
-                                    .decode((self, sess)),
-                            });
-                        }
-                        continue;
-                    }
-                    EntryKind::Impl(_) => continue,
-
-                    _ => {}
+                // FIXME: Merge with the logic below.
+                if let None | Some(EntryKind::ForeignMod | EntryKind::Impl(_)) =
+                    self.maybe_kind(child_index)
+                {
+                    continue;
                 }
 
                 let def_key = self.def_key(child_index);
