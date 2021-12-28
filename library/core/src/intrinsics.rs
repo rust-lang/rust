@@ -1769,11 +1769,6 @@ extern "rust-intrinsic" {
 
     /// Performs rotate left.
     ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
-    ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_left` method. For example,
     /// [`u32::rotate_left`]
@@ -1781,11 +1776,6 @@ extern "rust-intrinsic" {
     pub fn rotate_left<T: Copy>(x: T, y: T) -> T;
 
     /// Performs rotate right.
-    ///
-    /// Note that, unlike most intrinsics, this is safe to call;
-    /// it does not require an `unsafe` block.
-    /// Therefore, implementations must not require the user to uphold
-    /// any safety invariants.
     ///
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_right` method. For example,
