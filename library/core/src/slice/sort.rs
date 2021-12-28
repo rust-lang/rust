@@ -581,8 +581,7 @@ where
 
             // Swap the found pair of out-of-order elements.
             r -= 1;
-            let ptr = v.as_mut_ptr();
-            ptr::swap(ptr.add(l), ptr.add(r));
+            v.swap(l, r);
             l += 1;
         }
     }
@@ -637,6 +636,43 @@ fn break_patterns<T>(v: &mut [T]) {
             v.swap(pos - 1 + i, other);
         }
     }
+}
+
+fn approx_median_of_medians<T, F>(v: &mut [T], is_less: &mut F) -> usize
+where
+    F: FnMut(&T, &T) -> bool,
+{
+    use cmp::Ordering::{Greater, Less};
+    const N: usize = 7;
+    const BUF_SIZE: usize = 32;
+
+    let mut buf = [0; BUF_SIZE];
+    let mut n = 0;
+    let len = v.len();
+    let mut curr_rng = len.wrapping_mul(0xdea1).wrapping_add(3) % BUF_SIZE;
+    for i in 0..len / N {
+        if n < BUF_SIZE {
+            buf[n] = i;
+            n += 1;
+        } else {
+            buf[curr_rng] = i;
+            curr_rng = curr_rng.wrapping_mul(0xdea1).wrapping_add(3) % BUF_SIZE;
+        }
+    }
+    let idxs = &mut buf[..n];
+    // SAFETY: Since it only uses indeces up to floor(len/N)-1, it will always be safe to
+    // index by i*N, i*(N+1).
+    unsafe {
+        for i in idxs.iter_mut() {
+            let start = *i * N;
+            insertion_sort(&mut v.get_unchecked_mut(start..start + N), is_less);
+            *i = start + N / 2;
+        }
+        idxs.sort_unstable_by(|&a, &b| {
+            if is_less(&v.get_unchecked(a), &v.get_unchecked(b)) { Less } else { Greater }
+        });
+    }
+    idxs[n / 2]
 }
 
 /// Chooses a pivot in `v` and returns the index and `true` if the slice is likely already sorted.
@@ -784,7 +820,7 @@ where
         was_partitioned = was_p;
 
         // Split the slice into `left`, `pivot`, and `right`.
-        let (left, right) = { v }.split_at_mut(mid);
+        let (left, right) = v.split_at_mut(mid);
         let (pivot, right) = right.split_at_mut(1);
         let pivot = &pivot[0];
 
@@ -835,7 +871,7 @@ fn partition_at_index_loop<'a, T, F>(
         }
 
         // Choose a pivot
-        let (pivot, _) = choose_pivot(v, is_less);
+        let pivot = approx_median_of_medians(v, is_less);
 
         // If the chosen pivot is equal to the predecessor, then it's the smallest element in the
         // slice. Partition the slice into elements equal to and elements greater than the pivot.
@@ -860,7 +896,7 @@ fn partition_at_index_loop<'a, T, F>(
         let (mid, _) = partition(v, pivot, is_less);
 
         // Split the slice into `left`, `pivot`, and `right`.
-        let (left, right) = { v }.split_at_mut(mid);
+        let (left, right) = v.split_at_mut(mid);
         let (pivot, right) = right.split_at_mut(1);
         let pivot = &pivot[0];
 
@@ -886,12 +922,14 @@ pub fn partition_at_index<T, F>(
 where
     F: FnMut(&T, &T) -> bool,
 {
-    use cmp::Ordering::Greater;
-    use cmp::Ordering::Less;
+    use cmp::Ordering::{Greater, Less};
 
-    if index >= v.len() {
-        panic!("partition_at_index index {} greater than length of slice {}", index, v.len());
-    }
+    assert!(
+        index < v.len(),
+        "partition_at_index index {} greater than length of slice {}",
+        index,
+        v.len()
+    );
 
     if mem::size_of::<T>() == 0 {
         // Sorting has no meaningful behavior on zero-sized types. Do nothing.

@@ -127,3 +127,44 @@ fn fill_byte_sized(b: &mut Bencher) {
         black_box(slice.fill(black_box(NewType(42))));
     });
 }
+
+fn quickselect_adversarial(b: &mut Bencher, cache: Cache) {
+    use core::cmp::Ordering;
+    let prepare_worst_case = |n: usize| -> Vec<u64> {
+        let mut values = vec![None; n];
+        let mut indices: Vec<usize> = (0..n).collect();
+        let mut ctr = 0;
+
+        indices.select_nth_unstable_by(n - 2, |lhs, rhs| match (values[*lhs], values[*rhs]) {
+            (None, None) => {
+                values[*lhs] = Some(ctr);
+                ctr += 1;
+                Ordering::Less
+            }
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            (Some(a), Some(b)) => a.cmp(&b),
+        });
+
+        values.into_iter().map(|v| v.unwrap_or(ctr)).collect()
+    };
+    let n = cache.size();
+    let mut worst_case = prepare_worst_case(n);
+
+    b.iter(move || {
+        worst_case.select_nth_unstable(n - 2);
+    });
+}
+
+#[bench]
+fn quickselect_l1(b: &mut Bencher) {
+    quickselect_adversarial(b, Cache::L1);
+}
+#[bench]
+fn quickselect_l2(b: &mut Bencher) {
+    quickselect_adversarial(b, Cache::L2);
+}
+#[bench]
+fn quickselect_l3(b: &mut Bencher) {
+    quickselect_adversarial(b, Cache::L3);
+}
