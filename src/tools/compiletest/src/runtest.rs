@@ -3506,41 +3506,12 @@ impl<'test> TestCx<'test> {
         // the ui and mir-opt tests.
         //
         // Some tests still require normalization with headers.
-        const DEFID_HASH_REGEX: &str = r"\[[0-9a-z]{4}\]";
-        const DEFID_HASH_PLACEHOLDER: &str = r"[HASH]";
-        const V0_DEMANGLING_HASH_REGEX: &str = r"\[[0-9a-z]+\]";
-        const V0_DEMANGLING_HASH_PLACEHOLDER: &str = r"[HASH]";
         const V0_CRATE_HASH_PREFIX_REGEX: &str = r"_R.*?Cs[0-9a-zA-Z]+_";
         const V0_CRATE_HASH_REGEX: &str = r"Cs[0-9a-zA-Z]+_";
         const V0_CRATE_HASH_PLACEHOLDER: &str = r"CsCRATE_HASH_";
         const V0_BACK_REF_PREFIX_REGEX: &str = r"\(_R.*?B[0-9a-zA-Z]_";
         const V0_BACK_REF_REGEX: &str = r"B[0-9a-zA-Z]_";
         const V0_BACK_REF_PLACEHOLDER: &str = r"B<REF>_";
-        const LEGACY_SYMBOL_HASH_REGEX: &str = r"h[\w]{16}E?\)";
-        const LEGACY_SYMBOL_HASH_PLACEHOLDER: &str = r"h<SYMBOL_HASH>)";
-        let test_name = self
-            .output_testname_unique()
-            .into_os_string()
-            .into_string()
-            .unwrap()
-            .split('.')
-            .next()
-            .unwrap()
-            .replace("-", "_");
-        // Normalize `DefId` hashes
-        let defid_regex = format!("{}{}", test_name, DEFID_HASH_REGEX);
-        let defid_placeholder = format!("{}{}", test_name, DEFID_HASH_PLACEHOLDER);
-        normalized = Regex::new(&defid_regex)
-            .unwrap()
-            .replace_all(&normalized, defid_placeholder)
-            .into_owned();
-        // Normalize v0 demangling hashes
-        let demangling_regex = format!("{}{}", test_name, V0_DEMANGLING_HASH_REGEX);
-        let demangling_placeholder = format!("{}{}", test_name, V0_DEMANGLING_HASH_PLACEHOLDER);
-        normalized = Regex::new(&demangling_regex)
-            .unwrap()
-            .replace_all(&normalized, demangling_placeholder)
-            .into_owned();
         // Normalize v0 crate hashes (see RFC 2603)
         let symbol_mangle_prefix_re = Regex::new(V0_CRATE_HASH_PREFIX_REGEX).unwrap();
         if symbol_mangle_prefix_re.is_match(&normalized) {
@@ -3560,11 +3531,6 @@ impl<'test> TestCx<'test> {
                 .replace_all(&normalized, back_ref_placeholder)
                 .into_owned();
         }
-        // Normalize legacy mangled symbols
-        normalized = Regex::new(LEGACY_SYMBOL_HASH_REGEX)
-            .unwrap()
-            .replace_all(&normalized, LEGACY_SYMBOL_HASH_PLACEHOLDER)
-            .into_owned();
 
         // Custom normalization rules
         for rule in custom_rules {
