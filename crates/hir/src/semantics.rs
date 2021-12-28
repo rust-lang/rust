@@ -10,7 +10,7 @@ use hir_def::{
     resolver::{self, HasResolver, Resolver, TypeNs},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
-use hir_expand::{name::AsName, ExpansionInfo, MacroCallLoc};
+use hir_expand::{name::AsName, ExpansionInfo, MacroCallId, MacroCallLoc};
 use hir_ty::{associated_type_shorthand_candidates, Interner};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -448,46 +448,45 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<MacroDef>> {
-        let item = attr.syntax().parent().and_then(ast::Item::cast)?;
-        let file_id = self.find_file(item.syntax()).file_id;
-        let item = InFile::new(file_id, &item);
-        let src = InFile::new(file_id, attr.clone());
-        self.with_ctx(|ctx| {
-            let macro_call_ids = ctx.attr_to_derive_macro_call(item, src)?;
-
-            let res = macro_call_ids
-                .iter()
-                .map(|&call| {
-                    let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call);
-                    MacroDef { id: loc.def }
-                })
-                .collect();
-            Some(res)
-        })
+        let macro_call_ids = self.derive_macro_calls(attr)?;
+        let res = macro_call_ids
+            .iter()
+            .map(|&call| {
+                let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call);
+                MacroDef { id: loc.def }
+            })
+            .collect();
+        Some(res)
     }
 
     fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<SyntaxNode>> {
+        let macro_call_ids = self.derive_macro_calls(attr)?;
+
+        let expansions: Vec<_> = macro_call_ids
+            .iter()
+            .map(|call| call.as_file())
+            .flat_map(|file_id| {
+                let node = self.db.parse_or_expand(file_id)?;
+                self.cache(node.clone(), file_id);
+                Some(node)
+            })
+            .collect();
+
+        if expansions.is_empty() {
+            None
+        } else {
+            Some(expansions)
+        }
+    }
+
+    fn derive_macro_calls(&self, attr: &ast::Attr) -> Option<Vec<MacroCallId>> {
         let item = attr.syntax().parent().and_then(ast::Item::cast)?;
         let file_id = self.find_file(item.syntax()).file_id;
         let item = InFile::new(file_id, &item);
         let src = InFile::new(file_id, attr.clone());
         self.with_ctx(|ctx| {
-            let macro_call_ids = ctx.attr_to_derive_macro_call(item, src)?;
-
-            let expansions: Vec<_> = macro_call_ids
-                .iter()
-                .map(|call| call.as_file())
-                .flat_map(|file_id| {
-                    let node = self.db.parse_or_expand(file_id)?;
-                    self.cache(node.clone(), file_id);
-                    Some(node)
-                })
-                .collect();
-            if expansions.is_empty() {
-                None
-            } else {
-                Some(expansions)
-            }
+            let res = ctx.attr_to_derive_macro_call(item, src)?;
+            Some(res.to_vec())
         })
     }
 
