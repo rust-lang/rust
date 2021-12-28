@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::default::Default;
+use std::fmt::Write;
 use std::hash::Hash;
 use std::lazy::SyncOnceCell as OnceCell;
 use std::path::PathBuf;
@@ -40,6 +41,7 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::render::cache::ExternalLocation;
 use crate::html::render::Context;
+use crate::passes::collect_intra_doc_links::UrlFragment;
 
 crate use self::FnRetTy::*;
 crate use self::ItemKind::*;
@@ -485,8 +487,7 @@ impl Item {
                 if let Ok((mut href, ..)) = href(*did, cx) {
                     debug!(?href);
                     if let Some(ref fragment) = *fragment {
-                        href.push('#');
-                        href.push_str(fragment);
+                        write!(href, "{}", fragment).unwrap()
                     }
                     Some(RenderedLink {
                         original_text: s.clone(),
@@ -977,7 +978,7 @@ crate struct ItemLink {
     pub(crate) link_text: String,
     pub(crate) did: DefId,
     /// The url fragment to append to the link
-    pub(crate) fragment: Option<String>,
+    pub(crate) fragment: Option<UrlFragment>,
 }
 
 pub struct RenderedLink {
