@@ -106,14 +106,14 @@ pub struct Definitions {
     /// Generic parameters and closures are also assigned a `LocalDefId` but are not HIR owners.
     /// Their `HirId`s are defined by their position while lowering the enclosing owner.
     // FIXME(cjgillot) Some `LocalDefId`s from `use` items are dropped during lowering and lack a `HirId`.
-    pub(super) def_id_to_hir_id: IndexVec<LocalDefId, Option<hir::HirId>>,
+    pub(super) def_id_to_hir_id: FxHashMap<LocalDefId, Option<hir::HirId>>,
     /// The reverse mapping of `def_id_to_hir_id`.
     pub(super) hir_id_to_def_id: FxHashMap<hir::HirId, LocalDefId>,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expansions_that_defined: FxHashMap<LocalDefId, ExpnId>,
 
-    def_id_to_span: IndexVec<LocalDefId, Span>,
+    def_id_to_span: FxHashMap<LocalDefId, Span>,
 
     /// The [StableCrateId] of the local crate.
     stable_crate_id: StableCrateId,
@@ -327,7 +327,7 @@ impl Definitions {
     #[inline]
     #[track_caller]
     pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
-        self.def_id_to_hir_id[id].unwrap()
+        self.def_id_to_hir_id[&id].unwrap()
     }
 
     #[inline]
@@ -353,7 +353,7 @@ impl Definitions {
         let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        let mut def_id_to_span = IndexVec::new();
+        let mut def_id_to_span = FxHashMap::new();
         // A relative span's parent must be an absolute span.
         debug_assert_eq!(crate_span.data_untracked().parent, None);
         let _root = def_id_to_span.push(crate_span);
@@ -418,7 +418,7 @@ impl Definitions {
     /// AST to HIR lowering.
     pub fn init_def_id_to_hir_id_mapping(
         &mut self,
-        mapping: IndexVec<LocalDefId, Option<hir::HirId>>,
+        mapping: FxHashMap<LocalDefId, Option<hir::HirId>>,
     ) {
         assert!(
             self.def_id_to_hir_id.is_empty(),
@@ -444,8 +444,8 @@ impl Definitions {
         self.def_id_to_span[def_id]
     }
 
-    pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
-        self.def_id_to_hir_id.iter_enumerated().map(|(k, _)| k)
+    pub fn iter_local_def_id(&self) -> impl Iterator<Item = &LocalDefId> + '_ {
+        self.def_id_to_hir_id.iter().map(|(k, _)| k)
     }
 
     #[inline(always)]
