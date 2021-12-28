@@ -103,6 +103,7 @@ pub(crate) struct CompletionContext<'a> {
 
     /// The parent function of the cursor position if it exists.
     pub(super) function_def: Option<ast::Fn>,
+    pub(super) attr: Option<ast::Attr>,
     /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
     /// The NameLike under the cursor in the original file if it exists.
@@ -111,7 +112,7 @@ pub(crate) struct CompletionContext<'a> {
 
     pub(super) completion_location: Option<ImmediateLocation>,
     pub(super) prev_sibling: Option<ImmediatePrevSibling>,
-    pub(super) attribute_under_caret: Option<ast::Attr>,
+    pub(super) fake_attribute_under_caret: Option<ast::Attr>,
     pub(super) previous_token: Option<SyntaxToken>,
 
     pub(super) lifetime_ctx: Option<LifetimeContext>,
@@ -397,13 +398,14 @@ impl<'a> CompletionContext<'a> {
             expected_name: None,
             expected_type: None,
             function_def: None,
+            attr: None,
             impl_def: None,
             name_syntax: None,
             lifetime_ctx: None,
             pattern_ctx: None,
             completion_location: None,
             prev_sibling: None,
-            attribute_under_caret: None,
+            fake_attribute_under_caret: None,
             previous_token: None,
             path_context: None,
             locals,
@@ -641,13 +643,19 @@ impl<'a> CompletionContext<'a> {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token);
         self.previous_token = previous_token(syntax_element.clone());
-        self.attribute_under_caret = syntax_element.ancestors().find_map(ast::Attr::cast);
         self.no_completion_required = {
             let inside_impl_trait_block = inside_impl_trait_block(syntax_element.clone());
             let fn_is_prev = self.previous_token_is(T![fn]);
             let for_is_prev2 = for_is_prev2(syntax_element.clone());
             (fn_is_prev && !inside_impl_trait_block) || for_is_prev2
         };
+
+        self.attr = self
+            .sema
+            .token_ancestors_with_macros(self.token.clone())
+            .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+            .find_map(ast::Attr::cast);
+        self.fake_attribute_under_caret = syntax_element.ancestors().find_map(ast::Attr::cast);
 
         self.incomplete_let =
             syntax_element.ancestors().take(6).find_map(ast::LetStmt::cast).map_or(false, |it| {
