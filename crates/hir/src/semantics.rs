@@ -448,8 +448,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<MacroDef>> {
-        let macro_call_ids = self.derive_macro_calls(attr)?;
-        let res = macro_call_ids
+        let res = self
+            .derive_macro_calls(attr)?
             .iter()
             .map(|&call| {
                 let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call);
@@ -460,9 +460,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<SyntaxNode>> {
-        let macro_call_ids = self.derive_macro_calls(attr)?;
-
-        let expansions: Vec<_> = macro_call_ids
+        let res: Vec<_> = self
+            .derive_macro_calls(attr)?
             .iter()
             .map(|call| call.as_file())
             .flat_map(|file_id| {
@@ -471,12 +470,7 @@ impl<'db> SemanticsImpl<'db> {
                 Some(node)
             })
             .collect();
-
-        if expansions.is_empty() {
-            None
-        } else {
-            Some(expansions)
-        }
+        Some(res)
     }
 
     fn derive_macro_calls(&self, attr: &ast::Attr) -> Option<Vec<MacroCallId>> {
