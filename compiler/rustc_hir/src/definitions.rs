@@ -353,7 +353,7 @@ impl Definitions {
         let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        let mut def_id_to_span = FxHashMap::new();
+        let mut def_id_to_span = FxHashMap::default();
         // A relative span's parent must be an absolute span.
         debug_assert_eq!(crate_span.data_untracked().parent, None);
         let _root = def_id_to_span.push(crate_span);
