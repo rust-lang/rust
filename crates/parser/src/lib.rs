@@ -132,47 +132,6 @@ impl TopEntryPoint {
     }
 }
 
-/// rust-analyzer parser allows you to choose one of the possible entry points.
-///
-/// The primary consumer of this API are declarative macros, `$x:expr` matchers
-/// are implemented by calling into the parser with non-standard entry point.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub enum ParserEntryPoint {
-    Path,
-    Expr,
-    StatementOptionalSemi,
-    Pattern,
-    Attr,
-}
-
-/// Parse given tokens into the given sink as a rust file.
-pub fn parse_source_file(input: &Input) -> Output {
-    TopEntryPoint::SourceFile.parse(input)
-}
-
-/// Parses the given [`Input`] into [`Output`] assuming that the top-level
-/// syntactic construct is the given [`ParserEntryPoint`].
-///
-/// Both input and output here are fairly abstract. The overall flow is that the
-/// caller has some "real" tokens, converts them to [`Input`], parses them to
-/// [`Output`], and then converts that into a "real" tree. The "real" tree is
-/// made of "real" tokens, so this all hinges on rather tight coordination of
-/// indices between the four stages.
-pub fn parse(inp: &Input, entry_point: ParserEntryPoint) -> Output {
-    let entry_point: fn(&'_ mut parser::Parser) = match entry_point {
-        ParserEntryPoint::Path => grammar::entry::prefix::path,
-        ParserEntryPoint::Expr => grammar::entry::prefix::expr,
-        ParserEntryPoint::Pattern => grammar::entry::prefix::pat,
-        ParserEntryPoint::StatementOptionalSemi => grammar::entry_points::stmt_optional_semi,
-        ParserEntryPoint::Attr => grammar::entry_points::attr,
-    };
-
-    let mut p = parser::Parser::new(inp);
-    entry_point(&mut p);
-    let events = p.finish();
-    event::process(events)
-}
-
 /// A parsing function for a specific braced-block.
 pub struct Reparser(fn(&mut parser::Parser));
 

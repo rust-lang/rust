@@ -117,18 +117,6 @@ pub(crate) mod entry {
     }
 }
 
-pub(crate) mod entry_points {
-    use super::*;
-
-    pub(crate) fn stmt_optional_semi(p: &mut Parser) {
-        expressions::stmt(p, expressions::StmtWithSemi::Optional, false);
-    }
-
-    pub(crate) fn attr(p: &mut Parser) {
-        attributes::outer_attrs(p);
-    }
-}
-
 pub(crate) fn reparser(
     node: SyntaxKind,
     first_child: Option<SyntaxKind>,

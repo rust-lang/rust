@@ -12,19 +12,18 @@ pub(crate) use crate::parsing::reparsing::incremental_reparse;
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let lexed = parser::LexedStr::new(text);
     let parser_input = lexed.to_input();
-    let parser_output = parser::parse_source_file(&parser_input);
-    let (node, errors, _eof) = build_tree(lexed, parser_output, false);
+    let parser_output = parser::TopEntryPoint::SourceFile.parse(&parser_input);
+    let (node, errors, _eof) = build_tree(lexed, parser_output);
     (node, errors)
 }
 
 pub(crate) fn build_tree(
     lexed: parser::LexedStr<'_>,
     parser_output: parser::Output,
-    synthetic_root: bool,
 ) -> (GreenNode, Vec<SyntaxError>, bool) {
     let mut builder = SyntaxTreeBuilder::default();
 
-    let is_eof = lexed.intersperse_trivia(&parser_output, synthetic_root, &mut |step| match step {
+    let is_eof = lexed.intersperse_trivia(&parser_output, &mut |step| match step {
         parser::StrStep::Token { kind, text } => builder.token(kind, text),
         parser::StrStep::Enter { kind } => builder.start_node(kind),
         parser::StrStep::Exit => builder.finish_node(),

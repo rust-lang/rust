@@ -52,14 +52,10 @@ impl<'a> LexedStr<'a> {
     pub fn intersperse_trivia(
         &self,
         output: &crate::Output,
-        synthetic_root: bool,
         sink: &mut dyn FnMut(StrStep),
     ) -> bool {
         let mut builder = Builder { lexed: self, pos: 0, state: State::PendingEnter, sink };
 
-        if synthetic_root {
-            builder.enter(SyntaxKind::SOURCE_FILE);
-        }
         for event in output.iter() {
             match event {
                 Step::Token { kind, n_input_tokens: n_raw_tokens } => {
@@ -72,9 +68,6 @@ impl<'a> LexedStr<'a> {
                     (builder.sink)(StrStep::Error { msg, pos: text_pos });
                 }
             }
-        }
-        if synthetic_root {
-            builder.exit();
         }
 
         match mem::replace(&mut builder.state, State::Normal) {
