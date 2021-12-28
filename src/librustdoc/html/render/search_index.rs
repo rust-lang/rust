@@ -236,6 +236,7 @@ fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
 ///
 /// Important note: It goes through generics recursively. So if you have
 /// `T: Option<Result<(), ()>>`, it'll go into `Option` and then into `Result`.
+#[instrument(level = "trace", skip(tcx, res))]
 fn add_generics_and_bounds_as_types<'tcx>(
     generics: &Generics,
     arg: &Type,
@@ -316,6 +317,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
 
     if recurse >= 10 {
         // FIXME: remove this whole recurse thing when the recursion bug is fixed
+        // See #59502 for the original issue.
         return;
     }
 
