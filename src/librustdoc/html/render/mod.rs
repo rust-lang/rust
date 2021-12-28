@@ -108,8 +108,8 @@ crate struct IndexItem {
 /// A type used for the search index.
 #[derive(Debug)]
 crate struct RenderType {
-    name: Option<String>,
-    generics: Option<Vec<TypeWithKind>>,
+    name: String,
+    generics: Vec<TypeWithKind>,
 }
 
 /// Full type of functions/methods in the search index.
@@ -125,19 +125,15 @@ impl Serialize for IndexItemFunctionType {
         S: Serializer,
     {
         // If we couldn't figure out a type, just write `null`.
-        let has_missing = self.inputs.iter().chain(self.output.iter()).any(|i| i.ty.name.is_none());
-        if has_missing {
-            serializer.serialize_none()
-        } else {
-            let mut seq = serializer.serialize_seq(None)?;
-            seq.serialize_element(&self.inputs)?;
-            match self.output.as_slice() {
-                [] => {}
-                [one] => seq.serialize_element(one)?,
-                all => seq.serialize_element(all)?,
-            }
-            seq.end()
+
+        let mut seq = serializer.serialize_seq(None)?;
+        seq.serialize_element(&self.inputs)?;
+        match self.output.as_slice() {
+            [] => {}
+            [one] => seq.serialize_element(one)?,
+            all => seq.serialize_element(all)?,
         }
+        seq.end()
     }
 }
 
@@ -145,12 +141,6 @@ impl Serialize for IndexItemFunctionType {
 crate struct TypeWithKind {
     ty: RenderType,
     kind: ItemType,
-}
-
-impl From<(RenderType, ItemType)> for TypeWithKind {
-    fn from(x: (RenderType, ItemType)) -> TypeWithKind {
-        TypeWithKind { ty: x.0, kind: x.1 }
-    }
 }
 
 impl Serialize for TypeWithKind {
@@ -161,9 +151,7 @@ impl Serialize for TypeWithKind {
         let mut seq = serializer.serialize_seq(None)?;
         seq.serialize_element(&self.ty.name)?;
         seq.serialize_element(&self.kind)?;
-        if let Some(generics) = &self.ty.generics {
-            seq.serialize_element(generics)?;
-        }
+        seq.serialize_element(&self.ty.generics)?;
         seq.end()
     }
 }

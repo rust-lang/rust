@@ -185,24 +185,19 @@ crate fn get_function_type_for_search<'tcx>(
     item: &clean::Item,
     tcx: TyCtxt<'tcx>,
 ) -> Option<IndexItemFunctionType> {
-    let (mut inputs, mut output) = match *item.kind {
+    let (inputs, output) = match *item.kind {
         clean::FunctionItem(ref f) => get_fn_inputs_and_outputs(f, tcx),
         clean::MethodItem(ref m, _) => get_fn_inputs_and_outputs(m, tcx),
         clean::TyMethodItem(ref m) => get_fn_inputs_and_outputs(m, tcx),
         _ => return None,
     };
 
-    inputs.retain(|a| a.ty.name.is_some());
-    output.retain(|a| a.ty.name.is_some());
-
     Some(IndexItemFunctionType { inputs, output })
 }
 
-fn get_index_type(clean_type: &clean::Type, generics: Vec<TypeWithKind>) -> RenderType {
-    RenderType {
-        name: get_index_type_name(clean_type).map(|s| s.as_str().to_ascii_lowercase()),
-        generics: if generics.is_empty() { None } else { Some(generics) },
-    }
+fn get_index_type(clean_type: &clean::Type, generics: Vec<TypeWithKind>) -> Option<RenderType> {
+    get_index_type_name(clean_type)
+        .map(|s| RenderType { name: s.as_str().to_ascii_lowercase(), generics })
 }
 
 fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
@@ -306,19 +301,17 @@ fn add_generics_and_bounds_as_types<'tcx>(
                 return;
             }
         }
-        let mut index_ty = get_index_type(&ty, generics);
-        if index_ty.name.as_ref().map(|s| s.is_empty()).unwrap_or(true) {
-            return;
-        }
+        let Some(mut index_ty) = get_index_type(&ty, generics)
+        else { return };
         if is_full_generic {
             // We remove the name of the full generic because we have no use for it.
-            index_ty.name = Some(String::new());
-            res.push(TypeWithKind::from((index_ty, ItemType::Generic)));
+            index_ty.name = String::new();
+            res.push(TypeWithKind { ty: index_ty, kind: ItemType::Generic });
         } else if let Some(kind) = ty.def_id_no_primitives().map(|did| tcx.def_kind(did).into()) {
-            res.push(TypeWithKind::from((index_ty, kind)));
+            res.push(TypeWithKind { ty: index_ty, kind });
         } else if ty.is_primitive() {
             // This is a primitive, let's store it as such.
-            res.push(TypeWithKind::from((index_ty, ItemType::Primitive)));
+            res.push(TypeWithKind { ty: index_ty, kind: ItemType::Primitive });
         }
     }
 
@@ -416,7 +409,9 @@ fn get_fn_inputs_and_outputs<'tcx>(
         } else {
             if let Some(kind) = arg.type_.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
             {
-                all_types.push(TypeWithKind::from((get_index_type(&arg.type_, vec![]), kind)));
+                if let Some(ty) = get_index_type(&arg.type_, vec![]) {
+                    all_types.push(TypeWithKind { ty, kind });
+                }
             }
         }
     }
@@ -429,7 +424,9 @@ fn get_fn_inputs_and_outputs<'tcx>(
                 if let Some(kind) =
                     return_type.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
                 {
-                    ret_types.push(TypeWithKind::from((get_index_type(return_type, vec![]), kind)));
+                    if let Some(ty) = get_index_type(return_type, vec![]) {
+                        ret_types.push(TypeWithKind { ty, kind });
+                    }
                 }
             }
         }
