@@ -62,7 +62,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sp,
                 expr,
                 &err_inputs,
-                &[],
+                vec![],
                 args_no_rcvr,
                 false,
                 tuple_arguments,
@@ -83,7 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             sp,
             expr,
             &method.sig.inputs()[1..],
-            &expected_input_tys[..],
+            expected_input_tys,
             args_no_rcvr,
             method.sig.c_variadic,
             tuple_arguments,
@@ -103,7 +103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Types (as defined in the *signature* of the target function)
         formal_input_tys: &[Ty<'tcx>],
         // More specific expected types, after unifying with caller output types
-        expected_input_tys: &[Ty<'tcx>],
+        expected_input_tys: Vec<Ty<'tcx>>,
         // The expressions for each provided argument
         provided_args: &'tcx [hir::Expr<'tcx>],
         // Whether the function is variadic, for example when imported from C
@@ -249,25 +249,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.emit();
         };
 
-        let mut expected_input_tys = expected_input_tys.to_vec();
-
-        let formal_input_tys = if tuple_arguments == TupleArguments {
+        let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
             let tuple_type = self.structurally_resolved_type(call_span, formal_input_tys[0]);
             match tuple_type.kind() {
                 ty::Tuple(arg_types) if arg_types.len() != provided_args.len() => {
                     param_count_error(arg_types.len(), provided_args.len(), "E0057", false, false);
-                    expected_input_tys = vec![];
-                    self.err_args(provided_args.len())
+                    (self.err_args(provided_args.len()), vec![])
                 }
                 ty::Tuple(arg_types) => {
-                    expected_input_tys = match expected_input_tys.get(0) {
+                    let expected_input_tys = match expected_input_tys.get(0) {
                         Some(&ty) => match ty.kind() {
                             ty::Tuple(ref tys) => tys.iter().map(|k| k.expect_ty()).collect(),
                             _ => vec![],
                         },
                         None => vec![],
                     };
-                    arg_types.iter().map(|k| k.expect_ty()).collect()
+                    (arg_types.iter().map(|k| k.expect_ty()).collect(), expected_input_tys)
                 }
                 _ => {
                     struct_span_err!(
@@ -278,19 +275,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                          for the function trait is neither a tuple nor unit"
                     )
                     .emit();
-                    expected_input_tys = vec![];
-                    self.err_args(provided_args.len())
+                    (self.err_args(provided_args.len()), vec![])
                 }
             }
         } else if expected_arg_count == supplied_arg_count {
-            formal_input_tys.to_vec()
+            (formal_input_tys.to_vec(), expected_input_tys)
         } else if c_variadic {
             if supplied_arg_count >= expected_arg_count {
-                formal_input_tys.to_vec()
+                (formal_input_tys.to_vec(), expected_input_tys)
             } else {
                 param_count_error(expected_arg_count, supplied_arg_count, "E0060", true, false);
-                expected_input_tys = vec![];
-                self.err_args(supplied_arg_count)
+                (self.err_args(supplied_arg_count), vec![])
             }
         } else {
             // is the missing argument of type `()`?
@@ -303,8 +298,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             param_count_error(expected_arg_count, supplied_arg_count, "E0061", false, sugg_unit);
 
-            expected_input_tys = vec![];
-            self.err_args(supplied_arg_count)
+            (self.err_args(supplied_arg_count), vec![])
         };
 
         debug!(
@@ -319,6 +313,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             formal_input_tys.clone()
         };
 
+        assert_eq!(expected_input_tys.len(), formal_input_tys.len());
+
+        // Keep track of the fully coerced argument types
         let mut final_arg_types: Vec<(usize, Ty<'_>, Ty<'_>)> = vec![];
 
         // We introduce a helper function to demand that a given argument satisfy a given input
@@ -376,8 +373,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // that we have more information about the types of arguments when we
         // type-check the functions. This isn't really the right way to do this.
         for check_closures in [false, true] {
-            debug!("check_closures={}", check_closures);
-
             // More awful hacks: before we check argument types, try to do
             // an "opportunistic" trait resolution of any trait bounds on
             // the call. This helps coercions.
@@ -394,17 +389,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
             }
 
-            // For C-variadic functions, we don't have a declared type for all of
-            // the arguments hence we only do our usual type checking with
-            // the arguments who's types we do know.
-            let t = if c_variadic {
-                expected_arg_count
-            } else if tuple_arguments == TupleArguments {
-                provided_args.len()
-            } else {
-                supplied_arg_count
-            };
-            for (i, arg) in provided_args.iter().take(t).enumerate() {
+            let minimum_input_count = formal_input_tys.len();
+            for (idx, arg) in provided_args.iter().enumerate() {
                 // Warn only for the first loop (the "no closures" one).
                 // Closure arguments themselves can't be diverging, but
                 // a previous argument can, e.g., `foo(panic!(), || {})`.
@@ -412,13 +398,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.warn_if_unreachable(arg.hir_id, arg.span, "expression");
                 }
 
-                let is_closure = matches!(arg.kind, ExprKind::Closure(..));
+                // For C-variadic functions, we don't have a declared type for all of
+                // the arguments hence we only do our usual type checking with
+                // the arguments who's types we do know. However, we *can* check
+                // for unreachable expressions (see above).
+                // FIXME: unreachable warning current isn't emitted
+                if idx >= minimum_input_count {
+                    continue;
+                }
 
+                let is_closure = matches!(arg.kind, ExprKind::Closure(..));
                 if is_closure != check_closures {
                     continue;
                 }
 
-                demand_compatible(i, &mut final_arg_types);
+                demand_compatible(idx, &mut final_arg_types);
             }
         }
 
