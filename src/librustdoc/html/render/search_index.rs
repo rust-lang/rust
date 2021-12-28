@@ -215,17 +215,24 @@ fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
             let path = &bounds[0].trait_;
             Some(path.segments.last().unwrap().name)
         }
+        clean::ImplTrait(ref bounds) => {
+            let first_trait = bounds.iter().find_map(|b| match b {
+                clean::GenericBound::TraitBound(poly_trait, _) => Some(&poly_trait.trait_),
+                clean::GenericBound::Outlives(_) => None,
+            });
+            first_trait.map(|t| t.segments.last().unwrap().name)
+        }
         clean::Generic(s) => Some(s),
         clean::Primitive(ref p) => Some(p.as_sym()),
-        clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_),
+        clean::BorrowedRef { ref type_, .. } | clean::RawPointer(_, ref type_) => {
+            get_index_type_name(type_)
+        }
         clean::BareFunction(_)
         | clean::Tuple(_)
         | clean::Slice(_)
         | clean::Array(_, _)
-        | clean::RawPointer(_, _)
         | clean::QPath { .. }
-        | clean::Infer
-        | clean::ImplTrait(_) => None,
+        | clean::Infer => None,
     }
 }
 
