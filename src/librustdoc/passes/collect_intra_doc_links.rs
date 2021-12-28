@@ -688,6 +688,18 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
                 // NOTE: it's different from variant_field because it only resolves struct fields,
                 // not variant fields (2 path segments, not 3).
+                //
+                // We need to handle struct (and union) fields in this code because
+                // syntactically their paths are identical to associated item paths:
+                // `module::Type::field` and `module::Type::Assoc`.
+                //
+                // On the other hand, variant fields can't be mistaken for associated
+                // items because they look like this: `module::Type::Variant::field`.
+                //
+                // Variants themselves don't need to be handled here, even though
+                // they also look like associated items (`module::Type::Variant`),
+                // because they are real Rust syntax (unlike the intra-doc links
+                // field syntax) and are handled by the compiler's resolver.
                 let def = match tcx.type_of(did).kind() {
                     ty::Adt(def, _) if !def.is_enum() => def,
                     _ => return None,
