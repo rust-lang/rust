@@ -131,7 +131,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
             );
         }
     } else if tests.found_tests > 0
-        && !cx.cache.access_levels.is_public(item.def_id.expect_def_id())
+        && !cx.cache.access_levels.is_exported(item.def_id.expect_def_id())
     {
         cx.tcx.struct_span_lint_hir(
             crate::lint::PRIVATE_DOC_TESTS,
