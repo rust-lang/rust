@@ -61,15 +61,18 @@ impl<'tcx> LateLintPass<'tcx> for IdentityOp {
 }
 
 fn is_allowed(cx: &LateContext<'_>, cmp: BinOp, left: &Expr<'_>, right: &Expr<'_>) -> bool {
-    // `1 << 0` is a common pattern in bit manipulation code
-    cmp.node == BinOpKind::Shl
-        && constant_simple(cx, cx.typeck_results(), right) == Some(Constant::Int(0))
-        && constant_simple(cx, cx.typeck_results(), left) == Some(Constant::Int(1))
+    // This lint applies to integers
+    !cx.typeck_results().expr_ty(left).peel_refs().is_integral()
+        || !cx.typeck_results().expr_ty(right).peel_refs().is_integral()
+        // `1 << 0` is a common pattern in bit manipulation code
+        || (cmp.node == BinOpKind::Shl
+            && constant_simple(cx, cx.typeck_results(), right) == Some(Constant::Int(0))
+            && constant_simple(cx, cx.typeck_results(), left) == Some(Constant::Int(1)))
 }
 
 fn check(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span) {
-    if let Some(Constant::Int(v)) = constant_simple(cx, cx.typeck_results(), e) {
-        let check = match *cx.typeck_results().expr_ty(e).kind() {
+    if let Some(Constant::Int(v)) = constant_simple(cx, cx.typeck_results(), e).map(Constant::peel_refs) {
+        let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),
             ty::Uint(uty) => clip(cx.tcx, !0, uty),
             _ => return,

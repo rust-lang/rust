@@ -168,6 +168,14 @@ impl Constant {
             None
         }
     }
+
+    #[must_use]
+    pub fn peel_refs(mut self) -> Self {
+        while let Constant::Ref(r) = self {
+            self = *r;
+        }
+        self
+    }
 }
 
 /// Parses a `LitKind` to a `Constant`.
