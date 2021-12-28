@@ -72,5 +72,11 @@ error: the operation is ineffective. Consider reducing it to `&x`
 LL |     &x >> 0;
    |     ^^^^^^^
 
-error: aborting due to 12 previous errors
+error: the operation is ineffective. Consider reducing it to `x`
+  --> $DIR/identity_op.rs:52:5
+   |
+LL |     x >> &0;
+   |     ^^^^^^^
+
+error: aborting due to 13 previous errors
 

@@ -11,11 +11,11 @@ impl std::ops::Shl<i32> for A {
         self
     }
 }
-
 #[allow(
     clippy::eq_op,
     clippy::no_effect,
     clippy::unnecessary_operation,
+    clippy::op_ref,
     clippy::double_parens
 )]
 #[warn(clippy::identity_op)]
@@ -49,6 +49,7 @@ fn main() {
     1 >> 0;
     42 >> 0;
     &x >> 0;
+    x >> &0;
 
     let mut a = A("".into());
     let b = a << 0; // no error: non-integer

@@ -71,8 +71,8 @@ fn is_allowed(cx: &LateContext<'_>, cmp: BinOp, left: &Expr<'_>, right: &Expr<'_
 }
 
 fn check(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span) {
-    if let Some(Constant::Int(v)) = constant_simple(cx, cx.typeck_results(), e) {
-        let check = match *cx.typeck_results().expr_ty(e).kind() {
+    if let Some(Constant::Int(v)) = constant_simple(cx, cx.typeck_results(), e).map(Constant::peel_refs) {
+        let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),
             ty::Uint(uty) => clip(cx.tcx, !0, uty),
             _ => return,
