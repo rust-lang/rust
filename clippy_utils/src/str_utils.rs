@@ -68,6 +68,20 @@ pub fn camel_case_until(s: &str) -> StrIndex {
 /// ```
 #[must_use]
 pub fn camel_case_start(s: &str) -> StrIndex {
+    camel_case_start_from_idx(s, 0)
+}
+
+/// Returns `StrIndex` of the last camel-case component of `s[idx..]`.
+///
+/// ```
+/// # use clippy_utils::str_utils::{camel_case_start_from_idx, StrIndex};
+/// assert_eq!(camel_case_start_from_idx("AbcDef", 0), StrIndex::new(0, 0));
+/// assert_eq!(camel_case_start_from_idx("AbcDef", 1), StrIndex::new(3, 3));
+/// assert_eq!(camel_case_start_from_idx("AbcDefGhi", 0), StrIndex::new(0, 0));
+/// assert_eq!(camel_case_start_from_idx("AbcDefGhi", 1), StrIndex::new(3, 3));
+/// assert_eq!(camel_case_start_from_idx("Abcdefg", 1), StrIndex::new(7, 7));
+/// ```
+pub fn camel_case_start_from_idx(s: &str, start_idx: usize) -> StrIndex {
     let char_count = s.chars().count();
     let range = 0..char_count;
     let mut iter = range.rev().zip(s.char_indices().rev());
@@ -78,9 +92,13 @@ pub fn camel_case_start(s: &str) -> StrIndex {
     } else {
         return StrIndex::new(char_count, s.len());
     }
+
     let mut down = true;
     let mut last_index = StrIndex::new(char_count, s.len());
     for (char_index, (byte_index, c)) in iter {
+        if byte_index < start_idx {
+            break;
+        }
         if down {
             if c.is_uppercase() {
                 down = false;
@@ -98,7 +116,53 @@ pub fn camel_case_start(s: &str) -> StrIndex {
             return last_index;
         }
     }
+
     last_index
+}
+
+/// Get the indexes of camel case components of a string `s`
+///
+/// ```
+/// # use clippy_utils::str_utils::{camel_case_indices, StrIndex};
+/// assert_eq!(
+///     camel_case_indices("AbcDef"),
+///     vec![StrIndex::new(0, 0), StrIndex::new(3, 3), StrIndex::new(6, 6)]
+/// );
+/// assert_eq!(
+///     camel_case_indices("abcDef"),
+///     vec![StrIndex::new(3, 3), StrIndex::new(6, 6)]
+/// );
+/// ```
+pub fn camel_case_indices(s: &str) -> Vec<StrIndex> {
+    let mut result = Vec::new();
+    let mut str_idx = camel_case_start(s);
+
+    while str_idx.byte_index < s.len() {
+        let next_idx = str_idx.byte_index + 1;
+        result.push(str_idx);
+        str_idx = camel_case_start_from_idx(s, next_idx);
+    }
+    result.push(str_idx);
+
+    result
+}
+
+/// Split camel case string into a vector of its components
+///
+/// ```
+/// # use clippy_utils::str_utils::{camel_case_split, StrIndex};
+/// assert_eq!(camel_case_split("AbcDef"), vec!["Abc", "Def"]);
+/// ```
+pub fn camel_case_split(s: &str) -> Vec<&str> {
+    let mut offsets = camel_case_indices(s)
+        .iter()
+        .map(|e| e.byte_index)
+        .collect::<Vec<usize>>();
+    if offsets[0] != 0 {
+        offsets.insert(0, 0);
+    }
+
+    offsets.windows(2).map(|w| &s[w[0]..w[1]]).collect()
 }
 
 /// Dealing with sting comparison can be complicated, this struct ensures that both the
@@ -230,5 +294,32 @@ mod test {
     #[test]
     fn until_caps() {
         assert_eq!(camel_case_until("ABCD"), StrIndex::new(0, 0));
+    }
+
+    #[test]
+    fn camel_case_start_from_idx_full() {
+        assert_eq!(camel_case_start_from_idx("AbcDef", 0), StrIndex::new(0, 0));
+        assert_eq!(camel_case_start_from_idx("AbcDef", 1), StrIndex::new(3, 3));
+        assert_eq!(camel_case_start_from_idx("AbcDef", 4), StrIndex::new(6, 6));
+        assert_eq!(camel_case_start_from_idx("AbcDefGhi", 0), StrIndex::new(0, 0));
+        assert_eq!(camel_case_start_from_idx("AbcDefGhi", 1), StrIndex::new(3, 3));
+        assert_eq!(camel_case_start_from_idx("Abcdefg", 1), StrIndex::new(7, 7));
+    }
+
+    #[test]
+    fn camel_case_indices_full() {
+        assert_eq!(camel_case_indices("Abc\u{f6}\u{f6}DD"), vec![StrIndex::new(7, 9)]);
+    }
+
+    #[test]
+    fn camel_case_split_full() {
+        assert_eq!(camel_case_split("A"), vec!["A"]);
+        assert_eq!(camel_case_split("AbcDef"), vec!["Abc", "Def"]);
+        assert_eq!(camel_case_split("Abc"), vec!["Abc"]);
+        assert_eq!(camel_case_split("abcDef"), vec!["abc", "Def"]);
+        assert_eq!(
+            camel_case_split("\u{f6}\u{f6}AabABcd"),
+            vec!["\u{f6}\u{f6}", "Aab", "A", "Bcd"]
+        );
     }
 }
