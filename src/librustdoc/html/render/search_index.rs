@@ -32,7 +32,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 desc,
                 parent: Some(did),
                 parent_idx: None,
-                search_type: get_index_search_type(item, tcx),
+                search_type: get_function_type_for_search(item, tcx),
                 aliases: item.attrs.get_doc_aliases(),
             });
         }
@@ -181,14 +181,14 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     )
 }
 
-crate fn get_index_search_type<'tcx>(
+crate fn get_function_type_for_search<'tcx>(
     item: &clean::Item,
     tcx: TyCtxt<'tcx>,
 ) -> Option<IndexItemFunctionType> {
     let (mut inputs, mut output) = match *item.kind {
-        clean::FunctionItem(ref f) => get_all_types(f, tcx),
-        clean::MethodItem(ref m, _) => get_all_types(m, tcx),
-        clean::TyMethodItem(ref m) => get_all_types(m, tcx),
+        clean::FunctionItem(ref f) => get_fn_inputs_and_outputs(f, tcx),
+        clean::MethodItem(ref m, _) => get_fn_inputs_and_outputs(m, tcx),
+        clean::TyMethodItem(ref m) => get_fn_inputs_and_outputs(m, tcx),
         _ => return None,
     };
 
@@ -237,7 +237,7 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
 ///
 /// Important note: It goes through generics recursively. So if you have
 /// `T: Option<Result<(), ()>>`, it'll go into `Option` and then into `Result`.
-fn get_real_types<'tcx>(
+fn add_generics_and_bounds_as_types<'tcx>(
     generics: &Generics,
     arg: &Type,
     tcx: TyCtxt<'tcx>,
@@ -337,7 +337,13 @@ fn get_real_types<'tcx>(
                     for param_def in poly_trait.generic_params.iter() {
                         match &param_def.kind {
                             clean::GenericParamDefKind::Type { default: Some(ty), .. } => {
-                                get_real_types(generics, ty, tcx, recurse + 1, &mut ty_generics)
+                                add_generics_and_bounds_as_types(
+                                    generics,
+                                    ty,
+                                    tcx,
+                                    recurse + 1,
+                                    &mut ty_generics,
+                                )
                             }
                             _ => {}
                         }
@@ -352,7 +358,13 @@ fn get_real_types<'tcx>(
             for bound in bound.get_bounds().unwrap_or(&[]) {
                 if let Some(path) = bound.get_trait_path() {
                     let ty = Type::Path { path };
-                    get_real_types(generics, &ty, tcx, recurse + 1, &mut ty_generics);
+                    add_generics_and_bounds_as_types(
+                        generics,
+                        &ty,
+                        tcx,
+                        recurse + 1,
+                        &mut ty_generics,
+                    );
                 }
             }
             insert_ty(res, tcx, arg.clone(), ty_generics);
@@ -366,7 +378,7 @@ fn get_real_types<'tcx>(
         let mut ty_generics = Vec::new();
         if let Some(arg_generics) = arg.generics() {
             for gen in arg_generics.iter() {
-                get_real_types(generics, gen, tcx, recurse + 1, &mut ty_generics);
+                add_generics_and_bounds_as_types(generics, gen, tcx, recurse + 1, &mut ty_generics);
             }
         }
         insert_ty(res, tcx, arg.clone(), ty_generics);
@@ -377,7 +389,7 @@ fn get_real_types<'tcx>(
 ///
 /// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
 /// `[u32, Display, Option]`.
-fn get_all_types<'tcx>(
+fn get_fn_inputs_and_outputs<'tcx>(
     func: &Function,
     tcx: TyCtxt<'tcx>,
 ) -> (Vec<TypeWithKind>, Vec<TypeWithKind>) {
@@ -390,7 +402,7 @@ fn get_all_types<'tcx>(
             continue;
         }
         let mut args = Vec::new();
-        get_real_types(generics, &arg.type_, tcx, 0, &mut args);
+        add_generics_and_bounds_as_types(generics, &arg.type_, tcx, 0, &mut args);
         if !args.is_empty() {
             all_types.extend(args);
         } else {
@@ -404,7 +416,7 @@ fn get_all_types<'tcx>(
     let mut ret_types = Vec::new();
     match decl.output {
         FnRetTy::Return(ref return_type) => {
-            get_real_types(generics, return_type, tcx, 0, &mut ret_types);
+            add_generics_and_bounds_as_types(generics, return_type, tcx, 0, &mut ret_types);
             if ret_types.is_empty() {
                 if let Some(kind) =
                     return_type.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
