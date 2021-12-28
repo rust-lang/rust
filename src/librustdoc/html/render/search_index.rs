@@ -200,12 +200,12 @@ crate fn get_function_type_for_search<'tcx>(
 
 fn get_index_type(clean_type: &clean::Type, generics: Vec<TypeWithKind>) -> RenderType {
     RenderType {
-        name: get_index_type_name(clean_type, true).map(|s| s.as_str().to_ascii_lowercase()),
+        name: get_index_type_name(clean_type).map(|s| s.as_str().to_ascii_lowercase()),
         generics: if generics.is_empty() { None } else { Some(generics) },
     }
 }
 
-fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<Symbol> {
+fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
     match *clean_type {
         clean::Type::Path { ref path, .. } => {
             let path_segment = path.segments.last().unwrap();
@@ -215,11 +215,10 @@ fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option
             let path = &bounds[0].trait_;
             Some(path.segments.last().unwrap().name)
         }
-        clean::Generic(s) if accept_generic => Some(s),
+        clean::Generic(s) => Some(s),
         clean::Primitive(ref p) => Some(p.as_sym()),
-        clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_, accept_generic),
-        clean::Generic(_)
-        | clean::BareFunction(_)
+        clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_),
+        clean::BareFunction(_)
         | clean::Tuple(_)
         | clean::Slice(_)
         | clean::Array(_, _)
