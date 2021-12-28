@@ -355,7 +355,6 @@ jobs:
             env:
               SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-lld"
-              VCVARS_BAT: vcvars64.bat
             os: windows-latest-xl
           - name: x86_64-msvc-tools
             env:
