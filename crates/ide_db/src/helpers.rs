@@ -14,7 +14,7 @@ use base_db::FileId;
 use hir::{ItemInNs, MacroDef, ModuleDef, Name, PathResolution, Semantics};
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, HasLoopBody, Ident},
+    ast::{self, make, HasLoopBody},
     AstNode, AstToken, Direction, SyntaxElement, SyntaxKind, SyntaxToken, TokenAtOffset, WalkEvent,
     T,
 };
@@ -38,7 +38,7 @@ pub fn item_name(db: &RootDatabase, item: ItemInNs) -> Option<Name> {
 pub fn get_path_in_derive_attr(
     sema: &hir::Semantics<RootDatabase>,
     attr: &ast::Attr,
-    cursor: &Ident,
+    cursor: &ast::Ident,
 ) -> Option<ast::Path> {
     let path = attr.path()?;
     let tt = attr.token_tree()?;
@@ -55,7 +55,7 @@ pub fn get_path_in_derive_attr(
 }
 
 /// Parses the path the identifier is part of inside a token tree.
-pub fn get_path_at_cursor_in_tt(cursor: &Ident) -> Option<ast::Path> {
+pub fn get_path_at_cursor_in_tt(cursor: &ast::Ident) -> Option<ast::Path> {
     let cursor = cursor.syntax();
     let first = cursor
         .siblings_with_tokens(Direction::Prev)
@@ -75,7 +75,7 @@ pub fn get_path_at_cursor_in_tt(cursor: &Ident) -> Option<ast::Path> {
 pub fn try_resolve_derive_input(
     sema: &hir::Semantics<RootDatabase>,
     attr: &ast::Attr,
-    cursor: &Ident,
+    cursor: &ast::Ident,
 ) -> Option<PathResolution> {
     let path = get_path_in_derive_attr(sema, attr, cursor)?;
     let scope = sema.scope(attr.syntax());
