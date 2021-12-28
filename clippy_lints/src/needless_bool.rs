@@ -187,14 +187,14 @@ impl<'tcx> LateLintPass<'tcx> for BoolComparison {
                 BinOpKind::Eq => {
                     let true_case = Some((|h| h, "equality checks against true are unnecessary"));
                     let false_case = Some((
-                        |h: Sugg<'_>| !h,
+                        |h: Sugg<'tcx>| !h,
                         "equality checks against false can be replaced by a negation",
                     ));
                     check_comparison(cx, e, true_case, false_case, true_case, false_case, ignore_no_literal);
                 },
                 BinOpKind::Ne => {
                     let true_case = Some((
-                        |h: Sugg<'_>| !h,
+                        |h: Sugg<'tcx>| !h,
                         "inequality checks against true can be replaced by a negation",
                     ));
                     let false_case = Some((|h| h, "inequality checks against false are unnecessary"));
@@ -206,12 +206,12 @@ impl<'tcx> LateLintPass<'tcx> for BoolComparison {
                     ignore_case,
                     Some((|h| h, "greater than checks against false are unnecessary")),
                     Some((
-                        |h: Sugg<'_>| !h,
+                        |h: Sugg<'tcx>| !h,
                         "less than comparison against true can be replaced by a negation",
                     )),
                     ignore_case,
                     Some((
-                        |l: Sugg<'_>, r: Sugg<'_>| (!l).bit_and(&r),
+                        |l: Sugg<'tcx>, r: Sugg<'tcx>| (!l).bit_and(&r),
                         "order comparisons between booleans can be simplified",
                     )),
                 ),
@@ -219,14 +219,14 @@ impl<'tcx> LateLintPass<'tcx> for BoolComparison {
                     cx,
                     e,
                     Some((
-                        |h: Sugg<'_>| !h,
+                        |h: Sugg<'tcx>| !h,
                         "less than comparison against true can be replaced by a negation",
                     )),
                     ignore_case,
                     ignore_case,
                     Some((|h| h, "greater than checks against false are unnecessary")),
                     Some((
-                        |l: Sugg<'_>, r: Sugg<'_>| l.bit_and(&(!r)),
+                        |l: Sugg<'tcx>, r: Sugg<'tcx>| l.bit_and(&(!r)),
                         "order comparisons between booleans can be simplified",
                     )),
                 ),

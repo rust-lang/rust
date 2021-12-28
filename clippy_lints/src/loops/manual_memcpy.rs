@@ -12,6 +12,7 @@ use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Pat, PatKind, StmtKind}
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
+use std::fmt::Display;
 use std::iter::Iterator;
 
 /// Checks for for loops that sequentially copy items from one slice-like
@@ -108,7 +109,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
     src: &IndexExpr<'_>,
 ) -> String {
     fn print_offset(offset: MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        if offset.as_str() == "0" {
+        if offset.to_string() == "0" {
             sugg::EMPTY.into()
         } else {
             offset
@@ -123,7 +124,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
             if let Some(arg) = len_args.get(0);
             if path_to_local(arg) == path_to_local(base);
             then {
-                if sugg.as_str() == end_str {
+                if sugg.to_string() == end_str {
                     sugg::EMPTY.into()
                 } else {
                     sugg
@@ -147,7 +148,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
             print_offset(apply_offset(&start_str, &idx_expr.idx_offset)).into_sugg(),
             print_limit(
                 end,
-                end_str.as_str(),
+                end_str.to_string().as_str(),
                 idx_expr.base,
                 apply_offset(&end_str, &idx_expr.idx_offset),
             )
@@ -159,7 +160,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
                 print_offset(apply_offset(&counter_start, &idx_expr.idx_offset)).into_sugg(),
                 print_limit(
                     end,
-                    end_str.as_str(),
+                    end_str.to_string().as_str(),
                     idx_expr.base,
                     apply_offset(&end_str, &idx_expr.idx_offset) + &counter_start - &start_str,
                 )
@@ -202,12 +203,13 @@ fn build_manual_memcpy_suggestion<'tcx>(
 #[derive(Clone)]
 struct MinifyingSugg<'a>(Sugg<'a>);
 
-impl<'a> MinifyingSugg<'a> {
-    fn as_str(&self) -> &str {
-        let (Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s)) = &self.0;
-        s.as_ref()
+impl Display for MinifyingSugg<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
+}
 
+impl<'a> MinifyingSugg<'a> {
     fn into_sugg(self) -> Sugg<'a> {
         self.0
     }
@@ -222,7 +224,7 @@ impl<'a> From<Sugg<'a>> for MinifyingSugg<'a> {
 impl std::ops::Add for &MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
+        match (self.to_string().as_str(), rhs.to_string().as_str()) {
             ("0", _) => rhs.clone(),
             (_, "0") => self.clone(),
             (_, _) => (&self.0 + &rhs.0).into(),
@@ -233,7 +235,7 @@ impl std::ops::Add for &MinifyingSugg<'static> {
 impl std::ops::Sub for &MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
+        match (self.to_string().as_str(), rhs.to_string().as_str()) {
             (_, "0") => self.clone(),
             ("0", _) => (-rhs.0.clone()).into(),
             (x, y) if x == y => sugg::ZERO.into(),
@@ -245,7 +247,7 @@ impl std::ops::Sub for &MinifyingSugg<'static> {
 impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
+        match (self.to_string().as_str(), rhs.to_string().as_str()) {
             ("0", _) => rhs.clone(),
             (_, "0") => self,
             (_, _) => (self.0 + &rhs.0).into(),
@@ -256,7 +258,7 @@ impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
 impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
+        match (self.to_string().as_str(), rhs.to_string().as_str()) {
             (_, "0") => self,
             ("0", _) => (-rhs.0.clone()).into(),
             (x, y) if x == y => sugg::ZERO.into(),

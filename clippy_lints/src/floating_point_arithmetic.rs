@@ -356,7 +356,7 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
             if eq_expr_value(cx, lmul_lhs, lmul_rhs);
             if eq_expr_value(cx, rmul_lhs, rmul_rhs);
             then {
-                return Some(format!("{}.hypot({})", Sugg::hir(cx, lmul_lhs, ".."), Sugg::hir(cx, rmul_lhs, "..")));
+                return Some(format!("{}.hypot({})", Sugg::hir(cx, lmul_lhs, "..").maybe_par(), Sugg::hir(cx, rmul_lhs, "..")));
             }
         }
 
@@ -379,7 +379,7 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
             if let Some((rvalue, _)) = constant(cx, cx.typeck_results(), rargs_1);
             if Int(2) == lvalue && Int(2) == rvalue;
             then {
-                return Some(format!("{}.hypot({})", Sugg::hir(cx, largs_0, ".."), Sugg::hir(cx, rargs_0, "..")));
+                return Some(format!("{}.hypot({})", Sugg::hir(cx, largs_0, "..").maybe_par(), Sugg::hir(cx, rargs_0, "..")));
             }
         }
     }
