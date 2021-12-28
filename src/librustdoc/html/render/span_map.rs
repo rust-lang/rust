@@ -92,7 +92,7 @@ impl<'tcx> SpanMapVisitor<'tcx> {
     }
 }
 
-impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     type Map = rustc_middle::hir::map::Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

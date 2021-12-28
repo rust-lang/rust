@@ -32,8 +32,8 @@ crate struct Module<'hir> {
     crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
 }
 
-impl Module<'hir> {
-    crate fn new(name: Symbol, id: hir::HirId, where_inner: Span) -> Module<'hir> {
+impl Module<'_> {
+    crate fn new(name: Symbol, id: hir::HirId, where_inner: Span) -> Self {
         Module { name, id, where_inner, mods: Vec::new(), items: Vec::new(), foreigns: Vec::new() }
     }
 
