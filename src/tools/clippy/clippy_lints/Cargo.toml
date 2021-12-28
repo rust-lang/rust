@@ -13,7 +13,7 @@ cargo_metadata = "0.14"
 clippy_utils = { path = "../clippy_utils" }
 if_chain = "1.0"
 itertools = "0.10"
-pulldown-cmark = { version = "0.8", default-features = false }
+pulldown-cmark = { version = "0.9", default-features = false }
 quine-mc_cluskey = "0.2"
 regex-syntax = "0.6"
 serde = { version = "1.0", features = ["derive"] }

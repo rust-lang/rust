@@ -619,7 +619,7 @@ dependencies = [
  "clippy_utils",
  "if_chain",
  "itertools 0.10.1",
- "pulldown-cmark",
+ "pulldown-cmark 0.9.0",
  "quine-mc_cluskey",
  "regex-syntax",
  "rustc-semver",
