@@ -266,7 +266,7 @@ impl OsString {
         self.inner.reserve(additional)
     }
 
-    /// Tries to reserve capacity for at least `additional` more elements to be inserted
+    /// Tries to reserve capacity for at least `additional` more length units
     /// in the given `OsString`. The string may reserve more space to avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
@@ -288,7 +288,7 @@ impl OsString {
     ///     let mut s = OsString::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
-    ///     s.try_reserve(data.len())?;
+    ///     s.try_reserve(OsString::from(data).len())?;
     ///
     ///     // Now we know this can't OOM in the middle of our complex work
     ///     s.push(data);
@@ -329,12 +329,12 @@ impl OsString {
     }
 
     /// Tries to reserve the minimum capacity for exactly `additional`
-    /// elements to be inserted in the given `OsString`. After calling
+    /// more length units in the given `OsString`. After calling
     /// `try_reserve_exact`, capacity will be greater than or equal to
     /// `self.len() + additional` if it returns `Ok(())`.
     /// Does nothing if the capacity is already sufficient.
     ///
-    /// Note that the allocator may give the collection more space than it
+    /// Note that the allocator may give the `OsString` more space than it
     /// requests. Therefore, capacity can not be relied upon to be precisely
     /// minimal. Prefer [`try_reserve`] if future insertions are expected.
     ///
@@ -353,10 +353,10 @@ impl OsString {
     /// use std::collections::TryReserveError;
     ///
     /// fn find_max_slow(data: &str) -> Result<OsString, TryReserveError> {
-    ///     let mut s = OsString::from(data);
+    ///     let mut s = OsString::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
-    ///     s.try_reserve_exact(data.len())?;
+    ///     s.try_reserve_exact(OsString::from(data).len())?;
     ///
     ///     // Now we know this can't OOM in the middle of our complex work
     ///     s.push(data);

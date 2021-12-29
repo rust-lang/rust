@@ -232,8 +232,8 @@ impl Wtf8Buf {
         self.bytes.reserve(additional)
     }
 
-    /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `Wtf8Buf`. The collection may reserve more space to avoid
+    /// Tries to reserve capacity for at least `additional` more length units
+    /// in the given `Wtf8Buf`. The `Wtf8Buf` may reserve more space to avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
     /// capacity is already sufficient.
@@ -253,12 +253,12 @@ impl Wtf8Buf {
     }
 
     /// Tries to reserve the minimum capacity for exactly `additional`
-    /// elements to be inserted in the given `Wtf8Buf`. After calling
+    /// length units in the given `Wtf8Buf`. After calling
     /// `try_reserve_exact`, capacity will be greater than or equal to
     /// `self.len() + additional` if it returns `Ok(())`.
     /// Does nothing if the capacity is already sufficient.
     ///
-    /// Note that the allocator may give the collection more space than it
+    /// Note that the allocator may give the `Wtf8Buf` more space than it
     /// requests. Therefore, capacity can not be relied upon to be precisely
     /// minimal. Prefer [`try_reserve`] if future insertions are expected.
     ///
