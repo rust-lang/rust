@@ -19,7 +19,7 @@ If building LLVM from source (the default), you'll need additional tools:
 Otherwise, you'll need LLVM installed and `llvm-config` in your path.
 See [this section for more info][sysllvm].
 
-[sysllvm]: ./suggested.md#skipping-llvm-build
+[sysllvm]: ./new-target.md#using-pre-built-llvm
 
 ### Windows
 
