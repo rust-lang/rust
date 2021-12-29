@@ -1080,8 +1080,11 @@ body.blur > :not(#help) {
 
 .impl-items .srclink, .impl .srclink, .methods .srclink {
 	/* Override header settings otherwise it's too bold */
-	font-size: 1.0625rem;
 	font-weight: normal;
+	font-size: 1rem;
+}
+.impl .srclink {
+	font-size: 1.0625rem;
 }
 
 .rightside {
