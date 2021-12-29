@@ -632,10 +632,16 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ok(self) -> Option<T> {
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
+    pub const fn ok(self) -> Option<T>
+    where
+        E: ~const Drop,
+    {
         match self {
             Ok(x) => Some(x),
-            Err(_) => None,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Err(x) => None,
         }
     }
 
@@ -657,9 +663,15 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn err(self) -> Option<E> {
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
+    pub const fn err(self) -> Option<E>
+    where
+        T: ~const Drop,
+    {
         match self {
-            Ok(_) => None,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Ok(x) => None,
             Err(x) => Some(x),
         }
     }
@@ -1266,10 +1278,18 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.and(y), Ok("different result type"));
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn and<U>(self, res: Result<U, E>) -> Result<U, E> {
+    pub const fn and<U>(self, res: Result<U, E>) -> Result<U, E>
+    where
+        T: ~const Drop,
+        U: ~const Drop,
+        E: ~const Drop,
+    {
         match self {
-            Ok(_) => res,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Ok(x) => res,
             Err(e) => Err(e),
         }
     }
@@ -1331,11 +1351,19 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.or(y), Ok(2));
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or<F>(self, res: Result<T, F>) -> Result<T, F> {
+    pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F>
+    where
+        T: ~const Drop,
+        E: ~const Drop,
+        F: ~const Drop,
+    {
         match self {
             Ok(v) => Ok(v),
-            Err(_) => res,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Err(e) => res,
         }
     }
 
@@ -1387,11 +1415,18 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.unwrap_or(default), default);
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or(self, default: T) -> T {
+    pub const fn unwrap_or(self, default: T) -> T
+    where
+        T: ~const Drop,
+        E: ~const Drop,
+    {
         match self {
             Ok(t) => t,
-            Err(_) => default,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Err(e) => default,
         }
     }
 
