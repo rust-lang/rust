@@ -328,6 +328,10 @@ impl<'a> StripUnconfigured<'a> {
         });
     }
 
+    fn process_cfg_attr(&self, attr: Attribute) -> Vec<Attribute> {
+        if attr.has_name(sym::cfg_attr) { self.expand_cfg_attr(attr, true) } else { vec![attr] }
+    }
+
     /// Parse and expand a single `cfg_attr` attribute into a list of attributes
     /// when the configuration predicate is true, or otherwise expand into an
     /// empty list of attributes.
@@ -335,11 +339,7 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
-    fn process_cfg_attr(&self, attr: Attribute) -> Vec<Attribute> {
-        if !attr.has_name(sym::cfg_attr) {
-            return vec![attr];
-        }
-
+    crate fn expand_cfg_attr(&self, attr: Attribute, recursive: bool) -> Vec<Attribute> {
         let (cfg_predicate, expanded_attrs) =
             match rustc_parse::parse_cfg_attr(&attr, &self.sess.parse_sess) {
                 None => return vec![],
@@ -348,95 +348,109 @@ impl<'a> StripUnconfigured<'a> {
 
         // Lint on zero attributes in source.
         if expanded_attrs.is_empty() {
-            return vec![attr];
+            self.sess.parse_sess.buffer_lint(
+                rustc_lint_defs::builtin::UNUSED_ATTRIBUTES,
+                attr.span,
+                ast::CRATE_NODE_ID,
+                "`#[cfg_attr]` does not expand to any attributes",
+            );
         }
 
         if !attr::cfg_matches(&cfg_predicate, &self.sess.parse_sess, self.features) {
             return vec![];
         }
 
-        // We call `process_cfg_attr` recursively in case there's a
-        // `cfg_attr` inside of another `cfg_attr`. E.g.
-        //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
-        expanded_attrs
-            .into_iter()
-            .flat_map(|(item, span)| {
-                let orig_tokens = attr.tokens().to_tokenstream();
+        if recursive {
+            // We call `process_cfg_attr` recursively in case there's a
+            // `cfg_attr` inside of another `cfg_attr`. E.g.
+            //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
+            expanded_attrs
+                .into_iter()
+                .flat_map(|item| self.process_cfg_attr(self.expand_cfg_attr_item(&attr, item)))
+                .collect()
+        } else {
+            expanded_attrs.into_iter().map(|item| self.expand_cfg_attr_item(&attr, item)).collect()
+        }
+    }
 
-                // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
-                // and producing an attribute of the form `#[attr]`. We
-                // have captured tokens for `attr` itself, but we need to
-                // synthesize tokens for the wrapper `#` and `[]`, which
-                // we do below.
+    fn expand_cfg_attr_item(
+        &self,
+        attr: &Attribute,
+        (item, item_span): (ast::AttrItem, Span),
+    ) -> Attribute {
+        let orig_tokens = attr.tokens().to_tokenstream();
 
-                // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
-                // for `attr` when we expand it to `#[attr]`
-                let mut orig_trees = orig_tokens.trees();
-                let pound_token = match orig_trees.next().unwrap() {
-                    TokenTree::Token(token @ Token { kind: TokenKind::Pound, .. }) => token,
-                    _ => panic!("Bad tokens for attribute {:?}", attr),
-                };
-                let pound_span = pound_token.span;
+        // We are taking an attribute of the form `#[cfg_attr(pred, attr)]`
+        // and producing an attribute of the form `#[attr]`. We
+        // have captured tokens for `attr` itself, but we need to
+        // synthesize tokens for the wrapper `#` and `[]`, which
+        // we do below.
 
-                let mut trees = vec![(AttrAnnotatedTokenTree::Token(pound_token), Spacing::Alone)];
-                if attr.style == AttrStyle::Inner {
-                    // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
-                    let bang_token = match orig_trees.next().unwrap() {
-                        TokenTree::Token(token @ Token { kind: TokenKind::Not, .. }) => token,
-                        _ => panic!("Bad tokens for attribute {:?}", attr),
-                    };
-                    trees.push((AttrAnnotatedTokenTree::Token(bang_token), Spacing::Alone));
-                }
-                // We don't really have a good span to use for the syntheized `[]`
-                // in `#[attr]`, so just use the span of the `#` token.
-                let bracket_group = AttrAnnotatedTokenTree::Delimited(
-                    DelimSpan::from_single(pound_span),
-                    DelimToken::Bracket,
-                    item.tokens
-                        .as_ref()
-                        .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
-                        .create_token_stream(),
-                );
-                trees.push((bracket_group, Spacing::Alone));
-                let tokens = Some(LazyTokenStream::new(AttrAnnotatedTokenStream::new(trees)));
-                let attr = attr::mk_attr_from_item(item, tokens, attr.style, span);
-                if attr.has_name(sym::crate_type) {
-                    self.sess.parse_sess.buffer_lint(
-                        rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
-                        attr.span,
-                        ast::CRATE_NODE_ID,
-                        "`crate_type` within an `#![cfg_attr] attribute is deprecated`",
-                    );
-                }
-                if attr.has_name(sym::crate_name) {
-                    self.sess.parse_sess.buffer_lint(
-                        rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
-                        attr.span,
-                        ast::CRATE_NODE_ID,
-                        "`crate_name` within an `#![cfg_attr] attribute is deprecated`",
-                    );
-                }
-                self.process_cfg_attr(attr)
-            })
-            .collect()
+        // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
+        // for `attr` when we expand it to `#[attr]`
+        let mut orig_trees = orig_tokens.trees();
+        let pound_token = match orig_trees.next().unwrap() {
+            TokenTree::Token(token @ Token { kind: TokenKind::Pound, .. }) => token,
+            _ => panic!("Bad tokens for attribute {:?}", attr),
+        };
+        let pound_span = pound_token.span;
+
+        let mut trees = vec![(AttrAnnotatedTokenTree::Token(pound_token), Spacing::Alone)];
+        if attr.style == AttrStyle::Inner {
+            // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
+            let bang_token = match orig_trees.next().unwrap() {
+                TokenTree::Token(token @ Token { kind: TokenKind::Not, .. }) => token,
+                _ => panic!("Bad tokens for attribute {:?}", attr),
+            };
+            trees.push((AttrAnnotatedTokenTree::Token(bang_token), Spacing::Alone));
+        }
+        // We don't really have a good span to use for the syntheized `[]`
+        // in `#[attr]`, so just use the span of the `#` token.
+        let bracket_group = AttrAnnotatedTokenTree::Delimited(
+            DelimSpan::from_single(pound_span),
+            DelimToken::Bracket,
+            item.tokens
+                .as_ref()
+                .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
+                .create_token_stream(),
+        );
+        trees.push((bracket_group, Spacing::Alone));
+        let tokens = Some(LazyTokenStream::new(AttrAnnotatedTokenStream::new(trees)));
+        let attr = attr::mk_attr_from_item(item, tokens, attr.style, item_span);
+        if attr.has_name(sym::crate_type) {
+            self.sess.parse_sess.buffer_lint(
+                rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
+                attr.span,
+                ast::CRATE_NODE_ID,
+                "`crate_type` within an `#![cfg_attr] attribute is deprecated`",
+            );
+        }
+        if attr.has_name(sym::crate_name) {
+            self.sess.parse_sess.buffer_lint(
+                rustc_lint_defs::builtin::DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
+                attr.span,
+                ast::CRATE_NODE_ID,
+                "`crate_name` within an `#![cfg_attr] attribute is deprecated`",
+            );
+        }
+        attr
     }
 
     /// Determines if a node with the given attributes should be included in this configuration.
     fn in_cfg(&self, attrs: &[Attribute]) -> bool {
-        attrs.iter().all(|attr| {
-            if !is_cfg(attr) {
+        attrs.iter().all(|attr| !is_cfg(attr) || self.cfg_true(attr))
+    }
+
+    crate fn cfg_true(&self, attr: &Attribute) -> bool {
+        let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
+            Ok(meta_item) => meta_item,
+            Err(mut err) => {
+                err.emit();
                 return true;
             }
-            let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
-                Ok(meta_item) => meta_item,
-                Err(mut err) => {
-                    err.emit();
-                    return true;
-                }
-            };
-            parse_cfg(&meta_item, &self.sess).map_or(true, |meta_item| {
-                attr::cfg_matches(&meta_item, &self.sess.parse_sess, self.features)
-            })
+        };
+        parse_cfg(&meta_item, &self.sess).map_or(true, |meta_item| {
+            attr::cfg_matches(&meta_item, &self.sess.parse_sess, self.features)
         })
     }
 
