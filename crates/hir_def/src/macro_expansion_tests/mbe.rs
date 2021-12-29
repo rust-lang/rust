@@ -300,34 +300,6 @@ fn baz() {
 }
 
 #[test]
-fn asi() {
-    // Thanks, Christopher!
-    //
-    // https://internals.rust-lang.org/t/understanding-decisions-behind-semicolons/15181/29
-    check(
-        r#"
-macro_rules! asi { ($($stmt:stmt)*) => ($($stmt)*); }
-
-fn main() {
-    asi! {
-        let a = 2
-        let b = 5
-        drop(b-a)
-        println!("{}", a+b)
-    }
-}
-"#,
-        expect![[r#"
-macro_rules! asi { ($($stmt:stmt)*) => ($($stmt)*); }
-
-fn main() {
-    let a = 2let b = 5drop(b-a)println!("{}", a+b)
-}
-"#]],
-    )
-}
-
-#[test]
 fn test_match_group_empty_fixed_token() {
     check(
         r#"

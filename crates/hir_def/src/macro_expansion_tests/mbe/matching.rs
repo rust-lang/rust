@@ -50,3 +50,52 @@ macro_rules! m{ ($fmt:expr) => (); }
 "#]],
     );
 }
+
+#[test]
+fn asi() {
+    // Thanks, Christopher!
+    //
+    // https://internals.rust-lang.org/t/understanding-decisions-behind-semicolons/15181/29
+    check(
+        r#"
+macro_rules! asi { ($($stmt:stmt)*) => ($($stmt)*); }
+
+fn main() {
+    asi! {
+        let a = 2
+        let b = 5
+        drop(b-a)
+        println!("{}", a+b)
+    }
+}
+"#,
+        expect![[r#"
+macro_rules! asi { ($($stmt:stmt)*) => ($($stmt)*); }
+
+fn main() {
+    let a = 2let b = 5drop(b-a)println!("{}", a+b)
+}
+"#]],
+    )
+}
+
+#[test]
+fn stmt_boundaries() {
+    // FIXME: this actually works OK under rustc.
+    check(
+        r#"
+macro_rules! m {
+    ($($s:stmt)*) => (stringify!($($s |)*))
+}
+// +errors
+m!(;;92;let x = 92; loop {};);
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($($s:stmt)*) => (stringify!($($s |)*))
+}
+/* error: expected Stmt *//* parse error: expected SEMICOLON */
+stringify!()
+"#]],
+    );
+}
