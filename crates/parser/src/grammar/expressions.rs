@@ -30,6 +30,10 @@ fn expr_no_struct(p: &mut Parser) {
 }
 
 pub(super) fn stmt(p: &mut Parser, semicolon: Semicolon) {
+    if p.eat(T![;]) {
+        return;
+    }
+
     let m = p.start();
     // test attr_on_expr_stmt
     // fn foo() {
@@ -143,12 +147,6 @@ pub(super) fn expr_block_contents(p: &mut Parser) {
         //     fn f() {};
         //     struct S {};
         // }
-
-        if p.at(T![;]) {
-            p.bump(T![;]);
-            continue;
-        }
-
         stmt(p, Semicolon::Required);
     }
 }

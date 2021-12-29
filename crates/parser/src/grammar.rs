@@ -98,11 +98,6 @@ pub(crate) mod entry {
             let m = p.start();
 
             while !p.at(EOF) {
-                if p.at(T![;]) {
-                    p.bump(T![;]);
-                    continue;
-                }
-
                 expressions::stmt(p, expressions::Semicolon::Optional);
             }
 

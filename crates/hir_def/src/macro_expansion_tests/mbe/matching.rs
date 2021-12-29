@@ -85,17 +85,21 @@ fn stmt_boundaries() {
     check(
         r#"
 macro_rules! m {
-    ($($s:stmt)*) => (stringify!($($s |)*))
+    ($($s:stmt)*) => (stringify!($($s |)*);)
 }
-// +errors
 m!(;;92;let x = 92; loop {};);
 "#,
         expect![[r#"
 macro_rules! m {
-    ($($s:stmt)*) => (stringify!($($s |)*))
+    ($($s:stmt)*) => (stringify!($($s |)*);)
 }
-/* error: expected Stmt *//* parse error: expected SEMICOLON */
-stringify!()
+stringify!(;
+|;
+|92|;
+|let x = 92|;
+|loop {}
+|;
+|);
 "#]],
     );
 }
