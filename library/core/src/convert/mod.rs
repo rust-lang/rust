@@ -485,9 +485,10 @@ pub trait TryFrom<T>: Sized {
 
 // As lifts over &
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, U: ?Sized> AsRef<U> for &T
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T: ?Sized, U: ?Sized> const AsRef<U> for &T
 where
-    T: AsRef<U>,
+    T: ~const AsRef<U>,
 {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -496,9 +497,10 @@ where
 
 // As lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T: ?Sized, U: ?Sized> const AsRef<U> for &mut T
 where
-    T: AsRef<U>,
+    T: ~const AsRef<U>,
 {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -515,9 +517,10 @@ where
 
 // AsMut lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T: ?Sized, U: ?Sized> const AsMut<U> for &mut T
 where
-    T: AsMut<U>,
+    T: ~const AsMut<U>,
 {
     fn as_mut(&mut self) -> &mut U {
         (*self).as_mut()
@@ -571,9 +574,10 @@ impl<T> const From<!> for T {
 
 // TryFrom implies TryInto
 #[stable(feature = "try_from", since = "1.34.0")]
-impl<T, U> TryInto<U> for T
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T, U> const TryInto<U> for T
 where
-    U: TryFrom<T>,
+    U: ~const TryFrom<T>,
 {
     type Error = U::Error;
 
@@ -585,9 +589,10 @@ where
 // Infallible conversions are semantically equivalent to fallible conversions
 // with an uninhabited error type.
 #[stable(feature = "try_from", since = "1.34.0")]
-impl<T, U> TryFrom<U> for T
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T, U> const TryFrom<U> for T
 where
-    U: Into<T>,
+    U: ~const Into<T>,
 {
     type Error = Infallible;
 
