@@ -71,9 +71,7 @@ pub fn call_kind<'tcx>(
         AssocItemContainer::TraitContainer(trait_did) => Some(trait_did),
     });
 
-    let fn_call = (!from_hir_call)
-        .then(|| parent)
-        .flatten()
+    let fn_call = parent
         .and_then(|p| tcx.lang_items().group(LangItemGroup::Fn).iter().find(|did| **did == p));
 
     let operator = (!from_hir_call)
