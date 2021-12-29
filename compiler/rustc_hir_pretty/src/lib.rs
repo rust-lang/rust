@@ -1948,7 +1948,6 @@ impl<'a> State<'a> {
             PatKind::Range(ref begin, ref end, ref end_kind) => {
                 if let Some(expr) = begin {
                     self.print_expr(expr);
-                    self.space();
                 }
                 match *end_kind {
                     RangeEnd::Included => self.word("..."),
