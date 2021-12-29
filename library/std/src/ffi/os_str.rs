@@ -267,7 +267,7 @@ impl OsString {
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `OsString`. The collection may reserve more space to avoid
+    /// in the given `OsString`. The string may reserve more space to avoid
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
     /// capacity is already sufficient.
