@@ -24,7 +24,7 @@ pub enum LangItemGroup {
     Fn,
 }
 
-const NUM_GROUPS: usize = 1;
+const NUM_GROUPS: usize = 2;
 
 macro_rules! expand_group {
     () => {
@@ -99,11 +99,12 @@ macro_rules! language_item_table {
             /// Construct an empty collection of lang items and no missing ones.
             pub fn new() -> Self {
                 fn init_none(_: LangItem) -> Option<DefId> { None }
+                const EMPTY: Vec<DefId> = Vec::new();
 
                 Self {
                     items: vec![$(init_none(LangItem::$variant)),*],
                     missing: Vec::new(),
-                    groups: [vec![]; NUM_GROUPS],
+                    groups: [EMPTY; NUM_GROUPS],
                 }
             }
 
