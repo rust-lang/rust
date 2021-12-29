@@ -2327,10 +2327,7 @@ impl<'a> State<'a> {
         arg_names: &[Ident],
     ) {
         self.ibox(INDENT_UNIT);
-        if !generic_params.is_empty() {
-            self.word("for");
-            self.print_generic_params(generic_params);
-        }
+        self.print_formal_generic_params(generic_params);
         let generics = hir::Generics {
             params: &[],
             where_clause: hir::WhereClause { predicates: &[], span: rustc_span::DUMMY_SP },

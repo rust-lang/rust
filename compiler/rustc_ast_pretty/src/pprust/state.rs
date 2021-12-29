@@ -2909,10 +2909,7 @@ impl<'a> State<'a> {
         generic_params: &[ast::GenericParam],
     ) {
         self.ibox(INDENT_UNIT);
-        if !generic_params.is_empty() {
-            self.word("for");
-            self.print_generic_params(generic_params);
-        }
+        self.print_formal_generic_params(generic_params);
         let generics = ast::Generics {
             params: Vec::new(),
             where_clause: ast::WhereClause {

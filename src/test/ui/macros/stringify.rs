@@ -803,7 +803,7 @@ fn test_ty() {
     assert_eq!(stringify_ty!(fn(x: u8)), "fn(x: u8)");
     #[rustfmt::skip]
     assert_eq!(stringify_ty!(for<> fn()), "fn()");
-    assert_eq!(stringify_ty!(for<'a> fn()), "for<'a>fn()"); // FIXME
+    assert_eq!(stringify_ty!(for<'a> fn()), "for<'a> fn()");
 
     // TyKind::Never
     assert_eq!(stringify_ty!(!), "!");
