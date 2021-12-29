@@ -44,7 +44,7 @@ pub enum CallKind<'tcx> {
         is_option_or_result: bool,
     },
     /// A call to `Fn(..)::call(..)`, desugared from `my_closure(a, b, c)`
-    FnCall(DefId),
+    FnCall { fn_trait_id: DefId, self_ty: Ty<'tcx> },
     /// A call to an operator trait, desuraged from operator syntax (e.g. `a << b`)
     Operator { self_arg: Option<Ident>, trait_id: DefId, self_ty: Ty<'tcx> },
     DerefCoercion {
@@ -85,7 +85,7 @@ pub fn call_kind<'tcx>(
     // an FnOnce call, an operator (e.g. `<<`), or a
     // deref coercion.
     let kind = if let Some(&trait_id) = fn_call {
-        Some(CallKind::FnCall(trait_id))
+        Some(CallKind::FnCall { fn_trait_id: trait_id, self_ty: method_substs.type_at(0) })
     } else if let Some(&trait_id) = operator {
         Some(CallKind::Operator { self_arg, trait_id, self_ty: method_substs.type_at(0) })
     } else if is_deref {
