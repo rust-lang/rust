@@ -372,7 +372,7 @@ pub fn provide(providers: &mut Providers) {
             tcx.arena
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
         },
-        crates: |tcx, ()| tcx.arena.alloc_slice(&CStore::from_tcx(tcx).crates_untracked()),
+        crates: |tcx, ()| tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).crates_untracked()),
 
         ..*providers
     };
@@ -415,16 +415,12 @@ impl CStore {
 
         let span = data.get_span(id.index, sess);
 
-        let attrs = data.get_item_attrs(id.index, sess).collect();
-
-        let ident = data.item_ident(id.index, sess);
-
         LoadedMacro::MacroDef(
             ast::Item {
-                ident,
+                ident: data.item_ident(id.index, sess),
                 id: ast::DUMMY_NODE_ID,
                 span,
-                attrs,
+                attrs: data.get_item_attrs(id.index, sess).collect(),
                 kind: ast::ItemKind::MacroDef(data.get_macro(id.index, sess)),
                 vis: ast::Visibility {
                     span: span.shrink_to_lo(),
@@ -453,10 +449,8 @@ impl CStore {
         self.get_crate_data(def.krate).def_kind(def.index)
     }
 
-    pub fn crates_untracked(&self) -> Vec<CrateNum> {
-        let mut result = vec![];
-        self.iter_crate_data(|cnum, _| result.push(cnum));
-        result
+    pub fn crates_untracked(&self) -> impl Iterator<Item = CrateNum> + '_ {
+        self.iter_crate_data().map(|(cnum, _)| cnum)
     }
 
     pub fn item_generics_num_lifetimes(&self, def_id: DefId, sess: &Session) -> usize {

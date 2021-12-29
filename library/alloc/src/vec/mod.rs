@@ -2043,7 +2043,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_spare_capacity, maybe_uninit_extra)]
+    /// #![feature(vec_spare_capacity)]
     ///
     /// // Allocate vector big enough for 10 elements.
     /// let mut v = Vec::with_capacity(10);
@@ -2102,7 +2102,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_split_at_spare, maybe_uninit_extra)]
+    /// #![feature(vec_split_at_spare)]
     ///
     /// let mut v = vec![1, 1, 2];
     ///

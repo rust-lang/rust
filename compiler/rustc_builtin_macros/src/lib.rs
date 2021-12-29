@@ -19,7 +19,6 @@ use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
 use rustc_span::symbol::sym;
 
-mod asm;
 mod assert;
 mod cfg;
 mod cfg_accessible;
@@ -42,6 +41,7 @@ mod test;
 mod trace_macros;
 mod util;
 
+pub mod asm;
 pub mod cmdline_attrs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;

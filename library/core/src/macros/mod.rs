@@ -1065,6 +1065,18 @@ pub(crate) mod builtin {
     /// let current_col = column!();
     /// println!("defined on column: {}", current_col);
     /// ```
+    ///
+    /// `column!` counts Unicode code points, not bytes or graphemes. As a result, the first two
+    /// invocations return the same value, but the third does not.
+    ///
+    /// ```
+    /// let a = ("foobar", column!()).1;
+    /// let b = ("人之初性本善", column!()).1;
+    /// let c = ("f̅o̅o̅b̅a̅r̅", column!()).1; // Uses combining overline (U+0305)
+    ///
+    /// assert_eq!(a, b);
+    /// assert_ne!(b, c);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]

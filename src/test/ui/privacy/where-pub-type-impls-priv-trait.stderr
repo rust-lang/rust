@@ -1,0 +1,68 @@
+error[E0445]: private trait `PrivTr` in public interface
+  --> $DIR/where-pub-type-impls-priv-trait.rs:19:1
+   |
+LL |   trait PrivTr {}
+   |   ------------ `PrivTr` declared as private
+...
+LL | / pub struct S
+LL | |
+LL | | where
+LL | |     PubTy: PrivTr
+LL | | {}
+   | |__^ can't leak private trait
+
+error[E0445]: private trait `PrivTr` in public interface
+  --> $DIR/where-pub-type-impls-priv-trait.rs:26:1
+   |
+LL |   trait PrivTr {}
+   |   ------------ `PrivTr` declared as private
+...
+LL | / pub enum E
+LL | |
+LL | | where
+LL | |     PubTy: PrivTr
+LL | | {}
+   | |__^ can't leak private trait
+
+error[E0445]: private trait `PrivTr` in public interface
+  --> $DIR/where-pub-type-impls-priv-trait.rs:33:1
+   |
+LL |   trait PrivTr {}
+   |   ------------ `PrivTr` declared as private
+...
+LL | / pub fn f()
+LL | |
+LL | | where
+LL | |     PubTy: PrivTr
+   | |_________________^ can't leak private trait
+
+error[E0445]: private trait `PrivTr` in public interface
+  --> $DIR/where-pub-type-impls-priv-trait.rs:40:1
+   |
+LL |   trait PrivTr {}
+   |   ------------ `PrivTr` declared as private
+...
+LL | / impl S
+LL | |
+LL | | where
+LL | |     PubTy: PrivTr
+...  |
+LL | |     {}
+LL | | }
+   | |_^ can't leak private trait
+
+error[E0445]: private trait `PrivTr` in public interface
+  --> $DIR/where-pub-type-impls-priv-trait.rs:45:5
+   |
+LL |   trait PrivTr {}
+   |   ------------ `PrivTr` declared as private
+...
+LL | /     pub fn f()
+LL | |
+LL | |     where
+LL | |         PubTy: PrivTr
+   | |_____________________^ can't leak private trait
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0445`.

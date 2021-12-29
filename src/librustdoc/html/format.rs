@@ -222,15 +222,16 @@ impl clean::Generics {
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
-            let real_params =
-                self.params.iter().filter(|p| !p.is_synthetic_type_param()).collect::<Vec<_>>();
-            if real_params.is_empty() {
+            let mut real_params =
+                self.params.iter().filter(|p| !p.is_synthetic_type_param()).peekable();
+            if real_params.peek().is_none() {
                 return Ok(());
             }
+
             if f.alternate() {
-                write!(f, "<{:#}>", comma_sep(real_params.iter().map(|g| g.print(cx))))
+                write!(f, "<{:#}>", comma_sep(real_params.map(|g| g.print(cx))))
             } else {
-                write!(f, "&lt;{}&gt;", comma_sep(real_params.iter().map(|g| g.print(cx))))
+                write!(f, "&lt;{}&gt;", comma_sep(real_params.map(|g| g.print(cx))))
             }
         })
     }

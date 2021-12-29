@@ -379,9 +379,8 @@ impl<T: ?Sized + HashStable<CTX>, CTX> HashStable<CTX> for ::std::sync::Arc<T> {
 
 impl<CTX> HashStable<CTX> for str {
     #[inline]
-    fn hash_stable(&self, _: &mut CTX, hasher: &mut StableHasher) {
-        self.len().hash(hasher);
-        self.as_bytes().hash(hasher);
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.as_bytes().hash_stable(ctx, hasher);
     }
 }
 
