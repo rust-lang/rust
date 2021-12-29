@@ -7,7 +7,8 @@ struct C {
 }
 
 #[allow()]
-const C: C =
+const C: C
+    =
     C{
       #[cfg(debug_assertions)]
       field: 0,

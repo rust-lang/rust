@@ -382,13 +382,13 @@ fn test_item() {
         stringify_item!(
             static S: ();
         ),
-        "static S: () ;", // FIXME
+        "static S: ();",
     );
     assert_eq!(
         stringify_item!(
             static mut S: ();
         ),
-        "static mut S: () ;",
+        "static mut S: ();",
     );
 
     // ItemKind::Const
@@ -402,7 +402,7 @@ fn test_item() {
         stringify_item!(
             const S: ();
         ),
-        "const S: () ;", // FIXME
+        "const S: ();",
     );
 
     // ItemKind::Fn
