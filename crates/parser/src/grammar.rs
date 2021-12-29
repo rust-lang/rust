@@ -59,7 +59,7 @@ pub(crate) mod entry {
         }
 
         pub(crate) fn stmt(p: &mut Parser) {
-            expressions::stmt(p, expressions::StmtWithSemi::No, true);
+            expressions::stmt(p, expressions::StmtWithSemi::No);
         }
 
         pub(crate) fn pat(p: &mut Parser) {
@@ -103,7 +103,7 @@ pub(crate) mod entry {
                     continue;
                 }
 
-                expressions::stmt(p, expressions::StmtWithSemi::Optional, true);
+                expressions::stmt(p, expressions::StmtWithSemi::Optional);
             }
 
             m.complete(p, MACRO_STMTS);

@@ -5,6 +5,7 @@ use super::*;
 pub(crate) use self::atom::{block_expr, match_arm_list};
 pub(super) use self::atom::{literal, LITERAL_FIRST};
 
+#[derive(PartialEq, Eq)]
 pub(super) enum StmtWithSemi {
     Yes,
     No,
@@ -28,7 +29,7 @@ fn expr_no_struct(p: &mut Parser) {
     expr_bp(p, None, r, 1);
 }
 
-pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
+pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
     let m = p.start();
     // test attr_on_expr_stmt
     // fn foo() {
@@ -52,7 +53,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
     };
 
     if let Some((cm, blocklike)) = expr_stmt(p, Some(m)) {
-        if !(p.at(T!['}']) || (prefer_expr && p.at(EOF))) {
+        if !(p.at(T!['}']) || (with_semi != StmtWithSemi::Yes && p.at(EOF))) {
             // test no_semi_after_block
             // fn foo() {
             //     if true {}
@@ -149,7 +150,7 @@ pub(super) fn expr_block_contents(p: &mut Parser) {
             continue;
         }
 
-        stmt(p, StmtWithSemi::Yes, false);
+        stmt(p, StmtWithSemi::Yes);
     }
 }
 
