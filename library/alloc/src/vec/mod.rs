@@ -1755,7 +1755,7 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-    /// Moves all the elements of `other` into `Self`, leaving `other` empty.
+    /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
     /// # Panics
     ///
@@ -1780,7 +1780,7 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-    /// Appends elements to `Self` from other buffer.
+    /// Appends elements to `self` from other buffer.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     unsafe fn append_elements(&mut self, other: *const [T]) {
