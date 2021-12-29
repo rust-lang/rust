@@ -217,9 +217,13 @@ impl Lit {
             }
             token::Literal(lit) => lit,
             token::Interpolated(ref nt) => {
-                if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt {
+                if let token::NtExpr(expr) = &**nt {
                     if let ast::ExprKind::Lit(lit) = &expr.kind {
                         return Ok(lit.clone());
+                    }
+                } else if let token::NtLiteral(signed) = &**nt {
+                    if signed.neg.is_none() {
+                        return Ok((*signed.lit).clone());
                     }
                 }
                 return Err(LitError::NotLiteral);

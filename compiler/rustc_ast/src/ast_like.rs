@@ -44,7 +44,7 @@ impl AstLike for crate::token::Nonterminal {
         match self {
             Nonterminal::NtItem(item) => item.attrs(),
             Nonterminal::NtStmt(stmt) => stmt.attrs(),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.attrs(),
+            Nonterminal::NtExpr(expr) => expr.attrs(),
             Nonterminal::NtPat(_)
             | Nonterminal::NtTy(_)
             | Nonterminal::NtMeta(_)
@@ -53,14 +53,15 @@ impl AstLike for crate::token::Nonterminal {
             | Nonterminal::NtTT(_)
             | Nonterminal::NtBlock(_)
             | Nonterminal::NtIdent(..)
-            | Nonterminal::NtLifetime(_) => &[],
+            | Nonterminal::NtLifetime(_)
+            | Nonterminal::NtLiteral(_) => &[],
         }
     }
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         match self {
             Nonterminal::NtItem(item) => item.visit_attrs(f),
             Nonterminal::NtStmt(stmt) => stmt.visit_attrs(f),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.visit_attrs(f),
+            Nonterminal::NtExpr(expr) => expr.visit_attrs(f),
             Nonterminal::NtPat(_)
             | Nonterminal::NtTy(_)
             | Nonterminal::NtMeta(_)
@@ -69,21 +70,25 @@ impl AstLike for crate::token::Nonterminal {
             | Nonterminal::NtTT(_)
             | Nonterminal::NtBlock(_)
             | Nonterminal::NtIdent(..)
-            | Nonterminal::NtLifetime(_) => {}
+            | Nonterminal::NtLifetime(_)
+            | Nonterminal::NtLiteral(_) => {}
         }
     }
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
         match self {
             Nonterminal::NtItem(item) => item.tokens_mut(),
             Nonterminal::NtStmt(stmt) => stmt.tokens_mut(),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens_mut(),
+            Nonterminal::NtExpr(expr) => expr.tokens_mut(),
             Nonterminal::NtPat(pat) => pat.tokens_mut(),
             Nonterminal::NtTy(ty) => ty.tokens_mut(),
             Nonterminal::NtMeta(attr_item) => attr_item.tokens_mut(),
             Nonterminal::NtPath(path) => path.tokens_mut(),
             Nonterminal::NtVis(vis) => vis.tokens_mut(),
             Nonterminal::NtBlock(block) => block.tokens_mut(),
-            Nonterminal::NtIdent(..) | Nonterminal::NtLifetime(..) | Nonterminal::NtTT(..) => None,
+            Nonterminal::NtIdent(..)
+            | Nonterminal::NtLifetime(..)
+            | Nonterminal::NtLiteral(_)
+            | Nonterminal::NtTT(..) => None,
         }
     }
 }

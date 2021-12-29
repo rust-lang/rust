@@ -10,7 +10,7 @@
 extern crate tracing;
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{self, AttributesData, CanSynthesizeMissingTokens, LazyTokenStream};
 use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
@@ -288,8 +288,15 @@ pub fn nt_to_tokenstream(
         Nonterminal::NtPath(ref path) => convert_tokens(path.tokens.as_ref()),
         Nonterminal::NtVis(ref vis) => convert_tokens(vis.tokens.as_ref()),
         Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
-        Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
-            prepend_attrs(&expr.attrs, expr.tokens.as_ref())
+        Nonterminal::NtExpr(ref expr) => prepend_attrs(&expr.attrs, expr.tokens.as_ref()),
+        Nonterminal::NtLiteral(ref signed) => {
+            let literal_tt = tokenstream::TokenTree::token(token::Literal(signed.lit.token), signed.lit.span);
+            if let Some(neg_span) = signed.neg {
+                let neg_tt = tokenstream::TokenTree::token(token::BinOp(BinOpToken::Minus), neg_span);
+                Some(TokenStream::new(vec![(neg_tt, Spacing::Alone), (literal_tt, Spacing::Alone)]))
+            } else {
+                Some(literal_tt.into())
+            }
         }
     };
 

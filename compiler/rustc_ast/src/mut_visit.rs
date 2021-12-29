@@ -781,7 +781,13 @@ pub fn visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut 
         token::NtTy(ty) => vis.visit_ty(ty),
         token::NtIdent(ident, _is_raw) => vis.visit_ident(ident),
         token::NtLifetime(ident) => vis.visit_ident(ident),
-        token::NtLiteral(expr) => vis.visit_expr(expr),
+        token::NtLiteral(signed) => {
+            if let Some(neg_span) = &mut signed.neg {
+                vis.visit_span(neg_span);
+            }
+            vis.visit_span(&mut signed.lit.span);
+            vis.visit_span(&mut signed.span);
+        }
         token::NtMeta(item) => {
             let AttrItem { path, args, tokens } = item.deref_mut();
             vis.visit_path(path);

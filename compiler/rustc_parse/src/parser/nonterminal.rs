@@ -1,9 +1,10 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Nonterminal, NonterminalKind, Token};
-use rustc_ast::AstLike;
+use rustc_ast::token::{self, Nonterminal, NonterminalKind, SignedLiteral, Token};
+use rustc_ast::{AstLike, ExprKind, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
+use rustc_span::BytePos;
 
 use crate::parser::pat::{RecoverColon, RecoverComma};
 use crate::parser::{FollowedByType, ForceCollect, Parser, PathStyle};
@@ -133,10 +134,25 @@ impl<'a> Parser<'a> {
 
             NonterminalKind::Expr => token::NtExpr(self.parse_expr_force_collect()?),
             NonterminalKind::Literal => {
-                // The `:literal` matcher does not support attributes
-                token::NtLiteral(
-                    self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?,
-                )
+                let mut expr = self.parse_literal_maybe_minus()?.into_inner();
+                let span = expr.span;
+
+                let mut neg = None;
+                if let ExprKind::Unary(UnOp::Neg, inner) = expr.kind {
+                    // ast::Expr does not store an individual Span of the minus sign,
+                    // only the Span of the whole expr, but we can reconstruct it.
+                    let span_data = expr.span.data();
+                    neg = Some(span_data.with_hi(BytePos(span_data.lo.0 + 1)));
+                    expr = inner.into_inner();
+                }
+
+                let lit = if let ExprKind::Lit(lit) = expr.kind {
+                    P(lit)
+                } else {
+                    return Err(self.struct_span_err(expr.span, "expected a literal"));
+                };
+
+                token::NtLiteral(SignedLiteral { neg, lit, span })
             }
 
             NonterminalKind::Ty => {

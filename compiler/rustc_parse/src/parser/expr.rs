@@ -8,7 +8,7 @@ use crate::maybe_recover_from_interpolated_ty_qpath;
 
 use ast::token::DelimToken;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Token, TokenKind};
+use rustc_ast::token::{self, SignedLiteral, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::LitError;
@@ -35,8 +35,13 @@ macro_rules! maybe_whole_expr {
     ($p:expr) => {
         if let token::Interpolated(nt) = &$p.token.kind {
             match &**nt {
-                token::NtExpr(e) | token::NtLiteral(e) => {
+                token::NtExpr(e) => {
                     let e = e.clone();
+                    $p.bump();
+                    return Ok(e);
+                }
+                token::NtLiteral(lit) => {
+                    let e = signed_lit_to_expr(lit.clone());
                     $p.bump();
                     return Ok(e);
                 }
@@ -1609,12 +1614,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
         self.parse_opt_lit().ok_or_else(|| {
             if let token::Interpolated(inner) = &self.token.kind {
-                let expr = match inner.as_ref() {
-                    token::NtExpr(expr) => Some(expr),
-                    token::NtLiteral(expr) => Some(expr),
-                    _ => None,
-                };
-                if let Some(expr) = expr {
+                if let token::NtExpr(expr) = inner.as_ref() {
                     if matches!(expr.kind, ExprKind::Err) {
                         self.diagnostic()
                             .delay_span_bug(self.token.span, &"invalid interpolated expression");
@@ -1800,17 +1800,10 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let minus_present = self.eat(&token::BinOp(token::Minus));
         let lit = self.parse_lit()?;
-        let expr = self.mk_expr(lit.span, ExprKind::Lit(lit), AttrVec::new());
+        let (neg, span) =
+            if minus_present { (Some(lo), lo.to(self.prev_token.span)) } else { (None, lit.span) };
 
-        if minus_present {
-            Ok(self.mk_expr(
-                lo.to(self.prev_token.span),
-                self.mk_unary(UnOp::Neg, expr),
-                AttrVec::new(),
-            ))
-        } else {
-            Ok(expr)
-        }
+        Ok(signed_lit_to_expr(SignedLiteral { neg, lit: P(lit), span }))
     }
 
     fn is_array_like_block(&mut self) -> bool {
@@ -2914,5 +2907,26 @@ impl<'a> Parser<'a> {
             };
             Ok((res, trailing))
         })
+    }
+}
+
+fn signed_lit_to_expr(signed: SignedLiteral) -> P<Expr> {
+    let expr = P(Expr {
+        kind: ExprKind::Lit((*signed.lit).clone()),
+        span: signed.lit.span,
+        attrs: AttrVec::new(),
+        id: DUMMY_NODE_ID,
+        tokens: None,
+    });
+    if let Some(neg_span) = signed.neg {
+        P(Expr {
+            kind: ExprKind::Unary(UnOp::Neg, expr),
+            span: neg_span.to(signed.lit.span),
+            attrs: AttrVec::new(),
+            id: DUMMY_NODE_ID,
+            tokens: None,
+        })
+    } else {
+        expr
     }
 }

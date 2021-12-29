@@ -679,12 +679,21 @@ pub enum Nonterminal {
     NtTy(P<ast::Ty>),
     NtIdent(Ident, /* is_raw */ bool),
     NtLifetime(Ident),
-    NtLiteral(P<ast::Expr>),
+    NtLiteral(SignedLiteral),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::AttrItem>),
     NtPath(ast::Path),
     NtVis(ast::Visibility),
     NtTT(TokenTree),
+}
+
+#[derive(Clone, Encodable, Decodable)]
+pub struct SignedLiteral {
+    pub neg: Option<Span>,
+    pub lit: P<ast::Lit>,
+    // If neg is None, then identical to lit.span.
+    // If neg is Some, then neg.to(lit.span).
+    pub span: Span,
 }
 
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -776,9 +785,10 @@ impl Nonterminal {
             NtBlock(block) => block.span,
             NtStmt(stmt) => stmt.span,
             NtPat(pat) => pat.span,
-            NtExpr(expr) | NtLiteral(expr) => expr.span,
+            NtExpr(expr) => expr.span,
             NtTy(ty) => ty.span,
             NtIdent(ident, _) | NtLifetime(ident) => ident.span,
+            NtLiteral(lit) => lit.span,
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
             NtVis(vis) => vis.span,
