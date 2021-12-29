@@ -444,8 +444,8 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
         .into_iter()
         .map(|x| {
             let testfn = match x.testfn {
-                DynBenchFn(bench) => DynTestFn(Box::new(move || {
-                    bench::run_once(|b| __rust_begin_short_backtrace(|| bench.run(b)))
+                DynBenchFn(benchfn) => DynTestFn(Box::new(move || {
+                    bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
                 })),
                 StaticBenchFn(benchfn) => DynTestFn(Box::new(move || {
                     bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
@@ -544,11 +544,9 @@ pub fn run_test(
         TestRunOpts { strategy, nocapture: opts.nocapture, concurrency, time: opts.time_options };
 
     match testfn {
-        DynBenchFn(bencher) => {
+        DynBenchFn(benchfn) => {
             // Benchmarks aren't expected to panic, so we run them all in-process.
-            crate::bench::benchmark(id, desc, monitor_ch, opts.nocapture, |harness| {
-                bencher.run(harness)
-            });
+            crate::bench::benchmark(id, desc, monitor_ch, opts.nocapture, benchfn);
             None
         }
         StaticBenchFn(benchfn) => {
