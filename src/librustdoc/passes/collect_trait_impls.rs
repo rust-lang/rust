@@ -6,11 +6,11 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::visit::DocVisitor;
 
+use crate::formats::cache::Cache;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
-use crate::formats::cache::Cache;
 
 crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
     name: "collect-trait-impls",
@@ -56,7 +56,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
         }
     }
 
-    let mut cleaner = BadImplStripper { prims, items: crate_items, cache:&cx.cache };
+    let mut cleaner = BadImplStripper { prims, items: crate_items, cache: &cx.cache };
     let mut type_did_to_deref_target: FxHashMap<DefId, &Type> = FxHashMap::default();
 
     // Follow all `Deref` targets of included items and recursively add them as valid
@@ -209,7 +209,7 @@ impl DocVisitor for ItemCollector {
 struct BadImplStripper<'a> {
     prims: FxHashSet<PrimitiveType>,
     items: FxHashSet<ItemId>,
-    cache: &'a Cache
+    cache: &'a Cache,
 }
 
 impl<'a> BadImplStripper<'a> {

@@ -8,7 +8,6 @@ use crate::core::DocContext;
 use crate::fold::{strip_item, DocFolder};
 use crate::passes::{ImplStripper, Pass};
 
-
 crate const STRIP_HIDDEN: Pass = Pass {
     name: "strip-hidden",
     run: strip_hidden,
@@ -26,7 +25,7 @@ crate fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Cr
     };
 
     // strip all impls referencing stripped items
-    let mut stripper = ImplStripper { retained: &retained, cache: &cx.cache};
+    let mut stripper = ImplStripper { retained: &retained, cache: &cx.cache };
     stripper.fold_crate(krate)
 }
 
