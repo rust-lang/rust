@@ -196,8 +196,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         .map(|n| format!("`{}`", n))
                         .unwrap_or_else(|| "value".to_owned());
                     match kind {
-                        CallKind::FnCall(once_did)
-                            if Some(once_did) == self.infcx.tcx.lang_items().fn_once_trait() =>
+                        CallKind::FnCall { fn_trait_id, .. }
+                            if Some(fn_trait_id) == self.infcx.tcx.lang_items().fn_once_trait() =>
                         {
                             err.span_label(
                                 fn_call_span,
