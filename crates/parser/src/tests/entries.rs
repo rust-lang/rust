@@ -1,4 +1,4 @@
-use crate::{LexedStr, PrefixEntryPoint, StrStep};
+use crate::{LexedStr, PrefixEntryPoint, Step};
 
 #[test]
 fn vis() {
@@ -30,12 +30,25 @@ fn stmt() {
 fn check_prefix(entry: PrefixEntryPoint, input: &str, prefix: &str) {
     let lexed = LexedStr::new(input);
     let input = lexed.to_input();
-    let output = entry.parse(&input);
 
-    let mut buf = String::new();
-    lexed.intersperse_trivia(&output, &mut |step| match step {
-        StrStep::Token { kind: _, text } => buf.push_str(text),
-        _ => (),
-    });
-    assert_eq!(buf.trim(), prefix)
+    let mut n_tokens = 0;
+    for step in entry.parse(&input).iter() {
+        match step {
+            Step::Token { n_input_tokens, .. } => n_tokens += n_input_tokens as usize,
+            Step::Enter { .. } | Step::Exit | Step::Error { .. } => (),
+        }
+    }
+
+    let mut i = 0;
+    loop {
+        if n_tokens == 0 {
+            break;
+        }
+        if !lexed.kind(i).is_trivia() {
+            n_tokens -= 1;
+        }
+        i += 1;
+    }
+    let buf = &lexed.as_str()[..lexed.text_start(i)];
+    assert_eq!(buf, prefix);
 }

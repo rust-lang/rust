@@ -50,6 +50,7 @@ impl<'a> LexedStr<'a> {
         res
     }
 
+    /// NB: only valid to call with Output from Reparser/TopLevelEntry.
     pub fn intersperse_trivia(
         &self,
         output: &crate::Output,
@@ -76,7 +77,7 @@ impl<'a> LexedStr<'a> {
                 builder.eat_trivias();
                 (builder.sink)(StrStep::Exit);
             }
-            State::PendingEnter | State::Normal => (),
+            State::PendingEnter | State::Normal => unreachable!(),
         }
 
         let is_eof = builder.pos == builder.lexed.len();
@@ -100,8 +101,9 @@ enum State {
 impl Builder<'_, '_> {
     fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
         match mem::replace(&mut self.state, State::Normal) {
+            State::PendingEnter => unreachable!(),
             State::PendingExit => (self.sink)(StrStep::Exit),
-            State::PendingEnter | State::Normal => (),
+            State::Normal => (),
         }
         self.eat_trivias();
         self.do_token(kind, n_tokens as usize);
