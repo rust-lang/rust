@@ -45,4 +45,4 @@ mac! {
   }]
 #[rustc_dummy =
   "aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa"]
-fn main() { }
+fn main() {}

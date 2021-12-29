@@ -387,23 +387,23 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.print_string(sym.as_str(), style);
     }
 
-    fn print_inner_attributes(&mut self, attrs: &[ast::Attribute]) {
+    fn print_inner_attributes(&mut self, attrs: &[ast::Attribute]) -> bool {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
     }
 
-    fn print_inner_attributes_no_trailing_hardbreak(&mut self, attrs: &[ast::Attribute]) {
+    fn print_inner_attributes_no_trailing_hardbreak(&mut self, attrs: &[ast::Attribute]) -> bool {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, false)
     }
 
-    fn print_outer_attributes(&mut self, attrs: &[ast::Attribute]) {
+    fn print_outer_attributes(&mut self, attrs: &[ast::Attribute]) -> bool {
         self.print_either_attributes(attrs, ast::AttrStyle::Outer, false, true)
     }
 
-    fn print_inner_attributes_inline(&mut self, attrs: &[ast::Attribute]) {
+    fn print_inner_attributes_inline(&mut self, attrs: &[ast::Attribute]) -> bool {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, true, true)
     }
 
-    fn print_outer_attributes_inline(&mut self, attrs: &[ast::Attribute]) {
+    fn print_outer_attributes_inline(&mut self, attrs: &[ast::Attribute]) -> bool {
         self.print_either_attributes(attrs, ast::AttrStyle::Outer, true, true)
     }
 
@@ -413,20 +413,21 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         kind: ast::AttrStyle,
         is_inline: bool,
         trailing_hardbreak: bool,
-    ) {
-        let mut count = 0;
+    ) -> bool {
+        let mut printed = false;
         for attr in attrs {
             if attr.style == kind {
                 self.print_attribute_inline(attr, is_inline);
                 if is_inline {
                     self.nbsp();
                 }
-                count += 1;
+                printed = true;
             }
         }
-        if count > 0 && trailing_hardbreak && !is_inline {
+        if printed && trailing_hardbreak && !is_inline {
             self.hardbreak_if_not_bol();
         }
+        printed
     }
 
     fn print_attribute(&mut self, attr: &ast::Attribute) {
@@ -1646,7 +1647,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Block(blk));
         self.bopen();
 
-        self.print_inner_attributes(attrs);
+        let has_attrs = self.print_inner_attributes(attrs);
 
         for (i, st) in blk.stmts.iter().enumerate() {
             match st.kind {
@@ -1660,7 +1661,7 @@ impl<'a> State<'a> {
             }
         }
 
-        let empty = attrs.is_empty() && blk.stmts.is_empty();
+        let empty = !has_attrs && blk.stmts.is_empty();
         self.bclose_maybe_open(blk.span, empty, close_box);
         self.ann.post(self, AnnNode::Block(blk))
     }

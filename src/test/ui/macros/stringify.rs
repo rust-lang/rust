@@ -235,7 +235,7 @@ fn test_expr() {
             #[attr]
             {}
         ),
-        "#[attr] { }", // FIXME
+        "#[attr] {}",
     );
     assert_eq!(
         stringify_expr!(
