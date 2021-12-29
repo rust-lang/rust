@@ -71,7 +71,7 @@ pub fn find_builtin_derive(
 
 struct BasicAdtInfo {
     name: tt::Ident,
-    type_params: usize,
+    type_or_const_params: usize,
 }
 
 fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
@@ -104,8 +104,9 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
         .token_by_range(name.syntax().text_range())
         .unwrap_or_else(|| TokenId::unspecified());
     let name_token = tt::Ident { id: name_token_id, text: name.text().into() };
-    let type_params = params.map_or(0, |type_param_list| type_param_list.type_params().count());
-    Ok(BasicAdtInfo { name: name_token, type_params })
+    let type_or_const_params =
+        params.map_or(0, |type_param_list| type_param_list.type_or_const_params().count());
+    Ok(BasicAdtInfo { name: name_token, type_or_const_params })
 }
 
 fn make_type_args(n: usize, bound: Vec<tt::TokenTree>) -> Vec<tt::TokenTree> {
@@ -157,8 +158,8 @@ fn expand_simple_derive(tt: &tt::Subtree, trait_path: tt::Subtree) -> ExpandResu
     let name = info.name;
     let trait_path_clone = trait_path.token_trees.clone();
     let bound = (quote! { : ##trait_path_clone }).token_trees;
-    let type_params = make_type_args(info.type_params, bound);
-    let type_args = make_type_args(info.type_params, Vec::new());
+    let type_params = make_type_args(info.type_or_const_params, bound);
+    let type_args = make_type_args(info.type_or_const_params, Vec::new());
     let trait_path = trait_path.token_trees;
     let expanded = quote! {
         impl ##type_params ##trait_path for #name ##type_args {}

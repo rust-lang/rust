@@ -2914,6 +2914,27 @@ fn main() {
 }
 
 #[test]
+fn const_generic_order() {
+    check(
+        r#"
+struct Foo;
+struct S$0T<const C: usize = 1, T = Foo>(T);
+"#,
+        expect![[r#"
+            *ST*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            struct ST<const C: usize, T = Foo>
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_self_param_shows_type() {
     check(
         r#"

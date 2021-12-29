@@ -6,7 +6,7 @@ use std::sync::Arc;
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
     db::DefDatabase, expr::ExprId, BlockId, ConstParamId, DefWithBodyId, FunctionId, GenericDefId,
-    ImplId, LifetimeParamId, LocalFieldId, TypeParamId, VariantId,
+    ImplId, LifetimeParamId, LocalFieldId, TypeOrConstParamId, VariantId,
 };
 use la_arena::ArenaMap;
 
@@ -61,7 +61,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn generic_predicates_for_param(
         &self,
         def: GenericDefId,
-        param_id: TypeParamId,
+        param_id: TypeOrConstParamId,
         assoc_name: Option<Name>,
     ) -> Arc<[Binders<QuantifiedWhereClause>]>;
 
@@ -94,11 +94,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_callable_def(&self, callable_def: CallableDefId) -> InternedCallableDefId;
     #[salsa::interned]
-    fn intern_type_param_id(&self, param_id: TypeParamId) -> InternedTypeParamId;
+    fn intern_type_or_const_param_id(
+        &self,
+        param_id: TypeOrConstParamId,
+    ) -> InternedTypeOrConstParamId;
     #[salsa::interned]
     fn intern_lifetime_param_id(&self, param_id: LifetimeParamId) -> InternedLifetimeParamId;
-    #[salsa::interned]
-    fn intern_const_param_id(&self, param_id: ConstParamId) -> InternedConstParamId;
     #[salsa::interned]
     fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
     #[salsa::interned]
@@ -186,8 +187,8 @@ fn hir_database_is_object_safe() {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct InternedTypeParamId(salsa::InternId);
-impl_intern_key!(InternedTypeParamId);
+pub struct InternedTypeOrConstParamId(salsa::InternId);
+impl_intern_key!(InternedTypeOrConstParamId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedLifetimeParamId(salsa::InternId);

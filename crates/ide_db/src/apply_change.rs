@@ -129,12 +129,12 @@ impl RootDatabase {
             hir::db::FnDefDatumQuery
             hir::db::ReturnTypeImplTraitsQuery
             hir::db::InternCallableDefQuery
-            hir::db::InternTypeParamIdQuery
+            hir::db::InternTypeOrConstParamIdQuery
             hir::db::InternImplTraitIdQuery
             hir::db::InternClosureQuery
             hir::db::AssociatedTyValueQuery
             hir::db::TraitSolveQueryQuery
-            hir::db::InternTypeParamIdQuery
+            hir::db::InternTypeOrConstParamIdQuery
 
             // SymbolsDatabase
             crate::symbol_index::ModuleSymbolsQuery

@@ -50,7 +50,7 @@ use hir_def::{
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
     FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
-    TypeParamId, UnionId,
+    TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{name::name, MacroCallKind, MacroDefId, MacroDefKind};
 use hir_ty::{
@@ -71,7 +71,7 @@ use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
-use stdx::{format_to, impl_from};
+use stdx::{format_to, impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNodePtr, T,
@@ -2007,11 +2007,13 @@ impl_from!(
 impl GenericDef {
     pub fn params(self, db: &dyn HirDatabase) -> Vec<GenericParam> {
         let generics = db.generic_params(self.into());
-        let ty_params = generics
-            .types
-            .iter()
-            .map(|(local_id, _)| TypeParam { id: TypeParamId { parent: self.into(), local_id } })
-            .map(GenericParam::TypeParam);
+        let ty_params = generics.types.iter().map(|(local_id, _)| {
+            let toc = TypeOrConstParam { id: TypeOrConstParamId { parent: self.into(), local_id } };
+            match toc.split(db) {
+                Either::Left(x) => GenericParam::ConstParam(x),
+                Either::Right(x) => GenericParam::TypeParam(x),
+            }
+        });
         let lt_params = generics
             .lifetimes
             .iter()
@@ -2019,20 +2021,17 @@ impl GenericDef {
                 id: LifetimeParamId { parent: self.into(), local_id },
             })
             .map(GenericParam::LifetimeParam);
-        let const_params = generics
-            .consts
-            .iter()
-            .map(|(local_id, _)| ConstParam { id: ConstParamId { parent: self.into(), local_id } })
-            .map(GenericParam::ConstParam);
-        ty_params.chain(lt_params).chain(const_params).collect()
+        ty_params.chain(lt_params).collect()
     }
 
-    pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeParam> {
+    pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeOrConstParam> {
         let generics = db.generic_params(self.into());
         generics
             .types
             .iter()
-            .map(|(local_id, _)| TypeParam { id: TypeParamId { parent: self.into(), local_id } })
+            .map(|(local_id, _)| TypeOrConstParam {
+                id: TypeOrConstParamId { parent: self.into(), local_id },
+            })
             .collect()
     }
 }
@@ -2221,25 +2220,25 @@ impl Label {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum GenericParam {
     TypeParam(TypeParam),
-    LifetimeParam(LifetimeParam),
     ConstParam(ConstParam),
+    LifetimeParam(LifetimeParam),
 }
-impl_from!(TypeParam, LifetimeParam, ConstParam for GenericParam);
+impl_from!(TypeParam, ConstParam, LifetimeParam for GenericParam);
 
 impl GenericParam {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         match self {
             GenericParam::TypeParam(it) => it.module(db),
-            GenericParam::LifetimeParam(it) => it.module(db),
             GenericParam::ConstParam(it) => it.module(db),
+            GenericParam::LifetimeParam(it) => it.module(db),
         }
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         match self {
             GenericParam::TypeParam(it) => it.name(db),
-            GenericParam::LifetimeParam(it) => it.name(db),
             GenericParam::ConstParam(it) => it.name(db),
+            GenericParam::LifetimeParam(it) => it.name(db),
         }
     }
 }
@@ -2250,19 +2249,23 @@ pub struct TypeParam {
 }
 
 impl TypeParam {
+    pub fn merge(self) -> TypeOrConstParam {
+        TypeOrConstParam { id: self.id.into() }
+    }
+
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        let params = db.generic_params(self.id.parent);
-        params.types[self.id.local_id].name.clone().unwrap_or_else(Name::missing)
+        self.merge().name(db)
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.id.parent.module(db.upcast()).into()
+        self.id.parent().module(db.upcast()).into()
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        let resolver = self.id.parent.resolver(db.upcast());
-        let krate = self.id.parent.module(db.upcast()).krate();
-        let ty = TyKind::Placeholder(hir_ty::to_placeholder_idx(db, self.id)).intern(Interner);
+        let resolver = self.id.parent().resolver(db.upcast());
+        let krate = self.id.parent().module(db.upcast()).krate();
+        let ty =
+            TyKind::Placeholder(hir_ty::to_placeholder_idx(db, self.id.into())).intern(Interner);
         Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 
@@ -2270,7 +2273,7 @@ impl TypeParam {
     /// parameter, not additional bounds that might be added e.g. by a method if
     /// the parameter comes from an impl!
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
-        db.generic_predicates_for_param(self.id.parent, self.id, None)
+        db.generic_predicates_for_param(self.id.parent(), self.id.into(), None)
             .iter()
             .filter_map(|pred| match &pred.skip_binders().skip_binders() {
                 hir_ty::WhereClause::Implemented(trait_ref) => {
@@ -2282,12 +2285,12 @@ impl TypeParam {
     }
 
     pub fn default(self, db: &dyn HirDatabase) -> Option<Type> {
-        let params = db.generic_defaults(self.id.parent);
-        let local_idx = hir_ty::param_idx(db, self.id)?;
-        let resolver = self.id.parent.resolver(db.upcast());
-        let krate = self.id.parent.module(db.upcast()).krate();
+        let params = db.generic_defaults(self.id.parent());
+        let local_idx = hir_ty::param_idx(db, self.id.into())?;
+        let resolver = self.id.parent().resolver(db.upcast());
+        let krate = self.id.parent().module(db.upcast()).krate();
         let ty = params.get(local_idx)?.clone();
-        let subst = TyBuilder::type_params_subst(db, self.id.parent);
+        let subst = TyBuilder::type_params_subst(db, self.id.parent());
         let ty = ty.substitute(Interner, &subst_prefix(&subst, local_idx));
         Some(Type::new_with_resolver_inner(db, krate, &resolver, ty))
     }
@@ -2319,9 +2322,48 @@ pub struct ConstParam {
 }
 
 impl ConstParam {
+    pub fn merge(self) -> TypeOrConstParam {
+        TypeOrConstParam { id: self.id.into() }
+    }
+
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        let params = db.generic_params(self.id.parent());
+        match params.types[self.id.local_id()].name() {
+            Some(x) => x.clone(),
+            None => {
+                never!();
+                Name::missing()
+            }
+        }
+    }
+
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        self.id.parent().module(db.upcast()).into()
+    }
+
+    pub fn parent(self, _db: &dyn HirDatabase) -> GenericDef {
+        self.id.parent().into()
+    }
+
+    pub fn ty(self, db: &dyn HirDatabase) -> Type {
+        let def = self.id.parent();
+        let krate = def.module(db.upcast()).krate();
+        Type::new(db, krate, def, db.const_param_ty(self.id))
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct TypeOrConstParam {
+    pub(crate) id: TypeOrConstParamId,
+}
+
+impl TypeOrConstParam {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent);
-        params.consts[self.id.local_id].name.clone()
+        match params.types[self.id.local_id].name() {
+            Some(n) => n.clone(),
+            _ => Name::missing(),
+        }
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -2332,10 +2374,23 @@ impl ConstParam {
         self.id.parent.into()
     }
 
+    pub fn split(self, db: &dyn HirDatabase) -> Either<ConstParam, TypeParam> {
+        let params = db.generic_params(self.id.parent);
+        match &params.types[self.id.local_id] {
+            hir_def::generics::TypeOrConstParamData::TypeParamData(_) => {
+                Either::Right(TypeParam { id: self.id.into() })
+            }
+            hir_def::generics::TypeOrConstParamData::ConstParamData(_) => {
+                Either::Left(ConstParam { id: self.id.into() })
+            }
+        }
+    }
+
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
-        let def = self.id.parent;
-        let krate = def.module(db.upcast()).krate();
-        Type::new(db, krate, def, db.const_param_ty(self.id))
+        match self.split(db) {
+            Either::Left(x) => x.ty(db),
+            Either::Right(x) => x.ty(db),
+        }
     }
 }
 

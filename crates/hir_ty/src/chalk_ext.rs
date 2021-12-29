@@ -3,6 +3,7 @@
 use chalk_ir::{FloatTy, IntTy, Mutability, Scalar, UintTy};
 use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType, BuiltinUint},
+    generics::TypeOrConstParamData,
     type_ref::Rawness,
     FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
 };
@@ -237,27 +238,30 @@ impl TyExt for Ty {
                 let id = from_placeholder_idx(db, *idx);
                 let generic_params = db.generic_params(id.parent);
                 let param_data = &generic_params.types[id.local_id];
-                match param_data.provenance {
-                    hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
-                        let substs = TyBuilder::type_params_subst(db, id.parent);
-                        let predicates = db
-                            .generic_predicates(id.parent)
-                            .iter()
-                            .map(|pred| pred.clone().substitute(Interner, &substs))
-                            .filter(|wc| match &wc.skip_binders() {
-                                WhereClause::Implemented(tr) => {
-                                    &tr.self_type_parameter(Interner) == self
-                                }
-                                WhereClause::AliasEq(AliasEq {
-                                    alias: AliasTy::Projection(proj),
-                                    ty: _,
-                                }) => &proj.self_type_parameter(Interner) == self,
-                                _ => false,
-                            })
-                            .collect::<Vec<_>>();
+                match param_data {
+                    TypeOrConstParamData::TypeParamData(p) => match p.provenance {
+                        hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
+                            let substs = TyBuilder::type_params_subst(db, id.parent);
+                            let predicates = db
+                                .generic_predicates(id.parent)
+                                .iter()
+                                .map(|pred| pred.clone().substitute(Interner, &substs))
+                                .filter(|wc| match &wc.skip_binders() {
+                                    WhereClause::Implemented(tr) => {
+                                        &tr.self_type_parameter(Interner) == self
+                                    }
+                                    WhereClause::AliasEq(AliasEq {
+                                        alias: AliasTy::Projection(proj),
+                                        ty: _,
+                                    }) => &proj.self_type_parameter(Interner) == self,
+                                    _ => false,
+                                })
+                                .collect::<Vec<_>>();
 
-                        Some(predicates)
-                    }
+                            Some(predicates)
+                        }
+                        _ => None,
+                    },
                     _ => None,
                 }
             }

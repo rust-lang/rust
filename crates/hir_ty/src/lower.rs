@@ -10,6 +10,7 @@ use std::{iter, sync::Arc};
 
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, fold::Shift, interner::HasInterner, Mutability, Safety};
+use hir_def::generics::TypeOrConstParamData;
 use hir_def::intern::Interned;
 use hir_def::{
     adt::StructKind,
@@ -19,15 +20,16 @@ use hir_def::{
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TraitBoundModifier, TraitRef as HirTraitRef, TypeBound, TypeRef},
-    AdtId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    HasModule, ImplId, ItemContainerId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
-    TypeAliasId, TypeParamId, UnionId, VariantId,
+    AdtId, AssocItemId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule,
+    ImplId, ItemContainerId, LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId,
+    UnionId, VariantId,
 };
+use hir_def::{ConstParamId, TypeOrConstParamId};
 use hir_expand::{name::Name, ExpandResult};
 use la_arena::ArenaMap;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
-use stdx::impl_from;
+use stdx::{impl_from, never};
 use syntax::{ast, SmolStr};
 
 use crate::all_super_traits;
@@ -267,7 +269,7 @@ impl<'a> TyLoweringContext<'a> {
                         if let Some(def) = self.resolver.generic_def() {
                             let generics = generics(self.db.upcast(), def);
                             let param = generics
-                                .iter()
+                                .type_iter()
                                 .filter(|(_, data)| {
                                     data.provenance == TypeParamProvenance::ArgumentImplTrait
                                 })
@@ -353,7 +355,7 @@ impl<'a> TyLoweringContext<'a> {
     /// This is only for `generic_predicates_for_param`, where we can't just
     /// lower the self types of the predicates since that could lead to cycles.
     /// So we just check here if the `type_ref` resolves to a generic param, and which.
-    fn lower_ty_only_param(&self, type_ref: &TypeRef) -> Option<TypeParamId> {
+    fn lower_ty_only_param(&self, type_ref: &TypeRef) -> Option<TypeOrConstParamId> {
         let path = match type_ref {
             TypeRef::Path(path) => path,
             _ => return None,
@@ -469,10 +471,10 @@ impl<'a> TyLoweringContext<'a> {
                 );
                 match self.type_param_mode {
                     TypeParamLoweringMode::Placeholder => {
-                        TyKind::Placeholder(to_placeholder_idx(self.db, param_id))
+                        TyKind::Placeholder(to_placeholder_idx(self.db, param_id.into()))
                     }
                     TypeParamLoweringMode::Variable => {
-                        let idx = generics.param_idx(param_id).expect("matching generics");
+                        let idx = generics.param_idx(param_id.into()).expect("matching generics");
                         TyKind::BoundVar(BoundVar::new(self.in_binders, idx))
                     }
                 }
@@ -758,11 +760,13 @@ impl<'a> TyLoweringContext<'a> {
             | WherePredicate::TypeBound { target, bound } => {
                 let self_ty = match target {
                     WherePredicateTypeTarget::TypeRef(type_ref) => self.lower_ty(type_ref),
-                    WherePredicateTypeTarget::TypeParam(param_id) => {
+                    WherePredicateTypeTarget::TypeOrConstParam(param_id) => {
                         let generic_def = self.resolver.generic_def().expect("generics in scope");
                         let generics = generics(self.db.upcast(), generic_def);
-                        let param_id =
-                            hir_def::TypeParamId { parent: generic_def, local_id: *param_id };
+                        let param_id = hir_def::TypeOrConstParamId {
+                            parent: generic_def,
+                            local_id: *param_id,
+                        };
                         let placeholder = to_placeholder_idx(self.db, param_id);
                         match self.type_param_mode {
                             TypeParamLoweringMode::Placeholder => TyKind::Placeholder(placeholder),
@@ -973,7 +977,7 @@ fn named_associated_type_shorthand_candidates<R>(
             db.impl_trait(impl_id)?.into_value_and_skipped_binders().0,
         ),
         TypeNs::GenericParam(param_id) => {
-            let predicates = db.generic_predicates_for_param(def, param_id, assoc_name);
+            let predicates = db.generic_predicates_for_param(def, param_id.into(), assoc_name);
             let res = predicates.iter().find_map(|pred| match pred.skip_binders().skip_binders() {
                 // FIXME: how to correctly handle higher-ranked bounds here?
                 WhereClause::Implemented(tr) => search(
@@ -989,9 +993,7 @@ fn named_associated_type_shorthand_candidates<R>(
             // Handle `Self::Type` referring to own associated type in trait definitions
             if let GenericDefId::TraitId(trait_id) = param_id.parent {
                 let generics = generics(db.upcast(), trait_id.into());
-                if generics.params.types[param_id.local_id].provenance
-                    == TypeParamProvenance::TraitSelf
-                {
+                if generics.params.types[param_id.local_id].is_trait_self() {
                     let trait_ref = TyBuilder::trait_ref(db, trait_id)
                         .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
                         .build();
@@ -1036,7 +1038,7 @@ pub(crate) fn field_types_query(
 pub(crate) fn generic_predicates_for_param_query(
     db: &dyn HirDatabase,
     def: GenericDefId,
-    param_id: TypeParamId,
+    param_id: TypeOrConstParamId,
     assoc_name: Option<Name>,
 ) -> Arc<[Binders<QuantifiedWhereClause>]> {
     let resolver = def.resolver(db.upcast());
@@ -1051,11 +1053,11 @@ pub(crate) fn generic_predicates_for_param_query(
             | WherePredicate::TypeBound { target, bound, .. } => {
                 match target {
                     WherePredicateTypeTarget::TypeRef(type_ref) => {
-                        if ctx.lower_ty_only_param(type_ref) != Some(param_id) {
+                        if ctx.lower_ty_only_param(type_ref) != Some(param_id.into()) {
                             return false;
                         }
                     }
-                    WherePredicateTypeTarget::TypeParam(local_id) => {
+                    WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
                         if *local_id != param_id.local_id {
                             return false;
                         }
@@ -1105,7 +1107,7 @@ pub(crate) fn generic_predicates_for_param_recover(
     _db: &dyn HirDatabase,
     _cycle: &[String],
     _def: &GenericDefId,
-    _param_id: &TypeParamId,
+    _param_id: &TypeOrConstParamId,
     _assoc_name: &Option<Name>,
 ) -> Arc<[Binders<QuantifiedWhereClause>]> {
     Arc::new([])
@@ -1233,7 +1235,7 @@ pub(crate) fn generic_defaults_query(
     let generic_params = generics(db.upcast(), def);
 
     let defaults = generic_params
-        .iter()
+        .type_iter()
         .enumerate()
         .map(|(idx, (_, p))| {
             let mut ty =
@@ -1267,7 +1269,7 @@ pub(crate) fn generic_defaults_recover(
 
     // we still need one default per parameter
     let defaults = generic_params
-        .iter()
+        .type_iter()
         .enumerate()
         .map(|(idx, _)| {
             let ty = TyKind::Error.intern(Interner);
@@ -1497,13 +1499,19 @@ pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binde
     make_binders(&generics, ctx.lower_ty(&impl_data.self_ty))
 }
 
+// returns None if def is a type arg
 pub(crate) fn const_param_ty_query(db: &dyn HirDatabase, def: ConstParamId) -> Ty {
-    let parent_data = db.generic_params(def.parent);
-    let data = &parent_data.consts[def.local_id];
-    let resolver = def.parent.resolver(db.upcast());
+    let parent_data = db.generic_params(def.parent());
+    let data = &parent_data.types[def.local_id()];
+    let resolver = def.parent().resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver);
-
-    ctx.lower_ty(&data.ty)
+    match data {
+        TypeOrConstParamData::TypeParamData(_) => {
+            never!();
+            Ty::new(Interner, TyKind::Error)
+        }
+        TypeOrConstParamData::ConstParamData(d) => ctx.lower_ty(&d.ty),
+    }
 }
 
 pub(crate) fn impl_self_ty_recover(

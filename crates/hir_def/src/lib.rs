@@ -279,12 +279,60 @@ pub struct BlockLoc {
 impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TypeParamId {
+pub struct TypeOrConstParamId {
     pub parent: GenericDefId,
-    pub local_id: LocalTypeParamId,
+    pub local_id: LocalTypeOrConstParamId,
 }
 
-pub type LocalTypeParamId = Idx<generics::TypeParamData>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// A TypeOrConstParamId with an invariant that it actually belongs to a type
+pub struct TypeParamId(TypeOrConstParamId);
+
+impl TypeParamId {
+    pub fn parent(&self) -> GenericDefId {
+        self.0.parent
+    }
+    pub fn local_id(&self) -> LocalTypeOrConstParamId {
+        self.0.local_id
+    }
+}
+
+impl From<TypeOrConstParamId> for TypeParamId {
+    fn from(x: TypeOrConstParamId) -> Self {
+        Self(x)
+    }
+}
+impl From<TypeParamId> for TypeOrConstParamId {
+    fn from(x: TypeParamId) -> Self {
+        x.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// A TypeOrConstParamId with an invariant that it actually belongs to a const
+pub struct ConstParamId(TypeOrConstParamId);
+
+impl ConstParamId {
+    pub fn parent(&self) -> GenericDefId {
+        self.0.parent
+    }
+    pub fn local_id(&self) -> LocalTypeOrConstParamId {
+        self.0.local_id
+    }
+}
+
+impl From<TypeOrConstParamId> for ConstParamId {
+    fn from(x: TypeOrConstParamId) -> Self {
+        Self(x)
+    }
+}
+impl From<ConstParamId> for TypeOrConstParamId {
+    fn from(x: ConstParamId) -> Self {
+        x.0
+    }
+}
+
+pub type LocalTypeOrConstParamId = Idx<generics::TypeOrConstParamData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LifetimeParamId {
@@ -292,13 +340,6 @@ pub struct LifetimeParamId {
     pub local_id: LocalLifetimeParamId,
 }
 pub type LocalLifetimeParamId = Idx<generics::LifetimeParamData>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ConstParamId {
-    pub parent: GenericDefId,
-    pub local_id: LocalConstParamId,
-}
-pub type LocalConstParamId = Idx<generics::ConstParamData>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ItemContainerId {
@@ -322,8 +363,8 @@ impl_from!(StructId, UnionId, EnumId for AdtId);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum GenericParamId {
     TypeParamId(TypeParamId),
-    LifetimeParamId(LifetimeParamId),
     ConstParamId(ConstParamId),
+    LifetimeParamId(LifetimeParamId),
 }
 impl_from!(TypeParamId, LifetimeParamId, ConstParamId for GenericParamId);
 
@@ -632,9 +673,9 @@ impl AttrDefId {
             AttrDefId::ExternBlockId(it) => it.lookup(db).container.krate,
             AttrDefId::GenericParamId(it) => {
                 match it {
-                    GenericParamId::TypeParamId(it) => it.parent,
+                    GenericParamId::TypeParamId(it) => it.parent(),
+                    GenericParamId::ConstParamId(it) => it.parent(),
                     GenericParamId::LifetimeParamId(it) => it.parent,
-                    GenericParamId::ConstParamId(it) => it.parent,
                 }
                 .module(db)
                 .krate

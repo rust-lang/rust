@@ -12,6 +12,7 @@ use ide_db::{
     SymbolKind,
 };
 use ide_db::{defs::Definition, RootDatabase};
+use stdx::never;
 use syntax::{
     ast::{self, HasName},
     match_ast, AstNode, SmolStr, SyntaxNode, TextRange,
@@ -435,8 +436,17 @@ impl ToNav for hir::Label {
 
 impl TryToNav for hir::TypeParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
-        let InFile { file_id, value } = self.source(db)?;
+        let InFile { file_id, value } = self.merge().source(db)?;
         let name = self.name(db).to_smol_str();
+
+        let value = match value {
+            Either::Left(ast::TypeOrConstParam::Type(x)) => Either::Left(x),
+            Either::Left(ast::TypeOrConstParam::Const(_)) => {
+                never!();
+                return None;
+            }
+            Either::Right(x) => Either::Right(x),
+        };
 
         let range = |syntax: &_| InFile::new(file_id, syntax).original_file_range(db);
         let focus_range = |syntax: &_| InFile::new(file_id, syntax).original_file_range_opt(db);
@@ -464,6 +474,12 @@ impl TryToNav for hir::TypeParam {
     }
 }
 
+impl TryToNav for hir::TypeOrConstParam {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
+        self.split(db).try_to_nav(db)
+    }
+}
+
 impl TryToNav for hir::LifetimeParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let InFile { file_id, value } = self.source(db)?;
@@ -486,8 +502,16 @@ impl TryToNav for hir::LifetimeParam {
 
 impl TryToNav for hir::ConstParam {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
-        let InFile { file_id, value } = self.source(db)?;
+        let InFile { file_id, value } = self.merge().source(db)?;
         let name = self.name(db).to_smol_str();
+
+        let value = match value {
+            Either::Left(ast::TypeOrConstParam::Const(x)) => x,
+            _ => {
+                never!();
+                return None;
+            }
+        };
 
         let focus_range = value.name().and_then(|it| orig_focus_range(db, file_id, it.syntax()));
         let FileRange { file_id, range: full_range } =

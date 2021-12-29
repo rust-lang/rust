@@ -201,8 +201,8 @@ fn render_resolution_(
         ScopeDef::ModuleDef(BuiltinType(..)) => CompletionItemKind::BuiltinType,
         ScopeDef::GenericParam(param) => CompletionItemKind::SymbolKind(match param {
             hir::GenericParam::TypeParam(_) => SymbolKind::TypeParam,
-            hir::GenericParam::LifetimeParam(_) => SymbolKind::LifetimeParam,
             hir::GenericParam::ConstParam(_) => SymbolKind::ConstParam,
+            hir::GenericParam::LifetimeParam(_) => SymbolKind::LifetimeParam,
         }),
         ScopeDef::Local(..) => CompletionItemKind::SymbolKind(SymbolKind::Local),
         ScopeDef::Label(..) => CompletionItemKind::SymbolKind(SymbolKind::Label),

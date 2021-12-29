@@ -8,13 +8,14 @@ use chalk_ir::{fold::Shift, BoundVar, DebruijnIndex};
 use hir_def::{
     db::DefDatabase,
     generics::{
-        GenericParams, TypeParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
+        GenericParams, TypeOrConstParamData, TypeParamData, TypeParamProvenance, WherePredicate,
+        WherePredicateTypeTarget,
     },
     intern::Interned,
     path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
-    GenericDefId, ItemContainerId, Lookup, TraitId, TypeAliasId, TypeParamId,
+    GenericDefId, ItemContainerId, Lookup, TraitId, TypeAliasId, TypeOrConstParamId,
 };
 use hir_expand::name::{name, Name};
 use rustc_hash::FxHashSet;
@@ -55,7 +56,9 @@ fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[Trait
                     TypeRef::Path(p) if p == &Path::from(name![Self]) => bound.as_path(),
                     _ => None,
                 },
-                WherePredicateTypeTarget::TypeParam(local_id) if Some(*local_id) == trait_self => {
+                WherePredicateTypeTarget::TypeOrConstParam(local_id)
+                    if Some(*local_id) == trait_self =>
+                {
                     bound.as_path()
                 }
                 _ => None,
@@ -80,7 +83,7 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
     // SmallVec if performance is a concern)
     let generic_params = db.generic_params(trait_ref.hir_trait_id().into());
     let trait_self = match generic_params.find_trait_self_param() {
-        Some(p) => TypeParamId { parent: trait_ref.hir_trait_id().into(), local_id: p },
+        Some(p) => TypeOrConstParamId { parent: trait_ref.hir_trait_id().into(), local_id: p },
         None => return Vec::new(),
     };
     db.generic_predicates_for_param(trait_self.parent, trait_self, None)
@@ -181,34 +184,33 @@ pub(crate) struct Generics {
 }
 
 impl Generics {
-    pub(crate) fn iter<'a>(
+    // FIXME: we should drop this and handle const and type generics at the same time
+    pub(crate) fn type_iter<'a>(
         &'a self,
-    ) -> impl Iterator<Item = (TypeParamId, &'a TypeParamData)> + 'a {
+    ) -> impl Iterator<Item = (TypeOrConstParamId, &'a TypeParamData)> + 'a {
         self.parent_generics
             .as_ref()
             .into_iter()
             .flat_map(|it| {
                 it.params
-                    .types
-                    .iter()
-                    .map(move |(local_id, p)| (TypeParamId { parent: it.def, local_id }, p))
+                    .type_iter()
+                    .map(move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p))
             })
             .chain(
-                self.params
-                    .types
-                    .iter()
-                    .map(move |(local_id, p)| (TypeParamId { parent: self.def, local_id }, p)),
+                self.params.type_iter().map(move |(local_id, p)| {
+                    (TypeOrConstParamId { parent: self.def, local_id }, p)
+                }),
             )
     }
 
     pub(crate) fn iter_parent<'a>(
         &'a self,
-    ) -> impl Iterator<Item = (TypeParamId, &'a TypeParamData)> + 'a {
+    ) -> impl Iterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
         self.parent_generics.as_ref().into_iter().flat_map(|it| {
             it.params
                 .types
                 .iter()
-                .map(move |(local_id, p)| (TypeParamId { parent: it.def, local_id }, p))
+                .map(move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p))
         })
     }
 
@@ -219,7 +221,8 @@ impl Generics {
     /// (total, parents, child)
     pub(crate) fn len_split(&self) -> (usize, usize, usize) {
         let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
-        let child = self.params.types.len();
+        // FIXME: we should not filter const generics here, but at now it breaks tests
+        let child = self.params.types.iter().filter_map(|x| x.1.type_param()).count();
         (parent + child, parent, child)
     }
 
@@ -230,28 +233,31 @@ impl Generics {
             .params
             .types
             .iter()
-            .filter(|(_, p)| p.provenance == TypeParamProvenance::TraitSelf)
+            .filter_map(|x| x.1.type_param())
+            .filter(|p| p.provenance == TypeParamProvenance::TraitSelf)
             .count();
         let list_params = self
             .params
             .types
             .iter()
-            .filter(|(_, p)| p.provenance == TypeParamProvenance::TypeParamList)
+            .filter_map(|x| x.1.type_param())
+            .filter(|p| p.provenance == TypeParamProvenance::TypeParamList)
             .count();
         let impl_trait_params = self
             .params
             .types
             .iter()
-            .filter(|(_, p)| p.provenance == TypeParamProvenance::ArgumentImplTrait)
+            .filter_map(|x| x.1.type_param())
+            .filter(|p| p.provenance == TypeParamProvenance::ArgumentImplTrait)
             .count();
         (parent, self_params, list_params, impl_trait_params)
     }
 
-    pub(crate) fn param_idx(&self, param: TypeParamId) -> Option<usize> {
+    pub(crate) fn param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
         Some(self.find_param(param)?.0)
     }
 
-    fn find_param(&self, param: TypeParamId) -> Option<(usize, &TypeParamData)> {
+    fn find_param(&self, param: TypeOrConstParamId) -> Option<(usize, &TypeOrConstParamData)> {
         if param.parent == self.def {
             let (idx, (_local_id, data)) = self
                 .params
@@ -271,7 +277,7 @@ impl Generics {
     pub(crate) fn bound_vars_subst(&self, debruijn: DebruijnIndex) -> Substitution {
         Substitution::from_iter(
             Interner,
-            self.iter()
+            self.type_iter()
                 .enumerate()
                 .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(Interner)),
         )
@@ -281,7 +287,7 @@ impl Generics {
     pub(crate) fn type_params_subst(&self, db: &dyn HirDatabase) -> Substitution {
         Substitution::from_iter(
             Interner,
-            self.iter().map(|(id, _)| {
+            self.type_iter().map(|(id, _)| {
                 TyKind::Placeholder(crate::to_placeholder_idx(db, id)).intern(Interner)
             }),
         )

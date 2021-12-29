@@ -40,7 +40,7 @@ use chalk_ir::{
 use hir_def::{
     expr::ExprId,
     type_ref::{ConstScalar, Rawness},
-    TypeParamId,
+    TypeOrConstParamId,
 };
 
 use crate::{db::HirDatabase, utils::generics};
@@ -55,9 +55,9 @@ pub use lower::{
     TyDefId, TyLoweringContext, ValueTyDefId,
 };
 pub use mapping::{
-    const_from_placeholder_idx, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, lt_from_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,
-    to_foreign_def_id, to_placeholder_idx,
+    from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
+    lt_from_placeholder_idx, to_assoc_type_id, to_chalk_trait_id, to_foreign_def_id,
+    to_placeholder_idx,
 };
 pub use traits::TraitEnvironment;
 pub use utils::all_super_traits;
@@ -129,7 +129,7 @@ pub fn subst_prefix(s: &Substitution, n: usize) -> Substitution {
 }
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
-pub fn param_idx(db: &dyn HirDatabase, id: TypeParamId) -> Option<usize> {
+pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
     generics(db.upcast(), id.parent).param_idx(id)
 }
 

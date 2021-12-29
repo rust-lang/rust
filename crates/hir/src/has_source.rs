@@ -10,8 +10,8 @@ use hir_expand::InFile;
 use syntax::ast;
 
 use crate::{
-    db::HirDatabase, Adt, Const, ConstParam, Enum, Field, FieldSource, Function, Impl,
-    LifetimeParam, MacroDef, Module, Static, Struct, Trait, TypeAlias, TypeParam, Union, Variant,
+    db::HirDatabase, Adt, Const, Enum, Field, FieldSource, Function, Impl, LifetimeParam, MacroDef,
+    Module, Static, Struct, Trait, TypeAlias, TypeOrConstParam, Union, Variant,
 };
 
 pub trait HasSource {
@@ -139,8 +139,8 @@ impl HasSource for Impl {
     }
 }
 
-impl HasSource for TypeParam {
-    type Ast = Either<ast::TypeParam, ast::Trait>;
+impl HasSource for TypeOrConstParam {
+    type Ast = Either<ast::TypeOrConstParam, ast::Trait>;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         let child_source = self.id.parent.child_source(db.upcast());
         Some(child_source.map(|it| it[self.id.local_id].clone()))
@@ -149,14 +149,6 @@ impl HasSource for TypeParam {
 
 impl HasSource for LifetimeParam {
     type Ast = ast::LifetimeParam;
-    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
-        let child_source = self.id.parent.child_source(db.upcast());
-        Some(child_source.map(|it| it[self.id.local_id].clone()))
-    }
-}
-
-impl HasSource for ConstParam {
-    type Ast = ast::ConstParam;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         let child_source = self.id.parent.child_source(db.upcast());
         Some(child_source.map(|it| it[self.id.local_id].clone()))

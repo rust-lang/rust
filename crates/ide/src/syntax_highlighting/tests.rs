@@ -599,6 +599,13 @@ impl Foo {
     /// let foobar = Foo::new().bar();
     /// ```
     ///
+    /// ```
+    /// // functions
+    /// fn foo<T, const X: usize>(arg: i32) {
+    ///     let x: T = X;
+    /// }
+    /// ```
+    ///
     /// ```sh
     /// echo 1
     /// ```
