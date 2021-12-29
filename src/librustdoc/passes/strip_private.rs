@@ -29,6 +29,6 @@ crate fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
     }
 
     // strip all impls referencing private items
-    let mut stripper = ImplStripper { retained: &retained };
+    let mut stripper = ImplStripper { retained: &retained, cache: &cx.cache };
     stripper.fold_crate(krate)
 }

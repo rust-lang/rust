@@ -7,11 +7,21 @@ use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{FnRetTy, Function, GenericBound, Generics, Type, WherePredicate};
+use crate::clean::types::{FnDecl, FnRetTy, GenericBound, Generics, Type, WherePredicate};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{IndexItem, IndexItemFunctionType, RenderType, TypeWithKind};
+
+/// Indicates where an external crate can be found.
+crate enum ExternalLocation {
+    /// Remote URL root of the external crate
+    Remote(String),
+    /// This external crate can be found in the local doc/ folder
+    Local,
+    /// The external crate could not be found.
+    Unknown,
+}
 
 /// Builds the search index from the collected metadata
 crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<'tcx>) -> String {
@@ -32,7 +42,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 desc,
                 parent: Some(did),
                 parent_idx: None,
-                search_type: get_function_type_for_search(item, tcx),
+                search_type: get_index_search_type(item, tcx, cache),
                 aliases: item.attrs.get_doc_aliases(),
             });
         }
@@ -181,14 +191,15 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
     )
 }
 
-crate fn get_function_type_for_search<'tcx>(
+crate fn get_index_search_type<'tcx>(
     item: &clean::Item,
     tcx: TyCtxt<'tcx>,
+    cache: &Cache,
 ) -> Option<IndexItemFunctionType> {
     let (mut inputs, mut output) = match *item.kind {
-        clean::FunctionItem(ref f) => get_fn_inputs_and_outputs(f, tcx),
-        clean::MethodItem(ref m, _) => get_fn_inputs_and_outputs(m, tcx),
-        clean::TyMethodItem(ref m) => get_fn_inputs_and_outputs(m, tcx),
+        clean::FunctionItem(ref f) => get_all_types(&f.generics, &f.decl, tcx, cache),
+        clean::MethodItem(ref m, _) => get_all_types(&m.generics, &m.decl, tcx, cache),
+        clean::TyMethodItem(ref m) => get_all_types(&m.generics, &m.decl, tcx, cache),
         _ => return None,
     };
 
@@ -200,12 +211,12 @@ crate fn get_function_type_for_search<'tcx>(
 
 fn get_index_type(clean_type: &clean::Type, generics: Vec<TypeWithKind>) -> RenderType {
     RenderType {
-        name: get_index_type_name(clean_type).map(|s| s.as_str().to_ascii_lowercase()),
+        name: get_index_type_name(clean_type, true).map(|s| s.as_str().to_ascii_lowercase()),
         generics: if generics.is_empty() { None } else { Some(generics) },
     }
 }
 
-fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
+fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<Symbol> {
     match *clean_type {
         clean::Type::Path { ref path, .. } => {
             let path_segment = path.segments.last().unwrap();
@@ -215,10 +226,11 @@ fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
             let path = &bounds[0].trait_;
             Some(path.segments.last().unwrap().name)
         }
-        clean::Generic(s) => Some(s),
+        clean::Generic(s) if accept_generic => Some(s),
         clean::Primitive(ref p) => Some(p.as_sym()),
-        clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_),
-        clean::BareFunction(_)
+        clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_, accept_generic),
+        clean::Generic(_)
+        | clean::BareFunction(_)
         | clean::Tuple(_)
         | clean::Slice(_)
         | clean::Array(_, _)
@@ -236,19 +248,20 @@ fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
 ///
 /// Important note: It goes through generics recursively. So if you have
 /// `T: Option<Result<(), ()>>`, it'll go into `Option` and then into `Result`.
-#[instrument(level = "trace", skip(tcx, res))]
-fn add_generics_and_bounds_as_types<'tcx>(
+crate fn get_real_types<'tcx>(
     generics: &Generics,
     arg: &Type,
     tcx: TyCtxt<'tcx>,
     recurse: usize,
     res: &mut Vec<TypeWithKind>,
+    cache: &Cache,
 ) {
     fn insert_ty(
         res: &mut Vec<TypeWithKind>,
         tcx: TyCtxt<'_>,
         ty: Type,
         mut generics: Vec<TypeWithKind>,
+        cache: &Cache,
     ) {
         let is_full_generic = ty.is_full_generic();
 
@@ -307,7 +320,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
             // We remove the name of the full generic because we have no use for it.
             index_ty.name = Some(String::new());
             res.push(TypeWithKind::from((index_ty, ItemType::Generic)));
-        } else if let Some(kind) = ty.def_id_no_primitives().map(|did| tcx.def_kind(did).into()) {
+        } else if let Some(kind) = ty.def_id(cache).map(|did| tcx.def_kind(did).into()) {
             res.push(TypeWithKind::from((index_ty, kind)));
         } else if ty.is_primitive() {
             // This is a primitive, let's store it as such.
@@ -317,7 +330,6 @@ fn add_generics_and_bounds_as_types<'tcx>(
 
     if recurse >= 10 {
         // FIXME: remove this whole recurse thing when the recursion bug is fixed
-        // See #59502 for the original issue.
         return;
     }
 
@@ -326,9 +338,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
     if let Type::Generic(arg_s) = *arg {
         // First we check if the bounds are in a `where` predicate...
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
-            WherePredicate::BoundPredicate { ty, .. } => {
-                ty.def_id_no_primitives() == arg.def_id_no_primitives()
-            }
+            WherePredicate::BoundPredicate { ty, .. } => ty.def_id(cache) == arg.def_id(cache),
             _ => false,
         }) {
             let mut ty_generics = Vec::new();
@@ -338,12 +348,13 @@ fn add_generics_and_bounds_as_types<'tcx>(
                     for param_def in poly_trait.generic_params.iter() {
                         match &param_def.kind {
                             clean::GenericParamDefKind::Type { default: Some(ty), .. } => {
-                                add_generics_and_bounds_as_types(
+                                get_real_types(
                                     generics,
                                     ty,
                                     tcx,
                                     recurse + 1,
                                     &mut ty_generics,
+                                    cache,
                                 )
                             }
                             _ => {}
@@ -351,7 +362,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
                     }
                 }
             }
-            insert_ty(res, tcx, arg.clone(), ty_generics);
+            insert_ty(res, tcx, arg.clone(), ty_generics, cache);
         }
         // Otherwise we check if the trait bounds are "inlined" like `T: Option<u32>`...
         if let Some(bound) = generics.params.iter().find(|g| g.is_type() && g.name == arg_s) {
@@ -359,16 +370,10 @@ fn add_generics_and_bounds_as_types<'tcx>(
             for bound in bound.get_bounds().unwrap_or(&[]) {
                 if let Some(path) = bound.get_trait_path() {
                     let ty = Type::Path { path };
-                    add_generics_and_bounds_as_types(
-                        generics,
-                        &ty,
-                        tcx,
-                        recurse + 1,
-                        &mut ty_generics,
-                    );
+                    get_real_types(generics, &ty, tcx, recurse + 1, &mut ty_generics, cache);
                 }
             }
-            insert_ty(res, tcx, arg.clone(), ty_generics);
+            insert_ty(res, tcx, arg.clone(), ty_generics, cache);
         }
     } else {
         // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
@@ -379,10 +384,10 @@ fn add_generics_and_bounds_as_types<'tcx>(
         let mut ty_generics = Vec::new();
         if let Some(arg_generics) = arg.generics() {
             for gen in arg_generics.iter() {
-                add_generics_and_bounds_as_types(generics, gen, tcx, recurse + 1, &mut ty_generics);
+                get_real_types(generics, gen, tcx, recurse + 1, &mut ty_generics, cache);
             }
         }
-        insert_ty(res, tcx, arg.clone(), ty_generics);
+        insert_ty(res, tcx, arg.clone(), ty_generics, cache);
     }
 }
 
@@ -390,25 +395,23 @@ fn add_generics_and_bounds_as_types<'tcx>(
 ///
 /// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
 /// `[u32, Display, Option]`.
-fn get_fn_inputs_and_outputs<'tcx>(
-    func: &Function,
+crate fn get_all_types<'tcx>(
+    generics: &Generics,
+    decl: &FnDecl,
     tcx: TyCtxt<'tcx>,
+    cache: &Cache,
 ) -> (Vec<TypeWithKind>, Vec<TypeWithKind>) {
-    let decl = &func.decl;
-    let generics = &func.generics;
-
     let mut all_types = Vec::new();
     for arg in decl.inputs.values.iter() {
         if arg.type_.is_self_type() {
             continue;
         }
         let mut args = Vec::new();
-        add_generics_and_bounds_as_types(generics, &arg.type_, tcx, 0, &mut args);
+        get_real_types(generics, &arg.type_, tcx, 0, &mut args, cache);
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            if let Some(kind) = arg.type_.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
-            {
+            if let Some(kind) = arg.type_.def_id(cache).map(|did| tcx.def_kind(did).into()) {
                 all_types.push(TypeWithKind::from((get_index_type(&arg.type_, vec![]), kind)));
             }
         }
@@ -417,11 +420,9 @@ fn get_fn_inputs_and_outputs<'tcx>(
     let mut ret_types = Vec::new();
     match decl.output {
         FnRetTy::Return(ref return_type) => {
-            add_generics_and_bounds_as_types(generics, return_type, tcx, 0, &mut ret_types);
+            get_real_types(generics, return_type, tcx, 0, &mut ret_types, cache);
             if ret_types.is_empty() {
-                if let Some(kind) =
-                    return_type.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
-                {
+                if let Some(kind) = return_type.def_id(cache).map(|did| tcx.def_kind(did).into()) {
                     ret_types.push(TypeWithKind::from((get_index_type(return_type, vec![]), kind)));
                 }
             }
