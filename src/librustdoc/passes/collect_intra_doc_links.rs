@@ -684,27 +684,36 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 if ns != Namespace::ValueNS {
                     return None;
                 }
-                debug!("looking for variants or fields named {} for {:?}", item_name, did);
+                debug!("looking for fields named {} for {:?}", item_name, did);
                 // FIXME: this doesn't really belong in `associated_item` (maybe `variant_field` is better?)
-                // NOTE: it's different from variant_field because it resolves fields and variants,
+                // NOTE: it's different from variant_field because it only resolves struct fields,
                 // not variant fields (2 path segments, not 3).
+                //
+                // We need to handle struct (and union) fields in this code because
+                // syntactically their paths are identical to associated item paths:
+                // `module::Type::field` and `module::Type::Assoc`.
+                //
+                // On the other hand, variant fields can't be mistaken for associated
+                // items because they look like this: `module::Type::Variant::field`.
+                //
+                // Variants themselves don't need to be handled here, even though
+                // they also look like associated items (`module::Type::Variant`),
+                // because they are real Rust syntax (unlike the intra-doc links
+                // field syntax) and are handled by the compiler's resolver.
                 let def = match tcx.type_of(did).kind() {
-                    ty::Adt(def, _) => def,
+                    ty::Adt(def, _) if !def.is_enum() => def,
                     _ => return None,
                 };
-                let field = if def.is_enum() {
-                    def.all_fields().find(|item| item.ident.name == item_name)
-                } else {
-                    def.non_enum_variant().fields.iter().find(|item| item.ident.name == item_name)
-                }?;
-                let kind = if def.is_enum() { DefKind::Variant } else { DefKind::Field };
-                let fragment = if def.is_enum() {
-                    // FIXME: how can the field be a variant?
-                    UrlFragment::Variant(field.ident.name)
-                } else {
-                    UrlFragment::StructField(field.ident.name)
-                };
-                Some((root_res, fragment, Some((kind, field.did))))
+                let field = def
+                    .non_enum_variant()
+                    .fields
+                    .iter()
+                    .find(|item| item.ident.name == item_name)?;
+                Some((
+                    root_res,
+                    UrlFragment::StructField(field.ident.name),
+                    Some((DefKind::Field, field.did)),
+                ))
             }
             Res::Def(DefKind::Trait, did) => tcx
                 .associated_items(did)

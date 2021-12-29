@@ -23,7 +23,7 @@
 //! These threads are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
 
-crate mod cache;
+crate mod search_index;
 
 #[cfg(test)]
 mod tests;
