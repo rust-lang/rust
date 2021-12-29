@@ -256,7 +256,7 @@ fn test_expr() {
     assert_eq!(stringify_expr!(expr.await), "expr.await");
 
     // ExprKind::TryBlock
-    assert_eq!(stringify_expr!(try {}), "try  {}"); // FIXME
+    assert_eq!(stringify_expr!(try {}), "try {}");
 
     // ExprKind::Assign
     assert_eq!(stringify_expr!(expr = true), "expr = true");

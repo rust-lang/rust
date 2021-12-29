@@ -2239,7 +2239,6 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::TryBlock(ref blk) => {
                 self.head("try");
-                self.space();
                 self.print_block_with_attrs(blk, attrs)
             }
             ast::ExprKind::Err => {
