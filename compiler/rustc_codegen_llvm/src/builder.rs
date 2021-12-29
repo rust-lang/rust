@@ -1201,8 +1201,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn do_not_inline(&mut self, llret: &'ll Value) {
-        llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
+    fn mark_callsite_cold(&mut self, llret: &'ll Value) {
+        llvm::Attribute::Cold.apply_callsite(llvm::AttributePlace::Function, llret);
     }
 }
 
