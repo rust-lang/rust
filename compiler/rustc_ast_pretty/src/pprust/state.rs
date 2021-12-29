@@ -2780,34 +2780,34 @@ impl<'a> State<'a> {
                 self.word_space(",");
             }
 
-            match *predicate {
-                ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
-                    ref bound_generic_params,
-                    ref bounded_ty,
-                    ref bounds,
-                    ..
-                }) => {
-                    self.print_formal_generic_params(bound_generic_params);
-                    self.print_type(bounded_ty);
-                    self.print_type_bounds(":", bounds);
-                }
-                ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
-                    ref lifetime,
-                    ref bounds,
-                    ..
-                }) => {
-                    self.print_lifetime_bounds(*lifetime, bounds);
-                }
-                ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
-                    ref lhs_ty,
-                    ref rhs_ty,
-                    ..
-                }) => {
-                    self.print_type(lhs_ty);
-                    self.space();
-                    self.word_space("=");
-                    self.print_type(rhs_ty);
-                }
+            self.print_where_predicate(predicate);
+        }
+    }
+
+    pub fn print_where_predicate(&mut self, predicate: &ast::WherePredicate) {
+        match predicate {
+            ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+                bound_generic_params,
+                bounded_ty,
+                bounds,
+                ..
+            }) => {
+                self.print_formal_generic_params(bound_generic_params);
+                self.print_type(bounded_ty);
+                self.print_type_bounds(":", bounds);
+            }
+            ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
+                lifetime,
+                bounds,
+                ..
+            }) => {
+                self.print_lifetime_bounds(*lifetime, bounds);
+            }
+            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { lhs_ty, rhs_ty, .. }) => {
+                self.print_type(lhs_ty);
+                self.space();
+                self.word_space("=");
+                self.print_type(rhs_ty);
             }
         }
     }
