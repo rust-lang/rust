@@ -691,6 +691,74 @@ impl<T> Option<T> {
     }
 
     /////////////////////////////////////////////////////////////////////////
+    // Extracting slices
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Extracts a slice that's empty if the option is a `None` value or
+    /// length one if the option is a `Some` value.
+    ///
+    /// Note that the slice extracted from a None value does not necessarily
+    /// contain an internal pointer to anything associated with the option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_as_slice)]
+    ///
+    /// let x: Option<u8> = Some(7);
+    /// assert_eq!(x.as_slice(), [7]);
+    ///
+    /// let x: Option<u8> = None;
+    /// assert_eq!(x.as_slice(), []);
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_as_slice", issue = "none")]
+    pub fn as_slice(&self) -> &[T] {
+        match *self {
+            Some(ref x) => core::slice::from_ref(x),
+            None => &[],
+        }
+    }
+
+    /// Extracts a mutable slice that's empty if the option is a `None` value
+    /// or length one if the option is a `Some` value.
+    ///
+    /// Note that the slice extracted from a None value does not necessarily
+    /// contain an internal pointer to anything associated with the option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_as_slice)]
+    ///
+    /// let mut x: Option<u8> = Some(2);
+    /// let x_as_slice = x.as_mut_slice();
+    /// assert_eq!(x_as_slice, [2]);
+    ///
+    /// if !x_as_slice.is_empty() {
+    ///     x_as_slice[0] = 42;
+    /// }
+    /// assert_eq!(x, Some(42));
+    ///
+    /// let mut x: Option<u8> = None;
+    /// let x_as_slice = x.as_mut_slice();
+    /// assert_eq!(x_as_slice, []);
+    ///
+    /// if !x_as_slice.is_empty() {
+    ///     x_as_slice[0] = 42;
+    /// }
+    /// assert_eq!(x, None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_as_slice", issue = "none")]
+    pub const fn as_mut_slice(&mut self) -> &mut [T] {
+        match *self {
+            Some(ref mut x) => core::slice::from_mut(x),
+            None => &mut [],
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////////////
     // Getting to contained values
     /////////////////////////////////////////////////////////////////////////
 
