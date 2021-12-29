@@ -9,6 +9,16 @@ assert-attribute: (".top-doc", {"open": ""})
 click: (3, 280)
 assert-attribute: (".top-doc", {"open": ""})
 
+// Assert the position of the toggle on the top doc block.
+assert-position: (".top-doc summary::before", {"x": 4})
+// Assert the position of the toggle on the impl block.
+assert-position: ("#implementations + details > summary::before", {"x": 4})
+// Assert the position of the toggle on a method.
+assert-position: (
+    "#trait-implementations-list .impl-items .method-toggle > summary::before",
+    {"x": 4},
+)
+
 // Now we do the same but with a little bigger width
 size: (600, 600)
 assert-attribute: (".top-doc", {"open": ""})
