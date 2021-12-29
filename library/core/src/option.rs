@@ -694,11 +694,12 @@ impl<T> Option<T> {
     // Extracting slices
     /////////////////////////////////////////////////////////////////////////
 
-    /// Extracts a slice that's empty if the option is a `None` value or
-    /// length one if the option is a `Some` value.
+    /// Extracts a slice that's empty if the option is a [`None`] value or
+    /// length one if the option is a [`Some`] value.
     ///
-    /// Note that the slice extracted from a None value does not necessarily
-    /// contain an internal pointer to anything associated with the option.
+    /// Note that the slice extracted from a [`None`] value does not
+    /// necessarily contain an internal pointer to anything associated with
+    /// the option.
     ///
     /// # Examples
     ///
@@ -720,11 +721,12 @@ impl<T> Option<T> {
         }
     }
 
-    /// Extracts a mutable slice that's empty if the option is a `None` value
-    /// or length one if the option is a `Some` value.
+    /// Extracts a mutable slice that's empty if the option is a [`None`]
+    /// value or length one if the option is a [`Some`] value.
     ///
-    /// Note that the slice extracted from a None value does not necessarily
-    /// contain an internal pointer to anything associated with the option.
+    /// Note that the slice extracted from a [`None`] value does not
+    /// necessarily contain an internal pointer to anything associated with
+    /// the option.
     ///
     /// # Examples
     ///
