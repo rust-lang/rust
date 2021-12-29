@@ -1,10 +1,9 @@
 error[E0515]: cannot return value referencing local variable `raw_lines`
-  --> $DIR/drop-with-active-borrows-2.rs:3:5
+  --> $DIR/drop-with-active-borrows-2.rs:3:30
    |
 LL |     raw_lines.iter().map(|l| l.trim()).collect()
-   |     ----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ----------------         ^^^^^^^^ returns a value referencing data owned by the current function
    |     |
-   |     returns a value referencing data owned by the current function
    |     `raw_lines` is borrowed here
 
 error: aborting due to previous error
