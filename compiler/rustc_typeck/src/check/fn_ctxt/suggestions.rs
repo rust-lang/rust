@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Expr, ExprKind, ItemKind, Node, Path, QPath, Stmt, StmtKind, TyKind};
-use rustc_infer::infer;
+use rustc_infer::infer::{self, TyCtxtInferExt};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Binder, Ty};
 use rustc_span::symbol::{kw, sym};
@@ -608,6 +608,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let bound_vars = self.tcx.late_bound_vars(fn_id);
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = self.normalize_associated_types_in(expr.span, ty);
+            let ty = match self.tcx.asyncness(fn_id.owner) {
+                hir::IsAsync::Async => self.tcx.infer_ctxt().enter(|infcx| {
+                    infcx.get_impl_future_output_ty(ty).unwrap_or_else(|| {
+                        span_bug!(
+                            fn_decl.output.span(),
+                            "failed to get output type of async function"
+                        )
+                    })
+                }),
+                hir::IsAsync::NotAsync => ty,
+            };
             if self.can_coerce(found, ty) {
                 err.multipart_suggestion(
                     "you might have meant to return this value",
