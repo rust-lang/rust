@@ -1540,7 +1540,7 @@ declare_lint! {
     /// Unused lifetime parameters may signal a mistake or unfinished code.
     /// Consider removing the parameter.
     pub UNUSED_LIFETIMES,
-    Allow,
+    Deny,
     "detects lifetime parameters that are never used"
 }
 
