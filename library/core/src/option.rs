@@ -713,7 +713,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable(feature = "option_as_slice", issue = "none")]
-    pub fn as_slice(&self) -> &[T] {
+    pub const fn as_slice(&self) -> &[T] {
         match *self {
             Some(ref x) => core::slice::from_ref(x),
             None => &[],
