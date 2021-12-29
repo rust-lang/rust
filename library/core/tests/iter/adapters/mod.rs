@@ -1,3 +1,4 @@
+mod array_windows;
 mod chain;
 mod cloned;
 mod copied;

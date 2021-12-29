@@ -2,12 +2,13 @@ use crate::cmp::{self, Ordering};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::TrustedRandomAccessNoCoerce;
+use super::super::{
+    ArrayWindows, Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take,
+    TakeWhile,
+};
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
-use super::super::{
-    Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
-};
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 
@@ -3055,6 +3056,49 @@ pub trait Iterator {
         Self: Sized + Clone,
     {
         Cycle::new(self)
+    }
+
+    /// Returns an iterator over all contiguous windows of length `N`. The
+    /// windows overlap. If the iterator is shorter than `N`, the iterator
+    /// returns no values.
+    ///
+    /// `array_windows` clones the iterator elements so that they can be part of
+    /// successive windows, this makes this it most suited for iterators of
+    /// references and other values that are cheap to clone.
+    ///
+    /// # Panics
+    ///
+    /// If called with `N = 0`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_array_windows)]
+    ///
+    /// let mut iter = "rust".chars().array_windows();
+    /// assert_eq!(iter.next(), Some(['r', 'u']));
+    /// assert_eq!(iter.next(), Some(['u', 's']));
+    /// assert_eq!(iter.next(), Some(['s', 't']));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(iter_array_windows)]
+    ///
+    /// let seq: &[i32] = &[0, 1, 1, 2, 3, 5, 8, 13];
+    /// for [x, y, z] in seq.iter().copied().array_windows() {
+    ///     assert_eq!(x + y, z);
+    /// }
+    /// ```
+    #[unstable(feature = "iter_array_windows", reason = "recently added", issue = "none")]
+    fn array_windows<const N: usize>(self) -> ArrayWindows<Self, N>
+    where
+        Self: Sized,
+        Self::Item: Clone,
+    {
+        ArrayWindows::new(self)
     }
 
     /// Sums the elements of an iterator.
