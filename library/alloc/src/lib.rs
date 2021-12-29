@@ -95,6 +95,7 @@
 #![feature(array_methods)]
 #![feature(array_windows)]
 #![feature(async_stream)]
+#![cfg_attr(test, feature(bench_black_box))]
 #![feature(coerce_unsized)]
 #![cfg_attr(not(no_global_oom_handling), feature(const_btree_new))]
 #![feature(const_cow_is_borrowed)]

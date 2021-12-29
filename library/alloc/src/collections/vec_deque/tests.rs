@@ -35,7 +35,7 @@ fn bench_pop_back_100(b: &mut test::Bencher) {
         deq.head = 100;
         deq.tail = 0;
         while !deq.is_empty() {
-            test::black_box(deq.pop_back());
+            std::hint::black_box(deq.pop_back());
         }
     })
 }
@@ -82,7 +82,7 @@ fn bench_pop_front_100(b: &mut test::Bencher) {
         deq.head = 100;
         deq.tail = 0;
         while !deq.is_empty() {
-            test::black_box(deq.pop_front());
+            std::hint::black_box(deq.pop_front());
         }
     })
 }

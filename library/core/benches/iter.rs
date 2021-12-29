@@ -1,5 +1,6 @@
 use core::iter::*;
-use test::{black_box, Bencher};
+use std::hint::black_box;
+use test::Bencher;
 
 #[bench]
 fn bench_rposition(b: &mut Bencher) {

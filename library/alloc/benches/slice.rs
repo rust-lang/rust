@@ -1,9 +1,10 @@
+use std::hint::black_box;
 use std::{mem, ptr};
 
 use rand::distributions::{Alphanumeric, Standard};
 use rand::{thread_rng, Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
-use test::{black_box, Bencher};
+use test::Bencher;
 
 #[bench]
 fn iterator(b: &mut Bencher) {

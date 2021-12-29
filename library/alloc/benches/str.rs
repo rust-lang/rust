@@ -1,4 +1,5 @@
-use test::{black_box, Bencher};
+use core::hint::black_box;
+use test::Bencher;
 
 #[bench]
 fn char_iterator(b: &mut Bencher) {
@@ -212,8 +213,8 @@ macro_rules! make_test {
     };
     ($name:ident, $s:ident, $code:expr, $iters:expr) => {
         mod $name {
+            use core::hint::black_box;
             use test::Bencher;
-            use test::black_box;
 
             // Short strings: 65 bytes each
             make_test_inner!($s, $code, short_ascii,

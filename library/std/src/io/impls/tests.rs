@@ -9,7 +9,7 @@ fn bench_read_slice(b: &mut test::Bencher) {
         let mut rd = &buf[..];
         for _ in 0..8 {
             let _ = rd.read(&mut dst);
-            test::black_box(&dst);
+            core::hint::black_box(&dst);
         }
     })
 }
@@ -23,7 +23,7 @@ fn bench_write_slice(b: &mut test::Bencher) {
         let mut wr = &mut buf[..];
         for _ in 0..8 {
             let _ = wr.write_all(&src);
-            test::black_box(&wr);
+            core::hint::black_box(&wr);
         }
     })
 }
@@ -37,7 +37,7 @@ fn bench_read_vec(b: &mut test::Bencher) {
         let mut rd = &buf[..];
         for _ in 0..8 {
             let _ = rd.read(&mut dst);
-            test::black_box(&dst);
+            core::hint::black_box(&dst);
         }
     })
 }
@@ -51,7 +51,7 @@ fn bench_write_vec(b: &mut test::Bencher) {
         let mut wr = &mut buf[..];
         for _ in 0..8 {
             let _ = wr.write_all(&src);
-            test::black_box(&wr);
+            core::hint::black_box(&wr);
         }
     })
 }

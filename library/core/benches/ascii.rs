@@ -63,7 +63,7 @@ macro_rules! benches {
     }
 }
 
-use test::black_box;
+use std::hint::black_box;
 use test::Bencher;
 
 const ASCII_CASE_MASK: u8 = 0b0010_0000;

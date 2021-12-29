@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
+use std::hint::black_box;
 use std::iter::Iterator;
 use std::ops::RangeBounds;
 use std::vec::Vec;
 
 use rand::{seq::SliceRandom, thread_rng, Rng};
-use test::{black_box, Bencher};
+use test::Bencher;
 
 macro_rules! map_insert_rand_bench {
     ($name: ident, $n: expr, $map: ident) => {

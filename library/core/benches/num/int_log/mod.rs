@@ -1,5 +1,6 @@
 use rand::Rng;
-use test::{black_box, Bencher};
+use std::hint::black_box;
+use test::Bencher;
 
 macro_rules! int_log_bench {
     ($t:ty, $predictable:ident, $random:ident, $random_small:ident) => {

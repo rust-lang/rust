@@ -1,7 +1,8 @@
 #![allow(deprecated)]
 
 use core::hash::*;
-use test::{black_box, Bencher};
+use std::hint::black_box;
+use test::Bencher;
 
 fn hash_bytes<H: Hasher>(mut s: H, x: &[u8]) -> u64 {
     Hasher::write(&mut s, x);

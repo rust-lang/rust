@@ -1,5 +1,6 @@
+use std::hint::black_box;
 use std::str;
-use test::{black_box, Bencher};
+use test::Bencher;
 
 const LOREM_SHORT: &str = "Lorem ipsum";
 

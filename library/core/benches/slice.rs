@@ -1,4 +1,4 @@
-use test::black_box;
+use std::hint::black_box;
 use test::Bencher;
 
 enum Cache {

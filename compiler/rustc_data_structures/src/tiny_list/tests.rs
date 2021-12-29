@@ -1,7 +1,8 @@
 use super::*;
 
 extern crate test;
-use test::{black_box, Bencher};
+use std::hint::black_box;
+use test::Bencher;
 
 impl<T> TinyList<T> {
     fn len(&self) -> usize {

@@ -1,5 +1,6 @@
 // wasm32 does not support benches (no time).
 #![cfg(not(target_arch = "wasm32"))]
+#![feature(bench_black_box)]
 #![feature(flt2dec)]
 #![feature(int_log)]
 #![feature(test)]

@@ -1,5 +1,5 @@
 use super::{LONG, MEDIUM, SHORT};
-use test::black_box;
+use std::hint::black_box;
 use test::Bencher;
 
 macro_rules! benches {

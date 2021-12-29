@@ -1,5 +1,6 @@
+use std::hint::black_box;
 use std::iter::repeat;
-use test::{black_box, Bencher};
+use test::Bencher;
 
 #[bench]
 fn bench_with_capacity(b: &mut Bencher) {
