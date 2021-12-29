@@ -1,9 +1,10 @@
 error[E0308]: mismatched types
-  --> $DIR/tail-expr-as-potential-return.rs:7:9
+  --> $DIR/tail-expr-as-potential-return.rs:28:9
    |
 LL | /     if x {
 LL | |         Err(42)
    | |         ^^^^^^^ expected `()`, found enum `Result`
+LL | |                 //| HELP you might have meant to return this value
 LL | |     }
    | |_____- expected this to be `()`
    |
@@ -14,6 +15,23 @@ help: you might have meant to return this value
 LL |         return Err(42);
    |         ++++++        +
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/tail-expr-as-potential-return.rs:20:9
+   |
+LL | /     if x {
+LL | |         Err(42)
+   | |         ^^^^^^^ expected `()`, found enum `Result`
+LL | |                 //| HELP you might have meant to return this value
+LL | |     }
+   | |_____- expected this to be `()`
+   |
+   = note: expected unit type `()`
+                   found enum `Result<_, {integer}>`
+help: you might have meant to return this value
+   |
+LL |         return Err(42);
+   |         ++++++        +
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
