@@ -661,9 +661,9 @@ fn test_pat() {
     assert_eq!(stringify_pat!(ref mut _x @ _), "ref mut _x @ _");
 
     // PatKind::Struct
-    assert_eq!(stringify_pat!(Struct {}), "Struct {  }"); // FIXME
-    assert_eq!(stringify_pat!(Struct::<u8> {}), "Struct::<u8> {  }");
-    assert_eq!(stringify_pat!(Struct::<'static> {}), "Struct::<'static> {  }");
+    assert_eq!(stringify_pat!(Struct {}), "Struct {}");
+    assert_eq!(stringify_pat!(Struct::<u8> {}), "Struct::<u8> {}");
+    assert_eq!(stringify_pat!(Struct::<'static> {}), "Struct::<'static> {}");
     assert_eq!(stringify_pat!(Struct { x }), "Struct { x }");
     assert_eq!(stringify_pat!(Struct { x: _x }), "Struct { x: _x }");
     assert_eq!(stringify_pat!(Struct { .. }), "Struct { .. }");
@@ -672,7 +672,7 @@ fn test_pat() {
     #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5151
     assert_eq!(
         stringify_pat!(<Struct as Trait>::Type {}),
-        "<Struct as Trait>::Type {  }",
+        "<Struct as Trait>::Type {}",
     );
 
     // PatKind::TupleStruct

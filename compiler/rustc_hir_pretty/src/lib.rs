@@ -1874,7 +1874,11 @@ impl<'a> State<'a> {
             PatKind::Struct(ref qpath, ref fields, etc) => {
                 self.print_qpath(qpath, true);
                 self.nbsp();
-                self.word_space("{");
+                self.word("{");
+                let empty = fields.is_empty() && !etc;
+                if !empty {
+                    self.space();
+                }
                 self.commasep_cmnt(
                     Consistent,
                     &fields,
@@ -1895,7 +1899,9 @@ impl<'a> State<'a> {
                     }
                     self.word("..");
                 }
-                self.space();
+                if !empty {
+                    self.space();
+                }
                 self.word("}");
             }
             PatKind::Or(ref pats) => {
