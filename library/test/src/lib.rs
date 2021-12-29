@@ -15,13 +15,10 @@
 
 #![unstable(feature = "test", issue = "50297")]
 #![doc(test(attr(deny(warnings))))]
-#![feature(libc)]
-#![feature(rustc_private)]
 #![feature(nll)]
 #![feature(available_parallelism)]
 #![feature(bench_black_box)]
 #![feature(internal_output_capture)]
-#![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
 #![feature(test)]
