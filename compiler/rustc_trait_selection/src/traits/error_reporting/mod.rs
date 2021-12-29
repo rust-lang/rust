@@ -1567,14 +1567,14 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             self.tcx.find_map_relevant_impl(trait_def_id, trait_ref.skip_binder().self_ty(), Some)
         };
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
-        let all_traits = self.tcx.all_traits(());
-        let traits_with_same_path: std::collections::BTreeSet<_> = all_traits
-            .iter()
-            .filter(|trait_def_id| **trait_def_id != trait_ref.def_id())
-            .filter(|trait_def_id| self.tcx.def_path_str(**trait_def_id) == required_trait_path)
+        let traits_with_same_path: std::collections::BTreeSet<_> = self
+            .tcx
+            .all_traits()
+            .filter(|trait_def_id| *trait_def_id != trait_ref.def_id())
+            .filter(|trait_def_id| self.tcx.def_path_str(*trait_def_id) == required_trait_path)
             .collect();
         for trait_with_same_path in traits_with_same_path {
-            if let Some(impl_def_id) = get_trait_impl(*trait_with_same_path) {
+            if let Some(impl_def_id) = get_trait_impl(trait_with_same_path) {
                 let impl_span = self.tcx.def_span(impl_def_id);
                 err.span_help(impl_span, "trait impl with same name found");
                 let trait_crate = self.tcx.crate_name(trait_with_same_path.krate);

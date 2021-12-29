@@ -369,10 +369,8 @@ crate fn run_global_ctxt(
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits: tcx
-            .all_traits(())
-            .iter()
-            .cloned()
-            .filter(|trait_def_id| tcx.trait_is_auto(*trait_def_id))
+            .all_traits()
+            .filter(|&trait_def_id| tcx.trait_is_auto(trait_def_id))
             .collect(),
         module_trait_cache: FxHashMap::default(),
         cache: Cache::new(access_levels, render_options.document_private),

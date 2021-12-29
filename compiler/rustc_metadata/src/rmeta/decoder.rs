@@ -1375,6 +1375,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
+    fn get_traits(&'a self) -> impl Iterator<Item = DefId> + 'a {
+        self.root.traits.decode(self).map(|index| self.local_def_id(index))
+    }
+
     fn get_implementations_for_trait(
         &self,
         tcx: TyCtxt<'tcx>,

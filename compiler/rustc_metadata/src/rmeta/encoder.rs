@@ -614,8 +614,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode the def IDs of impls, for coherence checking.
         i = self.position();
-        let impls = self.encode_impls();
-        let impl_bytes = self.position() - i;
+        let (traits, impls) = self.encode_traits_and_impls();
+        let traits_and_impls_bytes = self.position() - i;
 
         let tcx = self.tcx;
 
@@ -727,6 +727,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             foreign_modules,
             source_map,
             impls,
+            traits,
             exported_symbols,
             interpret_alloc_index,
             tables,
@@ -753,7 +754,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             eprintln!(" diagnostic item bytes: {}", diagnostic_item_bytes);
             eprintln!("          native bytes: {}", native_lib_bytes);
             eprintln!("      source_map bytes: {}", source_map_bytes);
-            eprintln!("            impl bytes: {}", impl_bytes);
+            eprintln!("traits and impls bytes: {}", traits_and_impls_bytes);
             eprintln!("    exp. symbols bytes: {}", exported_symbols_bytes);
             eprintln!("  def-path table bytes: {}", def_path_table_bytes);
             eprintln!(" def-path hashes bytes: {}", def_path_hash_map_bytes);
@@ -1791,16 +1792,23 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.
-    fn encode_impls(&mut self) -> Lazy<[TraitImpls]> {
-        empty_proc_macro!(self);
-        debug!("EncodeContext::encode_impls()");
+    fn encode_traits_and_impls(&mut self) -> (Lazy<[DefIndex]>, Lazy<[TraitImpls]>) {
+        if self.is_proc_macro {
+            return (Lazy::empty(), Lazy::empty());
+        }
+        debug!("EncodeContext::encode_traits_and_impls()");
         let tcx = self.tcx;
-        let mut visitor = ImplVisitor { tcx, impls: FxHashMap::default() };
+        let mut visitor =
+            TraitsAndImplsVisitor { tcx, impls: FxHashMap::default(), traits: Default::default() };
         tcx.hir().visit_all_item_likes(&mut visitor);
 
+        let mut all_traits = visitor.traits;
         let mut all_impls: Vec<_> = visitor.impls.into_iter().collect();
 
         // Bring everything into deterministic order for hashing
+        all_traits.sort_by_cached_key(|&local_def_index| {
+            tcx.hir().def_path_hash(LocalDefId { local_def_index })
+        });
         all_impls.sort_by_cached_key(|&(trait_def_id, _)| tcx.def_path_hash(trait_def_id));
 
         let all_impls: Vec<_> = all_impls
@@ -1818,7 +1826,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             })
             .collect();
 
-        self.lazy(&all_impls)
+        (self.lazy(&all_traits), self.lazy(&all_impls))
     }
 
     // Encodes all symbols exported from this crate into the metadata.
@@ -2040,27 +2048,34 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
-struct ImplVisitor<'tcx> {
+struct TraitsAndImplsVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
+    traits: Vec<DefIndex>,
     impls: FxHashMap<DefId, Vec<(DefIndex, Option<fast_reject::SimplifiedType>)>>,
 }
 
-impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
+impl<'tcx, 'v> ItemLikeVisitor<'v> for TraitsAndImplsVisitor<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        if let hir::ItemKind::Impl { .. } = item.kind {
-            if let Some(trait_ref) = self.tcx.impl_trait_ref(item.def_id.to_def_id()) {
-                let simplified_self_ty = fast_reject::simplify_type(
-                    self.tcx,
-                    trait_ref.self_ty(),
-                    SimplifyParams::No,
-                    StripReferences::No,
-                );
-
-                self.impls
-                    .entry(trait_ref.def_id)
-                    .or_default()
-                    .push((item.def_id.local_def_index, simplified_self_ty));
+        match item.kind {
+            hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => {
+                self.traits.push(item.def_id.local_def_index);
             }
+            hir::ItemKind::Impl(..) => {
+                if let Some(trait_ref) = self.tcx.impl_trait_ref(item.def_id.to_def_id()) {
+                    let simplified_self_ty = fast_reject::simplify_type(
+                        self.tcx,
+                        trait_ref.self_ty(),
+                        SimplifyParams::No,
+                        StripReferences::No,
+                    );
+
+                    self.impls
+                        .entry(trait_ref.def_id)
+                        .or_default()
+                        .push((item.def_id.local_def_index, simplified_self_ty));
+                }
+            }
+            _ => {}
         }
     }
 

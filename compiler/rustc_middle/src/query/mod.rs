@@ -1609,11 +1609,11 @@ rustc_queries! {
         desc { "fetching all foreign CrateNum instances" }
     }
 
-    /// A vector of every trait accessible in the whole crate
-    /// (i.e., including those from subcrates). This is used only for
-    /// error reporting.
-    query all_traits(_: ()) -> &'tcx [DefId] {
-        desc { "fetching all foreign and local traits" }
+    /// A list of all traits in a crate, used by rustdoc and error reporting.
+    /// NOTE: Not named just `traits` due to a naming conflict.
+    query traits_in_crate(_: CrateNum) -> &'tcx [DefId] {
+        desc { "fetching all traits in a crate" }
+        separate_provide_extern
     }
 
     /// The list of symbols exported from the given crate.
