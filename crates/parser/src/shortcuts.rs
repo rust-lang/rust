@@ -16,6 +16,7 @@ use crate::{
     SyntaxKind::{self, *},
 };
 
+#[derive(Debug)]
 pub enum StrStep<'a> {
     Token { kind: SyntaxKind, text: &'a str },
     Enter { kind: SyntaxKind },
@@ -75,7 +76,8 @@ impl<'a> LexedStr<'a> {
                 builder.eat_trivias();
                 (builder.sink)(StrStep::Exit);
             }
-            State::PendingEnter | State::Normal => unreachable!(),
+            State::PendingEnter => (),
+            State::Normal => unreachable!(),
         }
 
         let is_eof = builder.pos == builder.lexed.len();

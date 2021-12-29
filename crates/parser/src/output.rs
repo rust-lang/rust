@@ -22,6 +22,7 @@ pub struct Output {
     error: Vec<String>,
 }
 
+#[derive(Debug)]
 pub enum Step<'a> {
     Token { kind: SyntaxKind, n_input_tokens: u8 },
     Enter { kind: SyntaxKind },
