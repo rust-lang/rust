@@ -10,6 +10,7 @@ use rustc_span::Symbol;
 use crate::macros::MacroArg;
 use crate::rewrite::RewriteContext;
 
+pub(crate) mod asm;
 pub(crate) mod cfg_if;
 pub(crate) mod lazy_static;
 

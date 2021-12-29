@@ -15,6 +15,7 @@ extern crate log;
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
+extern crate rustc_builtin_macros;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_expand;
