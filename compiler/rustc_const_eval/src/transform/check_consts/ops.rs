@@ -8,7 +8,9 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{suggest_constraining_type_param, Adt, Param, TraitPredicate, Ty};
+use rustc_middle::ty::{
+    suggest_constraining_type_param, Adt, Closure, FnDef, FnPtr, Param, TraitPredicate, Ty,
+};
 use rustc_middle::ty::{Binder, BoundConstness, ImplPolarity, TraitRef};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
@@ -155,7 +157,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             CallKind::Normal { desugaring: Some((kind, self_ty)), .. } => {
                 macro_rules! error {
                     ($fmt:literal) => {
-                        struct_span_err!(tcx.sess, span, E0015, $fmt, self_ty, ccx.const_kind(),)
+                        struct_span_err!(tcx.sess, span, E0015, $fmt, self_ty, ccx.const_kind())
                     };
                 }
 
@@ -175,6 +177,41 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 };
 
                 diag_trait(err, self_ty, kind.trait_def_id(tcx))
+            }
+            CallKind::FnCall { fn_trait_id, self_ty } => {
+                let mut err = struct_span_err!(
+                    tcx.sess,
+                    span,
+                    E0015,
+                    "cannot call non-const closure in {}s",
+                    ccx.const_kind(),
+                );
+
+                match self_ty.kind() {
+                    FnDef(def_id, ..) => {
+                        let span = tcx.sess.source_map().guess_head_span(tcx.def_span(*def_id));
+                        if ccx.tcx.is_const_fn_raw(*def_id) {
+                            span_bug!(span, "calling const FnDef errored when it shouldn't");
+                        }
+
+                        err.span_note(span, "function defined here, but it is not `const`");
+                    }
+                    FnPtr(..) => {
+                        err.note(&format!(
+                            "function pointers need an RFC before allowed to be called in {}s",
+                            ccx.const_kind()
+                        ));
+                    }
+                    Closure(..) => {
+                        err.note(&format!(
+                            "closures need an RFC before allowed to be called in {}s",
+                            ccx.const_kind()
+                        ));
+                    }
+                    _ => {}
+                }
+
+                diag_trait(err, self_ty, fn_trait_id)
             }
             CallKind::Operator { trait_id, self_ty, .. } => {
                 let mut err = struct_span_err!(
