@@ -148,7 +148,7 @@ fn clean_trait_ref_with_bindings(
     path
 }
 
-impl Clean<Path> for ty::TraitRef<'tcx> {
+impl Clean<Path> for ty::TraitRef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Path {
         clean_trait_ref_with_bindings(cx, *self, &[])
     }
@@ -549,7 +549,7 @@ impl Clean<Generics> for hir::Generics<'_> {
 fn clean_ty_generics(
     cx: &mut DocContext<'_>,
     gens: &ty::Generics,
-    preds: ty::GenericPredicates<'tcx>,
+    preds: ty::GenericPredicates<'_>,
 ) -> Generics {
     // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
     // since `Clean for ty::Predicate` would consume them.
@@ -579,7 +579,7 @@ fn clean_ty_generics(
         .collect::<Vec<GenericParamDef>>();
 
     // param index -> [(DefId of trait, associated type name, type)]
-    let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'tcx>)>>::default();
+    let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'_>)>>::default();
 
     let where_predicates = preds
         .predicates
@@ -708,8 +708,8 @@ fn clean_ty_generics(
 
 fn clean_fn_or_proc_macro(
     item: &hir::Item<'_>,
-    sig: &'a hir::FnSig<'a>,
-    generics: &'a hir::Generics<'a>,
+    sig: &hir::FnSig<'_>,
+    generics: &hir::Generics<'_>,
     body_id: hir::BodyId,
     name: &mut Symbol,
     cx: &mut DocContext<'_>,
@@ -1387,7 +1387,7 @@ impl Clean<Type> for hir::Ty<'_> {
 }
 
 /// Returns `None` if the type could not be normalized
-fn normalize(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
+fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
     // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
     if !cx.tcx.sess.opts.debugging_opts.normalize_docs {
         return None;

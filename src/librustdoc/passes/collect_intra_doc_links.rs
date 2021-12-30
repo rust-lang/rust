@@ -210,7 +210,7 @@ enum MalformedGenerics {
     EmptyAngleBrackets,
 }
 
-impl ResolutionFailure<'a> {
+impl ResolutionFailure<'_> {
     /// This resolved fully (not just partially) but is erroneous for some other reason
     ///
     /// Returns the full resolution of the link, if present.
@@ -336,7 +336,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// full path segments left in the link.
     ///
     /// [enum struct variant]: hir::VariantData::Struct
-    fn variant_field(
+    fn variant_field<'path>(
         &self,
         path_str: &'path str,
         module_id: DefId,

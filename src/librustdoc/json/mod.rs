@@ -37,7 +37,7 @@ crate struct JsonRenderer<'tcx> {
     cache: Rc<Cache>,
 }
 
-impl JsonRenderer<'tcx> {
+impl<'tcx> JsonRenderer<'tcx> {
     fn sess(&self) -> &'tcx Session {
         self.tcx.sess
     }

@@ -223,7 +223,7 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     })
 }
 
-crate fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
+crate fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
     match n.val {
         ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs_: _, promoted }) => {
             let mut s = if let Some(def) = def.as_local() {
@@ -294,7 +294,7 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: &'tcx ty::Const<'tcx>) -> String {
+fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: &ty::Const<'_>) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct.val, ct.ty.kind()) {
@@ -362,7 +362,7 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
 }
 
 crate fn get_auto_trait_and_blanket_impls(
-    cx: &mut DocContext<'tcx>,
+    cx: &mut DocContext<'_>,
     item_def_id: DefId,
 ) -> impl Iterator<Item = Item> {
     let auto_impls = cx
