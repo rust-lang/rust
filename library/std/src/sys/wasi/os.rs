@@ -187,18 +187,25 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
         }
     }
 }
-
-pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let k = CString::new(k.as_bytes())?;
     let v = CString::new(v.as_bytes())?;
-
-    unsafe {
-        let _guard = env_lock();
-        cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
-    }
+    cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
 }
 
-pub fn unsetenv(n: &OsStr) -> io::Result<()> {
+pub unsafe fn setenv_locking(k: &OsStr, v: &OsStr) -> io::Result<()> {
+    let k = CString::new(k.as_bytes())?;
+    let v = CString::new(v.as_bytes())?;
+    let _guard = env_lock();
+    cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
+}
+
+pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
+    let nbuf = CString::new(n.as_bytes())?;
+    cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
+}
+
+pub unsafe fn unsetenv_locking(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
     unsafe {

@@ -298,19 +298,48 @@ impl Error for VarError {
     }
 }
 
+#[unstable(feature = "unsafe_env", issue = "none")]
 /// Sets the environment variable `key` to the value `value` for the currently running
 /// process.
 ///
-/// Note that while concurrent access to environment variables is safe in Rust,
-/// some platforms only expose inherently unsafe non-threadsafe APIs for
-/// inspecting the environment. As a result, extra care needs to be taken when
-/// auditing calls to unsafe external FFI functions to ensure that any external
-/// environment accesses are properly synchronized with accesses in Rust.
+/// # Safety
 ///
-/// Discussion of this unsafety on Unix may be found in:
+/// This function must not be called in the presence of concurrent threads that
+/// may simultaneously read or write the environment. Also, it's not allowed
+/// to use this function in functions marked with `#[test]` attribute because
+/// test harness uses threads internally.
 ///
-///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
-///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
+/// # Panics
+///
+/// This function may panic if `key` is empty, contains an ASCII equals sign `'='`
+/// or the NUL character `'\0'`, or when `value` contains the NUL character.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(unsafe_env)]
+///
+/// use std::env;
+///
+/// let key = "KEY";
+/// unsafe {
+///     env::set(key, "VALUE");
+/// }
+/// assert_eq!(env::var(key), Ok("VALUE".to_string()));
+/// ```
+pub unsafe fn set<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
+    _set_var(key.as_ref(), value.as_ref(), |k, v| os_imp::setenv(k, v))
+}
+
+/// Sets the environment variable `key` to the value `value` for the currently running
+/// process.
+///
+/// # Safety
+///
+/// This function must not be called in the presence of concurrent threads that
+/// may simultaneously read or write the environment. Also, it's not allowed
+/// to use this function in functions marked with `#[test]` attribute because
+/// test harness uses threads internally.
 ///
 /// # Panics
 ///
@@ -328,27 +357,59 @@ impl Error for VarError {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
-    _set_var(key.as_ref(), value.as_ref())
+    _set_var(key.as_ref(), value.as_ref(), |k, v| unsafe { os_imp::setenv_locking(k, v) })
 }
 
-fn _set_var(key: &OsStr, value: &OsStr) {
-    os_imp::setenv(key, value).unwrap_or_else(|e| {
+fn _set_var<F: Fn(&OsStr, &OsStr) -> io::Result<()>>(key: &OsStr, value: &OsStr, f: F) {
+    f(key, value).unwrap_or_else(|e| {
         panic!("failed to set environment variable `{:?}` to `{:?}`: {}", key, value, e)
     })
 }
 
+#[unstable(feature = "unsafe_env", issue = "none")]
 /// Removes an environment variable from the environment of the currently running process.
 ///
-/// Note that while concurrent access to environment variables is safe in Rust,
-/// some platforms only expose inherently unsafe non-threadsafe APIs for
-/// inspecting the environment. As a result extra care needs to be taken when
-/// auditing calls to unsafe external FFI functions to ensure that any external
-/// environment accesses are properly synchronized with accesses in Rust.
+/// # Safety
 ///
-/// Discussion of this unsafety on Unix may be found in:
+/// This function must not be called in the presence of concurrent threads that
+/// may simultaneously read or write the environment. Also, it's not allowed
+/// to use this function in functions marked with `#[test]` attribute because
+/// test harness uses threads internally.
 ///
-///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
-///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
+/// # Panics
+///
+/// This function may panic if `key` is empty, contains an ASCII equals sign
+/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
+/// character.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(unsafe_env)]
+///
+/// use std::env;
+///
+/// let key = "KEY";
+/// env::set_var(key, "VALUE");
+/// assert_eq!(env::var(key), Ok("VALUE".to_string()));
+///
+/// unsafe {
+///     env::remove(key);
+/// }
+/// assert!(env::var(key).is_err());
+/// ```
+pub unsafe fn remove<K: AsRef<OsStr>>(key: K) {
+    _remove_var(key.as_ref(), |n| os_imp::unsetenv(n))
+}
+
+/// Removes an environment variable from the environment of the currently running process.
+///
+/// # Safety
+///
+/// This function must not be called in the presence of concurrent threads that
+/// may simultaneously read or write the environment. Also, it's not allowed
+/// to use this function in functions marked with `#[test]` attribute because
+/// test harness uses threads internally.
 ///
 /// # Panics
 ///
@@ -370,12 +431,11 @@ fn _set_var(key: &OsStr, value: &OsStr) {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn remove_var<K: AsRef<OsStr>>(key: K) {
-    _remove_var(key.as_ref())
+    _remove_var(key.as_ref(), |n| unsafe { os_imp::unsetenv_locking(n) })
 }
 
-fn _remove_var(key: &OsStr) {
-    os_imp::unsetenv(key)
-        .unwrap_or_else(|e| panic!("failed to remove environment variable `{:?}`: {}", key, e))
+fn _remove_var<F: Fn(&OsStr) -> io::Result<()>>(key: &OsStr, f: F) {
+    f(key).unwrap_or_else(|e| panic!("failed to remove environment variable `{:?}`: {}", key, e))
 }
 
 /// An iterator that splits an environment variable into paths according to
