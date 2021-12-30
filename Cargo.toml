@@ -40,9 +40,6 @@ unstable-features = ["jit", "inline_asm"]
 jit = ["cranelift-jit", "libloading"]
 inline_asm = []
 
-[profile.release.package.rustc_codegen_cranelift]
-incremental = true
-
 # Disable optimizations and debuginfo of build scripts and some of the heavy build deps, as the
 # execution time of build scripts is so fast that optimizing them slows down the total build time.
 [profile.release.build-override]

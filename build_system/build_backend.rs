@@ -10,6 +10,8 @@ pub(crate) fn build_backend(
     let mut cmd = Command::new("cargo");
     cmd.arg("build").arg("--target").arg(host_triple);
 
+    cmd.env("CARGO_BUILD_INCREMENTAL", "true"); // Force incr comp even in release mode
+
     let mut rustflags = env::var("RUSTFLAGS").unwrap_or_default();
 
     // Deny warnings on CI
