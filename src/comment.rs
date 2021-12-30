@@ -432,16 +432,16 @@ impl CodeBlockAttribute {
 
 /// Block that is formatted as an item.
 ///
-/// An item starts with either a star `*` or a dash `-`. Different level of indentation are
-/// handled by shrinking the shape accordingly.
+/// An item starts with either a star `*` a dash `-` or a greater-than `>`.
+/// Different level of indentation are handled by shrinking the shape accordingly.
 struct ItemizedBlock {
     /// the lines that are identified as part of an itemized block
     lines: Vec<String>,
-    /// the number of whitespaces up to the item sigil
+    /// the number of characters (typically whitespaces) up to the item sigil
     indent: usize,
     /// the string that marks the start of an item
     opener: String,
-    /// sequence of whitespaces to prefix new lines that are part of the item
+    /// sequence of characters (typically whitespaces) to prefix new lines that are part of the item
     line_start: String,
 }
 
@@ -449,19 +449,32 @@ impl ItemizedBlock {
     /// Returns `true` if the line is formatted as an item
     fn is_itemized_line(line: &str) -> bool {
         let trimmed = line.trim_start();
-        trimmed.starts_with("* ") || trimmed.starts_with("- ")
+        trimmed.starts_with("* ") || trimmed.starts_with("- ") || trimmed.starts_with("> ")
     }
 
     /// Creates a new ItemizedBlock described with the given line.
     /// The `is_itemized_line` needs to be called first.
     fn new(line: &str) -> ItemizedBlock {
         let space_to_sigil = line.chars().take_while(|c| c.is_whitespace()).count();
-        let indent = space_to_sigil + 2;
+        // +2 = '* ', which will add the appropriate amount of whitespace to keep itemized
+        // content formatted correctly.
+        let mut indent = space_to_sigil + 2;
+        let mut line_start = " ".repeat(indent);
+
+        // Markdown blockquote start with a "> "
+        if line.trim_start().starts_with(">") {
+            // remove the original +2 indent because there might be multiple nested block quotes
+            // and it's easier to reason about the final indent by just taking the length
+            // of th new line_start. We update the indent because it effects the max width
+            // of each formatted line.
+            line_start = itemized_block_quote_start(line, line_start, 2);
+            indent = line_start.len();
+        }
         ItemizedBlock {
             lines: vec![line[indent..].to_string()],
             indent,
             opener: line[..indent].to_string(),
-            line_start: " ".repeat(indent),
+            line_start,
         }
     }
 
@@ -502,6 +515,25 @@ impl ItemizedBlock {
     fn original_block_as_string(&self) -> String {
         self.lines.join("\n")
     }
+}
+
+/// Determine the line_start when formatting markdown block quotes.
+/// The original line_start likely contains indentation (whitespaces), which we'd like to
+/// replace with '> ' characters.
+fn itemized_block_quote_start(line: &str, mut line_start: String, remove_indent: usize) -> String {
+    let quote_level = line
+        .chars()
+        .take_while(|c| !c.is_alphanumeric())
+        .fold(0, |acc, c| if c == '>' { acc + 1 } else { acc });
+
+    for _ in 0..remove_indent {
+        line_start.pop();
+    }
+
+    for _ in 0..quote_level {
+        line_start.push_str("> ")
+    }
+    line_start
 }
 
 struct CommentRewrite<'a> {
