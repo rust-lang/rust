@@ -1,8 +1,9 @@
 #![feature(box_patterns)]
+#![feature(control_flow_enum)]
 #![feature(in_band_lifetimes)]
 #![feature(let_else)]
+#![feature(once_cell)]
 #![feature(rustc_private)]
-#![feature(control_flow_enum)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
@@ -60,9 +61,12 @@ pub use self::hir_utils::{both, count_eq, eq_expr_value, over, SpanlessEq, Spanl
 
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
+use std::lazy::SyncOnceCell;
+use std::sync::{Mutex, MutexGuard};
 
 use if_chain::if_chain;
 use rustc_ast::ast::{self, Attribute, LitKind};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -87,6 +91,7 @@ use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable, UpvarCapture};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::original_sp;
 use rustc_span::sym;
@@ -142,6 +147,13 @@ macro_rules! extract_msrv_attr {
     };
 }
 
+/// Returns `true` if the span comes from a macro expansion, no matter if from a
+/// macro by example or from a procedural macro
+#[must_use]
+pub fn in_macro(span: Span) -> bool {
+    span.from_expansion() && !matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
+}
+
 /// Returns `true` if the two spans come from differing expansions (i.e., one is
 /// from a macro and one isn't).
 #[must_use]
@@ -156,18 +168,18 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 /// instead.
 ///
 /// Examples:
-/// ```ignore
+/// ```
 /// let abc = 1;
 /// //        ^ output
 /// let def = abc;
-/// dbg!(def)
+/// dbg!(def);
 /// //   ^^^ input
 ///
 /// // or...
 /// let abc = 1;
 /// let def = abc + 2;
 /// //        ^^^^^^^ output
-/// dbg!(def)
+/// dbg!(def);
 /// //   ^^^ input
 /// ```
 pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr<'b>) -> &'a Expr<'b> {
@@ -664,6 +676,22 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
     false
 }
 
+/// Return true if the expr is equal to `Default::default` when evaluated.
+pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) -> bool {
+    if_chain! {
+        if let hir::ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
+        if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
+        if is_diag_trait_item(cx, repl_def_id, sym::Default)
+            || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
+        then {
+            true
+        }
+        else {
+            false
+        }
+    }
+}
+
 /// Returns true if the expr is equal to `Default::default()` of it's type when evaluated.
 /// It doesn't cover all cases, for example indirect function calls (some of std
 /// functions are supported) but it is the best we have.
@@ -686,18 +714,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
                 false
             }
         },
-        ExprKind::Call(repl_func, _) => if_chain! {
-            if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
-            if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
-            if is_diag_trait_item(cx, repl_def_id, sym::Default)
-                || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
-            then {
-                true
-            }
-            else {
-                false
-            }
-        },
+        ExprKind::Call(repl_func, _) => is_default_equivalent_call(cx, repl_func),
         ExprKind::Path(qpath) => is_lang_ctor(cx, qpath, OptionNone),
         ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
         _ => false,
@@ -1136,7 +1153,7 @@ pub fn find_macro_calls(names: &[&str], body: &Body<'_>) -> Vec<Span> {
 
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
 ///
-/// ```rust,ignore
+/// ```rust
 ///        let x = ();
 /// //             ^^
 /// // will be converted to
@@ -1337,7 +1354,7 @@ pub fn is_adjusted(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     cx.typeck_results().adjustments().get(e.hir_id).is_some()
 }
 
-/// Returns the pre-expansion span if is this comes from an expansion of the
+/// Returns the pre-expansion span if this comes from an expansion of the
 /// macro `name`.
 /// See also [`is_direct_expn_of`].
 #[must_use]
@@ -1364,7 +1381,8 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// of the macro `name`.
 /// The difference with [`is_expn_of`] is that in
 /// ```rust
-/// # macro_rules! foo { ($e:tt) => { $e } }; macro_rules! bar { ($e:expr) => { $e } }
+/// # macro_rules! foo { ($name:tt!$args:tt) => { $name!$args } }
+/// # macro_rules! bar { ($e:expr) => { $e } }
 /// foo!(bar!(42));
 /// ```
 /// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only
@@ -1905,7 +1923,9 @@ pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
 
 /// Check if parent of a hir node is a trait implementation block.
 /// For example, `f` in
-/// ```rust,ignore
+/// ```rust
+/// # struct S;
+/// # trait Trait { fn f(); }
 /// impl Trait for S {
 ///     fn f() {}
 /// }
@@ -2124,17 +2144,16 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     false
 }
 
-struct VisitConstTestStruct<'tcx> {
+struct TestItemNamesVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     names: Vec<Symbol>,
-    found: bool,
 }
-impl<'hir> ItemLikeVisitor<'hir> for VisitConstTestStruct<'hir> {
+
+impl<'hir> ItemLikeVisitor<'hir> for TestItemNamesVisitor<'hir> {
     fn visit_item(&mut self, item: &Item<'_>) {
         if let ItemKind::Const(ty, _body) = item.kind {
             if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
                 // We could also check for the type name `test::TestDescAndFn`
-                // and the `#[rustc_test_marker]` attribute?
                 if let Res::Def(DefKind::Struct, _) = path.res {
                     let has_test_marker = self
                         .tcx
@@ -2142,8 +2161,8 @@ impl<'hir> ItemLikeVisitor<'hir> for VisitConstTestStruct<'hir> {
                         .attrs(item.hir_id())
                         .iter()
                         .any(|a| a.has_name(sym::rustc_test_marker));
-                    if has_test_marker && self.names.contains(&item.ident.name) {
-                        self.found = true;
+                    if has_test_marker {
+                        self.names.push(item.ident.name);
                     }
                 }
             }
@@ -2154,32 +2173,42 @@ impl<'hir> ItemLikeVisitor<'hir> for VisitConstTestStruct<'hir> {
     fn visit_foreign_item(&mut self, _: &ForeignItem<'_>) {}
 }
 
+static TEST_ITEM_NAMES_CACHE: SyncOnceCell<Mutex<FxHashMap<LocalDefId, Vec<Symbol>>>> = SyncOnceCell::new();
+
+fn with_test_item_names(tcx: TyCtxt<'tcx>, module: LocalDefId, f: impl Fn(&[Symbol]) -> bool) -> bool {
+    let cache = TEST_ITEM_NAMES_CACHE.get_or_init(|| Mutex::new(FxHashMap::default()));
+    let mut map: MutexGuard<'_, FxHashMap<LocalDefId, Vec<Symbol>>> = cache.lock().unwrap();
+    match map.entry(module) {
+        Entry::Occupied(entry) => f(entry.get()),
+        Entry::Vacant(entry) => {
+            let mut visitor = TestItemNamesVisitor { tcx, names: Vec::new() };
+            tcx.hir().visit_item_likes_in_module(module, &mut visitor);
+            visitor.names.sort_unstable();
+            f(&*entry.insert(visitor.names))
+        },
+    }
+}
+
 /// Checks if the function containing the given `HirId` is a `#[test]` function
 ///
 /// Note: If you use this function, please add a `#[test]` case in `tests/ui_test`.
 pub fn is_in_test_function(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
-    let names: Vec<_> = tcx
-        .hir()
-        .parent_iter(id)
-        // Since you can nest functions we need to collect all until we leave
-        // function scope
-        .filter_map(|(_id, node)| {
-            if let Node::Item(item) = node {
-                if let ItemKind::Fn(_, _, _) = item.kind {
-                    return Some(item.ident.name);
+    with_test_item_names(tcx, tcx.parent_module(id), |names| {
+        tcx.hir()
+            .parent_iter(id)
+            // Since you can nest functions we need to collect all until we leave
+            // function scope
+            .any(|(_id, node)| {
+                if let Node::Item(item) = node {
+                    if let ItemKind::Fn(_, _, _) = item.kind {
+                        // Note that we have sorted the item names in the visitor,
+                        // so the binary_search gets the same as `contains`, but faster.
+                        return names.binary_search(&item.ident.name).is_ok();
+                    }
                 }
-            }
-            None
-        })
-        .collect();
-    let parent_mod = tcx.parent_module(id);
-    let mut vis = VisitConstTestStruct {
-        tcx,
-        names,
-        found: false,
-    };
-    tcx.hir().visit_item_likes_in_module(parent_mod, &mut vis);
-    vis.found
+                false
+            })
+    })
 }
 
 /// Checks whether item either has `test` attribute applied, or

@@ -1,16 +1,40 @@
-error: negation by multiplying with `-1`
-  --> $DIR/neg_multiply.rs:27:5
+error: this multiplication by -1 can be written more succinctly
+  --> $DIR/neg_multiply.rs:29:5
    |
 LL |     x * -1;
-   |     ^^^^^^
+   |     ^^^^^^ help: consider using: `-x`
    |
    = note: `-D clippy::neg-multiply` implied by `-D warnings`
 
-error: negation by multiplying with `-1`
-  --> $DIR/neg_multiply.rs:29:5
+error: this multiplication by -1 can be written more succinctly
+  --> $DIR/neg_multiply.rs:31:5
    |
 LL |     -1 * x;
-   |     ^^^^^^
+   |     ^^^^^^ help: consider using: `-x`
 
-error: aborting due to 2 previous errors
+error: this multiplication by -1 can be written more succinctly
+  --> $DIR/neg_multiply.rs:33:11
+   |
+LL |     100 + x * -1;
+   |           ^^^^^^ help: consider using: `-x`
+
+error: this multiplication by -1 can be written more succinctly
+  --> $DIR/neg_multiply.rs:35:5
+   |
+LL |     (100 + x) * -1;
+   |     ^^^^^^^^^^^^^^ help: consider using: `-(100 + x)`
+
+error: this multiplication by -1 can be written more succinctly
+  --> $DIR/neg_multiply.rs:37:5
+   |
+LL |     -1 * 17;
+   |     ^^^^^^^ help: consider using: `-17`
+
+error: this multiplication by -1 can be written more succinctly
+  --> $DIR/neg_multiply.rs:39:14
+   |
+LL |     0xcafe | 0xff00 * -1;
+   |              ^^^^^^^^^^^ help: consider using: `-0xff00`
+
+error: aborting due to 6 previous errors
 

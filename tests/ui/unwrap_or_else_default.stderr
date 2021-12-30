@@ -1,10 +1,16 @@
 error: use of `.unwrap_or_else(..)` to construct default value
+  --> $DIR/unwrap_or_else_default.rs:48:5
+   |
+LL |     with_new.unwrap_or_else(Vec::new);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `with_new.unwrap_or_default()`
+   |
+   = note: `-D clippy::unwrap-or-else-default` implied by `-D warnings`
+
+error: use of `.unwrap_or_else(..)` to construct default value
   --> $DIR/unwrap_or_else_default.rs:62:5
    |
 LL |     with_real_default.unwrap_or_else(<HasDefaultAndDuplicate as Default>::default);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `with_real_default.unwrap_or_default()`
-   |
-   = note: `-D clippy::unwrap-or-else-default` implied by `-D warnings`
 
 error: use of `.unwrap_or_else(..)` to construct default value
   --> $DIR/unwrap_or_else_default.rs:65:5
@@ -18,5 +24,11 @@ error: use of `.unwrap_or_else(..)` to construct default value
 LL |     with_default_type.unwrap_or_else(u64::default);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `with_default_type.unwrap_or_default()`
 
-error: aborting due to 3 previous errors
+error: use of `.unwrap_or_else(..)` to construct default value
+  --> $DIR/unwrap_or_else_default.rs:71:5
+   |
+LL |     with_default_type.unwrap_or_else(Vec::new);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `with_default_type.unwrap_or_default()`
+
+error: aborting due to 5 previous errors
 
