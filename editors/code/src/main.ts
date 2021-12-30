@@ -243,8 +243,8 @@ async function getServer(context: vscode.ExtensionContext, config: Config, state
             if (!exists) {
                 await vscode.workspace.fs.copy(bundled, dest);
                 await patchelf(dest);
-                server = dest;
             }
+            server = dest;
         }
         await state.updateServerVersion(config.package.version);
         return server.fsPath;
