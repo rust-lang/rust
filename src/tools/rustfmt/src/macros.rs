@@ -16,8 +16,6 @@ use rustc_ast::token::{BinOpToken, DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{Cursor, Spacing, TokenStream, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
-use rustc_parse::parser::{ForceCollect, Parser};
-use rustc_parse::{stream_to_parser, MACRO_ARGUMENTS};
 use rustc_span::{
     symbol::{self, kw},
     BytePos, Span, Symbol, DUMMY_SP,
@@ -30,6 +28,8 @@ use crate::config::lists::*;
 use crate::expr::{rewrite_array, rewrite_assign_rhs, RhsAssignKind};
 use crate::lists::{itemize_list, write_list, ListFormatting};
 use crate::overflow;
+use crate::parse::macros::lazy_static::parse_lazy_static;
+use crate::parse::macros::{parse_expr, parse_macro_args, ParsedMacroArgs};
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
@@ -60,7 +60,7 @@ pub(crate) enum MacroArg {
 }
 
 impl MacroArg {
-    fn is_item(&self) -> bool {
+    pub(crate) fn is_item(&self) -> bool {
         match self {
             MacroArg::Item(..) => true,
             _ => false,
@@ -88,61 +88,6 @@ impl Rewrite for MacroArg {
             MacroArg::Keyword(ident, _) => Some(ident.name.to_string()),
         }
     }
-}
-
-fn build_parser<'a>(context: &RewriteContext<'a>, cursor: Cursor) -> Parser<'a> {
-    stream_to_parser(
-        context.parse_sess.inner(),
-        cursor.collect(),
-        MACRO_ARGUMENTS,
-    )
-}
-
-fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
-    macro_rules! parse_macro_arg {
-        ($macro_arg:ident, $parser:expr, $f:expr) => {
-            let mut cloned_parser = (*parser).clone();
-            match $parser(&mut cloned_parser) {
-                Ok(x) => {
-                    if parser.sess.span_diagnostic.has_errors() {
-                        parser.sess.span_diagnostic.reset_err_count();
-                    } else {
-                        // Parsing succeeded.
-                        *parser = cloned_parser;
-                        return Some(MacroArg::$macro_arg($f(x)?));
-                    }
-                }
-                Err(mut e) => {
-                    e.cancel();
-                    parser.sess.span_diagnostic.reset_err_count();
-                }
-            }
-        };
-    }
-
-    parse_macro_arg!(
-        Expr,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_expr(),
-        |x: ptr::P<ast::Expr>| Some(x)
-    );
-    parse_macro_arg!(
-        Ty,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_ty(),
-        |x: ptr::P<ast::Ty>| Some(x)
-    );
-    parse_macro_arg!(
-        Pat,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_pat_no_top_alt(None),
-        |x: ptr::P<ast::Pat>| Some(x)
-    );
-    // `parse_item` returns `Option<ptr::P<ast::Item>>`.
-    parse_macro_arg!(
-        Item,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_item(ForceCollect::No),
-        |x: Option<ptr::P<ast::Item>>| x
-    );
-
-    None
 }
 
 /// Rewrite macro name without using pretty-printer if possible.
@@ -232,25 +177,6 @@ pub(crate) fn rewrite_macro(
     }
 }
 
-fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
-    for &keyword in RUST_KW.iter() {
-        if parser.token.is_keyword(keyword)
-            && parser.look_ahead(1, |t| {
-                t.kind == TokenKind::Eof
-                    || t.kind == TokenKind::Comma
-                    || t.kind == TokenKind::CloseDelim(DelimToken::NoDelim)
-            })
-        {
-            parser.bump();
-            return Some(MacroArg::Keyword(
-                symbol::Ident::with_dummy_span(keyword),
-                parser.prev_token.span,
-            ));
-        }
-    }
-    None
-}
-
 fn rewrite_macro_inner(
     mac: &ast::MacCall,
     extra_ident: Option<symbol::Ident>,
@@ -269,8 +195,9 @@ fn rewrite_macro_inner(
     let original_style = macro_style(mac, context);
 
     let macro_name = rewrite_macro_name(context, &mac.path, extra_ident);
+    let is_forced_bracket = FORCED_BRACKET_MACROS.contains(&&macro_name[..]);
 
-    let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) && !is_nested_macro {
+    let style = if is_forced_bracket && !is_nested_macro {
         DelimToken::Bracket
     } else {
         original_style
@@ -294,67 +221,21 @@ fn rewrite_macro_inner(
     }
     // Format well-known macros which cannot be parsed as a valid AST.
     if macro_name == "lazy_static!" && !has_comment {
-        if let success @ Some(..) = format_lazy_static(context, shape, &ts) {
+        if let success @ Some(..) = format_lazy_static(context, shape, ts.trees().collect()) {
             return success;
         }
     }
 
-    let mut parser = build_parser(context, ts.trees());
-    let mut arg_vec = Vec::new();
-    let mut vec_with_semi = false;
-    let mut trailing_comma = false;
-
-    if DelimToken::Brace != style {
-        loop {
-            if let Some(arg) = check_keyword(&mut parser) {
-                arg_vec.push(arg);
-            } else if let Some(arg) = parse_macro_arg(&mut parser) {
-                arg_vec.push(arg);
-            } else {
-                return return_macro_parse_failure_fallback(context, shape.indent, mac.span());
-            }
-
-            match parser.token.kind {
-                TokenKind::Eof => break,
-                TokenKind::Comma => (),
-                TokenKind::Semi => {
-                    // Try to parse `vec![expr; expr]`
-                    if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
-                        parser.bump();
-                        if parser.token.kind != TokenKind::Eof {
-                            match parse_macro_arg(&mut parser) {
-                                Some(arg) => {
-                                    arg_vec.push(arg);
-                                    parser.bump();
-                                    if parser.token.kind == TokenKind::Eof && arg_vec.len() == 2 {
-                                        vec_with_semi = true;
-                                        break;
-                                    }
-                                }
-                                None => {
-                                    return return_macro_parse_failure_fallback(
-                                        context,
-                                        shape.indent,
-                                        mac.span(),
-                                    );
-                                }
-                            }
-                        }
-                    }
-                    return return_macro_parse_failure_fallback(context, shape.indent, mac.span());
-                }
-                _ if arg_vec.last().map_or(false, MacroArg::is_item) => continue,
-                _ => return return_macro_parse_failure_fallback(context, shape.indent, mac.span()),
-            }
-
-            parser.bump();
-
-            if parser.token.kind == TokenKind::Eof {
-                trailing_comma = true;
-                break;
-            }
+    let ParsedMacroArgs {
+        args: arg_vec,
+        vec_with_semi,
+        trailing_comma,
+    } = match parse_macro_args(context, ts, style, is_forced_bracket) {
+        Some(args) => args,
+        None => {
+            return return_macro_parse_failure_fallback(context, shape.indent, mac.span());
         }
-    }
+    };
 
     if !arg_vec.is_empty() && arg_vec.iter().all(MacroArg::is_item) {
         return rewrite_macro_with_items(
@@ -1179,11 +1060,10 @@ pub(crate) fn convert_try_mac(
     let path = &pprust::path_to_string(&mac.path);
     if path == "try" || path == "r#try" {
         let ts = mac.args.inner_tokens();
-        let mut parser = build_parser(context, ts.trees());
 
         Some(ast::Expr {
             id: ast::NodeId::root(), // dummy value
-            kind: ast::ExprKind::Try(parser.parse_expr().ok()?),
+            kind: ast::ExprKind::Try(parse_expr(context, ts)?),
             span: mac.span(), // incorrect span, but shouldn't matter too much
             attrs: ast::AttrVec::new(),
             tokens: None,
@@ -1414,10 +1294,9 @@ impl MacroBranch {
 fn format_lazy_static(
     context: &RewriteContext<'_>,
     shape: Shape,
-    ts: &TokenStream,
+    ts: TokenStream,
 ) -> Option<String> {
     let mut result = String::with_capacity(1024);
-    let mut parser = build_parser(context, ts.trees());
     let nested_shape = shape
         .block_indent(context.config.tab_spaces())
         .with_max_width(context.config);
@@ -1425,42 +1304,11 @@ fn format_lazy_static(
     result.push_str("lazy_static! {");
     result.push_str(&nested_shape.indent.to_string_with_newline(context.config));
 
-    macro_rules! parse_or {
-        ($method:ident $(,)* $($arg:expr),* $(,)*) => {
-            match parser.$method($($arg,)*) {
-                Ok(val) => {
-                    if parser.sess.span_diagnostic.has_errors() {
-                        parser.sess.span_diagnostic.reset_err_count();
-                        return None;
-                    } else {
-                        val
-                    }
-                }
-                Err(mut err) => {
-                    err.cancel();
-                    parser.sess.span_diagnostic.reset_err_count();
-                    return None;
-                }
-            }
-        }
-    }
-
-    while parser.token.kind != TokenKind::Eof {
-        // Parse a `lazy_static!` item.
-        let vis = crate::utils::format_visibility(
-            context,
-            &parse_or!(parse_visibility, rustc_parse::parser::FollowedByType::No),
-        );
-        parser.eat_keyword(kw::Static);
-        parser.eat_keyword(kw::Ref);
-        let id = parse_or!(parse_ident);
-        parser.eat(&TokenKind::Colon);
-        let ty = parse_or!(parse_ty);
-        parser.eat(&TokenKind::Eq);
-        let expr = parse_or!(parse_expr);
-        parser.eat(&TokenKind::Semi);
-
+    let parsed_elems = parse_lazy_static(context, ts)?;
+    let last = parsed_elems.len() - 1;
+    for (i, (vis, id, ty, expr)) in parsed_elems.iter().enumerate() {
         // Rewrite as a static item.
+        let vis = crate::utils::format_visibility(context, vis);
         let mut stmt = String::with_capacity(128);
         stmt.push_str(&format!(
             "{}static ref {}: {} =",
@@ -1476,7 +1324,7 @@ fn format_lazy_static(
             nested_shape.sub_width(1)?,
         )?);
         result.push(';');
-        if parser.token.kind != TokenKind::Eof {
+        if i != last {
             result.push_str(&nested_shape.indent.to_string_with_newline(context.config));
         }
     }
@@ -1528,65 +1376,3 @@ fn rewrite_macro_with_items(
     result.push_str(trailing_semicolon);
     Some(result)
 }
-
-const RUST_KW: [Symbol; 59] = [
-    kw::PathRoot,
-    kw::DollarCrate,
-    kw::Underscore,
-    kw::As,
-    kw::Box,
-    kw::Break,
-    kw::Const,
-    kw::Continue,
-    kw::Crate,
-    kw::Else,
-    kw::Enum,
-    kw::Extern,
-    kw::False,
-    kw::Fn,
-    kw::For,
-    kw::If,
-    kw::Impl,
-    kw::In,
-    kw::Let,
-    kw::Loop,
-    kw::Match,
-    kw::Mod,
-    kw::Move,
-    kw::Mut,
-    kw::Pub,
-    kw::Ref,
-    kw::Return,
-    kw::SelfLower,
-    kw::SelfUpper,
-    kw::Static,
-    kw::Struct,
-    kw::Super,
-    kw::Trait,
-    kw::True,
-    kw::Type,
-    kw::Unsafe,
-    kw::Use,
-    kw::Where,
-    kw::While,
-    kw::Abstract,
-    kw::Become,
-    kw::Do,
-    kw::Final,
-    kw::Macro,
-    kw::Override,
-    kw::Priv,
-    kw::Typeof,
-    kw::Unsized,
-    kw::Virtual,
-    kw::Yield,
-    kw::Dyn,
-    kw::Async,
-    kw::Try,
-    kw::UnderscoreLifetime,
-    kw::StaticLifetime,
-    kw::Auto,
-    kw::Catch,
-    kw::Default,
-    kw::Union,
-];

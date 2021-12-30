@@ -5,6 +5,7 @@ use std::io::{self, Write};
 use std::time::{Duration, Instant};
 
 use rustc_ast::ast;
+use rustc_ast::AstLike;
 use rustc_span::Span;
 
 use self::newline_style::apply_newline_style;
@@ -13,9 +14,9 @@ use crate::config::{Config, FileName, Verbosity};
 use crate::formatting::generated::is_generated_file;
 use crate::issues::BadIssueSeeker;
 use crate::modules::Module;
-use crate::syntux::parser::{DirectoryOwnership, Parser, ParserError};
-use crate::syntux::session::ParseSess;
-use crate::utils::count_newlines;
+use crate::parse::parser::{DirectoryOwnership, Parser, ParserError};
+use crate::parse::session::ParseSess;
+use crate::utils::{contains_skip, count_newlines};
 use crate::visitor::FmtVisitor;
 use crate::{modules, source_file, ErrorKind, FormatReport, Input, Session};
 
@@ -58,6 +59,39 @@ impl<'b, T: Write + 'b> Session<'b, T> {
     }
 }
 
+/// Determine if a module should be skipped. True if the module should be skipped, false otherwise.
+fn should_skip_module<T: FormatHandler>(
+    config: &Config,
+    context: &FormatContext<'_, T>,
+    input_is_stdin: bool,
+    main_file: &FileName,
+    path: &FileName,
+    module: &Module<'_>,
+) -> bool {
+    if contains_skip(module.attrs()) {
+        return true;
+    }
+
+    if config.skip_children() && path != main_file {
+        return true;
+    }
+
+    if !input_is_stdin && context.ignore_file(path) {
+        return true;
+    }
+
+    if !config.format_generated_files() {
+        let source_file = context.parse_session.span_to_file_contents(module.span);
+        let src = source_file.src.as_ref().expect("SourceFile without src");
+
+        if is_generated_file(src) {
+            return true;
+        }
+    }
+
+    false
+}
+
 // Format an entire crate (or subset of the module tree).
 fn format_project<T: FormatHandler>(
     input: Input,
@@ -97,7 +131,12 @@ fn format_project<T: FormatHandler>(
         directory_ownership.unwrap_or(DirectoryOwnership::UnownedViaBlock),
         !input_is_stdin && !config.skip_children(),
     )
-    .visit_crate(&krate)?;
+    .visit_crate(&krate)?
+    .into_iter()
+    .filter(|(path, module)| {
+        !should_skip_module(config, &context, input_is_stdin, &main_file, path, module)
+    })
+    .collect::<Vec<_>>();
 
     timer = timer.done_parsing();
 
@@ -105,15 +144,6 @@ fn format_project<T: FormatHandler>(
     context.parse_session.set_silent_emitter();
 
     for (path, module) in files {
-        let source_file = context.parse_session.span_to_file_contents(module.span);
-        let src = source_file.src.as_ref().expect("SourceFile without src");
-
-        let should_ignore = (!input_is_stdin && context.ignore_file(&path))
-            || (!config.format_generated_files() && is_generated_file(src));
-
-        if (config.skip_children() && path != main_file) || should_ignore {
-            continue;
-        }
         should_emit_verbose(input_is_stdin, config, || println!("Formatting {}", path));
         context.format_file(path, &module, is_macro_def)?;
     }

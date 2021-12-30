@@ -6,20 +6,20 @@ use std::io::Write;
 use crate::config::{Color, Config, Verbosity};
 
 #[derive(Debug, PartialEq)]
-pub enum DiffLine {
+pub(crate) enum DiffLine {
     Context(String),
     Expected(String),
     Resulting(String),
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Mismatch {
+pub(crate) struct Mismatch {
     /// The line number in the formatted version.
-    pub line_number: u32,
+    pub(crate) line_number: u32,
     /// The line number in the original version.
-    pub line_number_orig: u32,
+    pub(crate) line_number_orig: u32,
     /// The set of lines (context and old/new) in the mismatch.
-    pub lines: Vec<DiffLine>,
+    pub(crate) lines: Vec<DiffLine>,
 }
 
 impl Mismatch {
