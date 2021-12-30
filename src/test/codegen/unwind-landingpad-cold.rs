@@ -1,3 +1,4 @@
+// no-system-llvm: needs #92110
 // compile-flags: -Cno-prepopulate-passes
 #![crate_type = "lib"]
 

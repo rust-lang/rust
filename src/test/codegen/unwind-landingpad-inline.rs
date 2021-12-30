@@ -1,4 +1,4 @@
-// no-system-llvm: needs patch for Rust alloc/dealloc functions
+// no-system-llvm: needs #92110 + patch for Rust alloc/dealloc functions
 // compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 
