@@ -4,9 +4,6 @@ on:
   - push
   - pull_request
 
-env:
-  RUSTFLAGS: "-Dwarnings" # Deny warnings on CI
-
 jobs:
   rustfmt:
     runs-on: ubuntu-latest
