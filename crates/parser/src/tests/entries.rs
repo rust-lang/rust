@@ -33,7 +33,7 @@ fn stmt() {
 fn pat() {
     check_prefix(PrefixEntryPoint::Pat, "x y", "x");
     check_prefix(PrefixEntryPoint::Pat, "fn f() {}", "fn");
-    // FIXME: this one is wrong
+    // FIXME: This one is wrong, we should consume only one pattern.
     check_prefix(PrefixEntryPoint::Pat, ".. ..", ".. ..");
 }
 
@@ -42,6 +42,15 @@ fn ty() {
     check_prefix(PrefixEntryPoint::Ty, "fn() foo", "fn()");
     check_prefix(PrefixEntryPoint::Ty, "Clone + Copy + fn", "Clone + Copy +");
     check_prefix(PrefixEntryPoint::Ty, "struct f", "struct");
+}
+
+#[test]
+fn expr() {
+    check_prefix(PrefixEntryPoint::Expr, "92 92", "92");
+    check_prefix(PrefixEntryPoint::Expr, "+1", "+");
+    check_prefix(PrefixEntryPoint::Expr, "-1", "-1");
+    check_prefix(PrefixEntryPoint::Expr, "fn foo() {}", "fn");
+    check_prefix(PrefixEntryPoint::Expr, "#[attr] ()", "#[attr] ()");
 }
 
 fn check_prefix(entry: PrefixEntryPoint, input: &str, prefix: &str) {
