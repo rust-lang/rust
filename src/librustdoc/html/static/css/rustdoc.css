@@ -108,7 +108,7 @@ html {
 /* General structure and fonts */
 
 body {
-	font: 16px/1.4 "Source Serif 4", NanumBarunGothic, serif;
+	font: 1rem/1.4 "Source Serif 4", NanumBarunGothic, serif;
 	margin: 0;
 	position: relative;
 
@@ -118,13 +118,13 @@ body {
 }
 
 h1 {
-	font-size: 1.5em;
+	font-size: 1.5rem;
 }
 h2 {
-	font-size: 1.4em;
+	font-size: 1.4rem;
 }
 h3 {
-	font-size: 1.3em;
+	font-size: 1.3rem;
 }
 h1, h2, h3, h4, h5, h6 {
 	font-weight: 500;
@@ -160,10 +160,10 @@ h2,
 	border-bottom: 1px solid;
 }
 h3.code-header {
-	font-size: 1.1em;
+	font-size: 1.1rem;
 }
 h4.code-header {
-	font-size: 1em;
+	font-size: 1rem;
 }
 h3.code-header, h4.code-header {
 	font-weight: 600;
@@ -206,7 +206,7 @@ div.impl-items > div:not(.docblock):not(.item-info),
 }
 
 .content ul.crate a.crate {
-	font-size: 16px/1.6;
+	font-size: 1rem/1.6;
 }
 
 ol, ul {
@@ -317,7 +317,7 @@ li {
 
 nav.sub {
 	position: relative;
-	font-size: 16px;
+	font-size: 1rem;
 	text-transform: uppercase;
 }
 
@@ -423,7 +423,7 @@ nav.sub {
 
 .sidebar .location {
 	border: 1px solid;
-	font-size: 17px;
+	font-size: 1.0625rem;
 	margin: 30px 10px 20px 10px;
 	text-align: center;
 	word-wrap: break-word;
@@ -432,7 +432,7 @@ nav.sub {
 }
 
 .sidebar .version {
-	font-size: 15px;
+	font-size: 0.9375rem;
 	text-align: center;
 	border-bottom: 1px solid;
 	overflow-wrap: break-word;
@@ -470,7 +470,7 @@ nav.sub {
 	overflow: hidden;
 	line-height: 15px;
 	padding: 7px 5px;
-	font-size: 14px;
+	font-size: 0.875rem;
 	font-weight: 300;
 	transition: border 500ms ease-out;
 }
@@ -479,7 +479,7 @@ nav.sub {
 	border-top: 1px solid;
 	border-bottom: 1px solid;
 	text-align: center;
-	font-size: 17px;
+	font-size: 1.0625rem;
 	margin-bottom: 5px;
 	font-weight: inherit;
 	padding: 0;
@@ -579,18 +579,18 @@ nav.sub {
 	white-space: pre-wrap;
 }
 
-.top-doc .docblock h2 { font-size: 1.3em; }
-.top-doc .docblock h3 { font-size: 1.15em; }
+.top-doc .docblock h2 { font-size: 1.3rem; }
+.top-doc .docblock h3 { font-size: 1.15rem; }
 .top-doc .docblock h4,
 .top-doc .docblock h5 {
-	font-size: 1.1em;
+	font-size: 1.1rem;
 }
 .top-doc .docblock h6 {
-	font-size: 1em;
+	font-size: 1rem;
 }
 
-.docblock h5 { font-size: 1em; }
-.docblock h6 { font-size: 0.95em; }
+.docblock h5 { font-size: 1rem; }
+.docblock h6 { font-size: 0.95rem; }
 
 .docblock {
 	margin-left: 24px;
@@ -605,7 +605,7 @@ nav.sub {
 .content .out-of-band {
 	flex-grow: 0;
 	text-align: right;
-	font-size: 23px;
+	font-size: 1.4375rem;
 	margin: 0px;
 	padding: 0 0 0 12px;
 	font-weight: normal;
@@ -646,7 +646,7 @@ nav.sub {
 .content td { vertical-align: top; }
 .content td:first-child { padding-right: 20px; }
 .content td p:first-child { margin-top: 0; }
-.content td h1, .content td h2 { margin-left: 0; font-size: 1.1em; }
+.content td h1, .content td h2 { margin-left: 0; font-size: 1.1rem; }
 .content tr:first-child td { border-top: 0; }
 
 .docblock table {
@@ -687,7 +687,7 @@ nav.sub {
 .content .multi-column li { width: 100%; display: inline-block; }
 
 .content > .methods > .method {
-	font-size: 1em;
+	font-size: 1rem;
 	position: relative;
 }
 /* Shift "where ..." part of method or fn definition down a line */
@@ -695,7 +695,7 @@ nav.sub {
 .content .fn .where,
 .content .where.fmt-newline {
 	display: block;
-	font-size: 0.8em;
+	font-size: 0.8rem;
 }
 
 .content .methods > div:not(.notable-traits):not(.method) {
@@ -718,7 +718,7 @@ nav.sub {
 }
 
 .content .item-info code {
-	font-size: 90%;
+	font-size: 0.81rem;
 }
 
 .content .item-info {
@@ -732,7 +732,7 @@ nav.sub {
 
 .content .item-info::before {
 	content: '⬑';
-	font-size: 25px;
+	font-size: 1.5625rem;
 	position: absolute;
 	top: -6px;
 	left: -19px;
@@ -835,7 +835,7 @@ h2.small-section-header > .anchor {
 	position: absolute;
 	top: 0;
 	right: 0;
-	font-size: 17px;
+	font-size: 1.0625rem;
 	font-weight: normal;
 }
 
@@ -905,7 +905,7 @@ h2.small-section-header > .anchor {
 	border-radius: 1px;
 	margin-top: 5px;
 	padding: 10px 16px;
-	font-size: 17px;
+	font-size: 1.0625rem;
 	transition: border-color 300ms ease;
 	transition: border-radius 300ms ease-in-out;
 	transition: box-shadow 300ms ease-in-out;
@@ -1000,7 +1000,7 @@ body.blur > :not(#help) {
 #help span.top, #help span.bottom {
 	text-align: center;
 	display: block;
-	font-size: 18px;
+	font-size: 1.125rem;
 
 }
 #help span.top {
@@ -1030,7 +1030,7 @@ body.blur > :not(#help) {
 .stab {
 	padding: 3px;
 	margin-bottom: 5px;
-	font-size: 90%;
+	font-size: 0.9rem;
 	font-weight: normal;
 }
 .stab p {
@@ -1038,7 +1038,7 @@ body.blur > :not(#help) {
 }
 
 .stab .emoji {
-	font-size: 1.2em;
+	font-size: 1.2rem;
 }
 
 /* Black one-pixel outline around emoji shapes */
@@ -1054,7 +1054,7 @@ body.blur > :not(#help) {
 .import-item .stab {
 	border-radius: 3px;
 	display: inline-block;
-	font-size: 80%;
+	font-size: 0.8rem;
 	line-height: 1.2;
 	margin-bottom: 0;
 	margin-left: .3em;
@@ -1080,7 +1080,7 @@ body.blur > :not(#help) {
 
 .impl-items .srclink, .impl .srclink, .methods .srclink {
 	/* Override header settings otherwise it's too bold */
-	font-size: 17px;
+	font-size: 1.0625rem;
 	font-weight: normal;
 }
 
@@ -1089,7 +1089,7 @@ body.blur > :not(#help) {
 }
 
 .has-srclink {
-	font-size: 16px;
+	font-size: 1rem;
 	margin-bottom: 12px;
 	/* Push the src link out to the right edge consistently */
 	justify-content: space-between;
@@ -1120,7 +1120,7 @@ a.test-arrow {
 	position: absolute;
 	padding: 5px 10px 5px 10px;
 	border-radius: 5px;
-	font-size: 130%;
+	font-size: 1.3rem;
 	top: 5px;
 	right: 5px;
 	z-index: 1;
@@ -1155,19 +1155,19 @@ a.test-arrow:hover{
 
 .out-of-band > span.since {
 	position: initial;
-	font-size: 20px;
+	font-size: 1.25rem;
 	margin-right: 5px;
 }
 
 h3.variant {
 	font-weight: 600;
-	font-size: 1.1em;
+	font-size: 1.1rem;
 	margin-bottom: 10px;
 	border-bottom: none;
 }
 
 .sub-variant h4 {
-	font-size: 1em;
+	font-size: 1rem;
 	font-weight: 400;
 	border-bottom: none;
 	margin-top: 0;
@@ -1227,7 +1227,7 @@ h3.variant {
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
 	margin-left: 5px;
-	font-size: 16px;
+	font-size: 1rem;
 }
 
 .tooltip.ignore::after {
@@ -1260,7 +1260,7 @@ h3.variant {
 
 .tooltip.compile_fail, .tooltip.should_panic, .tooltip.ignore {
 	font-weight: bold;
-	font-size: 20px;
+	font-size: 1.25rem;
 }
 
 .notable-traits-tooltip {
@@ -1279,7 +1279,7 @@ h3.variant {
 	border-radius: 6px;
 	margin-left: 5px;
 	z-index: 10;
-	font-size: 16px;
+	font-size: 1rem;
 	cursor: default;
 	position: absolute;
 	border: 1px solid;
@@ -1299,14 +1299,14 @@ h3.variant {
 .notable-traits .notable {
 	margin: 0;
 	margin-bottom: 13px;
-	font-size: 19px;
+	font-size: 1.1875rem;
 	font-weight: 600;
 }
 
 .notable-traits .docblock code.content{
 	margin: 0;
 	padding: 0;
-	font-size: 20px;
+	font-size: 1.25rem;
 }
 
 /* Example code has the "Run" button that needs to be positioned relative to the pre */
@@ -1344,7 +1344,7 @@ pre.rust {
 	float: left;
 	width: 33.3%;
 	text-align: center;
-	font-size: 18px;
+	font-size: 1.125rem;
 	cursor: pointer;
 	border: 0;
 	border-top: 2px solid;
@@ -1357,7 +1357,7 @@ pre.rust {
 
 #titles > button > div.count {
 	display: inline-block;
-	font-size: 16px;
+	font-size: 1rem;
 }
 
 .notable-traits {
@@ -1384,7 +1384,7 @@ pre.rust {
 	left: 0;
 	cursor: pointer;
 	font-weight: bold;
-	font-size: 1.2em;
+	font-size: 1.2rem;
 	border-bottom: 1px solid;
 	display: flex;
 	height: 40px;
@@ -1398,7 +1398,7 @@ pre.rust {
 	overflow: auto;
 }
 #source-sidebar > .title {
-	font-size: 1.5em;
+	font-size: 1.5rem;
 	text-align: center;
 	border-bottom: 1px solid;
 	margin-bottom: 6px;
@@ -1426,6 +1426,9 @@ pre.rust {
 
 #theme-picker, #settings-menu, #help-button, #copy-path {
 	padding: 4px;
+	/* Rare exception to specifying font sizes in rem. Since these are acting
+	   as icons, it's okay to specify their sizes in pixels. */
+	font-size: 16px;
 	width: 27px;
 	height: 29px;
 	border: 1px solid;
@@ -1437,7 +1440,9 @@ pre.rust {
 	right: 30px;
 	font-family: "Fira Sans", Arial, sans-serif;
 	text-align: center;
-	font-size: 17px;
+	/* Rare exception to specifying font sizes in rem. Since this is acting
+	   as an icon, it's okay to specify their sizes in pixels. */
+	font-size: 16px;
 	padding-top: 2px;
 }
 
@@ -1499,7 +1504,7 @@ kbd {
 	border: 0;
 	border-collapse: collapse;
 	border-spacing: 0;
-	font-size: 16px;
+	font-size: 1rem;
 }
 
 .table-display tr td:first-child {
@@ -1511,11 +1516,11 @@ kbd {
 }
 .table-display .out-of-band {
 	position: relative;
-	font-size: 19px;
+	font-size: 1.1875rem;
 	display: block;
 }
 #implementors-list > .impl-items .table-display .out-of-band {
-	font-size: 17px;
+	font-size: 1.0625rem;
 }
 
 .table-display td:hover .anchor {
@@ -1557,7 +1562,7 @@ div.name.expand + .children {
 div.name::before {
 	content: "\25B6";
 	padding-left: 4px;
-	font-size: 0.7em;
+	font-size: 0.7rem;
 	position: absolute;
 	left: -16px;
 	top: 4px;
@@ -1624,7 +1629,7 @@ details.rustdoc-toggle.top-doc > summary::before,
 details.rustdoc-toggle.non-exhaustive > summary,
 details.rustdoc-toggle.non-exhaustive > summary::before {
 	font-family: 'Fira Sans';
-	font-size: 16px;
+	font-size: 1rem;
 }
 
 details.non-exhaustive {
@@ -1768,7 +1773,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		min-height: 39px;
 		background: inherit;
 		text-align: left;
-		font-size: 24px;
+		font-size: 1.5rem;
 	}
 
 	.sidebar .location:empty {
@@ -1909,7 +1914,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 
 	.show-it > .block.items > ul > li > a {
-		font-size: 21px;
+		font-size: 1.3125rem;
 	}
 
 	/* Because of ios, we need to actually have a full height sidebar title so the
