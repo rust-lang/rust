@@ -37,6 +37,13 @@ fn pat() {
     check_prefix(PrefixEntryPoint::Pat, ".. ..", ".. ..");
 }
 
+#[test]
+fn ty() {
+    check_prefix(PrefixEntryPoint::Ty, "fn() foo", "fn()");
+    check_prefix(PrefixEntryPoint::Ty, "Clone + Copy + fn", "Clone + Copy +");
+    check_prefix(PrefixEntryPoint::Ty, "struct f", "struct");
+}
+
 fn check_prefix(entry: PrefixEntryPoint, input: &str, prefix: &str) {
     let lexed = LexedStr::new(input);
     let input = lexed.to_input();
