@@ -1001,6 +1001,82 @@ impl<T, E> Result<T, E> {
         IterMut { inner: self.as_mut().ok() }
     }
 
+    /////////////////////////////////////////////////////////////////////////
+    // Extract a value
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Returns the contained [`Ok`] value, consuming the `self` value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is an [`Err`], with a panic message including the
+    /// passed message, and the content of the [`Err`].
+    ///
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "result_expect", since = "1.4.0")]
+    pub fn expect(self, msg: &str) -> T
+    where
+        E: fmt::Debug,
+    {
+        match self {
+            Ok(t) => t,
+            Err(e) => unwrap_failed(msg, &e),
+        }
+    }
+
+    /// Returns the contained [`Ok`] value, consuming the `self` value.
+    ///
+    /// Because this function may panic, its use is generally discouraged.
+    /// Instead, prefer to use pattern matching and handle the [`Err`]
+    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
+    /// [`unwrap_or_default`].
+    ///
+    /// [`unwrap_or`]: Result::unwrap_or
+    /// [`unwrap_or_else`]: Result::unwrap_or_else
+    /// [`unwrap_or_default`]: Result::unwrap_or_default
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is an [`Err`], with a panic message provided by the
+    /// [`Err`]'s value.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let x: Result<u32, &str> = Ok(2);
+    /// assert_eq!(x.unwrap(), 2);
+    /// ```
+    ///
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// x.unwrap(); // panics with `emergency failure`
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn unwrap(self) -> T
+    where
+        E: fmt::Debug,
+    {
+        match self {
+            Ok(t) => t,
+            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", &e),
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////
     // Boolean operations on the values, eager and lazy
     /////////////////////////////////////////////////////////////////////////
@@ -1323,74 +1399,6 @@ impl<T: Clone, E> Result<&mut T, E> {
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
     pub fn cloned(self) -> Result<T, E> {
         self.map(|t| t.clone())
-    }
-}
-
-impl<T, E: fmt::Debug> Result<T, E> {
-    /// Returns the contained [`Ok`] value, consuming the `self` value.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Err`], with a panic message including the
-    /// passed message, and the content of the [`Err`].
-    ///
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```should_panic
-    /// let x: Result<u32, &str> = Err("emergency failure");
-    /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "result_expect", since = "1.4.0")]
-    pub fn expect(self, msg: &str) -> T {
-        match self {
-            Ok(t) => t,
-            Err(e) => unwrap_failed(msg, &e),
-        }
-    }
-
-    /// Returns the contained [`Ok`] value, consuming the `self` value.
-    ///
-    /// Because this function may panic, its use is generally discouraged.
-    /// Instead, prefer to use pattern matching and handle the [`Err`]
-    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
-    /// [`unwrap_or_default`].
-    ///
-    /// [`unwrap_or`]: Result::unwrap_or
-    /// [`unwrap_or_else`]: Result::unwrap_or_else
-    /// [`unwrap_or_default`]: Result::unwrap_or_default
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Err`], with a panic message provided by the
-    /// [`Err`]'s value.
-    ///
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let x: Result<u32, &str> = Ok(2);
-    /// assert_eq!(x.unwrap(), 2);
-    /// ```
-    ///
-    /// ```should_panic
-    /// let x: Result<u32, &str> = Err("emergency failure");
-    /// x.unwrap(); // panics with `emergency failure`
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap(self) -> T {
-        match self {
-            Ok(t) => t,
-            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", &e),
-        }
     }
 }
 
