@@ -1114,6 +1114,66 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Returns the contained [`Err`] value, consuming the `self` value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is an [`Ok`], with a panic message including the
+    /// passed message, and the content of the [`Ok`].
+    ///
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "result_expect_err", since = "1.17.0")]
+    pub fn expect_err(self, msg: &str) -> E
+    where
+        T: fmt::Debug,
+    {
+        match self {
+            Ok(t) => unwrap_failed(msg, &t),
+            Err(e) => e,
+        }
+    }
+
+    /// Returns the contained [`Err`] value, consuming the `self` value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is an [`Ok`], with a custom panic message provided
+    /// by the [`Ok`]'s value.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Ok(2);
+    /// x.unwrap_err(); // panics with `2`
+    /// ```
+    ///
+    /// ```
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// assert_eq!(x.unwrap_err(), "emergency failure");
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn unwrap_err(self) -> E
+    where
+        T: fmt::Debug,
+    {
+        match self {
+            Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", &t),
+            Err(e) => e,
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////
     // Boolean operations on the values, eager and lazy
     /////////////////////////////////////////////////////////////////////////
@@ -1436,62 +1496,6 @@ impl<T: Clone, E> Result<&mut T, E> {
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
     pub fn cloned(self) -> Result<T, E> {
         self.map(|t| t.clone())
-    }
-}
-
-impl<T: fmt::Debug, E> Result<T, E> {
-    /// Returns the contained [`Err`] value, consuming the `self` value.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Ok`], with a panic message including the
-    /// passed message, and the content of the [`Ok`].
-    ///
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```should_panic
-    /// let x: Result<u32, &str> = Ok(10);
-    /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "result_expect_err", since = "1.17.0")]
-    pub fn expect_err(self, msg: &str) -> E {
-        match self {
-            Ok(t) => unwrap_failed(msg, &t),
-            Err(e) => e,
-        }
-    }
-
-    /// Returns the contained [`Err`] value, consuming the `self` value.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Ok`], with a custom panic message provided
-    /// by the [`Ok`]'s value.
-    ///
-    /// # Examples
-    ///
-    /// ```should_panic
-    /// let x: Result<u32, &str> = Ok(2);
-    /// x.unwrap_err(); // panics with `2`
-    /// ```
-    ///
-    /// ```
-    /// let x: Result<u32, &str> = Err("emergency failure");
-    /// assert_eq!(x.unwrap_err(), "emergency failure");
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_err(self) -> E {
-        match self {
-            Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", &t),
-            Err(e) => e,
-        }
     }
 }
 
