@@ -415,7 +415,10 @@ impl<T> Rc<T> {
     /// [`upgrade`]: Weak::upgrade
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "arc_new_cyclic", since = "1.59.0")]
-    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
+    pub fn new_cyclic<F>(data_fn: F) -> Rc<T>
+    where
+        F: FnOnce(&Weak<T>) -> T,
+    {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
