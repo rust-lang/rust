@@ -925,6 +925,32 @@ impl<T, E> Result<T, E> {
         self.as_ref().map(|t| t.deref())
     }
 
+    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut <T as DerefMut>::Target, &mut E>`.
+    ///
+    /// Coerces the [`Ok`] variant of the original [`Result`] via [`DerefMut`](crate::ops::DerefMut)
+    /// and returns the new [`Result`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut s = "HELLO".to_string();
+    /// let mut x: Result<String, u32> = Ok("hello".to_string());
+    /// let y: Result<&mut str, &mut u32> = Ok(&mut s);
+    /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
+    ///
+    /// let mut i = 42;
+    /// let mut x: Result<String, u32> = Err(42);
+    /// let y: Result<&mut str, &mut u32> = Err(&mut i);
+    /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
+    /// ```
+    #[stable(feature = "inner_deref", since = "1.47.0")]
+    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E>
+    where
+        T: DerefMut,
+    {
+        self.as_mut().map(|t| t.deref_mut())
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Iterator constructors
     /////////////////////////////////////////////////////////////////////////
@@ -1529,31 +1555,6 @@ impl<T: Into<!>, E> Result<T, E> {
             Ok(x) => x.into(),
             Err(e) => e,
         }
-    }
-}
-
-impl<T: DerefMut, E> Result<T, E> {
-    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut <T as DerefMut>::Target, &mut E>`.
-    ///
-    /// Coerces the [`Ok`] variant of the original [`Result`] via [`DerefMut`](crate::ops::DerefMut)
-    /// and returns the new [`Result`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut s = "HELLO".to_string();
-    /// let mut x: Result<String, u32> = Ok("hello".to_string());
-    /// let y: Result<&mut str, &mut u32> = Ok(&mut s);
-    /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
-    ///
-    /// let mut i = 42;
-    /// let mut x: Result<String, u32> = Err(42);
-    /// let y: Result<&mut str, &mut u32> = Err(&mut i);
-    /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
-    /// ```
-    #[stable(feature = "inner_deref", since = "1.47.0")]
-    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E> {
-        self.as_mut().map(|t| t.deref_mut())
     }
 }
 
