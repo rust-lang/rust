@@ -1116,7 +1116,9 @@ impl<'a> State<'a> {
         self.print_ident(ident);
         self.word_space(":");
         self.print_type(ty);
-        self.space();
+        if body.is_some() {
+            self.space();
+        }
         self.end(); // end the head-ibox
         if let Some(body) = body {
             self.word_space("=");
