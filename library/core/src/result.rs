@@ -1077,6 +1077,43 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Returns the contained [`Ok`] value or a default
+    ///
+    /// Consumes the `self` argument then, if [`Ok`], returns the contained
+    /// value, otherwise if [`Err`], returns the default value for that
+    /// type.
+    ///
+    /// # Examples
+    ///
+    /// Converts a string to an integer, turning poorly-formed strings
+    /// into 0 (the default value for integers). [`parse`] converts
+    /// a string to any other type that implements [`FromStr`], returning an
+    /// [`Err`] on error.
+    ///
+    /// ```
+    /// let good_year_from_input = "1909";
+    /// let bad_year_from_input = "190blarg";
+    /// let good_year = good_year_from_input.parse().unwrap_or_default();
+    /// let bad_year = bad_year_from_input.parse().unwrap_or_default();
+    ///
+    /// assert_eq!(1909, good_year);
+    /// assert_eq!(0, bad_year);
+    /// ```
+    ///
+    /// [`parse`]: str::parse
+    /// [`FromStr`]: crate::str::FromStr
+    #[inline]
+    #[stable(feature = "result_unwrap_or_default", since = "1.16.0")]
+    pub fn unwrap_or_default(self) -> T
+    where
+        T: Default,
+    {
+        match self {
+            Ok(x) => x,
+            Err(_) => Default::default(),
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////
     // Boolean operations on the values, eager and lazy
     /////////////////////////////////////////////////////////////////////////
@@ -1454,42 +1491,6 @@ impl<T: fmt::Debug, E> Result<T, E> {
         match self {
             Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", &t),
             Err(e) => e,
-        }
-    }
-}
-
-impl<T: Default, E> Result<T, E> {
-    /// Returns the contained [`Ok`] value or a default
-    ///
-    /// Consumes the `self` argument then, if [`Ok`], returns the contained
-    /// value, otherwise if [`Err`], returns the default value for that
-    /// type.
-    ///
-    /// # Examples
-    ///
-    /// Converts a string to an integer, turning poorly-formed strings
-    /// into 0 (the default value for integers). [`parse`] converts
-    /// a string to any other type that implements [`FromStr`], returning an
-    /// [`Err`] on error.
-    ///
-    /// ```
-    /// let good_year_from_input = "1909";
-    /// let bad_year_from_input = "190blarg";
-    /// let good_year = good_year_from_input.parse().unwrap_or_default();
-    /// let bad_year = bad_year_from_input.parse().unwrap_or_default();
-    ///
-    /// assert_eq!(1909, good_year);
-    /// assert_eq!(0, bad_year);
-    /// ```
-    ///
-    /// [`parse`]: str::parse
-    /// [`FromStr`]: crate::str::FromStr
-    #[inline]
-    #[stable(feature = "result_unwrap_or_default", since = "1.16.0")]
-    pub fn unwrap_or_default(self) -> T {
-        match self {
-            Ok(x) => x,
-            Err(_) => Default::default(),
         }
     }
 }
