@@ -316,16 +316,22 @@ impl fmt::Debug for DefId {
 
 rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefId);
 
-/// A LocalDefId is equivalent to a DefId with `krate == LOCAL_CRATE`. Since
+/// A `LocalDefId` is equivalent to a `DefId` with `krate == LOCAL_CRATE`. Since
 /// we encode this information in the type, we can ensure at compile time that
-/// no DefIds from upstream crates get thrown into the mix. There are quite a
-/// few cases where we know that only DefIds from the local crate are expected
-/// and a DefId from a different crate would signify a bug somewhere. This
-/// is when LocalDefId comes in handy.
+/// no `DefId`s from upstream crates get thrown into the mix. There are quite a
+/// few cases where we know that only `DefId`s from the local crate are expected;
+/// a `DefId` from a different crate would signify a bug somewhere. This
+/// is when `LocalDefId` comes in handy.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LocalDefId {
     pub local_def_index: DefIndex,
 }
+
+// To ensure correctness of incremental compilation,
+// `LocalDefId` must not implement `Ord` or `PartialOrd`.
+// See https://github.com/rust-lang/rust/issues/90317.
+impl !Ord for LocalDefId {}
+impl !PartialOrd for LocalDefId {}
 
 pub const CRATE_DEF_ID: LocalDefId = LocalDefId { local_def_index: CRATE_DEF_INDEX };
 
