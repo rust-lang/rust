@@ -4,6 +4,7 @@
 #![warn(clippy::iter_skip_next)]
 #![allow(clippy::blacklisted_name)]
 #![allow(clippy::iter_nth)]
+#![allow(unused_mut, dead_code)]
 
 extern crate option_helpers;
 
@@ -19,4 +20,18 @@ fn main() {
     let foo = IteratorFalsePositives { foo: 0 };
     let _ = foo.skip(42).next();
     let _ = foo.filter().skip(42).next();
+
+    // fix #8128
+    let test_string = "1|1 2";
+    let mut sp = test_string.split('|').map(|s| s.trim());
+    let _: Vec<&str> = sp.nth(1).unwrap().split(' ').collect();
+    if let Some(mut s) = Some(test_string.split('|').map(|s| s.trim())) {
+        let _: Vec<&str> = s.nth(1).unwrap().split(' ').collect();
+    };
+    fn check<T>(mut s: T)
+    where
+        T: Iterator<Item = String>,
+    {
+        let _: Vec<&str> = s.nth(1).unwrap().split(' ').collect();
+    }
 }

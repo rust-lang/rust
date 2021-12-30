@@ -342,7 +342,7 @@ fn check_range_zip_with_len(cx: &LateContext<'_>, path: &PathSegment<'_>, args: 
         // `.iter()` and `.len()` called on same `Path`
         if let ExprKind::Path(QPath::Resolved(_, iter_path)) = iter_args[0].kind;
         if let ExprKind::Path(QPath::Resolved(_, len_path)) = len_args[0].kind;
-        if SpanlessEq::new(cx).eq_path_segments(&iter_path.segments, &len_path.segments);
+        if SpanlessEq::new(cx).eq_path_segments(iter_path.segments, len_path.segments);
         then {
             span_lint(cx,
                 RANGE_ZIP_WITH_LEN,
@@ -378,8 +378,8 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 span,
                 "an inclusive range would be more readable",
                 |diag| {
-                    let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
-                    let end = Sugg::hir(cx, y, "y");
+                    let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
+                    let end = Sugg::hir(cx, y, "y").maybe_par();
                     if let Some(is_wrapped) = &snippet_opt(cx, span) {
                         if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
                             diag.span_suggestion(
@@ -415,8 +415,8 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 expr.span,
                 "an exclusive range would be more readable",
                 |diag| {
-                    let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
-                    let end = Sugg::hir(cx, y, "y");
+                    let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
+                    let end = Sugg::hir(cx, y, "y").maybe_par();
                     diag.span_suggestion(
                         expr.span,
                         "use",

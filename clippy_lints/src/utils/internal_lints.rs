@@ -28,7 +28,7 @@ use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Symbol, SymbolStr};
+use rustc_span::symbol::Symbol;
 use rustc_span::{sym, BytePos, Span};
 use rustc_typeck::hir_ty_to_ty;
 
@@ -344,11 +344,11 @@ impl EarlyLintPass for ClippyLintsInternal {
             if let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = utils.kind {
                 if let Some(paths) = items.iter().find(|item| item.ident.name.as_str() == "paths") {
                     if let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = paths.kind {
-                        let mut last_name: Option<SymbolStr> = None;
+                        let mut last_name: Option<&str> = None;
                         for item in items {
                             let name = item.ident.as_str();
-                            if let Some(ref last_name) = last_name {
-                                if **last_name > *name {
+                            if let Some(last_name) = last_name {
+                                if *last_name > *name {
                                     span_lint(
                                         cx,
                                         CLIPPY_LINTS_INTERNAL,
@@ -608,8 +608,7 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
         }
 
         let (method_names, arg_lists, spans) = method_calls(expr, 2);
-        let method_names: Vec<SymbolStr> = method_names.iter().map(|s| s.as_str()).collect();
-        let method_names: Vec<&str> = method_names.iter().map(|s| &**s).collect();
+        let method_names: Vec<&str> = method_names.iter().map(Symbol::as_str).collect();
         if_chain! {
             if let ["expn_data", "outer_expn"] = method_names.as_slice();
             let args = arg_lists[1];
@@ -839,7 +838,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
             if is_expr_path_def_path(cx, fn_path, &["clippy_utils", "ty", "match_type"]);
             // Extract the path to the matched type
             if let Some(segments) = path_to_matched_type(cx, ty_path);
-            let segments: Vec<&str> = segments.iter().map(|sym| &**sym).collect();
+            let segments: Vec<&str> = segments.iter().map(Symbol::as_str).collect();
             if let Some(ty_did) = path_to_res(cx, &segments[..]).opt_def_id();
             // Check if the matched type is a diagnostic item
             if let Some(item_name) = cx.tcx.get_diagnostic_name(ty_did);
@@ -862,7 +861,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
     }
 }
 
-fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Vec<SymbolStr>> {
+fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Vec<Symbol>> {
     use rustc_hir::ItemKind;
 
     match &expr.kind {
@@ -887,12 +886,12 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
             _ => {},
         },
         ExprKind::Array(exprs) => {
-            let segments: Vec<SymbolStr> = exprs
+            let segments: Vec<Symbol> = exprs
                 .iter()
                 .filter_map(|expr| {
                     if let ExprKind::Lit(lit) = &expr.kind {
                         if let LitKind::Str(sym, _) = lit.node {
-                            return Some(sym.as_str());
+                            return Some(sym);
                         }
                     }
 
@@ -1076,7 +1075,6 @@ impl InterningDefinedSymbol {
             &paths::SYMBOL_TO_IDENT_STRING,
             &paths::TO_STRING_METHOD,
         ];
-        // SymbolStr might be de-referenced: `&*symbol.as_str()`
         let call = if_chain! {
             if let ExprKind::AddrOf(_, _, e) = expr.kind;
             if let ExprKind::Unary(UnOp::Deref, e) = e.kind;
