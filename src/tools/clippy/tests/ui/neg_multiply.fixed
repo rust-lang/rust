@@ -26,17 +26,17 @@ impl Mul<X> for isize {
 fn main() {
     let x = 0;
 
-    x * -1;
+    -x;
 
-    -1 * x;
+    -x;
 
-    100 + x * -1;
+    100 + -x;
 
-    (100 + x) * -1;
+    -(100 + x);
 
-    -1 * 17;
+    -17;
 
-    0xcafe | 0xff00 * -1;
+    0xcafe | -0xff00;
 
     -1 * -1; // should be ok
 

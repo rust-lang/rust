@@ -310,8 +310,10 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                             || is_word(lint, sym::deprecated)
                                             || is_word(lint, sym!(unreachable_pub))
                                             || is_word(lint, sym!(unused))
-                                            || extract_clippy_lint(lint).map_or(false, |s| s.as_str() == "wildcard_imports")
-                                            || extract_clippy_lint(lint).map_or(false, |s| s.as_str() == "enum_glob_use")
+                                            || extract_clippy_lint(lint)
+                                                .map_or(false, |s| s.as_str() == "wildcard_imports")
+                                            || extract_clippy_lint(lint)
+                                                .map_or(false, |s| s.as_str() == "enum_glob_use")
                                         {
                                             return;
                                         }
