@@ -67,7 +67,7 @@ impl WriterRelocate {
     }
 
     /// Perform the collected relocations to be usable for JIT usage.
-    #[cfg(feature = "jit")]
+    #[cfg(all(feature = "jit", not(windows)))]
     pub(super) fn relocate_for_jit(mut self, jit_module: &cranelift_jit::JITModule) -> Vec<u8> {
         for reloc in self.relocs.drain(..) {
             match reloc.name {

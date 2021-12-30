@@ -129,6 +129,7 @@ fn call_return_u128_pair() {
     return_u128_pair();
 }
 
+#[allow(unreachable_code)] // FIXME false positive
 fn main() {
     take_unique(Unique {
         pointer: 0 as *const (),
