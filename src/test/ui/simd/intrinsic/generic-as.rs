@@ -31,4 +31,18 @@ fn main() {
         assert_eq!(u.0[0], f.0[0] as u8);
         assert_eq!(u.0[1], f.0[1] as u8);
     }
+
+    unsafe {
+        let f = V::<f64>([f64::MIN, f64::MAX]);
+        let i: V<isize> = simd_as(f);
+        assert_eq!(i.0[0], f.0[0] as isize);
+        assert_eq!(i.0[1], f.0[1] as isize);
+    }
+
+    unsafe {
+        let f = V::<f64>([f64::MIN, f64::MAX]);
+        let u: V<usize> = simd_as(f);
+        assert_eq!(u.0[0], f.0[0] as usize);
+        assert_eq!(u.0[1], f.0[1] as usize);
+    }
 }
