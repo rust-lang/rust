@@ -1186,6 +1186,7 @@ symbols! {
         simd,
         simd_add,
         simd_and,
+        simd_as,
         simd_bitmask,
         simd_cast,
         simd_ceil,

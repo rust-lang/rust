@@ -1689,7 +1689,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
     bitwise_red!(simd_reduce_all: vector_reduce_and, true);
     bitwise_red!(simd_reduce_any: vector_reduce_or, true);
 
-    if name == sym::simd_cast {
+    if name == sym::simd_cast || name == sym::simd_as {
         require_simd!(ret_ty, "return");
         let (out_len, out_elem) = ret_ty.simd_size_and_type(bx.tcx());
         require!(
@@ -1761,10 +1761,10 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                 });
             }
             (Style::Float, Style::Int(out_is_signed)) => {
-                return Ok(if out_is_signed {
-                    bx.fptosi(args[0].immediate(), llret_ty)
-                } else {
-                    bx.fptoui(args[0].immediate(), llret_ty)
+                return Ok(match (out_is_signed, name == sym::simd_as) {
+                    (false, false) => bx.fptoui(args[0].immediate(), llret_ty),
+                    (true, false) => bx.fptosi(args[0].immediate(), llret_ty),
+                    (_, true) => bx.cast_float_to_int(out_is_signed, args[0].immediate(), llret_ty),
                 });
             }
             (Style::Float, Style::Float) => {
