@@ -17,7 +17,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 global.set_tls_model(self.tls_model);
             }
             if let Some(link_section) = link_section {
-                global.set_link_section(&link_section.as_str());
+                global.set_link_section(link_section.as_str());
             }
             global
         }
@@ -53,7 +53,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             global.set_tls_model(self.tls_model);
         }
         if let Some(link_section) = link_section {
-            global.set_link_section(&link_section.as_str());
+            global.set_link_section(link_section.as_str());
         }
         let global_address = global.get_address(None);
         self.globals.borrow_mut().insert(name.to_string(), global_address);

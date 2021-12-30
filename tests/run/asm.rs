@@ -3,8 +3,6 @@
 // Run-time:
 //   status: 0
 
-#![feature(asm, global_asm)]
-
 global_asm!("
     .global add_asm
 add_asm:

@@ -14,7 +14,7 @@ impl<'a, 'gcc, 'tcx> AbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn get_param(&self, index: usize) -> Self::Value {
+    fn get_param(&mut self, index: usize) -> Self::Value {
         self.cx.current_func.borrow().expect("current func")
             .get_param(index as i32)
             .to_rvalue()
@@ -48,8 +48,8 @@ impl GccType for CastTarget {
         let mut args: Vec<_> = self
             .prefix
             .iter()
-            .flat_map(|option_kind| {
-                option_kind.map(|kind| Reg { kind, size: self.prefix_chunk_size }.gcc_type(cx))
+            .flat_map(|option_reg| {
+                option_reg.map(|reg| reg.gcc_type(cx))
             })
             .chain((0..rest_count).map(|_| rest_gcc_unit))
             .collect();

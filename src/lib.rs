@@ -22,7 +22,6 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
-extern crate snap;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]
@@ -97,7 +96,7 @@ impl CodegenBackend for GccCodegenBackend {
         Box::new(res)
     }
 
-    fn join_codegen(&self, ongoing_codegen: Box<dyn Any>, sess: &Session) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
+    fn join_codegen(&self, ongoing_codegen: Box<dyn Any>, sess: &Session, _outputs: &OutputFilenames) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -126,10 +125,6 @@ impl ExtraBackendMethods for GccCodegenBackend {
         GccContext {
             context: Context::default(),
         }
-    }
-
-    fn write_compressed_metadata<'tcx>(&self, tcx: TyCtxt<'tcx>, metadata: &EncodedMetadata, gcc_module: &mut Self::Module) {
-        base::write_compressed_metadata(tcx, metadata, gcc_module)
     }
 
     fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, mods: &mut Self::Module, module_name: &str, kind: AllocatorKind, has_alloc_error_handler: bool) {
