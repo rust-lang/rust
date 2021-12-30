@@ -901,6 +901,30 @@ impl<T, E> Result<T, E> {
         self
     }
 
+    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&<T as Deref>::Target, &E>`.
+    ///
+    /// Coerces the [`Ok`] variant of the original [`Result`] via [`Deref`](crate::ops::Deref)
+    /// and returns the new [`Result`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x: Result<String, u32> = Ok("hello".to_string());
+    /// let y: Result<&str, &u32> = Ok("hello");
+    /// assert_eq!(x.as_deref(), y);
+    ///
+    /// let x: Result<String, u32> = Err(42);
+    /// let y: Result<&str, &u32> = Err(&42);
+    /// assert_eq!(x.as_deref(), y);
+    /// ```
+    #[stable(feature = "inner_deref", since = "1.47.0")]
+    pub fn as_deref(&self) -> Result<&T::Target, &E>
+    where
+        T: Deref,
+    {
+        self.as_ref().map(|t| t.deref())
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Iterator constructors
     /////////////////////////////////////////////////////////////////////////
@@ -1505,29 +1529,6 @@ impl<T: Into<!>, E> Result<T, E> {
             Ok(x) => x.into(),
             Err(e) => e,
         }
-    }
-}
-
-impl<T: Deref, E> Result<T, E> {
-    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&<T as Deref>::Target, &E>`.
-    ///
-    /// Coerces the [`Ok`] variant of the original [`Result`] via [`Deref`](crate::ops::Deref)
-    /// and returns the new [`Result`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x: Result<String, u32> = Ok("hello".to_string());
-    /// let y: Result<&str, &u32> = Ok("hello");
-    /// assert_eq!(x.as_deref(), y);
-    ///
-    /// let x: Result<String, u32> = Err(42);
-    /// let y: Result<&str, &u32> = Err(&42);
-    /// assert_eq!(x.as_deref(), y);
-    /// ```
-    #[stable(feature = "inner_deref", since = "1.47.0")]
-    pub fn as_deref(&self) -> Result<&T::Target, &E> {
-        self.as_ref().map(|t| t.deref())
     }
 }
 
