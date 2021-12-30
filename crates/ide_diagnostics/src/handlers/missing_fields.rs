@@ -1,6 +1,6 @@
 use either::Either;
-use hir::{db::AstDatabase, InFile};
-use ide_db::{assists::Assist, source_change::SourceChange};
+use hir::{db::AstDatabase, InFile, Type};
+use ide_db::{assists::Assist, helpers::FamousDefs, source_change::SourceChange};
 use rustc_hash::FxHashMap;
 use stdx::format_to;
 use syntax::{algo, ast::make, AstNode, SyntaxNodePtr};
@@ -63,6 +63,19 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         }
     });
     let missing_fields = ctx.sema.record_literal_missing_fields(&field_list_parent);
+
+    let generate_default_expr = |ty: &Type| {
+        let krate = ctx.sema.to_module_def(d.file.original_file(ctx.sema.db))?.krate();
+        let default_trait = FamousDefs(&ctx.sema, Some(krate)).core_default_Default();
+
+        match default_trait {
+            Some(default_trait) if ty.impls_trait(ctx.sema.db, default_trait, &[]) => {
+                Some(make::ext::expr_default())
+            }
+            _ => Some(make::ext::expr_todo()),
+        }
+    };
+
     for (f, ty) in missing_fields.iter() {
         let field_expr = if let Some(local_candidate) = locals.get(&f.name(ctx.sema.db)) {
             cov_mark::hit!(field_shorthand);
@@ -70,10 +83,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             if ty.could_unify_with(ctx.sema.db, &candidate_ty) {
                 None
             } else {
-                Some(make::ext::expr_todo())
+                generate_default_expr(ty)
             }
         } else {
-            Some(make::ext::expr_todo())
+            generate_default_expr(ty)
         };
         let field =
             make::record_expr_field(make::name_ref(&f.name(ctx.sema.db).to_smol_str()), field_expr)

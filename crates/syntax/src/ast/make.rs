@@ -59,6 +59,9 @@ pub mod ext {
     pub fn expr_todo() -> ast::Expr {
         expr_from_text("todo!()")
     }
+    pub fn expr_default() -> ast::Expr {
+        expr_from_text("Default::default()")
+    }
     pub fn empty_block_expr() -> ast::BlockExpr {
         block_expr(None, None)
     }
