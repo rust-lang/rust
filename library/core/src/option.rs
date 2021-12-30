@@ -1672,7 +1672,7 @@ impl<T, U> Option<(T, U)> {
     }
 }
 
-impl<T: Copy> Option<&T> {
+impl<T> Option<&T> {
     /// Maps an `Option<&T>` to an `Option<T>` by copying the contents of the
     /// option.
     ///
@@ -1688,11 +1688,39 @@ impl<T: Copy> Option<&T> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
-    pub const fn copied(self) -> Option<T> {
+    pub const fn copied(self) -> Option<T>
+    where
+        T: Copy,
+    {
         // FIXME: this implementation, which sidesteps using `Option::map` since it's not const
         // ready yet, should be reverted when possible to avoid code repetition
         match self {
             Some(&v) => Some(v),
+            None => None,
+        }
+    }
+
+    /// Maps an `Option<&T>` to an `Option<T>` by cloning the contents of the
+    /// option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = 12;
+    /// let opt_x = Some(&x);
+    /// assert_eq!(opt_x, Some(&12));
+    /// let cloned = opt_x.cloned();
+    /// assert_eq!(cloned, Some(12));
+    /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_option_cloned", issue = "91582")]
+    pub const fn cloned(self) -> Option<T>
+    where
+        T: ~const Clone,
+    {
+        match self {
+            Some(t) => Some(t.clone()),
             None => None,
         }
     }
@@ -1717,33 +1745,6 @@ impl<T: Copy> Option<&mut T> {
     pub const fn copied(self) -> Option<T> {
         match self {
             Some(&mut t) => Some(t),
-            None => None,
-        }
-    }
-}
-
-impl<T: Clone> Option<&T> {
-    /// Maps an `Option<&T>` to an `Option<T>` by cloning the contents of the
-    /// option.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x = 12;
-    /// let opt_x = Some(&x);
-    /// assert_eq!(opt_x, Some(&12));
-    /// let cloned = opt_x.cloned();
-    /// assert_eq!(cloned, Some(12));
-    /// ```
-    #[must_use = "`self` will be dropped if the result is not used"]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_cloned", issue = "91582")]
-    pub const fn cloned(self) -> Option<T>
-    where
-        T: ~const Clone,
-    {
-        match self {
-            Some(t) => Some(t.clone()),
             None => None,
         }
     }
