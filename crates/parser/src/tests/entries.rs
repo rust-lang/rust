@@ -21,10 +21,20 @@ fn stmt() {
     check_prefix(PrefixEntryPoint::Stmt, "92; fn", "92");
     check_prefix(PrefixEntryPoint::Stmt, "let _ = 92; 1", "let _ = 92");
     check_prefix(PrefixEntryPoint::Stmt, "pub fn f() {} = 92", "pub fn f() {}");
+    check_prefix(PrefixEntryPoint::Stmt, "struct S;;", "struct S;");
+    check_prefix(PrefixEntryPoint::Stmt, "fn f() {};", "fn f() {}");
     check_prefix(PrefixEntryPoint::Stmt, ";;;", ";");
     check_prefix(PrefixEntryPoint::Stmt, "+", "+");
     check_prefix(PrefixEntryPoint::Stmt, "@", "@");
     check_prefix(PrefixEntryPoint::Stmt, "loop {} - 1", "loop {}");
+}
+
+#[test]
+fn pat() {
+    check_prefix(PrefixEntryPoint::Pat, "x y", "x");
+    check_prefix(PrefixEntryPoint::Pat, "fn f() {}", "fn");
+    // FIXME: this one is wrong
+    check_prefix(PrefixEntryPoint::Pat, ".. ..", ".. ..");
 }
 
 fn check_prefix(entry: PrefixEntryPoint, input: &str, prefix: &str) {
