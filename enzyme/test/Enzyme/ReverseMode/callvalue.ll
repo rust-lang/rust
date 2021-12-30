@@ -41,11 +41,11 @@ attributes #2 = { nounwind }
 !0 = !{i32 1, !"wchar_size", i32 4}
 !1 = !{!"clang version 7.1.0 "}
 
-; CHECK: @"_enzyme_square'" = internal constant { { i8*, double } (double)*, { double } (double, double, i8*)* } { { i8*, double } (double)* @augmented_square, { double } (double, double, i8*)* @diffesquare }
+; CHECK: @"_enzyme_reverse_square'" = internal constant { { i8*, double } (double)*, { double } (double, double, i8*)* } { { i8*, double } (double)* @augmented_square, { double } (double, double, i8*)* @diffesquare }
 
 ; CHECK: define internal { double } @diffecreate(double %x, double %differeturn) #1 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { double } @diffeindirect(double (double)* @square, double (double)* bitcast ({ { i8*, double } (double)*, { double } (double, double, i8*)* }* @"_enzyme_square'" to double (double)*), double %x, double %differeturn)
+; CHECK-NEXT:   %0 = call { double } @diffeindirect(double (double)* @square, double (double)* bitcast ({ { i8*, double } (double)*, { double } (double, double, i8*)* }* @"_enzyme_reverse_square'" to double (double)*), double %x, double %differeturn)
 ; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
 

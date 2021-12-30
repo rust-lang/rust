@@ -33,6 +33,7 @@
 
 #include "DifferentialUseAnalysis.h"
 #include "EnzymeLogic.h"
+#include "FunctionUtils.h"
 #include "GradientUtils.h"
 #include "LibraryFuncs.h"
 #include "TypeAnalysis/TBAA.h"
@@ -8125,15 +8126,39 @@ public:
           argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
         }
       }
-      if (!called)
-        llvm::errs() << *called << "\n";
-      assert(called);
 
-      auto newcalled = gutils->Logic.CreateForwardDiff(
-          cast<Function>(called), subretType, argsInverted, gutils->TLI,
-          TR.analyzer.interprocedural, /*returnValue*/ subretused,
-          /*subdretptr*/ false, DerivativeMode::ForwardMode, nullptr,
-          nextTypeInfo, {});
+      Value *newcalled = nullptr;
+
+      if (called) {
+        newcalled = gutils->Logic.CreateForwardDiff(
+            cast<Function>(called), subretType, argsInverted, gutils->TLI,
+            TR.analyzer.interprocedural, /*returnValue*/ subretused,
+            /*subdretptr*/ false, DerivativeMode::ForwardMode, nullptr,
+            nextTypeInfo, {});
+      } else {
+#if LLVM_VERSION_MAJOR >= 11
+        auto callval = orig->getCalledOperand();
+#else
+        auto callval = orig->getCalledValue();
+#endif
+        newcalled = gutils->invertPointerM(callval, BuilderZ);
+
+        auto ft = cast<FunctionType>(
+            cast<PointerType>(callval->getType())->getElementType());
+        bool retActive = subretType != DIFFE_TYPE::CONSTANT;
+
+        ReturnType subretVal =
+            subretused
+                ? (retActive ? ReturnType::TwoReturns : ReturnType::Return)
+                : (retActive ? ReturnType::Return : ReturnType::Void);
+
+        FunctionType *FTy = getFunctionTypeForClone(ft, nullptr, argsInverted,
+                                                    false, subretVal);
+        PointerType *fptype = PointerType::getUnqual(FTy);
+        newcalled = BuilderZ.CreatePointerCast(newcalled,
+                                               PointerType::getUnqual(fptype));
+        newcalled = BuilderZ.CreateLoad(newcalled);
+      }
 
       assert(newcalled);
       FunctionType *FT = cast<FunctionType>(
@@ -8158,7 +8183,7 @@ public:
       if (subretused && subretType != DIFFE_TYPE::CONSTANT) {
         primal = Builder2.CreateExtractValue(diffes, 0);
         diffe = Builder2.CreateExtractValue(diffes, 1);
-      } else if (!newcalled->getReturnType()->isVoidTy()) {
+      } else if (!FT->getReturnType()->isVoidTy()) {
         diffe = diffes;
       }
 

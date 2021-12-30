@@ -1555,71 +1555,56 @@ Function *PreProcessCache::preprocessForClone(Function *F,
   return NewF;
 }
 
-Function *PreProcessCache::CloneFunctionWithReturns(
-    DerivativeMode mode, Function *&F, ValueToValueMapTy &ptrInputs,
-    const std::vector<DIFFE_TYPE> &constant_args,
-    SmallPtrSetImpl<Value *> &constants, SmallPtrSetImpl<Value *> &nonconstant,
-    SmallPtrSetImpl<Value *> &returnvals, ReturnType returnValue, Twine name,
-    ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type *additionalArg) {
-  assert(!F->empty());
-  F = preprocessForClone(F, mode);
+FunctionType *
+getFunctionTypeForClone(llvm::FunctionType *FTy, llvm::Type *additionalArg,
+                        const std::vector<DIFFE_TYPE> &constant_args,
+                        bool diffeReturnArg, ReturnType returnValue) {
   std::vector<Type *> RetTypes;
   if (returnValue == ReturnType::ArgsWithReturn ||
       returnValue == ReturnType::ArgsWithTwoReturns ||
       returnValue == ReturnType::Return ||
       returnValue == ReturnType::TwoReturns)
-    RetTypes.push_back(F->getReturnType());
+    RetTypes.push_back(FTy->getReturnType());
   if (returnValue == ReturnType::ArgsWithTwoReturns ||
       returnValue == ReturnType::TwoReturns)
-    RetTypes.push_back(F->getReturnType());
+    RetTypes.push_back(FTy->getReturnType());
   std::vector<Type *> ArgTypes;
-
-  ValueToValueMapTy VMap;
 
   // The user might be deleting arguments to the function by specifying them in
   // the VMap.  If so, we need to not add the arguments to the arg ty vector
   unsigned argno = 0;
-  for (const Argument &I : F->args()) {
-    ArgTypes.push_back(I.getType());
+
+  for (auto &I : FTy->params()) {
+    ArgTypes.push_back(I);
     if (constant_args[argno] == DIFFE_TYPE::DUP_ARG ||
         constant_args[argno] == DIFFE_TYPE::DUP_NONEED) {
-      ArgTypes.push_back(I.getType());
+      ArgTypes.push_back(I);
     } else if (constant_args[argno] == DIFFE_TYPE::OUT_DIFF) {
-      RetTypes.push_back(I.getType());
+      RetTypes.push_back(I);
     }
     ++argno;
   }
 
-  for (BasicBlock &BB : *F) {
-    for (Instruction &I : BB) {
-      if (auto ri = dyn_cast<ReturnInst>(&I)) {
-        if (auto rv = ri->getReturnValue()) {
-          returnvals.insert(rv);
-        }
-      }
-    }
-  }
-
   if (diffeReturnArg) {
-    assert(!F->getReturnType()->isVoidTy());
-    ArgTypes.push_back(F->getReturnType());
+    assert(!FTy->getReturnType()->isVoidTy());
+    ArgTypes.push_back(FTy->getReturnType());
   }
   if (additionalArg) {
     ArgTypes.push_back(additionalArg);
   }
-  Type *RetType = StructType::get(F->getContext(), RetTypes);
+  Type *RetType = StructType::get(FTy->getContext(), RetTypes);
   if (returnValue == ReturnType::TapeAndTwoReturns ||
       returnValue == ReturnType::TapeAndReturn ||
       returnValue == ReturnType::Tape) {
     RetTypes.clear();
-    RetTypes.push_back(Type::getInt8PtrTy(F->getContext()));
+    RetTypes.push_back(Type::getInt8PtrTy(FTy->getContext()));
     if (returnValue == ReturnType::TapeAndTwoReturns) {
-      RetTypes.push_back(F->getReturnType());
-      RetTypes.push_back(F->getReturnType());
+      RetTypes.push_back(FTy->getReturnType());
+      RetTypes.push_back(FTy->getReturnType());
     } else if (returnValue == ReturnType::TapeAndReturn) {
-      RetTypes.push_back(F->getReturnType());
+      RetTypes.push_back(FTy->getReturnType());
     }
-    RetType = StructType::get(F->getContext(), RetTypes);
+    RetType = StructType::get(FTy->getContext(), RetTypes);
   } else if (returnValue == ReturnType::Return) {
     assert(RetTypes.size() == 1);
     RetType = RetTypes[0];
@@ -1632,8 +1617,29 @@ Function *PreProcessCache::CloneFunctionWithReturns(
     RetType = Type::getVoidTy(RetType->getContext());
 
   // Create a new function type...
-  FunctionType *FTy =
-      FunctionType::get(RetType, ArgTypes, F->getFunctionType()->isVarArg());
+  return FunctionType::get(RetType, ArgTypes, FTy->isVarArg());
+}
+
+Function *PreProcessCache::CloneFunctionWithReturns(
+    DerivativeMode mode, Function *&F, ValueToValueMapTy &ptrInputs,
+    const std::vector<DIFFE_TYPE> &constant_args,
+    SmallPtrSetImpl<Value *> &constants, SmallPtrSetImpl<Value *> &nonconstant,
+    SmallPtrSetImpl<Value *> &returnvals, ReturnType returnValue, Twine name,
+    ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type *additionalArg) {
+  assert(!F->empty());
+  F = preprocessForClone(F, mode);
+  llvm::ValueToValueMapTy VMap;
+  llvm::FunctionType *FTy =
+      getFunctionTypeForClone(F->getFunctionType(), additionalArg,
+                              constant_args, diffeReturnArg, returnValue);
+
+  for (BasicBlock &BB : *F) {
+    if (auto ri = dyn_cast<ReturnInst>(BB.getTerminator())) {
+      if (auto rv = ri->getReturnValue()) {
+        returnvals.insert(rv);
+      }
+    }
+  }
 
   // Create the new function...
   Function *NewF = Function::Create(FTy, F->getLinkage(), name, F->getParent());

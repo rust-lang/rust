@@ -2521,7 +2521,7 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
 
 Constant *GradientUtils::GetOrCreateShadowConstant(
     EnzymeLogic &Logic, TargetLibraryInfo &TLI, TypeAnalysis &TA,
-    Constant *oval, bool AtomicAdd, bool PostOpt) {
+    Constant *oval, DerivativeMode mode, bool AtomicAdd, bool PostOpt) {
   if (isa<ConstantPointerNull>(oval)) {
     return oval;
   } else if (isa<UndefValue>(oval)) {
@@ -2531,35 +2531,37 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
   } else if (auto CD = dyn_cast<ConstantDataArray>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumElements(); i < len; i++) {
-      Vals.push_back(GetOrCreateShadowConstant(
-          Logic, TLI, TA, CD->getElementAsConstant(i), AtomicAdd, PostOpt));
+      Vals.push_back(GetOrCreateShadowConstant(Logic, TLI, TA,
+                                               CD->getElementAsConstant(i),
+                                               mode, AtomicAdd, PostOpt));
     }
     return ConstantArray::get(CD->getType(), Vals);
   } else if (auto CD = dyn_cast<ConstantArray>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
       Vals.push_back(GetOrCreateShadowConstant(
-          Logic, TLI, TA, CD->getOperand(i), AtomicAdd, PostOpt));
+          Logic, TLI, TA, CD->getOperand(i), mode, AtomicAdd, PostOpt));
     }
     return ConstantArray::get(CD->getType(), Vals);
   } else if (auto CD = dyn_cast<ConstantStruct>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
       Vals.push_back(GetOrCreateShadowConstant(
-          Logic, TLI, TA, CD->getOperand(i), AtomicAdd, PostOpt));
+          Logic, TLI, TA, CD->getOperand(i), mode, AtomicAdd, PostOpt));
     }
     return ConstantStruct::get(CD->getType(), Vals);
   } else if (auto CD = dyn_cast<ConstantVector>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
       Vals.push_back(GetOrCreateShadowConstant(
-          Logic, TLI, TA, CD->getOperand(i), AtomicAdd, PostOpt));
+          Logic, TLI, TA, CD->getOperand(i), mode, AtomicAdd, PostOpt));
     }
     return ConstantVector::get(Vals);
   } else if (auto F = dyn_cast<Function>(oval)) {
-    return GetOrCreateShadowFunction(Logic, TLI, TA, F, AtomicAdd, PostOpt);
+    return GetOrCreateShadowFunction(Logic, TLI, TA, F, mode, AtomicAdd,
+                                     PostOpt);
   } else if (auto arg = dyn_cast<ConstantExpr>(oval)) {
-    auto C = GetOrCreateShadowConstant(Logic, TLI, TA, arg->getOperand(0),
+    auto C = GetOrCreateShadowConstant(Logic, TLI, TA, arg->getOperand(0), mode,
                                        AtomicAdd, PostOpt);
     if (arg->isCast() || arg->getOpcode() == Instruction::GetElementPtr) {
       SmallVector<Constant *, 8> NewOps;
@@ -2610,7 +2612,7 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
           arg->getInitializer()
               ? GetOrCreateShadowConstant(Logic, TLI, TA,
                                           cast<Constant>(arg->getOperand(0)),
-                                          AtomicAdd, PostOpt)
+                                          mode, AtomicAdd, PostOpt)
               : Constant::getNullValue(type),
           arg->getName() + "_shadow", arg, arg->getThreadLocalMode(),
           arg->getType()->getAddressSpace(), arg->isExternallyInitialized());
@@ -2630,11 +2632,9 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
   llvm_unreachable("unknown constant to create shadow of");
 }
 
-Constant *GradientUtils::GetOrCreateShadowFunction(EnzymeLogic &Logic,
-                                                   TargetLibraryInfo &TLI,
-                                                   TypeAnalysis &TA,
-                                                   Function *fn, bool AtomicAdd,
-                                                   bool PostOpt) {
+Constant *GradientUtils::GetOrCreateShadowFunction(
+    EnzymeLogic &Logic, TargetLibraryInfo &TLI, TypeAnalysis &TA, Function *fn,
+    DerivativeMode mode, bool AtomicAdd, bool PostOpt) {
   //! Todo allow tape propagation
   //  Note that specifically this should _not_ be called with topLevel=true
   //  (since it may not be valid to always assume we can recompute the
@@ -2715,43 +2715,72 @@ Constant *GradientUtils::GetOrCreateShadowFunction(EnzymeLogic &Logic,
        cast<IntegerType>(fn->getReturnType())->getBitWidth() < 16))
     retType = DIFFE_TYPE::CONSTANT;
 
-  // TODO re atomic add consider forcing it to be atomic always as fallback if
-  // used in a parallel context
-  auto &augdata = Logic.CreateAugmentedPrimal(
-      fn, retType, /*constant_args*/ types, TLI, TA,
-      /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
-          !fn->getReturnType()->isVoidTy(),
-      type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd,
-      PostOpt);
-  Constant *newf = Logic.CreatePrimalAndGradient(
-      (ReverseCacheKey){.todiff = fn,
-                        .retType = retType,
-                        .constant_args = types,
-                        .uncacheable_args = uncacheable_args,
-                        .returnUsed = false,
-                        .shadowReturnUsed = false,
-                        .mode = DerivativeMode::ReverseModeGradient,
-                        .freeMemory = true,
-                        .AtomicAdd = AtomicAdd,
-                        .additionalType = Type::getInt8PtrTy(fn->getContext()),
-                        .typeInfo = type_args},
-      TLI, TA,
-      /*map*/ &augdata);
-  if (!newf)
-    newf = UndefValue::get(fn->getType());
-  auto cdata = ConstantStruct::get(
-      StructType::get(newf->getContext(),
-                      {augdata.fn->getType(), newf->getType()}),
-      {augdata.fn, newf});
-  std::string globalname = ("_enzyme_" + fn->getName() + "'").str();
-  auto GV = fn->getParent()->getNamedValue(globalname);
+  switch (mode) {
+  case DerivativeMode::ForwardMode: {
+    Constant *newf =
+        Logic.CreateForwardDiff(fn, retType, types, TLI, TA, false, false, mode,
+                                nullptr, type_args, uncacheable_args);
 
-  if (GV == nullptr) {
-    GV = new GlobalVariable(*fn->getParent(), cdata->getType(), true,
-                            GlobalValue::LinkageTypes::InternalLinkage, cdata,
-                            globalname);
+    if (!newf)
+      newf = UndefValue::get(fn->getType());
+
+    std::string globalname = ("_enzyme_forward_" + fn->getName() + "'").str();
+    auto GV = fn->getParent()->getNamedValue(globalname);
+
+    if (GV == nullptr) {
+      GV = new GlobalVariable(*fn->getParent(), newf->getType(), true,
+                              GlobalValue::LinkageTypes::InternalLinkage, newf,
+                              globalname);
+    }
+
+    return ConstantExpr::getPointerCast(GV, fn->getType());
   }
-  return ConstantExpr::getPointerCast(GV, fn->getType());
+  case DerivativeMode::ReverseModeCombined:
+  case DerivativeMode::ReverseModeGradient:
+  case DerivativeMode::ReverseModePrimal: {
+    // TODO re atomic add consider forcing it to be atomic always as fallback if
+    // used in a parallel context
+    auto &augdata = Logic.CreateAugmentedPrimal(
+        fn, retType, /*constant_args*/ types, TLI, TA,
+        /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
+            !fn->getReturnType()->isVoidTy(),
+        type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd,
+        PostOpt);
+    Constant *newf = Logic.CreatePrimalAndGradient(
+        (ReverseCacheKey){.todiff = fn,
+                          .retType = retType,
+                          .constant_args = types,
+                          .uncacheable_args = uncacheable_args,
+                          .returnUsed = false,
+                          .shadowReturnUsed = false,
+                          .mode = DerivativeMode::ReverseModeGradient,
+                          .freeMemory = true,
+                          .AtomicAdd = AtomicAdd,
+                          .additionalType =
+                              Type::getInt8PtrTy(fn->getContext()),
+                          .typeInfo = type_args},
+        TLI, TA,
+        /*map*/ &augdata);
+    if (!newf)
+      newf = UndefValue::get(fn->getType());
+    auto cdata = ConstantStruct::get(
+        StructType::get(newf->getContext(),
+                        {augdata.fn->getType(), newf->getType()}),
+        {augdata.fn, newf});
+    std::string globalname = ("_enzyme_reverse_" + fn->getName() + "'").str();
+    auto GV = fn->getParent()->getNamedValue(globalname);
+
+    if (GV == nullptr) {
+      GV = new GlobalVariable(*fn->getParent(), cdata->getType(), true,
+                              GlobalValue::LinkageTypes::InternalLinkage, cdata,
+                              globalname);
+    }
+    return ConstantExpr::getPointerCast(GV, fn->getType());
+  }
+  default: {
+    report_fatal_error("Invalid derivative mode");
+  }
+  }
 }
 
 Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
@@ -3035,7 +3064,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         std::make_pair((const Value *)oval, InvertedPointerVH(this, cs)));
     return cs;
   } else if (auto fn = dyn_cast<Function>(oval)) {
-    return GetOrCreateShadowFunction(Logic, TLI, TA, fn, AtomicAdd);
+    return GetOrCreateShadowFunction(Logic, TLI, TA, fn, mode, AtomicAdd);
   } else if (auto arg = dyn_cast<CastInst>(oval)) {
     IRBuilder<> bb(getNewFromOriginal(arg));
     Value *invertOp = invertPointerM(arg->getOperand(0), bb);

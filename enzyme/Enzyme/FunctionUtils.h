@@ -350,3 +350,8 @@ static inline void calculateUnusedStores(
 /// Is the use of value val as an argument of call CI potentially captured
 bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val);
 #endif
+
+llvm::FunctionType *
+getFunctionTypeForClone(llvm::FunctionType *FTy, llvm::Type *additionalArg,
+                        const std::vector<DIFFE_TYPE> &constant_args,
+                        bool diffeReturnArg, ReturnType returnValue);

@@ -1,26 +1,5 @@
 ; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -simplifycfg -S | FileCheck %s
 
-; #include <stdlib.h>
-; 
-; extern double global;
-; 
-; __attribute__((noinline))
-; double mulglobal(double x) {
-;     return x * global;
-; }
-; 
-; __attribute__((noinline))
-; double derivative(double x) {
-;     return __builtin_autodiff(mulglobal, x);
-; }
-; 
-; void main(int argc, char** argv) {
-;     double x = atof(argv[1]);
-;     printf("x=%f\n", x);
-;     double xp = derivative(x);
-;     printf("xp=%f\n", xp);
-; }
-
 @global = private unnamed_addr constant [1 x void (double*)*] [void (double*)* @ipmul]
 
 @.str = private unnamed_addr constant [6 x i8] c"x=%f\0A\00", align 1
@@ -49,12 +28,12 @@ entry:
 ; Function Attrs: noinline nounwind uwtable
 define dso_local double @derivative(double %x) local_unnamed_addr #1 {
 entry:
-  %0 = tail call double (double (double, i64)*, ...) @__enzyme_autodiff(double (double, i64)* nonnull @mulglobal, double %x, i64 0)
+  %0 = tail call double (double (double, i64)*, ...) @__enzyme_fwddiff(double (double, i64)* nonnull @mulglobal, double %x, double 1.0, i64 0)
   ret double %0
 }
 
 ; Function Attrs: nounwind
-declare double @__enzyme_autodiff(double (double, i64)*, ...) #2
+declare double @__enzyme_fwddiff(double (double, i64)*, ...) #2
 
 ; Function Attrs: nounwind uwtable
 define dso_local void @main(i32 %argc, i8** nocapture readonly %argv) local_unnamed_addr #3 {
@@ -92,30 +71,22 @@ attributes #4 = { nounwind "correctly-rounded-divide-sqrt-fp-math"="false" "disa
 !6 = !{!7, !7, i64 0}
 !7 = !{!"any pointer", !4, i64 0}
 
-; CHECK: @global_shadow = private unnamed_addr constant [1 x void (double*)*] [void (double*)* bitcast ({ i8* (double*, double*)*, void (double*, double*, i8*)* }* @"_enzyme_reverse_ipmul'" to void (double*)*)]
-; CHECK: @"_enzyme_reverse_ipmul'" = internal constant { i8* (double*, double*)*, void (double*, double*, i8*)* } { i8* (double*, double*)* @augmented_ipmul, void (double*, double*, i8*)* @diffeipmul }
 
-; CHECK: define internal { double } @diffemulglobal(double %x, i64 %idx, double %differeturn)
+; CHECK: @global_shadow = private unnamed_addr constant [1 x void (double*)*] [void (double*)* bitcast (void (double*, double*)** @"_enzyme_forward_ipmul'" to void (double*)*)]
+; CHECK:@"_enzyme_forward_ipmul'" = internal constant void (double*, double*)* @fwddiffeipmul
+
+; CHECK: define internal double @fwddiffemulglobal(double %x, double %"x'", i64 %idx)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"alloc'ipa" = alloca double
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"alloc'ipa"
 ; CHECK-NEXT:   %alloc = alloca double
 ; CHECK-NEXT:   store double %x, double* %alloc
+; CHECK-NEXT:   store double %"x'", double* %"alloc'ipa"
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr inbounds [1 x void (double*)*], [1 x void (double*)*]* @global_shadow, i64 0, i64 %idx
-; CHECK-NEXT:   %"fp'ipl" = load void (double*)*, void (double*)** %"arrayidx'ipg", align 8
-; CHECK-NEXT:   %0 = bitcast void (double*)* %"fp'ipl" to { i8* } (double*, double*)**
-; CHECK-NEXT:   %1 = load { i8* } (double*, double*)*, { i8* } (double*, double*)** %0
-; CHECK-NEXT:   %_augmented = call { i8* } %1(double* %alloc, double* %"alloc'ipa")
-; CHECK-NEXT:   %subcache = extractvalue { i8* } %_augmented, 0
+; CHECK-NEXT:   %"fp'ipl" = load void (double*)*, void (double*)** %"arrayidx'ipg"
+; CHECK-NEXT:   %0 = bitcast void (double*)* %"fp'ipl" to void (double*, double*)**
+; CHECK-NEXT:   %1 = load void (double*, double*)*, void (double*, double*)** %0
+; CHECK-NEXT:   call void %1(double* %alloc, double* %"alloc'ipa")
 ; CHECK-NEXT:   %2 = load double, double* %"alloc'ipa"
-; CHECK-NEXT:   %3 = fadd fast double %2, %differeturn
-; CHECK-NEXT:   store double %3, double* %"alloc'ipa"
-; CHECK-NEXT:   %4 = bitcast void (double*)* %"fp'ipl" to {} (double*, double*, i8*)**
-; CHECK-NEXT:   %5 = getelementptr {} (double*, double*, i8*)*, {} (double*, double*, i8*)** %4, i64 1
-; CHECK-NEXT:   %6 = load {} (double*, double*, i8*)*, {} (double*, double*, i8*)** %5
-; CHECK-NEXT:   %7 = call {} %6(double* %alloc, double* %"alloc'ipa", i8* %subcache)
-; CHECK-NEXT:   %8 = load double, double* %"alloc'ipa"
-; CHECK-NEXT:   store double 0.000000e+00, double* %"alloc'ipa"
-; CHECK-NEXT:   %9 = insertvalue { double } undef, double %8, 0
-; CHECK-NEXT:   ret { double } %9
+; CHECK-NEXT:   ret double %2
 ; CHECK-NEXT: }

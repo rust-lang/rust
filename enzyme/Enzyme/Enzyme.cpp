@@ -1426,8 +1426,8 @@ public:
       bool AtomicAdd = Arch == Triple::nvptx || Arch == Triple::nvptx64 ||
                        Arch == Triple::amdgcn;
 
-      auto val = GradientUtils::GetOrCreateShadowConstant(Logic, TLI, TA, fn,
-                                                          AtomicAdd, PostOpt);
+      auto val = GradientUtils::GetOrCreateShadowConstant(
+          Logic, TLI, TA, fn, pair.second, AtomicAdd, PostOpt);
       CI->replaceAllUsesWith(ConstantExpr::getPointerCast(val, CI->getType()));
       CI->eraseFromParent();
       Changed = true;

@@ -303,7 +303,7 @@ attributes #8 = { noreturn nounwind "correctly-rounded-divide-sqrt-fp-math"="fal
 ; CHECK-NEXT:   %div = fdiv fast double %t, %conv
 ; CHECK-NEXT:   %"arrayidx.i1.i'ipg" = getelementptr inbounds %"class.boost::array.1", %"class.boost::array.1"* %"x'ipa", i64 0, i32 0, i64 0
 ; CHECK-NEXT:   %arrayidx.i1.i = getelementptr inbounds %"class.boost::array.1", %"class.boost::array.1"* %x, i64 0, i32 0, i64 0
-; CHECK-NEXT:   %_augmented = call i8* @augmented_sub(i64 ptrtoint (void (%"class.boost::array.1"*)* @indir to i64), i64 ptrtoint ({ i8* (%"class.boost::array.1"*, %"class.boost::array.1"*)*, void (%"class.boost::array.1"*, %"class.boost::array.1"*, i8*)* }* @"_enzyme_indir'" to i64), %"class.boost::array.1"* nonnull %x, %"class.boost::array.1"* nonnull %"x'ipa")
+; CHECK-NEXT:   %_augmented = call i8* @augmented_sub(i64 ptrtoint (void (%"class.boost::array.1"*)* @indir to i64), i64 ptrtoint ({ i8* (%"class.boost::array.1"*, %"class.boost::array.1"*)*, void (%"class.boost::array.1"*, %"class.boost::array.1"*, i8*)* }* @"_enzyme_reverse_indir'" to i64), %"class.boost::array.1"* nonnull %x, %"class.boost::array.1"* nonnull %"x'ipa")
 ; CHECK-NEXT:   %call.i = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str, i64 0, i64 0), double 0.000000e+00) #3
 ; CHECK-NEXT:   %1 = load double, double* %arrayidx.i1.i, align 8, !tbaa !8
 ; CHECK-NEXT:   %mul.i1 = fmul fast double %1, -1.200000e+00
@@ -314,7 +314,7 @@ attributes #8 = { noreturn nounwind "correctly-rounded-divide-sqrt-fp-math"="fal
 ; CHECK-NEXT:   %3 = load double, double* %"arrayidx.i1.i'ipg", align 8
 ; CHECK-NEXT:   %4 = fadd fast double %3, %2
 ; CHECK-NEXT:   store double %4, double* %"arrayidx.i1.i'ipg", align 8
-; CHECK-NEXT:   call void @diffesub(i64 ptrtoint (void (%"class.boost::array.1"*)* @indir to i64), i64 ptrtoint ({ i8* (%"class.boost::array.1"*, %"class.boost::array.1"*)*, void (%"class.boost::array.1"*, %"class.boost::array.1"*, i8*)* }* @"_enzyme_indir'" to i64), %"class.boost::array.1"* nonnull %x, %"class.boost::array.1"* nonnull %"x'ipa", i8* %_augmented)
+; CHECK-NEXT:   call void @diffesub(i64 ptrtoint (void (%"class.boost::array.1"*)* @indir to i64), i64 ptrtoint ({ i8* (%"class.boost::array.1"*, %"class.boost::array.1"*)*, void (%"class.boost::array.1"*, %"class.boost::array.1"*, i8*)* }* @"_enzyme_reverse_indir'" to i64), %"class.boost::array.1"* nonnull %x, %"class.boost::array.1"* nonnull %"x'ipa", i8* %_augmented)
 ; CHECK-NEXT:   %d0diffet = fdiv fast double %m1diffediv, %conv
 ; CHECK-NEXT:   store i64 0, i64* %"'ipc", align 8
 ; CHECK-NEXT:   %5 = insertvalue { double } undef, double %d0diffet, 0

@@ -38,11 +38,11 @@ entry:
 !15 = !{!16, !16, i64 0}
 !16 = !{!"double", !5, i64 0}
 
-; CHECK: @"_enzyme_indirect'" = internal constant { i8* (double*, double*, double*, double*, double)*, { double } (double*, double*, double*, double*, double, i8*)* } { i8* (double*, double*, double*, double*, double)* @augmented_indirect, { double } (double*, double*, double*, double*, double, i8*)* @diffeindirect }
+; CHECK: @"_enzyme_reverse_indirect'" = internal constant { i8* (double*, double*, double*, double*, double)*, { double } (double*, double*, double*, double*, double, i8*)* } { i8* (double*, double*, double*, double*, double)* @augmented_indirect, { double } (double*, double*, double*, double*, double, i8*)* @diffeindirect }
 
 ; CHECK: define internal { double } @diffefoobard(double %init, double %differeturn) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { double } @diffesubfn(double %init, void (double*, double*, double)* nonnull @indirect, void (double*, double*, double)* bitcast ({ i8* (double*, double*, double*, double*, double)*, { double } (double*, double*, double*, double*, double, i8*)* }* @"_enzyme_indirect'" to void (double*, double*, double)*), double %differeturn)
+; CHECK-NEXT:   %0 = call { double } @diffesubfn(double %init, void (double*, double*, double)* nonnull @indirect, void (double*, double*, double)* bitcast ({ i8* (double*, double*, double*, double*, double)*, { double } (double*, double*, double*, double*, double, i8*)* }* @"_enzyme_reverse_indirect'" to void (double*, double*, double)*), double %differeturn)
 ; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
 
