@@ -14,9 +14,12 @@ pub(crate) fn build_backend(
 
     let mut rustflags = env::var("RUSTFLAGS").unwrap_or_default();
 
-    // Deny warnings on CI
     if env::var("CI").as_ref().map(|val| &**val) == Ok("true") {
+        // Deny warnings on CI
         rustflags += " -Dwarnings";
+
+        // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
+        cmd.env("CARGO_BUILD_INCREMENTAL", "false");
     }
 
     if use_unstable_features {
