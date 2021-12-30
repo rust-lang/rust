@@ -91,8 +91,6 @@ impl CodegenBackend for GccCodegenBackend {
         let target_cpu = target_cpu(tcx.sess);
         let res = codegen_crate(self.clone(), tcx, target_cpu.to_string(), metadata, need_metadata_module);
 
-        rustc_symbol_mangling::test::report_symbol_names(tcx);
-
         Box::new(res)
     }
 
