@@ -5,10 +5,11 @@ use super::*;
 pub(crate) use self::atom::{block_expr, match_arm_list};
 pub(super) use self::atom::{literal, LITERAL_FIRST};
 
-pub(super) enum StmtWithSemi {
-    Yes,
-    No,
+#[derive(PartialEq, Eq)]
+pub(super) enum Semicolon {
+    Required,
     Optional,
+    Forbidden,
 }
 
 const EXPR_FIRST: TokenSet = LHS_FIRST;
@@ -28,7 +29,11 @@ fn expr_no_struct(p: &mut Parser) {
     expr_bp(p, None, r, 1);
 }
 
-pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
+pub(super) fn stmt(p: &mut Parser, semicolon: Semicolon) {
+    if p.eat(T![;]) {
+        return;
+    }
+
     let m = p.start();
     // test attr_on_expr_stmt
     // fn foo() {
@@ -40,7 +45,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
     attributes::outer_attrs(p);
 
     if p.at(T![let]) {
-        let_stmt(p, m, with_semi);
+        let_stmt(p, m, semicolon);
         return;
     }
 
@@ -52,7 +57,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
     };
 
     if let Some((cm, blocklike)) = expr_stmt(p, Some(m)) {
-        if !(p.at(T!['}']) || (prefer_expr && p.at(EOF))) {
+        if !(p.at(T!['}']) || (semicolon != Semicolon::Required && p.at(EOF))) {
             // test no_semi_after_block
             // fn foo() {
             //     if true {}
@@ -68,27 +73,26 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
             //     test!{}
             // }
             let m = cm.precede(p);
-            match with_semi {
-                StmtWithSemi::No => (),
-                StmtWithSemi::Optional => {
-                    p.eat(T![;]);
-                }
-                StmtWithSemi::Yes => {
+            match semicolon {
+                Semicolon::Required => {
                     if blocklike.is_block() {
                         p.eat(T![;]);
                     } else {
                         p.expect(T![;]);
                     }
                 }
+                Semicolon::Optional => {
+                    p.eat(T![;]);
+                }
+                Semicolon::Forbidden => (),
             }
-
             m.complete(p, EXPR_STMT);
         }
     }
 
     // test let_stmt
     // fn f() { let x: i32 = 92; }
-    fn let_stmt(p: &mut Parser, m: Marker, with_semi: StmtWithSemi) {
+    fn let_stmt(p: &mut Parser, m: Marker, with_semi: Semicolon) {
         p.bump(T![let]);
         patterns::pattern(p);
         if p.at(T![:]) {
@@ -113,11 +117,11 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi, prefer_expr: bool) {
         }
 
         match with_semi {
-            StmtWithSemi::No => (),
-            StmtWithSemi::Optional => {
+            Semicolon::Forbidden => (),
+            Semicolon::Optional => {
                 p.eat(T![;]);
             }
-            StmtWithSemi::Yes => {
+            Semicolon::Required => {
                 p.expect(T![;]);
             }
         }
@@ -143,13 +147,7 @@ pub(super) fn expr_block_contents(p: &mut Parser) {
         //     fn f() {};
         //     struct S {};
         // }
-
-        if p.at(T![;]) {
-            p.bump(T![;]);
-            continue;
-        }
-
-        stmt(p, StmtWithSemi::Yes, false);
+        stmt(p, Semicolon::Required);
     }
 }
 

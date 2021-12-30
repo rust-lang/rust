@@ -59,7 +59,7 @@ pub(crate) mod entry {
         }
 
         pub(crate) fn stmt(p: &mut Parser) {
-            expressions::stmt(p, expressions::StmtWithSemi::No, true);
+            expressions::stmt(p, expressions::Semicolon::Forbidden);
         }
 
         pub(crate) fn pat(p: &mut Parser) {
@@ -98,12 +98,7 @@ pub(crate) mod entry {
             let m = p.start();
 
             while !p.at(EOF) {
-                if p.at(T![;]) {
-                    p.bump(T![;]);
-                    continue;
-                }
-
-                expressions::stmt(p, expressions::StmtWithSemi::Optional, true);
+                expressions::stmt(p, expressions::Semicolon::Optional);
             }
 
             m.complete(p, MACRO_STMTS);

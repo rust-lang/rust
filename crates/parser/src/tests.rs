@@ -1,4 +1,5 @@
 mod sourcegen_inline_tests;
+mod entries;
 
 use std::{
     fmt::Write,

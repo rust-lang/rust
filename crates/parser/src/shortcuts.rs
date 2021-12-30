@@ -16,6 +16,7 @@ use crate::{
     SyntaxKind::{self, *},
 };
 
+#[derive(Debug)]
 pub enum StrStep<'a> {
     Token { kind: SyntaxKind, text: &'a str },
     Enter { kind: SyntaxKind },
@@ -49,6 +50,7 @@ impl<'a> LexedStr<'a> {
         res
     }
 
+    /// NB: only valid to call with Output from Reparser/TopLevelEntry.
     pub fn intersperse_trivia(
         &self,
         output: &crate::Output,
