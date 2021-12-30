@@ -11,54 +11,15 @@
 
 use std::{
     hash::{Hash, Hasher},
-    iter::successors,
     marker::PhantomData,
 };
 
-use crate::{AstNode, SyntaxKind, SyntaxNode, TextRange};
+use crate::{syntax_node::RustLanguage, AstNode, SyntaxNode};
 
-/// A pointer to a syntax node inside a file. It can be used to remember a
-/// specific node across reparses of the same file.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SyntaxNodePtr {
-    // Don't expose this field further. At some point, we might want to replace
-    // range with node id.
-    pub(crate) range: TextRange,
-    kind: SyntaxKind,
-}
+/// A "pointer" to a [`SyntaxNode`], via location in the source code.
+pub type SyntaxNodePtr = rowan::ast::SyntaxNodePtr<RustLanguage>;
 
-impl SyntaxNodePtr {
-    pub fn new(node: &SyntaxNode) -> SyntaxNodePtr {
-        SyntaxNodePtr { range: node.text_range(), kind: node.kind() }
-    }
-
-    /// "Dereference" the pointer to get the node it points to.
-    ///
-    /// Panics if node is not found, so make sure that `root` syntax tree is
-    /// equivalent (is build from the same text) to the tree which was
-    /// originally used to get this [`SyntaxNodePtr`].
-    ///
-    /// The complexity is linear in the depth of the tree and logarithmic in
-    /// tree width. As most trees are shallow, thinking about this as
-    /// `O(log(N))` in the size of the tree is not too wrong!
-    pub fn to_node(&self, root: &SyntaxNode) -> SyntaxNode {
-        assert!(root.parent().is_none());
-        successors(Some(root.clone()), |node| {
-            node.child_or_token_at_range(self.range).and_then(|it| it.into_node())
-        })
-        .find(|it| it.text_range() == self.range && it.kind() == self.kind)
-        .unwrap_or_else(|| panic!("can't resolve local ptr to SyntaxNode: {:?}", self))
-    }
-
-    pub fn cast<N: AstNode>(self) -> Option<AstPtr<N>> {
-        if !N::can_cast(self.kind) {
-            return None;
-        }
-        Some(AstPtr { raw: self, _ty: PhantomData })
-    }
-}
-
-/// Like `SyntaxNodePtr`, but remembers the type of node
+/// Like `SyntaxNodePtr`, but remembers the type of node.
 #[derive(Debug)]
 pub struct AstPtr<N: AstNode> {
     raw: SyntaxNodePtr,
@@ -100,10 +61,15 @@ impl<N: AstNode> AstPtr<N> {
     }
 
     pub fn cast<U: AstNode>(self) -> Option<AstPtr<U>> {
-        if !U::can_cast(self.raw.kind) {
+        if !U::can_cast(self.raw.kind()) {
             return None;
         }
         Some(AstPtr { raw: self.raw, _ty: PhantomData })
+    }
+
+    /// Like `SyntaxNodePtr::cast` but the trait bounds work out.
+    pub fn try_from_raw(raw: SyntaxNodePtr) -> Option<AstPtr<N>> {
+        N::can_cast(raw.kind()).then(|| AstPtr { raw, _ty: PhantomData })
     }
 }
 

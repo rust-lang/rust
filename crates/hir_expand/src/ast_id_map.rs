@@ -137,7 +137,7 @@ impl AstIdMap {
     }
 
     pub fn get<N: AstNode>(&self, id: FileAstId<N>) -> AstPtr<N> {
-        self.arena[id.raw].clone().cast::<N>().unwrap()
+        AstPtr::try_from_raw(self.arena[id.raw].clone()).unwrap()
     }
 
     fn alloc(&mut self, item: &SyntaxNode) -> ErasedFileAstId {

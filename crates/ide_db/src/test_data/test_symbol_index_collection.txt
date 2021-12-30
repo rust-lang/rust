@@ -21,12 +21,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 0..22,
                         kind: STRUCT,
+                        range: 0..22,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 6..21,
                         kind: NAME,
+                        range: 6..21,
                     },
                 },
                 kind: Struct,
@@ -43,12 +43,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 170..184,
                         kind: STRUCT,
+                        range: 170..184,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 177..183,
                         kind: NAME,
+                        range: 177..183,
                     },
                 },
                 kind: Struct,
@@ -65,12 +65,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 185..207,
                         kind: ENUM,
+                        range: 185..207,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 190..194,
                         kind: NAME,
+                        range: 190..194,
                     },
                 },
                 kind: Enum,
@@ -87,12 +87,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 208..222,
                         kind: UNION,
+                        range: 208..222,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 214..219,
                         kind: NAME,
+                        range: 214..219,
                     },
                 },
                 kind: Union,
@@ -109,12 +109,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 261..300,
                         kind: TRAIT,
+                        range: 261..300,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 267..272,
                         kind: NAME,
+                        range: 267..272,
                     },
                 },
                 kind: Trait,
@@ -131,12 +131,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 279..298,
                         kind: FN,
+                        range: 279..298,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 282..290,
                         kind: NAME,
+                        range: 282..290,
                     },
                 },
                 kind: Function,
@@ -155,12 +155,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 302..338,
                         kind: FN,
+                        range: 302..338,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 305..309,
                         kind: NAME,
+                        range: 305..309,
                     },
                 },
                 kind: Function,
@@ -177,12 +177,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 340..361,
                         kind: CONST,
+                        range: 340..361,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 346..351,
                         kind: NAME,
+                        range: 346..351,
                     },
                 },
                 kind: Const,
@@ -199,12 +199,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 362..396,
                         kind: STATIC,
+                        range: 362..396,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 369..375,
                         kind: NAME,
+                        range: 369..375,
                     },
                 },
                 kind: Static,
@@ -221,12 +221,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 397..417,
                         kind: TYPE_ALIAS,
+                        range: 397..417,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 402..407,
                         kind: NAME,
+                        range: 402..407,
                     },
                 },
                 kind: TypeAlias,
@@ -243,12 +243,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 419..457,
                         kind: MODULE,
+                        range: 419..457,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 423..428,
                         kind: NAME,
+                        range: 423..428,
                     },
                 },
                 kind: Module,
@@ -265,12 +265,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 520..592,
                         kind: CONST,
+                        range: 520..592,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 526..542,
                         kind: NAME,
+                        range: 526..542,
                     },
                 },
                 kind: Const,
@@ -287,12 +287,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 594..604,
                         kind: MODULE,
+                        range: 594..604,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 598..603,
                         kind: NAME,
+                        range: 598..603,
                     },
                 },
                 kind: Module,
@@ -309,12 +309,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 242..257,
                         kind: FN,
+                        range: 242..257,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 245..252,
                         kind: NAME,
+                        range: 245..252,
                     },
                 },
                 kind: Function,
@@ -331,12 +331,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 1..48,
                         kind: MACRO_RULES,
+                        range: 1..48,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 14..31,
                         kind: NAME,
+                        range: 14..31,
                     },
                 },
                 kind: Macro,
@@ -353,12 +353,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 51..131,
                         kind: MACRO_RULES,
+                        range: 51..131,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 64..77,
                         kind: NAME,
+                        range: 64..77,
                     },
                 },
                 kind: Macro,
@@ -375,12 +375,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 153..168,
                         kind: MACRO_DEF,
+                        range: 153..168,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 159..164,
                         kind: NAME,
+                        range: 159..164,
                     },
                 },
                 kind: Macro,
@@ -397,12 +397,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 479..507,
                         kind: STRUCT,
+                        range: 479..507,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 486..506,
                         kind: NAME,
+                        range: 486..506,
                     },
                 },
                 kind: Struct,
@@ -419,12 +419,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 555..581,
                         kind: STRUCT,
+                        range: 555..581,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 562..580,
                         kind: NAME,
+                        range: 562..580,
                     },
                 },
                 kind: Struct,
@@ -443,12 +443,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 318..336,
                         kind: STRUCT,
+                        range: 318..336,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 325..335,
                         kind: NAME,
+                        range: 325..335,
                     },
                 },
                 kind: Struct,
@@ -478,12 +478,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 435..455,
                         kind: STRUCT,
+                        range: 435..455,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 442..454,
                         kind: NAME,
+                        range: 442..454,
                     },
                 },
                 kind: Struct,
@@ -511,12 +511,12 @@
                         ),
                     ),
                     ptr: SyntaxNodePtr {
-                        range: 0..20,
                         kind: STRUCT,
+                        range: 0..20,
                     },
                     name_ptr: SyntaxNodePtr {
-                        range: 7..19,
                         kind: NAME,
+                        range: 7..19,
                     },
                 },
                 kind: Struct,
