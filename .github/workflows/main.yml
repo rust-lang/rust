@@ -4,6 +4,9 @@ on:
   - push
   - pull_request
 
+env:
+  RUSTFLAGS: "-Dwarnings" # Deny warnings on CI
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
