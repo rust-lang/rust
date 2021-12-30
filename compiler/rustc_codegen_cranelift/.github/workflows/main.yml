@@ -5,6 +5,21 @@ on:
   - pull_request
 
 jobs:
+  rustfmt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install rustfmt
+      run: |
+        rustup component add rustfmt
+
+    - name: Rustfmt
+      run: |
+        cargo fmt --check
+
   build:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
