@@ -281,14 +281,14 @@ impl OsString {
     ///
     /// ```
     /// #![feature(try_reserve_2)]
-    /// use std::ffi::OsString;
+    /// use std::ffi::{OsStr, OsString};
     /// use std::collections::TryReserveError;
     ///
     /// fn process_data(data: &str) -> Result<OsString, TryReserveError> {
     ///     let mut s = OsString::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
-    ///     s.try_reserve(OsString::from(data).len())?;
+    ///     s.try_reserve(OsStr::new(data).len())?;
     ///
     ///     // Now we know this can't OOM in the middle of our complex work
     ///     s.push(data);
@@ -349,14 +349,14 @@ impl OsString {
     ///
     /// ```
     /// #![feature(try_reserve_2)]
-    /// use std::ffi::OsString;
+    /// use std::ffi::{OsStr, OsString};
     /// use std::collections::TryReserveError;
     ///
     /// fn process_data(data: &str) -> Result<OsString, TryReserveError> {
     ///     let mut s = OsString::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
-    ///     s.try_reserve_exact(OsString::from(data).len())?;
+    ///     s.try_reserve_exact(OsStr::new(data).len())?;
     ///
     ///     // Now we know this can't OOM in the middle of our complex work
     ///     s.push(data);
