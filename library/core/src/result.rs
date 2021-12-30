@@ -1174,6 +1174,43 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Returns the contained [`Ok`] value, but never panics.
+    ///
+    /// Unlike [`unwrap`], this method is known to never panic on the
+    /// result types it is implemented for. Therefore, it can be used
+    /// instead of `unwrap` as a maintainability safeguard that will fail
+    /// to compile if the error type of the `Result` is later changed
+    /// to an error that can actually occur.
+    ///
+    /// [`unwrap`]: Result::unwrap
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(never_type)]
+    /// # #![feature(unwrap_infallible)]
+    ///
+    /// fn only_good_news() -> Result<String, !> {
+    ///     Ok("this is fine".into())
+    /// }
+    ///
+    /// let s: String = only_good_news().into_ok();
+    /// println!("{}", s);
+    /// ```
+    #[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
+    #[inline]
+    pub fn into_ok(self) -> T
+    where
+        E: Into<!>,
+    {
+        match self {
+            Ok(x) => x,
+            Err(e) => e.into(),
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////
     // Boolean operations on the values, eager and lazy
     /////////////////////////////////////////////////////////////////////////
@@ -1496,42 +1533,6 @@ impl<T: Clone, E> Result<&mut T, E> {
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
     pub fn cloned(self) -> Result<T, E> {
         self.map(|t| t.clone())
-    }
-}
-
-#[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
-impl<T, E: Into<!>> Result<T, E> {
-    /// Returns the contained [`Ok`] value, but never panics.
-    ///
-    /// Unlike [`unwrap`], this method is known to never panic on the
-    /// result types it is implemented for. Therefore, it can be used
-    /// instead of `unwrap` as a maintainability safeguard that will fail
-    /// to compile if the error type of the `Result` is later changed
-    /// to an error that can actually occur.
-    ///
-    /// [`unwrap`]: Result::unwrap
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// # #![feature(never_type)]
-    /// # #![feature(unwrap_infallible)]
-    ///
-    /// fn only_good_news() -> Result<String, !> {
-    ///     Ok("this is fine".into())
-    /// }
-    ///
-    /// let s: String = only_good_news().into_ok();
-    /// println!("{}", s);
-    /// ```
-    #[inline]
-    pub fn into_ok(self) -> T {
-        match self {
-            Ok(x) => x,
-            Err(e) => e.into(),
-        }
     }
 }
 
