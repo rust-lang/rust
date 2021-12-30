@@ -966,7 +966,7 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
                         for pat in inner.iter() {
                             if let PatKind::Binding(_, id, ident, None) = pat.kind {
                                 if ident.as_str().starts_with('_') && !is_local_used(cx, arm.body, id) {
-                                    ident_bind_name = (&ident.name.as_str()).to_string();
+                                    ident_bind_name = ident.name.as_str().to_string();
                                     matching_wild = true;
                                 }
                             }
@@ -1127,7 +1127,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
             if let CommonPrefixSearcher::Path(path_prefix) = path_prefix {
                 let mut s = String::new();
                 for seg in path_prefix {
-                    s.push_str(&seg.ident.as_str());
+                    s.push_str(seg.ident.as_str());
                     s.push_str("::");
                 }
                 s

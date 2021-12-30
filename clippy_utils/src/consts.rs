@@ -327,8 +327,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     if let ExprKind::Path(qpath) = &callee.kind;
                     let res = self.typeck_results.qpath_res(qpath, callee.hir_id);
                     if let Some(def_id) = res.opt_def_id();
-                    let def_path: Vec<_> = self.lcx.get_def_path(def_id).into_iter().map(Symbol::as_str).collect();
-                    let def_path: Vec<&str> = def_path.iter().take(4).map(|s| &**s).collect();
+                    let def_path = self.lcx.get_def_path(def_id);
+                    let def_path: Vec<&str> = def_path.iter().take(4).map(Symbol::as_str).collect();
                     if let ["core", "num", int_impl, "max_value"] = *def_path;
                     then {
                        let value = match int_impl {

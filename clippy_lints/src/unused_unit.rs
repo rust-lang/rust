@@ -94,7 +94,7 @@ impl EarlyLintPass for UnusedUnit {
 
         if_chain! {
             if segments.len() == 1;
-            if ["Fn", "FnMut", "FnOnce"].contains(&&*segments[0].ident.name.as_str());
+            if ["Fn", "FnMut", "FnOnce"].contains(&segments[0].ident.name.as_str());
             if let Some(args) = &segments[0].args;
             if let ast::GenericArgs::Parenthesized(generic_args) = &**args;
             if let ast::FnRetTy::Ty(ty) = &generic_args.output;

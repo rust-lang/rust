@@ -12,7 +12,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 if let ExprKind::Binary(ref cmp, left, _) = expr.kind {
                     let op = cmp.node;
                     if op.is_comparison() && cx.typeck_results().expr_ty(left).is_unit() {
-                        let result = match &*symbol.as_str() {
+                        let result = match symbol.as_str() {
                             "assert_eq" | "debug_assert_eq" => "succeed",
                             "assert_ne" | "debug_assert_ne" => "fail",
                             _ => return,

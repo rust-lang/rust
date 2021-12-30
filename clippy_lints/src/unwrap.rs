@@ -158,10 +158,10 @@ fn collect_unwrap_info<'tcx>(
             if let Some(local_id) = path_to_local(&args[0]);
             let ty = cx.typeck_results().expr_ty(&args[0]);
             let name = method_name.ident.as_str();
-            if is_relevant_option_call(cx, ty, &name) || is_relevant_result_call(cx, ty, &name);
+            if is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name);
             then {
                 assert!(args.len() == 1);
-                let unwrappable = match name.as_ref() {
+                let unwrappable = match name {
                     "is_some" | "is_ok" => true,
                     "is_err" | "is_none" => false,
                     _ => unreachable!(),

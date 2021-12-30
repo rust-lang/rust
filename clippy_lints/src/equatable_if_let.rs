@@ -67,20 +67,20 @@ fn is_structural_partial_eq(cx: &LateContext<'tcx>, ty: Ty<'tcx>, other: Ty<'tcx
 impl<'tcx> LateLintPass<'tcx> for PatternEquality {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
-            if let ExprKind::Let(pat, exp, _) = expr.kind;
-            if unary_pattern(pat);
-            let exp_ty = cx.typeck_results().expr_ty(exp);
-            let pat_ty = cx.typeck_results().pat_ty(pat);
+            if let ExprKind::Let(let_expr) = expr.kind;
+            if unary_pattern(let_expr.pat);
+            let exp_ty = cx.typeck_results().expr_ty(let_expr.init);
+            let pat_ty = cx.typeck_results().pat_ty(let_expr.pat);
             if is_structural_partial_eq(cx, exp_ty, pat_ty);
             then {
 
                 let mut applicability = Applicability::MachineApplicable;
-                let pat_str = match pat.kind {
+                let pat_str = match let_expr.pat.kind {
                     PatKind::Struct(..) => format!(
                         "({})",
-                        snippet_with_context(cx, pat.span, expr.span.ctxt(), "..", &mut applicability).0,
+                        snippet_with_context(cx, let_expr.pat.span, expr.span.ctxt(), "..", &mut applicability).0,
                     ),
-                    _ => snippet_with_context(cx, pat.span, expr.span.ctxt(), "..", &mut applicability).0.to_string(),
+                    _ => snippet_with_context(cx, let_expr.pat.span, expr.span.ctxt(), "..", &mut applicability).0.to_string(),
                 };
                 span_lint_and_sugg(
                     cx,
@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
                     "try",
                     format!(
                         "{} == {}",
-                        snippet_with_context(cx, exp.span, expr.span.ctxt(), "..", &mut applicability).0,
+                        snippet_with_context(cx, let_expr.init.span, expr.span.ctxt(), "..", &mut applicability).0,
                         pat_str,
                     ),
                     applicability,

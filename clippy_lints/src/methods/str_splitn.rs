@@ -140,7 +140,7 @@ fn parse_iter_usage(
             let did = cx.typeck_results().type_dependent_def_id(e.hir_id)?;
             let iter_id = cx.tcx.get_diagnostic_item(sym::Iterator)?;
 
-            match (&*name.ident.as_str(), args) {
+            match (name.ident.as_str(), args) {
                 ("next", []) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
                     if reverse {
                         (IterUsageKind::Second, e.span)
@@ -298,7 +298,7 @@ fn check_iter(
                 if let Some(did) = cx.typeck_results().type_dependent_def_id(e.hir_id);
                 if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
                 then {
-                    match (&*name.ident.as_str(), args) {
+                    match (name.ident.as_str(), args) {
                         ("next", []) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
                             return true;
                         },

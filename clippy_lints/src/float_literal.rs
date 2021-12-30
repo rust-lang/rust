@@ -68,12 +68,12 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
             if let LitKind::Float(sym, lit_float_ty) = lit.node;
             then {
                 let sym_str = sym.as_str();
-                let formatter = FloatFormat::new(&sym_str);
+                let formatter = FloatFormat::new(sym_str);
                 // Try to bail out if the float is for sure fine.
                 // If its within the 2 decimal digits of being out of precision we
                 // check if the parsed representation is the same as the string
                 // since we'll need the truncated string anyway.
-                let digits = count_digits(&sym_str);
+                let digits = count_digits(sym_str);
                 let max = max_digits(fty);
                 let type_suffix = match lit_float_ty {
                     LitFloatType::Suffixed(ast::FloatTy::F32) => Some("f32"),

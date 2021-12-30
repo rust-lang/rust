@@ -79,7 +79,7 @@ fn correct_ident(ident: &str) -> String {
 
 fn check_ident(cx: &LateContext<'_>, ident: &Ident, be_aggressive: bool) {
     let span = ident.span;
-    let ident = &ident.as_str();
+    let ident = ident.as_str();
     let corrected = correct_ident(ident);
     // warn if we have pure-uppercase idents
     // assume that two-letter words are some kind of valid abbreviation like FP for false positive
@@ -87,7 +87,7 @@ fn check_ident(cx: &LateContext<'_>, ident: &Ident, be_aggressive: bool) {
     if (ident.chars().all(|c| c.is_ascii_uppercase()) && ident.len() > 2)
     // otherwise, warn if we have SOmeTHING lIKE THIs but only warn with the aggressive
     // upper-case-acronyms-aggressive config option enabled
-    || (be_aggressive && ident != &corrected)
+    || (be_aggressive && ident != corrected)
     {
         span_lint_and_sugg(
             cx,

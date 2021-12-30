@@ -31,7 +31,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
             let ty = cx.typeck_results().expr_ty(&args[0]);
             let mut applicability = Applicability::MaybeIncorrect;
             let is_empty_sugg = "next().is_none()".to_string();
-            let method_name = &*method.ident.name.as_str();
+            let method_name = method.ident.name.as_str();
             let sugg = if is_type_diagnostic_item(cx, ty, sym::Vec) ||
                         is_type_diagnostic_item(cx, ty, sym::VecDeque) ||
                         is_type_diagnostic_item(cx, ty, sym::LinkedList) ||
@@ -210,7 +210,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                     if let Some(hir_id) = self.current_statement_hir_id {
                         self.hir_id_uses_map.insert(hir_id, self.uses.len());
                     }
-                    match &*method_name.ident.name.as_str() {
+                    match method_name.ident.name.as_str() {
                         "into_iter" => self.uses.push(Some(IterFunction {
                             func: IterFunctionKind::IntoIter,
                             span: expr.span,

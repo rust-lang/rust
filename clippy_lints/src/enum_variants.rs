@@ -130,7 +130,7 @@ fn check_enum_start(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>
     let name = variant.ident.name.as_str();
     let item_name_chars = item_name.chars().count();
 
-    if count_match_start(item_name, &name).char_count == item_name_chars
+    if count_match_start(item_name, name).char_count == item_name_chars
         && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
         && name.chars().nth(item_name_chars + 1).map_or(false, |c| !c.is_numeric())
     {
@@ -147,7 +147,7 @@ fn check_enum_end(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) 
     let name = variant.ident.name.as_str();
     let item_name_chars = item_name.chars().count();
 
-    if count_match_end(item_name, &name).char_count == item_name_chars {
+    if count_match_end(item_name, name).char_count == item_name_chars {
         span_lint(
             cx,
             ENUM_VARIANT_NAMES,
@@ -171,7 +171,7 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         check_enum_end(cx, item_name, var);
         let name = var.ident.name.as_str();
 
-        let variant_split = camel_case_split(&name);
+        let variant_split = camel_case_split(name);
 
         pre = pre
             .iter()
@@ -240,7 +240,7 @@ impl LateLintPass<'_> for EnumVariantNames {
     #[allow(clippy::similar_names)]
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         let item_name = item.ident.name.as_str();
-        let item_camel = to_camel_case(&item_name);
+        let item_camel = to_camel_case(item_name);
         if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
             if let Some(&(ref mod_name, ref mod_camel)) = self.modules.last() {
                 // constants don't have surrounding modules
@@ -289,7 +289,7 @@ impl LateLintPass<'_> for EnumVariantNames {
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
             if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.def_id)) {
-                check_variant(cx, self.threshold, def, &item_name, item.span);
+                check_variant(cx, self.threshold, def, item_name, item.span);
             }
         }
         self.modules.push((item.ident.name, item_camel));
