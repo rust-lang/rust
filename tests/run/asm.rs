@@ -3,6 +3,8 @@
 // Run-time:
 //   status: 0
 
+#![feature(asm_const, asm_sym)]
+
 use std::arch::{asm, global_asm};
 
 global_asm!("
