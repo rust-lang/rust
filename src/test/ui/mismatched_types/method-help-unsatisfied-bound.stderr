@@ -1,19 +1,17 @@
-error[E0599]: the method `unwrap` exists for enum `Result<(), Foo>`, but its trait bounds were not satisfied
+error[E0277]: `Foo` doesn't implement `Debug`
   --> $DIR/method-help-unsatisfied-bound.rs:5:7
    |
-LL | struct Foo;
-   | ----------- doesn't satisfy `Foo: Debug`
-...
 LL |     a.unwrap();
-   |       ^^^^^^ method cannot be called on `Result<(), Foo>` due to unsatisfied trait bounds
+   |       ^^^^^^ `Foo` cannot be formatted using `{:?}`
    |
-   = note: the following trait bounds were not satisfied:
-           `Foo: Debug`
-help: consider annotating `Foo` with `#[derive(Debug)]`
+   = help: the trait `Debug` is not implemented for `Foo`
+   = note: add `#[derive(Debug)]` to `Foo` or manually `impl Debug for Foo`
+note: required by a bound in `Result::<T, E>::unwrap`
+  --> $SRC_DIR/core/src/result.rs:LL:COL
    |
-LL | #[derive(Debug)]
-   |
+LL |         E: fmt::Debug,
+   |            ^^^^^^^^^^ required by this bound in `Result::<T, E>::unwrap`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0599`.
+For more information about this error, try `rustc --explain E0277`.
