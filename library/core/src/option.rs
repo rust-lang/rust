@@ -1098,6 +1098,32 @@ impl<T> Option<T> {
         }
     }
 
+    /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
+    ///
+    /// Leaves the original `Option` in-place, creating a new one containing a mutable reference to
+    /// the inner type's [`Deref::Target`] type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x: Option<String> = Some("hey".to_owned());
+    /// assert_eq!(x.as_deref_mut().map(|x| {
+    ///     x.make_ascii_uppercase();
+    ///     x
+    /// }), Some("HEY".to_owned().as_mut_str()));
+    /// ```
+    #[stable(feature = "option_deref", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn as_deref_mut(&mut self) -> Option<&mut T::Target>
+    where
+        T: ~const DerefMut,
+    {
+        match self.as_mut() {
+            Some(t) => Some(t.deref_mut()),
+            None => None,
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Iterator constructors
     /////////////////////////////////////////////////////////////////////////
@@ -1745,34 +1771,6 @@ impl<T: Clone> Option<&mut T> {
     {
         match self {
             Some(t) => Some(t.clone()),
-            None => None,
-        }
-    }
-}
-
-impl<T: DerefMut> Option<T> {
-    /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
-    ///
-    /// Leaves the original `Option` in-place, creating a new one containing a mutable reference to
-    /// the inner type's [`Deref::Target`] type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut x: Option<String> = Some("hey".to_owned());
-    /// assert_eq!(x.as_deref_mut().map(|x| {
-    ///     x.make_ascii_uppercase();
-    ///     x
-    /// }), Some("HEY".to_owned().as_mut_str()));
-    /// ```
-    #[stable(feature = "option_deref", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
-    pub const fn as_deref_mut(&mut self) -> Option<&mut T::Target>
-    where
-        T: ~const DerefMut,
-    {
-        match self.as_mut() {
-            Some(t) => Some(t.deref_mut()),
             None => None,
         }
     }
