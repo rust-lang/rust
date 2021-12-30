@@ -144,7 +144,7 @@ impl Context<'_> {
 }
 
 pub(super) fn write_shared(
-    cx: &Context<'_>,
+    cx: &mut Context<'_>,
     krate: &Crate,
     search_index: String,
     options: &RenderOptions,
@@ -471,7 +471,7 @@ pub(super) fn write_shared(
                 title: "Index of crates",
                 css_class: "mod",
                 root_path: "./",
-                static_root_path: cx.shared.static_root_path.as_deref(),
+                static_root_path: &*cx.shared.static_root_path.as_deref(),
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
                 resource_suffix: &cx.shared.resource_suffix,
@@ -494,14 +494,7 @@ pub(super) fn write_shared(
                     })
                     .collect::<String>()
             );
-            let v = layout::render(
-                &cx.shared.templates,
-                &cx.shared.layout,
-                &page,
-                "",
-                content,
-                &cx.shared.style_files,
-            );
+            let v = layout::render(cx, &cx.shared, &page, "", content);
             cx.shared.fs.write(dst, v)?;
         }
     }

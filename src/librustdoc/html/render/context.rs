@@ -43,7 +43,6 @@ use crate::try_err;
 /// It is intended that this context is a lightweight object which can be fairly
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
-#[derive(Clone)]
 crate struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
@@ -212,12 +211,11 @@ impl<'tcx> Context<'tcx> {
         } else {
             tyname.as_str()
         };
-        let clone = self.clone();
         let shared_clone = self.shared.clone();
         let page = layout::Page {
             css_class: tyname_s,
             root_path: &self.root_path(),
-            static_root_path: clone.shared.static_root_path.as_deref(),
+            static_root_path: (&*shared_clone).static_root_path.as_deref(),
             title: &title,
             description: &desc,
             keywords: &keywords,
@@ -225,17 +223,16 @@ impl<'tcx> Context<'tcx> {
             extra_scripts: &[],
             static_extra_scripts: &[],
         };
-        let clone_1 = &mut self.clone();
-        let clone_2 = &mut self.clone();
         let shared_templates = &self.shared.clone().templates;
         if !self.render_redirect_pages {
             layout::render(
-                &self.clone().shared.templates,
-                &self.clone().shared.layout,
+                self,
+                &(&*self).shared,
                 &page,
-                |buf: &mut _| print_sidebar(clone_1, it, buf),
-                |buf: &mut _| print_item(clone_2, shared_templates, it, buf, &page),
-                &self.shared.style_files,
+                |buf: &mut _, cx: &mut Context<'_>| print_sidebar(cx, it, buf),
+                |buf: &mut _, cx: &mut Context<'_>| {
+                    print_item(cx, shared_templates, it, buf, &page)
+                },
             )
         } else {
             if let Some(&(ref names, ty)) = self.cache().paths.get(&it.def_id.expect_def_id()) {
@@ -515,11 +512,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let dst = output;
         scx.ensure_dir(&dst)?;
 
-        let mut cx = Context {
+        let cx = &mut Context {
             current: Vec::new(),
             dst,
             render_redirect_pages: false,
-            id_map: id_map,
+            id_map,
             deref_id_map: FxHashMap::default(),
             shared: Rc::new(scx),
             include_sources,
@@ -534,9 +531,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         // Write shared runs within a flock; disable thread dispatching of IO temporarily.
         Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-        write_shared(&cx, &krate, index, &md_opts)?;
+        write_shared(cx, &krate, index, &md_opts)?;
         Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
-        Ok((cx, krate))
+        Ok((*cx, krate))
     }
 
     fn make_child_renderer(&self) -> Self {
@@ -586,12 +583,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let all = self.shared.all.replace(AllTypes::new());
         let v = layout::render(
-            &self.shared.templates,
-            &self.shared.layout,
+            self,
+            &self.shared,
             &page,
             sidebar,
-            |buf: &mut Buffer| all.print(buf),
-            &self.shared.style_files,
+            |buf: &mut Buffer, _: &mut Context<'_>| all.print(buf),
         );
         self.shared.fs.write(final_file, v)?;
 
@@ -608,8 +604,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             .map(StylePath::basename)
             .collect::<Result<_, Error>>()?;
         let v = layout::render(
-            &self.shared.templates,
-            &self.shared.layout,
+            self,
+            &*self.shared.clone(),
             &page,
             sidebar,
             settings(
@@ -617,7 +613,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 &self.shared.resource_suffix,
                 theme_names,
             )?,
-            &self.shared.style_files,
         );
         self.shared.fs.write(settings_file, v)?;
         if let Some(ref redirections) = self.shared.redirections {

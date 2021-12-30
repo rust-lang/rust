@@ -28,26 +28,26 @@ use crate::html::render::cache::ExternalLocation;
 use crate::html::render::Context;
 
 crate trait Print {
-    fn print(self, buffer: &mut Buffer);
+    fn print(self, buffer: &mut Buffer, cx: &mut Context<'_>);
 }
 
 impl<F> Print for F
 where
-    F: FnOnce(&mut Buffer),
+    F: FnOnce(&mut Buffer, &mut Context<'_>),
 {
-    fn print(self, buffer: &mut Buffer) {
-        (self)(buffer)
+    fn print(self, buffer: &mut Buffer, cx: &mut Context<'_>) {
+        (self)(buffer, cx)
     }
 }
 
 impl Print for String {
-    fn print(self, buffer: &mut Buffer) {
+    fn print(self, buffer: &mut Buffer, _: &mut Context<'_>) {
         buffer.write_str(&self);
     }
 }
 
 impl Print for &'_ str {
-    fn print(self, buffer: &mut Buffer) {
+    fn print(self, buffer: &mut Buffer, _: &mut Context<'_>) {
         buffer.write_str(self);
     }
 }
@@ -106,8 +106,8 @@ impl Buffer {
         self.buffer.write_fmt(v).unwrap();
     }
 
-    crate fn to_display<T: Print>(mut self, t: T) -> String {
-        t.print(&mut self);
+    crate fn to_display<T: Print>(mut self, t: T, cx: &mut Context<'_>) -> String {
+        t.print(&mut self, cx);
         self.into_inner()
     }
 

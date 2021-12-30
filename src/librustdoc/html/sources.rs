@@ -191,11 +191,12 @@ impl SourceCollector<'_, 'tcx> {
 
         let title = format!("{} - source", src_fname.to_string_lossy());
         let desc = format!("Source of the Rust file `{}`.", filename.prefer_remapped());
+        let shared_clone = self.cx.shared.clone();
         let page = layout::Page {
             title: &title,
             css_class: "source",
             root_path: &root_path,
-            static_root_path: self.cx.shared.static_root_path.as_deref(),
+            static_root_path: shared_clone.static_root_path.as_deref(),
             description: &desc,
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.cx.shared.resource_suffix,
@@ -203,23 +204,22 @@ impl SourceCollector<'_, 'tcx> {
             static_extra_scripts: &[&format!("source-script{}", self.cx.shared.resource_suffix)],
         };
         let v = layout::render(
-            &self.cx.shared.templates,
-            &self.cx.shared.layout,
+            self.cx,
+            &self.cx.shared,
             &page,
             "",
-            |buf: &mut _| {
+            |buf: &mut _, cx: &mut Context<'_>| {
                 print_src(
                     buf,
                     contents,
-                    self.cx.shared.edition(),
+                    cx.shared.edition(),
                     file_span,
-                    self.cx,
+                    cx,
                     &root_path,
                     None,
                     SourceContext::Standalone,
                 )
             },
-            &self.cx.shared.style_files,
         );
         self.cx.shared.fs.write(cur, v)?;
         self.emitted_local_sources.insert(p);

@@ -9,6 +9,8 @@ use crate::html::render::{ensure_trailing_slash, StylePath};
 
 use serde::Serialize;
 
+use super::render::{Context, SharedContext};
+
 #[derive(Clone, Serialize)]
 crate struct Layout {
     crate logo: String,
@@ -58,28 +60,28 @@ struct PageLayout<'a> {
 }
 
 crate fn render<T: Print, S: Print>(
-    templates: &tera::Tera,
-    layout: &Layout,
+    cx: &mut Context<'_>,
+    shared: &SharedContext<'_>,
     page: &Page<'_>,
     sidebar: S,
     t: T,
-    style_files: &[StylePath],
 ) -> String {
     let static_root_path = page.get_static_root_path();
-    let krate_with_trailing_slash = ensure_trailing_slash(&layout.krate).to_string();
-    let mut themes: Vec<String> = style_files
+    let krate_with_trailing_slash = ensure_trailing_slash(&shared.layout.krate).to_string();
+    let mut themes: Vec<String> = shared
+        .style_files
         .iter()
         .map(StylePath::basename)
         .collect::<Result<_, Error>>()
         .unwrap_or_default();
     themes.sort();
     let rustdoc_version = rustc_interface::util::version_str().unwrap_or("unknown version");
-    let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
-    let sidebar = Buffer::html().to_display(sidebar);
+    let content = Buffer::html().to_display(t, cx); // Note: This must happen before making the sidebar.
+    let sidebar = Buffer::html().to_display(sidebar, cx);
     let teractx = tera::Context::from_serialize(PageLayout {
         static_root_path,
         page,
-        layout,
+        layout: &shared.layout,
         themes,
         sidebar,
         content,
@@ -87,7 +89,7 @@ crate fn render<T: Print, S: Print>(
         rustdoc_version,
     })
     .unwrap();
-    templates.render("page.html", &teractx).unwrap()
+    shared.templates.render("page.html", &teractx).unwrap()
 }
 
 crate fn redirect(url: &str) -> String {
