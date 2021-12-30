@@ -110,14 +110,7 @@ impl ConfigCodeBlock {
         assert!(self.code_block.is_some() && self.code_block_start.is_some());
 
         // See if code block begins with #![rustfmt::skip].
-        let fmt_skip = self
-            .code_block
-            .as_ref()
-            .unwrap()
-            .lines()
-            .nth(0)
-            .unwrap_or("")
-            == "#![rustfmt::skip]";
+        let fmt_skip = self.fmt_skip();
 
         if self.config_name.is_none() && !fmt_skip {
             write_message(&format!(
@@ -136,6 +129,17 @@ impl ConfigCodeBlock {
             return false;
         }
         true
+    }
+
+    /// True if the code block starts with #![rustfmt::skip]
+    fn fmt_skip(&self) -> bool {
+        self.code_block
+            .as_ref()
+            .unwrap()
+            .lines()
+            .nth(0)
+            .unwrap_or("")
+            == "#![rustfmt::skip]"
     }
 
     fn has_parsing_errors<T: Write>(&self, session: &Session<'_, T>) -> bool {
@@ -251,6 +255,7 @@ fn configuration_snippet_tests() {
     let blocks = get_code_blocks();
     let failures = blocks
         .iter()
+        .filter(|block| !block.fmt_skip())
         .map(ConfigCodeBlock::formatted_is_idempotent)
         .fold(0, |acc, r| acc + (!r as u32));
 
