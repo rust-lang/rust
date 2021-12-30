@@ -1537,7 +1537,7 @@ impl<T, E> Result<&T, E> {
     }
 }
 
-impl<T: Copy, E> Result<&mut T, E> {
+impl<T, E> Result<&mut T, E> {
     /// Maps a `Result<&mut T, E>` to a `Result<T, E>` by copying the contents of the
     /// `Ok` part.
     ///
@@ -1552,12 +1552,13 @@ impl<T: Copy, E> Result<&mut T, E> {
     /// assert_eq!(copied, Ok(12));
     /// ```
     #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
-    pub fn copied(self) -> Result<T, E> {
+    pub fn copied(self) -> Result<T, E>
+    where
+        T: Copy,
+    {
         self.map(|&mut t| t)
     }
-}
 
-impl<T: Clone, E> Result<&mut T, E> {
     /// Maps a `Result<&mut T, E>` to a `Result<T, E>` by cloning the contents of the
     /// `Ok` part.
     ///
@@ -1572,7 +1573,10 @@ impl<T: Clone, E> Result<&mut T, E> {
     /// assert_eq!(cloned, Ok(12));
     /// ```
     #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
-    pub fn cloned(self) -> Result<T, E> {
+    pub fn cloned(self) -> Result<T, E>
+    where
+        T: Clone,
+    {
         self.map(|t| t.clone())
     }
 }
