@@ -284,7 +284,7 @@ impl OsString {
     /// use std::ffi::OsString;
     /// use std::collections::TryReserveError;
     ///
-    /// fn find_max_slow(data: &str) -> Result<OsString, TryReserveError> {
+    /// fn process_data(data: &str) -> Result<OsString, TryReserveError> {
     ///     let mut s = OsString::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
@@ -295,7 +295,7 @@ impl OsString {
     ///
     ///     Ok(s)
     /// }
-    /// # find_max_slow("123").expect("why is the test harness OOMing on 12 bytes?");
+    /// # process_data("123").expect("why is the test harness OOMing on 3 bytes?");
     /// ```
     #[unstable(feature = "try_reserve_2", issue = "91789")]
     #[inline]
@@ -352,7 +352,7 @@ impl OsString {
     /// use std::ffi::OsString;
     /// use std::collections::TryReserveError;
     ///
-    /// fn find_max_slow(data: &str) -> Result<OsString, TryReserveError> {
+    /// fn process_data(data: &str) -> Result<OsString, TryReserveError> {
     ///     let mut s = OsString::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
@@ -363,7 +363,7 @@ impl OsString {
     ///
     ///     Ok(s)
     /// }
-    /// # find_max_slow("123").expect("why is the test harness OOMing on 12 bytes?");
+    /// # process_data("123").expect("why is the test harness OOMing on 3 bytes?");
     /// ```
     #[unstable(feature = "try_reserve_2", issue = "91789")]
     #[inline]
