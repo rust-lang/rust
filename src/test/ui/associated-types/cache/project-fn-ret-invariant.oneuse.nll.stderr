@@ -10,6 +10,9 @@ LL |     let a = bar(f, x);
    |             ^^^^^^^^^ argument requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of the type Type<'_>, which makes the generic argument '_ invariant
+   = note: the struct Type<'a> is invariant over the parameter 'a
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/project-fn-ret-invariant.rs:40:13
@@ -23,6 +26,9 @@ LL |     let b = bar(f, y);
    |             ^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type Type<'_>, which makes the generic argument '_ invariant
+   = note: the struct Type<'a> is invariant over the parameter 'a
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 help: `'a` and `'b` must be the same: replace one with the other
 

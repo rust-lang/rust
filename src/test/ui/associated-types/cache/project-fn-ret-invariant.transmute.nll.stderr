@@ -6,6 +6,10 @@ LL | fn baz<'a, 'b>(x: Type<'a>) -> Type<'static> {
 ...
 LL |     bar(foo, x)
    |     ^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+   |
+   = note: requirement occurs because of the type Type<'_>, which makes the generic argument '_ invariant
+   = note: the struct Type<'a> is invariant over the parameter 'a
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to previous error
 

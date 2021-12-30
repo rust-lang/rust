@@ -7,6 +7,10 @@ LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f
    |                                     lifetime `'f` defined here
 LL |     ap
    |     ^^ function was supposed to return data with lifetime `'1` but it is returning data with lifetime `'f`
+   |
+   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
+   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:8:5
@@ -17,6 +21,10 @@ LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f
    |                                     lifetime `'f` defined here
 LL |     ap
    |     ^^ returning this value requires that `'1` must outlive `'f`
+   |
+   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
+   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:14:5
@@ -25,6 +33,10 @@ LL | pub unsafe extern "C" fn no_escape1(_: usize, ap: ...) -> VaListImpl<'stati
    |                                               -- has type `VaListImpl<'1>`
 LL |     ap
    |     ^^ returning this value requires that `'1` must outlive `'static`
+   |
+   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
+   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:18:31
@@ -44,6 +56,10 @@ LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut
    |                                               has type `&mut VaListImpl<'1>`
 LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
+   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:22:5
@@ -54,6 +70,10 @@ LL | pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut
    |                                               has type `&mut VaListImpl<'1>`
 LL |     *ap0 = ap1;
    |     ^^^^ assignment requires that `'2` must outlive `'1`
+   |
+   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
+   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:28:5
@@ -106,6 +126,10 @@ LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut
    |                                               has type `&mut VaListImpl<'1>`
 LL |     *ap0 = ap1.clone();
    |            ^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
+   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/variadic-ffi-4.rs:35:12
@@ -116,6 +140,10 @@ LL | pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut
    |                                               has type `&mut VaListImpl<'1>`
 LL |     *ap0 = ap1.clone();
    |            ^^^^^^^^^^^ argument requires that `'2` must outlive `'1`
+   |
+   = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
+   = note: the struct VaListImpl<'f> is invariant over the parameter 'f
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 11 previous errors
 
