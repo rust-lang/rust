@@ -810,6 +810,45 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns the contained [`Some`] value or a default.
+    ///
+    /// Consumes the `self` argument then, if [`Some`], returns the contained
+    /// value, otherwise if [`None`], returns the [default value] for that
+    /// type.
+    ///
+    /// # Examples
+    ///
+    /// Converts a string to an integer, turning poorly-formed strings
+    /// into 0 (the default value for integers). [`parse`] converts
+    /// a string to any other type that implements [`FromStr`], returning
+    /// [`None`] on error.
+    ///
+    /// ```
+    /// let good_year_from_input = "1909";
+    /// let bad_year_from_input = "190blarg";
+    /// let good_year = good_year_from_input.parse().ok().unwrap_or_default();
+    /// let bad_year = bad_year_from_input.parse().ok().unwrap_or_default();
+    ///
+    /// assert_eq!(1909, good_year);
+    /// assert_eq!(0, bad_year);
+    /// ```
+    ///
+    /// [default value]: Default::default
+    /// [`parse`]: str::parse
+    /// [`FromStr`]: crate::str::FromStr
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn unwrap_or_default(self) -> T
+    where
+        T: ~const Default,
+    {
+        match self {
+            Some(x) => x,
+            None => Default::default(),
+        }
+    }
+
     /// Returns the contained [`Some`] value, consuming the `self` value,
     /// without checking that the value is not [`None`].
     ///
@@ -1681,47 +1720,6 @@ impl<T: Clone> Option<&mut T> {
         match self {
             Some(t) => Some(t.clone()),
             None => None,
-        }
-    }
-}
-
-impl<T: Default> Option<T> {
-    /// Returns the contained [`Some`] value or a default.
-    ///
-    /// Consumes the `self` argument then, if [`Some`], returns the contained
-    /// value, otherwise if [`None`], returns the [default value] for that
-    /// type.
-    ///
-    /// # Examples
-    ///
-    /// Converts a string to an integer, turning poorly-formed strings
-    /// into 0 (the default value for integers). [`parse`] converts
-    /// a string to any other type that implements [`FromStr`], returning
-    /// [`None`] on error.
-    ///
-    /// ```
-    /// let good_year_from_input = "1909";
-    /// let bad_year_from_input = "190blarg";
-    /// let good_year = good_year_from_input.parse().ok().unwrap_or_default();
-    /// let bad_year = bad_year_from_input.parse().ok().unwrap_or_default();
-    ///
-    /// assert_eq!(1909, good_year);
-    /// assert_eq!(0, bad_year);
-    /// ```
-    ///
-    /// [default value]: Default::default
-    /// [`parse`]: str::parse
-    /// [`FromStr`]: crate::str::FromStr
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
-    pub const fn unwrap_or_default(self) -> T
-    where
-        T: ~const Default,
-    {
-        match self {
-            Some(x) => x,
-            None => Default::default(),
         }
     }
 }
