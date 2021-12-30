@@ -1726,7 +1726,7 @@ impl<T> Option<&T> {
     }
 }
 
-impl<T: Copy> Option<&mut T> {
+impl<T> Option<&mut T> {
     /// Maps an `Option<&mut T>` to an `Option<T>` by copying the contents of the
     /// option.
     ///
@@ -1742,15 +1742,16 @@ impl<T: Copy> Option<&mut T> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
-    pub const fn copied(self) -> Option<T> {
+    pub const fn copied(self) -> Option<T>
+    where
+        T: Copy,
+    {
         match self {
             Some(&mut t) => Some(t),
             None => None,
         }
     }
-}
 
-impl<T: Clone> Option<&mut T> {
     /// Maps an `Option<&mut T>` to an `Option<T>` by cloning the contents of the
     /// option.
     ///
