@@ -1072,6 +1072,32 @@ impl<T> Option<T> {
         }
     }
 
+    /// Converts from `Option<T>` (or `&Option<T>`) to `Option<&T::Target>`.
+    ///
+    /// Leaves the original Option in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the contents via [`Deref`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x: Option<String> = Some("hey".to_owned());
+    /// assert_eq!(x.as_deref(), Some("hey"));
+    ///
+    /// let x: Option<String> = None;
+    /// assert_eq!(x.as_deref(), None);
+    /// ```
+    #[stable(feature = "option_deref", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn as_deref(&self) -> Option<&T::Target>
+    where
+        T: ~const Deref,
+    {
+        match self.as_ref() {
+            Some(t) => Some(t.deref()),
+            None => None,
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Iterator constructors
     /////////////////////////////////////////////////////////////////////////
@@ -1719,34 +1745,6 @@ impl<T: Clone> Option<&mut T> {
     {
         match self {
             Some(t) => Some(t.clone()),
-            None => None,
-        }
-    }
-}
-
-impl<T: Deref> Option<T> {
-    /// Converts from `Option<T>` (or `&Option<T>`) to `Option<&T::Target>`.
-    ///
-    /// Leaves the original Option in-place, creating a new one with a reference
-    /// to the original one, additionally coercing the contents via [`Deref`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x: Option<String> = Some("hey".to_owned());
-    /// assert_eq!(x.as_deref(), Some("hey"));
-    ///
-    /// let x: Option<String> = None;
-    /// assert_eq!(x.as_deref(), None);
-    /// ```
-    #[stable(feature = "option_deref", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
-    pub const fn as_deref(&self) -> Option<&T::Target>
-    where
-        T: ~const Deref,
-    {
-        match self.as_ref() {
-            Some(t) => Some(t.deref()),
             None => None,
         }
     }
