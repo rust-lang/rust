@@ -148,7 +148,7 @@ use self::spec_extend::SpecExtend;
 #[cfg(not(no_global_oom_handling))]
 mod spec_extend;
 
-/// A contiguous growable array type, written as `Vec<T>` and pronounced 'vector'.
+/// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 ///
 /// # Examples
 ///
