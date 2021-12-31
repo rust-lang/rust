@@ -13,9 +13,9 @@ macro_rules! assert_eq_pnsat {
 fn test_escape() {
     assert_eq!(pns("has no escapes"), None);
     assert_eq!(pns("has no escapes, either %"), None);
-    assert_eq!(pns("*so* has a %% escape"), Some((S::Escape, " escape")));
-    assert_eq!(pns("%% leading escape"), Some((S::Escape, " leading escape")));
-    assert_eq!(pns("trailing escape %%"), Some((S::Escape, "")));
+    assert_eq!(pns("*so* has a %% escape"), Some((S::Escape((11, 13)), " escape")));
+    assert_eq!(pns("%% leading escape"), Some((S::Escape((0, 2)), " leading escape")));
+    assert_eq!(pns("trailing escape %%"), Some((S::Escape((16, 18)), "")));
 }
 
 #[test]
