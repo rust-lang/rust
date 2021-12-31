@@ -7,6 +7,7 @@
 #![feature(let_else)]
 
 pub mod bit_set;
+pub mod interval;
 pub mod vec;
 
 // FIXME(#56935): Work around ICEs during cross-compilation.
