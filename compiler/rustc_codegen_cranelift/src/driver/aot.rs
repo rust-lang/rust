@@ -243,7 +243,7 @@ pub(crate) fn run_aot(
     let isa = crate::build_isa(tcx.sess, &backend_config);
     let mut allocator_module = make_module(tcx.sess, isa, "allocator_shim".to_string());
     assert_eq!(pointer_ty(tcx), allocator_module.target_config().pointer_type());
-    let mut allocator_unwind_context = UnwindContext::new(tcx, allocator_module.isa(), true);
+    let mut allocator_unwind_context = UnwindContext::new(allocator_module.isa(), true);
     let created_alloc_shim =
         crate::allocator::codegen(tcx, &mut allocator_module, &mut allocator_unwind_context);
 
