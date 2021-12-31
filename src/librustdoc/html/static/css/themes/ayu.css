@@ -167,29 +167,35 @@ pre, .rustdoc.source .example-wrap {
 
 .content .item-info::before { color: #ccc; }
 
-.content span.foreigntype, .content a.foreigntype { color: #ef57ff; }
-.content span.union, .content a.union { color: #98a01c; }
+.content span.foreigntype, .content a.foreigntype { color: #ffa0a5; }
+.content span.union, .content a.union { color: #ffa0a5; }
 .content span.constant, .content a.constant,
-.content span.static, .content a.static { color: #6380a0; }
-.content span.primitive, .content a.primitive { color: #32889b; }
-.content span.traitalias, .content a.traitalias { color: #57d399; }
-.content span.keyword, .content a.keyword { color: #de5249; }
+.content span.static, .content a.static { color: #39AFD7; }
+.content span.primitive, .content a.primitive { color: #ffa0a5; }
+.content span.traitalias, .content a.traitalias { color: #39AFD7; }
+.content span.keyword, .content a.keyword { color: #39AFD7; }
 
 .content span.externcrate, .content span.mod, .content a.mod {
-	color: #acccf9;
+	color: #39AFD7;
 }
 .content span.struct, .content a.struct {
 	color: #ffa0a5;
 }
 .content span.enum, .content a.enum {
-	color: #99e0c9;
+	color: #ffa0a5;
 }
 .content span.trait, .content a.trait {
 	color: #39AFD7;
 }
 .content span.type, .content a.type {
-	color: #cfbcf5;
+	color: #39AFD7;
 }
+.content span.type,
+.content a.type,
+.block a.current.type { color: #39AFD7; }
+.content span.associatedtype,
+.content a.associatedtype,
+.block a.current.associatedtype { color: #39AFD7; }
 .content span.fn, .content a.fn, .content span.method,
 .content a.method, .content span.tymethod,
 .content a.tymethod, .content .fnname {
@@ -454,11 +460,12 @@ above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 .block a.current.derive,.content span.macro,.content a.macro,.block a.current.macro {}
 .content span.struct,.content a.struct,.block a.current.struct {}
 #titles>button:hover,#titles>button.selected {}
-.content span.type,.content a.type,.block a.current.type {}
+.content span.typedef,.content a.typedef,.block a.current.typedef {}
 .content span.union,.content a.union,.block a.current.union {}
 pre.rust .lifetime {}
 .stab.unstable {}
-h2,h3:not(.impl):not(.method):not(.type):not(.tymethod),h4:not(.method):not(.type):not(.tymethod) {}
+h2,
+h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {}
 .content span.enum,.content a.enum,.block a.current.enum {}
 .content span.constant,.content a.constant,.block a.current.constant,.content span.static,
 .content a.static, .block a.current.static {}
@@ -495,6 +502,7 @@ a.result-fn:focus,
 a.result-method:focus,
 a.result-tymethod:focus {}
 a.result-type:focus {}
+a.result-associatedtype:focus {}
 a.result-foreigntype:focus {}
 a.result-attr:focus,
 a.result-derive:focus,

@@ -6,9 +6,8 @@ pub trait MyTrait {
     fn defaulted_override(&self) {}
 }
 
-
 impl MyTrait for String {
-    // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedtype.Assoc-1"]//a[@class="type"]/@href' #associatedtype.Assoc
+    // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedtype.Assoc-1"]//a[@class="associatedtype"]/@href' #associatedtype.Assoc
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedtype.Assoc-1"]//a[@class="anchor"]/@href' #associatedtype.Assoc-1
     type Assoc = ();
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-1"]//a[@class="constant"]/@href' #associatedconstant.VALUE
@@ -23,7 +22,7 @@ impl MyTrait for String {
 }
 
 impl MyTrait for Vec<u8> {
-    // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedtype.Assoc-2"]//a[@class="type"]/@href' #associatedtype.Assoc
+    // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedtype.Assoc-2"]//a[@class="associatedtype"]/@href' #associatedtype.Assoc
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedtype.Assoc-2"]//a[@class="anchor"]/@href' #associatedtype.Assoc-2
     type Assoc = ();
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-2"]//a[@class="constant"]/@href' #associatedconstant.VALUE
@@ -39,7 +38,7 @@ impl MyTrait for Vec<u8> {
 
 impl MyTrait for MyStruct {
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedtype.Assoc-3"]//a[@class="anchor"]/@href' #associatedtype.Assoc-3
-    // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="associatedtype.Assoc"]//a[@class="type"]/@href' trait.MyTrait.html#associatedtype.Assoc
+    // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="associatedtype.Assoc"]//a[@class="associatedtype"]/@href' trait.MyTrait.html#associatedtype.Assoc
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="associatedtype.Assoc"]//a[@class="anchor"]/@href' #associatedtype.Assoc
     type Assoc = bool;
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-3"]//a[@class="anchor"]/@href' #associatedconstant.VALUE-3
