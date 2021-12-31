@@ -11,6 +11,17 @@ impl std::ops::Shl<i32> for A {
         self
     }
 }
+
+struct Length(u8);
+struct Meter;
+
+impl core::ops::Mul<Meter> for u8 {
+    type Output = Length;
+    fn mul(self, _: Meter) -> Length {
+        Length(self)
+    }
+}
+
 #[allow(
     clippy::eq_op,
     clippy::no_effect,
@@ -53,4 +64,6 @@ fn main() {
 
     let mut a = A("".into());
     let b = a << 0; // no error: non-integer
+
+    1 * Meter; // no error: non-integer
 }
