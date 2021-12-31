@@ -10,6 +10,7 @@ use crate::visit_lib::LibEmbargoVisitor;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -108,7 +109,7 @@ fn external_generic_args(
     if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
         let inputs = match ty_kind.unwrap() {
             ty::Tuple(tys) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
-            _ => return GenericArgs::AngleBracketed { args, bindings },
+            _ => return GenericArgs::AngleBracketed { args, bindings: bindings.into() },
         };
         let output = None;
         // FIXME(#20299) return type comes from a projection now
@@ -118,7 +119,7 @@ fn external_generic_args(
         // };
         GenericArgs::Parenthesized { inputs, output }
     } else {
-        GenericArgs::AngleBracketed { args, bindings }
+        GenericArgs::AngleBracketed { args, bindings: bindings.into() }
     }
 }
 
@@ -143,7 +144,7 @@ pub(super) fn external_path(
 /// Remove the generic arguments from a path.
 crate fn strip_path_generics(mut path: Path) -> Path {
     for ps in path.segments.iter_mut() {
-        ps.args = GenericArgs::AngleBracketed { args: vec![], bindings: vec![] }
+        ps.args = GenericArgs::AngleBracketed { args: vec![], bindings: ThinVec::new() }
     }
 
     path

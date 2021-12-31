@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -540,7 +541,7 @@ fn build_module(
                                     name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
                                         args: Vec::new(),
-                                        bindings: Vec::new(),
+                                        bindings: ThinVec::new(),
                                     },
                                 }],
                             },
