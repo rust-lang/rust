@@ -1,6 +1,7 @@
 /// The underlying OsString/OsStr implementation on Windows is a
 /// wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
 use crate::borrow::Cow;
+use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::mem;
 use crate::rc::Rc;
@@ -104,8 +105,16 @@ impl Buf {
         self.inner.reserve(additional)
     }
 
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.inner.try_reserve(additional)
+    }
+
     pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
+    }
+
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.inner.try_reserve_exact(additional)
     }
 
     pub fn shrink_to_fit(&mut self) {
