@@ -19,7 +19,7 @@ impl<T> Default for ThinSlice<T> {
 
 impl<T> From<Vec<T>> for ThinSlice<T> {
     fn from(vec: Vec<T>) -> Self {
-        Self { slice: vec.into_boxed_slice() }
+        Self { slice: vec.into_boxed_slice2() }
     }
 }
 

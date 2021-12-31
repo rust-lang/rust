@@ -1002,6 +1002,18 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
+    /// WIP
+    #[cfg(not(no_global_oom_handling))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn into_boxed_slice2(self) -> Box<[T], A> {
+        unsafe {
+            let me = ManuallyDrop::new(self);
+            let buf = ptr::read(&me.buf);
+            let len = me.len();
+            buf.into_box(len).assume_init()
+        }
+    }
+
     /// Shortens the vector, keeping the first `len` elements and dropping
     /// the rest.
     ///
