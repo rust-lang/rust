@@ -2144,6 +2144,8 @@ impl<T, A: Allocator> Vec<T, A> {
         let ptr = self.as_mut_ptr();
         // SAFETY:
         // - `ptr` is guaranteed to be valid for `self.len` elements
+        // - but the allocation extends out to `self.buf.capacity()` elements, possibly
+        // uninitialized
         let spare_ptr = unsafe { ptr.add(self.len) };
         let spare_ptr = spare_ptr.cast::<MaybeUninit<T>>();
         let spare_len = self.buf.capacity() - self.len;
