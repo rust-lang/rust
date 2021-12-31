@@ -27,6 +27,7 @@ measureme = "10.0.0"
 libc = "0.2"
 stacker = "0.1.14"
 tempfile = "3.2"
+thin-slice = "0.1.1"
 
 [dependencies.parking_lot]
 version = "0.11"

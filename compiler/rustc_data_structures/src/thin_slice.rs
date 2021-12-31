@@ -1,8 +1,9 @@
 use std::ops::{Deref, DerefMut};
+use thin_slice::ThinBoxedSlice;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub struct ThinSlice<T> {
-    slice: Box<[T]>,
+    slice: ThinBoxedSlice<T>,
 }
 
 impl<T> ThinSlice<T> {
@@ -19,13 +20,14 @@ impl<T> Default for ThinSlice<T> {
 
 impl<T> From<Vec<T>> for ThinSlice<T> {
     fn from(vec: Vec<T>) -> Self {
-        Self { slice: vec.into_boxed_slice2() }
+        Self { slice: vec.into_boxed_slice2().into() }
     }
 }
 
 impl<T> From<ThinSlice<T>> for Vec<T> {
     fn from(slice: ThinSlice<T>) -> Self {
-        slice.slice.into_vec()
+        let boxed: Box<[T]> = slice.slice.into();
+        boxed.into_vec()
     }
 }
 

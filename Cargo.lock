@@ -3800,6 +3800,7 @@ dependencies = [
  "stable_deref_trait",
  "stacker",
  "tempfile",
+ "thin-slice",
  "tracing",
  "winapi",
 ]
@@ -5246,6 +5247,12 @@ checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
 ]
+
+[[package]]
+name = "thin-slice"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8eaa81235c7058867fa8c0e7314f33dcce9c215f535d1913822a2b3f5e289f3c"
 
 [[package]]
 name = "thiserror"

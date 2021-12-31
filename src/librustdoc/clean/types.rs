@@ -1226,7 +1226,7 @@ impl WherePredicate {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(WherePredicate, 136);
+rustc_data_structures::static_assert_size!(WherePredicate, 120);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericParamDefKind {
@@ -1383,7 +1383,7 @@ crate struct Trait {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Trait, 88);
+rustc_data_structures::static_assert_size!(Trait, 72);
 
 #[derive(Clone, Debug)]
 crate struct TraitAlias {
@@ -1392,7 +1392,7 @@ crate struct TraitAlias {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(TraitAlias, 64);
+rustc_data_structures::static_assert_size!(TraitAlias, 56);
 
 /// A trait reference, which may have higher ranked lifetimes.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1402,7 +1402,7 @@ crate struct PolyTrait {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(PolyTrait, 56);
+rustc_data_structures::static_assert_size!(PolyTrait, 40);
 
 /// Rustdoc's representation of types, mostly based on the [`hir::Ty`].
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1453,7 +1453,7 @@ crate enum Type {
 
 // `Type` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Type, 64);
+rustc_data_structures::static_assert_size!(Type, 56);
 
 impl Type {
     /// When comparing types for equality, it can help to ignore `&` wrapping.
@@ -1923,7 +1923,7 @@ crate struct Struct {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Struct, 72);
+rustc_data_structures::static_assert_size!(Struct, 64);
 
 #[derive(Clone, Debug)]
 crate struct Union {
@@ -1933,7 +1933,7 @@ crate struct Union {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Union, 72);
+rustc_data_structures::static_assert_size!(Union, 64);
 
 /// This is a more limited form of the standard Struct, different in that
 /// it lacks the things most items have (name, id, parameterization). Found
@@ -1946,7 +1946,7 @@ crate struct VariantStruct {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(VariantStruct, 24);
+rustc_data_structures::static_assert_size!(VariantStruct, 16);
 
 #[derive(Clone, Debug)]
 crate struct Enum {
@@ -1963,7 +1963,7 @@ crate enum Variant {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Variant, 32);
+rustc_data_structures::static_assert_size!(Variant, 24);
 
 /// Small wrapper around [`rustc_span::Span`] that adds helper methods
 /// and enforces calling [`rustc_span::Span::source_callsite()`].
@@ -2081,7 +2081,7 @@ crate enum GenericArg {
 // `GenericArg` can occur many times in a single `Path`, so make sure it
 // doesn't increase in size unexpectedly.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArg, 72);
+rustc_data_structures::static_assert_size!(GenericArg, 64);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericArgs {
@@ -2092,7 +2092,7 @@ crate enum GenericArgs {
 // `GenericArgs` is in every `PathSegment`, so its size can significantly
 // affect rustdoc's memory usage.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArgs, 32);
+rustc_data_structures::static_assert_size!(GenericArgs, 24);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct PathSegment {
@@ -2103,7 +2103,7 @@ crate struct PathSegment {
 // `PathSegment` usually occurs multiple times in every `Path`, so its size can
 // significantly affect rustdoc's memory usage.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(PathSegment, 40);
+rustc_data_structures::static_assert_size!(PathSegment, 32);
 
 #[derive(Clone, Debug)]
 crate struct Typedef {
