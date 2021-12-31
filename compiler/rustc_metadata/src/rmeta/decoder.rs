@@ -45,7 +45,8 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 use tracing::debug;
 
-pub use cstore_impl::{provide, provide_extern};
+pub(super) use cstore_impl::provide;
+pub use cstore_impl::provide_extern;
 use rustc_span::hygiene::HygieneDecodeContext;
 
 mod cstore_impl;
