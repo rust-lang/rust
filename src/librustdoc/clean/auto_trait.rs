@@ -122,7 +122,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 generics: new_generics,
                 trait_: Some(trait_ref.clean(self.cx)),
                 for_: ty.clean(self.cx),
-                items: Vec::new(),
+                items: Default::default(),
                 polarity,
                 kind: ImplKind::Auto,
             }),
@@ -354,8 +354,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 if let Some(data) = ty_to_fn.get(&ty) {
                     let (poly_trait, output) =
                         (data.0.as_ref().unwrap().clone(), data.1.as_ref().cloned().map(Box::new));
-                    let mut new_path = poly_trait.trait_.clone();
-                    let last_segment = new_path.segments.pop().expect("segments were empty");
+                    let new_path = poly_trait.trait_.clone();
+                    let mut segments = new_path.segments.into_vec();
+                    let last_segment = segments.pop().expect("segments were empty");
 
                     let (old_input, old_output) = match last_segment.args {
                         GenericArgs::AngleBracketed { args, .. } => {
@@ -377,10 +378,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
                     let new_params = GenericArgs::Parenthesized { inputs: old_input, output };
 
-                    new_path
-                        .segments
+                    segments
                         .push(PathSegment { name: last_segment.name, args: new_params });
 
+                    let new_path = Path { segments: segments.into(), ..new_path };
                     bounds.insert(GenericBound::TraitBound(
                         PolyTrait { trait_: new_path, generic_params: poly_trait.generic_params },
                         hir::TraitBoundModifier::None,
@@ -396,7 +397,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 Some(WherePredicate::BoundPredicate {
                     ty,
                     bounds: bounds_vec,
-                    bound_params: Vec::new(),
+                    bound_params: Default::default(),
                 })
             })
             .chain(
@@ -404,7 +405,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     |(lifetime, bounds)| {
                         let mut bounds_vec = bounds.into_iter().collect();
                         self.sort_where_bounds(&mut bounds_vec);
-                        WherePredicate::RegionPredicate { lifetime, bounds: bounds_vec }
+                        WherePredicate::RegionPredicate { lifetime, bounds: bounds_vec.into() }
                     },
                 ),
             )
@@ -520,7 +521,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             GenericBound::TraitBound(ref mut p, _) => {
                                 // Insert regions into the for_generics hash map first, to ensure
                                 // that we don't end up with duplicate bounds (e.g., for<'b, 'b>)
-                                for_generics.extend(p.generic_params.clone());
+                                for_generics.extend(p.generic_params.clone().into_vec());
                                 p.generic_params = for_generics.into_iter().collect();
                                 self.is_fn_trait(&p.trait_)
                             }
@@ -542,7 +543,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     }
                 }
                 WherePredicate::RegionPredicate { lifetime, bounds } => {
-                    lifetime_to_bounds.entry(lifetime).or_default().extend(bounds);
+                    lifetime_to_bounds.entry(lifetime).or_default().extend(bounds.into_vec());
                 }
                 WherePredicate::EqPredicate { lhs, rhs } => {
                     match lhs {
@@ -586,7 +587,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             let bounds = ty_to_bounds.entry(*ty.clone()).or_default();
 
                             bounds.insert(GenericBound::TraitBound(
-                                PolyTrait { trait_: new_trait, generic_params: Vec::new() },
+                                PolyTrait { trait_: new_trait, generic_params: Default::default() },
                                 hir::TraitBoundModifier::None,
                             ));
 
@@ -595,7 +596,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             // duplicate bound like `T: Iterator + Iterator<Item=u8>`
                             // on the docs page.
                             bounds.remove(&GenericBound::TraitBound(
-                                PolyTrait { trait_: trait_.clone(), generic_params: Vec::new() },
+                                PolyTrait { trait_: trait_.clone(), generic_params: Default::default() },
                                 hir::TraitBoundModifier::None,
                             ));
                             // Avoid creating any new duplicate bounds later in the outer

@@ -16,6 +16,7 @@ use rustc_ast::{self as ast, AttrStyle};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -1163,7 +1164,7 @@ impl GenericBound {
         let path = external_path(cx, did, false, vec![], empty);
         inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(
-            PolyTrait { trait_: path, generic_params: Vec::new() },
+            PolyTrait { trait_: path, generic_params: Default::default() },
             hir::TraitBoundModifier::Maybe,
         )
     }
@@ -1209,8 +1210,8 @@ impl Lifetime {
 
 #[derive(Clone, Debug)]
 crate enum WherePredicate {
-    BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<Lifetime> },
-    RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
+    BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: ThinSlice<Lifetime> },
+    RegionPredicate { lifetime: Lifetime, bounds: ThinSlice<GenericBound> },
     EqPredicate { lhs: Type, rhs: Type },
 }
 
@@ -1223,6 +1224,9 @@ impl WherePredicate {
         }
     }
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(WherePredicate, 136);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericParamDefKind {
@@ -1372,24 +1376,33 @@ impl FnRetTy {
 #[derive(Clone, Debug)]
 crate struct Trait {
     crate unsafety: hir::Unsafety,
-    crate items: Vec<Item>,
+    crate items: ThinSlice<Item>,
     crate generics: Generics,
-    crate bounds: Vec<GenericBound>,
+    crate bounds: ThinSlice<GenericBound>,
     crate is_auto: bool,
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Trait, 88);
 
 #[derive(Clone, Debug)]
 crate struct TraitAlias {
     crate generics: Generics,
-    crate bounds: Vec<GenericBound>,
+    crate bounds: ThinSlice<GenericBound>,
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(TraitAlias, 64);
 
 /// A trait reference, which may have higher ranked lifetimes.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct PolyTrait {
     crate trait_: Path,
-    crate generic_params: Vec<GenericParamDef>,
+    crate generic_params: ThinSlice<GenericParamDef>,
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(PolyTrait, 56);
 
 /// Rustdoc's representation of types, mostly based on the [`hir::Ty`].
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1440,7 +1453,7 @@ crate enum Type {
 
 // `Type` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Type, 72);
+rustc_data_structures::static_assert_size!(Type, 64);
 
 impl Type {
     /// When comparing types for equality, it can help to ignore `&` wrapping.
@@ -1905,16 +1918,22 @@ impl Visibility {
 crate struct Struct {
     crate struct_type: CtorKind,
     crate generics: Generics,
-    crate fields: Vec<Item>,
+    crate fields: ThinSlice<Item>,
     crate fields_stripped: bool,
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Struct, 72);
 
 #[derive(Clone, Debug)]
 crate struct Union {
     crate generics: Generics,
-    crate fields: Vec<Item>,
+    crate fields: ThinSlice<Item>,
     crate fields_stripped: bool,
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Union, 72);
 
 /// This is a more limited form of the standard Struct, different in that
 /// it lacks the things most items have (name, id, parameterization). Found
@@ -1922,9 +1941,12 @@ crate struct Union {
 #[derive(Clone, Debug)]
 crate struct VariantStruct {
     crate struct_type: CtorKind,
-    crate fields: Vec<Item>,
+    crate fields: ThinSlice<Item>,
     crate fields_stripped: bool,
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(VariantStruct, 24);
 
 #[derive(Clone, Debug)]
 crate struct Enum {
@@ -1936,9 +1958,12 @@ crate struct Enum {
 #[derive(Clone, Debug)]
 crate enum Variant {
     CLike,
-    Tuple(Vec<Item>),
+    Tuple(ThinSlice<Item>),
     Struct(VariantStruct),
 }
+
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Variant, 32);
 
 /// Small wrapper around [`rustc_span::Span`] that adds helper methods
 /// and enforces calling [`rustc_span::Span::source_callsite()`].
@@ -1987,7 +2012,7 @@ impl Span {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct Path {
     crate res: Res,
-    crate segments: Vec<PathSegment>,
+    crate segments: ThinSlice<PathSegment>,
 }
 
 impl Path {
@@ -2056,18 +2081,18 @@ crate enum GenericArg {
 // `GenericArg` can occur many times in a single `Path`, so make sure it
 // doesn't increase in size unexpectedly.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArg, 80);
+rustc_data_structures::static_assert_size!(GenericArg, 72);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericArgs {
-    AngleBracketed { args: Vec<GenericArg>, bindings: ThinVec<TypeBinding> },
-    Parenthesized { inputs: Vec<Type>, output: Option<Box<Type>> },
+    AngleBracketed { args: ThinSlice<GenericArg>, bindings: ThinVec<TypeBinding> },
+    Parenthesized { inputs: ThinSlice<Type>, output: Option<Box<Type>> },
 }
 
 // `GenericArgs` is in every `PathSegment`, so its size can significantly
 // affect rustdoc's memory usage.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArgs, 40);
+rustc_data_structures::static_assert_size!(GenericArgs, 32);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct PathSegment {
@@ -2078,7 +2103,7 @@ crate struct PathSegment {
 // `PathSegment` usually occurs multiple times in every `Path`, so its size can
 // significantly affect rustdoc's memory usage.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(PathSegment, 48);
+rustc_data_structures::static_assert_size!(PathSegment, 40);
 
 #[derive(Clone, Debug)]
 crate struct Typedef {
@@ -2095,14 +2120,14 @@ crate struct Typedef {
 
 #[derive(Clone, Debug)]
 crate struct OpaqueTy {
-    crate bounds: Vec<GenericBound>,
+    crate bounds: ThinSlice<GenericBound>,
     crate generics: Generics,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct BareFunctionDecl {
     crate unsafety: hir::Unsafety,
-    crate generic_params: Vec<GenericParamDef>,
+    crate generic_params: ThinSlice<GenericParamDef>,
     crate decl: FnDecl,
     crate abi: Abi,
 }
@@ -2191,7 +2216,7 @@ crate struct Impl {
     crate generics: Generics,
     crate trait_: Option<Path>,
     crate for_: Type,
-    crate items: Vec<Item>,
+    crate items: ThinSlice<Item>,
     crate polarity: ty::ImplPolarity,
     crate kind: ImplKind,
 }
@@ -2269,7 +2294,7 @@ crate struct Macro {
 #[derive(Clone, Debug)]
 crate struct ProcMacro {
     crate kind: MacroKind,
-    crate helpers: Vec<Symbol>,
+    crate helpers: ThinSlice<Symbol>,
 }
 
 /// An type binding on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or
@@ -2283,7 +2308,7 @@ crate struct TypeBinding {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum TypeBindingKind {
     Equality { ty: Type },
-    Constraint { bounds: Vec<GenericBound> },
+    Constraint { bounds: ThinSlice<GenericBound> },
 }
 
 impl TypeBinding {

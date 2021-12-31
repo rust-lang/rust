@@ -13,6 +13,7 @@ use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::thin_slice::ThinSlice;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -113,7 +114,7 @@ impl Clean<Option<GenericBound>> for hir::GenericBound<'_> {
 
                 let trait_ = clean_trait_ref_with_bindings(cx, trait_ref, &bindings);
                 GenericBound::TraitBound(
-                    PolyTrait { trait_, generic_params: vec![] },
+                    PolyTrait { trait_, generic_params: Default::default() },
                     hir::TraitBoundModifier::None,
                 )
             }
@@ -177,7 +178,7 @@ fn clean_poly_trait_ref_with_bindings(
 
     let trait_ = clean_trait_ref_with_bindings(cx, poly_trait_ref.skip_binder(), bindings);
     GenericBound::TraitBound(
-        PolyTrait { trait_, generic_params: late_bound_regions },
+        PolyTrait { trait_, generic_params: late_bound_regions.into() },
         hir::TraitBoundModifier::None,
     )
 }
@@ -314,7 +315,7 @@ impl<'a> Clean<Option<WherePredicate>> for ty::PolyTraitPredicate<'a> {
         Some(WherePredicate::BoundPredicate {
             ty: poly_trait_ref.skip_binder().self_ty().clean(cx),
             bounds: vec![poly_trait_ref.clean(cx)],
-            bound_params: Vec::new(),
+            bound_params: Default::default(),
         })
     }
 }
@@ -331,7 +332,7 @@ impl<'tcx> Clean<Option<WherePredicate>>
 
         Some(WherePredicate::RegionPredicate {
             lifetime: a.clean(cx).expect("failed to clean lifetime"),
-            bounds: vec![GenericBound::Outlives(b.clean(cx).expect("failed to clean bounds"))],
+            bounds: vec![GenericBound::Outlives(b.clean(cx).expect("failed to clean bounds"))].into(),
         })
     }
 }
@@ -347,7 +348,7 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
         Some(WherePredicate::BoundPredicate {
             ty: ty.clean(cx),
             bounds: vec![GenericBound::Outlives(lt.clean(cx).expect("failed to clean lifetimes"))],
-            bound_params: Vec::new(),
+            bound_params: Default::default(),
         })
     }
 }
@@ -691,7 +692,7 @@ fn clean_ty_generics(
             where_predicates.push(WherePredicate::BoundPredicate {
                 ty: Type::Generic(tp.name),
                 bounds: vec![GenericBound::maybe_sized(cx)],
-                bound_params: Vec::new(),
+                bound_params: Default::default(),
             })
         }
     }
@@ -750,7 +751,7 @@ fn clean_fn_or_proc_macro(
                     }
                 }
             }
-            ProcMacroItem(ProcMacro { kind, helpers })
+            ProcMacroItem(ProcMacro { kind, helpers: helpers.into() })
         }
         None => {
             let mut func = clean_function(cx, sig, generics, body_id);
@@ -1437,7 +1438,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let decl = clean_fn_decl_from_did_and_sig(cx, def_id, sig);
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
-                    generic_params: Vec::new(),
+                    generic_params: Default::default(),
                     decl,
                     abi: sig.abi(),
                 })
@@ -1481,7 +1482,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     let empty = cx.tcx.intern_substs(&[]);
                     let path = external_path(cx, did, false, vec![], empty);
                     inline::record_extern_fqn(cx, did, ItemType::Trait);
-                    let bound = PolyTrait { trait_: path, generic_params: Vec::new() };
+                    let bound = PolyTrait { trait_: path, generic_params: Default::default() };
                     bounds.push(bound);
                 }
 
@@ -1494,7 +1495,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 }
 
                 let path = external_path(cx, did, false, bindings, substs);
-                bounds.insert(0, PolyTrait { trait_: path, generic_params: Vec::new() });
+                bounds.insert(0, PolyTrait { trait_: path, generic_params: Default::default() });
 
                 DynTrait(bounds, lifetime)
             }
@@ -1663,8 +1664,8 @@ impl Clean<VariantStruct> for rustc_hir::VariantData<'_> {
     }
 }
 
-impl Clean<Vec<Item>> for hir::VariantData<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Vec<Item> {
+impl Clean<ThinSlice<Item>> for hir::VariantData<'_> {
+    fn clean(&self, cx: &mut DocContext<'_>) -> ThinSlice<Item> {
         self.fields().iter().map(|x| x.clean(cx)).collect()
     }
 }
@@ -1876,7 +1877,7 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
             generics: impl_.generics.clean(cx),
             trait_,
             for_,
-            items,
+            items: items.into(),
             polarity: tcx.impl_polarity(def_id),
             kind: ImplKind::Normal,
         });

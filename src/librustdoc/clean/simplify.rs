@@ -37,7 +37,7 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
                 clean::Generic(s) => {
                     let (b, p) = params.entry(s).or_default();
                     b.extend(bounds);
-                    p.extend(bound_params);
+                    p.extend(bound_params.into_vec());
                 }
                 t => tybounds.push((t, (bounds, bound_params))),
             },
@@ -76,7 +76,7 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     clauses.extend(params.into_iter().map(|(k, (bounds, params))| WP::BoundPredicate {
         ty: clean::Generic(k),
         bounds,
-        bound_params: params,
+        bound_params: params.into(),
     }));
     clauses.extend(tybounds.into_iter().map(|(ty, (bounds, bound_params))| WP::BoundPredicate {
         ty,

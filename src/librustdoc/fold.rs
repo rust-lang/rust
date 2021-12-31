@@ -1,4 +1,5 @@
 use crate::clean::*;
+use rustc_data_structures::thin_slice::ThinSlice;
 
 crate fn strip_item(mut item: Item) -> Item {
     if !matches!(*item.kind, StrippedItem(..)) {
@@ -19,7 +20,7 @@ crate trait DocFolder: Sized {
             ModuleItem(i) => ModuleItem(self.fold_mod(i)),
             StructItem(mut i) => {
                 let num_fields = i.fields.len();
-                i.fields = i.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                i.fields = i.fields.into_vec().into_iter().filter_map(|x| self.fold_item(x)).collect();
                 if !i.fields_stripped {
                     i.fields_stripped =
                         num_fields != i.fields.len() || i.fields.iter().any(|f| f.is_stripped());
@@ -28,7 +29,7 @@ crate trait DocFolder: Sized {
             }
             UnionItem(mut i) => {
                 let num_fields = i.fields.len();
-                i.fields = i.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                i.fields = i.fields.into_vec().into_iter().filter_map(|x| self.fold_item(x)).collect();
                 if !i.fields_stripped {
                     i.fields_stripped =
                         num_fields != i.fields.len() || i.fields.iter().any(|f| f.is_stripped());
@@ -45,17 +46,17 @@ crate trait DocFolder: Sized {
                 EnumItem(i)
             }
             TraitItem(mut i) => {
-                i.items = i.items.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                i.items = i.items.into_vec().into_iter().filter_map(|x| self.fold_item(x)).collect();
                 TraitItem(i)
             }
             ImplItem(mut i) => {
-                i.items = i.items.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                i.items = i.items.into_vec().into_iter().filter_map(|x| self.fold_item(x)).collect();
                 ImplItem(i)
             }
             VariantItem(i) => match i {
                 Variant::Struct(mut j) => {
                     let num_fields = j.fields.len();
-                    j.fields = j.fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                    j.fields = j.fields.into_vec().into_iter().filter_map(|x| self.fold_item(x)).collect();
                     if !j.fields_stripped {
                         j.fields_stripped = num_fields != j.fields.len()
                             || j.fields.iter().any(|f| f.is_stripped());
@@ -63,7 +64,7 @@ crate trait DocFolder: Sized {
                     VariantItem(Variant::Struct(j))
                 }
                 Variant::Tuple(fields) => {
-                    let fields = fields.into_iter().filter_map(|x| self.fold_item(x)).collect();
+                    let fields: ThinSlice<_> = fields.into_vec().into_iter().filter_map(|x| self.fold_item(x)).collect();
                     VariantItem(Variant::Tuple(fields))
                 }
                 Variant::CLike => VariantItem(Variant::CLike),
@@ -112,7 +113,7 @@ crate trait DocFolder: Sized {
 
         let external_traits = { std::mem::take(&mut *c.external_traits.borrow_mut()) };
         for (k, mut v) in external_traits {
-            v.trait_.items = v.trait_.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
+            v.trait_.items = v.trait_.items.into_vec().into_iter().filter_map(|i| self.fold_item(i)).collect();
             c.external_traits.borrow_mut().insert(k, v);
         }
 

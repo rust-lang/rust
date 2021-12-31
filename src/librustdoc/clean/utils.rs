@@ -109,7 +109,7 @@ fn external_generic_args(
     if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
         let inputs = match ty_kind.unwrap() {
             ty::Tuple(tys) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
-            _ => return GenericArgs::AngleBracketed { args, bindings: bindings.into() },
+            _ => return GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() },
         };
         let output = None;
         // FIXME(#20299) return type comes from a projection now
@@ -119,7 +119,7 @@ fn external_generic_args(
         // };
         GenericArgs::Parenthesized { inputs, output }
     } else {
-        GenericArgs::AngleBracketed { args, bindings: bindings.into() }
+        GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() }
     }
 }
 
@@ -137,14 +137,14 @@ pub(super) fn external_path(
         segments: vec![PathSegment {
             name,
             args: external_generic_args(cx, did, has_self, bindings, substs),
-        }],
+        }].into(),
     }
 }
 
 /// Remove the generic arguments from a path.
 crate fn strip_path_generics(mut path: Path) -> Path {
     for ps in path.segments.iter_mut() {
-        ps.args = GenericArgs::AngleBracketed { args: vec![], bindings: ThinVec::new() }
+        ps.args = GenericArgs::AngleBracketed { args: Default::default(), bindings: ThinVec::new() }
     }
 
     path

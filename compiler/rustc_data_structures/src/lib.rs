@@ -103,6 +103,7 @@ pub mod steal;
 pub mod tagged_ptr;
 pub mod temp_dir;
 pub mod unhash;
+pub mod thin_slice;
 
 pub use ena::undo_log;
 pub use ena::unify;

@@ -432,7 +432,7 @@ impl clean::GenericArgs {
                             f.write_str("&lt;")?;
                         }
                         let mut comma = false;
-                        for arg in args {
+                        for arg in args.iter() {
                             if comma {
                                 f.write_str(", ")?;
                             }
@@ -464,7 +464,7 @@ impl clean::GenericArgs {
                 clean::GenericArgs::Parenthesized { inputs, output } => {
                     f.write_str("(")?;
                     let mut comma = false;
-                    for ty in inputs {
+                    for ty in inputs.iter() {
                         if comma {
                             f.write_str(", ")?;
                         }

@@ -1146,7 +1146,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 write!(w, "<div class=\"sub-variant\" id=\"{id}\">", id = variant_id);
                 write!(w, "<h4>{extra}Fields</h4>", extra = extra,);
                 document_non_exhaustive(w, variant);
-                for field in fields {
+                for field in fields.iter() {
                     match *field.kind {
                         clean::StrippedItem(box clean::StructFieldItem(_)) => {}
                         clean::StructFieldItem(ref ty) => {
@@ -1220,7 +1220,7 @@ fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean
                     if !m.helpers.is_empty() {
                         w.push_str("\n{\n");
                         w.push_str("    // Attributes available to this derive:\n");
-                        for attr in &m.helpers {
+                        for attr in m.helpers.iter() {
                             writeln!(w, "    #[{}]", attr);
                         }
                         w.push_str("}\n");

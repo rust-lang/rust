@@ -120,11 +120,11 @@ impl FromWithTcx<clean::GenericArgs> for GenericArgs {
         use clean::GenericArgs::*;
         match args {
             AngleBracketed { args, bindings } => GenericArgs::AngleBracketed {
-                args: args.into_iter().map(|a| a.into_tcx(tcx)).collect(),
+                args: args.into_vec().into_iter().map(|a| a.into_tcx(tcx)).collect(),
                 bindings: bindings.into_iter().map(|a| a.into_tcx(tcx)).collect(),
             },
             Parenthesized { inputs, output } => GenericArgs::Parenthesized {
-                inputs: inputs.into_iter().map(|a| a.into_tcx(tcx)).collect(),
+                inputs: inputs.into_vec().into_iter().map(|a| a.into_tcx(tcx)).collect(),
                 output: output.map(|a| (*a).into_tcx(tcx)),
             },
         }
@@ -164,7 +164,7 @@ impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
         match kind {
             Equality { ty } => TypeBindingKind::Equality(ty.into_tcx(tcx)),
             Constraint { bounds } => {
-                TypeBindingKind::Constraint(bounds.into_iter().map(|a| a.into_tcx(tcx)).collect())
+                TypeBindingKind::Constraint(bounds.into_vec().into_iter().map(|a| a.into_tcx(tcx)).collect())
             }
         }
     }
@@ -245,7 +245,7 @@ impl FromWithTcx<clean::Struct> for Struct {
             struct_type: from_ctor_kind(struct_type),
             generics: generics.into_tcx(tcx),
             fields_stripped,
-            fields: ids(fields),
+            fields: ids(fields.into_vec()),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -257,7 +257,7 @@ impl FromWithTcx<clean::Union> for Union {
         Union {
             generics: generics.into_tcx(tcx),
             fields_stripped,
-            fields: ids(fields),
+            fields: ids(fields.into_vec()),
             impls: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -352,7 +352,7 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
             },
             RegionPredicate { lifetime, bounds } => WherePredicate::RegionPredicate {
                 lifetime: lifetime.0.to_string(),
-                bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+                bounds: bounds.into_vec().into_iter().map(|x| x.into_tcx(tcx)).collect(),
             },
             EqPredicate { lhs, rhs } => {
                 WherePredicate::EqPredicate { lhs: lhs.into_tcx(tcx), rhs: rhs.into_tcx(tcx) }
@@ -370,7 +370,7 @@ impl FromWithTcx<clean::GenericBound> for GenericBound {
                 let trait_ = clean::Type::Path { path: trait_ }.into_tcx(tcx);
                 GenericBound::TraitBound {
                     trait_,
-                    generic_params: generic_params.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+                    generic_params: generic_params.into_vec().into_iter().map(|x| x.into_tcx(tcx)).collect(),
                     modifier: from_trait_bound_modifier(modifier),
                 }
             }
@@ -463,7 +463,7 @@ impl FromWithTcx<clean::BareFunctionDecl> for FunctionPointer {
             } else {
                 HashSet::new()
             },
-            generic_params: generic_params.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+            generic_params: generic_params.into_vec().into_iter().map(|x| x.into_tcx(tcx)).collect(),
             decl: decl.into_tcx(tcx),
             abi: abi.to_string(),
         }
@@ -494,9 +494,9 @@ impl FromWithTcx<clean::Trait> for Trait {
         Trait {
             is_auto,
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,
-            items: ids(items),
+            items: ids(items.into_vec()),
             generics: generics.into_tcx(tcx),
-            bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+            bounds: bounds.into_vec().into_iter().map(|x| x.into_tcx(tcx)).collect(),
             implementors: Vec::new(), // Added in JsonRenderer::item
         }
     }
@@ -527,7 +527,7 @@ impl FromWithTcx<clean::Impl> for Impl {
                 .collect(),
             trait_,
             for_: for_.into_tcx(tcx),
-            items: ids(items),
+            items: ids(items.into_vec()),
             negative: negative_polarity,
             synthetic,
             blanket_impl: blanket_impl.map(|x| x.into_tcx(tcx)),
@@ -569,7 +569,7 @@ impl FromWithTcx<clean::VariantStruct> for Struct {
             struct_type: from_ctor_kind(struct_type),
             generics: Default::default(),
             fields_stripped,
-            fields: ids(fields),
+            fields: ids(fields.into_vec()),
             impls: Vec::new(),
         }
     }
@@ -582,6 +582,7 @@ impl FromWithTcx<clean::Variant> for Variant {
             CLike => Variant::Plain,
             Tuple(fields) => Variant::Tuple(
                 fields
+                    .into_vec()
                     .into_iter()
                     .map(|f| {
                         if let clean::StructFieldItem(ty) = *f.kind {
@@ -592,7 +593,7 @@ impl FromWithTcx<clean::Variant> for Variant {
                     })
                     .collect(),
             ),
-            Struct(s) => Variant::Struct(ids(s.fields)),
+            Struct(s) => Variant::Struct(ids(s.fields.into_vec())),
         }
     }
 }
@@ -645,7 +646,7 @@ impl FromWithTcx<clean::Typedef> for Typedef {
 impl FromWithTcx<clean::OpaqueTy> for OpaqueTy {
     fn from_tcx(opaque: clean::OpaqueTy, tcx: TyCtxt<'_>) -> Self {
         OpaqueTy {
-            bounds: opaque.bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+            bounds: opaque.bounds.into_vec().into_iter().map(|x| x.into_tcx(tcx)).collect(),
             generics: opaque.generics.into_tcx(tcx),
         }
     }
@@ -665,7 +666,7 @@ impl FromWithTcx<clean::TraitAlias> for TraitAlias {
     fn from_tcx(alias: clean::TraitAlias, tcx: TyCtxt<'_>) -> Self {
         TraitAlias {
             generics: alias.generics.into_tcx(tcx),
-            params: alias.bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+            params: alias.bounds.into_vec().into_iter().map(|x| x.into_tcx(tcx)).collect(),
         }
     }
 }

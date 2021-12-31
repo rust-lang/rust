@@ -216,7 +216,7 @@ crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Tra
         unsafety: cx.tcx.trait_def(did).unsafety,
         generics,
         items: trait_items,
-        bounds: supertrait_bounds,
+        bounds: supertrait_bounds.into(),
         is_auto,
     }
 }
@@ -496,7 +496,7 @@ crate fn build_impl(
             generics,
             trait_,
             for_,
-            items: trait_items,
+            items: trait_items.into(),
             polarity,
             kind: ImplKind::Normal,
         }),
@@ -540,10 +540,10 @@ fn build_module(
                                 segments: vec![clean::PathSegment {
                                     name: prim_ty.as_sym(),
                                     args: clean::GenericArgs::AngleBracketed {
-                                        args: Vec::new(),
+                                        args: Default::default(),
                                         bindings: ThinVec::new(),
                                     },
-                                }],
+                                }].into(),
                             },
                             did: None,
                         },
@@ -604,7 +604,7 @@ fn build_macro(
         }
         LoadedMacro::ProcMacro(ext) => clean::ProcMacroItem(clean::ProcMacro {
             kind: ext.macro_kind(),
-            helpers: ext.helper_attrs,
+            helpers: ext.helper_attrs.into(),
         }),
     }
 }

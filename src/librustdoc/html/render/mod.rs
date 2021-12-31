@@ -1266,7 +1266,7 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                             "<span class=\"where fmt-newline\">{}</span>",
                             impl_.print(false, cx)
                         );
-                        for it in &impl_.items {
+                        for it in impl_.items.iter() {
                             if let clean::TypedefItem(ref tydef, _) = *it.kind {
                                 out.push_str("<span class=\"where fmt-newline\">    ");
                                 let empty_set = FxHashSet::default();
@@ -1515,7 +1515,7 @@ fn render_impl(
     let mut impl_items = Buffer::empty_from(w);
     let mut default_impl_items = Buffer::empty_from(w);
 
-    for trait_item in &i.inner_impl().items {
+    for trait_item in i.inner_impl().items.iter() {
         doc_impl_item(
             &mut default_impl_items,
             &mut impl_items,
@@ -1542,7 +1542,7 @@ fn render_impl(
         render_mode: RenderMode,
         rendering_params: ImplRenderingParameters,
     ) {
-        for trait_item in &t.items {
+        for trait_item in t.items.iter() {
             let n = trait_item.name;
             if i.items.iter().any(|m| m.name == n) {
                 continue;
@@ -1706,7 +1706,7 @@ pub(crate) fn render_impl_summary(
     if let Some(use_absolute) = use_absolute {
         write!(w, "{}", i.inner_impl().print(use_absolute, cx));
         if show_def_docs {
-            for it in &i.inner_impl().items {
+            for it in i.inner_impl().items.iter() {
                 if let clean::TypedefItem(ref tydef, _) = *it.kind {
                     w.write_str("<span class=\"where fmt-newline\">  ");
                     assoc_type(w, it, &[], Some(&tydef.type_), AssocItemLink::Anchor(None), "", cx);
