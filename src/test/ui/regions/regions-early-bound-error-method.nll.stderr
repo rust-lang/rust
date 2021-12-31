@@ -6,7 +6,7 @@ LL | impl<'a> Box<'a> {
 LL |     fn or<'b,G:GetRef<'b>>(&self, g2: G) -> &'a isize {
    |           -- lifetime `'b` defined here
 LL |         g2.get()
-   |         ^^^^^^^^ returning this value requires that `'b` must outlive `'a`
+   |         ^^^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
 

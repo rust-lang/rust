@@ -14,7 +14,7 @@ struct Consumer<'tcx>(&'tcx ());
 
 impl<'tcx> Consumer<'tcx> {
     fn bad_method<'a>(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        let other = self.use_fcx(fcx); //~ ERROR borrowed data
+        let other = self.use_fcx(fcx); //~ ERROR lifetime may not live long enough
         fcx.use_it(other);
     }
 

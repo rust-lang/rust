@@ -7,7 +7,7 @@ LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
    |      lifetime `'a` defined here
 ...
 LL |         u
-   |         ^ returning this value requires that `'b` must outlive `'a`
+   |         ^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
 
@@ -33,7 +33,7 @@ LL | impl<'a, 'b> Evil<'a, 'b> {
    |      lifetime `'a` defined here
 LL |     fn inherent_evil(u: &'b u32) -> &'a u32 {
 LL |         u
-   |         ^ returning this value requires that `'b` must outlive `'a`
+   |         ^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
 
@@ -45,7 +45,7 @@ LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
    |         |
    |         lifetime `'a` defined here
 LL |     <()>::static_evil(b)
-   |     ^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
 
@@ -57,7 +57,7 @@ LL | fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
    |                  |
    |                  lifetime `'a` defined here
 LL |     <IndirectEvil>::static_evil(b)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
 
@@ -69,7 +69,7 @@ LL | fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
    |                  |
    |                  lifetime `'a` defined here
 LL |     <Evil>::inherent_evil(b)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
 

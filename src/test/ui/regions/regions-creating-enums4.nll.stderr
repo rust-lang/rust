@@ -6,7 +6,7 @@ LL | fn mk_add_bad2<'a,'b>(x: &'a Ast<'a>, y: &'a Ast<'a>, z: &Ast) -> Ast<'b> {
    |                |
    |                lifetime `'a` defined here
 LL |     Ast::Add(x, y)
-   |     ^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'b`
+   |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 

@@ -7,7 +7,7 @@ LL |     fn bar<'a>(&'a mut self) -> &'a mut &'a i32 {
    |            -- lifetime `'a` defined here
 LL |         let ref mut x = self.0;
 LL |         x
-   |         ^ returning this value requires that `'a` must outlive `'b`
+   |         ^ associated function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
    = note: requirement occurs because of a mutable reference to &i32

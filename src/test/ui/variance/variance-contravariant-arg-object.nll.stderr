@@ -7,7 +7,7 @@ LL | fn get_min_from_max<'min, 'max>(v: Box<dyn Get<&'max i32>>)
    |                     lifetime `'min` defined here
 ...
 LL |     v
-   |     ^ returning this value requires that `'min` must outlive `'max`
+   |     ^ function was supposed to return data with lifetime `'max` but it is returning data with lifetime `'min`
    |
    = help: consider adding the following bound: `'min: 'max`
 
@@ -20,7 +20,7 @@ LL | fn get_max_from_min<'min, 'max, G>(v: Box<dyn Get<&'min i32>>)
    |                     lifetime `'min` defined here
 ...
 LL |     v
-   |     ^ returning this value requires that `'min` must outlive `'max`
+   |     ^ function was supposed to return data with lifetime `'max` but it is returning data with lifetime `'min`
    |
    = help: consider adding the following bound: `'min: 'max`
 

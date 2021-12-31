@@ -7,7 +7,7 @@ LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
    |        lifetime `'min` defined here
 ...
 LL |     v
-   |     ^ returning this value requires that `'min` must outlive `'max`
+   |     ^ function was supposed to return data with lifetime `'max` but it is returning data with lifetime `'min`
    |
    = help: consider adding the following bound: `'min: 'max`
    = note: requirement occurs because of the type SomeStruct<&()>, which makes the generic argument &() invariant
@@ -23,7 +23,7 @@ LL | fn bar<'min,'max>(v: SomeStruct<&'min ()>)
    |        lifetime `'min` defined here
 ...
 LL |     v
-   |     ^ returning this value requires that `'min` must outlive `'max`
+   |     ^ function was supposed to return data with lifetime `'max` but it is returning data with lifetime `'min`
    |
    = help: consider adding the following bound: `'min: 'max`
    = note: requirement occurs because of the type SomeStruct<&()>, which makes the generic argument &() invariant

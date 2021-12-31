@@ -31,7 +31,7 @@ LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |      |
    |      lifetime `'a` defined here
 LL |     Box::new(v)
-   |     ^^^^^^^^^^^ returning this value requires that `'a` must outlive `'b`
+   |     ^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 
