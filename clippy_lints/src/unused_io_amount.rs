@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::{is_try, match_trait_method, paths};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -126,32 +126,40 @@ fn check_method_call(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Exp
         };
 
         match (read_trait, write_trait, symbol, is_await) {
-            (true, _, "read", false) => span_lint(
+            (true, _, "read", false) => span_lint_and_help(
                 cx,
                 UNUSED_IO_AMOUNT,
                 expr.span,
-                "read amount is not handled. Use `Read::read_exact` instead",
+                "read amount is not handled",
+                None,
+                "use `Read::read_exact` instead, or handle partial reads",
             ),
-            (true, _, "read", true) => span_lint(
+            (true, _, "read", true) => span_lint_and_help(
                 cx,
                 UNUSED_IO_AMOUNT,
                 expr.span,
-                "read amount is not handled. Use `AsyncReadExt::read_exact` instead",
+                "read amount is not handled",
+                None,
+                "use `AsyncReadExt::read_exact` instead, or handle partial reads",
             ),
             (true, _, "read_vectored", _) => {
                 span_lint(cx, UNUSED_IO_AMOUNT, expr.span, "read amount is not handled");
             },
-            (_, true, "write", false) => span_lint(
+            (_, true, "write", false) => span_lint_and_help(
                 cx,
                 UNUSED_IO_AMOUNT,
                 expr.span,
-                "written amount is not handled. Use `Write::write_all` instead",
+                "written amount is not handled",
+                None,
+                "use `Write::write_all` instead, or handle partial writes",
             ),
-            (_, true, "write", true) => span_lint(
+            (_, true, "write", true) => span_lint_and_help(
                 cx,
                 UNUSED_IO_AMOUNT,
                 expr.span,
-                "written amount is not handled. Use `AsyncWriteExt::write_all` instead",
+                "written amount is not handled",
+                None,
+                "use `AsyncWriteExt::write_all` instead, or handle partial writes",
             ),
             (_, true, "write_vectored", _) => {
                 span_lint(cx, UNUSED_IO_AMOUNT, expr.span, "written amount is not handled");
