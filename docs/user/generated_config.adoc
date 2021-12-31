@@ -1,3 +1,8 @@
+[[rust-analyzer.assist.exprFillDefault]]rust-analyzer.assist.exprFillDefault (default: `"todo"`)::
++
+--
+How assists will fill missing elements in an expression.
+--
 [[rust-analyzer.assist.importGranularity]]rust-analyzer.assist.importGranularity (default: `"crate"`)::
 +
 --

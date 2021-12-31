@@ -11,8 +11,8 @@ use std::{ffi::OsString, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use ide::{
-    AssistConfig, CompletionConfig, DiagnosticsConfig, HighlightRelatedConfig, HoverConfig,
-    HoverDocFormat, InlayHintsConfig, JoinLinesConfig, Snippet, SnippetScope,
+    AssistConfig, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode, HighlightRelatedConfig,
+    HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig, Snippet, SnippetScope,
 };
 use ide_db::helpers::{
     insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -45,6 +45,8 @@ use crate::{
 // parsing the old name.
 config_data! {
     struct ConfigData {
+        /// How assists will fill missing elements in an expression.
+        assist_exprFillDefault: ExprFillDefaultDef              = "\"todo\"",
         /// How imports should be grouped into use statements.
         assist_importGranularity |
         assist_importMergeBehavior |
@@ -694,6 +696,10 @@ impl Config {
         DiagnosticsConfig {
             disable_experimental: !self.data.diagnostics_enableExperimental,
             disabled: self.data.diagnostics_disabled.clone(),
+            expr_fill_default: match self.data.assist_exprFillDefault {
+                ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
+                ExprFillDefaultDef::DefaultImpl => ExprFillDefaultMode::DefaultImpl,
+            },
         }
     }
     pub fn diagnostics_map(&self) -> DiagnosticsMapConfig {
@@ -1061,6 +1067,15 @@ enum ManifestOrProjectJson {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
+pub enum ExprFillDefaultDef {
+    #[serde(alias = "todo")]
+    Todo,
+    #[serde(alias = "defaultImpl")]
+    DefaultImpl,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
 enum ImportGranularityDef {
     Preserve,
     #[serde(alias = "none")]
@@ -1251,6 +1266,14 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Do not merge imports at all.",
                 "Merge imports from the same crate into a single `use` statement.",
                 "Merge imports from the same module into a single `use` statement."
+            ],
+        },
+        "ExprFillDefaultDef" => set! {
+            "type": "string",
+            "enum": ["todo", "defaultImpl"],
+            "enumDescriptions": [
+                "Fill missing elements with 'todo' macro",
+                "Fill missing elements with Default::default()"
             ],
         },
         "ImportGranularityDef" => set! {

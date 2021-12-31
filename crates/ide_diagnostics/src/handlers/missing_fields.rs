@@ -64,15 +64,18 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     });
     let missing_fields = ctx.sema.record_literal_missing_fields(&field_list_parent);
 
-    let generate_default_expr = |ty: &Type| {
-        let krate = ctx.sema.to_module_def(d.file.original_file(ctx.sema.db))?.krate();
-        let default_trait = FamousDefs(&ctx.sema, Some(krate)).core_default_Default();
+    let generate_fill_expr = |ty: &Type| match ctx.config.expr_fill_default {
+        crate::ExprFillDefaultMode::Todo => Some(make::ext::expr_todo()),
+        crate::ExprFillDefaultMode::DefaultImpl => {
+            let krate = ctx.sema.to_module_def(d.file.original_file(ctx.sema.db))?.krate();
+            let default_trait = FamousDefs(&ctx.sema, Some(krate)).core_default_Default();
 
-        match default_trait {
-            Some(default_trait) if ty.impls_trait(ctx.sema.db, default_trait, &[]) => {
-                Some(make::ext::expr_default())
+            match default_trait {
+                Some(default_trait) if ty.impls_trait(ctx.sema.db, default_trait, &[]) => {
+                    Some(make::ext::expr_default())
+                }
+                _ => Some(make::ext::expr_todo()),
             }
-            _ => Some(make::ext::expr_todo()),
         }
     };
 
@@ -83,10 +86,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             if ty.could_unify_with(ctx.sema.db, &candidate_ty) {
                 None
             } else {
-                generate_default_expr(ty)
+                generate_fill_expr(ty)
             }
         } else {
-            generate_default_expr(ty)
+            generate_fill_expr(ty)
         };
         let field =
             make::record_expr_field(make::name_ref(&f.name(ctx.sema.db).to_smol_str()), field_expr)
