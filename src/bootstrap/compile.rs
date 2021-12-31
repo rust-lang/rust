@@ -662,6 +662,8 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         .env("CFG_VERSION", builder.rust_version());
 
     let libdir_relative = builder.config.libdir_relative().unwrap_or_else(|| Path::new("lib"));
+    let target_config = builder.config.target_config.get(&target);
+
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
 
     if let Some(ref ver_date) = builder.rust_info.commit_date() {
@@ -673,9 +675,15 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     if !builder.unstable_features() {
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
-    if let Some(ref s) = builder.config.rustc_default_linker {
+
+    // Prefer the current target's own default_linker, else a globally
+    // specified one.
+    if let Some(s) = target_config.and_then(|c| c.default_linker.as_ref()) {
+        cargo.env("CFG_DEFAULT_LINKER", s);
+    } else if let Some(ref s) = builder.config.rustc_default_linker {
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
+
     if builder.config.rustc_parallel {
         cargo.rustflag("--cfg=parallel_compiler");
         cargo.rustdocflag("--cfg=parallel_compiler");
@@ -700,7 +708,6 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         }
         let llvm_config = builder.ensure(native::Llvm { target });
         cargo.env("LLVM_CONFIG", &llvm_config);
-        let target_config = builder.config.target_config.get(&target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             cargo.env("CFG_LLVM_ROOT", s);
         }
