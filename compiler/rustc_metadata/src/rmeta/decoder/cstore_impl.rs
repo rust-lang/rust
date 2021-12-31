@@ -554,4 +554,8 @@ impl CrateStore for CStore {
     ) -> ExpnId {
         self.get_crate_data(cnum).expn_hash_to_expn_id(sess, index_guess, hash)
     }
+
+    fn import_source_files(&self, sess: &Session, cnum: CrateNum) {
+        self.get_crate_data(cnum).imported_source_files(sess);
+    }
 }
