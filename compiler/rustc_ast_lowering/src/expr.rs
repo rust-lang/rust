@@ -12,7 +12,7 @@ use rustc_hir::definitions::DefPathData;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::DUMMY_SP;
+use rustc_span::{hygiene::ForLoopLoc, BytePos, DUMMY_SP};
 
 impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> &'hir [hir::Expr<'hir>] {
@@ -865,7 +865,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 if movability == Movability::Static {
                     struct_span_err!(self.sess, fn_decl_span, E0697, "closures cannot be static")
                         .span_suggestion(
-                            fn_decl_span.with_lo(fn_decl_span.lo() + BytePos("static ".len())),
+                            fn_decl_span
+                                .with_lo(fn_decl_span.lo() + BytePos("static ".len() as u32)),
                             "remove the `static` keyword to define a regular closure",
                             "".into(),
                             rustc_errors::Applicability::MachineApplicable,
