@@ -87,29 +87,3 @@ extern "platform-intrinsic" {
     #[allow(unused)]
     pub(crate) fn simd_select_bitmask<M, T>(m: M, a: T, b: T) -> T;
 }
-
-#[cfg(feature = "std")]
-mod std {
-    extern "platform-intrinsic" {
-        // ceil
-        pub(crate) fn simd_ceil<T>(x: T) -> T;
-
-        // floor
-        pub(crate) fn simd_floor<T>(x: T) -> T;
-
-        // round
-        pub(crate) fn simd_round<T>(x: T) -> T;
-
-        // trunc
-        pub(crate) fn simd_trunc<T>(x: T) -> T;
-
-        // fsqrt
-        pub(crate) fn simd_fsqrt<T>(x: T) -> T;
-
-        // fma
-        pub(crate) fn simd_fma<T>(x: T, y: T, z: T) -> T;
-    }
-}
-
-#[cfg(feature = "std")]
-pub(crate) use crate::simd::intrinsics::std::*;

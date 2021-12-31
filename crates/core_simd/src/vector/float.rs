@@ -38,29 +38,6 @@ macro_rules! impl_float_vector {
                 unsafe { intrinsics::simd_fabs(self) }
             }
 
-            /// Fused multiply-add.  Computes `(self * a) + b` with only one rounding error,
-            /// yielding a more accurate result than an unfused multiply-add.
-            ///
-            /// Using `mul_add` *may* be more performant than an unfused multiply-add if the target
-            /// architecture has a dedicated `fma` CPU instruction.  However, this is not always
-            /// true, and will be heavily dependent on designing algorithms with specific target
-            /// hardware in mind.
-            #[cfg(feature = "std")]
-            #[inline]
-            #[must_use = "method returns a new vector and does not mutate the original value"]
-            pub fn mul_add(self, a: Self, b: Self) -> Self {
-                unsafe { intrinsics::simd_fma(self, a, b) }
-            }
-
-            /// Produces a vector where every lane has the square root value
-            /// of the equivalently-indexed lane in `self`
-            #[inline]
-            #[must_use = "method returns a new vector and does not mutate the original value"]
-            #[cfg(feature = "std")]
-            pub fn sqrt(self) -> Self {
-                unsafe { intrinsics::simd_fsqrt(self) }
-            }
-
             /// Takes the reciprocal (inverse) of each lane, `1/x`.
             #[inline]
             #[must_use = "method returns a new vector and does not mutate the original value"]
