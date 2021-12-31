@@ -2112,7 +2112,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 {
                     wrong_self_convention::check(
                         cx,
-                        &name,
+                        name,
                         self_ty,
                         first_arg_ty,
                         first_arg.pat.span,

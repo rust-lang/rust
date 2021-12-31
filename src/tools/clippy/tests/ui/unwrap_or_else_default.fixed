@@ -45,7 +45,7 @@ fn unwrap_or_else_default() {
     with_enum.unwrap_or_else(Enum::A);
 
     let with_new = Some(vec![1]);
-    with_new.unwrap_or_else(Vec::new);
+    with_new.unwrap_or_default();
 
     let with_err: Result<_, ()> = Ok(vec![1]);
     with_err.unwrap_or_else(make);
@@ -65,6 +65,9 @@ fn unwrap_or_else_default() {
     with_default_trait.unwrap_or_default();
 
     let with_default_type = Some(1);
+    with_default_type.unwrap_or_default();
+
+    let with_default_type: Option<Vec<u64>> = None;
     with_default_type.unwrap_or_default();
 }
 

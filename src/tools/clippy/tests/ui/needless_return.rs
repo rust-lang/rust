@@ -75,6 +75,17 @@ fn test_void_match(x: u32) {
     }
 }
 
+fn test_nested_match(x: u32) {
+    match x {
+        0 => (),
+        1 => {
+            let _ = 42;
+            return;
+        },
+        _ => return,
+    }
+}
+
 fn read_line() -> String {
     use std::io::BufRead;
     let stdin = ::std::io::stdin();

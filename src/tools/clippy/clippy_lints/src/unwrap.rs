@@ -161,7 +161,7 @@ fn collect_unwrap_info<'tcx>(
             if is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name);
             then {
                 assert!(args.len() == 1);
-                let unwrappable = match name.as_ref() {
+                let unwrappable = match name {
                     "is_some" | "is_ok" => true,
                     "is_err" | "is_none" => false,
                     _ => unreachable!(),
