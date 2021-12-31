@@ -46,9 +46,9 @@ pub(crate) fn build_sysroot(
     // Build and copy cargo wrapper
     let mut build_cargo_wrapper_cmd = Command::new("rustc");
     build_cargo_wrapper_cmd
-        .arg("scripts/cargo.rs")
+        .arg("scripts/cargo-clif.rs")
         .arg("-o")
-        .arg(target_dir.join("cargo"))
+        .arg(target_dir.join("cargo-clif"))
         .arg("-g");
     spawn_and_wait(build_cargo_wrapper_cmd);
 

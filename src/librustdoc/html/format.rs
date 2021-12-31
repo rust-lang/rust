@@ -955,7 +955,7 @@ fn fmt_type<'cx>(
                 Ok((ref url, _, ref path)) if !f.alternate() => {
                     write!(
                         f,
-                        "<a class=\"type\" href=\"{url}#{shortty}.{name}\" \
+                        "<a class=\"associatedtype\" href=\"{url}#{shortty}.{name}\" \
                                     title=\"type {path}::{name}\">{name}</a>",
                         url = url,
                         shortty = ItemType::AssocType,

@@ -2007,6 +2007,16 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		max-width: 100vw;
 		width: 100vw;
 	}
+
+	/* Position of the "[-]" element. */
+	details.rustdoc-toggle:not(.top-doc) > summary {
+		margin-left: 10px;
+	}
+	.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
+	#main-content > details.rustdoc-toggle:not(.top-doc) > summary::before,
+	#main-content > div > details.rustdoc-toggle > summary::before {
+		left: -11px;
+	}
 }
 
 @media print {
