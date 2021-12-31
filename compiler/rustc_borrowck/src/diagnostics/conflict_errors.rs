@@ -306,7 +306,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     );
                             }
                         }
-                        // Other desugarings takes &self, which cannot cause a move
+                        // Other desugarings take &self, they cannot cause moves
                         _ => unreachable!(),
                     }
                 } else {
