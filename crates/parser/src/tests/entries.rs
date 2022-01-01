@@ -53,6 +53,16 @@ fn expr() {
     check_prefix(PrefixEntryPoint::Expr, "#[attr] ()", "#[attr] ()");
 }
 
+#[test]
+fn path() {
+    check_prefix(PrefixEntryPoint::Path, "foo::bar baz", "foo::bar");
+    check_prefix(PrefixEntryPoint::Path, "foo::<> baz", "foo::<>");
+    check_prefix(PrefixEntryPoint::Path, "foo<> baz", "foo<>");
+    check_prefix(PrefixEntryPoint::Path, "Fn() -> i32?", "Fn() -> i32");
+    // FIXME: this shouldn't be accepted as path actually.
+    check_prefix(PrefixEntryPoint::Path, "<_>::foo", "<_>::foo");
+}
+
 fn check_prefix(entry: PrefixEntryPoint, input: &str, prefix: &str) {
     let lexed = LexedStr::new(input);
     let input = lexed.to_input();
