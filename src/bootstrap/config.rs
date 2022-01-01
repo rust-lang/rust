@@ -1149,10 +1149,6 @@ impl Config {
         self.verbose > 0
     }
 
-    pub fn very_verbose(&self) -> bool {
-        self.verbose > 1
-    }
-
     pub fn sanitizers_enabled(&self, target: TargetSelection) -> bool {
         self.target_config.get(&target).map(|t| t.sanitizers).flatten().unwrap_or(self.sanitizers)
     }

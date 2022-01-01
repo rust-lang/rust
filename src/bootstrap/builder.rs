@@ -351,7 +351,6 @@ pub enum Kind {
     Check,
     Clippy,
     Fix,
-    Format,
     Test,
     Bench,
     Dist,
@@ -399,7 +398,7 @@ impl<'a> Builder<'a> {
                 native::Lld,
                 native::CrtBeginEnd
             ),
-            Kind::Check | Kind::Clippy { .. } | Kind::Fix | Kind::Format => describe!(
+            Kind::Check | Kind::Clippy { .. } | Kind::Fix => describe!(
                 check::Std,
                 check::Rustc,
                 check::Rustdoc,

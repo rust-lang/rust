@@ -16,11 +16,6 @@ use build_helper::t;
 use crate::builder::Builder;
 use crate::config::{Config, TargetSelection};
 
-/// Returns the `name` as the filename of a static library for `target`.
-pub fn staticlib(name: &str, target: TargetSelection) -> String {
-    if target.contains("windows") { format!("{}.lib", name) } else { format!("lib{}.a", name) }
-}
-
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: TargetSelection) -> String {
@@ -79,21 +74,6 @@ fn link_lib_path() -> Vec<PathBuf> {
         None => return vec![],
     };
     env::split_paths(&var).collect()
-}
-
-/// `push` all components to `buf`. On windows, append `.exe` to the last component.
-pub fn push_exe_path(mut buf: PathBuf, components: &[&str]) -> PathBuf {
-    let (&file, components) = components.split_last().expect("at least one component required");
-    let mut file = file.to_owned();
-
-    if cfg!(windows) {
-        file.push_str(".exe");
-    }
-
-    buf.extend(components);
-    buf.push(file);
-
-    buf
 }
 
 pub struct TimeIt(bool, Instant);
