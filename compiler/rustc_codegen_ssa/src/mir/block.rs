@@ -160,11 +160,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             let llret = bx.call(fn_ty, fn_ptr, &llargs, self.funclet(fx));
             bx.apply_attrs_callsite(&fn_abi, llret);
             if fx.mir[self.bb].is_cleanup {
-                // Cleanup is always the cold path. Don't inline
-                // drop glue. Also, when there is a deeply-nested
-                // struct, there are "symmetry" issues that cause
-                // exponential inlining - see issue #41696.
-                bx.do_not_inline(llret);
+                bx.apply_attrs_to_cleanup_callsite(llret);
             }
 
             if let Some((ret_dest, target)) = destination {

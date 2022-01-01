@@ -716,6 +716,14 @@ extern "C" uint32_t LLVMRustVersionMinor() { return LLVM_VERSION_MINOR; }
 
 extern "C" uint32_t LLVMRustVersionMajor() { return LLVM_VERSION_MAJOR; }
 
+extern "C" bool LLVMRustIsRustLLVM() {
+#ifdef LLVM_RUSTLLVM
+  return true;
+#else
+  return false;
+#endif
+}
+
 extern "C" void LLVMRustAddModuleFlag(LLVMModuleRef M, const char *Name,
                                       uint32_t Value) {
   unwrap(M)->addModuleFlag(Module::Warning, Name, Value);

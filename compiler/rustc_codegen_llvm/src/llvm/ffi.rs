@@ -1902,6 +1902,8 @@ extern "C" {
     pub fn LLVMRustVersionMinor() -> u32;
     pub fn LLVMRustVersionPatch() -> u32;
 
+    pub fn LLVMRustIsRustLLVM() -> bool;
+
     pub fn LLVMRustAddModuleFlag(M: &Module, name: *const c_char, value: u32);
 
     pub fn LLVMRustMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
