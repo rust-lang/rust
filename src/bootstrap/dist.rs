@@ -24,7 +24,7 @@ use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, timeit};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
-use time::{self, Timespec};
+use time::{format_description, OffsetDateTime};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
     format!("{}-{}", component, builder.rust_package_vers())
@@ -430,11 +430,12 @@ impl Step for Rustc {
                         .map_err(|err| format!("could not parse SOURCE_DATE_EPOCH: {}", err))
                         .unwrap();
 
-                    time::at(Timespec::new(epoch, 0))
+                    OffsetDateTime::from_unix_timestamp(epoch).unwrap()
                 })
-                .unwrap_or_else(|_| time::now());
+                .unwrap_or_else(|_| OffsetDateTime::now_local().unwrap());
 
-            let month_year = t!(time::strftime("%B %Y", &time));
+            let format = t!(format_description::parse("[month repr:long] [year]"));
+            let month_year = t!(time.format(&format));
             // don't use our `bootstrap::util::{copy, cp_r}`, because those try
             // to hardlink, and we don't want to edit the source templates
             for file_entry in builder.read_dir(&man_src) {
