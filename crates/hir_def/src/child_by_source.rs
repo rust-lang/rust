@@ -6,7 +6,6 @@
 
 use either::Either;
 use hir_expand::HirFileId;
-use itertools::Itertools;
 use syntax::ast::HasAttrs;
 
 use crate::{
@@ -123,8 +122,7 @@ impl ChildBySource for ItemScope {
         });
         self.derive_macro_invocs().for_each(|(ast_id, calls)| {
             let item = ast_id.to_node(db.upcast());
-            let grouped = calls.iter().copied().into_group_map();
-            for (attr_id, calls) in grouped {
+            for (attr_id, calls) in calls {
                 if let Some(attr) = item.attrs().nth(attr_id.ast_index as usize) {
                     res[keys::DERIVE_MACRO].insert(ast_id.with_value(attr), calls.into());
                 }

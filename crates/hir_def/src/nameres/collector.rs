@@ -219,7 +219,7 @@ struct MacroDirective {
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum MacroDirectiveKind {
     FnLike { ast_id: AstIdWithPath<ast::MacroCall>, expand_to: ExpandTo },
-    Derive { ast_id: AstIdWithPath<ast::Item>, derive_attr: AttrId },
+    Derive { ast_id: AstIdWithPath<ast::Item>, derive_attr: AttrId, derive_pos: usize },
     Attr { ast_id: AstIdWithPath<ast::Item>, attr: Attr, mod_item: ModItem, tree: TreeId },
 }
 
@@ -1064,7 +1064,7 @@ impl DefCollector<'_> {
                         return false;
                     }
                 }
-                MacroDirectiveKind::Derive { ast_id, derive_attr } => {
+                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos } => {
                     let call_id = derive_macro_as_call_id(
                         ast_id,
                         *derive_attr,
@@ -1073,10 +1073,11 @@ impl DefCollector<'_> {
                         &resolver,
                     );
                     if let Ok(call_id) = call_id {
-                        self.def_map.modules[directive.module_id].scope.add_derive_macro_invoc(
+                        self.def_map.modules[directive.module_id].scope.set_derive_macro_invoc(
                             ast_id.ast_id,
                             call_id,
                             *derive_attr,
+                            *derive_pos,
                         );
 
                         resolved.push((
@@ -1146,7 +1147,8 @@ impl DefCollector<'_> {
 
                         match attr.parse_derive() {
                             Some(derive_macros) => {
-                                for path in derive_macros {
+                                let mut len = 0;
+                                for (idx, path) in derive_macros.enumerate() {
                                     let ast_id = AstIdWithPath::new(file_id, ast_id.value, path);
                                     self.unresolved_macros.push(MacroDirective {
                                         module_id: directive.module_id,
@@ -1154,10 +1156,16 @@ impl DefCollector<'_> {
                                         kind: MacroDirectiveKind::Derive {
                                             ast_id,
                                             derive_attr: attr.id,
+                                            derive_pos: idx,
                                         },
                                         container: directive.container,
                                     });
+                                    len = idx;
                                 }
+
+                                self.def_map.modules[directive.module_id]
+                                    .scope
+                                    .init_derive_attribute(ast_id, attr.id, len + 1);
                             }
                             None => {
                                 let diag = DefDiagnostic::malformed_derive(
