@@ -1,0 +1,29 @@
+error[E0308]: mismatched types
+  --> $DIR/char-as-str-single.rs:9:19
+   |
+LL |     let _: char = "a";
+   |            ----   ^^^ expected `char`, found `&str`
+   |            |
+   |            expected due to this
+   |
+help: if you meant to write a `char` literal, use single quotes
+   |
+LL |     let _: char = 'a';
+   |                   ~~~
+
+error[E0308]: mismatched types
+  --> $DIR/char-as-str-single.rs:10:19
+   |
+LL |     let _: char = "人";
+   |            ----   ^^^^ expected `char`, found `&str`
+   |            |
+   |            expected due to this
+   |
+help: if you meant to write a `char` literal, use single quotes
+   |
+LL |     let _: char = '人';
+   |                   ~~~~
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
