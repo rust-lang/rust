@@ -23,11 +23,6 @@ target-lexicon = "0.10.0"
 
 ar = "0.8.0"
 
-[dependencies.object]
-version = "0.25.0"
-default-features = false
-features = ["read", "std", "write"] # We don't need WASM support.
-
 [dev-dependencies]
 lang_tester = "0.3.9"
 tempfile = "3.1.0"
