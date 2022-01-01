@@ -40,7 +40,7 @@ error[E0080]: evaluation of constant value failed
 LL |     for i in 0..x {
    |              ^^^^
    |              |
-   |              calling non-const function `<std::ops::Range<usize> as IntoIterator>::into_iter`
+   |              calling non-const function `iter::range::<impl Iterator for std::ops::Range<usize>>::next`
    |              inside `f` at $DIR/const-fn-error.rs:5:14
 ...
 LL |     let a : [i32; f(X)];

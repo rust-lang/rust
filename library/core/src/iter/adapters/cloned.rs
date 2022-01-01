@@ -19,7 +19,7 @@ pub struct Cloned<I> {
 }
 
 impl<I> Cloned<I> {
-    pub(in crate::iter) fn new(it: I) -> Cloned<I> {
+    pub(in crate::iter) const fn new(it: I) -> Cloned<I> {
         Cloned { it }
     }
 }

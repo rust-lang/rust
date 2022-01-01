@@ -1133,7 +1133,8 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+    #[rustc_const_unstable(feature = "const_iter", issue = "none")]
+    pub const fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut { inner: Item { opt: self.as_mut() } }
     }
 
@@ -1858,7 +1859,8 @@ impl<T> const Default for Option<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> IntoIterator for Option<T> {
+#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+impl<T> const IntoIterator for Option<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
@@ -1882,7 +1884,8 @@ impl<T> IntoIterator for Option<T> {
 }
 
 #[stable(since = "1.4.0", feature = "option_iter")]
-impl<'a, T> IntoIterator for &'a Option<T> {
+#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+impl<'a, T> const IntoIterator for &'a Option<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -1892,7 +1895,8 @@ impl<'a, T> IntoIterator for &'a Option<T> {
 }
 
 #[stable(since = "1.4.0", feature = "option_iter")]
-impl<'a, T> IntoIterator for &'a mut Option<T> {
+#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+impl<'a, T> const IntoIterator for &'a mut Option<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
@@ -1978,7 +1982,8 @@ struct Item<A> {
     opt: Option<A>,
 }
 
-impl<A> Iterator for Item<A> {
+#[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+impl<A> const Iterator for Item<A> {
     type Item = A;
 
     #[inline]
@@ -2018,7 +2023,8 @@ pub struct Iter<'a, A: 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, A> Iterator for Iter<'a, A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+impl<'a, A> const Iterator for Iter<'a, A> {
     type Item = &'a A;
 
     #[inline]
@@ -2068,7 +2074,8 @@ pub struct IterMut<'a, A: 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, A> Iterator for IterMut<'a, A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+impl<'a, A> const Iterator for IterMut<'a, A> {
     type Item = &'a mut A;
 
     #[inline]
@@ -2109,7 +2116,8 @@ pub struct IntoIter<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> Iterator for IntoIter<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+impl<A> const Iterator for IntoIter<A> {
     type Item = A;
 
     #[inline]

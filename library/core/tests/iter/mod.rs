@@ -100,3 +100,16 @@ pub fn extend_for_unit() {
     }
     assert_eq!(x, 5);
 }
+
+#[test]
+pub fn test_const_iter() {
+    const IT: core::option::IntoIter<()> = {
+        let mut it = Some(()).into_iter();
+        for _ in &mut it {}
+        it
+    };
+
+    let mut iter = IT;
+
+    assert_eq!(iter.next(), None);
+}

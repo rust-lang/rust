@@ -3,7 +3,7 @@ use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
-use crate::ops::Try;
+use crate::ops::{FromResidual, Try};
 
 /// An iterator that maps the values of `iter` with `f`.
 ///
@@ -65,7 +65,7 @@ pub struct Map<I, F> {
 }
 
 impl<I, F> Map<I, F> {
-    pub(in crate::iter) fn new(iter: I, f: F) -> Map<I, F> {
+    pub(in crate::iter) const fn new(iter: I, f: F) -> Map<I, F> {
         Map { iter, f }
     }
 }
@@ -75,6 +75,33 @@ impl<I: fmt::Debug, F> fmt::Debug for Map<I, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Map").field("iter", &self.iter).finish()
     }
+}
+
+struct MapFold<F, G>(F, G);
+struct MapTryFold<F, G>(F, G);
+
+impl_const_closure! {
+    impl<F, T, B, G, Acc> const FnMut for MapFold<F, G>
+    where
+        F: ~const FnMut(T) -> B,
+        F: ~const Drop,
+        G: ~const FnMut(Acc, B) -> Acc,
+        G: ~const Drop,
+    = |&mut self, acc: Acc, elt: T| -> Acc {
+        self.1(acc, self.0(elt))
+    };
+}
+
+impl_const_closure! {
+    impl<F, T, B, G, R, Acc> const FnMut for MapTryFold<F, G>
+    where
+        F: ~const FnMut(T) -> B,
+        F: ~const Drop,
+        G: ~const FnMut(Acc, B) -> R,
+        G: ~const Drop,
+    = |&mut self, acc: Acc, elt: T| -> R {
+        self.1(acc, self.0(elt))
+    };
 }
 
 fn map_fold<T, B, Acc>(
@@ -92,9 +119,10 @@ fn map_try_fold<'a, T, B, Acc, R>(
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B, I: Iterator, F> Iterator for Map<I, F>
+#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+impl<B, I: ~const Iterator, F> const Iterator for Map<I, F>
 where
-    F: FnMut(I::Item) -> B,
+    F: ~const FnMut(I::Item) -> B + ~const Drop,
 {
     type Item = B;
 
@@ -111,17 +139,21 @@ where
     fn try_fold<Acc, G, R>(&mut self, init: Acc, g: G) -> R
     where
         Self: Sized,
-        G: FnMut(Acc, Self::Item) -> R,
-        R: Try<Output = Acc>,
+        G: ~const FnMut(Acc, B) -> R,
+        G: ~const Drop,
+        R: ~const Try<Output = Acc>,
+        R: ~const FromResidual,
     {
-        self.iter.try_fold(init, map_try_fold(&mut self.f, g))
+        self.iter.try_fold(init, MapTryFold(&mut self.f, g))
     }
 
     fn fold<Acc, G>(self, init: Acc, g: G) -> Acc
     where
-        G: FnMut(Acc, Self::Item) -> Acc,
+        I: ~const Drop,
+        G: ~const FnMut(Acc, B) -> Acc,
+        G: ~const Drop,
     {
-        self.iter.fold(init, map_fold(self.f, g))
+        self.iter.fold(init, MapFold(self.f, g))
     }
 
     #[doc(hidden)]

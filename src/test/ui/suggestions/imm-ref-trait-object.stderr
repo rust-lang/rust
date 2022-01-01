@@ -6,7 +6,7 @@ LL |      t.min().unwrap()
    |
   ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
-LL |         Self: Sized,
+LL |         Self: Sized + ~const Drop,
    |               ----- this has a `Sized` requirement
    |
    = note: you need `&mut dyn Iterator<Item = &u64>` instead of `&dyn Iterator<Item = &u64>`

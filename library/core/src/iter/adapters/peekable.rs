@@ -19,7 +19,8 @@ pub struct Peekable<I: Iterator> {
 }
 
 impl<I: Iterator> Peekable<I> {
-    pub(in crate::iter) fn new(iter: I) -> Peekable<I> {
+    #[rustc_allow_const_fn_unstable(const_fn_trait_bound)]
+    pub(in crate::iter) const fn new(iter: I) -> Peekable<I> {
         Peekable { iter, peeked: None }
     }
 }

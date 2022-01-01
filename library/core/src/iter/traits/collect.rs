@@ -229,7 +229,8 @@ pub trait IntoIterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator> IntoIterator for I {
+#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+impl<I: Iterator> const IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;
 
@@ -330,7 +331,10 @@ pub trait Extend<A> {
     /// assert_eq!("abcdef", &message);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
+    fn extend<T: ~const IntoIterator<Item = A>>(&mut self, iter: T)
+    where
+        T::IntoIter: ~const Iterator<Item = A>,
+        T::IntoIter: ~const Drop;
 
     /// Extends a collection with exactly one element.
     #[unstable(feature = "extend_one", issue = "72631")]
@@ -356,10 +360,11 @@ impl Extend<()> for () {
 }
 
 #[stable(feature = "extend_for_tuple", since = "1.56.0")]
-impl<A, B, ExtendA, ExtendB> Extend<(A, B)> for (ExtendA, ExtendB)
+#[rustc_const_unstable(feature = "const_extend", issue = "none")]
+impl<A, B, ExtendA, ExtendB> const Extend<(A, B)> for (ExtendA, ExtendB)
 where
-    ExtendA: Extend<A>,
-    ExtendB: Extend<B>,
+    ExtendA: ~const Extend<A>,
+    ExtendB: ~const Extend<B>,
 {
     /// Allows to `extend` a tuple of collections that also implement `Extend`.
     ///
@@ -381,18 +386,29 @@ where
     /// assert_eq!(b, [2, 5, 8]);
     /// assert_eq!(c, [3, 6, 9]);
     /// ```
-    fn extend<T: IntoIterator<Item = (A, B)>>(&mut self, into_iter: T) {
+    fn extend<T: ~const IntoIterator<Item = (A, B)>>(&mut self, into_iter: T)
+    where
+        T::IntoIter: ~const Iterator<Item = (A, B)>,
+        T::IntoIter: ~const Drop,
+    {
         let (a, b) = self;
         let iter = into_iter.into_iter();
 
-        fn extend<'a, A, B>(
-            a: &'a mut impl Extend<A>,
-            b: &'a mut impl Extend<B>,
-        ) -> impl FnMut((), (A, B)) + 'a {
-            move |(), (t, u)| {
-                a.extend_one(t);
-                b.extend_one(u);
-            }
+        pub struct Ext<'a, FromA, FromB> {
+            a: &'a mut FromA,
+            b: &'a mut FromB,
+        }
+
+        impl_const_closure! {
+            impl<'a, FromA, FromB, A, B> const FnMut for Ext<'a, FromA, FromB>
+            where
+                FromA: ~const Extend<A>,
+                FromB: ~const Extend<B>,
+            = |&mut self, _: (), tuple: (A, B)| {
+                let (t, u) = tuple;
+                self.a.extend_one(t);
+                self.b.extend_one(u);
+            };
         }
 
         let (lower_bound, _) = iter.size_hint();
@@ -401,7 +417,7 @@ where
             b.extend_reserve(lower_bound);
         }
 
-        iter.fold((), extend(a, b));
+        iter.fold((), Ext { a, b });
     }
 
     fn extend_one(&mut self, item: (A, B)) {

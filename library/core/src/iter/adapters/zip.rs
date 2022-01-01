@@ -18,9 +18,11 @@ pub struct Zip<A, B> {
     len: usize,
     a_len: usize,
 }
+
 impl<A: Iterator, B: Iterator> Zip<A, B> {
-    pub(in crate::iter) fn new(a: A, b: B) -> Zip<A, B> {
-        ZipImpl::new(a, b)
+    #[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+    pub(in crate::iter) const fn new(a: A, b: B) -> Zip<A, B> {
+        ZipNewImpl::new(a, b)
     }
     fn super_nth(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
         while let Some(x) = Iterator::next(self) {
@@ -68,7 +70,7 @@ where
     A: IntoIterator,
     B: IntoIterator,
 {
-    ZipImpl::new(a.into_iter(), b.into_iter())
+    ZipNewImpl::new(a.into_iter(), b.into_iter())
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -118,11 +120,16 @@ where
     }
 }
 
+// Zip::new specialization trait
+#[doc(hidden)]
+trait ZipNewImpl<A, B> {
+    fn new(a: A, b: B) -> Self;
+}
+
 // Zip specialization trait
 #[doc(hidden)]
 trait ZipImpl<A, B> {
     type Item;
-    fn new(a: A, b: B) -> Self;
     fn next(&mut self) -> Option<Self::Item>;
     fn size_hint(&self) -> (usize, Option<usize>);
     fn nth(&mut self, n: usize) -> Option<Self::Item>;
@@ -140,16 +147,6 @@ trait ZipImpl<A, B> {
 // in intermediary impls.
 macro_rules! zip_impl_general_defaults {
     () => {
-        default fn new(a: A, b: B) -> Self {
-            Zip {
-                a,
-                b,
-                index: 0, // unused
-                len: 0,   // unused
-                a_len: 0, // unused
-            }
-        }
-
         #[inline]
         default fn next(&mut self) -> Option<(A::Item, B::Item)> {
             let x = self.a.next()?;
@@ -193,6 +190,24 @@ macro_rules! zip_impl_general_defaults {
             }
         }
     };
+}
+
+#[doc(hidden)]
+#[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+impl<A, B> const ZipNewImpl<A, B> for Zip<A, B>
+where
+    A: Iterator,
+    B: Iterator,
+{
+    default fn new(a: A, b: B) -> Self {
+        Zip {
+            a,
+            b,
+            index: 0, // unused
+            len: 0,   // unused
+            a_len: 0, // unused
+        }
+    }
 }
 
 // General Zip impl
@@ -255,7 +270,7 @@ where
 }
 
 #[doc(hidden)]
-impl<A, B> ZipImpl<A, B> for Zip<A, B>
+impl<A, B> ZipNewImpl<A, B> for Zip<A, B>
 where
     A: TrustedRandomAccess + Iterator,
     B: TrustedRandomAccess + Iterator,
@@ -265,7 +280,14 @@ where
         let len = cmp::min(a_len, b.size());
         Zip { a, b, index: 0, len, a_len }
     }
+}
 
+#[doc(hidden)]
+impl<A, B> ZipImpl<A, B> for Zip<A, B>
+where
+    A: TrustedRandomAccess + Iterator,
+    B: TrustedRandomAccess + Iterator,
+{
     #[inline]
     fn next(&mut self) -> Option<(A::Item, B::Item)> {
         if self.index < self.len {
@@ -554,9 +576,13 @@ pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
 ///
 /// Same requirements calling `get_unchecked` directly.
 #[doc(hidden)]
-pub(in crate::iter::adapters) unsafe fn try_get_unchecked<I>(it: &mut I, idx: usize) -> I::Item
+#[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+pub(in crate::iter::adapters) const unsafe fn try_get_unchecked<I>(
+    it: &mut I,
+    idx: usize,
+) -> I::Item
 where
-    I: Iterator,
+    I: ~const Iterator,
 {
     // SAFETY: the caller must uphold the contract for
     // `Iterator::__iterator_get_unchecked`.
@@ -569,13 +595,15 @@ unsafe trait SpecTrustedRandomAccess: Iterator {
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item;
 }
 
-unsafe impl<I: Iterator> SpecTrustedRandomAccess for I {
+#[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+unsafe impl<I: ~const Iterator> const SpecTrustedRandomAccess for I {
     default unsafe fn try_get_unchecked(&mut self, _: usize) -> Self::Item {
         panic!("Should only be called on TrustedRandomAccess iterators");
     }
 }
 
-unsafe impl<I: Iterator + TrustedRandomAccessNoCoerce> SpecTrustedRandomAccess for I {
+#[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+unsafe impl<I: ~const Iterator + TrustedRandomAccessNoCoerce> const SpecTrustedRandomAccess for I {
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item {
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.

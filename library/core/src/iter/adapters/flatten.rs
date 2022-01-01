@@ -14,8 +14,9 @@ pub struct FlatMap<I, U: IntoIterator, F> {
 }
 
 impl<I: Iterator, U: IntoIterator, F: FnMut(I::Item) -> U> FlatMap<I, U, F> {
-    pub(in crate::iter) fn new(iter: I, f: F) -> FlatMap<I, U, F> {
-        FlatMap { inner: FlattenCompat::new(iter.map(f)) }
+    #[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+    pub(in crate::iter) const fn new(iter: I, f: F) -> FlatMap<I, U, F> {
+        FlatMap { inner: FlattenCompat::new(Map::new(iter, f)) }
     }
 }
 
@@ -152,7 +153,8 @@ pub struct Flatten<I: Iterator<Item: IntoIterator>> {
 }
 
 impl<I: Iterator<Item: IntoIterator>> Flatten<I> {
-    pub(in super::super) fn new(iter: I) -> Flatten<I> {
+    #[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+    pub(in super::super) const fn new(iter: I) -> Flatten<I> {
         Flatten { inner: FlattenCompat::new(iter) }
     }
 }
@@ -270,13 +272,10 @@ struct FlattenCompat<I, U> {
     frontiter: Option<U>,
     backiter: Option<U>,
 }
-impl<I, U> FlattenCompat<I, U>
-where
-    I: Iterator,
-{
+impl<I, U> FlattenCompat<I, U> {
     /// Adapts an iterator by flattening it, for use in `flatten()` and `flat_map()`.
-    fn new(iter: I) -> FlattenCompat<I, U> {
-        FlattenCompat { iter: iter.fuse(), frontiter: None, backiter: None }
+    const fn new(iter: I) -> FlattenCompat<I, U> {
+        FlattenCompat { iter: super::Fuse::new(iter), frontiter: None, backiter: None }
     }
 }
 

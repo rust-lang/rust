@@ -187,3 +187,52 @@ macro_rules! impl_fn_for_zst {
         )+
     }
 }
+
+macro_rules! impl_const_closure {
+    (
+        impl$(<$( $tt : tt ),*>)?
+        const FnOnce for $Name: path $(where $($WhereTy:ty : $(~ $const:ident)? $Trait:path),+ $(,)?)? =
+            $(#[$meta:meta])*
+            |$mutorself:ident $($self:ident)?, $( $arg: tt: $ArgTy: ty ),*| $(-> $ReturnTy: ty)?
+            $body: block;
+    ) => {
+        #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+        impl $( < $( $tt ),* > )? const FnOnce<($( $ArgTy, )*)> for $Name
+            $(where $($WhereTy: $(~$const)? $Trait),+)?
+        {
+            #[allow(unused_parens)]
+            type Output = ( $( $ReturnTy )? );
+
+            #[allow(unused_mut)]
+            $(#[$meta])*
+            extern "rust-call" fn call_once($mutorself $($self)?, ($( $arg, )*): ($( $ArgTy, )*)) -> Self::Output {
+                $body
+            }
+        }
+    };
+    (
+        impl$(< $( $tt: tt ),* >)?
+        const FnMut for $Name: path $(where $($WhereTy:ty : $(~ $const:ident)? $Trait:path),+ $(,)?)? =
+            $(#[$meta:meta])*
+            |&mut $self:ident, $( $arg: tt: $ArgTy: ty ),*| $(-> $ReturnTy: ty)?
+            $body: block;
+    ) => {
+        impl_const_closure! {
+            impl$(< $( $tt ),* >)?
+            const FnOnce for $Name $(where $($WhereTy: $(~$const)? $Trait),+)? =
+                $(#[$meta])*
+                |mut $self, $( $arg: $ArgTy),*| $(-> $ReturnTy)?
+                $body;
+        }
+        #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+        impl $( < $( $tt ),* > )? const FnMut<($( $ArgTy, )*)> for $Name
+            $(where $($WhereTy: $(~$const)? $Trait),+)?
+        {
+            $(#[$meta])*
+            #[allow(unused_parens)]
+            extern "rust-call" fn call_mut(&mut $self, ($( $arg, )*): ($( $ArgTy, )*)) -> ( $($ReturnTy)? ) {
+                $body
+            }
+        }
+    }
+}

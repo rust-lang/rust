@@ -19,8 +19,9 @@ impl<I: Iterator> Intersperse<I>
 where
     I::Item: Clone,
 {
-    pub(in crate::iter) fn new(iter: I, separator: I::Item) -> Self {
-        Self { iter: iter.peekable(), separator, needs_sep: false }
+    #[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+    pub(in crate::iter) const fn new(iter: I, separator: I::Item) -> Self {
+        Self { iter: Peekable::new(iter), separator, needs_sep: false }
     }
 }
 
@@ -108,8 +109,9 @@ where
     I: Iterator,
     G: FnMut() -> I::Item,
 {
-    pub(in crate::iter) fn new(iter: I, separator: G) -> Self {
-        Self { iter: iter.peekable(), separator, needs_sep: false }
+    #[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+    pub(in crate::iter) const fn new(iter: I, separator: G) -> Self {
+        Self { iter: Peekable::new(iter), separator, needs_sep: false }
     }
 }
 

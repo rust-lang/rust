@@ -13,6 +13,8 @@
 #![feature(const_bool_to_option)]
 #![feature(const_cell_into_inner)]
 #![feature(const_convert)]
+#![feature(const_for)]
+#![feature(const_iter)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_maybe_uninit_assume_init_read)]

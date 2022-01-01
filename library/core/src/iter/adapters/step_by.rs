@@ -17,8 +17,9 @@ pub struct StepBy<I> {
 }
 
 impl<I> StepBy<I> {
-    pub(in crate::iter) fn new(iter: I, step: usize) -> StepBy<I> {
-        assert!(step != 0);
+    #[rustc_const_unstable(feature = "iter_internals", issue = "none")]
+    pub(in crate::iter) const fn new(iter: I, step: usize) -> StepBy<I> {
+        assert!(step != 0, "Step must be non-zero");
         StepBy { iter, step: step - 1, first_take: true }
     }
 }

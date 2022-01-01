@@ -19,7 +19,7 @@ pub struct SkipWhile<I, P> {
 }
 
 impl<I, P> SkipWhile<I, P> {
-    pub(in crate::iter) fn new(iter: I, predicate: P) -> SkipWhile<I, P> {
+    pub(in crate::iter) const fn new(iter: I, predicate: P) -> SkipWhile<I, P> {
         SkipWhile { iter, flag: false, predicate }
     }
 }

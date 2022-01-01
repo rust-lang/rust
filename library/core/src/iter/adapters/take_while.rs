@@ -19,7 +19,7 @@ pub struct TakeWhile<I, P> {
 }
 
 impl<I, P> TakeWhile<I, P> {
-    pub(in crate::iter) fn new(iter: I, predicate: P) -> TakeWhile<I, P> {
+    pub(in crate::iter) const fn new(iter: I, predicate: P) -> TakeWhile<I, P> {
         TakeWhile { iter, flag: false, predicate }
     }
 }
