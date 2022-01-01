@@ -21,10 +21,46 @@ fn stmt() {
     check_prefix(PrefixEntryPoint::Stmt, "92; fn", "92");
     check_prefix(PrefixEntryPoint::Stmt, "let _ = 92; 1", "let _ = 92");
     check_prefix(PrefixEntryPoint::Stmt, "pub fn f() {} = 92", "pub fn f() {}");
+    check_prefix(PrefixEntryPoint::Stmt, "struct S;;", "struct S;");
+    check_prefix(PrefixEntryPoint::Stmt, "fn f() {};", "fn f() {}");
     check_prefix(PrefixEntryPoint::Stmt, ";;;", ";");
     check_prefix(PrefixEntryPoint::Stmt, "+", "+");
     check_prefix(PrefixEntryPoint::Stmt, "@", "@");
     check_prefix(PrefixEntryPoint::Stmt, "loop {} - 1", "loop {}");
+}
+
+#[test]
+fn pat() {
+    check_prefix(PrefixEntryPoint::Pat, "x y", "x");
+    check_prefix(PrefixEntryPoint::Pat, "fn f() {}", "fn");
+    // FIXME: This one is wrong, we should consume only one pattern.
+    check_prefix(PrefixEntryPoint::Pat, ".. ..", ".. ..");
+}
+
+#[test]
+fn ty() {
+    check_prefix(PrefixEntryPoint::Ty, "fn() foo", "fn()");
+    check_prefix(PrefixEntryPoint::Ty, "Clone + Copy + fn", "Clone + Copy +");
+    check_prefix(PrefixEntryPoint::Ty, "struct f", "struct");
+}
+
+#[test]
+fn expr() {
+    check_prefix(PrefixEntryPoint::Expr, "92 92", "92");
+    check_prefix(PrefixEntryPoint::Expr, "+1", "+");
+    check_prefix(PrefixEntryPoint::Expr, "-1", "-1");
+    check_prefix(PrefixEntryPoint::Expr, "fn foo() {}", "fn");
+    check_prefix(PrefixEntryPoint::Expr, "#[attr] ()", "#[attr] ()");
+}
+
+#[test]
+fn path() {
+    check_prefix(PrefixEntryPoint::Path, "foo::bar baz", "foo::bar");
+    check_prefix(PrefixEntryPoint::Path, "foo::<> baz", "foo::<>");
+    check_prefix(PrefixEntryPoint::Path, "foo<> baz", "foo<>");
+    check_prefix(PrefixEntryPoint::Path, "Fn() -> i32?", "Fn() -> i32");
+    // FIXME: this shouldn't be accepted as path actually.
+    check_prefix(PrefixEntryPoint::Path, "<_>::foo", "<_>::foo");
 }
 
 fn check_prefix(entry: PrefixEntryPoint, input: &str, prefix: &str) {
