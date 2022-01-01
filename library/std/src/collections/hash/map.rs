@@ -349,6 +349,33 @@ impl<K, V, S> HashMap<K, V, S> {
         Keys { inner: self.iter() }
     }
 
+    /// Creates a consuming iterator visiting all the keys in arbitrary order.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `K`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let map = HashMap::from([
+    ///     ("a", 1),
+    ///     ("b", 2),
+    ///     ("c", 3),
+    /// ]);
+    ///
+    /// let mut vec: Vec<&str> = map.into_keys().collect();
+    /// // The `IntoKeys` iterator produces keys in arbitrary order, so the
+    /// // keys must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, ["a", "b", "c"]);
+    /// ```
+    #[inline]
+    #[stable(feature = "map_into_keys_values", since = "1.54.0")]
+    pub fn into_keys(self) -> IntoKeys<K, V> {
+        IntoKeys { inner: self.into_iter() }
+    }
+
     /// An iterator visiting all values in arbitrary order.
     /// The iterator element type is `&'a V`.
     ///
@@ -397,6 +424,33 @@ impl<K, V, S> HashMap<K, V, S> {
     #[stable(feature = "map_values_mut", since = "1.10.0")]
     pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
         ValuesMut { inner: self.iter_mut() }
+    }
+
+    /// Creates a consuming iterator visiting all the values in arbitrary order.
+    /// The map cannot be used after calling this.
+    /// The iterator element type is `V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let map = HashMap::from([
+    ///     ("a", 1),
+    ///     ("b", 2),
+    ///     ("c", 3),
+    /// ]);
+    ///
+    /// let mut vec: Vec<i32> = map.into_values().collect();
+    /// // The `IntoValues` iterator produces values in arbitrary order, so
+    /// // the values must be sorted to test them against a sorted array.
+    /// vec.sort_unstable();
+    /// assert_eq!(vec, [1, 2, 3]);
+    /// ```
+    #[inline]
+    #[stable(feature = "map_into_keys_values", since = "1.54.0")]
+    pub fn into_values(self) -> IntoValues<K, V> {
+        IntoValues { inner: self.into_iter() }
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
@@ -553,6 +607,29 @@ impl<K, V, S> HashMap<K, V, S> {
         F: FnMut(&K, &mut V) -> bool,
     {
         DrainFilter { base: self.base.drain_filter(pred) }
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// The elements are visited in unsorted (and unspecified) order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x*10)).collect();
+    /// map.retain(|&k, _| k % 2 == 0);
+    /// assert_eq!(map.len(), 4);
+    /// ```
+    #[inline]
+    #[stable(feature = "retain_hash_collection", since = "1.18.0")]
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&K, &mut V) -> bool,
+    {
+        self.base.retain(f)
     }
 
     /// Clears the map, removing all key-value pairs. Keeps the allocated memory
@@ -936,83 +1013,6 @@ where
         Q: Hash + Eq,
     {
         self.base.remove_entry(k)
-    }
-
-    /// Retains only the elements specified by the predicate.
-    ///
-    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
-    /// The elements are visited in unsorted (and unspecified) order.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let mut map: HashMap<i32, i32> = (0..8).map(|x| (x, x*10)).collect();
-    /// map.retain(|&k, _| k % 2 == 0);
-    /// assert_eq!(map.len(), 4);
-    /// ```
-    #[inline]
-    #[stable(feature = "retain_hash_collection", since = "1.18.0")]
-    pub fn retain<F>(&mut self, f: F)
-    where
-        F: FnMut(&K, &mut V) -> bool,
-    {
-        self.base.retain(f)
-    }
-
-    /// Creates a consuming iterator visiting all the keys in arbitrary order.
-    /// The map cannot be used after calling this.
-    /// The iterator element type is `K`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let map = HashMap::from([
-    ///     ("a", 1),
-    ///     ("b", 2),
-    ///     ("c", 3),
-    /// ]);
-    ///
-    /// let mut vec: Vec<&str> = map.into_keys().collect();
-    /// // The `IntoKeys` iterator produces keys in arbitrary order, so the
-    /// // keys must be sorted to test them against a sorted array.
-    /// vec.sort_unstable();
-    /// assert_eq!(vec, ["a", "b", "c"]);
-    /// ```
-    #[inline]
-    #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-    pub fn into_keys(self) -> IntoKeys<K, V> {
-        IntoKeys { inner: self.into_iter() }
-    }
-
-    /// Creates a consuming iterator visiting all the values in arbitrary order.
-    /// The map cannot be used after calling this.
-    /// The iterator element type is `V`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::HashMap;
-    ///
-    /// let map = HashMap::from([
-    ///     ("a", 1),
-    ///     ("b", 2),
-    ///     ("c", 3),
-    /// ]);
-    ///
-    /// let mut vec: Vec<i32> = map.into_values().collect();
-    /// // The `IntoValues` iterator produces values in arbitrary order, so
-    /// // the values must be sorted to test them against a sorted array.
-    /// vec.sort_unstable();
-    /// assert_eq!(vec, [1, 2, 3]);
-    /// ```
-    #[inline]
-    #[stable(feature = "map_into_keys_values", since = "1.54.0")]
-    pub fn into_values(self) -> IntoValues<K, V> {
-        IntoValues { inner: self.into_iter() }
     }
 }
 
