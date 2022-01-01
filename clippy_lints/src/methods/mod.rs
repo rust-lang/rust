@@ -2535,11 +2535,17 @@ impl SelfKind {
             implements_trait(cx, ty, trait_def_id, &[parent_ty.into()])
         }
 
+        fn matches_none<'a>(cx: &LateContext<'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
+            !matches_value(cx, parent_ty, ty)
+                && !matches_ref(cx, hir::Mutability::Not, parent_ty, ty)
+                && !matches_ref(cx, hir::Mutability::Mut, parent_ty, ty)
+        }
+
         match self {
             Self::Value => matches_value(cx, parent_ty, ty),
             Self::Ref => matches_ref(cx, hir::Mutability::Not, parent_ty, ty) || ty == parent_ty && is_copy(cx, ty),
             Self::RefMut => matches_ref(cx, hir::Mutability::Mut, parent_ty, ty),
-            Self::No => ty != parent_ty,
+            Self::No => matches_none(cx, parent_ty, ty),
         }
     }
 
