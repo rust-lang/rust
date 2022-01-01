@@ -30,7 +30,7 @@ fn main() {
         1_234.123_f32,
         1.123_4_f32,
     );
-    let _bad = (0b110110_i64, 0xcafebabe_usize, 123456_f32, 1.234567_f32);
+    let _bad = (0b110110_i64, 0x12345678_usize, 123456_f32, 1.234567_f32);
     let _good_sci = 1.1234e1;
     let _bad_sci = 1.123456e1;
 
