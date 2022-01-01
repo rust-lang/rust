@@ -59,8 +59,28 @@ fn path() {
     check_prefix(PrefixEntryPoint::Path, "foo::<> baz", "foo::<>");
     check_prefix(PrefixEntryPoint::Path, "foo<> baz", "foo<>");
     check_prefix(PrefixEntryPoint::Path, "Fn() -> i32?", "Fn() -> i32");
-    // FIXME: this shouldn't be accepted as path actually.
+    // FIXME: This shouldn't be accepted as path actually.
     check_prefix(PrefixEntryPoint::Path, "<_>::foo", "<_>::foo");
+}
+
+#[test]
+fn item() {
+    // FIXME: This shouldn't consume the semicolon.
+    check_prefix(PrefixEntryPoint::Item, "fn foo() {};", "fn foo() {};");
+    check_prefix(PrefixEntryPoint::Item, "#[attr] pub struct S {} 92", "#[attr] pub struct S {}");
+    check_prefix(PrefixEntryPoint::Item, "item!{}?", "item!{}");
+    check_prefix(PrefixEntryPoint::Item, "????", "?");
+}
+
+#[test]
+fn meta_item() {
+    check_prefix(PrefixEntryPoint::MetaItem, "attr, ", "attr");
+    check_prefix(
+        PrefixEntryPoint::MetaItem,
+        "attr(some token {stream});",
+        "attr(some token {stream})",
+    );
+    check_prefix(PrefixEntryPoint::MetaItem, "path::attr = 2 * 2!", "path::attr = 2 * 2");
 }
 
 fn check_prefix(entry: PrefixEntryPoint, input: &str, prefix: &str) {
