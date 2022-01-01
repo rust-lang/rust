@@ -7,6 +7,8 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::Command;
 
+include!("../dylib_util.rs");
+
 fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
@@ -20,14 +22,14 @@ fn main() {
         Err(_) => 0,
     };
 
-    let mut dylib_path = bootstrap::util::dylib_path();
+    let mut dylib_path = dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir.clone()));
 
     let mut cmd = Command::new(rustdoc);
     cmd.args(&args)
         .arg("--sysroot")
         .arg(&sysroot)
-        .env(bootstrap::util::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+        .env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
     // allow the `rustc_private` feature to link to other unstable crates
@@ -59,7 +61,7 @@ fn main() {
     if verbose > 1 {
         eprintln!(
             "rustdoc command: {:?}={:?} {:?}",
-            bootstrap::util::dylib_path_var(),
+            dylib_path_var(),
             env::join_paths(&dylib_path).unwrap(),
             cmd,
         );
