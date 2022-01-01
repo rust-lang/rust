@@ -712,10 +712,10 @@ fn test_pat() {
 
     // PatKind::Range
     assert_eq!(stringify_pat!(..1), "..1");
-    assert_eq!(stringify_pat!(0..), "0 .."); // FIXME
-    assert_eq!(stringify_pat!(0..1), "0 ..1");
-    assert_eq!(stringify_pat!(0..=1), "0 ..=1");
-    assert_eq!(stringify_pat!(-2..=-1), "-2 ..=-1");
+    assert_eq!(stringify_pat!(0..), "0..");
+    assert_eq!(stringify_pat!(0..1), "0..1");
+    assert_eq!(stringify_pat!(0..=1), "0..=1");
+    assert_eq!(stringify_pat!(-2..=-1), "-2..=-1");
 
     // PatKind::Slice
     assert_eq!(stringify_pat!([]), "[]");

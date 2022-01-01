@@ -2,7 +2,7 @@ error: the range pattern here has ambiguous interpretation
   --> $DIR/range-inclusive-pattern-precedence.rs:15:10
    |
 LL |         &10..=15 => {}
-   |          ^^^^^^^ help: add parentheses to clarify the precedence: `(10 ..=15)`
+   |          ^^^^^^^ help: add parentheses to clarify the precedence: `(10..=15)`
 
 warning: `...` range patterns are deprecated
   --> $DIR/range-inclusive-pattern-precedence.rs:11:9
