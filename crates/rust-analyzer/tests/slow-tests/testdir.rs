@@ -52,7 +52,9 @@ impl Drop for TestDir {
         if self.keep {
             return;
         }
-        remove_dir_all(&self.path).unwrap()
+        remove_dir_all(&self.path).unwrap_or_else(|err| {
+            panic!("failed to remove temporary directory {}: {}", self.path.display(), err)
+        })
     }
 }
 
