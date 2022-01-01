@@ -723,7 +723,10 @@ impl Config {
         FilesConfig {
             watcher: match self.data.files_watcher.as_str() {
                 "notify" => FilesWatcher::Notify,
-                "client" | _ => FilesWatcher::Client,
+                "client" if self.did_change_watched_files_dynamic_registration() => {
+                    FilesWatcher::Client
+                }
+                _ => FilesWatcher::Notify,
             },
             exclude: self.data.files_excludeDirs.iter().map(|it| self.root_path.join(it)).collect(),
         }
