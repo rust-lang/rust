@@ -16,7 +16,7 @@ use crate::{
 pub(super) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, attr: &ast::Attr) {
     let core = ctx.famous_defs().core();
     let existing_derives: FxHashSet<_> =
-        ctx.sema.resolve_derive_macro(attr).into_iter().flatten().collect();
+        ctx.sema.resolve_derive_macro(attr).into_iter().flatten().flatten().collect();
 
     for (name, mac) in get_derives_in_scope(ctx) {
         if existing_derives.contains(&mac) {

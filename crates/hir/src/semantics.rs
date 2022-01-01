@@ -10,7 +10,7 @@ use hir_def::{
     resolver::{self, HasResolver, Resolver, TypeNs},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
-use hir_expand::{name::AsName, ExpansionInfo, MacroCallId, MacroCallLoc};
+use hir_expand::{name::AsName, ExpansionInfo, MacroCallId};
 use hir_ty::{associated_type_shorthand_candidates, Interner};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -160,7 +160,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.expand_attr_macro(item)
     }
 
-    pub fn resolve_derive_macro(&self, derive: &ast::Attr) -> Option<Vec<MacroDef>> {
+    pub fn resolve_derive_macro(&self, derive: &ast::Attr) -> Option<Vec<Option<MacroDef>>> {
         self.imp.resolve_derive_macro(derive)
     }
 
@@ -447,14 +447,11 @@ impl<'db> SemanticsImpl<'db> {
         Some(node)
     }
 
-    fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<MacroDef>> {
+    fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<Option<MacroDef>>> {
         let res = self
             .derive_macro_calls(attr)?
-            .iter()
-            .map(|&call| {
-                let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call);
-                MacroDef { id: loc.def }
-            })
+            .into_iter()
+            .map(|call| Some(MacroDef { id: self.db.lookup_intern_macro_call(call?).def }))
             .collect();
         Some(res)
     }
@@ -462,9 +459,9 @@ impl<'db> SemanticsImpl<'db> {
     fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<SyntaxNode>> {
         let res: Vec<_> = self
             .derive_macro_calls(attr)?
-            .iter()
-            .map(|call| call.as_file())
-            .flat_map(|file_id| {
+            .into_iter()
+            .flat_map(|call| {
+                let file_id = call?.as_file();
                 let node = self.db.parse_or_expand(file_id)?;
                 self.cache(node.clone(), file_id);
                 Some(node)
@@ -473,7 +470,7 @@ impl<'db> SemanticsImpl<'db> {
         Some(res)
     }
 
-    fn derive_macro_calls(&self, attr: &ast::Attr) -> Option<Vec<MacroCallId>> {
+    fn derive_macro_calls(&self, attr: &ast::Attr) -> Option<Vec<Option<MacroCallId>>> {
         let item = attr.syntax().parent().and_then(ast::Item::cast)?;
         let file_id = self.find_file(item.syntax()).file_id;
         let item = InFile::new(file_id, &item);

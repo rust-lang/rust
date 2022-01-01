@@ -8,7 +8,7 @@ use hir_expand::{name::Name, AstId, MacroCallId, MacroDefKind};
 use once_cell::sync::Lazy;
 use profile::Count;
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use stdx::format_to;
 use syntax::ast;
 
@@ -64,7 +64,10 @@ pub struct ItemScope {
     // be all resolved to the last one defined if shadowing happens.
     legacy_macros: FxHashMap<Name, MacroDefId>,
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
-    derive_macros: FxHashMap<AstId<ast::Item>, SmallVec<[(AttrId, MacroCallId); 1]>>,
+    /// The derive macro invocations in this scope, keyed by the owner item over the actual derive attributes
+    /// paired with the derive macro invocations for the specific attribute.
+    derive_macros:
+        FxHashMap<AstId<ast::Item>, SmallVec<[(AttrId, SmallVec<[Option<MacroCallId>; 1]>); 1]>>,
 }
 
 pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
@@ -199,19 +202,40 @@ impl ItemScope {
         self.attr_macros.iter().map(|(k, v)| (*k, *v))
     }
 
-    pub(crate) fn add_derive_macro_invoc(
+    pub(crate) fn set_derive_macro_invoc(
         &mut self,
         item: AstId<ast::Item>,
         call: MacroCallId,
         attr_id: AttrId,
+        idx: usize,
     ) {
-        self.derive_macros.entry(item).or_default().push((attr_id, call));
+        if let Some(derives) = self.derive_macros.get_mut(&item) {
+            if let Some((_, invocs)) = derives.iter_mut().find(|&&mut (id, _)| id == attr_id) {
+                invocs[idx] = Some(call);
+            }
+        }
+    }
+
+    /// We are required to set this up front as derive invocation recording happens out of order
+    /// due to the fixed pointer iteration loop being able to record some derives later than others
+    /// independent of their indices.
+    pub(crate) fn init_derive_attribute(
+        &mut self,
+        item: AstId<ast::Item>,
+        attr_id: AttrId,
+        len: usize,
+    ) {
+        self.derive_macros.entry(item).or_default().push((attr_id, smallvec![None; len]));
     }
 
     pub(crate) fn derive_macro_invocs(
         &self,
-    ) -> impl Iterator<Item = (AstId<ast::Item>, &[(AttrId, MacroCallId)])> + '_ {
-        self.derive_macros.iter().map(|(k, v)| (*k, v.as_ref()))
+    ) -> impl Iterator<
+        Item = (AstId<ast::Item>, impl Iterator<Item = (AttrId, &[Option<MacroCallId>])>),
+    > + '_ {
+        self.derive_macros
+            .iter()
+            .map(|(k, v)| (*k, v.iter().map(|(attr_id, invocs)| (*attr_id, &**invocs))))
     }
 
     pub(crate) fn unnamed_trait_vis(&self, tr: TraitId) -> Option<Visibility> {
