@@ -18,7 +18,6 @@ pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
 use crate::util::exe;
 use build_helper::t;
-use merge::Merge;
 use serde::Deserialize;
 
 macro_rules! check_ci_llvm {
@@ -334,6 +333,10 @@ struct TomlConfig {
     profile: Option<String>,
 }
 
+trait Merge {
+    fn merge(&mut self, other: Self);
+}
+
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
@@ -357,6 +360,8 @@ impl Merge for TomlConfig {
     }
 }
 
+// We are using a decl macro instead of a derive proc macro here to reduce the compile time of
+// rustbuild.
 macro_rules! derive_merge {
     ($(#[$attr:meta])* struct $name:ident {
         $($field:ident: $field_ty:ty,)*
@@ -369,7 +374,9 @@ macro_rules! derive_merge {
         impl Merge for $name {
             fn merge(&mut self, other: Self) {
                 $(
-                    Merge::merge(&mut self.$field, other.$field);
+                    if !self.$field.is_some() {
+                        self.$field = other.$field;
+                    }
                 )*
             }
         }
