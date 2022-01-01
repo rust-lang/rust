@@ -119,7 +119,7 @@ fn map_try_fold<'a, T, B, Acc, R>(
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 impl<B, I: ~const Iterator, F> const Iterator for Map<I, F>
 where
     F: ~const FnMut(I::Item) -> B + ~const Drop,

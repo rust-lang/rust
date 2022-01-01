@@ -229,7 +229,7 @@ pub trait IntoIterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 impl<I: Iterator> const IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;
@@ -346,21 +346,28 @@ pub trait Extend<A> {
     ///
     /// The default implementation does nothing.
     #[unstable(feature = "extend_one", issue = "72631")]
+    #[default_method_body_is_const]
     fn extend_reserve(&mut self, additional: usize) {
         let _ = additional;
     }
 }
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
-impl Extend<()> for () {
-    fn extend<T: IntoIterator<Item = ()>>(&mut self, iter: T) {
-        iter.into_iter().for_each(drop)
+#[rustc_const_unstable(feature = "const_extend", issue = "92475")]
+impl const Extend<()> for () {
+    fn extend<T: ~const IntoIterator<Item = ()>>(&mut self, iter: T)
+    where
+        T::IntoIter: ~const Iterator<Item = ()>,
+        T::IntoIter: ~const Drop,
+    {
+        let mut iter = iter.into_iter();
+        while let Some(()) = iter.next() {}
     }
     fn extend_one(&mut self, _item: ()) {}
 }
 
 #[stable(feature = "extend_for_tuple", since = "1.56.0")]
-#[rustc_const_unstable(feature = "const_extend", issue = "none")]
+#[rustc_const_unstable(feature = "const_extend", issue = "92475")]
 impl<A, B, ExtendA, ExtendB> const Extend<(A, B)> for (ExtendA, ExtendB)
 where
     ExtendA: ~const Extend<A>,

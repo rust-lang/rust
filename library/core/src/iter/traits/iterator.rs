@@ -3905,7 +3905,7 @@ pub trait Iterator {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_iter", issue = "none")]
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 impl<I: ~const Iterator + ?Sized> const Iterator for &mut I {
     type Item = I::Item;
     #[inline]

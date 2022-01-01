@@ -1192,7 +1192,7 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "none")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
 pub const fn min_by<T, F>(v1: T, v2: T, compare: F) -> T
 where
     F: ~const FnOnce(&T, &T) -> Ordering,
@@ -1261,7 +1261,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "cmp_min_max_by", since = "1.53.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "none")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
 pub const fn max_by<T, F>(v1: T, v2: T, compare: F) -> T
 where
     F: ~const FnOnce(&T, &T) -> Ordering,
