@@ -101,6 +101,14 @@ impl<'a> Project<'a> {
         let mut config = Config::new(
             tmp_dir_path,
             lsp_types::ClientCapabilities {
+                workspace: Some(lsp_types::WorkspaceClientCapabilities {
+                    did_change_watched_files: Some(
+                        lsp_types::DidChangeWatchedFilesClientCapabilities {
+                            dynamic_registration: Some(true),
+                        },
+                    ),
+                    ..Default::default()
+                }),
                 text_document: Some(lsp_types::TextDocumentClientCapabilities {
                     definition: Some(lsp_types::GotoCapability {
                         link_support: Some(true),
