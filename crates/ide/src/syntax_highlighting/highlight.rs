@@ -3,7 +3,7 @@
 use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
-    helpers::{try_resolve_derive_input, FamousDefs},
+    helpers::FamousDefs,
     RootDatabase, SymbolKind,
 };
 use rustc_hash::FxHashMap;
@@ -40,13 +40,8 @@ pub(super) fn token(
         BYTE => HlTag::ByteLiteral.into(),
         CHAR => HlTag::CharLiteral.into(),
         IDENT if parent_matches::<ast::TokenTree>(&token) => {
-            match token.ancestors().nth(2).and_then(ast::Attr::cast) {
-                Some(attr) => {
-                    match try_resolve_derive_input(sema, &attr, &ast::Ident::cast(token).unwrap()) {
-                        Some(res) => highlight_def(sema, krate, Definition::from(res)),
-                        None => HlTag::None.into(),
-                    }
-                }
+            match sema.resolve_derive_ident(&ast::Ident::cast(token).unwrap()) {
+                Some(res) => highlight_def(sema, krate, Definition::from(res)),
                 None => HlTag::None.into(),
             }
         }

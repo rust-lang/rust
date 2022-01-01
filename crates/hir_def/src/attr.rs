@@ -720,11 +720,8 @@ impl Attr {
         Self::from_src(db, ast, hygiene, id)
     }
 
-    /// Parses this attribute as a `#[derive]`, returns an iterator that yields all contained paths
-    /// to derive macros.
-    ///
-    /// Returns `None` when the attribute does not have a well-formed `#[derive]` attribute input.
-    pub(crate) fn parse_derive(&self) -> Option<impl Iterator<Item = ModPath> + '_> {
+    /// Parses this attribute as a token tree consisting of comma separated paths.
+    pub fn parse_path_comma_token_tree(&self) -> Option<impl Iterator<Item = ModPath> + '_> {
         let args = match self.input.as_deref() {
             Some(AttrInput::TokenTree(args, _)) => args,
             _ => return None,

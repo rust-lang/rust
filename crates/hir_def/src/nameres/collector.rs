@@ -1145,7 +1145,7 @@ impl DefCollector<'_> {
                             }
                         }
 
-                        match attr.parse_derive() {
+                        match attr.parse_path_comma_token_tree() {
                             Some(derive_macros) => {
                                 let mut len = 0;
                                 for (idx, path) in derive_macros.enumerate() {

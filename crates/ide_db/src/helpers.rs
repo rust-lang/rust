@@ -74,26 +74,6 @@ pub fn get_path_at_cursor_in_tt(cursor: &ast::Ident) -> Option<ast::Path> {
         })
 }
 
-/// Parses and resolves the path at the cursor position in the given attribute, if it is a derive.
-/// This special case is required because the derive macro is a compiler builtin that discards the input derives.
-pub fn try_resolve_derive_input(
-    sema: &hir::Semantics<RootDatabase>,
-    attr: &ast::Attr,
-    cursor: &ast::Ident,
-) -> Option<PathResolution> {
-    let path = get_path_in_derive_attr(sema, attr, cursor)?;
-    let scope = sema.scope(attr.syntax());
-    // FIXME: This double resolve shouldn't be necessary
-    // It's only here so we prefer macros over other namespaces
-    match scope.speculative_resolve_as_mac(&path) {
-        Some(mac) if mac.kind() == hir::MacroKind::Derive => Some(PathResolution::Macro(mac)),
-        Some(_) => return None,
-        None => scope
-            .speculative_resolve(&path)
-            .filter(|res| matches!(res, PathResolution::Def(ModuleDef::Module(_)))),
-    }
-}
-
 /// Picks the token with the highest rank returned by the passed in function.
 pub fn pick_best_token(
     tokens: TokenAtOffset<SyntaxToken>,

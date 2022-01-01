@@ -18,13 +18,14 @@ use smallvec::{smallvec, SmallVec};
 use syntax::{
     algo::skip_trivia_token,
     ast::{self, HasAttrs, HasGenericParams, HasLoopBody},
-    match_ast, AstNode, Direction, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextSize,
+    match_ast, AstNode, AstToken, Direction, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken,
+    TextSize, T,
 };
 
 use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
-    source_analyzer::{resolve_hir_path, resolve_hir_path_as_macro, SourceAnalyzer},
+    source_analyzer::{resolve_hir_path, SourceAnalyzer},
     Access, AssocItem, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource,
     HirFileId, Impl, InFile, Label, LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path,
     ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
@@ -352,6 +353,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_bind_pat_to_const(&self, pat: &ast::IdentPat) -> Option<ModuleDef> {
         self.imp.resolve_bind_pat_to_const(pat)
+    }
+
+    pub fn resolve_derive_ident(&self, ident: &ast::Ident) -> Option<PathResolution> {
+        self.imp.resolve_derive_ident(ident)
     }
 
     // FIXME: use this instead?
@@ -894,6 +899,64 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(pat.syntax()).resolve_bind_pat_to_const(self.db, pat)
     }
 
+    fn resolve_derive_ident(&self, ident: &ast::Ident) -> Option<PathResolution> {
+        // derive macros are always at depth 2, tokentree -> meta -> attribute
+        let syntax = ident.syntax();
+        let attr = syntax.ancestors().nth(2).and_then(ast::Attr::cast)?;
+
+        let tt = attr.token_tree()?;
+        if !tt.syntax().text_range().contains_range(ident.syntax().text_range()) {
+            return None;
+        }
+
+        // Fetch hir::Attr definition
+        // FIXME: Move this to ToDef impl?
+        let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+        let attr_pos = adt.attrs().position(|it| it == attr)?;
+        let attrs = {
+            let file_id = self.find_file(adt.syntax()).file_id;
+            let adt = InFile::new(file_id, adt);
+            let def = self.with_ctx(|ctx| ctx.adt_to_def(adt))?;
+            self.db.attrs(def.into())
+        };
+        let attr_def = attrs.get(attr_pos)?;
+
+        let mut derive_paths = attr_def.parse_path_comma_token_tree()?;
+        let derives = self.resolve_derive_macro(&attr)?;
+
+        let derive_idx = tt
+            .syntax()
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .take_while(|tok| tok != syntax)
+            .filter(|t| t.kind() == T![,])
+            .count();
+        let path_segment_idx = syntax
+            .siblings_with_tokens(Direction::Prev)
+            .filter_map(SyntaxElement::into_token)
+            .take_while(|tok| matches!(tok.kind(), T![:] | T![ident]))
+            .filter(|tok| tok.kind() == T![ident])
+            .count();
+
+        let mut mod_path = derive_paths.nth(derive_idx)?;
+
+        if path_segment_idx < mod_path.len() {
+            // the path for the given ident is a qualifier, resolve to module if possible
+            while path_segment_idx < mod_path.len() {
+                mod_path.pop_segment();
+            }
+            resolve_hir_path(
+                self.db,
+                &self.scope(attr.syntax()).resolver,
+                &Path::from_known_path(mod_path, []),
+            )
+            .filter(|res| matches!(res, PathResolution::Def(ModuleDef::Module(_))))
+        } else {
+            // otherwise fetch the derive
+            derives.get(derive_idx)?.map(PathResolution::Macro)
+        }
+    }
+
     fn record_literal_missing_fields(&self, literal: &ast::RecordExpr) -> Vec<(Field, Type)> {
         self.analyze(literal.syntax())
             .record_literal_missing_fields(self.db, literal)
@@ -1229,15 +1292,5 @@ impl<'a> SemanticsScope<'a> {
         let ctx = body::LowerCtx::new(self.db.upcast(), self.file_id);
         let path = Path::from_src(path.clone(), &ctx)?;
         resolve_hir_path(self.db, &self.resolver, &path)
-    }
-
-    /// Resolve a path as-if it was written at the given scope. This is
-    /// necessary a heuristic, as it doesn't take hygiene into account.
-    // FIXME: This special casing solely exists for attributes for now
-    // ideally we should have a path resolution infra that properly knows about overlapping namespaces
-    pub fn speculative_resolve_as_mac(&self, path: &ast::Path) -> Option<MacroDef> {
-        let ctx = body::LowerCtx::new(self.db.upcast(), self.file_id);
-        let path = Path::from_src(path.clone(), &ctx)?;
-        resolve_hir_path_as_macro(self.db, &self.resolver, &path)
     }
 }
