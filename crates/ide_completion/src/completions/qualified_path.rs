@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use hir::ScopeDef;
+use hir::{ScopeDef, Trait};
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
@@ -26,6 +26,25 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         }) => (qualifier, use_tree_parent, kind),
         _ => return,
     };
+
+    // special case `<_>::$0` as this doesn't resolve to anything.
+    if path.qualifier().is_none() {
+        if matches!(
+            path.segment().and_then(|it| it.kind()),
+            Some(ast::PathSegmentKind::Type {
+                type_ref: Some(ast::Type::InferType(_)),
+                trait_ref: None,
+            })
+        ) {
+            cov_mark::hit!(completion_type_anchor_empty);
+            ctx.scope
+                .visible_traits()
+                .into_iter()
+                .flat_map(|it| Trait::from(it).items(ctx.sema.db))
+                .for_each(|item| add_assoc_item(acc, ctx, item));
+            return;
+        }
+    }
 
     let resolution = match ctx.sema.resolve_path(path) {
         Some(res) => res,
@@ -705,6 +724,30 @@ pub struct S;
 pub mod m {}
             "#,
             expect![[r#""#]],
+        )
+    }
+
+    #[test]
+    fn type_anchor_empty() {
+        cov_mark::check!(completion_type_anchor_empty);
+        check(
+            r#"
+trait Foo {
+    fn foo() -> Self;
+}
+struct Bar;
+impl Foo for Bar {
+    fn foo() -> {
+        Bar
+    }
+}
+fn bar() -> Bar {
+    <_>::$0
+}
+"#,
+            expect![[r#"
+                fn foo() (as Foo) fn() -> Self
+            "#]],
         )
     }
 }
