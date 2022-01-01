@@ -7,28 +7,29 @@ pub(crate) mod printf {
     pub enum Substitution<'a> {
         /// A formatted output substitution with its internal byte offset.
         Format(Format<'a>),
-        /// A literal `%%` escape.
-        Escape,
+        /// A literal `%%` escape, with its start and end indices.
+        Escape((usize, usize)),
     }
 
     impl<'a> Substitution<'a> {
         pub fn as_str(&self) -> &str {
             match *self {
                 Substitution::Format(ref fmt) => fmt.span,
-                Substitution::Escape => "%%",
+                Substitution::Escape(_) => "%%",
             }
         }
 
         pub fn position(&self) -> Option<InnerSpan> {
             match *self {
                 Substitution::Format(ref fmt) => Some(fmt.position),
-                _ => None,
+                Substitution::Escape((start, end)) => Some(InnerSpan::new(start, end)),
             }
         }
 
         pub fn set_position(&mut self, start: usize, end: usize) {
-            if let Substitution::Format(ref mut fmt) = self {
-                fmt.position = InnerSpan::new(start, end);
+            match self {
+                Substitution::Format(ref mut fmt) => fmt.position = InnerSpan::new(start, end),
+                Substitution::Escape(ref mut pos) => *pos = (start, end),
             }
         }
 
@@ -39,7 +40,7 @@ pub(crate) mod printf {
         pub fn translate(&self) -> Result<String, Option<String>> {
             match *self {
                 Substitution::Format(ref fmt) => fmt.translate(),
-                Substitution::Escape => Err(None),
+                Substitution::Escape(_) => Err(None),
             }
         }
     }
@@ -304,14 +305,9 @@ pub(crate) mod printf {
         fn next(&mut self) -> Option<Self::Item> {
             let (mut sub, tail) = parse_next_substitution(self.s)?;
             self.s = tail;
-            match sub {
-                Substitution::Format(_) => {
-                    if let Some(inner_span) = sub.position() {
-                        sub.set_position(inner_span.start + self.pos, inner_span.end + self.pos);
-                        self.pos += inner_span.end;
-                    }
-                }
-                Substitution::Escape => self.pos += 2,
+            if let Some(InnerSpan { start, end }) = sub.position() {
+                sub.set_position(start + self.pos, end + self.pos);
+                self.pos += end;
             }
             Some(sub)
         }
@@ -340,7 +336,7 @@ pub(crate) mod printf {
         let at = {
             let start = s.find('%')?;
             if let '%' = s[start + 1..].chars().next()? {
-                return Some((Substitution::Escape, &s[start + 2..]));
+                return Some((Substitution::Escape((start, start + 2)), &s[start + 2..]));
             }
 
             Cur::new_at(s, start)
