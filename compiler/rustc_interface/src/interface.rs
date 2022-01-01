@@ -11,7 +11,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{ErrorReported, Handler};
 use rustc_lint::LintStore;
 use rustc_middle::ty;
-use rustc_parse::new_parser_from_source_str;
+use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_session::config::{self, ErrorOutputType, Input, OutputFilenames};
 use rustc_session::early_error;
@@ -91,7 +91,6 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                     s
                 )));
                 let filename = FileName::cfg_spec_source_code(&s);
-                let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
 
                 macro_rules! error {
                     ($reason: expr) => {
@@ -102,26 +101,27 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                     };
                 }
 
-                match &mut parser.parse_meta_item() {
-                    Ok(meta_item) if parser.token == token::Eof => {
-                        if meta_item.path.segments.len() != 1 {
-                            error!("argument key must be an identifier");
+                match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
+                    Ok(mut parser) => match &mut parser.parse_meta_item() {
+                        Ok(meta_item) if parser.token == token::Eof => {
+                            if meta_item.path.segments.len() != 1 {
+                                error!("argument key must be an identifier");
+                            }
+                            match &meta_item.kind {
+                                MetaItemKind::List(..) => {}
+                                MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
+                                    error!("argument value must be a string");
+                                }
+                                MetaItemKind::NameValue(..) | MetaItemKind::Word => {
+                                    let ident = meta_item.ident().expect("multi-segment cfg key");
+                                    return (ident.name, meta_item.value_str());
+                                }
+                            }
                         }
-                        match &meta_item.kind {
-                            MetaItemKind::List(..) => {
-                                error!(r#"expected `key` or `key="value"`"#);
-                            }
-                            MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
-                                error!("argument value must be a string");
-                            }
-                            MetaItemKind::NameValue(..) | MetaItemKind::Word => {
-                                let ident = meta_item.ident().expect("multi-segment cfg key");
-                                return (ident.name, meta_item.value_str());
-                            }
-                        }
-                    }
-                    Ok(..) => {}
-                    Err(err) => err.cancel(),
+                        Ok(..) => {}
+                        Err(err) => err.cancel(),
+                    },
+                    Err(errs) => errs.into_iter().for_each(|mut err| err.cancel()),
                 }
 
                 error!(r#"expected `key` or `key="value"`"#);
