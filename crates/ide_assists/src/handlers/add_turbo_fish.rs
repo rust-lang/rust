@@ -1,4 +1,5 @@
 use ide_db::defs::{Definition, NameRefClass};
+use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxKind, T};
 
 use crate::{
@@ -77,13 +78,22 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         }
     }
 
+    let number_of_arguments = generics.len();
+    let fish_head = std::iter::repeat("_").take(number_of_arguments).collect_vec().join(",");
+
     acc.add(
         AssistId("add_turbo_fish", AssistKind::RefactorRewrite),
         "Add `::<>`",
         ident.text_range(),
         |builder| match ctx.config.snippet_cap {
-            Some(cap) => builder.insert_snippet(cap, ident.text_range().end(), "::<${0:_}>"),
-            None => builder.insert(ident.text_range().end(), "::<_>"),
+            Some(cap) => {
+                let snip = format!("::<${{0:{}}}>", fish_head);
+                builder.insert_snippet(cap, ident.text_range().end(), snip)
+            }
+            None => {
+                let snip = format!("::<{}>", fish_head);
+                builder.insert(ident.text_range().end(), snip);
+            }
         },
     )
 }
@@ -108,6 +118,44 @@ fn main() {
 fn make<T>() -> T {}
 fn main() {
     make::<${0:_}>();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_turbo_fish_function_multiple_generic_types() {
+        check_assist(
+            add_turbo_fish,
+            r#"
+fn make<T, A>() -> T {}
+fn main() {
+    make$0();
+}
+"#,
+            r#"
+fn make<T, A>() -> T {}
+fn main() {
+    make::<${0:_,_}>();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_turbo_fish_function_many_generic_types() {
+        check_assist(
+            add_turbo_fish,
+            r#"
+fn make<T, A, B, C, D, E, F>() -> T {}
+fn main() {
+    make$0();
+}
+"#,
+            r#"
+fn make<T, A, B, C, D, E, F>() -> T {}
+fn main() {
+    make::<${0:_,_,_,_,_,_,_}>();
 }
 "#,
         );
