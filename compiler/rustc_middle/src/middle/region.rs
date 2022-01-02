@@ -234,6 +234,8 @@ pub struct ScopeTree {
     /// escape into 'static and should have no local cleanup scope.
     rvalue_scopes: FxHashMap<hir::ItemLocalId, Option<Scope>>,
 
+    eager_scopes: FxHashMap<hir::ItemLocalId, Scope>,
+
     /// If there are any `yield` nested within a scope, this map
     /// stores the `Span` of the last one and its index in the
     /// postorder of the Visitor traversal on the HIR.
@@ -358,6 +360,32 @@ impl ScopeTree {
         self.rvalue_scopes.insert(var, lifetime);
     }
 
+    pub fn record_local_access_scope(&mut self, var: hir::ItemLocalId, proposed_lifetime: Scope) {
+        debug!("record_local_access_scope(sub={:?}, sup={:?})", var, proposed_lifetime);
+        let mut id = Scope { id: var, data: ScopeData::Node };
+
+        while let Some(&(p, _)) = self.parent_map.get(&id) {
+            match p.data {
+                ScopeData::Destruction => return,
+                _ => id = p,
+            }
+            if id == proposed_lifetime {
+                // proposed lifetime outlives the destruction lifetime
+                self.record_rvalue_scope(var, Some(proposed_lifetime));
+                return;
+            }
+        }
+    }
+
+    pub fn record_eager_scope(&mut self, var: hir::ItemLocalId, proposed_lifetime: Scope) {
+        if let Some(destruction) = self.temporary_scope(var) {
+            if self.is_subscope_of(destruction, proposed_lifetime) {
+                return;
+            }
+        }
+        self.eager_scopes.insert(var, proposed_lifetime);
+    }
+
     /// Returns the narrowest scope that encloses `id`, if any.
     pub fn opt_encl_scope(&self, id: Scope) -> Option<Scope> {
         self.parent_map.get(&id).cloned().map(|(p, _)| p)
@@ -392,6 +420,9 @@ impl ScopeTree {
                     return Some(id);
                 }
                 _ => id = p,
+            }
+            if let Some(&eager_scope) = self.eager_scopes.get(&id.item_local_id()) {
+                return Some(eager_scope);
             }
         }
 
@@ -444,6 +475,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
             ref var_map,
             ref destruction_scopes,
             ref rvalue_scopes,
+            ref eager_scopes,
             ref yield_in_scope,
         } = *self;
 
@@ -456,6 +488,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
         var_map.hash_stable(hcx, hasher);
         destruction_scopes.hash_stable(hcx, hasher);
         rvalue_scopes.hash_stable(hcx, hasher);
+        eager_scopes.hash_stable(hcx, hasher);
         yield_in_scope.hash_stable(hcx, hasher);
     }
 }

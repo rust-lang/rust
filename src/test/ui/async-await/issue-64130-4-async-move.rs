@@ -10,16 +10,15 @@ impl Client {
     }
 }
 
-async fn get() { }
+async fn get() {}
 
 pub fn foo() -> impl Future + Send {
-    //~^ ERROR future cannot be sent between threads safely
-    let client = Client(Box::new(true));
-    async move {
-        match client.status() {
+    async {
+        //~^ ERROR future cannot be sent between threads safely
+        match Client(Box::new(true)).status() {
             200 => {
                 let _x = get().await;
-            },
+            }
             _ => (),
         }
     }

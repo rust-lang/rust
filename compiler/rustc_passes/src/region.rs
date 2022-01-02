@@ -18,6 +18,7 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
 use rustc_span::Span;
+use smallvec::SmallVec;
 
 use std::mem;
 
@@ -201,6 +202,106 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
     intravisit::walk_stmt(visitor, stmt);
 
     visitor.cx.parent = prev_parent;
+}
+
+fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet<hir::ItemLocalId> {
+    struct LocalAccessResolutionVisitor<'a> {
+        locals: &'a mut FxHashSet<hir::ItemLocalId>,
+    }
+    impl<'a> LocalAccessResolutionVisitor<'a> {
+        fn probe<'b>(&mut self, expr: &'b Expr<'b>) {
+            if self.locals.contains(&expr.hir_id.local_id) {
+                return;
+            }
+            let mut nested_expr = expr;
+            let mut ops = SmallVec::<[_; 4]>::new();
+            enum OpTy {
+                Ref,
+                Deref,
+                Project,
+                Local,
+            }
+            loop {
+                match nested_expr.kind {
+                    hir::ExprKind::Path(hir::QPath::Resolved(
+                        _,
+                        hir::Path { res: hir::def::Res::Local(_), .. },
+                    )) => {
+                        ops.push((nested_expr, OpTy::Local));
+                        break;
+                    }
+                    hir::ExprKind::AddrOf(_, _, subexpr) => {
+                        ops.push((nested_expr, OpTy::Ref));
+                        nested_expr = subexpr;
+                    }
+                    hir::ExprKind::Unary(hir::UnOp::Deref, subexpr) => {
+                        ops.push((nested_expr, OpTy::Deref));
+                        nested_expr = subexpr;
+                    }
+                    hir::ExprKind::Field(subexpr, _) => {
+                        ops.push((nested_expr, OpTy::Project));
+                        nested_expr = subexpr;
+                    }
+                    hir::ExprKind::Index(subexpr, idxexpr) => {
+                        ops.push((nested_expr, OpTy::Project));
+                        nested_expr = subexpr;
+                        intravisit::walk_expr(self, idxexpr);
+                    }
+                    _ => {
+                        drop(ops);
+                        intravisit::walk_expr(self, expr);
+                        return;
+                    }
+                }
+            }
+            let mut ref_level = SmallVec::<[_; 4]>::new();
+            let mut ops_iter = ops.into_iter().rev();
+            ops_iter.next().unwrap();
+            for (expr, op) in ops_iter {
+                match op {
+                    OpTy::Ref => {
+                        ref_level.push(expr);
+                    }
+                    OpTy::Deref => {
+                        if let Some(ref_expr) = ref_level.pop() {
+                            self.locals.insert(ref_expr.hir_id.local_id);
+                        }
+                    }
+                    OpTy::Project => {
+                        ref_level.clear();
+                    }
+                    OpTy::Local => {
+                        panic!("unexpected encounter of Local")
+                    }
+                }
+            }
+            self.locals.insert(expr.hir_id.local_id);
+        }
+    }
+    impl<'a, 'b> Visitor<'a> for LocalAccessResolutionVisitor<'b> {
+        type Map = intravisit::ErasedMap<'a>;
+        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+            NestedVisitorMap::None
+        }
+        fn visit_expr(&mut self, expr: &'a Expr<'a>) {
+            match expr.kind {
+                hir::ExprKind::AddrOf(..)
+                | hir::ExprKind::Unary(hir::UnOp::Deref, _)
+                | hir::ExprKind::Field(..)
+                | hir::ExprKind::Index(..)
+                | hir::ExprKind::Path(..) => self.probe(expr),
+                hir::ExprKind::Block(..)
+                | hir::ExprKind::Closure(..)
+                | hir::ExprKind::ConstBlock(..) => {}
+                _ => intravisit::walk_expr(self, expr),
+            }
+        }
+    }
+    let mut locals = Default::default();
+    let mut resolution_visitor = LocalAccessResolutionVisitor { locals: &mut locals };
+    resolution_visitor.visit_expr(expr);
+    // visitor.terminating_scopes.extend(locals.iter().copied());
+    locals
 }
 
 fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
@@ -396,7 +497,15 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             let expr_cx = visitor.cx;
             visitor.enter_scope(Scope { id: then.hir_id.local_id, data: ScopeData::IfThen });
             visitor.cx.var_parent = visitor.cx.parent;
-            visitor.visit_expr(cond);
+            {
+                visitor.visit_expr(cond);
+                let lifetime = Scope { id: cond.hir_id.local_id, data: ScopeData::Node };
+                for local in mark_local_terminating_scopes(cond) {
+                    if local != cond.hir_id.local_id {
+                        visitor.scope_tree.record_local_access_scope(local, lifetime);
+                    }
+                }
+            }
             visitor.visit_expr(then);
             visitor.cx = expr_cx;
             visitor.visit_expr(otherwise);
@@ -406,9 +515,37 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             let expr_cx = visitor.cx;
             visitor.enter_scope(Scope { id: then.hir_id.local_id, data: ScopeData::IfThen });
             visitor.cx.var_parent = visitor.cx.parent;
-            visitor.visit_expr(cond);
+            {
+                visitor.visit_expr(cond);
+                let lifetime = Scope { id: cond.hir_id.local_id, data: ScopeData::Node };
+                for local in mark_local_terminating_scopes(cond) {
+                    if local != cond.hir_id.local_id {
+                        visitor.scope_tree.record_local_access_scope(local, lifetime);
+                    }
+                }
+            }
             visitor.visit_expr(then);
             visitor.cx = expr_cx;
+        }
+
+        hir::ExprKind::Match(subexpr, arms, _) => {
+            visitor.visit_expr(subexpr);
+            let lifetime = Scope { id: subexpr.hir_id.local_id, data: ScopeData::Node };
+            for local in mark_local_terminating_scopes(subexpr) {
+                if local != subexpr.hir_id.local_id {
+                    visitor.scope_tree.record_local_access_scope(local, lifetime);
+                }
+            }
+            walk_list!(visitor, visit_arm, arms);
+        }
+
+        hir::ExprKind::Index(subexpr, idxexpr) => {
+            visitor.visit_expr(subexpr);
+            visitor.visit_expr(idxexpr);
+            visitor.scope_tree.record_eager_scope(
+                idxexpr.hir_id.local_id,
+                Scope { id: expr.hir_id.local_id, data: ScopeData::Node },
+            );
         }
 
         _ => intravisit::walk_expr(visitor, expr),
@@ -683,10 +820,17 @@ fn resolve_local<'tcx>(
             visitor.scope_tree.record_rvalue_scope(expr.hir_id.local_id, blk_scope);
 
             match expr.kind {
-                hir::ExprKind::AddrOf(_, _, ref subexpr)
-                | hir::ExprKind::Unary(hir::UnOp::Deref, ref subexpr)
-                | hir::ExprKind::Field(ref subexpr, _)
-                | hir::ExprKind::Index(ref subexpr, _) => {
+                hir::ExprKind::AddrOf(_, _, subexpr)
+                | hir::ExprKind::Unary(hir::UnOp::Deref, subexpr)
+                | hir::ExprKind::Field(subexpr, _)
+                | hir::ExprKind::Index(subexpr, _) => {
+                    if let hir::ExprKind::Path(hir::QPath::Resolved(
+                        _,
+                        hir::Path { res: hir::def::Res::Local(_), .. },
+                    )) = &subexpr.kind
+                    {
+                        return;
+                    }
                     expr = &subexpr;
                 }
                 _ => {

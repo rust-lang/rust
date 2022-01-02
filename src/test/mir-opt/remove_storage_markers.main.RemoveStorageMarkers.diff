@@ -71,7 +71,6 @@
 -         StorageDead(_13);                // scope 3 at $DIR/remove_storage_markers.rs:9:16: 9:17
           _6 = const ();                   // scope 3 at $DIR/remove_storage_markers.rs:8:20: 10:6
 -         StorageDead(_12);                // scope 2 at $DIR/remove_storage_markers.rs:10:5: 10:6
--         StorageDead(_9);                 // scope 2 at $DIR/remove_storage_markers.rs:10:5: 10:6
 -         StorageDead(_7);                 // scope 2 at $DIR/remove_storage_markers.rs:10:5: 10:6
 -         StorageDead(_6);                 // scope 2 at $DIR/remove_storage_markers.rs:10:5: 10:6
           _5 = const ();                   // scope 2 at $DIR/remove_storage_markers.rs:8:5: 10:6
@@ -80,7 +79,6 @@
   
       bb3: {
           _0 = const ();                   // scope 2 at $DIR/remove_storage_markers.rs:8:5: 10:6
--         StorageDead(_9);                 // scope 2 at $DIR/remove_storage_markers.rs:10:5: 10:6
 -         StorageDead(_7);                 // scope 2 at $DIR/remove_storage_markers.rs:10:5: 10:6
 -         StorageDead(_6);                 // scope 2 at $DIR/remove_storage_markers.rs:10:5: 10:6
 -         StorageDead(_4);                 // scope 1 at $DIR/remove_storage_markers.rs:10:5: 10:6
@@ -91,6 +89,7 @@
   
       bb4: {
 -         StorageDead(_14);                // scope 5 at $DIR/remove_storage_markers.rs:8:14: 8:19
+-         StorageDead(_9);                 // scope 2 at $DIR/remove_storage_markers.rs:8:18: 8:19
 -         StorageDead(_8);                 // scope 2 at $DIR/remove_storage_markers.rs:8:18: 8:19
           _10 = discriminant(_7);          // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19
           switchInt(move _10) -> [0_isize: bb3, otherwise: bb2]; // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19
