@@ -1,6 +1,7 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
 use rustc_hash::{FxHashMap, FxHashSet};
+use stdx::non_empty_vec::NonEmptyVec;
 use syntax::{
     ast::{self, make::tokens::doc_comment},
     AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
@@ -141,25 +142,26 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
         idx: !0,
         open_range: TextRange::empty(TextSize::of('.')),
     };
-    let mut stack = vec![entry];
+    let mut stack = NonEmptyVec::new(entry);
 
     loop {
-        let entry = stack.last_mut().unwrap();
-        let result = &mut entry.subtree.token_trees;
+        let StackEntry { subtree, .. } = stack.last_mut();
+        let result = &mut subtree.token_trees;
         let (token, range) = match conv.bump() {
             Some(it) => it,
             None => break,
         };
 
-        let k: SyntaxKind = token.kind(&conv);
-        if k == COMMENT {
+        let kind = token.kind(&conv);
+        if kind == COMMENT {
             if let Some(tokens) = conv.convert_doc_comment(&token) {
                 // FIXME: There has to be a better way to do this
                 // Add the comments token id to the converted doc string
                 let id = conv.id_alloc().alloc(range);
                 result.extend(tokens.into_iter().map(|mut tt| {
                     if let tt::TokenTree::Subtree(sub) = &mut tt {
-                        if let tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) = &mut sub.token_trees[2]
+                        if let Some(tt::TokenTree::Leaf(tt::Leaf::Literal(lit))) =
+                            sub.token_trees.get_mut(2)
                         {
                             lit.id = id
                         }
@@ -169,26 +171,26 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             }
             continue;
         }
-
-        result.push(if k.is_punct() && k != UNDERSCORE {
+        let tt = if kind.is_punct() && kind != UNDERSCORE {
             assert_eq!(range.len(), TextSize::of('.'));
 
-            if let Some(delim) = entry.subtree.delimiter {
+            if let Some(delim) = subtree.delimiter {
                 let expected = match delim.kind {
                     tt::DelimiterKind::Parenthesis => T![')'],
                     tt::DelimiterKind::Brace => T!['}'],
                     tt::DelimiterKind::Bracket => T![']'],
                 };
 
-                if k == expected {
-                    let entry = stack.pop().unwrap();
-                    conv.id_alloc().close_delim(entry.idx, Some(range));
-                    stack.last_mut().unwrap().subtree.token_trees.push(entry.subtree.into());
+                if kind == expected {
+                    if let Some(entry) = stack.pop() {
+                        conv.id_alloc().close_delim(entry.idx, Some(range));
+                        stack.last_mut().subtree.token_trees.push(entry.subtree.into());
+                    }
                     continue;
                 }
             }
 
-            let delim = match k {
+            let delim = match kind {
                 T!['('] => Some(tt::DelimiterKind::Parenthesis),
                 T!['{'] => Some(tt::DelimiterKind::Brace),
                 T!['['] => Some(tt::DelimiterKind::Bracket),
@@ -201,36 +203,35 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
                 subtree.delimiter = Some(tt::Delimiter { id, kind });
                 stack.push(StackEntry { subtree, idx, open_range: range });
                 continue;
-            } else {
-                let spacing = match conv.peek() {
-                    Some(next)
-                        if next.kind(&conv).is_trivia()
-                            || next.kind(&conv) == T!['[']
-                            || next.kind(&conv) == T!['{']
-                            || next.kind(&conv) == T!['('] =>
-                    {
-                        tt::Spacing::Alone
-                    }
-                    Some(next) if next.kind(&conv).is_punct() && next.kind(&conv) != UNDERSCORE => {
-                        tt::Spacing::Joint
-                    }
-                    _ => tt::Spacing::Alone,
-                };
-                let char = match token.to_char(&conv) {
-                    Some(c) => c,
-                    None => {
-                        panic!("Token from lexer must be single char: token = {:#?}", token);
-                    }
-                };
-                tt::Leaf::from(tt::Punct { char, spacing, id: conv.id_alloc().alloc(range) }).into()
             }
+
+            let spacing = match conv.peek().map(|next| next.kind(&conv)) {
+                Some(kind)
+                    if !kind.is_trivia()
+                        && kind.is_punct()
+                        && kind != T!['[']
+                        && kind != T!['{']
+                        && kind != T!['(']
+                        && kind != UNDERSCORE =>
+                {
+                    tt::Spacing::Joint
+                }
+                _ => tt::Spacing::Alone,
+            };
+            let char = match token.to_char(&conv) {
+                Some(c) => c,
+                None => {
+                    panic!("Token from lexer must be single char: token = {:#?}", token);
+                }
+            };
+            tt::Leaf::from(tt::Punct { char, spacing, id: conv.id_alloc().alloc(range) }).into()
         } else {
             macro_rules! make_leaf {
                 ($i:ident) => {
                     tt::$i { id: conv.id_alloc().alloc(range), text: token.to_text(conv) }.into()
                 };
             }
-            let leaf: tt::Leaf = match k {
+            let leaf: tt::Leaf = match kind {
                 T![true] | T![false] => make_leaf!(Ident),
                 IDENT => make_leaf!(Ident),
                 UNDERSCORE => make_leaf!(Ident),
@@ -258,15 +259,15 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             };
 
             leaf.into()
-        });
+        };
+        result.push(tt);
     }
 
     // If we get here, we've consumed all input tokens.
     // We might have more than one subtree in the stack, if the delimiters are improperly balanced.
     // Merge them so we're left with one.
-    while stack.len() > 1 {
-        let entry = stack.pop().unwrap();
-        let parent = stack.last_mut().unwrap();
+    while let Some(entry) = stack.pop() {
+        let parent = stack.last_mut();
 
         conv.id_alloc().close_delim(entry.idx, None);
         let leaf: tt::Leaf = tt::Punct {
@@ -283,13 +284,12 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
         parent.subtree.token_trees.extend(entry.subtree.token_trees);
     }
 
-    let subtree = stack.pop().unwrap().subtree;
-    if subtree.token_trees.len() == 1 {
-        if let tt::TokenTree::Subtree(first) = &subtree.token_trees[0] {
-            return first.clone();
-        }
+    let subtree = stack.into_first().subtree;
+    if let [tt::TokenTree::Subtree(first)] = &*subtree.token_trees {
+        first.clone()
+    } else {
+        subtree
     }
-    subtree
 }
 
 /// Returns the textual content of a doc comment block as a quoted string
@@ -320,7 +320,8 @@ fn convert_doc_comment(token: &syntax::SyntaxToken) -> Option<Vec<tt::TokenTree>
     let meta_tkns = vec![mk_ident("doc"), mk_punct('='), mk_doc_literal(&comment)];
 
     // Make `#![]`
-    let mut token_trees = vec![mk_punct('#')];
+    let mut token_trees = Vec::with_capacity(3);
+    token_trees.push(mk_punct('#'));
     if let ast::CommentPlacement::Inner = doc {
         token_trees.push(mk_punct('!'));
     }
@@ -439,8 +440,8 @@ impl<'a> SrcToken<RawConvertor<'a>> for usize {
 impl<'a> TokenConvertor for RawConvertor<'a> {
     type Token = usize;
 
-    fn convert_doc_comment(&self, token: &usize) -> Option<Vec<tt::TokenTree>> {
-        let text = self.lexed.text(*token);
+    fn convert_doc_comment(&self, &token: &usize) -> Option<Vec<tt::TokenTree>> {
+        let text = self.lexed.text(token);
         convert_doc_comment(&doc_comment(text))
     }
 
@@ -568,9 +569,9 @@ impl TokenConvertor for Convertor<'_> {
         }
         self.current = Self::next_token(&mut self.preorder, self.censor);
         let token = if curr.kind().is_punct() {
+            self.punct_offset = Some((curr.clone(), 0.into()));
             let range = curr.text_range();
             let range = TextRange::at(range.start(), TextSize::of('.'));
-            self.punct_offset = Some((curr.clone(), 0.into()));
             (SynToken::Punch(curr, 0.into()), range)
         } else {
             self.punct_offset = None;
