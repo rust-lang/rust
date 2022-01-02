@@ -4,11 +4,10 @@
 use syntax::SmolStr;
 use tt::{Delimiter, Subtree};
 
-use super::ExpandResult;
 use crate::{
     expander::{Binding, Bindings, Fragment},
     parser::{Op, RepeatKind, Separator},
-    ExpandError, MetaTemplate,
+    ExpandError, ExpandResult, MetaTemplate,
 };
 
 impl Bindings {
@@ -17,36 +16,36 @@ impl Bindings {
     }
 
     fn get(&self, name: &str, nesting: &mut [NestingState]) -> Result<&Fragment, ExpandError> {
-        let mut b: &Binding = self.inner.get(name).ok_or_else(|| {
-            ExpandError::BindingError(format!("could not find binding `{}`", name))
-        })?;
+        macro_rules! binding_err {
+            ($($arg:tt)*) => { ExpandError::BindingError(format!($($arg)*)) };
+        }
+
+        let mut b: &Binding = self
+            .inner
+            .get(name)
+            .ok_or_else(|| binding_err!("could not find binding `{}`", name))?;
         for nesting_state in nesting.iter_mut() {
             nesting_state.hit = true;
             b = match b {
                 Binding::Fragment(_) => break,
                 Binding::Nested(bs) => bs.get(nesting_state.idx).ok_or_else(|| {
                     nesting_state.at_end = true;
-                    ExpandError::BindingError(format!("could not find nested binding `{}`", name))
+                    binding_err!("could not find nested binding `{}`", name)
                 })?,
                 Binding::Empty => {
                     nesting_state.at_end = true;
-                    return Err(ExpandError::BindingError(format!(
-                        "could not find empty binding `{}`",
-                        name
-                    )));
+                    return Err(binding_err!("could not find empty binding `{}`", name));
                 }
             };
         }
         match b {
             Binding::Fragment(it) => Ok(it),
-            Binding::Nested(_) => Err(ExpandError::BindingError(format!(
-                "expected simple binding, found nested binding `{}`",
-                name
-            ))),
-            Binding::Empty => Err(ExpandError::BindingError(format!(
-                "expected simple binding, found empty binding `{}`",
-                name
-            ))),
+            Binding::Nested(_) => {
+                Err(binding_err!("expected simple binding, found nested binding `{}`", name))
+            }
+            Binding::Empty => {
+                Err(binding_err!("expected simple binding, found empty binding `{}`", name))
+            }
         }
     }
 }
@@ -109,7 +108,7 @@ fn expand_subtree(
         }
     }
     // drain the elements added in this instance of expand_subtree
-    let tts = arena.drain(start_elements..arena.len()).collect();
+    let tts = arena.drain(start_elements..).collect();
     ExpandResult { value: tt::Subtree { delimiter, token_trees: tts }, err }
 }
 
@@ -193,23 +192,22 @@ fn expand_repeat(
         push_subtree(&mut buf, t);
 
         if let Some(sep) = separator {
-            match sep {
+            has_seps = match sep {
                 Separator::Ident(ident) => {
-                    has_seps = 1;
                     buf.push(tt::Leaf::from(ident.clone()).into());
+                    1
                 }
                 Separator::Literal(lit) => {
-                    has_seps = 1;
                     buf.push(tt::Leaf::from(lit.clone()).into());
+                    1
                 }
-
                 Separator::Puncts(puncts) => {
-                    has_seps = puncts.len();
-                    for punct in puncts {
-                        buf.push(tt::Leaf::from(*punct).into());
+                    for &punct in puncts {
+                        buf.push(tt::Leaf::from(punct).into());
                     }
+                    puncts.len()
                 }
-            }
+            };
         }
 
         if RepeatKind::ZeroOrOne == kind {

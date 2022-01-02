@@ -571,18 +571,18 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
 
         if !error_items.is_empty() {
             error_recover_item = error_items.pop().map(|it| it.bindings);
-        } else if !eof_items.is_empty() {
-            error_recover_item = Some(eof_items[0].bindings.clone());
+        } else if let [state, ..] = &*eof_items {
+            error_recover_item = Some(state.bindings.clone());
         }
 
         // We need to do some post processing after the `match_loop_inner`.
         // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
         // either the parse is ambiguous (which should never happen) or there is a syntax error.
         if src.peek_n(0).is_none() && stack.is_empty() {
-            if eof_items.len() == 1 {
+            if let [state] = &*eof_items {
                 // remove all errors, because it is the correct answer !
                 res = Match::default();
-                res.bindings = bindings_builder.build(&eof_items[0].bindings);
+                res.bindings = bindings_builder.build(&state.bindings);
             } else {
                 // Error recovery
                 if let Some(item) = error_recover_item {
@@ -598,10 +598,10 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
         //
         // Another possibility is that we need to call out to parse some rust nonterminal
         // (black-box) parser. However, if there is not EXACTLY ONE of these, something is wrong.
-        if (bb_items.is_empty() && next_items.is_empty())
-            || (!bb_items.is_empty() && !next_items.is_empty())
-            || bb_items.len() > 1
-        {
+        let has_leftover_tokens = (bb_items.is_empty() && next_items.is_empty())
+            || !(bb_items.is_empty() || next_items.is_empty())
+            || bb_items.len() > 1;
+        if has_leftover_tokens {
             res.unmatched_tts += src.len();
             while let Some(it) = stack.pop() {
                 src = it;
@@ -624,7 +624,11 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
                     stack.push(src.clone());
                     src = TtIter::new(subtree);
                 }
-                None if !stack.is_empty() => src = stack.pop().unwrap(),
+                None => {
+                    if let Some(iter) = stack.pop() {
+                        src = iter;
+                    }
+                }
                 _ => (),
             }
         }
@@ -662,29 +666,23 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
 fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter) -> Result<(), ExpandError> {
     let rhs = match src.expect_leaf() {
         Ok(l) => l,
-        Err(()) => {
-            return Err(err!("expected leaf: `{}`", lhs));
-        }
+        Err(()) => return Err(err!("expected leaf: `{}`", lhs)),
     };
     match (lhs, rhs) {
         (
             tt::Leaf::Punct(tt::Punct { char: lhs, .. }),
             tt::Leaf::Punct(tt::Punct { char: rhs, .. }),
-        ) if lhs == rhs => (),
+        ) if lhs == rhs => Ok(()),
         (
             tt::Leaf::Ident(tt::Ident { text: lhs, .. }),
             tt::Leaf::Ident(tt::Ident { text: rhs, .. }),
-        ) if lhs == rhs => (),
+        ) if lhs == rhs => Ok(()),
         (
             tt::Leaf::Literal(tt::Literal { text: lhs, .. }),
             tt::Leaf::Literal(tt::Literal { text: rhs, .. }),
-        ) if lhs == rhs => (),
-        _ => {
-            return Err(ExpandError::UnexpectedToken);
-        }
+        ) if lhs == rhs => Ok(()),
+        _ => Err(ExpandError::UnexpectedToken),
     }
-
-    Ok(())
 }
 
 fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragment>> {
