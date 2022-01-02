@@ -15,7 +15,7 @@ doctest = false # and no doc tests
 
 [dependencies]
 directories = "3"
-rustc_version = "0.3"
+rustc_version = "0.4"
 serde_json = "1.0.40"
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
