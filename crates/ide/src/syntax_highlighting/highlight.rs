@@ -8,7 +8,7 @@ use ide_db::{
 };
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast, match_ast, AstNode, AstToken, NodeOrToken, SyntaxElement,
+    ast, match_ast, AstNode, AstToken, NodeOrToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, T,
 };
@@ -18,174 +18,46 @@ use crate::{
     Highlight, HlMod, HlTag,
 };
 
-pub(super) fn element(
-    sema: &Semantics<RootDatabase>,
-    krate: Option<hir::Crate>,
-    bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
-    syntactic_name_ref_highlighting: bool,
-    element: SyntaxElement,
-) -> Option<(Highlight, Option<u64>)> {
-    match element {
-        NodeOrToken::Node(it) => {
-            node(sema, krate, bindings_shadow_count, syntactic_name_ref_highlighting, it)
-        }
-        NodeOrToken::Token(it) => Some((token(sema, krate, it)?, None)),
-    }
-}
-
-fn token(
+pub(super) fn token(
     sema: &Semantics<RootDatabase>,
     krate: Option<hir::Crate>,
     token: SyntaxToken,
 ) -> Option<Highlight> {
-    let highlight: Highlight = if let Some(comment) = ast::Comment::cast(token.clone()) {
+    if let Some(comment) = ast::Comment::cast(token.clone()) {
         let h = HlTag::Comment;
-        match comment.kind().doc {
+        return Some(match comment.kind().doc {
             Some(_) => h | HlMod::Documentation,
             None => h.into(),
+        });
+    }
+
+    let highlight: Highlight = match token.kind() {
+        STRING | BYTE_STRING => HlTag::StringLiteral.into(),
+        INT_NUMBER if token.ancestors().nth(1).map(|it| it.kind()) == Some(FIELD_EXPR) => {
+            SymbolKind::Field.into()
         }
-    } else {
-        match token.kind() {
-            STRING | BYTE_STRING => HlTag::StringLiteral.into(),
-            INT_NUMBER if token.ancestors().nth(1).map_or(false, |it| it.kind() == FIELD_EXPR) => {
-                SymbolKind::Field.into()
-            }
-            INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),
-            BYTE => HlTag::ByteLiteral.into(),
-            CHAR => HlTag::CharLiteral.into(),
-            T![?] => HlTag::Operator(HlOperator::Other) | HlMod::ControlFlow,
-            IDENT if parent_matches::<ast::TokenTree>(&token) => {
-                if let Some(attr) = token.ancestors().nth(2).and_then(ast::Attr::cast) {
+        INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),
+        BYTE => HlTag::ByteLiteral.into(),
+        CHAR => HlTag::CharLiteral.into(),
+        IDENT if parent_matches::<ast::TokenTree>(&token) => {
+            match token.ancestors().nth(2).and_then(ast::Attr::cast) {
+                Some(attr) => {
                     match try_resolve_derive_input(sema, &attr, &ast::Ident::cast(token).unwrap()) {
                         Some(res) => highlight_def(sema, krate, Definition::from(res)),
                         None => HlTag::None.into(),
                     }
-                } else {
-                    HlTag::None.into()
                 }
+                None => HlTag::None.into(),
             }
-            p if p.is_punct() => match p {
-                T![&] if parent_matches::<ast::BinExpr>(&token) => HlOperator::Bitwise.into(),
-                T![&] => {
-                    let h = HlTag::Operator(HlOperator::Other).into();
-                    let is_unsafe = token
-                        .parent()
-                        .and_then(ast::RefExpr::cast)
-                        .map_or(false, |ref_expr| sema.is_unsafe_ref_expr(&ref_expr));
-                    if is_unsafe {
-                        h | HlMod::Unsafe
-                    } else {
-                        h
-                    }
-                }
-                T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] | T![.] => {
-                    HlOperator::Other.into()
-                }
-                T![!] if parent_matches::<ast::MacroCall>(&token) => HlPunct::MacroBang.into(),
-                T![!] if parent_matches::<ast::NeverType>(&token) => HlTag::BuiltinType.into(),
-                T![!] if parent_matches::<ast::PrefixExpr>(&token) => HlOperator::Logical.into(),
-                T![*] if parent_matches::<ast::PtrType>(&token) => HlTag::Keyword.into(),
-                T![*] if parent_matches::<ast::PrefixExpr>(&token) => {
-                    let prefix_expr = token.parent().and_then(ast::PrefixExpr::cast)?;
-
-                    let expr = prefix_expr.expr()?;
-                    let ty = sema.type_of_expr(&expr)?.original;
-                    if ty.is_raw_ptr() {
-                        HlTag::Operator(HlOperator::Other) | HlMod::Unsafe
-                    } else if let Some(ast::UnaryOp::Deref) = prefix_expr.op_kind() {
-                        HlOperator::Other.into()
-                    } else {
-                        HlPunct::Other.into()
-                    }
-                }
-                T![-] if parent_matches::<ast::PrefixExpr>(&token) => {
-                    let prefix_expr = token.parent().and_then(ast::PrefixExpr::cast)?;
-
-                    let expr = prefix_expr.expr()?;
-                    match expr {
-                        ast::Expr::Literal(_) => HlTag::NumericLiteral,
-                        _ => HlTag::Operator(HlOperator::Other),
-                    }
-                    .into()
-                }
-                _ if parent_matches::<ast::PrefixExpr>(&token) => HlOperator::Other.into(),
-                T![+] | T![-] | T![*] | T![/] if parent_matches::<ast::BinExpr>(&token) => {
-                    HlOperator::Arithmetic.into()
-                }
-                T![+=] | T![-=] | T![*=] | T![/=] if parent_matches::<ast::BinExpr>(&token) => {
-                    Highlight::from(HlOperator::Arithmetic) | HlMod::Mutable
-                }
-                T![|] | T![&] | T![!] | T![^] if parent_matches::<ast::BinExpr>(&token) => {
-                    HlOperator::Bitwise.into()
-                }
-                T![|=] | T![&=] | T![^=] if parent_matches::<ast::BinExpr>(&token) => {
-                    Highlight::from(HlOperator::Bitwise) | HlMod::Mutable
-                }
-                T![&&] | T![||] if parent_matches::<ast::BinExpr>(&token) => {
-                    HlOperator::Logical.into()
-                }
-                T![>] | T![<] | T![==] | T![>=] | T![<=] | T![!=]
-                    if parent_matches::<ast::BinExpr>(&token) =>
-                {
-                    HlOperator::Comparison.into()
-                }
-                _ if parent_matches::<ast::BinExpr>(&token) => HlOperator::Other.into(),
-                _ if parent_matches::<ast::RangeExpr>(&token) => HlOperator::Other.into(),
-                _ if parent_matches::<ast::RangePat>(&token) => HlOperator::Other.into(),
-                _ if parent_matches::<ast::RestPat>(&token) => HlOperator::Other.into(),
-                _ if parent_matches::<ast::Attr>(&token) => HlTag::AttributeBracket.into(),
-                kind => match kind {
-                    T!['['] | T![']'] => HlPunct::Bracket,
-                    T!['{'] | T!['}'] => HlPunct::Brace,
-                    T!['('] | T![')'] => HlPunct::Parenthesis,
-                    T![<] | T![>] => HlPunct::Angle,
-                    T![,] => HlPunct::Comma,
-                    T![:] => HlPunct::Colon,
-                    T![;] => HlPunct::Semi,
-                    T![.] => HlPunct::Dot,
-                    _ => HlPunct::Other,
-                }
-                .into(),
-            },
-            k if k.is_keyword() => {
-                let h = Highlight::new(HlTag::Keyword);
-                match k {
-                    T![await] => h | HlMod::Async | HlMod::ControlFlow,
-                    T![break]
-                    | T![continue]
-                    | T![else]
-                    | T![if]
-                    | T![in]
-                    | T![loop]
-                    | T![match]
-                    | T![return]
-                    | T![while]
-                    | T![yield] => h | HlMod::ControlFlow,
-                    T![for] if !is_child_of_impl(&token) => h | HlMod::ControlFlow,
-                    T![unsafe] => h | HlMod::Unsafe,
-                    T![true] | T![false] => HlTag::BoolLiteral.into(),
-                    // crate is handled just as a token if it's in an `extern crate`
-                    T![crate] if parent_matches::<ast::ExternCrate>(&token) => h,
-                    // self, crate and super are handled as either a Name or NameRef already
-                    T![self] | T![crate] | T![super] => return None,
-                    T![ref] => token
-                        .parent()
-                        .and_then(ast::IdentPat::cast)
-                        .and_then(|ident_pat| {
-                            (sema.is_unsafe_ident_pat(&ident_pat)).then(|| HlMod::Unsafe)
-                        })
-                        .map_or(h, |modifier| h | modifier),
-                    T![async] => h | HlMod::Async,
-                    _ => h,
-                }
-            }
-            _ => return None,
         }
+        p if p.is_punct() => punctuation(sema, token, p),
+        k if k.is_keyword() => keyword(sema, token, k)?,
+        _ => return None,
     };
     Some(highlight)
 }
 
-fn node(
+pub(super) fn node(
     sema: &Semantics<RootDatabase>,
     krate: Option<hir::Crate>,
     bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
@@ -195,18 +67,6 @@ fn node(
     let mut binding_hash = None;
     let highlight = match_ast! {
         match node {
-            ast::Fn(__) => {
-                bindings_shadow_count.clear();
-                return None;
-            },
-            ast::Attr(__) => {
-                HlTag::AttributeBracket.into()
-            },
-            // Highlight definitions depending on the "type" of the definition.
-            ast::Name(name) => {
-                highlight_name(sema, bindings_shadow_count, &mut binding_hash, krate, name)
-            },
-            // Highlight references like the definitions they resolve to
             ast::NameRef(name_ref) => {
                 highlight_name_ref(
                     sema,
@@ -216,6 +76,9 @@ fn node(
                     syntactic_name_ref_highlighting,
                     name_ref,
                 )
+            },
+            ast::Name(name) => {
+                highlight_name(sema, bindings_shadow_count, &mut binding_hash, krate, name)
             },
             ast::Lifetime(lifetime) => {
                 match NameClass::classify_lifetime(sema, &lifetime) {
@@ -229,10 +92,127 @@ fn node(
                     _ => Highlight::from(SymbolKind::LifetimeParam) | HlMod::Definition,
                 }
             },
-            _ => return None,
+            ast::Fn(_) => {
+                bindings_shadow_count.clear();
+                return None;
+            },
+            _ => {
+                if [FN, CONST, STATIC].contains(&node.kind()) {
+                    bindings_shadow_count.clear();
+                }
+                return None
+            },
         }
     };
     Some((highlight, binding_hash))
+}
+
+fn punctuation(sema: &Semantics<RootDatabase>, token: SyntaxToken, kind: SyntaxKind) -> Highlight {
+    let parent = token.parent();
+    let parent_kind = parent.as_ref().map_or(EOF, SyntaxNode::kind);
+    match (kind, parent_kind) {
+        (T![?], _) => HlTag::Operator(HlOperator::Other) | HlMod::ControlFlow,
+        (T![&], BIN_EXPR) => HlOperator::Bitwise.into(),
+        (T![&], _) => {
+            let h = HlTag::Operator(HlOperator::Other).into();
+            let is_unsafe = parent
+                .and_then(ast::RefExpr::cast)
+                .map(|ref_expr| sema.is_unsafe_ref_expr(&ref_expr));
+            if let Some(true) = is_unsafe {
+                h | HlMod::Unsafe
+            } else {
+                h
+            }
+        }
+        (T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] | T![.], _) => HlOperator::Other.into(),
+        (T![!], MACRO_CALL) => HlPunct::MacroBang.into(),
+        (T![!], NEVER_TYPE) => HlTag::BuiltinType.into(),
+        (T![!], PREFIX_EXPR) => HlOperator::Logical.into(),
+        (T![*], PTR_TYPE) => HlTag::Keyword.into(),
+        (T![*], PREFIX_EXPR) => {
+            let is_raw_ptr = (|| {
+                let prefix_expr = parent.and_then(ast::PrefixExpr::cast)?;
+                let expr = prefix_expr.expr()?;
+                sema.type_of_expr(&expr)?.original.is_raw_ptr().then(|| ())
+            })();
+            if let Some(()) = is_raw_ptr {
+                HlTag::Operator(HlOperator::Other) | HlMod::Unsafe
+            } else {
+                HlOperator::Other.into()
+            }
+        }
+        (T![-], PREFIX_EXPR) => {
+            let prefix_expr = parent.and_then(ast::PrefixExpr::cast).and_then(|e| e.expr());
+            match prefix_expr {
+                Some(ast::Expr::Literal(_)) => HlTag::NumericLiteral,
+                _ => HlTag::Operator(HlOperator::Other),
+            }
+            .into()
+        }
+        (T![+] | T![-] | T![*] | T![/], BIN_EXPR) => HlOperator::Arithmetic.into(),
+        (T![+=] | T![-=] | T![*=] | T![/=], BIN_EXPR) => {
+            Highlight::from(HlOperator::Arithmetic) | HlMod::Mutable
+        }
+        (T![|] | T![&] | T![!] | T![^], BIN_EXPR) => HlOperator::Bitwise.into(),
+        (T![|=] | T![&=] | T![^=], BIN_EXPR) => {
+            Highlight::from(HlOperator::Bitwise) | HlMod::Mutable
+        }
+        (T![&&] | T![||], BIN_EXPR) => HlOperator::Logical.into(),
+        (T![>] | T![<] | T![==] | T![>=] | T![<=] | T![!=], BIN_EXPR) => {
+            HlOperator::Comparison.into()
+        }
+        (_, PREFIX_EXPR | BIN_EXPR | RANGE_EXPR | RANGE_PAT | REST_PAT) => HlOperator::Other.into(),
+        (_, ATTR) => HlTag::AttributeBracket.into(),
+        (kind, _) => match kind {
+            T!['['] | T![']'] => HlPunct::Bracket,
+            T!['{'] | T!['}'] => HlPunct::Brace,
+            T!['('] | T![')'] => HlPunct::Parenthesis,
+            T![<] | T![>] => HlPunct::Angle,
+            T![,] => HlPunct::Comma,
+            T![:] => HlPunct::Colon,
+            T![;] => HlPunct::Semi,
+            T![.] => HlPunct::Dot,
+            _ => HlPunct::Other,
+        }
+        .into(),
+    }
+}
+
+fn keyword(
+    sema: &Semantics<RootDatabase>,
+    token: SyntaxToken,
+    kind: SyntaxKind,
+) -> Option<Highlight> {
+    let h = Highlight::new(HlTag::Keyword);
+    let h = match kind {
+        T![await] => h | HlMod::Async | HlMod::ControlFlow,
+        T![async] => h | HlMod::Async,
+        T![break]
+        | T![continue]
+        | T![else]
+        | T![if]
+        | T![in]
+        | T![loop]
+        | T![match]
+        | T![return]
+        | T![while]
+        | T![yield] => h | HlMod::ControlFlow,
+        T![for] if parent_matches::<ast::ForExpr>(&token) => h | HlMod::ControlFlow,
+        T![unsafe] => h | HlMod::Unsafe,
+        T![true] | T![false] => HlTag::BoolLiteral.into(),
+        // crate is handled just as a token if it's in an `extern crate`
+        T![crate] if parent_matches::<ast::ExternCrate>(&token) => h,
+        // self, crate and super are handled as either a Name or NameRef already, unless they
+        // are inside unmapped token trees
+        T![self] | T![crate] | T![super] if parent_matches::<ast::NameRef>(&token) => return None,
+        T![self] if parent_matches::<ast::Name>(&token) => return None,
+        T![ref] => match token.parent().and_then(ast::IdentPat::cast) {
+            Some(ident) if sema.is_unsafe_ident_pat(&ident) => h | HlMod::Unsafe,
+            _ => h,
+        },
+        _ => h,
+    };
+    Some(h)
 }
 
 fn highlight_name_ref(
@@ -325,10 +305,9 @@ fn highlight_name(
     krate: Option<hir::Crate>,
     name: ast::Name,
 ) -> Highlight {
-    let db = sema.db;
     let name_kind = NameClass::classify(sema, &name);
     if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind {
-        if let Some(name) = local.name(db) {
+        if let Some(name) = local.name(sema.db) {
             let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
             *shadow_count += 1;
             *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
@@ -338,7 +317,7 @@ fn highlight_name(
         Some(NameClass::Definition(def)) => {
             let mut h = highlight_def(sema, krate, def) | HlMod::Definition;
             if let Definition::Trait(trait_) = &def {
-                if trait_.is_unsafe(db) {
+                if trait_.is_unsafe(sema.db) {
                     h |= HlMod::Unsafe;
                 }
             }
@@ -347,7 +326,7 @@ fn highlight_name(
         Some(NameClass::ConstReference(def)) => highlight_def(sema, krate, def),
         Some(NameClass::PatFieldShorthand { field_ref, .. }) => {
             let mut h = HlTag::Symbol(SymbolKind::Field).into();
-            if let hir::VariantDef::Union(_) = field_ref.parent_def(db) {
+            if let hir::VariantDef::Union(_) = field_ref.parent_def(sema.db) {
                 h |= HlMod::Unsafe;
             }
             h
@@ -729,21 +708,14 @@ fn parents_match(mut node: NodeOrToken<SyntaxNode, SyntaxToken>, mut kinds: &[Sy
     kinds.is_empty()
 }
 
-#[inline]
 fn parent_matches<N: AstNode>(token: &SyntaxToken) -> bool {
     token.parent().map_or(false, |it| N::can_cast(it.kind()))
-}
-
-fn is_child_of_impl(token: &SyntaxToken) -> bool {
-    match token.parent() {
-        Some(e) => e.kind() == IMPL,
-        _ => false,
-    }
 }
 
 fn is_in_fn_with_self_param<N: AstNode>(node: &N) -> bool {
     node.syntax()
         .ancestors()
+        .take_while(|node| ast::Expr::can_cast(node.kind()) || ast::Fn::can_cast(node.kind()))
         .find_map(ast::Fn::cast)
         .and_then(|s| s.param_list()?.self_param())
         .is_some()

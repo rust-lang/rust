@@ -265,6 +265,7 @@ fn traverse(
         }
 
         let element = match event {
+            WalkEvent::Enter(NodeOrToken::Token(tok)) if tok.kind() == WHITESPACE => continue,
             WalkEvent::Enter(it) => it,
             WalkEvent::Leave(NodeOrToken::Token(_)) => continue,
             WalkEvent::Leave(NodeOrToken::Node(node)) => {
@@ -347,13 +348,16 @@ fn traverse(
         }
 
         // do the normal highlighting
-        let element = highlight::element(
-            sema,
-            krate,
-            &mut bindings_shadow_count,
-            syntactic_name_ref_highlighting,
-            element_to_highlight,
-        );
+        let element = match element_to_highlight {
+            NodeOrToken::Node(node) => highlight::node(
+                sema,
+                krate,
+                &mut bindings_shadow_count,
+                syntactic_name_ref_highlighting,
+                node,
+            ),
+            NodeOrToken::Token(token) => highlight::token(sema, krate, token).zip(Some(None)),
+        };
         if let Some((mut highlight, binding_hash)) = element {
             if inside_attribute {
                 highlight |= HlMod::Attribute
