@@ -141,7 +141,7 @@ macro_rules! m1 { () => (Some(x) left overs) }
 macro_rules! m2 { () => ($) }
 
 fn main() {
-    let Some(x) = ();
+    let Some(x)left overs = ();
     let /* parse error: expected pattern */
 $ = ();
 }

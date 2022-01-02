@@ -119,8 +119,8 @@ impl TopEntryPoint {
             TopEntryPoint::SourceFile => grammar::entry::top::source_file,
             TopEntryPoint::MacroStmts => grammar::entry::top::macro_stmts,
             TopEntryPoint::MacroItems => grammar::entry::top::macro_items,
+            TopEntryPoint::Pattern => grammar::entry::top::pattern,
             // FIXME
-            TopEntryPoint::Pattern => grammar::entry::prefix::pat,
             TopEntryPoint::Type => grammar::entry::prefix::ty,
             TopEntryPoint::Expr => grammar::entry::prefix::expr,
             TopEntryPoint::MetaItem => grammar::entry::prefix::meta_item,

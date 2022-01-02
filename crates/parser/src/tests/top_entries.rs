@@ -146,6 +146,33 @@ fn macro_pattern() {
               R_PAREN ")"
         "#]],
     );
+
+    check(
+        TopEntryPoint::Pattern,
+        "None leftover tokens",
+        expect![[r#"
+            ERROR
+              IDENT_PAT
+                NAME
+                  IDENT "None"
+              WHITESPACE " "
+              IDENT "leftover"
+              WHITESPACE " "
+              IDENT "tokens"
+        "#]],
+    );
+
+    check(
+        TopEntryPoint::Pattern,
+        "@err",
+        expect![[r#"
+            ERROR
+              ERROR
+                AT "@"
+              IDENT "err"
+            error 0: expected pattern
+        "#]],
+    );
 }
 
 #[track_caller]
