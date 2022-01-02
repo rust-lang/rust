@@ -1083,6 +1083,9 @@ options! {
         "how to handle split-debuginfo, a platform-specific option"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
+    symbol_mangling_version: Option<SymbolManglingVersion> = (None,
+        parse_symbol_mangling_version, [TRACKED],
+        "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (`rustc --print target-cpus` for details)"),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
@@ -1227,7 +1230,7 @@ options! {
     instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`); \
-        implies `-Z symbol-mangling-version=v0`. Optional values are:
+        implies `-C symbol-mangling-version=v0`. Optional values are:
         `=all` (implicit value)
         `=except-unused-generics`
         `=except-unused-functions`

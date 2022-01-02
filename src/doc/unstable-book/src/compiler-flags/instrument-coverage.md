@@ -27,7 +27,7 @@ When running a coverage-instrumented program, the counter values are written to 
 [`llvm.instrprof.increment`]: https://llvm.org/docs/LangRef.html#llvm-instrprof-increment-intrinsic
 [llvm code coverage mapping format]: https://llvm.org/docs/CoverageMappingFormat.html
 
-> **Note**: `-Z instrument-coverage` also automatically enables `-Z symbol-mangling-version=v0` (tracking issue [#60705]). The `v0` symbol mangler is strongly recommended, but be aware that this demangler is also experimental. The `v0` demangler can be overridden by explicitly adding `-Z symbol-mangling-version=legacy`.
+> **Note**: `-Z instrument-coverage` also automatically enables `-C symbol-mangling-version=v0` (tracking issue [#60705]). The `v0` symbol mangler is strongly recommended, but be aware that this demangler is also experimental. The `v0` demangler can be overridden by explicitly adding `-Z unstable-options -C symbol-mangling-version=legacy`.
 
 [#60705]: https://github.com/rust-lang/rust/issues/60705
 

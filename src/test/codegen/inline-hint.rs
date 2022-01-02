@@ -1,7 +1,7 @@
 // Checks that closures, constructors, and shims except
 // for a drop glue receive inline hint by default.
 //
-// compile-flags: -Cno-prepopulate-passes -Zsymbol-mangling-version=v0
+// compile-flags: -Cno-prepopulate-passes -Csymbol-mangling-version=v0
 #![crate_type = "lib"]
 
 pub fn f() {

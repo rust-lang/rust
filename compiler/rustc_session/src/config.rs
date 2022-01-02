@@ -781,6 +781,10 @@ impl Options {
             },
         }
     }
+
+    pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
+        self.cg.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
+    }
 }
 
 impl DebuggingOptions {
@@ -793,10 +797,6 @@ impl DebuggingOptions {
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
         }
-    }
-
-    pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
-        self.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
     }
 }
 
@@ -2116,6 +2116,34 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
+    // Handle both `-Z symbol-mangling-version` and `-C symbol-mangling-version`; the latter takes
+    // precedence.
+    match (cg.symbol_mangling_version, debugging_opts.symbol_mangling_version) {
+        (Some(smv_c), Some(smv_z)) if smv_c != smv_z => {
+            early_error(
+                error_format,
+                "incompatible values passed for `-C symbol-mangling-version` \
+                and `-Z symbol-mangling-version`",
+            );
+        }
+        (Some(SymbolManglingVersion::V0), _) => {}
+        (Some(_), _) if !debugging_opts.unstable_options => {
+            early_error(
+                error_format,
+                "`-C symbol-mangling-version=legacy` requires `-Z unstable-options`",
+            );
+        }
+        (None, None) => {}
+        (None, smv) => {
+            early_warn(
+                error_format,
+                "`-Z symbol-mangling-version` is deprecated; use `-C symbol-mangling-version`",
+            );
+            cg.symbol_mangling_version = smv;
+        }
+        _ => {}
+    }
+
     if debugging_opts.instrument_coverage.is_some()
         && debugging_opts.instrument_coverage != Some(InstrumentCoverage::Off)
     {
@@ -2127,19 +2155,17 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             );
         }
 
-        // `-Z instrument-coverage` implies `-Z symbol-mangling-version=v0` - to ensure consistent
+        // `-Z instrument-coverage` implies `-C symbol-mangling-version=v0` - to ensure consistent
         // and reversible name mangling. Note, LLVM coverage tools can analyze coverage over
         // multiple runs, including some changes to source code; so mangled names must be consistent
         // across compilations.
-        match debugging_opts.symbol_mangling_version {
-            None => {
-                debugging_opts.symbol_mangling_version = Some(SymbolManglingVersion::V0);
-            }
+        match cg.symbol_mangling_version {
+            None => cg.symbol_mangling_version = Some(SymbolManglingVersion::V0),
             Some(SymbolManglingVersion::Legacy) => {
                 early_warn(
                     error_format,
                     "-Z instrument-coverage requires symbol mangling version `v0`, \
-                    but `-Z symbol-mangling-version=legacy` was specified",
+                    but `-C symbol-mangling-version=legacy` was specified",
                 );
             }
             Some(SymbolManglingVersion::V0) => {}
