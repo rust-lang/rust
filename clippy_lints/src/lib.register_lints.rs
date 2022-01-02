@@ -226,6 +226,7 @@ store.register_lints(&[
     main_recursion::MAIN_RECURSION,
     manual_assert::MANUAL_ASSERT,
     manual_async_fn::MANUAL_ASYNC_FN,
+    manual_bits::MANUAL_BITS,
     manual_map::MANUAL_MAP,
     manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
     manual_ok_or::MANUAL_OK_OR,
