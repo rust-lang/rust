@@ -5,6 +5,7 @@ mod source_to_def;
 use std::{cell::RefCell, fmt};
 
 use base_db::{FileId, FileRange};
+use either::Either;
 use hir_def::{
     body,
     resolver::{self, HasResolver, Resolver, TypeNs},
@@ -909,42 +910,54 @@ impl<'db> SemanticsImpl<'db> {
             return None;
         }
 
-        let attr_def =
-            ast::Attr::to_def(self, self.find_file(attr.syntax()).with_value(attr.clone()))?;
+        let file = self.find_file(attr.syntax());
+        let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
 
-        let mut derive_paths = attr_def.parse_path_comma_token_tree()?;
-        let derives = self.resolve_derive_macro(&attr)?;
+        let res = self.with_ctx(|ctx| {
+            let attr_def = ctx.attr_to_def(file.with_value(attr.clone()))?;
+            let derives = ctx
+                .attr_to_derive_macro_call(file.with_value(&adt), file.with_value(attr.clone()))?;
 
-        let derive_idx = tt
-            .syntax()
-            .children_with_tokens()
-            .filter_map(SyntaxElement::into_token)
-            .take_while(|tok| tok != syntax)
-            .filter(|t| t.kind() == T![,])
-            .count();
-        let path_segment_idx = syntax
-            .siblings_with_tokens(Direction::Prev)
-            .filter_map(SyntaxElement::into_token)
-            .take_while(|tok| matches!(tok.kind(), T![:] | T![ident]))
-            .filter(|tok| tok.kind() == T![ident])
-            .count();
+            let mut derive_paths = attr_def.parse_path_comma_token_tree()?;
 
-        let mut mod_path = derive_paths.nth(derive_idx)?;
+            let derive_idx = tt
+                .syntax()
+                .children_with_tokens()
+                .filter_map(SyntaxElement::into_token)
+                .take_while(|tok| tok != syntax)
+                .filter(|t| t.kind() == T![,])
+                .count();
+            let path_segment_idx = syntax
+                .siblings_with_tokens(Direction::Prev)
+                .filter_map(SyntaxElement::into_token)
+                .take_while(|tok| matches!(tok.kind(), T![:] | T![ident]))
+                .filter(|tok| tok.kind() == T![ident])
+                .count();
 
-        if path_segment_idx < mod_path.len() {
-            // the path for the given ident is a qualifier, resolve to module if possible
-            while path_segment_idx < mod_path.len() {
-                mod_path.pop_segment();
+            let mut mod_path = derive_paths.nth(derive_idx)?;
+
+            if path_segment_idx < mod_path.len() {
+                // the path for the given ident is a qualifier, resolve to module if possible
+                while path_segment_idx < mod_path.len() {
+                    mod_path.pop_segment();
+                }
+                Some(Either::Left(mod_path))
+            } else {
+                // otherwise fetch the derive
+                Some(Either::Right(derives[derive_idx]))
             }
-            resolve_hir_path(
+        })?;
+
+        match res {
+            Either::Left(path) => resolve_hir_path(
                 self.db,
                 &self.scope(attr.syntax()).resolver,
-                &Path::from_known_path(mod_path, []),
+                &Path::from_known_path(path, []),
             )
-            .filter(|res| matches!(res, PathResolution::Def(ModuleDef::Module(_))))
-        } else {
-            // otherwise fetch the derive
-            derives.get(derive_idx)?.map(PathResolution::Macro)
+            .filter(|res| matches!(res, PathResolution::Def(ModuleDef::Module(_)))),
+            Either::Right(derive) => derive
+                .map(|call| MacroDef { id: self.db.lookup_intern_macro_call(call).def })
+                .map(PathResolution::Macro),
         }
     }
 

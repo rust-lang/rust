@@ -746,7 +746,11 @@ impl Attr {
             })
             .collect::<Vec<_>>();
 
-        return Some(paths.into_iter());
+        Some(paths.into_iter())
+    }
+
+    pub fn path(&self) -> &ModPath {
+        &self.path
     }
 
     pub fn string_value(&self) -> Option<&SmolStr> {
