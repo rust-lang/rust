@@ -215,6 +215,8 @@ fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNod
     match file_id.0 {
         HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
         HirFileIdRepr::MacroFile(macro_file) => {
+            // FIXME: Note how we convert from `Parse` to `SyntaxNode` here,
+            // forgetting about parse errors.
             db.parse_macro_expansion(macro_file).value.map(|(it, _)| it.syntax_node())
         }
     }

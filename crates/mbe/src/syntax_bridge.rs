@@ -1,7 +1,7 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use stdx::{never, non_empty_vec::NonEmptyVec};
+use stdx::non_empty_vec::NonEmptyVec;
 use syntax::{
     ast::{self, make::tokens::doc_comment},
     AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
@@ -66,10 +66,6 @@ pub fn token_tree_to_syntax_node(
             parser::Step::Error { msg } => tree_sink.error(msg.to_string()),
         }
     }
-    if never!(tree_sink.roots.len() != 1) {
-        return Err(ExpandError::ConversionError);
-    }
-    //FIXME: would be cool to report errors
     let (parse, range_map) = tree_sink.finish();
     Ok((parse, range_map))
 }
@@ -284,7 +280,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
         parent.subtree.token_trees.extend(entry.subtree.token_trees);
     }
 
-    let subtree = stack.into_first().subtree;
+    let subtree = stack.into_last().subtree;
     if let [tt::TokenTree::Subtree(first)] = &*subtree.token_trees {
         first.clone()
     } else {
@@ -614,10 +610,6 @@ struct TtTreeSink<'a> {
     text_pos: TextSize,
     inner: SyntaxTreeBuilder,
     token_map: TokenMap,
-
-    // Number of roots
-    // Use for detect ill-form tree which is not single root
-    roots: smallvec::SmallVec<[usize; 1]>,
 }
 
 impl<'a> TtTreeSink<'a> {
@@ -628,7 +620,6 @@ impl<'a> TtTreeSink<'a> {
             open_delims: FxHashMap::default(),
             text_pos: 0.into(),
             inner: SyntaxTreeBuilder::default(),
-            roots: smallvec::SmallVec::new(),
             token_map: TokenMap::default(),
         }
     }
@@ -733,16 +724,10 @@ impl<'a> TtTreeSink<'a> {
 
     fn start_node(&mut self, kind: SyntaxKind) {
         self.inner.start_node(kind);
-
-        match self.roots.last_mut() {
-            None | Some(0) => self.roots.push(1),
-            Some(n) => *n += 1,
-        };
     }
 
     fn finish_node(&mut self) {
         self.inner.finish_node();
-        *self.roots.last_mut().unwrap() -= 1;
     }
 
     fn error(&mut self, error: String) {
