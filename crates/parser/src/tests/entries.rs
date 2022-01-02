@@ -159,6 +159,49 @@ fn source_file() {
     );
 }
 
+#[test]
+fn macro_stmt() {
+    check_top(
+        TopEntryPoint::MacroStmts,
+        "#!/usr/bin/rust",
+        expect![[r##"
+            MACRO_STMTS
+              ERROR
+                SHEBANG "#!/usr/bin/rust"
+            error 0: expected expression
+        "##]],
+    );
+    check_top(
+        TopEntryPoint::MacroStmts,
+        "let x = 1 2 struct S;",
+        expect![[r#"
+            MACRO_STMTS
+              LET_STMT
+                LET_KW "let"
+                WHITESPACE " "
+                IDENT_PAT
+                  NAME
+                    IDENT "x"
+                WHITESPACE " "
+                EQ "="
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "1"
+              WHITESPACE " "
+              EXPR_STMT
+                LITERAL
+                  INT_NUMBER "2"
+              WHITESPACE " "
+              STRUCT
+                STRUCT_KW "struct"
+                WHITESPACE " "
+                NAME
+                  IDENT "S"
+                SEMICOLON ";"
+        "#]],
+    );
+}
+
 #[track_caller]
 fn check_top(entry: TopEntryPoint, input: &str, expect: expect_test::Expect) {
     let (parsed, _errors) = super::parse(entry, input);
