@@ -416,10 +416,10 @@ impl NameRefClass {
         }
 
         if let Some(path) = ast::PathSegment::cast(parent.clone()).map(|it| it.parent_path()) {
-            if path.qualifier().is_none() {
+            if path.parent_path().is_none() {
                 if let Some(macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-                    // Only use this to resolve single-segment macro calls like `foo!()`. Multi-segment
-                    // paths are handled below (allowing `log$0::info!` to resolve to the log crate).
+                    // Only use this to resolve to macro calls for last segments as qualifiers resolve
+                    // to modules below.
                     if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
                         return Some(NameRefClass::Definition(Definition::Macro(macro_def)));
                     }

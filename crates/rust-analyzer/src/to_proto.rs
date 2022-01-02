@@ -539,6 +539,7 @@ fn semantic_token_type_and_modifiers(
             HlPunct::Colon => semantic_tokens::COLON,
             HlPunct::Semi => semantic_tokens::SEMICOLON,
             HlPunct::Other => semantic_tokens::PUNCTUATION,
+            HlPunct::MacroBang => semantic_tokens::MACRO_BANG,
         },
     };
 

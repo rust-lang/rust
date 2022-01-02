@@ -19,7 +19,7 @@ impl MacroHighlighter {
         }
     }
 
-    pub(super) fn highlight(&self, element: SyntaxElement) -> Option<HlRange> {
+    pub(super) fn highlight(&self, element: &SyntaxElement) -> Option<HlRange> {
         if let Some(state) = self.state.as_ref() {
             if matches!(state.rule_state, RuleState::Matcher | RuleState::Expander) {
                 if let Some(range) = is_metavariable(element) {
@@ -115,7 +115,7 @@ fn update_macro_state(state: &mut MacroMatcherParseState, tok: &SyntaxToken) {
     }
 }
 
-fn is_metavariable(element: SyntaxElement) -> Option<TextRange> {
+fn is_metavariable(element: &SyntaxElement) -> Option<TextRange> {
     let tok = element.as_token()?;
     match tok.kind() {
         kind if kind == SyntaxKind::IDENT || kind.is_keyword() => {

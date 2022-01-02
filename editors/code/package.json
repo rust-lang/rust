@@ -1241,6 +1241,11 @@
                 "superType": "operator"
             },
             {
+                "id": "macroBang",
+                "description": "Style for the ! token of macro calls",
+                "superType": "punctuation"
+            },
+            {
                 "id": "operator",
                 "description": "Style for operators",
                 "superType": "punctuation"
@@ -1377,6 +1382,9 @@
                     ],
                     "lifetime": [
                         "storage.modifier.lifetime.rust"
+                    ],
+                    "macroBang": [
+                        "entity.name.function.macro.rust"
                     ],
                     "method": [
                         "entity.name.function.rust"
