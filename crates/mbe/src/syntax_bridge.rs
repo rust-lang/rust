@@ -67,6 +67,7 @@ pub fn token_tree_to_syntax_node(
         }
     }
     if tree_sink.roots.len() != 1 {
+        cov_mark::hit!(expansion_does_not_parse_as_expression);
         return Err(ExpandError::ConversionError);
     }
     //FIXME: would be cool to report errors

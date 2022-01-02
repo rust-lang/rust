@@ -129,6 +129,25 @@ fn macro_items() {
     );
 }
 
+#[test]
+fn macro_pattern() {
+    check(
+        TopEntryPoint::Pattern,
+        "Some(_)",
+        expect![[r#"
+            TUPLE_STRUCT_PAT
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Some"
+              L_PAREN "("
+              WILDCARD_PAT
+                UNDERSCORE "_"
+              R_PAREN ")"
+        "#]],
+    );
+}
+
 #[track_caller]
 fn check(entry: TopEntryPoint, input: &str, expect: expect_test::Expect) {
     let (parsed, _errors) = super::parse(entry, input);

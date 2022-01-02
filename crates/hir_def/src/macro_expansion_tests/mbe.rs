@@ -86,26 +86,6 @@ impl From<Subtree> for TokenTree {
 }
 
 #[test]
-fn expansion_does_not_parse_as_expression() {
-    check(
-        r#"
-macro_rules! stmts {
-    () => { let _ = 0; }
-}
-
-fn f() { let _ = stmts!(); }
-"#,
-        expect![[r#"
-macro_rules! stmts {
-    () => { let _ = 0; }
-}
-
-fn f() { let _ = /* error: could not convert tokens */; }
-"#]],
-    )
-}
-
-#[test]
 fn wrong_nesting_level() {
     check(
         r#"
