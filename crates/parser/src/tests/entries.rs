@@ -1,4 +1,6 @@
-use crate::{LexedStr, PrefixEntryPoint, Step};
+use expect_test::expect;
+
+use crate::{LexedStr, PrefixEntryPoint, Step, TopEntryPoint};
 
 #[test]
 fn vis() {
@@ -83,6 +85,7 @@ fn meta_item() {
     check_prefix(PrefixEntryPoint::MetaItem, "path::attr = 2 * 2!", "path::attr = 2 * 2");
 }
 
+#[track_caller]
 fn check_prefix(entry: PrefixEntryPoint, input: &str, prefix: &str) {
     let lexed = LexedStr::new(input);
     let input = lexed.to_input();
@@ -107,4 +110,57 @@ fn check_prefix(entry: PrefixEntryPoint, input: &str, prefix: &str) {
     }
     let buf = &lexed.as_str()[..lexed.text_start(i)];
     assert_eq!(buf, prefix);
+}
+
+#[test]
+fn source_file() {
+    check_top(
+        TopEntryPoint::SourceFile,
+        "",
+        expect![[r#"
+        SOURCE_FILE
+    "#]],
+    );
+
+    check_top(
+        TopEntryPoint::SourceFile,
+        "struct S;",
+        expect![[r#"
+        SOURCE_FILE
+          STRUCT
+            STRUCT_KW "struct"
+            WHITESPACE " "
+            NAME
+              IDENT "S"
+            SEMICOLON ";"
+    "#]],
+    );
+
+    check_top(
+        TopEntryPoint::SourceFile,
+        "@error@",
+        expect![[r#"
+        SOURCE_FILE
+          ERROR
+            AT "@"
+          MACRO_CALL
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "error"
+          ERROR
+            AT "@"
+        error 0: expected an item
+        error 6: expected BANG
+        error 6: expected `{`, `[`, `(`
+        error 6: expected SEMICOLON
+        error 6: expected an item
+    "#]],
+    );
+}
+
+#[track_caller]
+fn check_top(entry: TopEntryPoint, input: &str, expect: expect_test::Expect) {
+    let (parsed, _errors) = super::parse(entry, input);
+    expect.assert_eq(&parsed)
 }

@@ -86,22 +86,34 @@ fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
     let mut buf = String::new();
     let mut errors = Vec::new();
     let mut indent = String::new();
+    let mut depth = 0;
+    let mut len = 0;
     lexed.intersperse_trivia(&output, &mut |step| match step {
         crate::StrStep::Token { kind, text } => {
+            assert!(depth > 0);
+            len += text.len();
             write!(buf, "{}", indent).unwrap();
             write!(buf, "{:?} {:?}\n", kind, text).unwrap();
         }
         crate::StrStep::Enter { kind } => {
+            assert!(depth > 0 || len == 0);
+            depth += 1;
             write!(buf, "{}", indent).unwrap();
             write!(buf, "{:?}\n", kind).unwrap();
             indent.push_str("  ");
         }
         crate::StrStep::Exit => {
+            assert!(depth > 0);
+            depth -= 1;
             indent.pop();
             indent.pop();
         }
-        crate::StrStep::Error { msg, pos } => errors.push(format!("error {}: {}\n", pos, msg)),
+        crate::StrStep::Error { msg, pos } => {
+            assert!(depth > 0);
+            errors.push(format!("error {}: {}\n", pos, msg))
+        }
     });
+    assert_eq!(len, text.len());
 
     for (token, msg) in lexed.errors() {
         let pos = lexed.text_start(token);
