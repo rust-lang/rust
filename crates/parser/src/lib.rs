@@ -110,6 +110,8 @@ pub enum TopEntryPoint {
     Pattern,
     Type,
     Expr,
+    /// Edge case -- macros generally don't expand to attributes, with the
+    /// exception of `cfg_attr` which does!
     MetaItem,
 }
 
@@ -120,8 +122,8 @@ impl TopEntryPoint {
             TopEntryPoint::MacroStmts => grammar::entry::top::macro_stmts,
             TopEntryPoint::MacroItems => grammar::entry::top::macro_items,
             TopEntryPoint::Pattern => grammar::entry::top::pattern,
+            TopEntryPoint::Type => grammar::entry::top::type_,
             // FIXME
-            TopEntryPoint::Type => grammar::entry::prefix::ty,
             TopEntryPoint::Expr => grammar::entry::prefix::expr,
             TopEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
         };
