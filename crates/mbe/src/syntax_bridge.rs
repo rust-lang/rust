@@ -81,7 +81,7 @@ pub fn parse_to_token_tree(text: &str) -> Option<(tt::Subtree, TokenMap)> {
     }
 
     let mut conv = RawConvertor {
-        lexed: lexed,
+        lexed,
         pos: 0,
         id_alloc: TokenIdAlloc {
             map: Default::default(),
@@ -147,8 +147,8 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
         let entry = stack.last_mut().unwrap();
         let result = &mut entry.subtree.token_trees;
         let (token, range) = match conv.bump() {
-            None => break,
             Some(it) => it,
+            None => break,
         };
 
         let k: SyntaxKind = token.kind(&conv);

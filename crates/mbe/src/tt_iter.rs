@@ -1,10 +1,10 @@
 //! A "Parser" structure for token trees. We use this when parsing a declarative
 //! macro definition into a list of patterns and templates.
 
-use crate::{to_parser_input::to_parser_input, ExpandError, ExpandResult};
-
 use syntax::SyntaxKind;
 use tt::buffer::TokenBuffer;
+
+use crate::{to_parser_input::to_parser_input, ExpandError, ExpandResult};
 
 macro_rules! err {
     () => {
@@ -27,7 +27,7 @@ impl<'a> TtIter<'a> {
 
     pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ()> {
         match self.next() {
-            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: c, .. }))) if *c == char => {
+            Some(&tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: c, .. }))) if c == char => {
                 Ok(())
             }
             _ => Err(()),

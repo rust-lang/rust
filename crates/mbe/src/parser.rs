@@ -76,9 +76,9 @@ impl PartialEq for Separator {
         use Separator::*;
 
         match (self, other) {
-            (Ident(ref a), Ident(ref b)) => a.text == b.text,
-            (Literal(ref a), Literal(ref b)) => a.text == b.text,
-            (Puncts(ref a), Puncts(ref b)) if a.len() == b.len() => {
+            (Ident(a), Ident(b)) => a.text == b.text,
+            (Literal(a), Literal(b)) => a.text == b.text,
+            (Puncts(a), Puncts(b)) if a.len() == b.len() => {
                 let a_iter = a.iter().map(|a| a.char);
                 let b_iter = b.iter().map(|b| b.char);
                 a_iter.eq(b_iter)
@@ -131,9 +131,7 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
                     Op::Repeat { tokens, separator, kind }
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
-                    tt::Leaf::Punct(_) => {
-                        return Err(ParseError::Expected("ident".to_string()));
-                    }
+                    tt::Leaf::Punct(_) => return Err(ParseError::Expected("ident".to_string())),
                     tt::Leaf::Ident(ident) if ident.text == "crate" => {
                         // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.
                         Op::Leaf(tt::Leaf::from(tt::Ident { text: "$crate".into(), id: ident.id }))
