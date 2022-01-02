@@ -1,7 +1,7 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use stdx::non_empty_vec::NonEmptyVec;
+use stdx::{never, non_empty_vec::NonEmptyVec};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
     AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
@@ -66,8 +66,7 @@ pub fn token_tree_to_syntax_node(
             parser::Step::Error { msg } => tree_sink.error(msg.to_string()),
         }
     }
-    if tree_sink.roots.len() != 1 {
-        cov_mark::hit!(expansion_does_not_parse_as_expression);
+    if never!(tree_sink.roots.len() != 1) {
         return Err(ExpandError::ConversionError);
     }
     //FIXME: would be cool to report errors

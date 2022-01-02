@@ -1148,7 +1148,7 @@ fn foo() { let a = id!([0u32, bar($0)] ); }
 fn test_hover_through_literal_string_in_macro() {
     check(
         r#"
-macro_rules! arr { ($($tt:tt)*) => { [$($tt)*)] } }
+macro_rules! arr { ($($tt:tt)*) => { [$($tt)*] } }
 fn foo() {
     let mastered_for_itunes = "";
     let _ = arr!("Tr$0acks", &mastered_for_itunes);

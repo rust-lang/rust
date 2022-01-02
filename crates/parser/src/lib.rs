@@ -99,9 +99,11 @@ impl PrefixEntryPoint {
 /// ```
 ///
 /// the input to the macro will be parsed with [`PrefixEntryPoint::Item`], and
-/// the result will be [`TopEntryPoint::Items`].
+/// the result will be [`TopEntryPoint::MacroItems`].
 ///
-/// This *should* (but currently doesn't) guarantee that all input is consumed.
+/// [`TopEntryPoint::parse`] makes a guarantee that
+///   * all input is consumed
+///   * the result is a valid tree (there's one root node)
 #[derive(Debug)]
 pub enum TopEntryPoint {
     SourceFile,
@@ -124,13 +126,29 @@ impl TopEntryPoint {
             TopEntryPoint::Pattern => grammar::entry::top::pattern,
             TopEntryPoint::Type => grammar::entry::top::type_,
             TopEntryPoint::Expr => grammar::entry::top::expr,
-            // FIXME
-            TopEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
+            TopEntryPoint::MetaItem => grammar::entry::top::meta_item,
         };
         let mut p = parser::Parser::new(input);
         entry_point(&mut p);
         let events = p.finish();
-        event::process(events)
+        let res = event::process(events);
+
+        if cfg!(debug_assertions) {
+            let mut depth = 0;
+            let mut first = true;
+            for step in res.iter() {
+                assert!(depth > 0 || first);
+                first = false;
+                match step {
+                    Step::Enter { .. } => depth += 1,
+                    Step::Exit => depth -= 1,
+                    Step::Token { .. } | Step::Error { .. } => (),
+                }
+            }
+            assert!(!first, "no tree at all");
+        }
+
+        res
     }
 }
 
