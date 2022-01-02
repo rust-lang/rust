@@ -56,7 +56,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration public">Fn</span><span class="angle">&lt;</span><span class="type_param declaration">Args</span><span class="angle">&gt;</span><span class="colon">:</span> <span class="trait public">FnMut</span><span class="angle">&lt;</span><span class="type_param">Args</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="brace">}</span>
 
-proc_macros::<span class="macro">mirror!</span> <span class="brace">{</span>
+<span class="module crate_root library">proc_macros</span><span class="operator">::</span><span class="function library">mirror</span><span class="macro_bang">!</span> <span class="brace">{</span>
     <span class="brace">{</span>
         <span class="comma">,</span><span class="builtin_type">i32</span> <span class="colon">:</span><span class="field declaration public">x</span> <span class="keyword">pub</span>
         <span class="comma">,</span><span class="builtin_type">i32</span> <span class="colon">:</span><span class="field declaration public">y</span> <span class="keyword">pub</span>
@@ -138,7 +138,7 @@ proc_macros::<span class="macro">mirror!</span> <span class="brace">{</span>
     <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="brace">}</span>
 <span class="brace">}</span>
 
-<span class="macro">def_fn!</span> <span class="brace">{</span>
+<span class="macro">def_fn</span><span class="macro_bang">!</span> <span class="brace">{</span>
     <span class="keyword">fn</span> <span class="function declaration">bar</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-</span><span class="operator">&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
         <span class="numeric_literal">100</span>
     <span class="brace">}</span>
@@ -170,8 +170,8 @@ proc_macros::<span class="macro">mirror!</span> <span class="brace">{</span>
 
 <span class="comment">// comment</span>
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-    <span class="macro">println!</span><span class="parenthesis">(</span><span class="string_literal">"Hello, {}!"</span><span class="comma">,</span> <span class="numeric_literal">92</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-    <span class="macro">dont_color_me_braces!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="unresolved_reference">println</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="string_literal">"Hello, {}!"</span><span class="comma">,</span> <span class="numeric_literal">92</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="macro">dont_color_me_braces</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">vec</span> <span class="operator">=</span> <span class="unresolved_reference">Vec</span><span class="operator">::</span><span class="unresolved_reference">new</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="keyword control">if</span> <span class="bool_literal">true</span> <span class="brace">{</span>
@@ -183,7 +183,7 @@ proc_macros::<span class="macro">mirror!</span> <span class="brace">{</span>
         <span class="comment">// Do nothing</span>
     <span class="brace">}</span>
 
-    <span class="macro">noop!</span><span class="parenthesis">(</span><span class="macro">noop</span><span class="macro">!</span><span class="parenthesis">(</span><span class="numeric_literal">1</span><span class="parenthesis">)</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="macro">noop</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="macro">noop</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="numeric_literal">1</span><span class="parenthesis">)</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">x</span> <span class="operator">=</span> <span class="numeric_literal">42</span><span class="semicolon">;</span>
     <span class="variable mutable">x</span> <span class="arithmetic mutable">+=</span> <span class="numeric_literal">1</span><span class="semicolon">;</span>
@@ -228,7 +228,7 @@ proc_macros::<span class="macro">mirror!</span> <span class="brace">{</span>
 <span class="keyword">impl</span><span class="angle">&lt;</span><span class="type_param declaration">T</span><span class="angle">&gt;</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="type_param">T</span><span class="angle">&gt;</span> <span class="brace">{</span>
     <span class="keyword">fn</span> <span class="function associated consuming declaration">and</span><span class="angle">&lt;</span><span class="type_param declaration">U</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="comma">,</span> <span class="value_param declaration">other</span><span class="colon">:</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="type_param">U</span><span class="angle">&gt;</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="enum">Option</span><span class="angle">&lt;</span><span class="parenthesis">(</span><span class="type_param">T</span><span class="comma">,</span> <span class="type_param">U</span><span class="parenthesis">)</span><span class="angle">&gt;</span> <span class="brace">{</span>
         <span class="keyword control">match</span> <span class="value_param">other</span> <span class="brace">{</span>
-            <span class="enum_variant">None</span> <span class="operator">=&gt;</span> <span class="macro">unimplemented!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="comma">,</span>
+            <span class="enum_variant">None</span> <span class="operator">=&gt;</span> <span class="unresolved_reference">unimplemented</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="comma">,</span>
             <span class="variable declaration">Nope</span> <span class="operator">=&gt;</span> <span class="variable">Nope</span><span class="comma">,</span>
         <span class="brace">}</span>
     <span class="brace">}</span>
@@ -242,7 +242,7 @@ proc_macros::<span class="macro">mirror!</span> <span class="brace">{</span>
 <span class="keyword async">async</span> <span class="keyword">fn</span> <span class="function async declaration">async_main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="keyword">let</span> <span class="variable declaration">f1</span> <span class="operator">=</span> <span class="function async">learn_and_sing</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration">f2</span> <span class="operator">=</span> <span class="unresolved_reference">dance</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
-    futures::<span class="macro">join!</span><span class="parenthesis">(</span>f1<span class="comma">,</span> f2<span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="unresolved_reference">futures</span><span class="operator">::</span><span class="unresolved_reference">join</span><span class="macro_bang">!</span><span class="parenthesis">(</span>f1<span class="comma">,</span> f2<span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
 <span class="keyword">fn</span> <span class="function declaration">use_foo_items</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
@@ -254,7 +254,7 @@ proc_macros::<span class="macro">mirror!</span> <span class="brace">{</span>
     <span class="keyword">let</span> <span class="variable declaration">control_flow</span> <span class="operator">=</span> <span class="module crate_root library">foo</span><span class="operator">::</span><span class="function library">identity</span><span class="parenthesis">(</span><span class="module crate_root library">foo</span><span class="operator">::</span><span class="enum library">ControlFlow</span><span class="operator">::</span><span class="enum_variant library">Continue</span><span class="parenthesis">)</span><span class="semicolon">;</span>
 
     <span class="keyword control">if</span> <span class="variable">control_flow</span><span class="operator">.</span><span class="function associated consuming library">should_die</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
-        foo::<span class="macro">die!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+        <span class="module crate_root library">foo</span><span class="operator">::</span><span class="unresolved_reference">die</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 
@@ -262,7 +262,7 @@ proc_macros::<span class="macro">mirror!</span> <span class="brace">{</span>
 
 <span class="keyword">impl</span> <span class="enum public">Bool</span> <span class="brace">{</span>
     <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function associated consuming declaration public">to_primitive</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
-        <span class="macro">matches!</span><span class="parenthesis">(</span>self<span class="comma">,</span> Self<span class="colon">:</span><span class="colon">:</span>True<span class="parenthesis">)</span>
+        <span class="unresolved_reference">matches</span><span class="macro_bang">!</span><span class="parenthesis">(</span>self<span class="comma">,</span> Self<span class="colon">:</span><span class="colon">:</span>True<span class="parenthesis">)</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 <span class="keyword">const</span> <span class="constant declaration">USAGE_OF_BOOL</span><span class="colon">:</span><span class="builtin_type">bool</span> <span class="operator">=</span> <span class="enum public">Bool</span><span class="operator">::</span><span class="enum_variant public">True</span><span class="operator">.</span><span class="function associated consuming public">to_primitive</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>

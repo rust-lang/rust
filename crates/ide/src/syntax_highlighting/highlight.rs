@@ -81,7 +81,7 @@ fn token(
                 T![::] | T![->] | T![=>] | T![..] | T![=] | T![@] | T![.] => {
                     HlOperator::Other.into()
                 }
-                T![!] if parent_matches::<ast::MacroCall>(&token) => SymbolKind::Macro.into(),
+                T![!] if parent_matches::<ast::MacroCall>(&token) => HlPunct::MacroBang.into(),
                 T![!] if parent_matches::<ast::NeverType>(&token) => HlTag::BuiltinType.into(),
                 T![!] if parent_matches::<ast::PrefixExpr>(&token) => HlOperator::Logical.into(),
                 T![*] if parent_matches::<ast::PtrType>(&token) => HlTag::Keyword.into(),

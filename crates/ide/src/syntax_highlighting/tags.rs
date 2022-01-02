@@ -102,6 +102,8 @@ pub enum HlPunct {
     Colon,
     /// ;
     Semi,
+    /// ! (only for macro calls)
+    MacroBang,
     ///
     Other,
 }
@@ -167,6 +169,7 @@ impl HlTag {
                 HlPunct::Dot => "dot",
                 HlPunct::Colon => "colon",
                 HlPunct::Semi => "semicolon",
+                HlPunct::MacroBang => "macro_bang",
                 HlPunct::Other => "punctuation",
             },
             HlTag::NumericLiteral => "numeric_literal",
