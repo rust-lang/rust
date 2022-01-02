@@ -14,7 +14,6 @@ use ide::{
     SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
-use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
@@ -854,7 +853,7 @@ pub(crate) fn handle_completion_resolve(
         )?
         .into_iter()
         .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
-        .collect_vec();
+        .collect::<Vec<_>>();
 
     if !all_edits_are_disjoint(&original_completion, &additional_edits) {
         return Err(LspError::new(
@@ -1164,7 +1163,7 @@ pub(crate) fn handle_code_action_resolve(
 }
 
 fn parse_action_id(action_id: &str) -> Result<(usize, SingleResolve), String> {
-    let id_parts = action_id.split(':').collect_vec();
+    let id_parts = action_id.split(':').collect::<Vec<_>>();
     match id_parts.as_slice() {
         [assist_id_string, assist_kind_string, index_string] => {
             let assist_kind: AssistKind = assist_kind_string.parse()?;
