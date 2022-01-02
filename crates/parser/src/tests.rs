@@ -9,7 +9,7 @@ use std::{
 
 use expect_test::expect_file;
 
-use crate::LexedStr;
+use crate::{LexedStr, TopEntryPoint};
 
 #[test]
 fn lex_ok() {
@@ -45,7 +45,7 @@ fn lex(text: &str) -> String {
 #[test]
 fn parse_ok() {
     for case in TestCase::list("parser/ok") {
-        let (actual, errors) = parse(&case.text);
+        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(!errors, "errors in an OK file {}:\n{}", case.rs.display(), actual);
         expect_file![case.txt].assert_eq(&actual);
     }
@@ -54,7 +54,7 @@ fn parse_ok() {
 #[test]
 fn parse_inline_ok() {
     for case in TestCase::list("parser/inline/ok") {
-        let (actual, errors) = parse(&case.text);
+        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(!errors, "errors in an OK file {}:\n{}", case.rs.display(), actual);
         expect_file![case.txt].assert_eq(&actual);
     }
@@ -63,7 +63,7 @@ fn parse_inline_ok() {
 #[test]
 fn parse_err() {
     for case in TestCase::list("parser/err") {
-        let (actual, errors) = parse(&case.text);
+        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{}", case.rs.display(), actual);
         expect_file![case.txt].assert_eq(&actual)
     }
@@ -72,16 +72,16 @@ fn parse_err() {
 #[test]
 fn parse_inline_err() {
     for case in TestCase::list("parser/inline/err") {
-        let (actual, errors) = parse(&case.text);
+        let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{}", case.rs.display(), actual);
         expect_file![case.txt].assert_eq(&actual)
     }
 }
 
-fn parse(text: &str) -> (String, bool) {
+fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
     let lexed = LexedStr::new(text);
     let input = lexed.to_input();
-    let output = crate::TopEntryPoint::SourceFile.parse(&input);
+    let output = entry.parse(&input);
 
     let mut buf = String::new();
     let mut errors = Vec::new();
