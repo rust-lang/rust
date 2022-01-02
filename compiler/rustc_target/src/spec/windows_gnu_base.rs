@@ -16,34 +16,13 @@ pub fn opts() -> TargetOptions {
         ],
     );
 
-    let mut late_link_args = LinkArgs::new();
     let mut late_link_args_dynamic = LinkArgs::new();
     let mut late_link_args_static = LinkArgs::new();
-    // Order of `late_link_args*` was found through trial and error to work with various
-    // mingw-w64 versions (not tested on the CI). It's expected to change from time to time.
-    let mingw_libs = vec![
-        "-lmsvcrt".to_string(),
-        "-lmingwex".to_string(),
-        "-lmingw32".to_string(),
-        "-lgcc".to_string(), // alas, mingw* libraries above depend on libgcc
-        // mingw's msvcrt is a weird hybrid import library and static library.
-        // And it seems that the linker fails to use import symbols from msvcrt
-        // that are required from functions in msvcrt in certain cases. For example
-        // `_fmode` that is used by an implementation of `__p__fmode` in x86_64.
-        // The library is purposely listed twice to fix that.
-        //
-        // See https://github.com/rust-lang/rust/pull/47483 for some more details.
-        "-lmsvcrt".to_string(),
-        "-luser32".to_string(),
-        "-lkernel32".to_string(),
-    ];
-    late_link_args.insert(LinkerFlavor::Gcc, mingw_libs.clone());
-    late_link_args.insert(LinkerFlavor::Lld(LldFlavor::Ld), mingw_libs);
     let dynamic_unwind_libs = vec![
         // If any of our crates are dynamically linked then we need to use
         // the shared libgcc_s-dw2-1.dll. This is required to support
         // unwinding across DLL boundaries.
-        "-lgcc_s".to_string(),
+        "-l:libunwind.dll.a".to_string(),
     ];
     late_link_args_dynamic.insert(LinkerFlavor::Gcc, dynamic_unwind_libs.clone());
     late_link_args_dynamic.insert(LinkerFlavor::Lld(LldFlavor::Ld), dynamic_unwind_libs);
@@ -53,8 +32,7 @@ pub fn opts() -> TargetOptions {
         // binaries to be redistributed without the libgcc_s-dw2-1.dll
         // dependency, but unfortunately break unwinding across DLL
         // boundaries when unwinding across FFI boundaries.
-        "-lgcc_eh".to_string(),
-        "-l:libpthread.a".to_string(),
+        "-l:libunwind.a".to_string(),
     ];
     late_link_args_static.insert(LinkerFlavor::Gcc, static_unwind_libs.clone());
     late_link_args_static.insert(LinkerFlavor::Lld(LldFlavor::Ld), static_unwind_libs);
@@ -64,7 +42,8 @@ pub fn opts() -> TargetOptions {
         env: "gnu".to_string(),
         vendor: "pc".to_string(),
         // FIXME(#13846) this should be enabled for windows
-        function_sections: false,
+        function_sections: true,
+        no_default_libraries: false,
         linker: Some("gcc".to_string()),
         dynamic_linking: true,
         executables: true,
@@ -80,7 +59,6 @@ pub fn opts() -> TargetOptions {
         pre_link_objects_fallback: crt_objects::pre_mingw_fallback(),
         post_link_objects_fallback: crt_objects::post_mingw_fallback(),
         crt_objects_fallback: Some(CrtObjectsFallback::Mingw),
-        late_link_args,
         late_link_args_dynamic,
         late_link_args_static,
         abi_return_struct_as_int: true,

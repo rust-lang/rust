@@ -10,7 +10,7 @@ pub fn target() -> Target {
     base.pre_link_args
         .insert(LinkerFlavor::Lld(LldFlavor::Ld), vec!["-m".to_string(), "i386pep".to_string()]);
     base.max_atomic_width = Some(64);
-    base.linker = Some("x86_64-w64-mingw32-gcc".to_string());
+    base.linker = Some("x86_64-w64-mingw32-clang".to_string());
 
     Target {
         llvm_target: "x86_64-pc-windows-gnu".to_string(),

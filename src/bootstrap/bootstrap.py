@@ -470,6 +470,13 @@ class RustBuild(object):
             with output(self.rustc_stamp(stage0)) as rust_stamp:
                 rust_stamp.write(key)
 
+            # FIXME add conditional for Windows GNU target
+            gcc_libs_hack = '{}/missing-libs-hack'.format(self.rust_root)
+            gcc_libs_hack_dest = '{}/rustlib/{}/lib'.format(lib_dir, self.build)
+            shutil.copy(gcc_libs_hack + '/libgcc.a', gcc_libs_hack_dest)
+            shutil.copy(gcc_libs_hack + '/libgcc_eh.a', gcc_libs_hack_dest)
+            shutil.copy(gcc_libs_hack + '/libgcc_s.a', gcc_libs_hack_dest)
+
         if self.rustfmt() and self.rustfmt().startswith(bin_root) and (
             not os.path.exists(self.rustfmt())
             or self.program_out_of_date(
