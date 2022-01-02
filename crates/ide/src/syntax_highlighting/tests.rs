@@ -17,6 +17,7 @@ use inner::{self as inner_mod};
 mod inner {}
 
 #[allow()]
+#[rustfmt::skip]
 #[proc_macros::identity]
 pub mod ops {
     #[lang = "fn_once"]
