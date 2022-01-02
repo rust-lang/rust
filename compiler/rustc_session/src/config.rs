@@ -135,8 +135,8 @@ pub enum MirSpanview {
 /// selected, code structure, and enabled attributes. If errors are encountered,
 /// either while compiling or when generating `llvm-cov show` reports, consider
 /// lowering the optimization level, including or excluding `-C link-dead-code`,
-/// or using `-C instrument-coverage=except-unused-functions` or `-C
-/// instrument-coverage=except-unused-generics`.
+/// or using `-Zunstable-options -C instrument-coverage=except-unused-functions`
+/// or `-Zunstable-options -C instrument-coverage=except-unused-generics`.
 ///
 /// Note that `ExceptUnusedFunctions` means: When `mapgen.rs` generates the
 /// coverage map, it will not attempt to generate synthetic functions for unused
@@ -150,9 +150,9 @@ pub enum MirSpanview {
 pub enum InstrumentCoverage {
     /// Default `-C instrument-coverage` or `-C instrument-coverage=statement`
     All,
-    /// `-C instrument-coverage=except-unused-generics`
+    /// `-Zunstable-options -C instrument-coverage=except-unused-generics`
     ExceptUnusedGenerics,
-    /// `-C instrument-coverage=except-unused-functions`
+    /// `-Zunstable-options -C instrument-coverage=except-unused-functions`
     ExceptUnusedFunctions,
     /// `-C instrument-coverage=off` (or `no`, etc.)
     Off,
@@ -2152,6 +2152,13 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 error_format,
                 "incompatible values passed for `-C instrument-coverage` \
                 and `-Z instrument-coverage`",
+            );
+        }
+        (Some(InstrumentCoverage::Off | InstrumentCoverage::All), _) => {}
+        (Some(_), _) if !debugging_opts.unstable_options => {
+            early_error(
+                error_format,
+                "`-C instrument-coverage=except-*` requires `-Z unstable-options`",
             );
         }
         (None, None) => {}

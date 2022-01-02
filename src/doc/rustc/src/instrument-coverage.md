@@ -318,9 +318,9 @@ $ llvm-cov report \
 ## `-C instrument-coverage=<options>`
 
 -   `-C instrument-coverage=all`: Instrument all functions, including unused functions and unused generics. (This is the same as `-C instrument-coverage`, with no value.)
--   `-C instrument-coverage=except-unused-generics`: Instrument all functions except unused generics.
--   `-C instrument-coverage=except-unused-functions`: Instrument only used (called) functions and instantiated generic functions.
 -   `-C instrument-coverage=off`: Do not instrument any functions. (This is the same as simply not including the `-C instrument-coverage` option.)
+-   `-Zunstable-options -C instrument-coverage=except-unused-generics`: Instrument all functions except unused generics.
+-   `-Zunstable-options -C instrument-coverage=except-unused-functions`: Instrument only used (called) functions and instantiated generic functions.
 
 ## Other references
 
