@@ -476,12 +476,12 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn derive_macro_calls(&self, attr: &ast::Attr) -> Option<Vec<Option<MacroCallId>>> {
-        let item = attr.syntax().parent().and_then(ast::Item::cast)?;
-        let file_id = self.find_file(item.syntax()).file_id;
-        let item = InFile::new(file_id, &item);
+        let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+        let file_id = self.find_file(adt.syntax()).file_id;
+        let adt = InFile::new(file_id, &adt);
         let src = InFile::new(file_id, attr.clone());
         self.with_ctx(|ctx| {
-            let res = ctx.attr_to_derive_macro_call(item, src)?;
+            let res = ctx.attr_to_derive_macro_call(adt, src)?;
             Some(res.to_vec())
         })
     }
@@ -909,17 +909,8 @@ impl<'db> SemanticsImpl<'db> {
             return None;
         }
 
-        // Fetch hir::Attr definition
-        // FIXME: Move this to ToDef impl?
-        let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
-        let attr_pos = adt.attrs().position(|it| it == attr)?;
-        let attrs = {
-            let file_id = self.find_file(adt.syntax()).file_id;
-            let adt = InFile::new(file_id, adt);
-            let def = self.with_ctx(|ctx| ctx.adt_to_def(adt))?;
-            self.db.attrs(def.into())
-        };
-        let attr_def = attrs.get(attr_pos)?;
+        let attr_def =
+            ast::Attr::to_def(self, self.find_file(attr.syntax()).with_value(attr.clone()))?;
 
         let mut derive_paths = attr_def.parse_path_comma_token_tree()?;
         let derives = self.resolve_derive_macro(&attr)?;
@@ -1214,6 +1205,7 @@ to_def_impls![
     (crate::Local, ast::SelfParam, self_param_to_def),
     (crate::Label, ast::Label, label_to_def),
     (crate::Adt, ast::Adt, adt_to_def),
+    (crate::Attr, ast::Attr, attr_to_def),
 ];
 
 fn find_root(node: &SyntaxNode) -> SyntaxNode {
