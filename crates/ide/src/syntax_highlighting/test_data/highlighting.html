@@ -262,7 +262,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="keyword">impl</span> <span class="enum public">Bool</span> <span class="brace">{</span>
     <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function associated consuming declaration public">to_primitive</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
-        <span class="unresolved_reference">matches</span><span class="macro_bang">!</span><span class="parenthesis">(</span>self<span class="comma">,</span> Self<span class="colon">:</span><span class="colon">:</span>True<span class="parenthesis">)</span>
+        <span class="unresolved_reference">matches</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="keyword">self</span><span class="comma">,</span> Self<span class="colon">:</span><span class="colon">:</span>True<span class="parenthesis">)</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 <span class="keyword">const</span> <span class="constant declaration">USAGE_OF_BOOL</span><span class="colon">:</span><span class="builtin_type">bool</span> <span class="operator">=</span> <span class="enum public">Bool</span><span class="operator">::</span><span class="enum_variant public">True</span><span class="operator">.</span><span class="function associated consuming public">to_primitive</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>

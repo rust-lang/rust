@@ -359,18 +359,6 @@ impl NameRefClass {
 
         let parent = name_ref.syntax().parent()?;
 
-        if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
-            if let Some(func) = sema.resolve_method_call(&method_call) {
-                return Some(NameRefClass::Definition(Definition::Function(func)));
-            }
-        }
-
-        if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
-            if let Some(field) = sema.resolve_field(&field_expr) {
-                return Some(NameRefClass::Definition(Definition::Field(field)));
-            }
-        }
-
         if let Some(record_field) = ast::RecordExprField::for_field_name(name_ref) {
             if let Some((field, local, _)) = sema.resolve_record_field(&record_field) {
                 let res = match local {
@@ -380,38 +368,6 @@ impl NameRefClass {
                     }
                 };
                 return Some(res);
-            }
-        }
-
-        if let Some(record_pat_field) = ast::RecordPatField::cast(parent.clone()) {
-            if let Some(field) = sema.resolve_record_pat_field(&record_pat_field) {
-                let field = Definition::Field(field);
-                return Some(NameRefClass::Definition(field));
-            }
-        }
-
-        if let Some(assoc_type_arg) = ast::AssocTypeArg::cast(parent.clone()) {
-            if assoc_type_arg.name_ref().as_ref() == Some(name_ref) {
-                // `Trait<Assoc = Ty>`
-                //        ^^^^^
-                let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
-                let resolved = sema.resolve_path(&path)?;
-                if let PathResolution::Def(ModuleDef::Trait(tr)) = resolved {
-                    // FIXME: resolve in supertraits
-                    if let Some(ty) = tr
-                        .items(sema.db)
-                        .iter()
-                        .filter_map(|assoc| match assoc {
-                            hir::AssocItem::TypeAlias(it) => Some(*it),
-                            _ => None,
-                        })
-                        .find(|alias| alias.name(sema.db).to_smol_str() == name_ref.text().as_str())
-                    {
-                        return Some(NameRefClass::Definition(Definition::TypeAlias(ty)));
-                    }
-                }
-
-                return None;
             }
         }
 
@@ -428,10 +384,52 @@ impl NameRefClass {
             return sema.resolve_path(&path).map(Into::into).map(NameRefClass::Definition);
         }
 
-        let extern_crate = ast::ExternCrate::cast(parent)?;
-        let krate = sema.resolve_extern_crate(&extern_crate)?;
-        let root_module = krate.root_module(sema.db);
-        Some(NameRefClass::Definition(Definition::Module(root_module)))
+        match_ast! {
+            match parent {
+                ast::MethodCallExpr(method_call) => {
+                    sema.resolve_method_call(&method_call)
+                        .map(Definition::Function)
+                        .map(NameRefClass::Definition)
+                },
+                ast::FieldExpr(field_expr) => {
+                    sema.resolve_field(&field_expr)
+                        .map(Definition::Field)
+                        .map(NameRefClass::Definition)
+                },
+                ast::RecordPatField(record_pat_field) => {
+                    sema.resolve_record_pat_field(&record_pat_field)
+                        .map(Definition::Field)
+                        .map(NameRefClass::Definition)
+                },
+                ast::AssocTypeArg(_) => {
+                    // `Trait<Assoc = Ty>`
+                    //        ^^^^^
+                    let containing_path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
+                    let resolved = sema.resolve_path(&containing_path)?;
+                    if let PathResolution::Def(ModuleDef::Trait(tr)) = resolved {
+                        // FIXME: resolve in supertraits
+                        if let Some(ty) = tr
+                            .items(sema.db)
+                            .iter()
+                            .filter_map(|&assoc| match assoc {
+                                hir::AssocItem::TypeAlias(it) => Some(it),
+                                _ => None,
+                            })
+                            .find(|alias| alias.name(sema.db).to_smol_str() == name_ref.text().as_str())
+                        {
+                            return Some(NameRefClass::Definition(Definition::TypeAlias(ty)));
+                        }
+                    }
+                    None
+                },
+                ast::ExternCrate(extern_crate) => {
+                    let krate = sema.resolve_extern_crate(&extern_crate)?;
+                    let root_module = krate.root_module(sema.db);
+                    Some(NameRefClass::Definition(Definition::Module(root_module)))
+                },
+                _ => None
+            }
+        }
     }
 
     pub fn classify_lifetime(
