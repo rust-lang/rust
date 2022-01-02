@@ -404,24 +404,24 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         &mut self,
         lazy: Lazy<T>,
     ) -> Result<(), <Self as Encoder>::Error> {
-        let min_end = lazy.position.get() + T::min_size(lazy.meta);
+        let pos = lazy.position.get();
         let distance = match self.lazy_state {
             LazyState::NoNode => bug!("emit_lazy_distance: outside of a metadata node"),
             LazyState::NodeStart(start) => {
                 let start = start.get();
-                assert!(min_end <= start);
-                start - min_end
+                assert!(pos <= start);
+                start - pos
             }
-            LazyState::Previous(last_min_end) => {
+            LazyState::Previous(last_pos) => {
                 assert!(
-                    last_min_end <= lazy.position,
+                    last_pos <= lazy.position,
                     "make sure that the calls to `lazy*` \
                      are in the same order as the metadata fields",
                 );
-                lazy.position.get() - last_min_end.get()
+                lazy.position.get() - last_pos.get()
             }
         };
-        self.lazy_state = LazyState::Previous(NonZeroUsize::new(min_end).unwrap());
+        self.lazy_state = LazyState::Previous(NonZeroUsize::new(pos).unwrap());
         self.emit_usize(distance)
     }
 
@@ -436,7 +436,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let meta = value.encode_contents_for_lazy(self);
         self.lazy_state = LazyState::NoNode;
 
-        assert!(pos.get() + <T>::min_size(meta) <= self.position());
+        assert!(pos.get() <= self.position());
 
         Lazy::from_position_and_meta(pos, meta)
     }

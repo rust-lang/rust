@@ -304,18 +304,17 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         &mut self,
         meta: T::Meta,
     ) -> Result<Lazy<T>, <Self as Decoder>::Error> {
-        let min_size = T::min_size(meta);
         let distance = self.read_usize()?;
         let position = match self.lazy_state {
             LazyState::NoNode => bug!("read_lazy_with_meta: outside of a metadata node"),
             LazyState::NodeStart(start) => {
                 let start = start.get();
-                assert!(distance + min_size <= start);
-                start - distance - min_size
+                assert!(distance <= start);
+                start - distance
             }
-            LazyState::Previous(last_min_end) => last_min_end.get() + distance,
+            LazyState::Previous(last_pos) => last_pos.get() + distance,
         };
-        self.lazy_state = LazyState::Previous(NonZeroUsize::new(position + min_size).unwrap());
+        self.lazy_state = LazyState::Previous(NonZeroUsize::new(position).unwrap());
         Ok(Lazy::from_position_and_meta(NonZeroUsize::new(position).unwrap(), meta))
     }
 
