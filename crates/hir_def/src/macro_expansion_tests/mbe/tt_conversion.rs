@@ -2,7 +2,9 @@
 //! Rather, token trees are an explicit bridge between the parser and
 //! (procedural or declarative) macros.
 //!
-//! This module tests tt <-> syntax tree conversion specifically
+//! This module tests tt <-> syntax tree conversion specifically. In particular,
+//! it, among other things, check that we convert `tt` to the right kind of
+//! syntax node depending on the macro call-site.
 use expect_test::expect;
 
 use crate::macro_expansion_tests::check;
@@ -97,6 +99,52 @@ macro_rules! m2 { ($x:ident) => {} }
 
 /* error: invalid macro definition: expected subtree */
 /* error: Failed to lower macro args to token tree */
+"#]],
+    )
+}
+
+#[test]
+fn expansion_does_not_parse_as_expression() {
+    cov_mark::check!(expansion_does_not_parse_as_expression);
+    check(
+        r#"
+macro_rules! stmts {
+    () => { let _ = 0; }
+}
+
+fn f() { let _ = stmts!(); }
+"#,
+        expect![[r#"
+macro_rules! stmts {
+    () => { let _ = 0; }
+}
+
+fn f() { let _ = /* error: could not convert tokens */; }
+"#]],
+    )
+}
+
+#[test]
+fn broken_pat() {
+    check(
+        r#"
+macro_rules! m1 { () => (Some(x) left overs) }
+macro_rules! m2 { () => ($) }
+
+fn main() {
+    let m1!() = ();
+    let m2!/*+errors*/() = ();
+}
+"#,
+        expect![[r#"
+macro_rules! m1 { () => (Some(x) left overs) }
+macro_rules! m2 { () => ($) }
+
+fn main() {
+    let Some(x) = ();
+    let /* parse error: expected pattern */
+$ = ();
+}
 "#]],
     )
 }

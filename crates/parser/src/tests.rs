@@ -114,7 +114,13 @@ fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
             errors.push(format!("error {}: {}\n", pos, msg))
         }
     });
-    assert_eq!(len, text.len());
+    assert_eq!(
+        len,
+        text.len(),
+        "didn't parse all text.\nParsed:\n{}\n\nAll:\n{}\n",
+        &text[..len],
+        text
+    );
 
     for (token, msg) in lexed.errors() {
         let pos = lexed.text_start(token);
