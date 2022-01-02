@@ -191,5 +191,13 @@ LL |         fn to_u64(self) -> u64 {
    |
    = help: consider choosing a less ambiguous name
 
-error: aborting due to 24 previous errors
+error: methods called `is_*` usually take `self` by reference or no `self`
+  --> $DIR/wrong_self_convention.rs:197:27
+   |
+LL |         fn is_still_buggy(&mut self) -> bool {
+   |                           ^^^^^^^^^
+   |
+   = help: consider choosing a less ambiguous name
+
+error: aborting due to 25 previous errors
 

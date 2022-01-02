@@ -12,5 +12,14 @@ error: explicit lifetimes given in parameter types where they could be elided (o
 LL | async fn one_to_one<'a>(s: &'a str) -> &'a str {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: methods called `new` usually take no `self`
+  --> $DIR/issue_4266.rs:27:22
+   |
+LL |     pub async fn new(&mut self) -> Self {
+   |                      ^^^^^^^^^
+   |
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
+   = help: consider choosing a less ambiguous name
+
+error: aborting due to 3 previous errors
 

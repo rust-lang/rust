@@ -188,3 +188,24 @@ mod issue6727 {
         }
     }
 }
+
+pub mod issue8142 {
+    struct S;
+
+    impl S {
+        // Should lint: is_ methods should only take &self, or no self at all.
+        fn is_still_buggy(&mut self) -> bool {
+            false
+        }
+
+        // Should not lint: "no self at all" is allowed.
+        fn is_forty_two(x: u32) -> bool {
+            x == 42
+        }
+
+        // Should not lint: &self is allowed.
+        fn is_test_code(&self) -> bool {
+            true
+        }
+    }
+}
