@@ -290,9 +290,7 @@ impl SourceAnalyzer {
                 return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
             }
             prefer_value_ns = true;
-        }
-
-        if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
+        } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
             let pat_id = self.pat_id(&path_pat.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
                 return Some(PathResolution::AssocItem(assoc.into()));
@@ -302,9 +300,7 @@ impl SourceAnalyzer {
             {
                 return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
             }
-        }
-
-        if let Some(rec_lit) = parent().and_then(ast::RecordExpr::cast) {
+        } else if let Some(rec_lit) = parent().and_then(ast::RecordExpr::cast) {
             let expr_id = self.expr_id(db, &rec_lit.into())?;
             if let Some(VariantId::EnumVariantId(variant)) =
                 self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
@@ -331,32 +327,34 @@ impl SourceAnalyzer {
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are
         // trying to resolve foo::bar.
         if let Some(use_tree) = parent().and_then(ast::UseTree::cast) {
-            if let Some(qualifier) = use_tree.path() {
-                if path == &qualifier && use_tree.coloncolon_token().is_some() {
-                    return resolve_hir_path_qualifier(db, &self.resolver, &hir_path);
-                }
+            if use_tree.coloncolon_token().is_some() {
+                return resolve_hir_path_qualifier(db, &self.resolver, &hir_path);
             }
         }
 
         let is_path_of_attr = path
-            .top_path()
             .syntax()
             .ancestors()
-            .nth(2) // Path -> Meta -> Attr
-            .map_or(false, |it| ast::Attr::can_cast(it.kind()));
+            .map(|it| it.kind())
+            .take_while(|&kind| ast::Path::can_cast(kind) || ast::Meta::can_cast(kind))
+            .last()
+            .map_or(false, ast::Meta::can_cast);
 
         // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we are
         // trying to resolve foo::bar.
-        if let Some(outer_path) = path.parent_path() {
-            if let Some(qualifier) = outer_path.qualifier() {
-                if path == &qualifier {
-                    return resolve_hir_path_qualifier(db, &self.resolver, &hir_path);
+        if path.parent_path().is_some() {
+            return match resolve_hir_path_qualifier(db, &self.resolver, &hir_path) {
+                None if is_path_of_attr => {
+                    path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
+                        ToolModule::by_name(&name_ref.text()).map(PathResolution::ToolModule)
+                    })
                 }
-            }
+                res => res,
+            };
         } else if is_path_of_attr {
             // Case where we are resolving the final path segment of a path in an attribute
             // in this case we have to check for inert/builtin attributes and tools and prioritize
-            // resolution of attributes over other namesapces
+            // resolution of attributes over other namespaces
             let name_ref = path.as_single_name_ref();
             let builtin =
                 name_ref.as_ref().map(ast::NameRef::text).as_deref().and_then(BuiltinAttr::by_name);
@@ -365,27 +363,17 @@ impl SourceAnalyzer {
             }
             return match resolve_hir_path_as_macro(db, &self.resolver, &hir_path) {
                 res @ Some(m) if m.is_attr() => res.map(PathResolution::Macro),
-                _ => name_ref.and_then(|name_ref| {
+                // this labels any path that starts with a tool module as the tool itself, this is technically wrong
+                // but there is no benefit in differentiating these two cases for the time being
+                _ => path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
                     ToolModule::by_name(&name_ref.text()).map(PathResolution::ToolModule)
                 }),
             };
         }
-
-        let res = if parent().map_or(false, |it| ast::Visibility::can_cast(it.kind())) {
+        if parent().map_or(false, |it| ast::Visibility::can_cast(it.kind())) {
             resolve_hir_path_qualifier(db, &self.resolver, &hir_path)
         } else {
             resolve_hir_path_(db, &self.resolver, &hir_path, prefer_value_ns)
-        };
-        match res {
-            Some(_) => res,
-            // this labels any path that starts with a tool module as the tool itself, this is technically wrong
-            // but there is no benefit in differentiating these two cases for the time being
-            None if is_path_of_attr => path
-                .first_segment()
-                .and_then(|seg| seg.name_ref())
-                .and_then(|name_ref| ToolModule::by_name(&name_ref.text()))
-                .map(PathResolution::ToolModule),
-            None => None,
         }
     }
 
