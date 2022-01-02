@@ -41,48 +41,6 @@ pub use crate::{
     syntax_kind::SyntaxKind,
 };
 
-/// Parse a prefix of the input as a given syntactic construct.
-///
-/// This is used by macro-by-example parser to implement things like `$i:item`
-/// and the naming of variants follows the naming of macro fragments.
-///
-/// Note that this is generally non-optional -- the result is intentionally not
-/// `Option<Output>`. The way MBE work, by the time we *try* to parse `$e:expr`
-/// we already commit to expression. In other words, this API by design can't be
-/// used to implement "rollback and try another alternative" logic.
-#[derive(Debug)]
-pub enum PrefixEntryPoint {
-    Vis,
-    Block,
-    Stmt,
-    Pat,
-    Ty,
-    Expr,
-    Path,
-    Item,
-    MetaItem,
-}
-
-impl PrefixEntryPoint {
-    pub fn parse(&self, input: &Input) -> Output {
-        let entry_point: fn(&'_ mut parser::Parser) = match self {
-            PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
-            PrefixEntryPoint::Block => grammar::entry::prefix::block,
-            PrefixEntryPoint::Stmt => grammar::entry::prefix::stmt,
-            PrefixEntryPoint::Pat => grammar::entry::prefix::pat,
-            PrefixEntryPoint::Ty => grammar::entry::prefix::ty,
-            PrefixEntryPoint::Expr => grammar::entry::prefix::expr,
-            PrefixEntryPoint::Path => grammar::entry::prefix::path,
-            PrefixEntryPoint::Item => grammar::entry::prefix::item,
-            PrefixEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
-        };
-        let mut p = parser::Parser::new(input);
-        entry_point(&mut p);
-        let events = p.finish();
-        event::process(events)
-    }
-}
-
 /// Parse the whole of the input as a given syntactic construct.
 ///
 /// This covers two main use-cases:
@@ -149,6 +107,48 @@ impl TopEntryPoint {
         }
 
         res
+    }
+}
+
+/// Parse a prefix of the input as a given syntactic construct.
+///
+/// This is used by macro-by-example parser to implement things like `$i:item`
+/// and the naming of variants follows the naming of macro fragments.
+///
+/// Note that this is generally non-optional -- the result is intentionally not
+/// `Option<Output>`. The way MBE work, by the time we *try* to parse `$e:expr`
+/// we already commit to expression. In other words, this API by design can't be
+/// used to implement "rollback and try another alternative" logic.
+#[derive(Debug)]
+pub enum PrefixEntryPoint {
+    Vis,
+    Block,
+    Stmt,
+    Pat,
+    Ty,
+    Expr,
+    Path,
+    Item,
+    MetaItem,
+}
+
+impl PrefixEntryPoint {
+    pub fn parse(&self, input: &Input) -> Output {
+        let entry_point: fn(&'_ mut parser::Parser) = match self {
+            PrefixEntryPoint::Vis => grammar::entry::prefix::vis,
+            PrefixEntryPoint::Block => grammar::entry::prefix::block,
+            PrefixEntryPoint::Stmt => grammar::entry::prefix::stmt,
+            PrefixEntryPoint::Pat => grammar::entry::prefix::pat,
+            PrefixEntryPoint::Ty => grammar::entry::prefix::ty,
+            PrefixEntryPoint::Expr => grammar::entry::prefix::expr,
+            PrefixEntryPoint::Path => grammar::entry::prefix::path,
+            PrefixEntryPoint::Item => grammar::entry::prefix::item,
+            PrefixEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
+        };
+        let mut p = parser::Parser::new(input);
+        entry_point(&mut p);
+        let events = p.finish();
+        event::process(events)
     }
 }
 
