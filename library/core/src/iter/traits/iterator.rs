@@ -5,7 +5,7 @@ use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 use super::super::try_process;
 use super::super::ByRefSized;
 use super::super::TrustedRandomAccessNoCoerce;
-use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
+use super::super::{ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
 use super::super::{
@@ -3314,6 +3314,46 @@ pub trait Iterator {
         Self: Sized + Clone,
     {
         Cycle::new(self)
+    }
+
+    /// Returns an iterator over `N` elements of the iterator at a time.
+    ///
+    /// The chunks do not overlap. If `N` does not divide the length of the
+    /// iterator, then the last up to `N-1` elements will be omitted.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `N` is 0.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_array_chunks)]
+    ///
+    /// let mut iter = "lorem".chars().array_chunks();
+    /// assert_eq!(iter.next(), Some(['l', 'o']));
+    /// assert_eq!(iter.next(), Some(['r', 'e']));
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.remainder(), &['m']);
+    /// ```
+    ///
+    /// ```
+    /// #![feature(iter_array_chunks)]
+    ///
+    /// let data = [1, 1, 2, -2, 6, 0, 3, 1];
+    /// //          ^-----^  ^------^
+    /// for [x, y, z] in data.iter().array_chunks() {
+    ///     assert_eq!(x + y + z, 4);
+    /// }
+    /// ```
+    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
+    fn array_chunks<const N: usize>(self) -> ArrayChunks<Self, N>
+    where
+        Self: Sized,
+    {
+        ArrayChunks::new(self)
     }
 
     /// Sums the elements of an iterator.
