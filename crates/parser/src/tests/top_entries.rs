@@ -53,6 +53,13 @@ fn source_file() {
 fn macro_stmt() {
     check(
         TopEntryPoint::MacroStmts,
+        "",
+        expect![[r#"
+            MACRO_STMTS
+        "#]],
+    );
+    check(
+        TopEntryPoint::MacroStmts,
         "#!/usr/bin/rust",
         expect![[r##"
             MACRO_STMTS
@@ -96,6 +103,13 @@ fn macro_stmt() {
 fn macro_items() {
     check(
         TopEntryPoint::MacroItems,
+        "",
+        expect![[r#"
+            MACRO_ITEMS
+        "#]],
+    );
+    check(
+        TopEntryPoint::MacroItems,
         "#!/usr/bin/rust",
         expect![[r##"
             MACRO_ITEMS
@@ -131,6 +145,14 @@ fn macro_items() {
 
 #[test]
 fn macro_pattern() {
+    check(
+        TopEntryPoint::Pattern,
+        "",
+        expect![[r#"
+            ERROR
+            error 0: expected pattern
+        "#]],
+    );
     check(
         TopEntryPoint::Pattern,
         "Some(_)",
@@ -177,6 +199,15 @@ fn macro_pattern() {
 
 #[test]
 fn type_() {
+    check(
+        TopEntryPoint::Type,
+        "",
+        expect![[r#"
+            ERROR
+            error 0: expected type
+        "#]],
+    );
+
     check(
         TopEntryPoint::Type,
         "Option<!>",
@@ -226,6 +257,14 @@ fn type_() {
 
 #[test]
 fn expr() {
+    check(
+        TopEntryPoint::Expr,
+        "",
+        expect![[r#"
+            ERROR
+            error 0: expected expression
+        "#]],
+    );
     check(
         TopEntryPoint::Expr,
         "2 + 2 == 5",
