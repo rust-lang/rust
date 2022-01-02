@@ -105,21 +105,21 @@ macro_rules! m2 { ($x:ident) => {} }
 
 #[test]
 fn expansion_does_not_parse_as_expression() {
-    cov_mark::check!(expansion_does_not_parse_as_expression);
     check(
         r#"
 macro_rules! stmts {
     () => { let _ = 0; }
 }
 
-fn f() { let _ = stmts!(); }
+fn f() { let _ = stmts!/*+errors*/(); }
 "#,
         expect![[r#"
 macro_rules! stmts {
     () => { let _ = 0; }
 }
 
-fn f() { let _ = /* error: could not convert tokens */; }
+fn f() { let _ = /* parse error: expected expression */
+let _ = 0;; }
 "#]],
     )
 }

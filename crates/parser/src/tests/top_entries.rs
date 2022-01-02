@@ -53,6 +53,13 @@ fn source_file() {
 fn macro_stmt() {
     check(
         TopEntryPoint::MacroStmts,
+        "",
+        expect![[r#"
+            MACRO_STMTS
+        "#]],
+    );
+    check(
+        TopEntryPoint::MacroStmts,
         "#!/usr/bin/rust",
         expect![[r##"
             MACRO_STMTS
@@ -96,6 +103,13 @@ fn macro_stmt() {
 fn macro_items() {
     check(
         TopEntryPoint::MacroItems,
+        "",
+        expect![[r#"
+            MACRO_ITEMS
+        "#]],
+    );
+    check(
+        TopEntryPoint::MacroItems,
         "#!/usr/bin/rust",
         expect![[r##"
             MACRO_ITEMS
@@ -131,6 +145,14 @@ fn macro_items() {
 
 #[test]
 fn macro_pattern() {
+    check(
+        TopEntryPoint::Pattern,
+        "",
+        expect![[r#"
+            ERROR
+            error 0: expected pattern
+        "#]],
+    );
     check(
         TopEntryPoint::Pattern,
         "Some(_)",
@@ -179,6 +201,15 @@ fn macro_pattern() {
 fn type_() {
     check(
         TopEntryPoint::Type,
+        "",
+        expect![[r#"
+            ERROR
+            error 0: expected type
+        "#]],
+    );
+
+    check(
+        TopEntryPoint::Type,
         "Option<!>",
         expect![[r#"
             PATH_TYPE
@@ -221,6 +252,54 @@ fn type_() {
               DOLLAR "$"
             error 0: expected type
         "#]],
+    );
+}
+
+#[test]
+fn expr() {
+    check(
+        TopEntryPoint::Expr,
+        "",
+        expect![[r#"
+            ERROR
+            error 0: expected expression
+        "#]],
+    );
+    check(
+        TopEntryPoint::Expr,
+        "2 + 2 == 5",
+        expect![[r#"
+        BIN_EXPR
+          BIN_EXPR
+            LITERAL
+              INT_NUMBER "2"
+            WHITESPACE " "
+            PLUS "+"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "2"
+          WHITESPACE " "
+          EQ2 "=="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "5"
+    "#]],
+    );
+    check(
+        TopEntryPoint::Expr,
+        "let _ = 0;",
+        expect![[r#"
+        ERROR
+          LET_KW "let"
+          WHITESPACE " "
+          UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          INT_NUMBER "0"
+          SEMICOLON ";"
+        error 0: expected expression
+    "#]],
     );
 }
 
