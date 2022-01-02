@@ -127,5 +127,55 @@ error: numeric literal is not a `u8`
 LL |     concat_bytes!([5u16]);
    |                    ^^^^
 
-error: aborting due to 20 previous errors
+error: repeat count is not a positive number
+  --> $DIR/concat-bytes-error.rs:42:23
+   |
+LL |     concat_bytes!([3; ()]);
+   |                       ^^
+
+error: repeat count is not a positive number
+  --> $DIR/concat-bytes-error.rs:43:23
+   |
+LL |     concat_bytes!([3; -2]);
+   |                       ^^
+
+error: repeat count is not a positive number
+  --> $DIR/concat-bytes-error.rs:44:25
+   |
+LL |     concat_bytes!([pie; -2]);
+   |                         ^^
+
+error: expected a byte literal
+  --> $DIR/concat-bytes-error.rs:45:20
+   |
+LL |     concat_bytes!([pie; 2]);
+   |                    ^^^
+   |
+   = note: only byte literals (like `b"foo"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`
+
+error: cannot concatenate float literals
+  --> $DIR/concat-bytes-error.rs:46:20
+   |
+LL |     concat_bytes!([2.2; 0]);
+   |                    ^^^
+
+error: repeat count is not a positive number
+  --> $DIR/concat-bytes-error.rs:47:25
+   |
+LL |     concat_bytes!([5.5; ()]);
+   |                         ^^
+
+error: cannot concatenate doubly nested array
+  --> $DIR/concat-bytes-error.rs:48:20
+   |
+LL |     concat_bytes!([[1, 2, 3]; 3]);
+   |                    ^^^^^^^^^
+
+error: cannot concatenate doubly nested array
+  --> $DIR/concat-bytes-error.rs:49:20
+   |
+LL |     concat_bytes!([[42; 2]; 3]);
+   |                    ^^^^^^^
+
+error: aborting due to 28 previous errors
 
