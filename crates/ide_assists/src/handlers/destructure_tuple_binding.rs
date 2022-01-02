@@ -3,7 +3,6 @@ use ide_db::{
     defs::Definition,
     search::{FileReference, SearchScope, UsageSearchResult},
 };
-use itertools::Itertools;
 use syntax::{
     ast::{self, AstNode, FieldExpr, HasName, IdentPat, MethodCallExpr},
     TextRange,
@@ -121,7 +120,7 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext) -> Option<TupleData> {
 
     let field_names = (0..field_types.len())
         .map(|i| generate_name(ctx, i, &name, &ident_pat, &usages))
-        .collect_vec();
+        .collect::<Vec<_>>();
 
     Some(TupleData { ident_pat, range, ref_type, field_names, usages })
 }

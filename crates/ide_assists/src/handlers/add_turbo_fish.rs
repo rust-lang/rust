@@ -1,5 +1,4 @@
 use ide_db::defs::{Definition, NameRefClass};
-use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxKind, T};
 
 use crate::{
@@ -79,7 +78,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     }
 
     let number_of_arguments = generics.len();
-    let fish_head = std::iter::repeat("_").take(number_of_arguments).collect_vec().join(",");
+    let fish_head = std::iter::repeat("_").take(number_of_arguments).collect::<Vec<_>>().join(",");
 
     acc.add(
         AssistId("add_turbo_fish", AssistKind::RefactorRewrite),

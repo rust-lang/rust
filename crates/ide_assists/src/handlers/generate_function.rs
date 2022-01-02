@@ -456,10 +456,10 @@ fn fn_args(
 /// assert_eq!(names, expected);
 /// ```
 fn deduplicate_arg_names(arg_names: &mut Vec<String>) {
-    let arg_name_counts = arg_names.iter().fold(FxHashMap::default(), |mut m, name| {
-        *m.entry(name).or_insert(0) += 1;
-        m
-    });
+    let mut arg_name_counts = FxHashMap::default();
+    for name in arg_names.iter() {
+        *arg_name_counts.entry(name).or_insert(0) += 1;
+    }
     let duplicate_arg_names: FxHashSet<String> = arg_name_counts
         .into_iter()
         .filter(|(_, count)| *count >= 2)

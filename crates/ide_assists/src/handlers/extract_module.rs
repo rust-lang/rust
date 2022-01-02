@@ -311,18 +311,17 @@ impl Module {
         let (body_items, mut replacements, record_field_parents, impls) =
             get_replacements_for_visibilty_change(self.body_items.clone(), false);
 
-        let impl_items = impls.into_iter().fold(Vec::new(), |mut impl_items, x| {
-            let mut this_impl_items =
-                x.syntax().descendants().fold(Vec::new(), |mut this_impl_items, x| {
-                    if let Some(item) = ast::Item::cast(x) {
-                        this_impl_items.push(item);
-                    }
-                    return this_impl_items;
-                });
+        let mut impl_items = Vec::new();
+        for impl_ in impls {
+            let mut this_impl_items = Vec::new();
+            for node in impl_.syntax().descendants() {
+                if let Some(item) = ast::Item::cast(node) {
+                    this_impl_items.push(item);
+                }
+            }
 
             impl_items.append(&mut this_impl_items);
-            return impl_items;
-        });
+        }
 
         let (_, mut impl_item_replacements, _, _) =
             get_replacements_for_visibilty_change(impl_items, true);
