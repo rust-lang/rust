@@ -158,7 +158,65 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     /**
-     * Executes the query and returns a list of results for each results tab.
+     * Executes the query and builds an index of results
+     *
+     * The supported syntax by this parser is as follow:
+     *
+     * ident = *1(ALPHA / DIGIT)
+     * path = ident *WS *(DOUBLE-COLON *WS ident)
+     * arg = path *WS [generics]
+     * nonempty-arg-list = arg *WS *(COMMA *WS arg)
+     * generics = OPEN-ANGLE-BRACKET *WS nonempty-arg-list *WS CLOSE-ANGLE-BRACKET
+     * function-args = OPEN-PAREN *WS [nonempty-arg-list] *WS END-PAREN
+     * return-args = RETURN-ARROW *WS function-args
+     *
+     * exact-search = [type-filter *WS COLON] *WS QUOTE ident QUOTE *WS [generics]
+     * type-search = [type-filter *WS COLON] *WS path *WS generics
+     * function-search = path *WS function-args *WS [return-args]
+     *
+     * query = *WS (exact-search / type-search / function-search / return-args) *WS
+     *
+     * type-filter = (
+     *     "mod" /
+     *     "externcrate" /
+     *     "import" /
+     *     "struct" /
+     *     "enum" /
+     *     "fn" /
+     *     "type" /
+     *     "static" /
+     *     "trait" /
+     *     "impl" /
+     *     "tymethod" /
+     *     "method" /
+     *     "structfield" /
+     *     "variant" /
+     *     "macro" /
+     *     "primitive" /
+     *     "associatedtype" /
+     *     "constant" /
+     *     "associatedconstant" /
+     *     "union" /
+     *     "foreigntype" /
+     *     "keyword" /
+     *     "existential" /
+     *     "attr" /
+     *     "derive" /
+     *     "traitalias")
+     *
+     * OPEN-ANGLE-BRACKET = "<"
+     * CLOSE-ANGLE-BRACKET = ">"
+     * OPEN-PAREN = "("
+     * END-PAREN = ")"
+     * COLON = ":"
+     * DOUBLE-COLON = "::"
+     * QUOTE = %x22
+     * COMMA = ","
+     * RETURN-ARROW = "->"
+     *
+     * ALPHA = %x41-5A / %x61-7A ; A-Z / a-z
+     * DIGIT = %x30-39
+     * WS = %x09 / " "
      *
      * @param  {string} val     - The user query
      * @return {ParsedQuery}    - The parsed query
@@ -606,7 +664,8 @@ window.initSearch = function(rawSearchIndex) {
          * This function checks if the object (`obj`) generics match the given type (`val`)
          * generics. If there are no generics on `obj`, `defaultLev` is returned.
          *
-         * @param {Object} obj         - The object to check.
+         * @param {Row} obj            - The object to check.
+         * @param {QueryElement} val   - The element from the parsed query.
          * @param {integer} defaultLev - This is the value to return in case there are no generics.
          *
          * @return {integer}           - Returns the best match (if any) or `MAX_LEV_DISTANCE + 1`.
@@ -662,8 +721,8 @@ window.initSearch = function(rawSearchIndex) {
           * This function checks if the object (`obj`) matches the given type (`val`) and its
           * generics (if any).
           *
-          * @param {Object} obj
-          * @param {Object} val
+          * @param {Row} obj
+          * @param {QueryElement} val    - The element from the parsed query.
           *
           * @return {integer} - Returns a Levenshtein distance to the best match.
           */
@@ -756,8 +815,8 @@ window.initSearch = function(rawSearchIndex) {
         /**
          * This function checks if the object (`obj`) has an argument with the given type (`val`).
          *
-         * @param {Object} obj
-         * @param {Object} val
+         * @param {Row} obj
+         * @param {QueryElement} val    - The element from the parsed query.
          * @param {integer} typeFilter
          *
          * @return {integer} - Returns a Levenshtein distance to the best match. If there is no
@@ -784,8 +843,8 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         /**
-         * @param {Object} obj
-         * @param {Object} val
+         * @param {Row} obj
+         * @param {QueryElement} val   - The element from the parsed query.
          * @param {integer} typeFilter
          *
          * @return {integer} - Returns a Levenshtein distance to the best match. If there is no
@@ -978,9 +1037,9 @@ window.initSearch = function(rawSearchIndex) {
         /**
          * This function is called in case the query is only one element (with or without generics).
          *
-         * @param {Object} ty
-         * @param {integer} pos     - Position in the `searchIndex`.
-         * @param {Object} elem     - The element from the parsed query.
+         * @param {Row} ty
+         * @param {integer} pos           - Position in the `searchIndex`.
+         * @param {QueryElement} elem     - The element from the parsed query.
          */
         function handleSingleArg(ty, pos, elem) {
             if (!ty || (filterCrates !== null && ty.crate !== filterCrates)) {
@@ -1477,7 +1536,7 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         if (!forced && query.id === currentResults) {
-            if (query.val.length > 0) {
+            if (query.userQuery.length > 0) {
                 putBackSearch();
             }
             return;
