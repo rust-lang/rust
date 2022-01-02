@@ -92,6 +92,43 @@ fn macro_stmt() {
     );
 }
 
+#[test]
+fn macro_items() {
+    check(
+        TopEntryPoint::MacroItems,
+        "#!/usr/bin/rust",
+        expect![[r##"
+            MACRO_ITEMS
+              ERROR
+                SHEBANG "#!/usr/bin/rust"
+            error 0: expected an item
+        "##]],
+    );
+    check(
+        TopEntryPoint::MacroItems,
+        "struct S; foo!{}",
+        expect![[r#"
+            MACRO_ITEMS
+              STRUCT
+                STRUCT_KW "struct"
+                WHITESPACE " "
+                NAME
+                  IDENT "S"
+                SEMICOLON ";"
+              WHITESPACE " "
+              MACRO_CALL
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "foo"
+                BANG "!"
+                TOKEN_TREE
+                  L_CURLY "{"
+                  R_CURLY "}"
+        "#]],
+    );
+}
+
 #[track_caller]
 fn check(entry: TopEntryPoint, input: &str, expect: expect_test::Expect) {
     let (parsed, _errors) = super::parse(entry, input);
