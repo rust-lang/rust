@@ -69,11 +69,11 @@ macro_rules! e3 { ($(i:ident)_) => () }
 /* error: invalid macro definition: invalid repeat */
 
 macro_rules! f1 { ($i) => ($i) }
-/* error: invalid macro definition: bad fragment specifier 1 */
+/* error: invalid macro definition: missing fragment specifier */
 macro_rules! f2 { ($i:) => ($i) }
-/* error: invalid macro definition: bad fragment specifier 1 */
+/* error: invalid macro definition: missing fragment specifier */
 macro_rules! f3 { ($i:_) => () }
-/* error: invalid macro definition: bad fragment specifier 1 */
+/* error: invalid macro definition: missing fragment specifier */
 "#]],
     )
 }
