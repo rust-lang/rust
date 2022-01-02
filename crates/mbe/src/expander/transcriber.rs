@@ -192,7 +192,7 @@ fn expand_repeat(
         t.delimiter = None;
         push_subtree(&mut buf, t);
 
-        if let Some(ref sep) = separator {
+        if let Some(sep) = separator {
             match sep {
                 Separator::Ident(ident) => {
                     has_seps = 1;

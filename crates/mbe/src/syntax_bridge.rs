@@ -396,7 +396,7 @@ impl TokenIdAlloc {
     }
 }
 
-/// A Raw Token (straightly from lexer) convertor
+/// A raw token (straight from lexer) convertor
 struct RawConvertor<'a> {
     lexed: parser::LexedStr<'a>,
     pos: usize,
@@ -525,8 +525,7 @@ enum SynToken {
 impl SynToken {
     fn token(&self) -> &SyntaxToken {
         match self {
-            SynToken::Ordinary(it) => it,
-            SynToken::Punch(it, _) => it,
+            SynToken::Ordinary(it) | SynToken::Punch(it, _) => it,
         }
     }
 }
@@ -659,7 +658,7 @@ impl<'a> TtTreeSink<'a> {
 
         let mut last = self.cursor;
         for _ in 0..n_tokens {
-            let tmp_str: SmolStr;
+            let tmp: u8;
             if self.cursor.eof() {
                 break;
             }
@@ -669,18 +668,15 @@ impl<'a> TtTreeSink<'a> {
                     Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
                         // Mark the range if needed
                         let (text, id) = match leaf {
-                            tt::Leaf::Ident(ident) => (&ident.text, ident.id),
+                            tt::Leaf::Ident(ident) => (ident.text.as_str(), ident.id),
                             tt::Leaf::Punct(punct) => {
                                 assert!(punct.char.is_ascii());
-                                let char = &(punct.char as u8);
-                                tmp_str = SmolStr::new_inline(
-                                    std::str::from_utf8(std::slice::from_ref(char)).unwrap(),
-                                );
-                                (&tmp_str, punct.id)
+                                tmp = punct.char as u8;
+                                (std::str::from_utf8(std::slice::from_ref(&tmp)).unwrap(), punct.id)
                             }
-                            tt::Leaf::Literal(lit) => (&lit.text, lit.id),
+                            tt::Leaf::Literal(lit) => (lit.text.as_str(), lit.id),
                         };
-                        let range = TextRange::at(self.text_pos, TextSize::of(text.as_str()));
+                        let range = TextRange::at(self.text_pos, TextSize::of(text));
                         self.token_map.insert(id, range);
                         self.cursor = self.cursor.bump();
                         text
@@ -740,7 +736,7 @@ impl<'a> TtTreeSink<'a> {
 
         match self.roots.last_mut() {
             None | Some(0) => self.roots.push(1),
-            Some(ref mut n) => **n += 1,
+            Some(n) => *n += 1,
         };
     }
 
