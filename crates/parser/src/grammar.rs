@@ -135,6 +135,19 @@ pub(crate) mod entry {
             }
             m.complete(p, ERROR);
         }
+
+        pub(crate) fn expr(p: &mut Parser) {
+            let m = p.start();
+            expressions::expr(p);
+            if p.at(EOF) {
+                m.abandon(p);
+                return;
+            }
+            while !p.at(EOF) {
+                p.bump_any();
+            }
+            m.complete(p, ERROR);
+        }
     }
 }
 

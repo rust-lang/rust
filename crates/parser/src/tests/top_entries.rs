@@ -224,6 +224,46 @@ fn type_() {
     );
 }
 
+#[test]
+fn expr() {
+    check(
+        TopEntryPoint::Expr,
+        "2 + 2 == 5",
+        expect![[r#"
+        BIN_EXPR
+          BIN_EXPR
+            LITERAL
+              INT_NUMBER "2"
+            WHITESPACE " "
+            PLUS "+"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "2"
+          WHITESPACE " "
+          EQ2 "=="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "5"
+    "#]],
+    );
+    check(
+        TopEntryPoint::Expr,
+        "let _ = 0;",
+        expect![[r#"
+        ERROR
+          LET_KW "let"
+          WHITESPACE " "
+          UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          INT_NUMBER "0"
+          SEMICOLON ";"
+        error 0: expected expression
+    "#]],
+    );
+}
+
 #[track_caller]
 fn check(entry: TopEntryPoint, input: &str, expect: expect_test::Expect) {
     let (parsed, _errors) = super::parse(entry, input);

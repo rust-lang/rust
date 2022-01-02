@@ -123,8 +123,8 @@ impl TopEntryPoint {
             TopEntryPoint::MacroItems => grammar::entry::top::macro_items,
             TopEntryPoint::Pattern => grammar::entry::top::pattern,
             TopEntryPoint::Type => grammar::entry::top::type_,
+            TopEntryPoint::Expr => grammar::entry::top::expr,
             // FIXME
-            TopEntryPoint::Expr => grammar::entry::prefix::expr,
             TopEntryPoint::MetaItem => grammar::entry::prefix::meta_item,
         };
         let mut p = parser::Parser::new(input);
