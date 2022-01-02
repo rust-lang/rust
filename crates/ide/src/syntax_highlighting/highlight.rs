@@ -665,21 +665,27 @@ fn highlight_name_ref_by_syntax(
             }
         }
         PATH_SEGMENT => {
+            let name_based_fallback = || {
+                if name.text().chars().next().unwrap_or_default().is_uppercase() {
+                    SymbolKind::Struct.into()
+                } else {
+                    SymbolKind::Module.into()
+                }
+            };
             let path = match parent.parent().and_then(ast::Path::cast) {
                 Some(it) => it,
-                _ => return default.into(),
+                _ => return name_based_fallback(),
             };
-            let expr = match path.syntax().parent().and_then(ast::PathExpr::cast) {
-                Some(it) => it,
-                _ => {
-                    // within path, decide whether it is module or adt by checking for uppercase name
-                    return if name.text().chars().next().unwrap_or_default().is_uppercase() {
-                        SymbolKind::Struct
-                    } else {
-                        SymbolKind::Module
+            let expr = match path.syntax().parent() {
+                Some(parent) => match_ast! {
+                    match parent {
+                        ast::PathExpr(path) => path,
+                        ast::MacroCall(_) => return SymbolKind::Macro.into(),
+                        _ => return name_based_fallback(),
                     }
-                    .into();
-                }
+                },
+                // within path, decide whether it is module or adt by checking for uppercase name
+                None => return name_based_fallback(),
             };
             let parent = match expr.syntax().parent() {
                 Some(it) => it,
