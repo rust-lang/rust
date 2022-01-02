@@ -470,6 +470,15 @@ class RustBuild(object):
             with output(self.rustc_stamp(stage0)) as rust_stamp:
                 rust_stamp.write(key)
 
+            # FIXME remove this when the Clang Windows GNU toolchain has been published
+            if (os.environ.get('GCC_LIBS_HACK')):
+                gcc_libs_hack = os.environ.get('GCC_LIBS_HACK')
+                gcc_libs_hack_dest = '{}/rustlib/{}/lib'.format(lib_dir, self.build)
+                shutil.copy(gcc_libs_hack + '/libgcc.a', gcc_libs_hack_dest)
+                shutil.copy(gcc_libs_hack + '/libgcc_eh.a', gcc_libs_hack_dest)
+                shutil.copy(gcc_libs_hack + '/libgcc_s.a', gcc_libs_hack_dest)
+                shutil.copy(gcc_libs_hack + '/libstdc++.a', gcc_libs_hack_dest)
+
         if self.rustfmt() and self.rustfmt().startswith(bin_root) and (
             not os.path.exists(self.rustfmt())
             or self.program_out_of_date(

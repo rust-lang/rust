@@ -57,10 +57,18 @@ if isWindows; then
     esac
 
     if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
-        pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
-            mingw-w64-$arch-gcc \
-            mingw-w64-$arch-python # the python package is actually for python3
-        ciCommandAddPath "$(ciCheckoutPath)/msys2/mingw${bits}/bin"
+        # FIXME remove the GCC_LIBS_HACK when the Clang Windows GNU toolchain has been published
+        export GCC_LIBS_HACK="$(cygpath -am missing-libs-hack)"
+        echo "GCC_LIBS_HACK path is ${GCC_LIBS_HACK}"
+        mkdir -p "${GCC_LIBS_HACK}"
+        cp "$(cygpath -u $(clang -print-libgcc-file-name))" "${GCC_LIBS_HACK}/libgcc.a"
+        cp "/clang64/lib/libunwind.a" "${GCC_LIBS_HACK}/libgcc_eh.a"
+        cp "/clang64/lib/libunwind.dll.a" "${GCC_LIBS_HACK}/libgcc_s.a"
+        export RUSTFLAGS_BOOTSTRAP="-C link-arg=-L$(cygpath -am missing-libs-hack)"
+        pacman -S --noconfirm --needed mingw-w64-clang-$arch-toolchain mingw-w64-clang-$arch-cmake \
+            mingw-w64-clang-$arch-ninja \
+            mingw-w64-clang-$arch-python # the python package is actually for python3
+        ciCommandAddPath "$(ciCheckoutPath)/msys2/clang${bits}/bin"
     else
         mingw_dir="mingw${bits}"
 

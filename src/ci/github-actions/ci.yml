@@ -577,28 +577,28 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
               SCRIPT: make ci-mingw-subset-1
-              CUSTOM_MINGW: 1
+              CUSTOM_MINGW: 0
             <<: *job-windows-xl
 
           - name: i686-mingw-2
             env:
               RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
               SCRIPT: make ci-mingw-subset-2
-              CUSTOM_MINGW: 1
+              CUSTOM_MINGW: 0
             <<: *job-windows-xl
 
           - name: x86_64-mingw-1
             env:
               SCRIPT: make ci-mingw-subset-1
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-profiler
-              CUSTOM_MINGW: 1
+              CUSTOM_MINGW: 0
             <<: *job-windows-xl
 
           - name: x86_64-mingw-2
             env:
               SCRIPT: make ci-mingw-subset-2
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-profiler
-              CUSTOM_MINGW: 1
+              CUSTOM_MINGW: 0
             <<: *job-windows-xl
 
           - name: dist-x86_64-msvc
@@ -644,7 +644,7 @@ jobs:
             env:
               RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools --enable-profiler
               SCRIPT: python x.py dist
-              CUSTOM_MINGW: 1
+              CUSTOM_MINGW: 0
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-xl
 
@@ -652,7 +652,7 @@ jobs:
             env:
               SCRIPT: python x.py dist
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
-              CUSTOM_MINGW: 1
+              CUSTOM_MINGW: 0
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-xl
 

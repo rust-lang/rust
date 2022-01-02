@@ -163,10 +163,10 @@ impl Step for Llvm {
             }
         };
 
-        let llvm_exp_targets = match builder.config.llvm_experimental_targets {
-            Some(ref s) => s,
-            None => "AVR;M68k",
-        };
+        //let llvm_exp_targets = match builder.config.llvm_experimental_targets {
+        //    Some(ref s) => s,
+        //    None => "AVR;M68k",
+        //};
 
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
         let plugins = if builder.config.llvm_plugins { "ON" } else { "OFF" };
@@ -177,7 +177,7 @@ impl Step for Llvm {
             .define("LLVM_ENABLE_ASSERTIONS", assertions)
             .define("LLVM_ENABLE_PLUGINS", plugins)
             .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
-            .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", llvm_exp_targets)
+            // .define("LLVM_EXPERIMENTAL_TARGETS_TO_BUILD", llvm_exp_targets)
             .define("LLVM_INCLUDE_EXAMPLES", "OFF")
             .define("LLVM_INCLUDE_DOCS", "OFF")
             .define("LLVM_INCLUDE_BENCHMARKS", "OFF")

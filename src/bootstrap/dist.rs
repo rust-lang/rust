@@ -160,31 +160,29 @@ fn make_win_dist(
     }
 
     let compiler = if target == "i686-pc-windows-gnu" {
-        "i686-w64-mingw32-gcc.exe"
+        "i686-w64-mingw32-clang.exe"
     } else if target == "x86_64-pc-windows-gnu" {
-        "x86_64-w64-mingw32-gcc.exe"
+        "x86_64-w64-mingw32-clang.exe"
+    } else if target == "aarch64-pc-windows-gnu" {
+        "aarch64-w64-mingw32-clang.exe"
     } else {
-        "gcc.exe"
+        "clang.exe"
     };
     let target_tools = [compiler, "ld.exe", "dlltool.exe", "libwinpthread-1.dll"];
     let mut rustc_dlls = vec!["libwinpthread-1.dll"];
-    if target.starts_with("i686-") {
-        rustc_dlls.push("libgcc_s_dw2-1.dll");
-    } else {
-        rustc_dlls.push("libgcc_s_seh-1.dll");
-    }
+
+    rustc_dlls.push("libunwind.dll");
+    rustc_dlls.push("libc++.dll");
 
     let target_libs = [
         //MinGW libs
-        "libgcc.a",
-        "libgcc_eh.a",
-        "libgcc_s.a",
+        "libunwind.a",
+        "libunwind.dll.a",
         "libm.a",
         "libmingw32.a",
         "libmingwex.a",
-        "libstdc++.a",
+        "libc++.a",
         "libiconv.a",
-        "libmoldname.a",
         "libpthread.a",
         //Windows import libs
         "libadvapi32.a",
