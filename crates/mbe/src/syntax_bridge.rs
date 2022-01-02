@@ -280,7 +280,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
         parent.subtree.token_trees.extend(entry.subtree.token_trees);
     }
 
-    let subtree = stack.into_first().subtree;
+    let subtree = stack.into_last().subtree;
     if let [tt::TokenTree::Subtree(first)] = &*subtree.token_trees {
         first.clone()
     } else {

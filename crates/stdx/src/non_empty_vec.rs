@@ -1,45 +1,39 @@
-//! A [`Vec`] that is guaranteed to at least contain one element.
+//! See [`NonEmptyVec`].
 
-pub struct NonEmptyVec<T>(Vec<T>);
+/// A [`Vec`] that is guaranteed to at least contain one element.
+pub struct NonEmptyVec<T> {
+    first: T,
+    rest: Vec<T>,
+}
 
 impl<T> NonEmptyVec<T> {
     #[inline]
-    pub fn new(initial: T) -> Self {
-        NonEmptyVec(vec![initial])
+    pub fn new(first: T) -> Self {
+        NonEmptyVec { first, rest: Vec::new() }
     }
 
     #[inline]
     pub fn last_mut(&mut self) -> &mut T {
-        match self.0.last_mut() {
-            Some(it) => it,
-            None => unreachable!(),
-        }
+        self.rest.last_mut().unwrap_or(&mut self.first)
     }
 
     #[inline]
     pub fn pop(&mut self) -> Option<T> {
-        if self.0.len() <= 1 {
-            None
-        } else {
-            self.0.pop()
-        }
+        self.rest.pop()
     }
 
     #[inline]
     pub fn push(&mut self, value: T) {
-        self.0.push(value)
+        self.rest.push(value)
     }
 
     #[inline]
     pub fn len(&self) -> usize {
-        self.0.len()
+        1 + self.rest.len()
     }
 
     #[inline]
-    pub fn into_first(mut self) -> T {
-        match self.0.pop() {
-            Some(it) => it,
-            None => unreachable!(),
-        }
+    pub fn into_last(mut self) -> T {
+        self.rest.pop().unwrap_or(self.first)
     }
 }
