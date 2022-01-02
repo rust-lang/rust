@@ -567,7 +567,27 @@ impl HirDisplay for Ty {
                     };
                     if !parameters_to_write.is_empty() {
                         write!(f, "<")?;
-                        f.write_joined(parameters_to_write, ", ")?;
+
+                        if f.display_target.is_source_code() {
+                            let mut first = true;
+                            for generic_arg in parameters_to_write {
+                                if !first {
+                                    write!(f, ", ")?;
+                                }
+                                first = false;
+
+                                if generic_arg.ty(Interner).map(|ty| ty.kind(Interner))
+                                    == Some(&TyKind::Error)
+                                {
+                                    write!(f, "_")?;
+                                } else {
+                                    generic_arg.hir_fmt(f)?;
+                                }
+                            }
+                        } else {
+                            f.write_joined(parameters_to_write, ", ")?;
+                        }
+
                         write!(f, ">")?;
                     }
                 }
