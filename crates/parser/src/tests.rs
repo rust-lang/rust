@@ -1,5 +1,6 @@
 mod sourcegen_inline_tests;
-mod entries;
+mod prefix_entries;
+mod top_entries;
 
 use std::{
     fmt::Write,
