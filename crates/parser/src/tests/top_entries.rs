@@ -146,6 +146,82 @@ fn macro_pattern() {
               R_PAREN ")"
         "#]],
     );
+
+    check(
+        TopEntryPoint::Pattern,
+        "None leftover tokens",
+        expect![[r#"
+            ERROR
+              IDENT_PAT
+                NAME
+                  IDENT "None"
+              WHITESPACE " "
+              IDENT "leftover"
+              WHITESPACE " "
+              IDENT "tokens"
+        "#]],
+    );
+
+    check(
+        TopEntryPoint::Pattern,
+        "@err",
+        expect![[r#"
+            ERROR
+              ERROR
+                AT "@"
+              IDENT "err"
+            error 0: expected pattern
+        "#]],
+    );
+}
+
+#[test]
+fn type_() {
+    check(
+        TopEntryPoint::Type,
+        "Option<!>",
+        expect![[r#"
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Option"
+                  GENERIC_ARG_LIST
+                    L_ANGLE "<"
+                    TYPE_ARG
+                      NEVER_TYPE
+                        BANG "!"
+                    R_ANGLE ">"
+        "#]],
+    );
+    check(
+        TopEntryPoint::Type,
+        "() () ()",
+        expect![[r#"
+            ERROR
+              TUPLE_TYPE
+                L_PAREN "("
+                R_PAREN ")"
+              WHITESPACE " "
+              L_PAREN "("
+              R_PAREN ")"
+              WHITESPACE " "
+              L_PAREN "("
+              R_PAREN ")"
+        "#]],
+    );
+    check(
+        TopEntryPoint::Type,
+        "$$$",
+        expect![[r#"
+            ERROR
+              ERROR
+                DOLLAR "$"
+              DOLLAR "$"
+              DOLLAR "$"
+            error 0: expected type
+        "#]],
+    );
 }
 
 #[track_caller]
