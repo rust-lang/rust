@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 colored = "2"
 diff = "0.1.10"
+diaglint = "0.1.8"
 unified-diff = "0.2.1"
 getopts = "0.2"
 tracing = "0.1"

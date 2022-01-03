@@ -83,6 +83,16 @@ pub fn rustfix_diagnostics_only(output: &str) -> String {
         .collect()
 }
 
+/// Tries to return a line that would successfully parsed into `Diagnostic`.
+/// Returns `None` if `output` does not contain diagnostics.
+pub fn diaglint_diagnostics_only(output: &str) -> Option<String> {
+    output
+        .lines()
+        .filter(|line| line.starts_with('{'))
+        .find(|line| serde_json::from_str::<Diagnostic>(line).is_ok())
+        .map(|line| line.to_owned())
+}
+
 pub fn extract_rendered(output: &str) -> String {
     output
         .lines()

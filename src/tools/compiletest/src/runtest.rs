@@ -3172,11 +3172,12 @@ impl<'test> TestCx<'test> {
 
         debug!(
             "run_ui_test: explicit={:?} config.compare_mode={:?} expected_errors={:?} \
-               proc_res.status={:?} props.error_patterns={:?}",
+               proc_res.status={:?}, proc_res.stderr={:?}, props.error_patterns={:?}",
             explicit,
             self.config.compare_mode,
             expected_errors,
             proc_res.status,
+            proc_res.stderr,
             self.props.error_patterns
         );
         if !explicit && self.config.compare_mode.is_none() {
@@ -3215,6 +3216,17 @@ impl<'test> TestCx<'test> {
                 && !json::rustfix_diagnostics_only(&res.stderr).is_empty()
             {
                 self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
+            }
+        }
+
+        let diaglint_input = json::diaglint_diagnostics_only(&proc_res.stderr);
+        if let Some(input) = diaglint_input {
+            let outputs = diaglint::LintRunner::default()
+                .register_default_rules()
+                .unregister_rules(&self.props.ignored_diaglints)
+                .run(&input);
+            for output in outputs {
+                self.fatal_proc_rec(&output, &proc_res);
             }
         }
     }

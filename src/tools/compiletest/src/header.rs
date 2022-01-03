@@ -145,6 +145,8 @@ pub struct TestProps {
     pub run_rustfix: bool,
     // If true, `rustfix` will only apply `MachineApplicable` suggestions.
     pub rustfix_only_machine_applicable: bool,
+    // Lints to ignore when checking diagnostics.
+    pub ignored_diaglints: Vec<String>,
     pub assembly_output: Option<String>,
     // If true, the test is expected to ICE
     pub should_ice: bool,
@@ -188,6 +190,7 @@ impl TestProps {
             failure_status: -1,
             run_rustfix: false,
             rustfix_only_machine_applicable: false,
+            ignored_diaglints: vec![],
             assembly_output: None,
             should_ice: false,
             stderr_per_bitwidth: false,
@@ -356,6 +359,10 @@ impl TestProps {
                 if !self.rustfix_only_machine_applicable {
                     self.rustfix_only_machine_applicable =
                         config.parse_rustfix_only_machine_applicable(ln);
+                }
+
+                if let Some(ignored_diaglint) = config.parse_ignored_diaglints(ln) {
+                    self.ignored_diaglints.push(ignored_diaglint);
                 }
 
                 if self.assembly_output.is_none() {
@@ -616,6 +623,10 @@ impl Config {
 
     fn parse_stderr_per_bitwidth(&self, line: &str) -> bool {
         self.parse_name_directive(line, "stderr-per-bitwidth")
+    }
+
+    fn parse_ignored_diaglints(&self, line: &str) -> Option<String> {
+        self.parse_name_value_directive(line, "ignored-diaglints").map(|r| r.trim().to_string())
     }
 
     fn parse_assembly_output(&self, line: &str) -> Option<String> {
