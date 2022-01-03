@@ -60,8 +60,8 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
     }
     .adjusted();
 
-    // Unresolved or unnameable types can't be annotated
-    if ty.contains_unknown() || ty.is_closure() {
+    // Fully unresolved or unnameable types can't be annotated
+    if (ty.contains_unknown() && ty.type_arguments().count() == 0) || ty.is_closure() {
         cov_mark::hit!(add_explicit_type_not_applicable_if_ty_not_inferred);
         return None;
     }
@@ -139,9 +139,32 @@ fn f() {
     }
 
     #[test]
-    fn add_explicit_type_not_applicable_unresolved() {
+    fn add_explicit_type_not_applicable_for_fully_unresolved() {
         cov_mark::check!(add_explicit_type_not_applicable_if_ty_not_inferred);
         check_assist_not_applicable(add_explicit_type, r#"fn f() { let a$0 = None; }"#);
+    }
+
+    #[test]
+    fn add_explicit_type_applicable_for_partially_unresolved() {
+        check_assist(
+            add_explicit_type,
+            r#"
+        struct Vec<T, V> { t: T, v: V }
+        impl<T> Vec<T, Vec<ZZZ, i32>> {
+            fn new() -> Self {
+                panic!()
+            }
+        }
+        fn f() { let a$0 = Vec::new(); }"#,
+            r#"
+        struct Vec<T, V> { t: T, v: V }
+        impl<T> Vec<T, Vec<ZZZ, i32>> {
+            fn new() -> Self {
+                panic!()
+            }
+        }
+        fn f() { let a: Vec<_, Vec<_, i32>> = Vec::new(); }"#,
+        );
     }
 
     #[test]
