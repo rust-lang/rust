@@ -302,34 +302,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// Matches `'-' lit | lit (cf. parser::Parser::parse_literal_maybe_minus)`,
-    /// or paths for ranges.
-    //
-    // FIXME: do we want to allow `expr -> pattern` conversion to create path expressions?
-    // That means making this work:
-    //
-    // ```rust,ignore (FIXME)
-    // struct S;
-    // macro_rules! m {
-    //     ($a:expr) => {
-    //         let $a = S;
-    //     }
-    // }
-    // m!(S);
-    // ```
-    fn check_expr_within_pat(&self, expr: &Expr, allow_paths: bool) {
-        match expr.kind {
-            ExprKind::Lit(..) | ExprKind::ConstBlock(..) | ExprKind::Err => {}
-            ExprKind::Path(..) if allow_paths => {}
-            ExprKind::Unary(UnOp::Neg, ref inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
-            _ => self.err_handler().span_err(
-                expr.span,
-                "arbitrary expressions aren't allowed \
-                                                         in patterns",
-            ),
-        }
-    }
-
     fn check_late_bound_lifetime_defs(&self, params: &[GenericParam]) {
         // Check only lifetime parameters are present and that the lifetime
         // parameters that are present have no bounds.
@@ -1424,25 +1396,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         visit::walk_param_bound(self, bound)
-    }
-
-    fn visit_pat(&mut self, pat: &'a Pat) {
-        match &pat.kind {
-            PatKind::Lit(expr) => {
-                self.check_expr_within_pat(expr, false);
-            }
-            PatKind::Range(start, end, _) => {
-                if let Some(expr) = start {
-                    self.check_expr_within_pat(expr, true);
-                }
-                if let Some(expr) = end {
-                    self.check_expr_within_pat(expr, true);
-                }
-            }
-            _ => {}
-        }
-
-        visit::walk_pat(self, pat)
     }
 
     fn visit_poly_trait_ref(&mut self, t: &'a PolyTraitRef, m: &'a TraitBoundModifier) {
