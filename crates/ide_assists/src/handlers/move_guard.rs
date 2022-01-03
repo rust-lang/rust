@@ -1,6 +1,7 @@
 use syntax::{
     ast::{
         edit::AstNodeEdit, make, AstNode, BlockExpr, Condition, ElseBranch, Expr, IfExpr, MatchArm,
+        Pat,
     },
     SyntaxKind::WHITESPACE,
 };
@@ -96,7 +97,6 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
 // fn handle(action: Action) {
 //     match action {
 //         Action::Move { distance } if distance > 10 => foo(),
-//         Action::Move { distance } => {}
 //         _ => (),
 //     }
 // }
@@ -176,9 +176,18 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
                     }
                 }
             } else {
-                // There's no else branch. Add a pattern without guard
+                // There's no else branch. Add a pattern without guard, unless the following match
+                // arm is `_ => ...`
                 cov_mark::hit!(move_guard_ifelse_notail);
-                edit.insert(then_arm_end, format!("\n{}{} => {{}}", spaces, match_pat));
+                match match_arm.syntax().next_sibling().and_then(MatchArm::cast) {
+                    Some(next_arm)
+                        if matches!(next_arm.pat(), Some(Pat::WildcardPat(_)))
+                            && next_arm.guard().is_none() =>
+                    {
+                        cov_mark::hit!(move_guard_ifelse_has_wildcard);
+                    }
+                    _ => edit.insert(then_arm_end, format!("\n{}{} => {{}}", spaces, match_pat)),
+                }
             }
         },
     )
@@ -312,7 +321,6 @@ fn main() {
 fn main() {
     match 92 {
         x if x > 10 => false,
-        x => {}
         _ => true
     }
 }
@@ -322,6 +330,7 @@ fn main() {
 
     #[test]
     fn move_arm_cond_in_block_to_match_guard_works() {
+        cov_mark::check!(move_guard_ifelse_has_wildcard);
         check_assist(
             move_arm_cond_to_match_guard,
             r#"
@@ -340,8 +349,63 @@ fn main() {
 fn main() {
     match 92 {
         x if x > 10 => false,
-        x => {}
         _ => true
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn move_arm_cond_in_block_to_match_guard_no_wildcard_works() {
+        cov_mark::check_count!(move_guard_ifelse_has_wildcard, 0);
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => {
+            $0if x > 10 {
+                false
+            }
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        x => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn move_arm_cond_in_block_to_match_guard_wildcard_guard_works() {
+        cov_mark::check_count!(move_guard_ifelse_has_wildcard, 0);
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => {
+            $0if x > 10 {
+                false
+            }
+        }
+        _ if x > 10 => true,
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        x => {}
+        _ if x > 10 => true,
     }
 }
 "#,
@@ -368,7 +432,6 @@ fn main() {
 fn main() {
     match 92 {
         x if x > 10 => false,
-        x => {}
         _ => true
     }
 }
@@ -407,7 +470,6 @@ fn main() {
 fn main() {
     match 92 {
         x if x > 10 => {  }
-        x => {}
         _ => true
     }
 }
@@ -437,7 +499,6 @@ fn main() {
             92;
             false
         }
-        x => {}
         _ => true
     }
 }
@@ -469,7 +530,6 @@ fn main() {
             92;
             false
         }
-        x => {}
         _ => true
     }
 }
