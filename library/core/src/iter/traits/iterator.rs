@@ -2998,6 +2998,11 @@ pub trait Iterator {
     /// This is useful when you have an iterator over `&T`, but you need an
     /// iterator over `T`.
     ///
+    /// Note that unlike copying, cloning is regarded as a side effect, because
+    /// `Clone` implementations may contain observable behavior. For example,
+    /// `iter.cloned().last()` will clone all elements even if only the last
+    /// one is actually returned.
+    ///
     /// [`clone`]: Clone::clone
     ///
     /// # Examples
