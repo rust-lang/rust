@@ -625,6 +625,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         use PrimitiveType::*;
         let tcx = self.cx.tcx;
 
+        // FIXME: Only simple types are supported here, see if we can support
+        // other types such as Tuple, Array, Slice, etc.
+        // See https://github.com/rust-lang/rust/issues/90703#issuecomment-1004263455
         Some(tcx.mk_ty(match prim {
             Bool => ty::Bool,
             Str => ty::Str,
@@ -644,14 +647,6 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             U64 => ty::Uint(ty::UintTy::U64),
             U128 => ty::Uint(ty::UintTy::U128),
             Usize => ty::Uint(ty::UintTy::Usize),
-            //ty::Tuple(tys) if tys.is_empty() => Res::Primitive(Unit),
-            //ty::Tuple(_) => Res::Primitive(Tuple),
-            //ty::Array(..) => Res::Primitive(Array),
-            //ty::Slice(_) => Res::Primitive(Slice),
-            //ty::RawPtr(_) => Res::Primitive(RawPointer),
-            //ty::Ref(..) => Res::Primitive(Reference),
-            //ty::FnDef(..) => panic!("type alias to a function definition"),
-            //ty::FnPtr(_) => Res::Primitive(Fn),
             _ => return None,
         }))
     }
