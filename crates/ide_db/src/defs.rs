@@ -55,8 +55,12 @@ impl Definition {
             let attr = ast::TokenTree::cast(parent.clone())
                 .and_then(|tt| tt.parent_meta())
                 .and_then(|meta| meta.parent_attr());
-            if let Some(_) = attr {
-                return sema.resolve_derive_ident(&ident).map(Into::into).into_iter().collect();
+            if let Some(attr) = attr {
+                return sema
+                    .resolve_derive_ident(&attr, &ident)
+                    .map(Into::into)
+                    .into_iter()
+                    .collect();
             }
         }
         Self::from_node(sema, &parent)

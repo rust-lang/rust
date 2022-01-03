@@ -356,8 +356,12 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_bind_pat_to_const(pat)
     }
 
-    pub fn resolve_derive_ident(&self, ident: &ast::Ident) -> Option<PathResolution> {
-        self.imp.resolve_derive_ident(ident)
+    pub fn resolve_derive_ident(
+        &self,
+        derive: &ast::Attr,
+        ident: &ast::Ident,
+    ) -> Option<PathResolution> {
+        self.imp.resolve_derive_ident(derive, ident)
     }
 
     // FIXME: use this instead?
@@ -900,23 +904,26 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(pat.syntax()).resolve_bind_pat_to_const(self.db, pat)
     }
 
-    fn resolve_derive_ident(&self, ident: &ast::Ident) -> Option<PathResolution> {
+    fn resolve_derive_ident(
+        &self,
+        derive: &ast::Attr,
+        ident: &ast::Ident,
+    ) -> Option<PathResolution> {
+        debug_assert!(ident.syntax().parent().and_then(ast::TokenTree::cast).is_some());
+        debug_assert!(ident.syntax().ancestors().any(|anc| anc == *derive.syntax()));
         // derive macros are always at depth 2, tokentree -> meta -> attribute
         let syntax = ident.syntax();
-        let attr = syntax.ancestors().nth(2).and_then(ast::Attr::cast)?;
 
-        let tt = attr.token_tree()?;
-        if !tt.syntax().text_range().contains_range(ident.syntax().text_range()) {
-            return None;
-        }
-
-        let file = self.find_file(attr.syntax());
-        let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+        let tt = derive.token_tree()?;
+        let file = self.find_file(derive.syntax());
+        let adt = derive.syntax().parent().and_then(ast::Adt::cast)?;
 
         let res = self.with_ctx(|ctx| {
-            let attr_def = ctx.attr_to_def(file.with_value(attr.clone()))?;
-            let derives = ctx
-                .attr_to_derive_macro_call(file.with_value(&adt), file.with_value(attr.clone()))?;
+            let attr_def = ctx.attr_to_def(file.with_value(derive.clone()))?;
+            let derives = ctx.attr_to_derive_macro_call(
+                file.with_value(&adt),
+                file.with_value(derive.clone()),
+            )?;
 
             let mut derive_paths = attr_def.parse_path_comma_token_tree()?;
 
@@ -951,7 +958,7 @@ impl<'db> SemanticsImpl<'db> {
         match res {
             Either::Left(path) => resolve_hir_path(
                 self.db,
-                &self.scope(attr.syntax()).resolver,
+                &self.scope(derive.syntax()).resolver,
                 &Path::from_known_path(path, []),
             )
             .filter(|res| matches!(res, PathResolution::Def(ModuleDef::Module(_)))),

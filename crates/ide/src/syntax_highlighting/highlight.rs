@@ -39,11 +39,17 @@ pub(super) fn token(
         INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),
         BYTE => HlTag::ByteLiteral.into(),
         CHAR => HlTag::CharLiteral.into(),
-        IDENT if parent_matches::<ast::TokenTree>(&token) => {
-            match sema.resolve_derive_ident(&ast::Ident::cast(token).unwrap()) {
-                Some(res) => highlight_def(sema, krate, Definition::from(res)),
-                None => HlTag::None.into(),
-            }
+        IDENT => {
+            let tt = ast::TokenTree::cast(token.parent()?)?;
+            let ident = ast::Ident::cast(token)?;
+            // from this point on we are inside a token tree, this only happens for identifiers
+            // that were not mapped down into macro invocations
+            (|| {
+                let attr = tt.parent_meta()?.parent_attr()?;
+                let res = sema.resolve_derive_ident(&attr, &ident)?;
+                Some(highlight_def(sema, krate, Definition::from(res)))
+            })()
+            .unwrap_or_else(|| HlTag::None.into())
         }
         p if p.is_punct() => punctuation(sema, token, p),
         k if k.is_keyword() => keyword(sema, token, k)?,
