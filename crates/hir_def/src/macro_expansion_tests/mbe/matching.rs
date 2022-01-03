@@ -122,3 +122,17 @@ stringify!(.. .. ..|);
 "#]],
     );
 }
+
+#[test]
+fn trailing_vis() {
+    check(
+        r#"
+macro_rules! m { ($($i:ident)? $vis:vis) => () }
+m!(x pub);
+"#,
+        expect![[r#"
+macro_rules! m { ($($i:ident)? $vis:vis) => () }
+
+"#]],
+    )
+}
