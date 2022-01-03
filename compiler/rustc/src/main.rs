@@ -11,6 +11,42 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[cfg(feature = "tikv-jemalloc-sys")]
 use tikv_jemalloc_sys as jemalloc_sys;
 
+use std::alloc::{GlobalAlloc, Layout};
+use tikv_jemallocator::Jemalloc;
+
+// XXX: these declarations make rustc hook into tikv-jemallocator, which means
+// jemalloc's sized deallocation path (`sdallocx`) gets used. Without them,
+// rustc hooks in at a lower level, via tikv-jemalloc-sys, which uses the
+// vanilla `free` path. In theory, the `sdallocx` path is faster.
+//
+// Note that this is a hack that works on Linux, but probably doesn't work on
+// other platforms. It's just for testing purposes.
+
+#[no_mangle]
+pub unsafe extern "C" fn __rust_alloc(size: usize, align: usize) -> *mut u8 {
+    Jemalloc.alloc(Layout::from_size_align_unchecked(size, align))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
+    Jemalloc.alloc_zeroed(Layout::from_size_align_unchecked(size, align))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize) {
+    Jemalloc.dealloc(ptr, Layout::from_size_align_unchecked(size, align))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn __rust_realloc(
+    ptr: *mut u8,
+    old_size: usize,
+    align: usize,
+    new_size: usize,
+) -> *mut u8 {
+    Jemalloc.realloc(ptr, Layout::from_size_align_unchecked(old_size, align), new_size)
+}
+
 fn main() {
     // Pull in jemalloc when enabled.
     //
