@@ -10,11 +10,10 @@ use rustc_hir::{
     Pat, PatKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty, TyCtxt, TyS, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span};
-use std::iter;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -226,40 +225,58 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                         let mut iter = find_adjustments(cx.tcx, typeck, expr).iter();
                         if let Some((i, adjust)) = iter.by_ref().enumerate().find_map(|(i, adjust)| {
                             if !matches!(adjust.kind, Adjust::Deref(_)) {
-                                Some((i, adjust))
+                                Some((i, Some(adjust)))
                             } else if !adjust.target.is_ref() {
-                                // Add one to the number of references found.
-                                Some((i + 1, adjust))
+                                // Include the current deref.
+                                Some((i + 1, None))
                             } else {
                                 None
                             }
                         }) {
-                            // Found two consecutive derefs. At least one can be removed.
                             if i > 1 {
-                                let target_mut = iter::once(adjust)
-                                    .chain(iter)
-                                    .find_map(|adjust| match adjust.kind {
-                                        Adjust::Borrow(AutoBorrow::Ref(_, m)) => Some(m.into()),
-                                        _ => None,
-                                    })
-                                    // This default should never happen. Auto-deref always reborrows.
-                                    .unwrap_or(Mutability::Not);
-                                self.state = Some((
-                                    // Subtract one for the current borrow expression, and one to cover the last
-                                    // reference which can't be removed (it's either reborrowed, or needed for
-                                    // auto-deref to happen).
-                                    State::DerefedBorrow {
+                                // If the next adjustment is a mutable borrow, then check to see if the compiler will
+                                // insert a re-borrow here. If not, leave an extra borrow here to avoid attempting to
+                                // move the a mutable reference.
+                                let (i, target_mut) = if let Some(&Adjust::Borrow(AutoBorrow::Ref(_, mutability))) =
+                                    adjust.or_else(|| iter.next()).map(|a| &a.kind)
+                                {
+                                    if matches!(mutability, AutoBorrowMutability::Mut { .. })
+                                        && !is_auto_reborrow_position(parent, expr.hir_id)
+                                    {
+                                        (i - 1, Mutability::Mut)
+                                    } else {
+                                        (i, mutability.into())
+                                    }
+                                } else {
+                                    (
+                                        i,
+                                        iter.find_map(|adjust| match adjust.kind {
+                                            Adjust::Borrow(AutoBorrow::Ref(_, m)) => Some(m.into()),
+                                            _ => None,
+                                        })
+                                        // This default should never happen. Auto-deref always reborrows.
+                                        .unwrap_or(Mutability::Not),
+                                    )
+                                };
+
+                                if i > 1 {
+                                    self.state = Some((
+                                        // Subtract one for the current borrow expression, and one to cover the last
+                                        // reference which can't be removed (it's either reborrowed, or needed for
+                                        // auto-deref to happen).
+                                        State::DerefedBorrow {
                                         count:
                                             // Truncation here would require more than a `u32::MAX` level reference. The compiler
                                             // does not support this.
                                             #[allow(clippy::cast_possible_truncation)]
                                             { i as u32 - 2 }
                                     },
-                                    StateData {
-                                        span: expr.span,
-                                        target_mut,
-                                    },
-                                ));
+                                        StateData {
+                                            span: expr.span,
+                                            target_mut,
+                                        },
+                                    ));
+                                }
                             }
                         }
                     },
@@ -453,6 +470,20 @@ fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId, 
         | ExprKind::Struct(..)
         | ExprKind::Repeat(..)
         | ExprKind::Yield(..) => true,
+    }
+}
+
+/// Checks if the given expression is in a position which can be auto-reborrowed.
+/// Note: This is only correct assuming auto-deref is already occurring.
+fn is_auto_reborrow_position(parent: Option<Node<'_>>, child_id: HirId) -> bool {
+    match parent {
+        Some(Node::Expr(parent)) => match parent.kind {
+            ExprKind::MethodCall(..) => true,
+            ExprKind::Call(callee, _) => callee.hir_id != child_id,
+            _ => false,
+        },
+        Some(Node::Local(_)) => true,
+        _ => false,
     }
 }
 

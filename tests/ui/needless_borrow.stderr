@@ -60,5 +60,29 @@ error: this expression borrows a reference (`&mut i32`) that is immediately dere
 LL |         x(&b);
    |           ^^ help: change this to: `b`
 
-error: aborting due to 10 previous errors
+error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:53:13
+   |
+LL |     mut_ref(&mut x);
+   |             ^^^^^^ help: change this to: `x`
+
+error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:54:13
+   |
+LL |     mut_ref(&mut &mut x);
+   |             ^^^^^^^^^^^ help: change this to: `x`
+
+error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:55:23
+   |
+LL |     let y: &mut i32 = &mut x;
+   |                       ^^^^^^ help: change this to: `x`
+
+error: this expression borrows a reference (`&mut i32`) that is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:56:23
+   |
+LL |     let y: &mut i32 = &mut &mut x;
+   |                       ^^^^^^^^^^^ help: change this to: `x`
+
+error: aborting due to 14 previous errors
 

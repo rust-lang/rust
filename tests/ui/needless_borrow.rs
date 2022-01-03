@@ -45,6 +45,23 @@ fn main() {
         let b = &mut b;
         x(&b);
     }
+
+    // Issue #8191
+    let mut x = 5;
+    let mut x = &mut x;
+
+    mut_ref(&mut x);
+    mut_ref(&mut &mut x);
+    let y: &mut i32 = &mut x;
+    let y: &mut i32 = &mut &mut x;
+
+    let y = match 0 {
+        // Don't lint. Removing the borrow would move 'x'
+        0 => &mut x,
+        _ => &mut *x,
+    };
+
+    *x = 5;
 }
 
 #[allow(clippy::needless_borrowed_reference)]
