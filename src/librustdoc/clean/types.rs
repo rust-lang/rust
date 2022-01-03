@@ -2060,14 +2060,14 @@ rustc_data_structures::static_assert_size!(GenericArg, 80);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericArgs {
-    AngleBracketed { args: Vec<GenericArg>, bindings: Vec<TypeBinding> },
+    AngleBracketed { args: Vec<GenericArg>, bindings: ThinVec<TypeBinding> },
     Parenthesized { inputs: Vec<Type>, output: Option<Box<Type>> },
 }
 
 // `GenericArgs` is in every `PathSegment`, so its size can significantly
 // affect rustdoc's memory usage.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArgs, 56);
+rustc_data_structures::static_assert_size!(GenericArgs, 40);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct PathSegment {
@@ -2078,7 +2078,7 @@ crate struct PathSegment {
 // `PathSegment` usually occurs multiple times in every `Path`, so its size can
 // significantly affect rustdoc's memory usage.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(PathSegment, 64);
+rustc_data_structures::static_assert_size!(PathSegment, 48);
 
 #[derive(Clone, Debug)]
 crate struct Typedef {
