@@ -1,8 +1,19 @@
 #![feature(allocator_api)]
+#![feature(alloc_layout_extra)]
 #![feature(assert_matches)]
 #![feature(box_syntax)]
 #![feature(cow_is_borrowed)]
+#![feature(const_box)]
+#![feature(const_convert)]
 #![feature(const_cow_is_borrowed)]
+#![feature(const_heap)]
+#![feature(const_intrinsic_copy)]
+#![feature(const_mut_refs)]
+#![feature(const_nonnull_slice_from_raw_parts)]
+#![feature(const_ptr_offset)]
+#![feature(const_ptr_write)]
+#![feature(const_try)]
+#![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
 #![feature(new_uninit)]
@@ -26,6 +37,7 @@
 #![feature(const_default_impls)]
 #![feature(const_trait_impl)]
 #![feature(const_str_from_utf8)]
+#![feature(nonnull_slice_from_raw_parts)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
