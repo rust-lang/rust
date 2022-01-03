@@ -15,7 +15,6 @@ use rustc_span::symbol::sym;
 
 use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
-use super::templates;
 use super::write_shared::write_shared;
 use super::{
     collect_spans_and_sources, print_sidebar, settings, AllTypes, LinkFromSrc, NameDoc, StylePath,
@@ -118,8 +117,6 @@ crate struct SharedContext<'tcx> {
     /// the crate.
     redirections: Option<RefCell<FxHashMap<String, String>>>,
 
-    pub(crate) templates: tera::Tera,
-
     /// Correspondance map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
     crate span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
@@ -218,11 +215,10 @@ impl<'tcx> Context<'tcx> {
 
         if !self.render_redirect_pages {
             layout::render(
-                &self.shared.templates,
                 &self.shared.layout,
                 &page,
                 |buf: &mut _| print_sidebar(self, it, buf),
-                |buf: &mut _| print_item(self, &self.shared.templates, it, buf, &page),
+                |buf: &mut _| print_item(self, it, buf, &page),
                 &self.shared.style_files,
             )
         } else {
@@ -426,7 +422,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let mut issue_tracker_base_url = None;
         let mut include_sources = true;
-        let templates = templates::load()?;
 
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML
@@ -481,7 +476,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
             show_type_layout,
-            templates,
             span_correspondance_map: matches,
             cache,
             call_locations,
@@ -577,7 +571,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         };
         let all = self.shared.all.replace(AllTypes::new());
         let v = layout::render(
-            &self.shared.templates,
             &self.shared.layout,
             &page,
             sidebar,
@@ -599,7 +592,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             .map(StylePath::basename)
             .collect::<Result<_, Error>>()?;
         let v = layout::render(
-            &self.shared.templates,
             &self.shared.layout,
             &page,
             sidebar,

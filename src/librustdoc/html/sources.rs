@@ -203,7 +203,6 @@ impl SourceCollector<'_, '_> {
             static_extra_scripts: &[&format!("source-script{}", self.cx.shared.resource_suffix)],
         };
         let v = layout::render(
-            &self.cx.shared.templates,
             &self.cx.shared.layout,
             &page,
             "",

@@ -32,6 +32,7 @@ use crate::html::highlight;
 use crate::html::layout::Page;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 
+use askama::Template;
 use serde::Serialize;
 
 const ITEM_TABLE_OPEN: &str = "<div class=\"item-table\">";
@@ -46,7 +47,8 @@ struct PathComponent<'a> {
     name: &'a str,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Template)]
+#[template(path = "print_item.html")]
 struct ItemVars<'a> {
     page: &'a Page<'a>,
     static_root_path: &'a str,
@@ -58,13 +60,7 @@ struct ItemVars<'a> {
     src_href: Option<&'a str>,
 }
 
-pub(super) fn print_item(
-    cx: &Context<'_>,
-    templates: &tera::Tera,
-    item: &clean::Item,
-    buf: &mut Buffer,
-    page: &Page<'_>,
-) {
+pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer, page: &Page<'_>) {
     debug_assert!(!item.is_stripped());
     let typ = match *item.kind {
         clean::ModuleItem(_) => {
@@ -143,8 +139,7 @@ pub(super) fn print_item(
         src_href: src_href.as_deref(),
     };
 
-    let teractx = tera::Context::from_serialize(item_vars).unwrap();
-    let heading = templates.render("print_item.html", &teractx).unwrap();
+    let heading = item_vars.render().unwrap();
     buf.write_str(&heading);
 
     match *item.kind {

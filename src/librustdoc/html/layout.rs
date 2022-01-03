@@ -7,6 +7,7 @@ use crate::externalfiles::ExternalHtml;
 use crate::html::format::{Buffer, Print};
 use crate::html::render::{ensure_trailing_slash, StylePath};
 
+use askama::Template;
 use serde::Serialize;
 
 #[derive(Clone, Serialize)]
@@ -45,7 +46,8 @@ impl<'a> Page<'a> {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Template)]
+#[template(path = "page.html")]
 struct PageLayout<'a> {
     static_root_path: &'a str,
     page: &'a Page<'a>,
@@ -58,7 +60,6 @@ struct PageLayout<'a> {
 }
 
 crate fn render<T: Print, S: Print>(
-    templates: &tera::Tera,
     layout: &Layout,
     page: &Page<'_>,
     sidebar: S,
@@ -76,7 +77,7 @@ crate fn render<T: Print, S: Print>(
     let rustdoc_version = rustc_interface::util::version_str().unwrap_or("unknown version");
     let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
     let sidebar = Buffer::html().to_display(sidebar);
-    let teractx = tera::Context::from_serialize(PageLayout {
+    PageLayout {
         static_root_path,
         page,
         layout,
@@ -85,9 +86,9 @@ crate fn render<T: Print, S: Print>(
         content,
         krate_with_trailing_slash,
         rustdoc_version,
-    })
-    .unwrap();
-    templates.render("page.html", &teractx).unwrap()
+    }
+    .render()
+    .unwrap()
 }
 
 crate fn redirect(url: &str) -> String {
