@@ -151,8 +151,9 @@ pub(crate) fn apply_document_changes(
                     line_index.index = Arc::new(ide::LineIndex::new(old_text));
                 }
                 index_valid = IndexValid::UpToLineExclusive(range.start.line);
-                let range = from_proto::text_range(&line_index, range);
-                old_text.replace_range(Range::<usize>::from(range), &change.text);
+                if let Ok(range) = from_proto::text_range(&line_index, range) {
+                    old_text.replace_range(Range::<usize>::from(range), &change.text);
+                }
             }
             None => {
                 *old_text = change.text;

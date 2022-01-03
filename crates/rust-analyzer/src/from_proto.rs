@@ -1,4 +1,5 @@
 //! Conversion lsp_types types to rust-analyzer specific ones.
+use anyhow::format_err;
 use ide::{Annotation, AnnotationKind, AssistKind, LineCol, LineColUtf16};
 use ide_db::base_db::{FileId, FilePosition, FileRange};
 use syntax::{TextRange, TextSize};
@@ -22,7 +23,7 @@ pub(crate) fn vfs_path(url: &lsp_types::Url) -> Result<vfs::VfsPath> {
     abs_path(url).map(vfs::VfsPath::from)
 }
 
-pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> TextSize {
+pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> Result<TextSize> {
     let line_col = match line_index.encoding {
         OffsetEncoding::Utf8 => {
             LineCol { line: position.line as u32, col: position.character as u32 }
@@ -33,13 +34,16 @@ pub(crate) fn offset(line_index: &LineIndex, position: lsp_types::Position) -> T
             line_index.index.to_utf8(line_col)
         }
     };
-    line_index.index.offset(line_col)
+    let text_size =
+        line_index.index.offset(line_col).ok_or_else(|| format_err!("Invalid offset"))?;
+    Ok(text_size)
 }
 
-pub(crate) fn text_range(line_index: &LineIndex, range: lsp_types::Range) -> TextRange {
-    let start = offset(line_index, range.start);
-    let end = offset(line_index, range.end);
-    TextRange::new(start, end)
+pub(crate) fn text_range(line_index: &LineIndex, range: lsp_types::Range) -> Result<TextRange> {
+    let start = offset(line_index, range.start)?;
+    let end = offset(line_index, range.end)?;
+    let text_range = TextRange::new(start, end);
+    Ok(text_range)
 }
 
 pub(crate) fn file_id(snap: &GlobalStateSnapshot, url: &lsp_types::Url) -> Result<FileId> {
@@ -52,7 +56,7 @@ pub(crate) fn file_position(
 ) -> Result<FilePosition> {
     let file_id = file_id(snap, &tdpp.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let offset = offset(&line_index, tdpp.position);
+    let offset = offset(&line_index, tdpp.position)?;
     Ok(FilePosition { file_id, offset })
 }
 
@@ -63,7 +67,7 @@ pub(crate) fn file_range(
 ) -> Result<FileRange> {
     let file_id = file_id(snap, &text_document_identifier.uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let range = text_range(&line_index, range);
+    let range = text_range(&line_index, range)?;
     Ok(FileRange { file_id, range })
 }
 
@@ -96,7 +100,7 @@ pub(crate) fn annotation(
             let line_index = snap.file_line_index(file_id)?;
 
             Ok(Annotation {
-                range: text_range(&line_index, code_lens.range),
+                range: text_range(&line_index, code_lens.range)?,
                 kind: AnnotationKind::HasImpls {
                     position: file_position(snap, params.text_document_position_params)?,
                     data: None,
@@ -108,7 +112,7 @@ pub(crate) fn annotation(
             let line_index = snap.file_line_index(file_id)?;
 
             Ok(Annotation {
-                range: text_range(&line_index, code_lens.range),
+                range: text_range(&line_index, code_lens.range)?,
                 kind: AnnotationKind::HasReferences {
                     position: file_position(snap, params)?,
                     data: None,
