@@ -688,15 +688,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     _ => bug!(),
                 }
             }
-            mir::Rvalue::NullaryOp(mir::NullOp::Box, _) => {
-                let tcx = self.tcx;
-                let exchange_malloc_fn_def_id =
-                    tcx.require_lang_item(LangItem::ExchangeMalloc, None);
-                let instance = Instance::mono(tcx, exchange_malloc_fn_def_id);
-                if should_codegen_locally(tcx, &instance) {
-                    self.output.push(create_fn_mono_item(self.tcx, instance, span));
-                }
-            }
             mir::Rvalue::ThreadLocalRef(def_id) => {
                 assert!(self.tcx.is_thread_local_static(def_id));
                 let instance = Instance::mono(self.tcx, def_id);

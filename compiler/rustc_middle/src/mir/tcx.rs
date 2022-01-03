@@ -195,7 +195,6 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::UnaryOp(UnOp::Not | UnOp::Neg, ref operand) => operand.ty(local_decls, tcx),
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
-            Rvalue::NullaryOp(NullOp::Box, t) => tcx.mk_box(t),
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => tcx.types.usize,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => tcx.mk_array(ty, ops.len() as u64),
@@ -215,9 +214,7 @@ impl<'tcx> Rvalue<'tcx> {
     /// whether its only shallowly initialized (`Rvalue::Box`).
     pub fn initialization_state(&self) -> RvalueInitializationState {
         match *self {
-            Rvalue::NullaryOp(NullOp::Box, _) | Rvalue::ShallowInitBox(_, _) => {
-                RvalueInitializationState::Shallow
-            }
+            Rvalue::ShallowInitBox(_, _) => RvalueInitializationState::Shallow,
             _ => RvalueInitializationState::Deep,
         }
     }

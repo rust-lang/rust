@@ -632,7 +632,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
-            Rvalue::NullaryOp(NullOp::Box, _) => self.check_op(ops::HeapAllocation),
             Rvalue::ShallowInitBox(_, _) => {}
 
             Rvalue::UnaryOp(_, ref operand) => {
