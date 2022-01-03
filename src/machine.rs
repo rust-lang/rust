@@ -7,7 +7,6 @@ use std::fmt;
 use std::num::NonZeroU64;
 use std::time::Instant;
 
-use log::trace;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
@@ -501,35 +500,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         right: &ImmTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, (Scalar<Tag>, bool, ty::Ty<'tcx>)> {
         ecx.binary_ptr_op(bin_op, left, right)
-    }
-
-    fn box_alloc(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        dest: &PlaceTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
-        trace!("box_alloc for {:?}", dest.layout.ty);
-        let layout = ecx.layout_of(dest.layout.ty.builtin_deref(false).unwrap().ty)?;
-        // First argument: `size`.
-        // (`0` is allowed here -- this is expected to be handled by the lang item).
-        let size = Scalar::from_machine_usize(layout.size.bytes(), ecx);
-
-        // Second argument: `align`.
-        let align = Scalar::from_machine_usize(layout.align.abi.bytes(), ecx);
-
-        // Call the `exchange_malloc` lang item.
-        let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();
-        let malloc = ty::Instance::mono(ecx.tcx.tcx, malloc);
-        ecx.call_function(
-            malloc,
-            Abi::Rust,
-            &[size.into(), align.into()],
-            Some(dest),
-            // Don't do anything when we are done. The `statement()` function will increment
-            // the old stack frame's stmt counter to the next statement, which means that when
-            // `exchange_malloc` returns, we go on evaluating exactly where we want to be.
-            StackPopCleanup::None { cleanup: true },
-        )?;
-        Ok(())
     }
 
     fn thread_local_static_base_pointer(
