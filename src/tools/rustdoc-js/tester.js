@@ -296,7 +296,7 @@ function checkFieldNeededFields(fullPath, expected, error_text, queryName, posit
             "original",
             "returned",
             "typeFilter",
-            "val",
+            "userQuery",
             "error",
         ];
     } else if (fullPath.endsWith("elems") || fullPath.endsWith("generics")) {

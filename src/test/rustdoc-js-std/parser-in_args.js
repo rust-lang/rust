@@ -17,7 +17,7 @@ const PARSED = [
         original: "(whatever)",
         returned: [],
         typeFilter: -1,
-        val: "(whatever)",
+        userQuery: "(whatever)",
         error: null,
     },
     {
@@ -44,7 +44,7 @@ const PARSED = [
         original: "(<P>)",
         returned: [],
         typeFilter: -1,
-        val: "(<p>)",
+        userQuery: "(<p>)",
         error: null,
     },
 ];

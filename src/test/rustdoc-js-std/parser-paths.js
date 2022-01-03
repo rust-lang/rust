@@ -17,7 +17,7 @@ const PARSED = [
         original: "A::B",
         returned: [],
         typeFilter: -1,
-        val: "a::b",
+        userQuery: "a::b",
         error: null,
     },
     {
@@ -36,7 +36,7 @@ const PARSED = [
         original: '::A::B',
         returned: [],
         typeFilter: -1,
-        val: '::a::b',
+        userQuery: '::a::b',
         error: null,
     },
     {
@@ -64,7 +64,7 @@ const PARSED = [
         original: 'A::B::,C',
         returned: [],
         typeFilter: -1,
-        val: 'a::b::,c',
+        userQuery: 'a::b::,c',
         error: null,
     },
     {
@@ -100,7 +100,7 @@ const PARSED = [
         original: 'A::B::<f>,C',
         returned: [],
         typeFilter: -1,
-        val: 'a::b::<f>,c',
+        userQuery: 'a::b::<f>,c',
         error: null,
     },
 ];

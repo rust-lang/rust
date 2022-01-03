@@ -17,7 +17,7 @@ const PARSED = [
         original: "fn:foo",
         returned: [],
         typeFilter: 5,
-        val: "fn:foo",
+        userQuery: "fn:foo",
         error: null,
     },
     {
@@ -36,7 +36,7 @@ const PARSED = [
         original: "enum : foo",
         returned: [],
         typeFilter: 4,
-        val: "enum : foo",
+        userQuery: "enum : foo",
         error: null,
     },
     {
@@ -55,7 +55,7 @@ const PARSED = [
         original: "macro<f>:foo",
         returned: [],
         typeFilter: 14,
-        val: "macro<f>:foo",
+        userQuery: "macro<f>:foo",
         error: null,
     },
 ];

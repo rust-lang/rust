@@ -163,7 +163,7 @@ window.initSearch = function(rawSearchIndex) {
      * @param  {string} val     - The user query
      * @return {ParsedQuery}    - The parsed query
      */
-    function parseQuery(val) {
+    function parseQuery(userQuery) {
         function isWhitespace(c) {
             return " \t\n\r".indexOf(c) !== -1;
         }
@@ -182,8 +182,8 @@ window.initSearch = function(rawSearchIndex) {
                 throw new Error("Cannot use literal search when there is more than one element");
             }
             query.pos += 1;
-            while (query.pos < query.length && query.val[query.pos] !== "\"") {
-                if (query.val[query.pos] === "\\") {
+            while (query.pos < query.length && query.userQuery[query.pos] !== "\"") {
+                if (query.userQuery[query.pos] === "\\") {
                     // We ignore the next coming character.
                     query.pos += 1;
                 }
@@ -198,7 +198,7 @@ window.initSearch = function(rawSearchIndex) {
         }
         function skipWhitespaces(query) {
             while (query.pos < query.length) {
-                var c = query.val[query.pos];
+                var c = query.userQuery[query.pos];
                 if (!isWhitespace(c)) {
                     break;
                 }
@@ -207,7 +207,7 @@ window.initSearch = function(rawSearchIndex) {
         }
         function skipStopCharacters(query) {
             while (query.pos < query.length) {
-                var c = query.val[query.pos];
+                var c = query.userQuery[query.pos];
                 if (!isStopCharacter(c)) {
                     break;
                 }
@@ -216,11 +216,11 @@ window.initSearch = function(rawSearchIndex) {
         }
         function isPathStart(query) {
             var pos = query.pos;
-            return pos + 1 < query.length && query.val[pos] === ':' && query.val[pos + 1] === ':';
+            return pos + 1 < query.length && query.userQuery[pos] === ':' && query.userQuery[pos + 1] === ':';
         }
         function isReturnArrow(query) {
             var pos = query.pos;
-            return pos + 1 < query.length && query.val[pos] === '-' && query.val[pos + 1] === '>';
+            return pos + 1 < query.length && query.userQuery[pos] === '-' && query.userQuery[pos + 1] === '>';
         }
         function removeEmptyStringsFromArray(x) {
             for (var i = 0, len = x.length; i < len; ++i) {
@@ -230,19 +230,19 @@ window.initSearch = function(rawSearchIndex) {
                 }
             }
         }
-        function createQueryElement(query, elems, val, generics) {
+        function createQueryElement(query, elems, name, generics) {
             removeEmptyStringsFromArray(generics);
-            if (val === '*' || (val.length === 0 && generics.length === 0)) {
+            if (name === '*' || (name.length === 0 && generics.length === 0)) {
                 return;
             }
-            var paths = val.split("::");
+            var paths = name.split("::");
             removeEmptyStringsFromArray(paths);
             // In case we only have something like `<p>`, there is no name but it remains valid.
             if (paths.length === 0) {
                 paths = [""];
             }
             elems.push({
-                name: val,
+                name: name,
                 fullPath: paths,
                 pathWithoutLast: paths.slice(0, paths.length - 1),
                 pathLast: paths[paths.length - 1],
@@ -257,14 +257,14 @@ window.initSearch = function(rawSearchIndex) {
             var start = query.pos;
             var end = start;
             // We handle the strings on their own mostly to make code easier to follow.
-            if (query.val[query.pos] === "\"") {
+            if (query.userQuery[query.pos] === "\"") {
                 start += 1;
                 getStringElem(query, isInGenerics);
                 end = query.pos - 1;
                 skipWhitespaces(query);
             } else {
                 while (query.pos < query.length) {
-                    var c = query.val[query.pos];
+                    var c = query.userQuery[query.pos];
                     if (isStopCharacter(c) || isSpecialStartCharacter(c)) {
                         break;
                     }
@@ -281,17 +281,17 @@ window.initSearch = function(rawSearchIndex) {
                     skipWhitespaces(query);
                 }
             }
-            if (query.pos < query.length && query.val[query.pos] === "<") {
+            if (query.pos < query.length && query.userQuery[query.pos] === "<") {
                 getItemsBefore(query, generics, ">");
             }
             if (start >= end && generics.length === 0) {
                 return;
             }
-            createQueryElement(query, elems, query.val.slice(start, end), generics);
+            createQueryElement(query, elems, query.userQuery.slice(start, end), generics);
         }
         function getItemsBefore(query, elems, limit) {
             while (query.pos < query.length) {
-                var c = query.val[query.pos];
+                var c = query.userQuery[query.pos];
                 if (c === limit) {
                     break;
                 } else if (isSpecialStartCharacter(c) || c === ":") {
@@ -307,7 +307,7 @@ window.initSearch = function(rawSearchIndex) {
             var c, before;
 
             while (query.pos < query.length) {
-                c = query.val[query.pos];
+                c = query.userQuery[query.pos];
                 if (isStopCharacter(c)) {
                     if (c === ",") {
                         query.pos += 1;
@@ -331,14 +331,14 @@ window.initSearch = function(rawSearchIndex) {
                 getNextElem(query, query.elems, false);
                 if (query.elems.length === before) {
                     // Nothing was added, let's check it's not because of a solo ":"!
-                    if (query.pos >= query.length || query.val[query.pos] !== ":") {
+                    if (query.pos >= query.length || query.userQuery[query.pos] !== ":") {
                         break;
                     }
                     query.pos += 1;
                 }
             }
             while (query.pos < query.length) {
-                c = query.val[query.pos];
+                c = query.userQuery[query.pos];
                 if (query.args.length === 0 && c === "(") {
                     if (query.elemName === null && query.elems.length === 1) {
                         query.elemName = query.elems.pop();
@@ -364,11 +364,11 @@ window.initSearch = function(rawSearchIndex) {
             return NO_TYPE_FILTER;
         }
 
-        val = val.trim();
+        userQuery = userQuery.trim();
         var query = {
-            original: val,
-            val: val.toLowerCase(),
-            length: val.length,
+            original: userQuery,
+            userQuery: userQuery.toLowerCase(),
+            length: userQuery.length,
             pos: 0,
             typeFilter: null,
             elems: [],
@@ -386,7 +386,7 @@ window.initSearch = function(rawSearchIndex) {
             literalSearch: false,
             error: null,
         };
-        query.id = val;
+        query.id = userQuery;
         try {
             parseInput(query);
         } catch (err) {
@@ -405,9 +405,9 @@ window.initSearch = function(rawSearchIndex) {
         if (query.elemName !== null) {
             query.foundElems += 1;
         }
-        if (query.foundElems === 0 && val.length !== 0) {
+        if (query.foundElems === 0 && userQuery.length !== 0) {
             // In this case, we'll simply keep whatever was entered by the user...
-            createQueryElement(query, query.elems, val, []);
+            createQueryElement(query, query.elems, userQuery, []);
             query.foundElems += 1;
         }
         if (query.typeFilter !== null) {
@@ -422,8 +422,8 @@ window.initSearch = function(rawSearchIndex) {
             query.elemName = null;
         }
         if (query.elemName !== null || query.elems.length === 1) {
-            val = query.elemName || query.elems[0];
-            query.nameSplit = typeof val.path === "undefined" ? null : val.path;
+            userQuery = query.elemName || query.elems[0];
+            query.nameSplit = typeof userQuery.path === "undefined" ? null : userQuery.path;
         }
         return query;
     }
@@ -493,7 +493,7 @@ window.initSearch = function(rawSearchIndex) {
 
         function sortResults(results, isType) {
             var nameSplit = queryInfo.nameSplit;
-            var query = queryInfo.val;
+            var query = queryInfo.userQuery;
             var ar = [];
             for (var entry in results) {
                 if (hasOwnPropertyRustdoc(results, entry)) {
@@ -1344,7 +1344,7 @@ window.initSearch = function(rawSearchIndex) {
             output.className = "search-failed" + extraClass;
             output.innerHTML = "No results :(<br/>" +
                 "Try on <a href=\"https://duckduckgo.com/?q=" +
-                encodeURIComponent("rust " + query.val) +
+                encodeURIComponent("rust " + query.userQuery) +
                 "\">DuckDuckGo</a>?<br/><br/>" +
                 "Or try looking in one of these:<ul><li>The <a " +
                 "href=\"https://doc.rust-lang.org/reference/index.html\">Rust Reference</a> " +
@@ -1424,7 +1424,7 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         var output = `<div id="search-settings">` +
-            `<h1 class="search-results-title">Results for ${escape(results.query.val)}$` +
+            `<h1 class="search-results-title">Results for ${escape(results.query.userQuery)}` +
             `${typeFilter}</h1> in ${crates} </div>` +
             `<div id="titles">` +
             makeTabHeader(0, "In Names", ret_others[1]) +

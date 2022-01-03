@@ -25,7 +25,7 @@ const PARSED = [
         original: "\"R\"<P>",
         returned: [],
         typeFilter: -1,
-        val: "\"r\"<p>",
+        userQuery: "\"r\"<p>",
         error: null,
     }
 ];

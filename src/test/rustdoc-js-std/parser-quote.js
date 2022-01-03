@@ -17,7 +17,7 @@ const PARSED = [
             generics: [],
         }],
         typeFilter: -1,
-        val: "-> \"p\"",
+        userQuery: "-> \"p\"",
         error: null,
     },
     // This one checks that if quotes are used on the type filter, they're
@@ -38,7 +38,7 @@ const PARSED = [
         original: "\"const\": \"p\"",
         returned: [],
         typeFilter: 17,
-        val: "\"const\": \"p\"",
+        userQuery: "\"const\": \"p\"",
         error: null,
     },
     {
@@ -57,7 +57,7 @@ const PARSED = [
         original: "(\"p\")",
         returned: [],
         typeFilter: -1,
-        val: "(\"p\")",
+        userQuery: "(\"p\")",
         error: null,
     },
     // This test checks that a literal item can still have generics.
@@ -83,7 +83,7 @@ const PARSED = [
         original: "\"p\"<p>",
         returned: [],
         typeFilter: -1,
-        val: "\"p\"<p>",
+        userQuery: "\"p\"<p>",
         error: null,
     },
 ];

@@ -21,7 +21,7 @@ var QueryElement;
 /**
  * @typedef {{
  *     original: string,
- *     val: string,
+ *     userQuery: string,
  *     length: number,
  *     pos: number,
  *     typeFilter: number,

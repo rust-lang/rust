@@ -25,7 +25,7 @@ const PARSED = [
             ],
         }],
         typeFilter: -1,
-        val: "-> <p>",
+        userQuery: "-> <p>",
         error: null,
     },
     {
@@ -44,7 +44,7 @@ const PARSED = [
             generics: [],
         }],
         typeFilter: -1,
-        val: "-> p",
+        userQuery: "-> p",
         error: null,
     },
 ];

@@ -37,7 +37,7 @@ const PARSED = [
             },
         ],
         typeFilter: -1,
-        val: "-> <p> (p2)",
+        userQuery: "-> <p> (p2)",
         error: null,
     },
     {
@@ -65,7 +65,7 @@ const PARSED = [
         original: "(p -> p2",
         returned: [],
         typeFilter: -1,
-        val: "(p -> p2",
+        userQuery: "(p -> p2",
         error: null,
     },
     {
@@ -86,7 +86,7 @@ const PARSED = [
         original: "a b",
         returned: [],
         typeFilter: -1,
-        val: "a b",
+        userQuery: "a b",
         error: null,
     },
     {
@@ -122,7 +122,7 @@ const PARSED = [
         original: "a,b(c)",
         returned: [],
         typeFilter: -1,
-        val: "a,b(c)",
+        userQuery: "a,b(c)",
         error: null,
     },
 ];

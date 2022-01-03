@@ -11,7 +11,7 @@ const PARSED = [
         original: "<\"P\">",
         returned: [],
         typeFilter: null,
-        val: "<\"p\">",
+        userQuery: "<\"p\">",
         error: "`\"` cannot be used in generics",
     },
     {
@@ -24,7 +24,7 @@ const PARSED = [
         original: "\"P\" \"P\"",
         returned: [],
         typeFilter: null,
-        val: "\"p\" \"p\"",
+        userQuery: "\"p\" \"p\"",
         error: "Cannot have more than one literal search element",
     },
     {
@@ -37,7 +37,7 @@ const PARSED = [
         original: "P \"P\"",
         returned: [],
         typeFilter: null,
-        val: "p \"p\"",
+        userQuery: "p \"p\"",
         error: "Cannot use literal search when there is more than one element",
     },
 ];
