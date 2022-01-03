@@ -406,7 +406,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Instance::new(def_id, substs),
             dummy_body,
             ret.as_ref(),
-            StackPopCleanup::None { cleanup: false },
+            StackPopCleanup::Root { cleanup: false },
         )
         .expect("failed to push initial stack frame");
 
