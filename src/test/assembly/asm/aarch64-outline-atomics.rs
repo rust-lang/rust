@@ -1,9 +1,6 @@
 // assembly-output: emit-asm
 // compile-flags: -O
-// compile-flags: --target aarch64-unknown-linux-gnu
-// needs-llvm-components: aarch64
-// only-aarch64
-// only-linux
+// only-aarch64-unknown-linux-gnu
 
 #![crate_type = "rlib"]
 
