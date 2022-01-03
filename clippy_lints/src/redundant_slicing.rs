@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::ty::is_type_lang_item;
+use clippy_utils::ty::{is_type_lang_item, peel_mid_ty_refs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::subst::GenericArg;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -53,25 +54,55 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
             if addressee.span.ctxt() == ctxt;
             if let ExprKind::Index(indexed, range) = addressee.kind;
             if is_type_lang_item(cx, cx.typeck_results().expr_ty_adjusted(range), LangItem::RangeFull);
-            if cx.typeck_results().expr_ty(expr) == cx.typeck_results().expr_ty(indexed);
             then {
+                let (expr_ty, expr_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(expr));
+                let (indexed_ty, indexed_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(indexed));
                 let mut app = Applicability::MachineApplicable;
-                let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;
 
-                let (reborrow_str, help_str) = if mutability == Mutability::Mut {
-                    // The slice was used to reborrow the mutable reference.
-                    ("&mut *", "reborrow the original value instead")
-                } else if matches!(
-                    get_parent_expr(cx, expr),
-                    Some(Expr {
-                        kind: ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _),
-                        ..
-                    })
-                ) {
-                    // The slice was used to make a temporary reference.
-                    ("&*", "reborrow the original value instead")
+                let (help, sugg) = if expr_ty == indexed_ty {
+                    if expr_ref_count > indexed_ref_count {
+                        return;
+                    }
+
+                    let (reborrow_str, help_str) = if mutability == Mutability::Mut {
+                        // The slice was used to reborrow the mutable reference.
+                        ("&mut *", "reborrow the original value instead")
+                    } else if matches!(
+                        get_parent_expr(cx, expr),
+                        Some(Expr {
+                            kind: ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, _),
+                            ..
+                        })
+                    ) {
+                        // The slice was used to make a temporary reference.
+                        ("&*", "reborrow the original value instead")
+                    } else if expr_ref_count != indexed_ref_count {
+                        ("", "dereference the original value instead")
+                    } else {
+                        ("", "use the original value instead")
+                    };
+
+                    let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;
+                    (help_str, format!("{}{}{}", reborrow_str, "*".repeat(indexed_ref_count - expr_ref_count), snip))
+                } else if let Some(target_id) = cx.tcx.lang_items().deref_target() {
+                    if let Ok(deref_ty) = cx.tcx.try_normalize_erasing_regions(
+                        cx.param_env,
+                        cx.tcx.mk_projection(target_id, cx.tcx.mk_substs([GenericArg::from(indexed_ty)].into_iter())),
+                    ) {
+                        if deref_ty == expr_ty {
+                            let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;
+                            (
+                                "dereference the original value instead",
+                                format!("&{}{}*{}", mutability.prefix_str(), "*".repeat(indexed_ref_count), snip),
+                            )
+                        } else {
+                            return;
+                        }
+                    } else {
+                        return;
+                    }
                 } else {
-                    ("", "use the original value instead")
+                    return;
                 };
 
                 span_lint_and_sugg(
@@ -79,8 +110,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                     REDUNDANT_SLICING,
                     expr.span,
                     "redundant slicing of the whole range",
-                    help_str,
-                    format!("{}{}", reborrow_str, snip),
+                    help,
+                    sugg,
                     app,
                 );
             }
