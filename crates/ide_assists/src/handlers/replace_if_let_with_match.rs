@@ -207,21 +207,23 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext) 
         "Replace match with if let",
         target,
         move |edit| {
+            fn make_block_expr(expr: ast::Expr) -> ast::BlockExpr {
+                // Blocks with modifiers (unsafe, async, etc.) are parsed as BlockExpr, but are
+                // formatted without enclosing braces. If we encounter such block exprs,
+                // wrap them in another BlockExpr.
+                match expr {
+                    ast::Expr::BlockExpr(block) if block.modifier().is_none() => block,
+                    expr => make::block_expr(iter::empty(), Some(expr)),
+                }
+            }
+
             let condition = make::condition(scrutinee, Some(if_let_pat));
-            let then_block = match then_expr.reset_indent() {
-                ast::Expr::BlockExpr(block) => block,
-                expr => make::block_expr(iter::empty(), Some(expr)),
-            };
+            let then_block = make_block_expr(then_expr.reset_indent());
             let else_expr = if is_empty_expr(&else_expr) { None } else { Some(else_expr) };
             let if_let_expr = make::expr_if(
                 condition,
                 then_block,
-                else_expr
-                    .map(|expr| match expr {
-                        ast::Expr::BlockExpr(block) => block,
-                        expr => (make::block_expr(iter::empty(), Some(expr))),
-                    })
-                    .map(ast::ElseBranch::Block),
+                else_expr.map(make_block_expr).map(ast::ElseBranch::Block),
             )
             .indent(IndentLevel::from_node(match_expr.syntax()));
 
@@ -916,5 +918,31 @@ fn foo() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn test_replace_match_with_if_let_keeps_unsafe_block() {
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+impl VariantData {
+    pub fn is_struct(&self) -> bool {
+        $0match *self {
+            VariantData::Struct(..) => true,
+            _ => unsafe { unreachable_unchecked() },
+        }
+    }
+}           "#,
+            r#"
+impl VariantData {
+    pub fn is_struct(&self) -> bool {
+        if let VariantData::Struct(..) = *self {
+            true
+        } else {
+            unsafe { unreachable_unchecked() }
+        }
+    }
+}           "#,
+        )
     }
 }
