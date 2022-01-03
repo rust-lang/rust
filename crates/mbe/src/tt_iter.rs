@@ -114,7 +114,7 @@ impl<'a> TtIter<'a> {
             }
         }
 
-        let mut err = if !cursor.is_root() || error {
+        let err = if error || !cursor.is_root() {
             Some(err!("expected {:?}", entry_point))
         } else {
             None
@@ -132,9 +132,6 @@ impl<'a> TtIter<'a> {
             }
         }
         self.inner = self.inner.as_slice()[res.len()..].iter();
-        if res.is_empty() && err.is_none() {
-            err = Some(err!("no tokens consumed"));
-        }
         let res = match res.len() {
             1 => Some(res[0].cloned()),
             0 => None,
