@@ -96,7 +96,7 @@
 #![feature(array_windows)]
 #![feature(async_stream)]
 #![feature(coerce_unsized)]
-#![feature(const_alloc_error)]
+#![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
 #![feature(const_box)]
 #![cfg_attr(not(no_global_oom_handling), feature(const_btree_new))]
 #![feature(const_cow_is_borrowed)]
