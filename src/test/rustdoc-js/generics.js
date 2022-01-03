@@ -1,10 +1,10 @@
 // exact-check
 
 const QUERY = [
-    '"R"<P>',
+    'R<P>',
     '"P"',
     'P',
-    '"ExtraCreditStructMulti"<ExtraCreditInnerMulti, ExtraCreditInnerMulti>',
+    'ExtraCreditStructMulti<ExtraCreditInnerMulti, ExtraCreditInnerMulti>',
     'TraitCat',
     'TraitDog',
     'Result<String>',

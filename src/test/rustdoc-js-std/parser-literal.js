@@ -1,4 +1,4 @@
-const QUERY = ['"R"<P>'];
+const QUERY = ['R<P>'];
 
 const PARSED = [
     {
@@ -20,12 +20,12 @@ const PARSED = [
             ],
         }],
         foundElems: 1,
-        id: "\"R\"<P>",
+        id: "R<P>",
         nameSplit: null,
-        original: "\"R\"<P>",
+        original: "R<P>",
         returned: [],
         typeFilter: -1,
-        userQuery: "\"r\"<p>",
+        userQuery: "r<p>",
         error: null,
     }
 ];

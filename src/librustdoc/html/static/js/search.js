@@ -216,11 +216,13 @@ window.initSearch = function(rawSearchIndex) {
         }
         function isPathStart(query) {
             var pos = query.pos;
-            return pos + 1 < query.length && query.userQuery[pos] === ':' && query.userQuery[pos + 1] === ':';
+            return pos + 1 < query.length && query.userQuery[pos] === ':' &&
+                query.userQuery[pos + 1] === ':';
         }
         function isReturnArrow(query) {
             var pos = query.pos;
-            return pos + 1 < query.length && query.userQuery[pos] === '-' && query.userQuery[pos + 1] === '>';
+            return pos + 1 < query.length && query.userQuery[pos] === '-' &&
+                query.userQuery[pos + 1] === '>';
         }
         function removeEmptyStringsFromArray(x) {
             for (var i = 0, len = x.length; i < len; ++i) {
@@ -234,6 +236,9 @@ window.initSearch = function(rawSearchIndex) {
             removeEmptyStringsFromArray(generics);
             if (name === '*' || (name.length === 0 && generics.length === 0)) {
                 return;
+            }
+            if (query.literalSearch && query.totalElems > 0) {
+                throw new Error("You cannot have more than one element if you use quotes");
             }
             var paths = name.split("::");
             removeEmptyStringsFromArray(paths);
@@ -320,6 +325,9 @@ window.initSearch = function(rawSearchIndex) {
                 } else if (c === ":" && query.typeFilter === null && !isPathStart(query) &&
                            query.elems.length === 1)
                 {
+                    if (query.literalSearch) {
+                        throw new Error("You cannot use quotes on type filter");
+                    }
                     // The type filter doesn't count as an element since it's a modifier.
                     query.typeFilter = query.elems.pop().name;
                     query.pos += 1;
@@ -400,7 +408,7 @@ window.initSearch = function(rawSearchIndex) {
         if (!query.literalSearch) {
             // If there is more than one element in the query, we switch to literalSearch in any
             // case.
-            query.literalSearch = query.foundElems > 1;
+            query.literalSearch = query.totalElems > 1;
         }
         if (query.elemName !== null) {
             query.foundElems += 1;

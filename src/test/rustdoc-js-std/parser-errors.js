@@ -1,4 +1,4 @@
-const QUERY = ['<"P">', '"P" "P"', 'P "P"'];
+const QUERY = ['<"P">', '"P" "P"', 'P "P"', '"p" p', '"const": p'];
 
 const PARSED = [
     {
@@ -39,5 +39,31 @@ const PARSED = [
         typeFilter: null,
         userQuery: "p \"p\"",
         error: "Cannot use literal search when there is more than one element",
+    },
+    {
+        args: [],
+        elemName: null,
+        elems: [],
+        foundElems: 0,
+        id: "\"p\" p",
+        nameSplit: null,
+        original: "\"p\" p",
+        returned: [],
+        typeFilter: null,
+        userQuery: "\"p\" p",
+        error: "You cannot have more than one element if you use quotes",
+    },
+    {
+        args: [],
+        elemName: null,
+        elems: [],
+        foundElems: 0,
+        id: "\"const\": p",
+        nameSplit: null,
+        original: "\"const\": p",
+        returned: [],
+        typeFilter: null,
+        userQuery: "\"const\": p",
+        error: "You cannot use quotes on type filter",
     },
 ];

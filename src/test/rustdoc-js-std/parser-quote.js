@@ -1,4 +1,4 @@
-const QUERY = ['-> "p"', '"const": "p"', '("p")', '"p"<p>'];
+const QUERY = ['-> "p"', '("p")'];
 
 const PARSED = [
     {
@@ -20,27 +20,6 @@ const PARSED = [
         userQuery: "-> \"p\"",
         error: null,
     },
-    // This one checks that if quotes are used on the type filter, they're
-    // simply ignored.
-    {
-        args: [],
-        elemName: null,
-        elems: [{
-            name: "p",
-            fullPath: ["p"],
-            pathWithoutLast: [],
-            pathLast: "p",
-            generics: [],
-        }],
-        foundElems: 1,
-        id: "\"const\": \"p\"",
-        nameSplit: null,
-        original: "\"const\": \"p\"",
-        returned: [],
-        typeFilter: 17,
-        userQuery: "\"const\": \"p\"",
-        error: null,
-    },
     {
         args: [{
             name: "p",
@@ -58,32 +37,6 @@ const PARSED = [
         returned: [],
         typeFilter: -1,
         userQuery: "(\"p\")",
-        error: null,
-    },
-    // This test checks that a literal item can still have generics.
-    {
-        args: [],
-        elemName: null,
-        elems: [{
-            name: "p",
-            fullPath: ["p"],
-            pathWithoutLast: [],
-            pathLast: "p",
-            generics: [{
-                name: "p",
-                fullPath: ["p"],
-                pathWithoutLast: [],
-                pathLast: "p",
-                generics: [],
-            }],
-        }],
-        foundElems: 1,
-        id: "\"p\"<p>",
-        nameSplit: null,
-        original: "\"p\"<p>",
-        returned: [],
-        typeFilter: -1,
-        userQuery: "\"p\"<p>",
         error: null,
     },
 ];
