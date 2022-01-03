@@ -1,6 +1,7 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, quote_spanned};
 use syn::parse_quote;
+use syn::spanned::Spanned;
 
 pub fn type_decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let decoder_ty = quote! { __D };
@@ -104,6 +105,8 @@ fn decodable_body(
 }
 
 fn decode_field(field: &syn::Field, index: usize, is_struct: bool) -> proc_macro2::TokenStream {
+    let field_span = field.ident.as_ref().map_or(field.ty.span(), |ident| ident.span());
+
     let decode_inner_method = if let syn::Type::Reference(_) = field.ty {
         quote! { ::rustc_middle::ty::codec::RefDecodable::decode }
     } else {
@@ -111,20 +114,21 @@ fn decode_field(field: &syn::Field, index: usize, is_struct: bool) -> proc_macro
     };
     let (decode_method, opt_field_name) = if is_struct {
         let field_name = field.ident.as_ref().map_or_else(|| index.to_string(), |i| i.to_string());
-        (
-            proc_macro2::Ident::new("read_struct_field", proc_macro2::Span::call_site()),
-            quote! { #field_name, },
-        )
+        (proc_macro2::Ident::new("read_struct_field", field_span), quote! { #field_name, })
     } else {
-        (
-            proc_macro2::Ident::new("read_enum_variant_arg", proc_macro2::Span::call_site()),
-            quote! {},
-        )
+        (proc_macro2::Ident::new("read_enum_variant_arg", field_span), quote! {})
+    };
+
+    let __decoder = quote! { __decoder };
+    // Use the span of the field for the method call, so
+    // that backtraces will point to the field.
+    let decode_call = quote_spanned! {field_span=>
+        ::rustc_serialize::Decoder::#decode_method(
+                #__decoder, #opt_field_name #decode_inner_method)
     };
 
     quote! {
-        match ::rustc_serialize::Decoder::#decode_method(
-            __decoder, #opt_field_name #decode_inner_method) {
+        match #decode_call  {
             ::std::result::Result::Ok(__res) => __res,
             ::std::result::Result::Err(__err) => return ::std::result::Result::Err(__err),
         }
