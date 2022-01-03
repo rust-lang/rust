@@ -72,6 +72,7 @@ mod tests;
 
 use crate::borrow::{Borrow, Cow};
 use crate::cmp;
+use crate::collections::TryReserveError;
 use crate::error::Error;
 use crate::fmt;
 use crate::fs;
@@ -1512,6 +1513,15 @@ impl PathBuf {
         self.inner.reserve(additional)
     }
 
+    /// Invokes [`try_reserve`] on the underlying instance of [`OsString`].
+    ///
+    /// [`try_reserve`]: OsString::try_reserve
+    #[unstable(feature = "try_reserve_2", issue = "91789")]
+    #[inline]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.inner.try_reserve(additional)
+    }
+
     /// Invokes [`reserve_exact`] on the underlying instance of [`OsString`].
     ///
     /// [`reserve_exact`]: OsString::reserve_exact
@@ -1519,6 +1529,15 @@ impl PathBuf {
     #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
+    }
+
+    /// Invokes [`try_reserve_exact`] on the underlying instance of [`OsString`].
+    ///
+    /// [`try_reserve_exact`]: OsString::try_reserve_exact
+    #[unstable(feature = "try_reserve_2", issue = "91789")]
+    #[inline]
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.inner.try_reserve_exact(additional)
     }
 
     /// Invokes [`shrink_to_fit`] on the underlying instance of [`OsString`].
