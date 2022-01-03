@@ -697,6 +697,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
         "block" => parser::PrefixEntryPoint::Block,
         "meta" => parser::PrefixEntryPoint::MetaItem,
         "item" => parser::PrefixEntryPoint::Item,
+        "vis" => parser::PrefixEntryPoint::Vis,
         "expr" => {
             return input
                 .expect_fragment(parser::PrefixEntryPoint::Expr)
@@ -728,8 +729,6 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                         })
                         .map_err(|()| err!())
                 }
-                // `vis` is optional
-                "vis" => Ok(input.expect_fragment(parser::PrefixEntryPoint::Vis).value),
                 _ => Err(ExpandError::UnexpectedToken),
             };
             return tt_result.map(|it| it.map(Fragment::Tokens)).into();
