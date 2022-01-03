@@ -7,6 +7,8 @@ pub fn roundf(x: f32) -> f32 {
     truncf(x + copysignf(0.5 - 0.25 * f32::EPSILON, x))
 }
 
+// PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520
+#[cfg(not(target_arch = "powerpc64"))]
 #[cfg(test)]
 mod tests {
     use super::roundf;
