@@ -429,12 +429,13 @@ pub struct TryIter<'a, T: 'a> {
 }
 
 /// An owning iterator over messages on a [`Receiver`],
-/// created by **Receiver::into_iter**.
+/// created by [`into_iter`].
 ///
 /// This iterator will block whenever [`next`]
 /// is called, waiting for a new message, and [`None`] will be
 /// returned if the corresponding channel has hung up.
 ///
+/// [`into_iter`]: Receiver::into_iter
 /// [`next`]: Iterator::next
 ///
 /// # Examples
