@@ -520,9 +520,16 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, _: NodeId) {
         let rib_kind = match fn_kind {
-            // Bail if there's no body.
-            FnKind::Fn(.., None) => return visit::walk_fn(self, fn_kind, sp),
-            FnKind::Fn(FnCtxt::Free | FnCtxt::Foreign, ..) => FnItemRibKind,
+            // Bail if the function is foreign, and thus cannot validly have
+            // a body, or if there's no body for some other reason.
+            FnKind::Fn(FnCtxt::Foreign, _, sig, ..) | FnKind::Fn(_, _, sig, .., None) => {
+                // We don't need to deal with patterns in parameters, because
+                // they are not possible for foreign or bodiless functions.
+                self.visit_fn_header(&sig.header);
+                visit::walk_fn_decl(self, &sig.decl);
+                return;
+            }
+            FnKind::Fn(FnCtxt::Free, ..) => FnItemRibKind,
             FnKind::Fn(FnCtxt::Assoc(_), ..) => NormalRibKind,
             FnKind::Closure(..) => ClosureOrAsyncRibKind,
         };
