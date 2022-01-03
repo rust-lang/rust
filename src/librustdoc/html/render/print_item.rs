@@ -33,7 +33,6 @@ use crate::html::layout::Page;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 
 use askama::Template;
-use serde::Serialize;
 
 const ITEM_TABLE_OPEN: &str = "<div class=\"item-table\">";
 const ITEM_TABLE_CLOSE: &str = "</div>";
@@ -41,13 +40,12 @@ const ITEM_TABLE_ROW_OPEN: &str = "<div class=\"item-row\">";
 const ITEM_TABLE_ROW_CLOSE: &str = "</div>";
 
 // A component in a `use` path, like `string` in std::string::ToString
-#[derive(Serialize)]
 struct PathComponent<'a> {
     path: String,
     name: &'a str,
 }
 
-#[derive(Serialize, Template)]
+#[derive(Template)]
 #[template(path = "print_item.html")]
 struct ItemVars<'a> {
     page: &'a Page<'a>,

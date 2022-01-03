@@ -49,12 +49,10 @@
         <link rel="stylesheet" {# -#}
            href="{{static_root_path|safe}}noscript{{page.resource_suffix}}.css"> {#- -#}
     </noscript> {#- -#}
-    {%- match layout.css_file_extension -%}
-        {%- when Some with (ext) -%}
-            <link rel="stylesheet" type="text/css" {# -#}
-                href="{{static_root_path|safe}}theme{{page.resource_suffix}}.css"> {#- -#}
-        {%- else -%}
-    {%- endmatch -%}
+    {%- if layout.css_file_extension.is_some() -%}
+        <link rel="stylesheet" type="text/css" {# -#}
+            href="{{static_root_path|safe}}theme{{page.resource_suffix}}.css"> {#- -#}
+    {%- endif -%}
     {%- if !layout.favicon.is_empty() -%}
         <link rel="shortcut icon" href="{{layout.favicon}}"> {#- -#}
     {%- else -%}

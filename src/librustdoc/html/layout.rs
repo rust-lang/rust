@@ -8,9 +8,8 @@ use crate::html::format::{Buffer, Print};
 use crate::html::render::{ensure_trailing_slash, StylePath};
 
 use askama::Template;
-use serde::Serialize;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone)]
 crate struct Layout {
     crate logo: String,
     crate favicon: String,
@@ -27,7 +26,6 @@ crate struct Layout {
     crate scrape_examples_extension: bool,
 }
 
-#[derive(Serialize)]
 crate struct Page<'a> {
     crate title: &'a str,
     crate css_class: &'a str,
@@ -46,7 +44,7 @@ impl<'a> Page<'a> {
     }
 }
 
-#[derive(Serialize, Template)]
+#[derive(Template)]
 #[template(path = "page.html")]
 struct PageLayout<'a> {
     static_root_path: &'a str,
