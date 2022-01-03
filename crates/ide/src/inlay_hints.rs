@@ -257,26 +257,23 @@ fn is_named_constructor(
     }?;
     let expr = match expr {
         ast::Expr::CallExpr(call) => match call.expr()? {
-            ast::Expr::PathExpr(p) => p,
+            ast::Expr::PathExpr(path) => path,
             _ => return None,
         },
+        ast::Expr::PathExpr(path) => path,
         _ => return None,
     };
     let path = expr.path()?;
 
-    // Check for tuple-struct or tuple-variant in which case we can check the last segment
     let callable = sema.type_of_expr(&ast::Expr::PathExpr(expr))?.original.as_callable(sema.db);
     let callable_kind = callable.map(|it| it.kind());
-    if let Some(hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_)) =
-        callable_kind
-    {
-        if let Some(ctor) = path.segment() {
-            return (ctor.to_string() == ty_name).then(|| ());
+    let qual_seg = match callable_kind {
+        Some(hir::CallableKind::Function(_) | hir::CallableKind::TupleEnumVariant(_)) => {
+            path.qualifier()?.segment()
         }
-    }
+        _ => path.segment(),
+    }?;
 
-    // otherwise use the qualifying segment as the constructor name
-    let qual_seg = path.qualifier()?.segment()?;
     let ctor_name = match qual_seg.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
             match qual_seg.generic_arg_list().map(|it| it.generic_args()) {
@@ -1341,7 +1338,7 @@ fn main() {
     }
 
     #[test]
-    fn skip_constructor_type_hints() {
+    fn skip_constructor_and_enum_type_hints() {
         check_with_config(
             InlayHintsConfig {
                 type_hints: true,
@@ -1351,9 +1348,16 @@ fn main() {
                 max_length: None,
             },
             r#"
-//- minicore: try
+//- minicore: try, option
 use core::ops::ControlFlow;
 
+mod x {
+    pub mod y { pub struct Foo; }
+    pub struct Foo;
+    pub enum AnotherEnum {
+        Variant()
+    };
+}
 struct Struct;
 struct TupleStruct();
 
@@ -1373,13 +1377,39 @@ impl Generic<i32> {
     }
 }
 
+enum Enum {
+    Variant(u32)
+}
+
+fn times2(value: i32) -> i32 {
+    2 * value
+}
+
 fn main() {
+    let enumb = Enum::Variant(0);
+
+    let strukt = x::Foo;
+    let strukt = x::y::Foo;
+    let strukt = Struct;
     let strukt = Struct::new();
+
     let tuple_struct = TupleStruct();
+
     let generic0 = Generic::new();
-     // ^^^^^^^^ Generic<i32>
-    let generic1 = Generic::<i32>::new();
-    let generic2 = <Generic<i32>>::new();
+    //  ^^^^^^^^ Generic<i32>
+    let generic1 = Generic(0);
+    //  ^^^^^^^^ Generic<i32>
+    let generic2 = Generic::<i32>::new();
+    let generic3 = <Generic<i32>>::new();
+    let generic4 = Generic::<i32>(0);
+
+
+    let option = Some(0);
+    //  ^^^^^^ Option<i32>
+    let func = times2;
+    //  ^^^^ fn times2(i32) -> i32
+    let closure = |x: i32| x * 2;
+    //  ^^^^^^^ |i32| -> i32
 }
 
 fn fallible() -> ControlFlow<()> {
