@@ -282,7 +282,10 @@ fn traverse(
 
         // only attempt to descend if we are inside a macro call or attribute
         // as calling `descend_into_macros_single` gets rather expensive if done for every single token
-        let descend_token = current_macro_call.is_some() || current_attr_call.is_some();
+        // additionally, do not descend into comments, descending maps down to doc attributes which get
+        // tagged as string literals.
+        let descend_token = (current_macro_call.is_some() || current_attr_call.is_some())
+            && element.kind() != COMMENT;
         let element_to_highlight = if descend_token {
             let token = match &element {
                 NodeOrToken::Node(_) => continue,
