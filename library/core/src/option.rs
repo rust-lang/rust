@@ -810,6 +810,45 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns the contained [`Some`] value or a default.
+    ///
+    /// Consumes the `self` argument then, if [`Some`], returns the contained
+    /// value, otherwise if [`None`], returns the [default value] for that
+    /// type.
+    ///
+    /// # Examples
+    ///
+    /// Converts a string to an integer, turning poorly-formed strings
+    /// into 0 (the default value for integers). [`parse`] converts
+    /// a string to any other type that implements [`FromStr`], returning
+    /// [`None`] on error.
+    ///
+    /// ```
+    /// let good_year_from_input = "1909";
+    /// let bad_year_from_input = "190blarg";
+    /// let good_year = good_year_from_input.parse().ok().unwrap_or_default();
+    /// let bad_year = bad_year_from_input.parse().ok().unwrap_or_default();
+    ///
+    /// assert_eq!(1909, good_year);
+    /// assert_eq!(0, bad_year);
+    /// ```
+    ///
+    /// [default value]: Default::default
+    /// [`parse`]: str::parse
+    /// [`FromStr`]: crate::str::FromStr
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn unwrap_or_default(self) -> T
+    where
+        T: ~const Default,
+    {
+        match self {
+            Some(x) => x,
+            None => Default::default(),
+        }
+    }
+
     /// Returns the contained [`Some`] value, consuming the `self` value,
     /// without checking that the value is not [`None`].
     ///
@@ -1030,6 +1069,58 @@ impl<T> Option<T> {
         match self {
             Some(v) => Ok(v),
             None => Err(err()),
+        }
+    }
+
+    /// Converts from `Option<T>` (or `&Option<T>`) to `Option<&T::Target>`.
+    ///
+    /// Leaves the original Option in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the contents via [`Deref`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x: Option<String> = Some("hey".to_owned());
+    /// assert_eq!(x.as_deref(), Some("hey"));
+    ///
+    /// let x: Option<String> = None;
+    /// assert_eq!(x.as_deref(), None);
+    /// ```
+    #[stable(feature = "option_deref", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn as_deref(&self) -> Option<&T::Target>
+    where
+        T: ~const Deref,
+    {
+        match self.as_ref() {
+            Some(t) => Some(t.deref()),
+            None => None,
+        }
+    }
+
+    /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
+    ///
+    /// Leaves the original `Option` in-place, creating a new one containing a mutable reference to
+    /// the inner type's [`Deref::Target`] type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x: Option<String> = Some("hey".to_owned());
+    /// assert_eq!(x.as_deref_mut().map(|x| {
+    ///     x.make_ascii_uppercase();
+    ///     x
+    /// }), Some("HEY".to_owned().as_mut_str()));
+    /// ```
+    #[stable(feature = "option_deref", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn as_deref_mut(&mut self) -> Option<&mut T::Target>
+    where
+        T: ~const DerefMut,
+    {
+        match self.as_mut() {
+            Some(t) => Some(t.deref_mut()),
+            None => None,
         }
     }
 
@@ -1581,7 +1672,7 @@ impl<T, U> Option<(T, U)> {
     }
 }
 
-impl<T: Copy> Option<&T> {
+impl<T> Option<&T> {
     /// Maps an `Option<&T>` to an `Option<T>` by copying the contents of the
     /// option.
     ///
@@ -1597,7 +1688,10 @@ impl<T: Copy> Option<&T> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "copied", since = "1.35.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
-    pub const fn copied(self) -> Option<T> {
+    pub const fn copied(self) -> Option<T>
+    where
+        T: Copy,
+    {
         // FIXME: this implementation, which sidesteps using `Option::map` since it's not const
         // ready yet, should be reverted when possible to avoid code repetition
         match self {
@@ -1605,33 +1699,7 @@ impl<T: Copy> Option<&T> {
             None => None,
         }
     }
-}
 
-impl<T: Copy> Option<&mut T> {
-    /// Maps an `Option<&mut T>` to an `Option<T>` by copying the contents of the
-    /// option.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut x = 12;
-    /// let opt_x = Some(&mut x);
-    /// assert_eq!(opt_x, Some(&mut 12));
-    /// let copied = opt_x.copied();
-    /// assert_eq!(copied, Some(12));
-    /// ```
-    #[must_use = "`self` will be dropped if the result is not used"]
-    #[stable(feature = "copied", since = "1.35.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
-    pub const fn copied(self) -> Option<T> {
-        match self {
-            Some(&mut t) => Some(t),
-            None => None,
-        }
-    }
-}
-
-impl<T: Clone> Option<&T> {
     /// Maps an `Option<&T>` to an `Option<T>` by cloning the contents of the
     /// option.
     ///
@@ -1658,7 +1726,32 @@ impl<T: Clone> Option<&T> {
     }
 }
 
-impl<T: Clone> Option<&mut T> {
+impl<T> Option<&mut T> {
+    /// Maps an `Option<&mut T>` to an `Option<T>` by copying the contents of the
+    /// option.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut x = 12;
+    /// let opt_x = Some(&mut x);
+    /// assert_eq!(opt_x, Some(&mut 12));
+    /// let copied = opt_x.copied();
+    /// assert_eq!(copied, Some(12));
+    /// ```
+    #[must_use = "`self` will be dropped if the result is not used"]
+    #[stable(feature = "copied", since = "1.35.0")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn copied(self) -> Option<T>
+    where
+        T: Copy,
+    {
+        match self {
+            Some(&mut t) => Some(t),
+            None => None,
+        }
+    }
+
     /// Maps an `Option<&mut T>` to an `Option<T>` by cloning the contents of the
     /// option.
     ///
@@ -1680,103 +1773,6 @@ impl<T: Clone> Option<&mut T> {
     {
         match self {
             Some(t) => Some(t.clone()),
-            None => None,
-        }
-    }
-}
-
-impl<T: Default> Option<T> {
-    /// Returns the contained [`Some`] value or a default.
-    ///
-    /// Consumes the `self` argument then, if [`Some`], returns the contained
-    /// value, otherwise if [`None`], returns the [default value] for that
-    /// type.
-    ///
-    /// # Examples
-    ///
-    /// Converts a string to an integer, turning poorly-formed strings
-    /// into 0 (the default value for integers). [`parse`] converts
-    /// a string to any other type that implements [`FromStr`], returning
-    /// [`None`] on error.
-    ///
-    /// ```
-    /// let good_year_from_input = "1909";
-    /// let bad_year_from_input = "190blarg";
-    /// let good_year = good_year_from_input.parse().ok().unwrap_or_default();
-    /// let bad_year = bad_year_from_input.parse().ok().unwrap_or_default();
-    ///
-    /// assert_eq!(1909, good_year);
-    /// assert_eq!(0, bad_year);
-    /// ```
-    ///
-    /// [default value]: Default::default
-    /// [`parse`]: str::parse
-    /// [`FromStr`]: crate::str::FromStr
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
-    pub const fn unwrap_or_default(self) -> T
-    where
-        T: ~const Default,
-    {
-        match self {
-            Some(x) => x,
-            None => Default::default(),
-        }
-    }
-}
-
-impl<T: Deref> Option<T> {
-    /// Converts from `Option<T>` (or `&Option<T>`) to `Option<&T::Target>`.
-    ///
-    /// Leaves the original Option in-place, creating a new one with a reference
-    /// to the original one, additionally coercing the contents via [`Deref`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x: Option<String> = Some("hey".to_owned());
-    /// assert_eq!(x.as_deref(), Some("hey"));
-    ///
-    /// let x: Option<String> = None;
-    /// assert_eq!(x.as_deref(), None);
-    /// ```
-    #[stable(feature = "option_deref", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
-    pub const fn as_deref(&self) -> Option<&T::Target>
-    where
-        T: ~const Deref,
-    {
-        match self.as_ref() {
-            Some(t) => Some(t.deref()),
-            None => None,
-        }
-    }
-}
-
-impl<T: DerefMut> Option<T> {
-    /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
-    ///
-    /// Leaves the original `Option` in-place, creating a new one containing a mutable reference to
-    /// the inner type's [`Deref::Target`] type.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut x: Option<String> = Some("hey".to_owned());
-    /// assert_eq!(x.as_deref_mut().map(|x| {
-    ///     x.make_ascii_uppercase();
-    ///     x
-    /// }), Some("HEY".to_owned().as_mut_str()));
-    /// ```
-    #[stable(feature = "option_deref", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
-    pub const fn as_deref_mut(&mut self) -> Option<&mut T::Target>
-    where
-        T: ~const DerefMut,
-    {
-        match self.as_mut() {
-            Some(t) => Some(t.deref_mut()),
             None => None,
         }
     }
