@@ -173,7 +173,14 @@ window.initSearch = function(rawSearchIndex) {
         function isStopCharacter(c) {
             return isWhitespace(c) || "),>-=".indexOf(c) !== -1;
         }
-        function getStringElem(query) {
+        function getStringElem(query, isInGenerics) {
+            if (isInGenerics) {
+                throw new Error("`\"` cannot be used in generics");
+            } else if (query.literalSearch) {
+                throw new Error("Cannot have more than one literal search element");
+            } else if (query.totalElems !== 0) {
+                throw new Error("Cannot use literal search when there is more than one element");
+            }
             query.pos += 1;
             while (query.pos < query.length && query.val[query.pos] !== "\"") {
                 if (query.val[query.pos] === "\\") {
@@ -182,24 +189,25 @@ window.initSearch = function(rawSearchIndex) {
                 }
                 query.pos += 1;
             }
+            if (query.pos >= query.length) {
+                throw new Error("Unclosed `\"`");
+            }
             // To skip the quote at the end.
             query.pos += 1;
+            query.literalSearch = true;
         }
         function skipWhitespaces(query) {
-            var c;
             while (query.pos < query.length) {
-                c = query.val[query.pos];
+                var c = query.val[query.pos];
                 if (!isWhitespace(c)) {
                     break;
                 }
                 query.pos += 1;
             }
-
         }
         function skipStopCharacters(query) {
-            var c;
             while (query.pos < query.length) {
-                c = query.val[query.pos];
+                var c = query.val[query.pos];
                 if (!isStopCharacter(c)) {
                     break;
                 }
@@ -222,7 +230,7 @@ window.initSearch = function(rawSearchIndex) {
                 }
             }
         }
-        function createQueryElement(elems, val, generics, isExact) {
+        function createQueryElement(query, elems, val, generics) {
             removeEmptyStringsFromArray(generics);
             if (val === '*' || (val.length === 0 && generics.length === 0)) {
                 return;
@@ -234,16 +242,15 @@ window.initSearch = function(rawSearchIndex) {
                 paths = [""];
             }
             elems.push({
-                isExact: isExact,
                 name: val,
                 fullPath: paths,
                 pathWithoutLast: paths.slice(0, paths.length - 1),
                 pathLast: paths[paths.length - 1],
                 generics: generics,
             });
+            query.totalElems += 1;
         }
-        function getNextElem(query, elems) {
-            var isExact = false;
+        function getNextElem(query, elems, isInGenerics) {
             var generics = [];
 
             skipStopCharacters(query);
@@ -251,9 +258,8 @@ window.initSearch = function(rawSearchIndex) {
             var end = start;
             // We handle the strings on their own mostly to make code easier to follow.
             if (query.val[query.pos] === "\"") {
-                isExact = true;
                 start += 1;
-                getStringElem(query);
+                getStringElem(query, isInGenerics);
                 end = query.pos - 1;
                 skipWhitespaces(query);
             } else {
@@ -281,20 +287,18 @@ window.initSearch = function(rawSearchIndex) {
             if (start >= end && generics.length === 0) {
                 return;
             }
-            createQueryElement(elems, query.val.slice(start, end), generics, isExact);
+            createQueryElement(query, elems, query.val.slice(start, end), generics);
         }
         function getItemsBefore(query, elems, limit) {
-            var c;
-
             while (query.pos < query.length) {
-                c = query.val[query.pos];
+                var c = query.val[query.pos];
                 if (c === limit) {
                     break;
                 } else if (isSpecialStartCharacter(c) || c === ":") {
                     // Something weird is going on in here. Ignoring it!
                     query.pos += 1;
                 }
-                getNextElem(query, elems);
+                getNextElem(query, elems, limit === ">");
             }
             // We skip the "limit".
             query.pos += 1;
@@ -319,10 +323,12 @@ window.initSearch = function(rawSearchIndex) {
                     // The type filter doesn't count as an element since it's a modifier.
                     query.typeFilter = query.elems.pop().name;
                     query.pos += 1;
+                    query.totalElems = 0;
+                    query.literalSearch = false;
                     continue;
                 }
                 before = query.elems.length;
-                getNextElem(query, query.elems);
+                getNextElem(query, query.elems, false);
                 if (query.elems.length === before) {
                     // Nothing was added, let's check it's not because of a solo ":"!
                     if (query.pos >= query.length || query.val[query.pos] !== ":") {
@@ -369,20 +375,39 @@ window.initSearch = function(rawSearchIndex) {
             elemName: null,
             args: [],
             returned: [],
+            // Total number of elements (includes generics).
+            totalElems: 0,
+            // Total number of "top" elements (does not include generics).
             foundElems: 0,
             // This field is used to check if it's needed to re-run a search or not.
             id: "",
             // This field is used in `sortResults`.
             nameSplit: null,
+            literalSearch: false,
+            error: null,
         };
-        parseInput(query);
+        query.id = val;
+        try {
+            parseInput(query);
+        } catch (err) {
+            query.error = err.message;
+            query.elems = [];
+            query.returned = [];
+            query.args = [];
+            return query;
+        }
         query.foundElems = query.elems.length + query.args.length + query.returned.length;
+        if (!query.literalSearch) {
+            // If there is more than one element in the query, we switch to literalSearch in any
+            // case.
+            query.literalSearch = query.foundElems > 1;
+        }
         if (query.elemName !== null) {
             query.foundElems += 1;
         }
         if (query.foundElems === 0 && val.length !== 0) {
             // In this case, we'll simply keep whatever was entered by the user...
-            createQueryElement(query.elems, val, [], false);
+            createQueryElement(query, query.elems, val, []);
             query.foundElems += 1;
         }
         if (query.typeFilter !== null) {
@@ -391,7 +416,6 @@ window.initSearch = function(rawSearchIndex) {
         } else {
             query.typeFilter = NO_TYPE_FILTER;
         }
-        query.id = val;
         // In case we only have one argument, we move it back to `elems` to keep things simple.
         if (query.foundElems === 1 && query.elemName !== null) {
             query.elems.push(query.elemName);
@@ -405,14 +429,35 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     /**
+     * Creates the query results.
+     *
+     * @param {Array<Object>} results_in_args
+     * @param {Array<Object>} results_returned
+     * @param {Array<Object>} results_in_args
+     * @param {ParsedQuery} queryInfo
+     * @return {Object}                        - A search index of results
+     */
+    function createQueryResults(results_in_args, results_returned, results_others, queryInfo) {
+        return {
+            "in_args": results_in_args,
+            "returned": results_returned,
+            "others": results_others,
+            "query": queryInfo,
+        };
+    }
+
+    /**
      * Executes the query and builds an index of results
-     * @param  {[Object]} query      [The user query]
-     * @param  {[type]} searchWords  [The list of search words to query
-     *                                against]
-     * @param  {[type]} filterCrates [Crate to search in if defined]
-     * @return {[type]}              [A search index of results]
+     *
+     * @param  {ParsedQuery} query   - The user query
+     * @param  {Object} searchWords  - The list of search words to query against
+     * @param  {Object} filterCrates - Crate to search in if defined
+     * @return {Object}              - A search index of results
      */
     function execQuery(queryInfo, searchWords, filterCrates) {
+        if (queryInfo.error !== null) {
+            createQueryResults([], [], [], queryInfo);
+        }
         var results_others = {}, results_in_args = {}, results_returned = {};
 
         function transformResults(results) {
@@ -618,7 +663,7 @@ window.initSearch = function(rawSearchIndex) {
             var lev = MAX_LEV_DISTANCE + 1;
             for (var x = 0, length = obj[GENERICS_DATA].length; x < length && lev !== 0; ++x) {
                 lev = Math.min(
-                    checkType(obj[GENERICS_DATA][x], val),
+                    checkType(obj[GENERICS_DATA][x], val, true),
                     lev
                 );
             }
@@ -629,13 +674,14 @@ window.initSearch = function(rawSearchIndex) {
           * This function checks if the object (`obj`) matches the given type (`val`) and its
           * generics (if any).
           *
-          * @param {Object} obj
-          * @param {Object} val
+          * @param {Row} obj
+          * @param {QueryElement} val      - The element from the parsed query.
+          * @param {boolean} literalSearch
           *
           * @return {integer} - Returns a Levenshtein distance to the best match. If there is
           *                     no match, returns `MAX_LEV_DISTANCE + 1`.
           */
-        function checkType(obj, val) {
+        function checkType(obj, val, literalSearch) {
             if (val.name.length === 0 || obj[NAME].length === 0) {
                 // This is a pure "generic" search, no need to run other checks.
                 if (obj.length > GENERICS_DATA) {
@@ -645,7 +691,7 @@ window.initSearch = function(rawSearchIndex) {
             }
 
             var lev = levenshtein(obj[NAME], val.name);
-            if (val.isExact) {
+            if (literalSearch) {
                 if (lev !== 0) {
                     // The name didn't match, let's try to check if the generics do.
                     if (val.generics.length === 0) {
@@ -720,13 +766,13 @@ window.initSearch = function(rawSearchIndex) {
                     if (!typePassesFilter(typeFilter, tmp[1])) {
                         continue;
                     }
-                    lev = Math.min(lev, checkType(tmp, val));
+                    lev = Math.min(lev, checkType(tmp, val, queryInfo.literalSearch));
                     if (lev === 0) {
                         return 0;
                     }
                 }
             }
-            return val.isExact ? MAX_LEV_DISTANCE + 1 : lev;
+            return queryInfo.literalSearch ? MAX_LEV_DISTANCE + 1 : lev;
         }
 
         /**
@@ -751,13 +797,13 @@ window.initSearch = function(rawSearchIndex) {
                     if (!typePassesFilter(typeFilter, tmp[1])) {
                         continue;
                     }
-                    lev = Math.min(lev, checkType(tmp, val));
+                    lev = Math.min(lev, checkType(tmp, val, queryInfo.literalSearch));
                     if (lev === 0) {
                         return 0;
                     }
                 }
             }
-            return val.isExact ? MAX_LEV_DISTANCE + 1 : lev;
+            return queryInfo.literalSearch ? MAX_LEV_DISTANCE + 1 : lev;
         }
 
         function checkPath(contains, lastElem, ty) {
@@ -888,7 +934,7 @@ window.initSearch = function(rawSearchIndex) {
          * This function adds the given result into the provided `res` map if it matches the
          * following condition:
          *
-         * * If it is a "literal search" (`isExact`), then `lev` must be 0.
+         * * If it is a "literal search" (`queryInfo.literalSearch`), then `lev` must be 0.
          * * If it is not a "literal search", `lev` must be <= `MAX_LEV_DISTANCE`.
          *
          * The `res` map contains information which will be used to sort the search results:
@@ -898,15 +944,14 @@ window.initSearch = function(rawSearchIndex) {
          * * `index` is an `integer`` used to sort by the position of the word in the item's name.
          * * `lev` is the main metric used to sort the search results.
          *
-         * @param {boolean} isExact
          * @param {Object} res
          * @param {string} fullId
          * @param {integer} id
          * @param {integer} index
          * @param {integer} lev
          */
-        function addIntoResults(isExact, res, fullId, id, index, lev) {
-            if (lev === 0 || (!isExact && lev <= MAX_LEV_DISTANCE)) {
+        function addIntoResults(res, fullId, id, index, lev) {
+            if (lev === 0 || (!queryInfo.literalSearch && lev <= MAX_LEV_DISTANCE)) {
                 if (res[fullId] !== undefined) {
                     var result = res[fullId];
                     if (result.dontValidate || result.lev <= lev) {
@@ -916,7 +961,7 @@ window.initSearch = function(rawSearchIndex) {
                 res[fullId] = {
                     id: id,
                     index: index,
-                    dontValidate: isExact,
+                    dontValidate: queryInfo.literalSearch,
                     lev: lev,
                 };
             }
@@ -939,17 +984,17 @@ window.initSearch = function(rawSearchIndex) {
             var in_args = findArg(ty, elem, queryInfo.typeFilter);
             var returned = checkReturned(ty, elem, queryInfo.typeFilter);
 
-            addIntoResults(elem.isExact, results_in_args, fullId, pos, index, in_args);
-            addIntoResults(elem.isExact, results_returned, fullId, pos, index, returned);
+            addIntoResults(results_in_args, fullId, pos, index, in_args);
+            addIntoResults(results_returned, fullId, pos, index, returned);
 
             if (!typePassesFilter(queryInfo.typeFilter, ty.ty)) {
                 return;
             }
             var searchWord = searchWords[pos];
 
-            if (elem.isExact) {
+            if (queryInfo.literalSearch) {
                 if (searchWord === elem.name) {
-                    addIntoResults(true, results_others, fullId, pos, -1, 0);
+                    addIntoResults(results_others, fullId, pos, -1, 0);
                 }
                 return;
             }
@@ -958,14 +1003,14 @@ window.initSearch = function(rawSearchIndex) {
             if (elem.name.length === 0) {
                 if (ty.type !== null) {
                     lev = checkGenerics(ty.type, elem, MAX_LEV_DISTANCE + 1);
-                    addIntoResults(false, results_others, fullId, pos, index, lev);
+                    addIntoResults(results_others, fullId, pos, index, lev);
                 }
                 return;
             }
 
             if (elem.fullPath.length > 1) {
                 lev = checkPath(elem.pathWithoutLast, elem.pathLast, ty);
-                if (lev > MAX_LEV_DISTANCE || (elem.isExact && lev !== 0)) {
+                if (lev > MAX_LEV_DISTANCE || (queryInfo.literalSearch && lev !== 0)) {
                     return;
                 } else if (lev > 0) {
                     lev_add = lev / 10;
@@ -998,7 +1043,7 @@ window.initSearch = function(rawSearchIndex) {
             if (lev < 0) {
                 lev = 0;
             }
-            addIntoResults(elem.isExact, results_others, fullId, pos, index, lev);
+            addIntoResults(results_others, fullId, pos, index, lev);
         }
 
         /**
@@ -1024,7 +1069,6 @@ window.initSearch = function(rawSearchIndex) {
                 for (i = 0, len = args.length; i < len; ++i) {
                     el = args[i];
                     // There is more than one parameter to the query so all checks should be "exact"
-                    el.isExact = true;
                     lev = callback(ty, el, NO_TYPE_FILTER);
                     if (lev <= 1) {
                         nbLev += 1;
@@ -1049,7 +1093,7 @@ window.initSearch = function(rawSearchIndex) {
                 return;
             }
             lev = Math.round(totalLev / nbLev);
-            addIntoResults(false, results, ty.id, pos, 0, lev);
+            addIntoResults(results, ty.id, pos, 0, lev);
         }
 
         function innerRunQuery() {
@@ -1069,7 +1113,7 @@ window.initSearch = function(rawSearchIndex) {
                     for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
                         ty = searchIndex[i];
                         in_args = findArg(ty, elem, queryInfo.typeFilter);
-                        addIntoResults(elem.isExact, results_in_args, ty.id, i, -1, in_args);
+                        addIntoResults(results_in_args, ty.id, i, -1, in_args);
                     }
                 } else if (queryInfo.returned.length === 1) {
                     // We received one returned argument to check, so looking into returned values.
@@ -1077,7 +1121,7 @@ window.initSearch = function(rawSearchIndex) {
                     for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
                         ty = searchIndex[i];
                         in_returned = checkReturned(ty, elem, queryInfo.typeFilter);
-                        addIntoResults(elem.isExact, results_returned, ty.id, i, -1, in_returned);
+                        addIntoResults(results_returned, ty.id, i, -1, in_returned);
                     }
                 }
             } else if (queryInfo.foundElems > 0) {
@@ -1096,12 +1140,11 @@ window.initSearch = function(rawSearchIndex) {
         }
         innerRunQuery();
 
-        var ret = {
-            "in_args": sortResults(results_in_args, true),
-            "returned": sortResults(results_returned, true),
-            "others": sortResults(results_others, false),
-            "query": queryInfo,
-        };
+        var ret = createQueryResults(
+            sortResults(results_in_args, true),
+            sortResults(results_returned, true),
+            sortResults(results_others, false),
+            queryInfo);
         handleAliases(ret, queryInfo.original.replace(/"/g, "").toLowerCase(), filterCrates);
         return ret;
     }
@@ -1241,7 +1284,7 @@ window.initSearch = function(rawSearchIndex) {
 
         var output = document.createElement("div");
         var length = 0;
-        if (array.length > 0) {
+        if (array.length > 0 && query.error === null) {
             output.className = "search-results " + extraClass;
 
             array.forEach(function(item) {
@@ -1294,6 +1337,9 @@ window.initSearch = function(rawSearchIndex) {
                 link.appendChild(wrapper);
                 output.appendChild(link);
             });
+        } else if (query.error !== null) {
+            output.className = "search-failed" + extraClass;
+            output.innerHTML = "Syntax error: " + query.error;
         } else {
             output.className = "search-failed" + extraClass;
             output.innerHTML = "No results :(<br/>" +
