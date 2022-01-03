@@ -2379,7 +2379,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::While(ref cond, ref block, label) => {
                 self.with_resolved_label(label, expr.id, |this| {
                     this.with_rib(ValueNS, NormalRibKind, |this| {
+                        let old = this.diagnostic_metadata.in_if_condition.replace(cond);
                         this.visit_expr(cond);
+                        this.diagnostic_metadata.in_if_condition = old;
                         this.visit_block(block);
                     })
                 });

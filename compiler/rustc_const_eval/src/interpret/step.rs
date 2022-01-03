@@ -271,10 +271,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_immediate(place.to_ref(self), &dest)?;
             }
 
-            NullaryOp(mir::NullOp::Box, _) => {
-                M::box_alloc(self, &dest)?;
-            }
-
             NullaryOp(null_op, ty) => {
                 let ty = self.subst_from_current_frame_and_normalize_erasing_regions(ty)?;
                 let layout = self.layout_of(ty)?;
@@ -289,7 +285,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = match null_op {
                     mir::NullOp::SizeOf => layout.size.bytes(),
                     mir::NullOp::AlignOf => layout.align.abi.bytes(),
-                    mir::NullOp::Box => unreachable!(),
                 };
                 self.write_scalar(Scalar::from_machine_usize(val, self), &dest)?;
             }

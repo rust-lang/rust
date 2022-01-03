@@ -156,7 +156,7 @@ pub enum StackPopCleanup {
     /// `ret` stores the block we jump to on a normal return, while `unwind`
     /// stores the block used for cleanup during unwinding.
     Goto { ret: Option<mir::BasicBlock>, unwind: StackPopUnwind },
-    /// Just do nothing: Used by Main and for the `box_alloc` hook in miri.
+    /// Just do nothing: Used by Main and for TLS hooks in miri.
     /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).

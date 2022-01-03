@@ -239,13 +239,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
     }
 
-    fn box_alloc(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _dest: &PlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
-        throw_machine_stop_str!("can't const prop heap allocations")
-    }
-
     fn access_local(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         frame: &Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>,
