@@ -1300,7 +1300,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                 let name = if self.variant.ctor_kind == CtorKind::Fn {
                     format!("__{}", i)
                 } else {
-                    f.ident.to_string()
+                    f.name.to_string()
                 };
                 let field = layout.field(cx, i);
                 MemberDescription {
@@ -1480,7 +1480,7 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
             .map(|(i, f)| {
                 let field = self.layout.field(cx, i);
                 MemberDescription {
-                    name: f.ident.to_string(),
+                    name: f.name.to_string(),
                     type_metadata: type_metadata(cx, field.ty, self.span),
                     offset: Size::ZERO,
                     size: field.size,
@@ -1950,7 +1950,7 @@ enum VariantInfo<'a, 'tcx> {
 impl<'tcx> VariantInfo<'_, 'tcx> {
     fn map_struct_name<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         match self {
-            VariantInfo::Adt(variant) => f(variant.ident.as_str()),
+            VariantInfo::Adt(variant) => f(variant.name.as_str()),
             VariantInfo::Generator { variant_index, .. } => {
                 f(&GeneratorSubsts::variant_name(*variant_index))
             }
@@ -1959,7 +1959,7 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
 
     fn variant_name(&self) -> String {
         match self {
-            VariantInfo::Adt(variant) => variant.ident.to_string(),
+            VariantInfo::Adt(variant) => variant.name.to_string(),
             VariantInfo::Generator { variant_index, .. } => {
                 // Since GDB currently prints out the raw discriminant along
                 // with every variant, make each variant name be just the value
@@ -1973,7 +1973,7 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
     fn field_name(&self, i: usize) -> String {
         let field_name = match *self {
             VariantInfo::Adt(variant) if variant.ctor_kind != CtorKind::Fn => {
-                Some(variant.fields[i].ident.name)
+                Some(variant.fields[i].name)
             }
             VariantInfo::Generator {
                 generator_layout,
@@ -2063,7 +2063,7 @@ fn prepare_enum_metadata<'ll, 'tcx>(
         let enumerators_metadata: Vec<_> = match enum_type.kind() {
             ty::Adt(def, _) => iter::zip(def.discriminants(tcx), &def.variants)
                 .map(|((_, discr), v)| {
-                    let name = v.ident.as_str();
+                    let name = v.name.as_str();
                     let is_unsigned = match discr.ty.kind() {
                         ty::Int(_) => false,
                         ty::Uint(_) => true,

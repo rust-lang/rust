@@ -903,7 +903,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did, hir_id).1;
         if !field.vis.is_accessible_from(def_id, self.tcx) {
             let label = if in_update_syntax {
-                format!("field `{}` is private", field.ident)
+                format!("field `{}` is private", field.name)
             } else {
                 "private field".to_string()
             };
@@ -913,7 +913,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
                 span,
                 E0451,
                 "field `{}` of {} `{}` is private",
-                field.ident,
+                field.name,
                 def.variant_descr(),
                 self.tcx.def_path_str(def.did)
             )

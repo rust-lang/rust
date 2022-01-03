@@ -997,7 +997,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if unsatisfied_predicates.is_empty() && actual.is_enum() {
                     let adt_def = actual.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggestion) = lev_distance::find_best_match_for_name(
-                        &adt_def.variants.iter().map(|s| s.ident.name).collect::<Vec<_>>(),
+                        &adt_def.variants.iter().map(|s| s.name).collect::<Vec<_>>(),
                         item_name.name,
                         None,
                     ) {

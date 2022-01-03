@@ -1776,8 +1776,8 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                     };
 
                     for (index, layout) in variants.iter_enumerated() {
-                        let ident = adt.variants[index].ident;
-                        write!(w, "<li><code>{name}</code>: ", name = ident);
+                        let name = adt.variants[index].name;
+                        write!(w, "<li><code>{name}</code>: ", name = name);
                         write_size_of_layout(w, layout, tag_size);
                         writeln!(w, "</li>");
                     }

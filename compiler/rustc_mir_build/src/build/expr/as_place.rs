@@ -336,10 +336,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
     }
 
     crate fn downcast(self, adt_def: &'tcx AdtDef, variant_index: VariantIdx) -> Self {
-        self.project(PlaceElem::Downcast(
-            Some(adt_def.variants[variant_index].ident.name),
-            variant_index,
-        ))
+        self.project(PlaceElem::Downcast(Some(adt_def.variants[variant_index].name), variant_index))
     }
 
     fn index(self, index: Local) -> Self {

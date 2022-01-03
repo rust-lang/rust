@@ -399,7 +399,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 match tcx.type_of(did).kind() {
                     ty::Adt(def, _) if def.is_enum() => {
                         if let Some(field) =
-                            def.all_fields().find(|f| f.ident.name == variant_field_name)
+                            def.all_fields().find(|f| f.ident(tcx).name == variant_field_name)
                         {
                             Ok((ty_res, Some(ItemFragment(FragmentKind::VariantField, field.did))))
                         } else {
@@ -774,7 +774,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     .non_enum_variant()
                     .fields
                     .iter()
-                    .find(|item| item.ident.name == item_name)?;
+                    .find(|item| item.ident(tcx).name == item_name)?;
                 Some((root_res, ItemFragment(FragmentKind::StructField, field.did)))
             }
             Res::Def(DefKind::Trait, did) => tcx

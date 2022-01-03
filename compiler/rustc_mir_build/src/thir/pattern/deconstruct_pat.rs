@@ -1648,7 +1648,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                     };
 
                     if let Some(variant) = variant {
-                        write!(f, "{}", variant.ident)?;
+                        write!(f, "{}", variant.name)?;
                     }
 
                     // Without `cx`, we can't know which field corresponds to which, so we can't

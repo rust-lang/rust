@@ -10,7 +10,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::{config::OptLevel, DataTypeKind, FieldInfo, SizeKind, VariantInfo};
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
@@ -1810,7 +1810,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let adt_kind = adt_def.adt_kind();
         let adt_packed = adt_def.repr.pack.is_some();
 
-        let build_variant_info = |n: Option<Ident>, flds: &[Symbol], layout: TyAndLayout<'tcx>| {
+        let build_variant_info = |n: Option<Symbol>, flds: &[Symbol], layout: TyAndLayout<'tcx>| {
             let mut min_size = Size::ZERO;
             let field_info: Vec<_> = flds
                 .iter()
@@ -1845,15 +1845,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 if !adt_def.variants.is_empty() && layout.fields != FieldsShape::Primitive {
                     debug!(
                         "print-type-size `{:#?}` variant {}",
-                        layout, adt_def.variants[index].ident
+                        layout, adt_def.variants[index].name
                     );
                     let variant_def = &adt_def.variants[index];
-                    let fields: Vec<_> = variant_def.fields.iter().map(|f| f.ident.name).collect();
+                    let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();
                     record(
                         adt_kind.into(),
                         adt_packed,
                         None,
-                        vec![build_variant_info(Some(variant_def.ident), &fields, layout)],
+                        vec![build_variant_info(Some(variant_def.name), &fields, layout)],
                     );
                 } else {
                     // (This case arises for *empty* enums; so give it
@@ -1872,10 +1872,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     .variants
                     .iter_enumerated()
                     .map(|(i, variant_def)| {
-                        let fields: Vec<_> =
-                            variant_def.fields.iter().map(|f| f.ident.name).collect();
+                        let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();
                         build_variant_info(
-                            Some(variant_def.ident),
+                            Some(variant_def.name),
                             &fields,
                             layout.for_variant(self, i),
                         )

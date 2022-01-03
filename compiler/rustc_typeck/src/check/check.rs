@@ -1173,7 +1173,7 @@ pub(super) fn check_packed_inner(
                 if let ty::Adt(def, _) = field.ty(tcx, substs).kind() {
                     if !stack.contains(&def.did) {
                         if let Some(mut defs) = check_packed_inner(tcx, def.did, stack) {
-                            defs.push((def.did, field.ident.span));
+                            defs.push((def.did, field.ident(tcx).span));
                             return Some(defs);
                         }
                     }

@@ -491,7 +491,7 @@ where
             if let Some(variant_path) = subpath {
                 let base_place = tcx.mk_place_elem(
                     self.place,
-                    ProjectionElem::Downcast(Some(variant.ident.name), variant_index),
+                    ProjectionElem::Downcast(Some(variant.name), variant_index),
                 );
                 let fields = self.move_paths_for_fields(base_place, variant_path, &variant, substs);
                 values.push(discr.val);

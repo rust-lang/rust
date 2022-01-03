@@ -862,7 +862,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let ctor_did = data.ctor.map(|index| self.local_def_id(index));
 
         ty::VariantDef::new(
-            self.item_ident(index, sess),
+            self.item_ident(index, sess).name,
             variant_did,
             ctor_did,
             data.discr,
@@ -874,7 +874,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .decode(self)
                 .map(|index| ty::FieldDef {
                     did: self.local_def_id(index),
-                    ident: self.item_ident(index, sess),
+                    name: self.item_ident(index, sess).name,
                     vis: self.get_visibility(index),
                 })
                 .collect(),

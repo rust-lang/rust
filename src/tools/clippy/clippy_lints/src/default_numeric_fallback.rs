@@ -161,7 +161,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                                 fields_def
                                     .iter()
                                     .find_map(|f_def| {
-                                        if f_def.ident == field.ident
+                                        if f_def.ident(self.cx.tcx) == field.ident
                                             { Some(self.cx.tcx.type_of(f_def.did)) }
                                         else { None }
                                     });

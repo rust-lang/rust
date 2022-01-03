@@ -327,7 +327,7 @@ fn check_for_bindings_named_same_as_variants(
                 if let ty::Adt(edef, _) = pat_ty.kind() {
                     if edef.is_enum()
                         && edef.variants.iter().any(|variant| {
-                            variant.ident == ident && variant.ctor_kind == CtorKind::Const
+                            variant.ident(cx.tcx) == ident && variant.ctor_kind == CtorKind::Const
                         })
                     {
                         let variant_count = edef.variants.len();
@@ -627,7 +627,7 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
                     continue;
                 }
             }
-            let sp = def.variants[*variant_index].ident.span;
+            let sp = def.variants[*variant_index].ident(cx.tcx).span;
             if covered.contains(&sp) {
                 // Don't point at variants that have already been covered due to other patterns to avoid
                 // visual clutter.

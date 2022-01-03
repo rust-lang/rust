@@ -1052,7 +1052,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             assert!(f.did.is_local());
             f.did.index
         }));
-        self.encode_ident_span(def_id, variant.ident);
+        self.encode_ident_span(def_id, variant.ident(tcx));
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             // FIXME(eddyb) encode signature only in `encode_enum_variant_ctor`.
@@ -1138,7 +1138,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         debug!("EncodeContext::encode_field({:?})", def_id);
 
         record!(self.tables.kind[def_id] <- EntryKind::Field);
-        self.encode_ident_span(def_id, field.ident);
+        self.encode_ident_span(def_id, field.ident(self.tcx));
         self.encode_item_type(def_id);
     }
 
