@@ -712,11 +712,13 @@ fn parent_matches<N: AstNode>(token: &SyntaxToken) -> bool {
     token.parent().map_or(false, |it| N::can_cast(it.kind()))
 }
 
-fn is_in_fn_with_self_param<N: AstNode>(node: &N) -> bool {
+fn is_in_fn_with_self_param(node: &ast::NameRef) -> bool {
     node.syntax()
         .ancestors()
-        .take_while(|node| ast::Expr::can_cast(node.kind()) || ast::Fn::can_cast(node.kind()))
-        .find_map(ast::Fn::cast)
-        .and_then(|s| s.param_list()?.self_param())
+        .find_map(ast::Item::cast)
+        .and_then(|item| match item {
+            ast::Item::Fn(fn_) => fn_.param_list()?.self_param(),
+            _ => None,
+        })
         .is_some()
 }
