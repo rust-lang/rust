@@ -707,12 +707,10 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
             let tt_result = match kind {
                 "ident" => input
                     .expect_ident()
-                    .map(|ident| Some(tt::Leaf::from(ident.clone()).into()))
+                    .map(|ident| tt::Leaf::from(ident.clone()).into())
                     .map_err(|()| err!("expected ident")),
-                "tt" => input.expect_tt().map(Some).map_err(|()| err!()),
-                "lifetime" => {
-                    input.expect_lifetime().map(Some).map_err(|()| err!("expected lifetime"))
-                }
+                "tt" => input.expect_tt().map_err(|()| err!()),
+                "lifetime" => input.expect_lifetime().map_err(|()| err!("expected lifetime")),
                 "literal" => {
                     let neg = input.eat_char('-');
                     input
@@ -720,18 +718,18 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                         .map(|literal| {
                             let lit = literal.clone();
                             match neg {
-                                None => Some(lit.into()),
-                                Some(neg) => Some(tt::TokenTree::Subtree(tt::Subtree {
+                                None => lit.into(),
+                                Some(neg) => tt::TokenTree::Subtree(tt::Subtree {
                                     delimiter: None,
                                     token_trees: vec![neg, lit.into()],
-                                })),
+                                }),
                             }
                         })
                         .map_err(|()| err!())
                 }
                 _ => Err(ExpandError::UnexpectedToken),
             };
-            return tt_result.map(|it| it.map(Fragment::Tokens)).into();
+            return tt_result.map(|it| Some(Fragment::Tokens(it))).into();
         }
     };
     input.expect_fragment(fragment).map(|it| it.map(Fragment::Tokens))
