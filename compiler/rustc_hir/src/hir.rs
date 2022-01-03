@@ -205,7 +205,6 @@ impl Path<'_> {
 #[derive(Debug, HashStable_Generic)]
 pub struct PathSegment<'hir> {
     /// The identifier portion of this path segment.
-    #[stable_hasher(project(name))]
     pub ident: Ident,
     // `id` and `res` are optional. We currently only use these in save-analysis,
     // any path segments without these will not have save-analysis info and
@@ -850,7 +849,6 @@ pub struct PatField<'hir> {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     /// The identifier for the field.
-    #[stable_hasher(project(name))]
     pub ident: Ident,
     /// The pattern the field is destructured to.
     pub pat: &'hir Pat<'hir>,
@@ -2113,7 +2111,6 @@ pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 #[derive(Debug, HashStable_Generic)]
 pub struct TypeBinding<'hir> {
     pub hir_id: HirId,
-    #[stable_hasher(project(name))]
     pub ident: Ident,
     pub gen_args: &'hir GenericArgs<'hir>,
     pub kind: TypeBindingKind<'hir>,
@@ -2501,7 +2498,6 @@ pub struct EnumDef<'hir> {
 #[derive(Debug, HashStable_Generic)]
 pub struct Variant<'hir> {
     /// Name of the variant.
-    #[stable_hasher(project(name))]
     pub ident: Ident,
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
     pub id: HirId,
@@ -2591,7 +2587,6 @@ impl VisibilityKind<'_> {
 #[derive(Debug, HashStable_Generic)]
 pub struct FieldDef<'hir> {
     pub span: Span,
-    #[stable_hasher(project(name))]
     pub ident: Ident,
     pub vis: Visibility<'hir>,
     pub hir_id: HirId,
@@ -2850,7 +2845,6 @@ impl ItemKind<'_> {
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct TraitItemRef {
     pub id: TraitItemId,
-    #[stable_hasher(project(name))]
     pub ident: Ident,
     pub kind: AssocItemKind,
     pub span: Span,
@@ -2866,7 +2860,6 @@ pub struct TraitItemRef {
 #[derive(Debug, HashStable_Generic)]
 pub struct ImplItemRef {
     pub id: ImplItemId,
-    #[stable_hasher(project(name))]
     pub ident: Ident,
     pub kind: AssocItemKind,
     pub span: Span,
@@ -2905,7 +2898,6 @@ impl ForeignItemId {
 #[derive(Debug, HashStable_Generic)]
 pub struct ForeignItemRef {
     pub id: ForeignItemId,
-    #[stable_hasher(project(name))]
     pub ident: Ident,
     pub span: Span,
 }
