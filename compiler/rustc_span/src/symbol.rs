@@ -788,6 +788,7 @@ symbols! {
         literal,
         llvm_asm,
         load,
+        loaded_from_disk,
         local,
         local_inner_macros,
         log10f32,
