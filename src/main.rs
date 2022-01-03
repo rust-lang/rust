@@ -96,7 +96,7 @@ impl ClippyCmd {
             clippy_args.push("--no-deps".into());
         }
 
-        ClippyCmd {
+        Self {
             cargo_subcommand,
             args,
             clippy_args,
