@@ -1136,7 +1136,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
                 s.push_str("::");
                 s
             },
-            variant.ident.name,
+            variant.name,
             match variant.ctor_kind {
                 CtorKind::Fn if variant.fields.len() == 1 => "(_)",
                 CtorKind::Fn => "(..)",
