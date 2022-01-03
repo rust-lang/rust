@@ -221,6 +221,12 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
                 Project,
                 Local,
             }
+            // Here we are looking for a chain of access to extract a place reference for
+            // a local variable.
+            // For instance, given `&*(&*x[y]).z().u`, `probe` will pick out
+            // the sub-expressions `&*x[y]` and `y` as expressions making accesses to locals.
+            // The place references generated can be discarded earlier as MIR allows,
+            // and, thus, can be assigned a smaller region.
             loop {
                 match nested_expr.kind {
                     hir::ExprKind::Path(hir::QPath::Resolved(
@@ -268,6 +274,9 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
                         }
                     }
                     OpTy::Project => {
+                        // The generated MIR produces temporaries for the each of the nested references,
+                        // such as `&x`, `&&x` in `(&&&x).y` for the field access of `y`.
+                        // These temporaries must stay alive even after the field access.
                         ref_level.clear();
                     }
                     OpTy::Local => {
@@ -290,6 +299,8 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
                 | hir::ExprKind::Field(..)
                 | hir::ExprKind::Index(..)
                 | hir::ExprKind::Path(..) => self.probe(expr),
+
+                // We do not probe into other function bodies or blocks.
                 hir::ExprKind::Block(..)
                 | hir::ExprKind::Closure(..)
                 | hir::ExprKind::ConstBlock(..) => {}
@@ -300,7 +311,6 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
     let mut locals = Default::default();
     let mut resolution_visitor = LocalAccessResolutionVisitor { locals: &mut locals };
     resolution_visitor.visit_expr(expr);
-    // visitor.terminating_scopes.extend(locals.iter().copied());
     locals
 }
 

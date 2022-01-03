@@ -234,6 +234,13 @@ pub struct ScopeTree {
     /// escape into 'static and should have no local cleanup scope.
     rvalue_scopes: FxHashMap<hir::ItemLocalId, Option<Scope>>,
 
+    /// Sometimes destruction scopes are too overarching in the sense that
+    /// all temporaries are dropped while it may be the case that
+    /// only a subset of temporaries is requested to be dropped.
+    /// For instance, `x[y.z()]` indexing operation can discard the temporaries
+    /// generated in evaluating `y.z()`.
+    /// `eager_scopes` is a map from items to a region smaller than a destruction scope
+    /// so that the temporaries do not need to linger unnecessarily.
     eager_scopes: FxHashMap<hir::ItemLocalId, Scope>,
 
     /// If there are any `yield` nested within a scope, this map
@@ -380,6 +387,8 @@ impl ScopeTree {
     pub fn record_eager_scope(&mut self, var: hir::ItemLocalId, proposed_lifetime: Scope) {
         if let Some(destruction) = self.temporary_scope(var) {
             if self.is_subscope_of(destruction, proposed_lifetime) {
+                // If the current temporary scope is already a subset of the proposed region,
+                // it is safe to keep this scope and discard the proposal.
                 return;
             }
         }
