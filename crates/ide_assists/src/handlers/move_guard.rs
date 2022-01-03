@@ -1,7 +1,9 @@
 use syntax::{
-    ast::{edit::AstNodeEdit, make, AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm},
-    NodeOrToken,
-    SyntaxKind::{COMMA, WHITESPACE},
+    ast::{
+        edit::AstNodeEdit, make, AstNode, BlockExpr, Condition, ElseBranch, Expr, IfExpr, MatchArm,
+        Pat,
+    },
+    SyntaxKind::WHITESPACE,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -115,71 +117,105 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
         }
     })?;
     let replace_node = replace_node.unwrap_or_else(|| if_expr.syntax().clone());
-
-    let cond = if_expr.condition()?;
-    let then_block = if_expr.then_branch()?;
-
-    // Not support moving if let to arm guard
-    if cond.is_pattern_cond() {
-        return None;
-    }
-
-    let buf = format!(" if {}", cond.syntax().text());
+    let needs_dedent = replace_node != *if_expr.syntax();
+    let (conds_blocks, tail) = parse_if_chain(if_expr)?;
 
     acc.add(
         AssistId("move_arm_cond_to_match_guard", AssistKind::RefactorRewrite),
         "Move condition to match guard",
         replace_node.text_range(),
         |edit| {
-            let then_only_expr = then_block.statements().next().is_none();
+            edit.delete(match_arm.syntax().text_range());
+            // Dedent if if_expr is in a BlockExpr
+            let dedent = if needs_dedent {
+                cov_mark::hit!(move_guard_ifelse_in_block);
+                1
+            } else {
+                cov_mark::hit!(move_guard_ifelse_else_block);
+                0
+            };
+            let then_arm_end = match_arm.syntax().text_range().end();
+            let indent_level = match_arm.indent_level();
+            let spaces = "    ".repeat(indent_level.0 as _);
 
-            match &then_block.tail_expr() {
-                Some(then_expr) if then_only_expr => {
-                    edit.replace(replace_node.text_range(), then_expr.syntax().text());
-                    // Insert comma for expression if there isn't one
-                    match match_arm.syntax().last_child_or_token() {
-                        Some(NodeOrToken::Token(t)) if t.kind() == COMMA => {}
-                        _ => {
-                            cov_mark::hit!(move_guard_if_add_comma);
-                            edit.insert(match_arm.syntax().text_range().end(), ",");
-                        }
-                    }
+            let mut first = true;
+            for (cond, block) in conds_blocks {
+                if !first {
+                    edit.insert(then_arm_end, format!("\n{}", spaces));
+                } else {
+                    first = false;
                 }
-                _ if replace_node != *if_expr.syntax() => {
-                    // Dedent because if_expr is in a BlockExpr
-                    let replace_with = then_block.dedent(1.into()).syntax().text();
-                    edit.replace(replace_node.text_range(), replace_with)
-                }
-                _ => edit.replace(replace_node.text_range(), then_block.syntax().text()),
-            }
-
-            edit.insert(match_pat.syntax().text_range().end(), buf);
-
-            // If with only an else branch
-            if let Some(ElseBranch::Block(else_block)) = if_expr.else_branch() {
-                let then_arm_end = match_arm.syntax().text_range().end();
-                let else_only_expr = else_block.statements().next().is_none();
-                let indent_level = match_arm.indent_level();
-                let spaces = "    ".repeat(indent_level.0 as _);
-                edit.insert(then_arm_end, format!("\n{}{} => ", spaces, match_pat));
-                match &else_block.tail_expr() {
-                    Some(else_expr) if else_only_expr => {
-                        cov_mark::hit!(move_guard_ifelse_expr_only);
-                        edit.insert(then_arm_end, else_expr.syntax().text());
+                let guard = format!("{} if {} => ", match_pat, cond.syntax().text());
+                edit.insert(then_arm_end, guard);
+                let only_expr = block.statements().next().is_none();
+                match &block.tail_expr() {
+                    Some(then_expr) if only_expr => {
+                        edit.insert(then_arm_end, then_expr.syntax().text());
                         edit.insert(then_arm_end, ",");
                     }
-                    _ if replace_node != *if_expr.syntax() => {
-                        cov_mark::hit!(move_guard_ifelse_in_block);
-                        edit.insert(then_arm_end, else_block.dedent(1.into()).syntax().text());
+                    _ => {
+                        let to_insert = block.dedent(dedent.into()).syntax().text();
+                        edit.insert(then_arm_end, to_insert)
+                    }
+                }
+            }
+            if let Some(e) = tail {
+                cov_mark::hit!(move_guard_ifelse_else_tail);
+                let guard = format!("\n{}{} => ", spaces, match_pat);
+                edit.insert(then_arm_end, guard);
+                let only_expr = e.statements().next().is_none();
+                match &e.tail_expr() {
+                    Some(expr) if only_expr => {
+                        cov_mark::hit!(move_guard_ifelse_expr_only);
+                        edit.insert(then_arm_end, expr.syntax().text());
+                        edit.insert(then_arm_end, ",");
                     }
                     _ => {
-                        cov_mark::hit!(move_guard_ifelse_else_block);
-                        edit.insert(then_arm_end, else_block.syntax().text());
+                        let to_insert = e.dedent(dedent.into()).syntax().text();
+                        edit.insert(then_arm_end, to_insert)
                     }
+                }
+            } else {
+                // There's no else branch. Add a pattern without guard, unless the following match
+                // arm is `_ => ...`
+                cov_mark::hit!(move_guard_ifelse_notail);
+                match match_arm.syntax().next_sibling().and_then(MatchArm::cast) {
+                    Some(next_arm)
+                        if matches!(next_arm.pat(), Some(Pat::WildcardPat(_)))
+                            && next_arm.guard().is_none() =>
+                    {
+                        cov_mark::hit!(move_guard_ifelse_has_wildcard);
+                    }
+                    _ => edit.insert(then_arm_end, format!("\n{}{} => {{}}", spaces, match_pat)),
                 }
             }
         },
     )
+}
+
+// Parses an if-else-if chain to get the conditons and the then branches until we encounter an else
+// branch or the end.
+fn parse_if_chain(if_expr: IfExpr) -> Option<(Vec<(Condition, BlockExpr)>, Option<BlockExpr>)> {
+    let mut conds_blocks = Vec::new();
+    let mut curr_if = if_expr;
+    let tail = loop {
+        let cond = curr_if.condition()?;
+        // Not support moving if let to arm guard
+        if cond.is_pattern_cond() {
+            return None;
+        }
+        conds_blocks.push((cond, curr_if.then_branch()?));
+        match curr_if.else_branch() {
+            Some(ElseBranch::IfExpr(e)) => {
+                curr_if = e;
+            }
+            Some(ElseBranch::Block(b)) => {
+                break Some(b);
+            }
+            None => break None,
+        }
+    };
+    Some((conds_blocks, tail))
 }
 
 #[cfg(test)]
@@ -294,6 +330,7 @@ fn main() {
 
     #[test]
     fn move_arm_cond_in_block_to_match_guard_works() {
+        cov_mark::check!(move_guard_ifelse_has_wildcard);
         check_assist(
             move_arm_cond_to_match_guard,
             r#"
@@ -320,8 +357,63 @@ fn main() {
     }
 
     #[test]
+    fn move_arm_cond_in_block_to_match_guard_no_wildcard_works() {
+        cov_mark::check_count!(move_guard_ifelse_has_wildcard, 0);
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => {
+            $0if x > 10 {
+                false
+            }
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        x => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn move_arm_cond_in_block_to_match_guard_wildcard_guard_works() {
+        cov_mark::check_count!(move_guard_ifelse_has_wildcard, 0);
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        x => {
+            $0if x > 10 {
+                false
+            }
+        }
+        _ if x > 10 => true,
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if x > 10 => false,
+        x => {}
+        _ if x > 10 => true,
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn move_arm_cond_in_block_to_match_guard_add_comma_works() {
-        cov_mark::check!(move_guard_if_add_comma);
         check_assist(
             move_arm_cond_to_match_guard,
             r#"
@@ -377,7 +469,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x if x > 10 => {  },
+        x if x > 10 => {  }
         _ => true
     }
 }
@@ -406,7 +498,7 @@ fn main() {
         x if x > 10 => {
             92;
             false
-        },
+        }
         _ => true
     }
 }
@@ -519,7 +611,7 @@ fn main() {
             r#"
 fn main() {
     match 92 {
-        x if x > 10 => {  },
+        x if x > 10 => {  }
         x => { }
         _ => true
     }
@@ -688,6 +780,177 @@ fn main() {
             92;
             true
         }
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_elseif() {
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        3 => true,
+        x => if x > 10 {$0
+            false
+        } else if x > 5 {
+            true
+        } else if x > 4 {
+            false
+        } else {
+            true
+        },
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        3 => true,
+        x if x > 10 => false,
+        x if x > 5 => true,
+        x if x > 4 => false,
+        x => true,
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_elseif_in_block() {
+        cov_mark::check!(move_guard_ifelse_in_block);
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        3 => true,
+        x => {
+            if x > 10 {$0
+                false
+            } else if x > 5 {
+                true
+            } else if x > 4 {
+                false
+            } else {
+                true
+            }
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        3 => true,
+        x if x > 10 => false,
+        x if x > 5 => true,
+        x if x > 4 => false,
+        x => true,
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_elseif_chain() {
+        cov_mark::check!(move_guard_ifelse_else_tail);
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        3 => 0,
+        x => if x > 10 {$0
+            1
+        } else if x > 5 {
+            2
+        } else if x > 3 {
+            42;
+            3
+        } else {
+            4
+        },
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        3 => 0,
+        x if x > 10 => 1,
+        x if x > 5 => 2,
+        x if x > 3 => {
+            42;
+            3
+        }
+        x => 4,
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_elseif_iflet() {
+        check_assist_not_applicable(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        3 => 0,
+        x => if x > 10 {$0
+            1
+        } else if x > 5 {
+            2
+        } else if let 4 = 4 {
+            42;
+            3
+        } else {
+            4
+        },
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn move_arm_cond_to_match_guard_elseif_notail() {
+        cov_mark::check!(move_guard_ifelse_notail);
+        check_assist(
+            move_arm_cond_to_match_guard,
+            r#"
+fn main() {
+    match 92 {
+        3 => 0,
+        x => if x > 10 {$0
+            1
+        } else if x > 5 {
+            2
+        } else if x > 4 {
+            42;
+            3
+        },
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        3 => 0,
+        x if x > 10 => 1,
+        x if x > 5 => 2,
+        x if x > 4 => {
+            42;
+            3
+        }
+        x => {}
     }
 }
 "#,
