@@ -274,7 +274,7 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
         self.0.join()
     }
 
-    /// Checks if the the associated thread is still running its main function.
+    /// Checks if the associated thread is still running its main function.
     ///
     /// This might return `false` for a brief moment after the thread's main
     /// function has returned, but before the thread itself has stopped running.
