@@ -144,7 +144,7 @@ impl<'env> Scope<'env> {
     ///
     /// # Panics
     ///
-    /// Panics if the OS fails to create a thread; use [`Builder::spawn`]
+    /// Panics if the OS fails to create a thread; use [`Builder::spawn_scoped`]
     /// to recover from such errors.
     ///
     /// [`join`]: ScopedJoinHandle::join
