@@ -17,7 +17,7 @@ use syntax::{
     match_ast, AstToken, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
-use crate::{helpers::try_resolve_derive_input, RootDatabase};
+use crate::RootDatabase;
 
 // FIXME: a more precise name would probably be `Symbol`?
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -56,7 +56,8 @@ impl Definition {
                 .and_then(|tt| tt.parent_meta())
                 .and_then(|meta| meta.parent_attr());
             if let Some(attr) = attr {
-                return try_resolve_derive_input(&sema, &attr, &ident)
+                return sema
+                    .resolve_derive_ident(&attr, &ident)
                     .map(Into::into)
                     .into_iter()
                     .collect();

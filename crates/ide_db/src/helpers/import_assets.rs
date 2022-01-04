@@ -146,6 +146,7 @@ impl ImportAssets {
         if let Some(_) = path.qualifier() {
             return None;
         }
+
         let name = NameToImport::exact_case_sensitive(path.segment()?.name_ref()?.to_string());
         let candidate_node = attr.syntax().clone();
         Some(Self {

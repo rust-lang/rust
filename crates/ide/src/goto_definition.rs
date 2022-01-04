@@ -1384,6 +1384,18 @@ mod foo {
 struct Foo;
             "#,
         );
+        check(
+            r#"
+//- minicore:derive
+mod foo {
+ // ^^^
+    #[rustc_builtin_macro]
+    pub macro Copy {}
+}
+#[derive(foo$0::Copy)]
+struct Foo;
+            "#,
+        );
     }
 
     #[test]

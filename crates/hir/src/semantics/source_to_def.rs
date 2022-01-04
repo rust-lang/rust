@@ -210,6 +210,19 @@ impl SourceToDefCtx<'_, '_> {
             ast::Adt::Union(it) => self.union_to_def(InFile::new(file_id, it)).map(AdtId::UnionId),
         }
     }
+    pub(super) fn attr_to_def(
+        &mut self,
+        InFile { file_id, value }: InFile<ast::Attr>,
+    ) -> Option<crate::Attr> {
+        // FIXME: Use dynmap?
+        let adt = value.syntax().parent().and_then(ast::Adt::cast)?;
+        let attr_pos = ast::HasAttrs::attrs(&adt).position(|it| it == value)?;
+        let attrs = {
+            let def = self.adt_to_def(InFile::new(file_id, adt))?;
+            self.db.attrs(def.into())
+        };
+        attrs.get(attr_pos).cloned()
+    }
     pub(super) fn bind_pat_to_def(
         &mut self,
         src: InFile<ast::IdentPat>,
@@ -246,7 +259,7 @@ impl SourceToDefCtx<'_, '_> {
 
     pub(super) fn attr_to_derive_macro_call(
         &mut self,
-        item: InFile<&ast::Item>,
+        item: InFile<&ast::Adt>,
         src: InFile<ast::Attr>,
     ) -> Option<&[Option<MacroCallId>]> {
         let map = self.dyn_map(item)?;

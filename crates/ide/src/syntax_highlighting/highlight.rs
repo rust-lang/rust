@@ -3,7 +3,7 @@
 use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
-    helpers::{try_resolve_derive_input, FamousDefs},
+    helpers::FamousDefs,
     RootDatabase, SymbolKind,
 };
 use rustc_hash::FxHashMap;
@@ -39,16 +39,17 @@ pub(super) fn token(
         INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),
         BYTE => HlTag::ByteLiteral.into(),
         CHAR => HlTag::CharLiteral.into(),
-        IDENT if parent_matches::<ast::TokenTree>(&token) => {
-            match token.ancestors().nth(2).and_then(ast::Attr::cast) {
-                Some(attr) => {
-                    match try_resolve_derive_input(sema, &attr, &ast::Ident::cast(token).unwrap()) {
-                        Some(res) => highlight_def(sema, krate, Definition::from(res)),
-                        None => HlTag::None.into(),
-                    }
-                }
-                None => HlTag::None.into(),
-            }
+        IDENT => {
+            let tt = ast::TokenTree::cast(token.parent()?)?;
+            let ident = ast::Ident::cast(token)?;
+            // from this point on we are inside a token tree, this only happens for identifiers
+            // that were not mapped down into macro invocations
+            (|| {
+                let attr = tt.parent_meta()?.parent_attr()?;
+                let res = sema.resolve_derive_ident(&attr, &ident)?;
+                Some(highlight_def(sema, krate, Definition::from(res)))
+            })()
+            .unwrap_or_else(|| HlTag::None.into())
         }
         p if p.is_punct() => punctuation(sema, token, p),
         k if k.is_keyword() => keyword(sema, token, k)?,
