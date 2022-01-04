@@ -4346,11 +4346,9 @@ pub struct Foo {
 }
 
 pub fn testfn(arg: &mut Foo) {
-    $0arg.field = 8; // write access
-    println!("{}", arg.field); // read access$0
+    $0arg.field = 8;$0
     // Simulating access after the extracted portion
-    arg.field = 16; // write access
-    println!("{}", arg.field); // read access
+    arg.field = 16;
 }
 "#,
             r#"
@@ -4359,15 +4357,13 @@ pub struct Foo {
 }
 
 pub fn testfn(arg: &mut Foo) {
-    fun_name(arg); // read access
+    fun_name(arg);
     // Simulating access after the extracted portion
-    arg.field = 16; // write access
-    println!("{}", arg.field); // read access
+    arg.field = 16;
 }
 
 fn $0fun_name(arg: &mut Foo) {
     arg.field = 8;
-    println!("{}", arg.field);
 }
 "#,
         );
@@ -4383,8 +4379,7 @@ pub struct Foo {
 }
 
 pub fn testfn(arg: &mut Foo) {
-    $0arg.field = 8; // write access
-    println!("{}", arg.field); // read access$0
+    $0arg.field = 8;$0
 }
 "#,
             r#"
@@ -4393,12 +4388,11 @@ pub struct Foo {
 }
 
 pub fn testfn(arg: &mut Foo) {
-    fun_name(arg); // read access
+    fun_name(arg);
 }
 
 fn $0fun_name(arg: &mut Foo) {
     arg.field = 8;
-    println!("{}", arg.field);
 }
 "#,
         );
