@@ -24,6 +24,7 @@ use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
+use rustc_log::stdout_isatty;
 use rustc_metadata::locator;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
@@ -513,14 +514,6 @@ impl Compilation {
 /// CompilerCalls instance for a regular rustc build.
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
-
-fn stdout_isatty() -> bool {
-    atty::is(atty::Stream::Stdout)
-}
-
-fn stderr_isatty() -> bool {
-    atty::is(atty::Stream::Stderr)
-}
 
 fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     let upper_cased_code = code.to_ascii_uppercase();
@@ -1254,54 +1247,18 @@ pub fn install_ice_hook() {
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version.
 pub fn init_rustc_env_logger() {
-    init_env_logger("RUSTC_LOG")
+    if let Err(error) = rustc_log::init_rustc_env_logger() {
+        early_error(ErrorOutputType::default(), &error.to_string());
+    }
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to choose an env var
 /// other than `RUSTC_LOG`.
 pub fn init_env_logger(env: &str) {
-    use tracing_subscriber::{
-        filter::{self, EnvFilter, LevelFilter},
-        layer::SubscriberExt,
-    };
-
-    let filter = match std::env::var(env) {
-        Ok(env) => EnvFilter::new(env),
-        _ => EnvFilter::default().add_directive(filter::Directive::from(LevelFilter::WARN)),
-    };
-
-    let color_logs = match std::env::var(String::from(env) + "_COLOR") {
-        Ok(value) => match value.as_ref() {
-            "always" => true,
-            "never" => false,
-            "auto" => stderr_isatty(),
-            _ => early_error(
-                ErrorOutputType::default(),
-                &format!(
-                    "invalid log color value '{}': expected one of always, never, or auto",
-                    value
-                ),
-            ),
-        },
-        Err(std::env::VarError::NotPresent) => stderr_isatty(),
-        Err(std::env::VarError::NotUnicode(_value)) => early_error(
-            ErrorOutputType::default(),
-            "non-Unicode log color value: expected one of always, never, or auto",
-        ),
-    };
-
-    let layer = tracing_tree::HierarchicalLayer::default()
-        .with_writer(io::stderr)
-        .with_indent_lines(true)
-        .with_ansi(color_logs)
-        .with_targets(true)
-        .with_indent_amount(2);
-    #[cfg(parallel_compiler)]
-    let layer = layer.with_thread_ids(true).with_thread_names(true);
-
-    let subscriber = tracing_subscriber::Registry::default().with(filter).with(layer);
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    if let Err(error) = rustc_log::init_env_logger(env) {
+        early_error(ErrorOutputType::default(), &error.to_string());
+    }
 }
 
 #[cfg(all(unix, any(target_env = "gnu", target_os = "macos")))]

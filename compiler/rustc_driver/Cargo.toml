@@ -8,10 +8,8 @@ crate-type = ["dylib"]
 
 [dependencies]
 libc = "0.2"
-atty = "0.2"
 tracing = { version = "0.1.28" }
-tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
-tracing-tree = "0.2.0"
+rustc_log = { path = "../rustc_log" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_target = { path = "../rustc_target" }
@@ -40,4 +38,4 @@ winapi = { version = "0.3", features = ["consoleapi", "debugapi", "processenv"] 
 
 [features]
 llvm = ['rustc_interface/llvm']
-max_level_info = ['tracing/max_level_info']
+max_level_info = ['rustc_log/max_level_info']

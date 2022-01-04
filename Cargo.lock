@@ -3808,7 +3808,6 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
- "atty",
  "libc",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3822,6 +3821,7 @@ dependencies = [
  "rustc_hir_pretty",
  "rustc_interface",
  "rustc_lint",
+ "rustc_log",
  "rustc_metadata",
  "rustc_middle",
  "rustc_parse",
@@ -3833,8 +3833,6 @@ dependencies = [
  "rustc_target",
  "rustc_typeck",
  "tracing",
- "tracing-subscriber",
- "tracing-tree",
  "winapi",
 ]
 
@@ -4075,6 +4073,16 @@ dependencies = [
  "build_helper",
  "cc",
  "libc",
+]
+
+[[package]]
+name = "rustc_log"
+version = "0.0.0"
+dependencies = [
+ "atty",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]
