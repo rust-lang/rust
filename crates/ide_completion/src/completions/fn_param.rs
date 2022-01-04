@@ -109,7 +109,6 @@ fn surround_with_commas(ctx: &CompletionContext, param: String) -> Option<String
 
     let trailing_comma_missing = matches!(next_token.kind(), SyntaxKind::IDENT);
     let trailing = if trailing_comma_missing { "," } else { "" };
-    dbg!(&ctx.token.next_token()?);
 
     let previous_token = if matches!(ctx.token.kind(), SyntaxKind::IDENT | SyntaxKind::WHITESPACE) {
         ctx.previous_token.as_ref()?
