@@ -53,17 +53,11 @@ error: unresolved link to `fn::eq`
 LL | //! [fn::eq]
    |      ^^^^^^ the builtin type `fn` has no associated item named `eq`
 
-error: unresolved link to `never::eq`
-  --> $DIR/non-path-primitives.rs:31:6
-   |
-LL | //! [never::eq]
-   |      ^^^^^^^^^ the builtin type `never` has no associated item named `eq`
-
 error: unresolved link to `reference::deref`
-  --> $DIR/non-path-primitives.rs:35:6
+  --> $DIR/non-path-primitives.rs:34:6
    |
 LL | //! [reference::deref]
    |      ^^^^^^^^^^^^^^^^ the builtin type `reference` has no associated item named `deref`
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
