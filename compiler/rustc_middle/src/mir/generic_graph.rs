@@ -55,7 +55,7 @@ fn bb_to_graph_node(block: BasicBlock, body: &Body<'_>, dark_mode: bool) -> Node
     data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
     stmts.push(terminator_head);
 
-    Node::from_list(stmts, label, title, style)
+    Node::new(stmts, label, title, style)
 }
 
 // Must match `[0-9A-Za-z_]*`. This does not appear in the rendered graph, so
