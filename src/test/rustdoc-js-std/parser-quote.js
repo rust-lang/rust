@@ -3,11 +3,8 @@ const QUERY = ['-> "p"', '("p")'];
 const PARSED = [
     {
         args: [],
-        elemName: null,
         elems: [],
         foundElems: 1,
-        id: "-> \"p\"",
-        nameSplit: null,
         original: "-> \"p\"",
         returned: [{
             name: "p",
@@ -28,11 +25,8 @@ const PARSED = [
             pathLast: "p",
             generics: [],
         }],
-        elemName: null,
         elems: [],
         foundElems: 1,
-        id: "(\"p\")",
-        nameSplit: null,
         original: "(\"p\")",
         returned: [],
         typeFilter: -1,

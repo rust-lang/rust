@@ -6,11 +6,8 @@ const QUERY = ['-> <P> (p2)', '(p -> p2', 'a b', 'a,b(c)'];
 const PARSED = [
     {
         args: [],
-        elemName: null,
         elems: [],
         foundElems: 2,
-        id: "-> <P> (p2)",
-        nameSplit: null,
         original: "-> <P> (p2)",
         returned: [
             {
@@ -57,11 +54,8 @@ const PARSED = [
                 generics: [],
             },
         ],
-        elemName: null,
         elems: [],
         foundElems: 2,
-        id: "(p -> p2",
-        nameSplit: null,
         original: "(p -> p2",
         returned: [],
         typeFilter: -1,
@@ -70,7 +64,6 @@ const PARSED = [
     },
     {
         args: [],
-        elemName: null,
         elems: [
             {
                 name: "a b",
@@ -81,8 +74,6 @@ const PARSED = [
             },
         ],
         foundElems: 1,
-        id: "a b",
-        nameSplit: null,
         original: "a b",
         returned: [],
         typeFilter: -1,
@@ -99,7 +90,6 @@ const PARSED = [
                 generics: [],
             },
         ],
-        elemName: null,
         elems: [
             {
                 name: "a",
@@ -117,8 +107,6 @@ const PARSED = [
             },
         ],
         foundElems: 3,
-        id: "a,b(c)",
-        nameSplit: null,
         original: "a,b(c)",
         returned: [],
         typeFilter: -1,

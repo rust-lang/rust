@@ -3,11 +3,8 @@ const QUERY = ['-> <P>', '-> P'];
 const PARSED = [
     {
         args: [],
-        elemName: null,
         elems: [],
         foundElems: 1,
-        id: "-> <P>",
-        nameSplit: null,
         original: "-> <P>",
         returned: [{
             name: "",
@@ -30,11 +27,8 @@ const PARSED = [
     },
     {
         args: [],
-        elemName: null,
         elems: [],
         foundElems: 1,
-        id: "-> P",
-        nameSplit: null,
         original: "-> P",
         returned: [{
             name: "p",

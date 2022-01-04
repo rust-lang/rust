@@ -8,7 +8,6 @@ function initSearch(searchIndex){}
 
 /**
  * @typedef {{
- *     isExact: boolean,
  *     name: string,
  *     fullPath: Array<string>,
  *     pathWithoutLast: Array<string>,
@@ -20,18 +19,23 @@ var QueryElement;
 
 /**
  * @typedef {{
+ *      pos: number,
+ *      totalElems: number,
+ *      typeFilter: (null|string),
+ *      userQuery: string,
+ * }}
+ */
+var ParserState;
+
+/**
+ * @typedef {{
  *     original: string,
  *     userQuery: string,
- *     length: number,
- *     pos: number,
  *     typeFilter: number,
  *     elems: Array<QueryElement>,
- *     elemName: (string|null),
  *     args: Array<QueryElement>,
  *     returned: Array<QueryElement>,
  *     foundElems: number,
- *     id: string,
- *     nameSplit: (string|null),
  * }}
  */
 var ParsedQuery;
@@ -50,3 +54,31 @@ var ParsedQuery;
  * }}
  */
 var Row;
+
+/**
+ * @typedef {{
+ *    in_args: Array<Object>,
+ *    returned: Array<Object>,
+ *    others: Array<Object>,
+ *    query: ParsedQuery,
+ * }}
+ */
+var ResultsTable;
+
+/**
+ * @typedef {{
+ * crate: "std"
+ *     desc: string,
+ *     displayPath: string,
+ *     fullPath: string,
+ *     href: string,
+ *     id: number,
+ *     lev: number,
+ *     name: string,
+ *     normalizedName: string,
+ *     parent: (Object|undefined),
+ *     path: string,
+ *     ty: number,
+ * }}
+ */
+var Results;

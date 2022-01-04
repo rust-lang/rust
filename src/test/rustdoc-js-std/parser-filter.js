@@ -3,7 +3,6 @@ const QUERY = ['fn:foo', 'enum : foo', 'macro<f>:foo'];
 const PARSED = [
     {
         args: [],
-        elemName: null,
         elems: [{
             name: "foo",
             fullPath: ["foo"],
@@ -12,8 +11,6 @@ const PARSED = [
             generics: [],
         }],
         foundElems: 1,
-        id: "fn:foo",
-        nameSplit: null,
         original: "fn:foo",
         returned: [],
         typeFilter: 5,
@@ -22,7 +19,6 @@ const PARSED = [
     },
     {
         args: [],
-        elemName: null,
         elems: [{
             name: "foo",
             fullPath: ["foo"],
@@ -31,8 +27,6 @@ const PARSED = [
             generics: [],
         }],
         foundElems: 1,
-        id: "enum : foo",
-        nameSplit: null,
         original: "enum : foo",
         returned: [],
         typeFilter: 4,
@@ -41,7 +35,6 @@ const PARSED = [
     },
     {
         args: [],
-        elemName: null,
         elems: [{
             name: "foo",
             fullPath: ["foo"],
@@ -50,8 +43,6 @@ const PARSED = [
             generics: [],
         }],
         foundElems: 1,
-        id: "macro<f>:foo",
-        nameSplit: null,
         original: "macro<f>:foo",
         returned: [],
         typeFilter: 14,

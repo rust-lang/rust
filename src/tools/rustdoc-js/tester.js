@@ -270,7 +270,12 @@ function loadSearchJsAndIndex(searchJs, searchIndex, storageJs, crate) {
     // execQuery last parameter is built in buildIndex.
     // buildIndex requires the hashmap from search-index.
     var functionsToLoad = ["buildHrefAndPath", "pathSplitter", "levenshtein", "validateResult",
-                           "buildIndex", "execQuery", "parseQuery", "createQueryResults"];
+                           "buildIndex", "execQuery", "parseQuery", "createQueryResults",
+                           "isWhitespace", "isSpecialStartCharacter", "isStopCharacter",
+                           "removeEmptyStringsFromArray", "parseInput", "getItemsBefore",
+                           "getNextElem", "createQueryElement", "isReturnArrow", "isPathStart",
+                           "skipWhitespaces", "getStringElem", "itemTypeFromName",
+                           "newParsedQuery"];
 
     const functions = ["hasOwnPropertyRustdoc", "onEach"];
     ALIASES = {};
@@ -286,13 +291,12 @@ function loadSearchJsAndIndex(searchJs, searchIndex, storageJs, crate) {
     return [loaded, index];
 }
 
-function checkFieldNeededFields(fullPath, expected, error_text, queryName, position) {
+// This function checks if `expected` has all the required fields needed for the checks.
+function checkNeededFields(fullPath, expected, error_text, queryName, position) {
     let fieldsToCheck;
     if (fullPath.length === 0) {
         fieldsToCheck = [
             "foundElems",
-            "id",
-            "nameSplit",
             "original",
             "returned",
             "typeFilter",
@@ -328,7 +332,7 @@ function checkFieldNeededFields(fullPath, expected, error_text, queryName, posit
 function valueCheck(fullPath, expected, result, error_text, queryName) {
     if (Array.isArray(expected)) {
         for (var i = 0; i < expected.length; ++i) {
-            checkFieldNeededFields(fullPath, expected[i], error_text, queryName, i);
+            checkNeededFields(fullPath, expected[i], error_text, queryName, i);
             if (i >= result.length) {
                 error_text.push(`${queryName}==> EXPECTED has extra value in array from field ` +
                     `\`${fullPath}\` (position ${i}): \`${JSON.stringify(expected[i])}\``);
@@ -367,7 +371,7 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
 
 function runParser(query, expected, loaded, loadedFile, queryName) {
     var error_text = [];
-    checkFieldNeededFields("", expected, error_text, queryName, null);
+    checkNeededFields("", expected, error_text, queryName, null);
     if (error_text.length === 0) {
         valueCheck('', expected, loaded.parseQuery(query), error_text, queryName);
     }

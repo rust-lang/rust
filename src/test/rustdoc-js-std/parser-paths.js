@@ -3,7 +3,6 @@ const QUERY = ['A::B', '::A::B', 'A::B::,C',  'A::B::<f>,C'];
 const PARSED = [
     {
         args: [],
-        elemName: null,
         elems: [{
             name: "a::b",
             fullPath: ["a", "b"],
@@ -12,8 +11,6 @@ const PARSED = [
             generics: [],
         }],
         foundElems: 1,
-        id: "A::B",
-        nameSplit: null,
         original: "A::B",
         returned: [],
         typeFilter: -1,
@@ -22,7 +19,6 @@ const PARSED = [
     },
     {
         args: [],
-        elemName: null,
         elems: [{
             name: "::a::b",
             fullPath: ["a", "b"],
@@ -31,8 +27,6 @@ const PARSED = [
             generics: [],
         }],
         foundElems: 1,
-        id: '::A::B',
-        nameSplit: null,
         original: '::A::B',
         returned: [],
         typeFilter: -1,
@@ -41,7 +35,6 @@ const PARSED = [
     },
     {
         args: [],
-        elemName: null,
         elems: [
             {
                 name: "a::b::",
@@ -59,8 +52,6 @@ const PARSED = [
             },
         ],
         foundElems: 2,
-        id: 'A::B::,C',
-        nameSplit: null,
         original: 'A::B::,C',
         returned: [],
         typeFilter: -1,
@@ -69,7 +60,6 @@ const PARSED = [
     },
     {
         args: [],
-        elemName: null,
         elems: [
             {
                 name: "a::b::",
@@ -95,8 +85,6 @@ const PARSED = [
             },
         ],
         foundElems: 2,
-        id: 'A::B::<f>,C',
-        nameSplit: null,
         original: 'A::B::<f>,C',
         returned: [],
         typeFilter: -1,

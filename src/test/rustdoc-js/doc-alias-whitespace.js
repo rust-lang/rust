@@ -10,7 +10,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias_whitespace',
                 'name': 'Struct',
-                'alias': 'demon lord',
+                'alias': 'Demon Lord',
                 'href': '../doc_alias_whitespace/struct.Struct.html',
                 'is_alias': true
             },

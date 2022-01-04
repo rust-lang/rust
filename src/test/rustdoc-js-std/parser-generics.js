@@ -1,9 +1,8 @@
-const QUERY = ['<P>', 'A<B<C<D>, E>'];
+const QUERY = ['<P>', 'A<B<C<D>, E>', 'p<> u8'];
 
 const PARSED = [
     {
         args: [],
-        elemName: null,
         elems: [{
             name: "",
             fullPath: [""],
@@ -20,8 +19,6 @@ const PARSED = [
             ],
         }],
         foundElems: 1,
-        id: "<P>",
-        nameSplit: null,
         original: "<P>",
         returned: [],
         typeFilter: -1,
@@ -30,7 +27,6 @@ const PARSED = [
     },
     {
         args: [],
-        elemName: null,
         elems: [{
             name: "a",
             fullPath: ["a"],
@@ -70,12 +66,35 @@ const PARSED = [
             ],
         }],
         foundElems: 1,
-        id: 'A<B<C<D>, E>',
-        nameSplit: null,
         original: 'A<B<C<D>, E>',
         returned: [],
         typeFilter: -1,
         userQuery: 'a<b<c<d>, e>',
         error: null,
-    }
+    },
+    {
+        args: [],
+        elems: [
+            {
+                name: "p",
+                fullPath: ["p"],
+                pathWithoutLast: [],
+                pathLast: "p",
+                generics: [],
+            },
+            {
+                name: "u8",
+                fullPath: ["u8"],
+                pathWithoutLast: [],
+                pathLast: "u8",
+                generics: [],
+            },
+        ],
+        foundElems: 2,
+        original: "p<> u8",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "p<> u8",
+        error: null,
+    },
 ];

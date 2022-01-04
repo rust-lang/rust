@@ -3,7 +3,6 @@ const QUERY = ['R<P>'];
 const PARSED = [
     {
         args: [],
-        elemName: null,
         elems: [{
             name: "r",
             fullPath: ["r"],
@@ -20,8 +19,6 @@ const PARSED = [
             ],
         }],
         foundElems: 1,
-        id: "R<P>",
-        nameSplit: null,
         original: "R<P>",
         returned: [],
         typeFilter: -1,

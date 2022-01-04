@@ -32,7 +32,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias',
                 'name': 'Struct',
-                'alias': 'structitem',
+                'alias': 'StructItem',
                 'href': '../doc_alias/struct.Struct.html',
                 'is_alias': true
             },
@@ -44,7 +44,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Struct',
                 'name': 'field',
-                'alias': 'structfielditem',
+                'alias': 'StructFieldItem',
                 'href': '../doc_alias/struct.Struct.html#structfield.field',
                 'is_alias': true
             },
@@ -56,7 +56,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Struct',
                 'name': 'method',
-                'alias': 'structmethoditem',
+                'alias': 'StructMethodItem',
                 'href': '../doc_alias/struct.Struct.html#method.method',
                 'is_alias': true
             },
@@ -72,7 +72,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Struct',
                 'name': 'ImplConstItem',
-                'alias': 'structimplconstitem',
+                'alias': 'StructImplConstItem',
                 'href': '../doc_alias/struct.Struct.html#associatedconstant.ImplConstItem',
                 'is_alias': true
             },
@@ -84,7 +84,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Struct',
                 'name': 'function',
-                'alias': 'impltraitfunction',
+                'alias': 'ImplTraitFunction',
                 'href': '../doc_alias/struct.Struct.html#method.function',
                 'is_alias': true
             },
@@ -96,7 +96,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias',
                 'name': 'Enum',
-                'alias': 'enumitem',
+                'alias': 'EnumItem',
                 'href': '../doc_alias/enum.Enum.html',
                 'is_alias': true
             },
@@ -108,7 +108,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Enum',
                 'name': 'Variant',
-                'alias': 'variantitem',
+                'alias': 'VariantItem',
                 'href': '../doc_alias/enum.Enum.html#variant.Variant',
                 'is_alias': true
             },
@@ -120,7 +120,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Enum',
                 'name': 'method',
-                'alias': 'enummethoditem',
+                'alias': 'EnumMethodItem',
                 'href': '../doc_alias/enum.Enum.html#method.method',
                 'is_alias': true
             },
@@ -132,7 +132,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias',
                 'name': 'Typedef',
-                'alias': 'typedefitem',
+                'alias': 'TypedefItem',
                 'href': '../doc_alias/type.Typedef.html',
                 'is_alias': true
             },
@@ -144,7 +144,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias',
                 'name': 'Trait',
-                'alias': 'traititem',
+                'alias': 'TraitItem',
                 'href': '../doc_alias/trait.Trait.html',
                 'is_alias': true
             },
@@ -156,7 +156,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Trait',
                 'name': 'Target',
-                'alias': 'traittypeitem',
+                'alias': 'TraitTypeItem',
                 'href': '../doc_alias/trait.Trait.html#associatedtype.Target',
                 'is_alias': true
             },
@@ -168,7 +168,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Trait',
                 'name': 'AssociatedConst',
-                'alias': 'associatedconstitem',
+                'alias': 'AssociatedConstItem',
                 'href': '../doc_alias/trait.Trait.html#associatedconstant.AssociatedConst',
                 'is_alias': true
             },
@@ -180,7 +180,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Trait',
                 'name': 'function',
-                'alias': 'traitfunctionitem',
+                'alias': 'TraitFunctionItem',
                 'href': '../doc_alias/trait.Trait.html#tymethod.function',
                 'is_alias': true
             },
@@ -192,7 +192,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias',
                 'name': 'function',
-                'alias': 'functionitem',
+                'alias': 'FunctionItem',
                 'href': '../doc_alias/fn.function.html',
                 'is_alias': true
             },
@@ -204,7 +204,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias',
                 'name': 'Module',
-                'alias': 'moduleitem',
+                'alias': 'ModuleItem',
                 'href': '../doc_alias/Module/index.html',
                 'is_alias': true
             },
@@ -216,7 +216,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias',
                 'name': 'Const',
-                'alias': 'constitem',
+                'alias': 'ConstItem',
                 'href': '../doc_alias/constant.Const.html',
                 'is_alias': true
             },
@@ -232,7 +232,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias',
                 'name': 'Static',
-                'alias': 'staticitem',
+                'alias': 'StaticItem',
                 'href': '../doc_alias/static.Static.html',
                 'is_alias': true
             },
@@ -244,7 +244,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias',
                 'name': 'Union',
-                'alias': 'unionitem',
+                'alias': 'UnionItem',
                 'href': '../doc_alias/union.Union.html',
                 'is_alias': true
             },
@@ -262,7 +262,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Union',
                 'name': 'union_item',
-                'alias': 'unionfielditem',
+                'alias': 'UnionFieldItem',
                 'href': '../doc_alias/union.Union.html#structfield.union_item',
                 'is_alias': true
             },
@@ -274,7 +274,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias::Union',
                 'name': 'method',
-                'alias': 'unionmethoditem',
+                'alias': 'UnionMethodItem',
                 'href': '../doc_alias/union.Union.html#method.method',
                 'is_alias': true
             },
@@ -286,7 +286,7 @@ const EXPECTED = [
             {
                 'path': 'doc_alias',
                 'name': 'Macro',
-                'alias': 'macroitem',
+                'alias': 'MacroItem',
                 'href': '../doc_alias/macro.Macro.html',
                 'is_alias': true
             },
