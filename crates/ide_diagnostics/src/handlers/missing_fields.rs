@@ -1,9 +1,16 @@
 use either::Either;
-use hir::{db::AstDatabase, InFile, Type};
+use hir::{
+    db::{AstDatabase, HirDatabase},
+    known, HirDisplay, InFile, SemanticsScope, Type,
+};
 use ide_db::{assists::Assist, helpers::FamousDefs, source_change::SourceChange};
 use rustc_hash::FxHashMap;
 use stdx::format_to;
-use syntax::{algo, ast::make, AstNode, SyntaxNodePtr};
+use syntax::{
+    algo,
+    ast::{self, make},
+    AstNode, SyntaxNodePtr,
+};
 use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticsContext};
@@ -67,13 +74,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     let generate_fill_expr = |ty: &Type| match ctx.config.expr_fill_default {
         crate::ExprFillDefaultMode::Todo => Some(make::ext::expr_todo()),
         crate::ExprFillDefaultMode::DefaultImpl => {
-            let krate = ctx.sema.to_module_def(d.file.original_file(ctx.sema.db))?.krate();
-            let default_trait = FamousDefs(&ctx.sema, Some(krate)).core_default_Default();
-
-            match default_trait {
-                Some(default_trait) if ty.impls_trait(ctx.sema.db, default_trait, &[]) => {
-                    Some(make::ext::expr_default())
-                }
+            let scope = ctx.sema.scope(&root);
+            let default_constr = get_default_constructor(ctx, d, &scope, ty);
+            match default_constr {
+                Some(default_constr) => Some(default_constr),
                 _ => Some(make::ext::expr_todo()),
             }
         }
@@ -116,6 +120,68 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         SourceChange::from_text_edit(d.file.original_file(ctx.sema.db), edit),
         ctx.sema.original_range(field_list_parent.syntax()).range,
     )])
+}
+
+fn make_ty(ty: &hir::Type, db: &dyn HirDatabase, module: hir::Module) -> ast::Type {
+    let ty_str = match ty.as_adt() {
+        Some(adt) => adt.name(db).to_string(),
+        None => ty.display_source_code(db, module.into()).ok().unwrap_or_else(|| "_".to_string()),
+    };
+
+    make::ty(&ty_str)
+}
+
+fn get_default_constructor(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::MissingFields,
+    scope: &SemanticsScope,
+    ty: &Type,
+) -> Option<ast::Expr> {
+    if let Some(builtin_ty) = ty.as_builtin() {
+        if builtin_ty.is_int() || builtin_ty.is_uint() {
+            return Some(make::ext::zero_number());
+        }
+        if builtin_ty.is_float() {
+            return Some(make::ext::zero_float());
+        }
+        if builtin_ty.is_char() {
+            return Some(make::ext::empty_char());
+        }
+        if builtin_ty.is_str() {
+            return Some(make::ext::empty_str());
+        }
+    }
+    let krate = ctx.sema.to_module_def(d.file.original_file(ctx.sema.db))?.krate();
+    let module = krate.root_module(ctx.sema.db);
+    let default_trait = FamousDefs(&ctx.sema, Some(krate)).core_default_Default()?;
+    let traits_in_scope = scope.visible_traits();
+
+    // Look for a ::new() method
+    // FIXME: doesn't work for now
+    let has_new_method = ty
+        .iterate_method_candidates(
+            ctx.sema.db,
+            krate,
+            &traits_in_scope,
+            Some(&known::new),
+            |_, func| {
+                if func.assoc_fn_params(ctx.sema.db).is_empty()
+                    && func.self_param(ctx.sema.db).is_none()
+                {
+                    return Some(());
+                }
+                None
+            },
+        )
+        .is_some();
+
+    if has_new_method {
+        Some(make::ext::expr_ty_new(&make_ty(ty, ctx.sema.db, module)))
+    } else if !ty.is_array() && ty.impls_trait(ctx.sema.db, default_trait, &[]) {
+        Some(make::ext::expr_ty_default(&make_ty(ty, ctx.sema.db, module)))
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

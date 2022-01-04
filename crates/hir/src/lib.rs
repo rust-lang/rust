@@ -1685,6 +1685,26 @@ impl BuiltinType {
     pub fn name(self) -> Name {
         self.inner.as_name()
     }
+
+    pub fn is_int(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Int(_))
+    }
+
+    pub fn is_uint(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Uint(_))
+    }
+
+    pub fn is_float(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Float(_))
+    }
+
+    pub fn is_char(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Char)
+    }
+
+    pub fn is_str(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Str)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -2571,6 +2591,10 @@ impl Type {
 
     pub fn is_fn(&self) -> bool {
         matches!(&self.ty.kind(Interner), TyKind::FnDef(..) | TyKind::Function { .. })
+    }
+
+    pub fn is_array(&self) -> bool {
+        matches!(&self.ty.kind(Interner), TyKind::Array(..))
     }
 
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {

@@ -1273,7 +1273,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enum": ["todo", "defaultImpl"],
             "enumDescriptions": [
                 "Fill missing elements with 'todo' macro",
-                "Fill missing elements with Default::default()"
+                "Fill missing elements with T::default()"
             ],
         },
         "ImportGranularityDef" => set! {

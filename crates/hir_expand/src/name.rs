@@ -226,6 +226,7 @@ pub mod known {
         iter_mut,
         len,
         is_empty,
+        new,
         // Builtin macros
         asm,
         assert,

@@ -388,7 +388,7 @@
                     ],
                     "enumDescriptions": [
                         "Fill missing elements with 'todo' macro",
-                        "Fill missing elements with Default::default()"
+                        "Fill missing elements with T::default()"
                     ]
                 },
                 "rust-analyzer.assist.importGranularity": {
