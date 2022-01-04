@@ -4337,7 +4337,7 @@ fn $0fun_name(a: _) -> _ {
     }
 
     #[test]
-    fn test_jeroen() {
+    fn reference_mutable_param_with_further_usages() {
         check_assist(
             extract_function,
             r#"
@@ -4363,6 +4363,37 @@ pub fn testfn(arg: &mut Foo) {
     // Simulating access after the extracted portion
     arg.field = 16; // write access
     println!("{}", arg.field); // read access
+}
+
+fn $0fun_name(arg: &mut Foo) {
+    arg.field = 8;
+    println!("{}", arg.field);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn reference_mutable_param_without_further_usages() {
+        check_assist(
+            extract_function,
+            r#"
+pub struct Foo {
+    field: u32,
+}
+
+pub fn testfn(arg: &mut Foo) {
+    $0arg.field = 8; // write access
+    println!("{}", arg.field); // read access$0
+}
+"#,
+            r#"
+pub struct Foo {
+    field: u32,
+}
+
+pub fn testfn(arg: &mut Foo) {
+    fun_name(arg); // read access
 }
 
 fn $0fun_name(arg: &mut Foo) {
