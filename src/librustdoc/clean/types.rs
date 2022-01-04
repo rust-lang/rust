@@ -292,19 +292,16 @@ impl ExternalCrate {
         let as_primitive = |res: Res<!>| {
             if let Res::Def(DefKind::Mod, def_id) = res {
                 let attrs = tcx.get_attrs(def_id);
-                let mut prim = None;
                 for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
                         if attr.has_name(sym::primitive) {
-                            prim = PrimitiveType::from_symbol(v);
-                            if prim.is_some() {
-                                break;
+                            if let Some(prim) = PrimitiveType::from_symbol(v) {
+                                return Some((def_id, prim));
                             }
                             // FIXME: should warn on unknown primitives?
                         }
                     }
                 }
-                return prim.map(|p| (def_id, p));
             }
             None
         };
