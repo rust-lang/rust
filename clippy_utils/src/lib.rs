@@ -44,6 +44,7 @@ pub mod diagnostics;
 pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
+pub mod macros;
 pub mod msrvs;
 pub mod numeric_literal;
 pub mod paths;
@@ -1159,19 +1160,6 @@ pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
     found
 }
 
-/// Finds calls of the specified macros in a function body.
-pub fn find_macro_calls(names: &[&str], body: &Body<'_>) -> Vec<Span> {
-    let mut result = Vec::new();
-    expr_visitor_no_bodies(|expr| {
-        if names.iter().any(|fun| is_expn_of(expr.span, fun).is_some()) {
-            result.push(expr.span);
-        }
-        true
-    })
-    .visit_expr(&body.value);
-    result
-}
-
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
 ///
 /// ```rust
@@ -1698,32 +1686,6 @@ pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: &str) -> bool {
     // libc is meant to be used as a flat list of names, but they're all actually defined in different
     // modules based on the target platform. Ignore everything but crate name and the item name.
     path.first().map_or(false, |s| s.as_str() == "libc") && path.last().map_or(false, |s| s.as_str() == name)
-}
-
-pub fn match_panic_call(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Call(func, [arg]) = expr.kind {
-        expr_path_res(cx, func)
-            .opt_def_id()
-            .map_or(false, |id| match_panic_def_id(cx, id))
-            .then(|| arg)
-    } else {
-        None
-    }
-}
-
-pub fn match_panic_def_id(cx: &LateContext<'_>, did: DefId) -> bool {
-    match_any_def_paths(
-        cx,
-        did,
-        &[
-            &paths::BEGIN_PANIC,
-            &paths::PANIC_ANY,
-            &paths::PANICKING_PANIC,
-            &paths::PANICKING_PANIC_FMT,
-            &paths::PANICKING_PANIC_STR,
-        ],
-    )
-    .is_some()
 }
 
 /// Returns the list of condition expressions and the list of blocks in a

@@ -1,5 +1,6 @@
 use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
 use clippy_utils::{
@@ -410,9 +411,13 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                 }
                 self.declared_lints.insert(item.ident.name, item.span);
             }
-        } else if is_expn_of(item.span, "impl_lint_pass").is_some()
-            || is_expn_of(item.span, "declare_lint_pass").is_some()
-        {
+        } else if let Some(macro_call) = root_macro_call_first_node(cx, item) {
+            if !matches!(
+                &*cx.tcx.item_name(macro_call.def_id).as_str(),
+                "impl_lint_pass" | "declare_lint_pass"
+            ) {
+                return;
+            }
             if let hir::ItemKind::Impl(hir::Impl {
                 of_trait: None,
                 items: impl_item_refs,
