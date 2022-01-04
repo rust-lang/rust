@@ -728,24 +728,24 @@ mod tests {
     fn test_format_patch() {
         let patch = format_patch(None, "hello\nworld\n");
         expect![[r##"
-            r#"
+            [r#"
             hello
             world
-            "#"##]]
+            "#]"##]]
         .assert_eq(&patch);
 
         let patch = format_patch(None, r"hello\tworld");
-        expect![[r##"r#"hello\tworld"#"##]].assert_eq(&patch);
+        expect![[r##"[r#"hello\tworld"#]"##]].assert_eq(&patch);
 
         let patch = format_patch(None, "{\"foo\": 42}");
-        expect![[r##"r#"{"foo": 42}"#"##]].assert_eq(&patch);
+        expect![[r##"[r#"{"foo": 42}"#]"##]].assert_eq(&patch);
 
         let patch = format_patch(Some(0), "hello\nworld\n");
         expect![[r##"
-            r#"
+            [r#"
                 hello
                 world
-            "#"##]]
+            "#]"##]]
         .assert_eq(&patch);
 
         let patch = format_patch(Some(4), "single line");
