@@ -19,7 +19,7 @@ pub(crate) fn render_macro(
     import_to_add: Option<ImportEdit>,
     name: hir::Name,
     macro_: hir::MacroDef,
-) -> Option<CompletionItem> {
+) -> CompletionItem {
     let _p = profile::span("render_macro");
     render(ctx, name, macro_, import_to_add)
 }
@@ -29,15 +29,15 @@ fn render(
     name: hir::Name,
     macro_: hir::MacroDef,
     import_to_add: Option<ImportEdit>,
-) -> Option<CompletionItem> {
+) -> CompletionItem {
     let db = completion.db;
 
     let source_range = if completion.is_immediately_after_macro_bang() {
         cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
-        completion.token.parent().map(|it| it.text_range())
+        completion.token.parent().map_or_else(|| ctx.source_range(), |it| it.text_range())
     } else {
-        Some(ctx.source_range())
-    }?;
+        ctx.source_range()
+    };
 
     let name = name.to_smol_str();
     let docs = ctx.docs(macro_);
@@ -79,7 +79,7 @@ fn render(
         }
     };
 
-    Some(item.build())
+    item.build()
 }
 
 fn label(

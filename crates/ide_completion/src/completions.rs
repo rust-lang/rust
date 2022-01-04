@@ -90,7 +90,7 @@ impl Completions {
             cov_mark::hit!(qualified_path_doc_hidden);
             return;
         }
-        self.add_opt(render_resolution(RenderContext::new(ctx), local_name, resolution));
+        self.add(render_resolution(RenderContext::new(ctx), local_name, resolution));
     }
 
     pub(crate) fn add_macro(
@@ -103,7 +103,7 @@ impl Completions {
             Some(it) => it,
             None => return,
         };
-        self.add_opt(render_macro(RenderContext::new(ctx), None, name, macro_));
+        self.add(render_macro(RenderContext::new(ctx), None, name, macro_));
     }
 
     pub(crate) fn add_function(

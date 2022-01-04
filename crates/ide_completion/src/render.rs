@@ -130,7 +130,7 @@ pub(crate) fn render_resolution(
     ctx: RenderContext<'_>,
     local_name: hir::Name,
     resolution: ScopeDef,
-) -> Option<CompletionItem> {
+) -> CompletionItem {
     render_resolution_(ctx, local_name, None, resolution)
 }
 
@@ -145,7 +145,7 @@ pub(crate) fn render_resolution_with_import(
         ScopeDef::ModuleDef(hir::ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db),
         _ => item_name(ctx.db(), import_edit.import.original_item)?,
     };
-    render_resolution_(ctx, local_name, Some(import_edit), resolution)
+    Some(render_resolution_(ctx, local_name, Some(import_edit), resolution))
 }
 
 fn render_resolution_(
@@ -153,7 +153,7 @@ fn render_resolution_(
     local_name: hir::Name,
     import_to_add: Option<ImportEdit>,
     resolution: ScopeDef,
-) -> Option<CompletionItem> {
+) -> CompletionItem {
     let _p = profile::span("render_resolution");
     use hir::ModuleDef::*;
 
@@ -161,10 +161,10 @@ fn render_resolution_(
 
     let kind = match resolution {
         ScopeDef::ModuleDef(Function(func)) => {
-            return Some(render_fn(ctx, import_to_add, Some(local_name), func));
+            return render_fn(ctx, import_to_add, Some(local_name), func);
         }
         ScopeDef::ModuleDef(Variant(var)) if ctx.completion.pattern_ctx.is_none() => {
-            return Some(render_variant(ctx, import_to_add, Some(local_name), var, None));
+            return render_variant(ctx, import_to_add, Some(local_name), var, None);
         }
         ScopeDef::MacroDef(mac) => return render_macro(ctx, import_to_add, local_name, mac),
         ScopeDef::Unknown => {
@@ -176,7 +176,7 @@ fn render_resolution_(
             if let Some(import_to_add) = import_to_add {
                 item.add_import(import_to_add);
             }
-            return Some(item.build());
+            return item.build();
         }
 
         ScopeDef::ModuleDef(Variant(_)) => CompletionItemKind::SymbolKind(SymbolKind::Variant),
@@ -249,7 +249,7 @@ fn render_resolution_(
     if let Some(import_to_add) = import_to_add {
         item.add_import(import_to_add);
     }
-    Some(item.build())
+    item.build()
 }
 
 fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<hir::Documentation> {
