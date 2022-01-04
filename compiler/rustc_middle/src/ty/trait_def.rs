@@ -45,7 +45,7 @@ pub struct TraitDef {
     /// recomputed all the time.
     pub def_path_hash: DefPathHash,
 
-    /// List of methods from `#[rustc_must_implement_one_of]` attribute one of which
+    /// List of functions from `#[rustc_must_implement_one_of]` attribute one of which
     /// must be implemented.
     pub must_implement_one_of: Option<Box<[Ident]>>,
 }

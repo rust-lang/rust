@@ -1253,7 +1253,9 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
                 .map(|item| item.ident().ok_or(item.span()))
                 .collect::<Result<Box<[_]>, _>>()
                 .map_err(|span| {
-                    tcx.sess.struct_span_err(span, "must be an identifier of a method").emit();
+                    tcx.sess
+                        .struct_span_err(span, "must be a name of an associated function")
+                        .emit();
                 })
                 .ok()
                 .zip(Some(attr.span)),
@@ -1261,7 +1263,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
             None => None,
         })
         // Check that all arguments of `#[rustc_must_implement_one_of]` reference
-        // methods in the trait with default implementations
+        // functions in the trait with default implementations
         .and_then(|(list, attr_span)| {
             let errors = list.iter().filter_map(|ident| {
                 let item = items.iter().find(|item| item.ident == *ident);
@@ -1272,7 +1274,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
                             tcx.sess
                                 .struct_span_err(
                                     item.span,
-                                    "This method doesn't have a default implementation",
+                                    "This function doesn't have a default implementation",
                                 )
                                 .span_note(attr_span, "required by this annotation")
                                 .emit();
@@ -1284,16 +1286,16 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
                     }
                     Some(item) => tcx
                         .sess
-                        .struct_span_err(item.span, "Not a method")
+                        .struct_span_err(item.span, "Not a function")
                         .span_note(attr_span, "required by this annotation")
                         .note(
                             "All `#[rustc_must_implement_one_of]` arguments \
-                            must be method identifiers",
+                            must be associated function names",
                         )
                         .emit(),
                     None => tcx
                         .sess
-                        .struct_span_err(ident.span, "Method not found in this trait")
+                        .struct_span_err(ident.span, "Function not found in this trait")
                         .emit(),
                 }
 

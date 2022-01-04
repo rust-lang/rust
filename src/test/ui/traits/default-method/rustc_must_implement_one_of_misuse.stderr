@@ -2,21 +2,21 @@ error: malformed `rustc_must_implement_one_of` attribute input
   --> $DIR/rustc_must_implement_one_of_misuse.rs:20:1
    |
 LL | #[rustc_must_implement_one_of]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_must_implement_one_of(method1, method2, ...)]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_must_implement_one_of(function1, function2, ...)]`
 
-error: Method not found in this trait
+error: Function not found in this trait
   --> $DIR/rustc_must_implement_one_of_misuse.rs:3:31
    |
 LL | #[rustc_must_implement_one_of(a, b)]
    |                               ^
 
-error: Method not found in this trait
+error: Function not found in this trait
   --> $DIR/rustc_must_implement_one_of_misuse.rs:3:34
    |
 LL | #[rustc_must_implement_one_of(a, b)]
    |                                  ^
 
-error: Method not found in this trait
+error: Function not found in this trait
   --> $DIR/rustc_must_implement_one_of_misuse.rs:8:34
    |
 LL | #[rustc_must_implement_one_of(a, b)]
@@ -28,7 +28,7 @@ error: the `#[rustc_must_implement_one_of]` attribute must be used with at least
 LL | #[rustc_must_implement_one_of(a)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Not a method
+error: Not a function
   --> $DIR/rustc_must_implement_one_of_misuse.rs:26:5
    |
 LL |     const A: u8 = 1;
@@ -39,9 +39,9 @@ note: required by this annotation
    |
 LL | #[rustc_must_implement_one_of(A, B)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: All `#[rustc_must_implement_one_of]` arguments must be method identifiers
+   = note: All `#[rustc_must_implement_one_of]` arguments must be associated function names
 
-error: Not a method
+error: Not a function
   --> $DIR/rustc_must_implement_one_of_misuse.rs:28:5
    |
 LL |     type B;
@@ -52,9 +52,9 @@ note: required by this annotation
    |
 LL | #[rustc_must_implement_one_of(A, B)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: All `#[rustc_must_implement_one_of]` arguments must be method identifiers
+   = note: All `#[rustc_must_implement_one_of]` arguments must be associated function names
 
-error: This method doesn't have a default implementation
+error: This function doesn't have a default implementation
   --> $DIR/rustc_must_implement_one_of_misuse.rs:33:5
    |
 LL |     fn a();
@@ -66,7 +66,7 @@ note: required by this annotation
 LL | #[rustc_must_implement_one_of(a, b)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: This method doesn't have a default implementation
+error: This function doesn't have a default implementation
   --> $DIR/rustc_must_implement_one_of_misuse.rs:35:5
    |
 LL |     fn b();

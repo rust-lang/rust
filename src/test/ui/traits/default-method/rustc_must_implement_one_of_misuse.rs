@@ -1,12 +1,12 @@
 #![feature(rustc_attrs)]
 
 #[rustc_must_implement_one_of(a, b)]
-//~^ Method not found in this trait
-//~| Method not found in this trait
+//~^ Function not found in this trait
+//~| Function not found in this trait
 trait Tr0 {}
 
 #[rustc_must_implement_one_of(a, b)]
-//~^ Method not found in this trait
+//~^ Function not found in this trait
 trait Tr1 {
     fn a() {}
 }
@@ -23,16 +23,16 @@ trait Tr3 {}
 
 #[rustc_must_implement_one_of(A, B)]
 trait Tr4 {
-    const A: u8 = 1; //~ Not a method
+    const A: u8 = 1; //~ Not a function
 
-    type B; //~ Not a method
+    type B; //~ Not a function
 }
 
 #[rustc_must_implement_one_of(a, b)]
 trait Tr5 {
-    fn a(); //~ This method doesn't have a default implementation
+    fn a(); //~ This function doesn't have a default implementation
 
-    fn b(); //~ This method doesn't have a default implementation
+    fn b(); //~ This function doesn't have a default implementation
 }
 
 fn main() {}
