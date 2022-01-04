@@ -371,8 +371,7 @@ mod tests {
     fn test_y1f_2002() {
         //allow slightly different result on x87
         let res = y1f(2.0000002_f32);
-        if res != -0.10703231_f32 {
-            assert_eq!(res, -0.10703229_f32);
-        }
+        if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) && (res == -0.10703231_f32) { return };
+        assert_eq!(res, -0.10703229_f32);
     }
 }
