@@ -8,7 +8,7 @@ use rustc_hir::HirIdMap;
 use rustc_hir::{
     BinOpKind, Block, BodyId, Expr, ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, Guard, HirId,
     InlineAsmOperand, Let, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path, PathSegment, QPath, Stmt,
-    StmtKind, Ty, TyKind, TypeBinding,
+    StmtKind, Ty, TyKind, TypeBinding, ArrayLen
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
@@ -170,6 +170,14 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
     }
 
+    pub fn eq_array_length(&mut self, left: ArrayLen, right: ArrayLen) -> bool {
+            match (left, right) {
+                (ArrayLen::Infer(..), ArrayLen::Infer(..)) => true,
+                (ArrayLen::Body(l_ct), ArrayLen::Body(r_ct)) => self.eq_body(l_ct.body, r_ct.body),
+                (_, _) => false,
+            }
+    }
+
     pub fn eq_body(&mut self, left: BodyId, right: BodyId) -> bool {
         let cx = self.inner.cx;
         let eval_const = |body| constant_context(cx, cx.tcx.typeck_body(body)).expr(&cx.tcx.hir().body(body).value);
@@ -194,8 +202,8 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
 
         let is_eq = match (
-            &reduce_exprkind(self.inner.cx, &left.kind),
-            &reduce_exprkind(self.inner.cx, &right.kind),
+            reduce_exprkind(self.inner.cx, &left.kind),
+            reduce_exprkind(self.inner.cx, &right.kind),
         ) {
             (&ExprKind::AddrOf(lb, l_mut, le), &ExprKind::AddrOf(rb, r_mut, re)) => {
                 lb == rb && l_mut == r_mut && self.eq_expr(le, re)
@@ -232,7 +240,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             },
             (&ExprKind::Index(la, li), &ExprKind::Index(ra, ri)) => self.eq_expr(la, ra) && self.eq_expr(li, ri),
             (&ExprKind::If(lc, lt, ref le), &ExprKind::If(rc, rt, ref re)) => {
-                self.eq_expr(lc, rc) && self.eq_expr(&**lt, &**rt) && both(le, re, |l, r| self.eq_expr(l, r))
+                self.eq_expr(lc, rc) && self.eq_expr(lt, rt) && both(le, re, |l, r| self.eq_expr(l, r))
             },
             (&ExprKind::Let(l), &ExprKind::Let(r)) => {
                 self.eq_pat(l.pat, r.pat) && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r)) && self.eq_expr(l.init, r.init)
@@ -253,8 +261,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::MethodCall(l_path, _, l_args, _), &ExprKind::MethodCall(r_path, _, r_args, _)) => {
                 self.inner.allow_side_effects && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
-            (&ExprKind::Repeat(le, ref ll_id), &ExprKind::Repeat(re, ref rl_id)) => {
-                self.eq_expr(le, re) && self.eq_body(ll_id.body, rl_id.body)
+            (&ExprKind::Repeat(le, ll), &ExprKind::Repeat(re, rl)) => {
+                self.eq_expr(le, re) && self.eq_array_length(ll, rl)
             },
             (&ExprKind::Ret(ref l), &ExprKind::Ret(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
             (&ExprKind::Path(ref l), &ExprKind::Path(ref r)) => self.eq_qpath(l, r),
@@ -391,8 +399,8 @@ impl HirEqInterExpr<'_, '_, '_> {
     fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {
         match (&left.kind, &right.kind) {
             (&TyKind::Slice(l_vec), &TyKind::Slice(r_vec)) => self.eq_ty(l_vec, r_vec),
-            (&TyKind::Array(lt, ref ll_id), &TyKind::Array(rt, ref rl_id)) => {
-                self.eq_ty(lt, rt) && self.eq_body(ll_id.body, rl_id.body)
+            (&TyKind::Array(lt, ll), &TyKind::Array(rt, rl)) => {
+                self.eq_ty(lt, rt) && self.eq_array_length(ll, rl)
             },
             (&TyKind::Ptr(ref l_mut), &TyKind::Ptr(ref r_mut)) => {
                 l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty)
@@ -714,9 +722,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::ConstBlock(ref l_id) => {
                 self.hash_body(l_id.body);
             },
-            ExprKind::Repeat(e, ref l_id) => {
+            ExprKind::Repeat(e, len) => {
                 self.hash_expr(e);
-                self.hash_body(l_id.body);
+                self.hash_array_length(len);
             },
             ExprKind::Ret(ref e) => {
                 if let Some(e) = *e {
@@ -906,9 +914,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::Slice(ty) => {
                 self.hash_ty(ty);
             },
-            TyKind::Array(ty, anon_const) => {
+            &TyKind::Array(ty, len) => {
                 self.hash_ty(ty);
-                self.hash_body(anon_const.body);
+                self.hash_array_length(len);
             },
             TyKind::Ptr(ref mut_ty) => {
                 self.hash_ty(mut_ty.ty);
@@ -950,6 +958,13 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_body(anon_const.body);
             },
             TyKind::Err | TyKind::Infer | TyKind::Never => {},
+        }
+    }
+
+    pub fn hash_array_length(&mut self, length: ArrayLen) {
+        match length {
+            ArrayLen::Infer(..) => {}
+            ArrayLen::Body(anon_const) => self.hash_body(anon_const.body),
         }
     }
 
