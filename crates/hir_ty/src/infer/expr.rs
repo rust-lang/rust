@@ -799,8 +799,15 @@ impl<'a> InferenceContext<'a> {
                             ),
                         );
 
-                        let repeat_expr = &self.body.exprs[repeat];
-                        consteval::eval_usize(repeat_expr)
+                        consteval::eval_usize(
+                            repeat,
+                            consteval::ConstEvalCtx {
+                                exprs: &body.exprs,
+                                pats: &body.pats,
+                                local_data: Default::default(),
+                                infer: &mut |x| self.infer_expr(x, &expected),
+                            },
+                        )
                     }
                 };
 

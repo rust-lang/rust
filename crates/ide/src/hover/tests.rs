@@ -3350,6 +3350,31 @@ const FOO$0: usize = 1 << 10;
     check(
         r#"
 /// This is a doc
+const FOO$0: usize = {
+    let b = 4;
+    let a = { let b = 2; let a = b; a } + { let a = 1; a + b };
+    a
+};
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: usize = 7
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
+    check(
+        r#"
+/// This is a doc
 const FOO$0: usize = 2 - 3;
 "#,
         expect![[r#"
@@ -3440,6 +3465,24 @@ fn foo() {
 
             This is a doc
         "#]],
+    );
+}
+
+#[test]
+fn array_repeat_exp() {
+    check(
+        r#"
+fn main() {
+    let til$0e4 = [0_u32; (4 * 8 * 8) / 32];
+}
+        "#,
+        expect![[r#"
+            *tile4*
+
+            ```rust
+            let tile4: [u32; 8]
+            ```
+            "#]],
     );
 }
 
