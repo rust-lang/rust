@@ -371,11 +371,11 @@ impl<T> [T] {
 
     /// Sorts the slice with a key extraction function.
     ///
-    /// During sorting, the key function is called only once per element.
+    /// During sorting, the key function is called at most once per element, by using
+    /// temporary storage to remember the results of key evaluation.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*m* \* *n* + *n* \* log(*n*))
-    /// worst-case, where the key function is *O*(*m*). If the slice requires sorting,
-    /// the key function is called on all elements of the slice in the original order.
+    /// worst-case, where the key function is *O*(*m*).
     ///
     /// For simple key functions (e.g., functions that are property accesses or
     /// basic operations), [`sort_by_key`](slice::sort_by_key) is likely to be
