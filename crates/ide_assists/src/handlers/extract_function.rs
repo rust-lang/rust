@@ -878,7 +878,7 @@ impl FunctionBody {
                 // We can move the value into the function call if it's not used after the call,
                 // if the var is not used but defined outside a loop we are extracting from we can't move it either
                 // as the function will reuse it in the next iteration.
-                let move_local = !has_usages && defined_outside_parent_loop;
+                let move_local = (!has_usages && defined_outside_parent_loop) || ty.is_reference();
                 Param { var, ty, move_local, requires_mut, is_copy }
             })
             .collect()
@@ -4331,6 +4331,43 @@ fn foo() {
 
 fn $0fun_name(a: _) -> _ {
     a
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_jeroen() {
+        check_assist(
+            extract_function,
+            r#"
+pub struct Foo {
+    field: u32,
+}
+
+pub fn testfn(arg: &mut Foo) {
+    $0arg.field = 8; // write access
+    println!("{}", arg.field); // read access$0
+    // Simulating access after the extracted portion
+    arg.field = 16; // write access
+    println!("{}", arg.field); // read access
+}
+"#,
+            r#"
+pub struct Foo {
+    field: u32,
+}
+
+pub fn testfn(arg: &mut Foo) {
+    fun_name(arg); // read access
+    // Simulating access after the extracted portion
+    arg.field = 16; // write access
+    println!("{}", arg.field); // read access
+}
+
+fn $0fun_name(arg: &mut Foo) {
+    arg.field = 8;
+    println!("{}", arg.field);
 }
 "#,
         );
