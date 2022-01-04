@@ -497,6 +497,43 @@ pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
     path_to_local(expr) == Some(id)
 }
 
+pub trait MaybePath<'hir> {
+    fn hir_id(&self) -> HirId;
+    fn qpath_opt(&self) -> Option<&QPath<'hir>>;
+}
+
+macro_rules! maybe_path {
+    ($ty:ident, $kind:ident) => {
+        impl<'hir> MaybePath<'hir> for hir::$ty<'hir> {
+            fn hir_id(&self) -> HirId {
+                self.hir_id
+            }
+            fn qpath_opt(&self) -> Option<&QPath<'hir>> {
+                match &self.kind {
+                    hir::$kind::Path(qpath) => Some(qpath),
+                    _ => None,
+                }
+            }
+        }
+    };
+}
+maybe_path!(Expr, ExprKind);
+maybe_path!(Pat, PatKind);
+maybe_path!(Ty, TyKind);
+
+/// If `maybe_path` is a path node, resolves it, otherwise returns `Res::Err`
+pub fn path_res<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -> Res {
+    match maybe_path.qpath_opt() {
+        None => Res::Err,
+        Some(qpath) => cx.qpath_res(qpath, maybe_path.hir_id()),
+    }
+}
+
+/// If `maybe_path` is a path node which resolves to an item, retrieves the item ID
+pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -> Option<DefId> {
+    path_res(cx, maybe_path).opt_def_id()
+}
+
 /// Resolves a def path like `std::vec::Vec`.
 /// This function is expensive and should be used sparingly.
 pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
