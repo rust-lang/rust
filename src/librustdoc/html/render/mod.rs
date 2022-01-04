@@ -106,7 +106,7 @@ crate struct IndexItem {
 }
 
 /// A type used for the search index.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 crate struct RenderType {
     name: String,
     generics: Vec<TypeWithKind>,
@@ -137,7 +137,7 @@ impl Serialize for IndexItemFunctionType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 crate struct TypeWithKind {
     ty: RenderType,
     kind: ItemType,

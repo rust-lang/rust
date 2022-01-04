@@ -5,6 +5,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
+use smallvec::{smallvec, SmallVec};
 
 use crate::clean;
 use crate::clean::types::{FnRetTy, Function, GenericBound, Generics, Type, WherePredicate};
@@ -195,39 +196,42 @@ crate fn get_function_type_for_search<'tcx>(
     Some(IndexItemFunctionType { inputs, output })
 }
 
-fn get_index_type(clean_type: &clean::Type, generics: Vec<TypeWithKind>) -> Option<RenderType> {
-    get_index_type_name(clean_type)
-        .map(|s| RenderType { name: s.as_str().to_ascii_lowercase(), generics })
+fn get_index_types(clean_type: &clean::Type, generics: Vec<TypeWithKind>) -> Vec<RenderType> {
+    get_index_type_names(clean_type)
+        .iter()
+        .map(|s| RenderType { name: s.as_str().to_ascii_lowercase(), generics: generics.clone() })
+        .collect()
 }
 
-fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
+fn get_index_type_names(clean_type: &clean::Type) -> SmallVec<[Symbol; 2]> {
     match *clean_type {
         clean::Type::Path { ref path, .. } => {
             let path_segment = path.segments.last().unwrap();
-            Some(path_segment.name)
+            smallvec![path_segment.name]
         }
-        clean::DynTrait(ref bounds, _) => {
-            let path = &bounds[0].trait_;
-            Some(path.segments.last().unwrap().name)
+        clean::DynTrait(ref traits, _) => {
+            traits.iter().map(|t| t.trait_.segments.last().unwrap().name).collect()
         }
-        clean::ImplTrait(ref bounds) => {
-            let first_trait = bounds.iter().find_map(|b| match b {
-                clean::GenericBound::TraitBound(poly_trait, _) => Some(&poly_trait.trait_),
+        clean::ImplTrait(ref bounds) => bounds
+            .iter()
+            .filter_map(|b| match b {
+                clean::GenericBound::TraitBound(poly_trait, _) => {
+                    Some(poly_trait.trait_.segments.last().unwrap().name)
+                }
                 clean::GenericBound::Outlives(_) => None,
-            });
-            first_trait.map(|t| t.segments.last().unwrap().name)
-        }
-        clean::Generic(s) => Some(s),
-        clean::Primitive(ref p) => Some(p.as_sym()),
+            })
+            .collect(),
+        clean::Generic(s) => smallvec![s],
+        clean::Primitive(ref p) => smallvec![p.as_sym()],
         clean::BorrowedRef { ref type_, .. } | clean::RawPointer(_, ref type_) => {
-            get_index_type_name(type_)
+            get_index_type_names(type_)
         }
         clean::BareFunction(_)
         | clean::Tuple(_)
         | clean::Slice(_)
         | clean::Array(_, _)
         | clean::QPath { .. }
-        | clean::Infer => None,
+        | clean::Infer => smallvec![],
     }
 }
 
@@ -301,17 +305,18 @@ fn add_generics_and_bounds_as_types<'tcx>(
                 return;
             }
         }
-        let Some(mut index_ty) = get_index_type(&ty, generics)
-        else { return };
-        if is_full_generic {
-            // We remove the name of the full generic because we have no use for it.
-            index_ty.name = String::new();
-            res.push(TypeWithKind { ty: index_ty, kind: ItemType::Generic });
-        } else if let Some(kind) = ty.def_id_no_primitives().map(|did| tcx.def_kind(did).into()) {
-            res.push(TypeWithKind { ty: index_ty, kind });
-        } else if ty.is_primitive() {
-            // This is a primitive, let's store it as such.
-            res.push(TypeWithKind { ty: index_ty, kind: ItemType::Primitive });
+        for mut index_ty in get_index_types(&ty, generics) {
+            if is_full_generic {
+                // We remove the name of the full generic because we have no use for it.
+                index_ty.name = String::new();
+                res.push(TypeWithKind { ty: index_ty, kind: ItemType::Generic });
+            } else if let Some(kind) = ty.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
+            {
+                res.push(TypeWithKind { ty: index_ty, kind });
+            } else if ty.is_primitive() {
+                // This is a primitive, let's store it as such.
+                res.push(TypeWithKind { ty: index_ty, kind: ItemType::Primitive });
+            }
         }
     }
 
@@ -409,7 +414,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
         } else {
             if let Some(kind) = arg.type_.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
             {
-                if let Some(ty) = get_index_type(&arg.type_, vec![]) {
+                for ty in get_index_types(&arg.type_, vec![]) {
                     all_types.push(TypeWithKind { ty, kind });
                 }
             }
@@ -424,7 +429,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
                 if let Some(kind) =
                     return_type.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
                 {
-                    if let Some(ty) = get_index_type(return_type, vec![]) {
+                    for ty in get_index_types(return_type, vec![]) {
                         ret_types.push(TypeWithKind { ty, kind });
                     }
                 }
