@@ -5,7 +5,7 @@ use crate::io;
 use crate::marker::PhantomData;
 use crate::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sync::Mutex;
+use crate::sync::{Arc, Mutex};
 
 /// TODO: documentation
 pub struct Scope<'env> {
@@ -113,6 +113,15 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     /// TODO
     pub fn thread(&self) -> &Thread {
         &self.0.thread
+    }
+
+    /// Checks if the the associated thread is still running its main function.
+    ///
+    /// This might return `false` for a brief moment after the thread's main
+    /// function has returned, but before the thread itself has stopped running.
+    #[unstable(feature = "thread_is_running", issue = "90470")]
+    pub fn is_running(&self) -> bool {
+        Arc::strong_count(&self.0.packet) > 1
     }
 }
 
