@@ -50,7 +50,7 @@ impl ScopeData {
 /// The function passed to `scope` will be provided a [`Scope`] object,
 /// through which scoped threads can be [spawned][`Scope::spawn`].
 ///
-/// Unlike non-scoped threads, scoped threads can non-`'static` data,
+/// Unlike non-scoped threads, scoped threads can borrow non-`'static` data,
 /// as the scope guarantees all threads will be joined at the end of the scope.
 ///
 /// All threads spawned within the scope that haven't been manually joined
