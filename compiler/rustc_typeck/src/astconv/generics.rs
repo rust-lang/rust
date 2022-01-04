@@ -104,7 +104,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
                 GenericParamDefKind::Const { .. },
             ) if tcx.type_of(param.def_id) == tcx.types.usize => {
-                let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id));
+                let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id()));
                 if let Ok(snippet) = snippet {
                     err.span_suggestion(
                         arg.span(),
