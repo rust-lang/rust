@@ -7,13 +7,17 @@ use crate::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::{Arc, Mutex};
 
-/// TODO: documentation
+/// A scope to spawn scoped threads in.
+///
+/// See [`scope`] for details.
 pub struct Scope<'env> {
     data: ScopeData,
     env: PhantomData<&'env ()>,
 }
 
-/// TODO: documentation
+/// An owned permission to join on a scoped thread (block on its termination).
+///
+/// See [`Scope::spawn`] for details.
 pub struct ScopedJoinHandle<'scope, T>(JoinInner<'scope, T>);
 
 pub(super) struct ScopeData {
@@ -39,7 +43,52 @@ impl ScopeData {
     }
 }
 
-/// TODO: documentation
+/// Create a scope for spawning scoped threads.
+///
+/// The function passed to `scope` will be provided a [`Scope`] object,
+/// through which scoped threads can be [spawned][`Scope::spawn`].
+///
+/// Unlike non-scoped threads, scoped threads can non-`'static` data,
+/// as the scope guarantees all threads will be joined at the end of the scope.
+///
+/// All threads spawned within the scope that haven't been manually joined
+/// will be automatically joined before this function returns.
+///
+/// # Panics
+///
+/// If any of the automatically joined threads panicked, this function will panic.
+///
+/// If you want to handle panics from spawned threads,
+/// [`join`][ScopedJoinHandle::join] them before the end of the scope.
+///
+/// # Example
+///
+/// ```
+/// #![feature(scoped_threads)]
+/// use std::thread;
+///
+/// let mut a = vec![1, 2, 3];
+/// let mut x = 0;
+///
+/// thread::scope(|s| {
+///     s.spawn(|_| {
+///         println!("hello from the first scoped thread");
+///         // We can borrow `a` here.
+///         dbg!(&a);
+///     });
+///     s.spawn(|_| {
+///         println!("hello from the second scoped thread");
+///         // We can even mutably borrow `x` here,
+///         // because no other threads are using it.
+///         x += a[0] + a[2];
+///     });
+///     println!("hello from the main thread");
+/// });
+///
+/// // After the scope, we can modify and access our variables again:
+/// a.push(4);
+/// assert_eq!(x, a.len());
+/// ```
 pub fn scope<'env, F, T>(f: F) -> T
 where
     F: FnOnce(&Scope<'env>) -> T,
@@ -80,7 +129,30 @@ where
 }
 
 impl<'env> Scope<'env> {
-    /// TODO: documentation
+    /// Spawns a new thread within a scope, returning a [`ScopedJoinHandle`] for it.
+    ///
+    /// Unlike non-scoped threads, threads spawned with this function may
+    /// borrow non-`'static` data from the outside the scope. See [`scope`] for
+    /// details.
+    ///
+    /// The join handle provides a [`join`] method that can be used to join the spawned
+    /// thread. If the spawned thread panics, [`join`] will return an [`Err`] containing
+    /// the panic payload.
+    ///
+    /// If the join handle is dropped, the spawned thread will implicitly joined at the
+    /// end of the scope. In that case, if the spawned thread panics, [`scope`] will
+    /// panic after all threads are joined.
+    ///
+    /// This call will create a thread using default parameters of [`Builder`].
+    /// If you want to specify the stack size or the name of the thread, use
+    /// [`Builder::spawn_scoped`] instead.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the OS fails to create a thread; use [`Builder::spawn`]
+    /// to recover from such errors.
+    ///
+    /// [`join`]: ScopedJoinHandle::join
     pub fn spawn<'scope, F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
     where
         F: FnOnce(&Scope<'env>) -> T + Send + 'env,
@@ -91,7 +163,54 @@ impl<'env> Scope<'env> {
 }
 
 impl Builder {
-    fn spawn_scoped<'scope, 'env, F, T>(
+    /// Spawns a new scoped thread using the settings set through this `Builder`.
+    ///
+    /// Unlike [`Scope::spawn`], this method yields an [`io::Result`] to
+    /// capture any failure to create the thread at the OS level.
+    ///
+    /// [`io::Result`]: crate::io::Result
+    ///
+    /// # Panics
+    ///
+    /// Panics if a thread name was set and it contained null bytes.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(scoped_threads)]
+    /// use std::thread;
+    ///
+    /// let mut a = vec![1, 2, 3];
+    /// let mut x = 0;
+    ///
+    /// thread::scope(|s| {
+    ///     thread::Builder::new()
+    ///         .name("first".to_string())
+    ///         .spawn_scoped(s, |_|
+    ///     {
+    ///         println!("hello from the {:?} scoped thread", thread::current().name());
+    ///         // We can borrow `a` here.
+    ///         dbg!(&a);
+    ///     })
+    ///     .unwrap();
+    ///     thread::Builder::new()
+    ///         .name("second".to_string())
+    ///         .spawn_scoped(s, |_|
+    ///     {
+    ///         println!("hello from the {:?} scoped thread", thread::current().name());
+    ///         // We can even mutably borrow `x` here,
+    ///         // because no other threads are using it.
+    ///         x += a[0] + a[2];
+    ///     })
+    ///     .unwrap();
+    ///     println!("hello from the main thread");
+    /// });
+    ///
+    /// // After the scope, we can modify and access our variables again:
+    /// a.push(4);
+    /// assert_eq!(x, a.len());
+    /// ```
+    pub fn spawn_scoped<'scope, 'env, F, T>(
         self,
         scope: &'scope Scope<'env>,
         f: F,
@@ -105,14 +224,59 @@ impl Builder {
 }
 
 impl<'scope, T> ScopedJoinHandle<'scope, T> {
-    /// TODO
-    pub fn join(self) -> Result<T> {
-        self.0.join()
-    }
-
-    /// TODO
+    /// Extracts a handle to the underlying thread.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(scoped_threads)]
+    /// #![feature(thread_is_running)]
+    ///
+    /// use std::thread;
+    ///
+    /// thread::scope(|s| {
+    ///     let t = s.spawn(|_| {
+    ///         println!("hello");
+    ///     });
+    ///     println!("thread id: {:?}", t.thread().id());
+    /// });
+    /// ```
+    #[must_use]
     pub fn thread(&self) -> &Thread {
         &self.0.thread
+    }
+
+    /// Waits for the associated thread to finish.
+    ///
+    /// This function will return immediately if the associated thread has already finished.
+    ///
+    /// In terms of [atomic memory orderings], the completion of the associated
+    /// thread synchronizes with this function returning.
+    /// In other words, all operations performed by that thread
+    /// [happen before](https://doc.rust-lang.org/nomicon/atomics.html#data-accesses)
+    /// all operations that happen after `join` returns.
+    ///
+    /// If the associated thread panics, [`Err`] is returned with the panic payload.
+    ///
+    /// [atomic memory orderings]: crate::sync::atomic
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(scoped_threads)]
+    /// #![feature(thread_is_running)]
+    ///
+    /// use std::thread;
+    ///
+    /// thread::scope(|s| {
+    ///     let t = s.spawn(|_| {
+    ///         panic!("oh no");
+    ///     });
+    ///     assert!(t.join().is_err());
+    /// });
+    /// ```
+    pub fn join(self) -> Result<T> {
+        self.0.join()
     }
 
     /// Checks if the the associated thread is still running its main function.
