@@ -56,6 +56,7 @@ use rustc_hir::{ConstArg, GenericArg, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::LintBuffer;
+use rustc_session::parse::feature_err;
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnId;
@@ -1248,7 +1249,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 ))
             }
             TyKind::Array(ref ty, ref length) => {
-                hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_anon_const(length))
+                hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_array_length(length))
             }
             TyKind::Typeof(ref expr) => hir::TyKind::Typeof(self.lower_anon_const(expr)),
             TyKind::TraitObject(ref bounds, kind) => {
@@ -2037,6 +2038,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_block_expr(&mut self, b: &Block) -> hir::Expr<'hir> {
         let block = self.lower_block(b, false);
         self.expr_block(block, AttrVec::new())
+    }
+
+    fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen {
+        match c.value.kind {
+            ExprKind::Underscore => {
+                if self.sess.features_untracked().generic_arg_infer {
+                    hir::ArrayLen::Infer(self.lower_node_id(c.id), c.value.span)
+                } else {
+                    feature_err(
+                        &self.sess.parse_sess,
+                        sym::generic_arg_infer,
+                        c.value.span,
+                        "using `_` for array lengths is unstable",
+                    )
+                    .emit();
+                    hir::ArrayLen::Body(self.lower_anon_const(c))
+                }
+            }
+            _ => hir::ArrayLen::Body(self.lower_anon_const(c)),
+        }
     }
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {

@@ -34,7 +34,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Repeat(ref expr, ref count) => {
                     let expr = self.lower_expr(expr);
-                    let count = self.lower_anon_const(count);
+                    let count = self.lower_array_length(count);
                     hir::ExprKind::Repeat(expr, count)
                 }
                 ExprKind::Tup(ref elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),

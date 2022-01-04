@@ -334,12 +334,17 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             println!("{}anon_const:", ind);
             print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
         },
-        hir::ExprKind::Repeat(val, ref anon_const) => {
+        hir::ExprKind::Repeat(val, length) => {
             println!("{}Repeat", ind);
             println!("{}value:", ind);
             print_expr(cx, val, indent + 1);
             println!("{}repeat count:", ind);
-            print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
+            match length {
+                hir::ArrayLen::Infer(_, _) => println!("{}repeat count: _", ind),
+                hir::ArrayLen::Body(anon_const) => {
+                    print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1)
+                }
+            }
         },
         hir::ExprKind::Err => {
             println!("{}Err", ind);

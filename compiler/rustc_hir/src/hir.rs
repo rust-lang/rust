@@ -1407,6 +1407,20 @@ impl fmt::Display for ConstContext {
 /// A literal.
 pub type Lit = Spanned<LitKind>;
 
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStable_Generic)]
+pub enum ArrayLen {
+    Infer(HirId, Span),
+    Body(AnonConst),
+}
+
+impl ArrayLen {
+    pub fn hir_id(&self) -> HirId {
+        match self {
+            &ArrayLen::Infer(hir_id, _) | &ArrayLen::Body(AnonConst { hir_id, body: _ }) => hir_id,
+        }
+    }
+}
+
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
 /// These are usually found nested inside types (e.g., array lengths)
@@ -1756,7 +1770,7 @@ pub enum ExprKind<'hir> {
     ///
     /// E.g., `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
-    Repeat(&'hir Expr<'hir>, AnonConst),
+    Repeat(&'hir Expr<'hir>, ArrayLen),
 
     /// A suspension point for generators (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),
@@ -2266,7 +2280,7 @@ pub enum TyKind<'hir> {
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
-    Array(&'hir Ty<'hir>, AnonConst),
+    Array(&'hir Ty<'hir>, ArrayLen),
     /// A raw pointer (i.e., `*const T` or `*mut T`).
     Ptr(MutTy<'hir>),
     /// A reference (i.e., `&'a T` or `&'a mut T`).

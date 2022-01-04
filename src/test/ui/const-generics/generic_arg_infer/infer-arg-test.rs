@@ -18,7 +18,5 @@ fn main() {
   let a: All<_, _, _>;
   all_fn();
   let v: [u8; _];
-  //~^ ERROR in expressions
   let v: [u8; 10] = [0; _];
-  //~^ ERROR in expressions
 }

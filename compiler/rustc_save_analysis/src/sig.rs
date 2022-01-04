@@ -310,9 +310,9 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 let nested = bounds_to_string(&bounds);
                 Ok(text_sig(nested))
             }
-            hir::TyKind::Array(ref ty, ref anon_const) => {
+            hir::TyKind::Array(ref ty, ref length) => {
                 let nested_ty = ty.make(offset + 1, id, scx)?;
-                let expr = id_to_string(&scx.tcx.hir(), anon_const.body.hir_id).replace('\n', " ");
+                let expr = id_to_string(&scx.tcx.hir(), length.hir_id()).replace('\n', " ");
                 let text = format!("[{}; {}]", nested_ty.text, expr);
                 Ok(replace_text(nested_ty, text))
             }

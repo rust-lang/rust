@@ -383,6 +383,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat(&mut self, p: &'v Pat<'v>) {
         walk_pat(self, p)
     }
+    fn visit_array_length(&mut self, len: &'v ArrayLen) {
+        walk_array_len(self, len)
+    }
     fn visit_anon_const(&mut self, c: &'v AnonConst) {
         walk_anon_const(self, c)
     }
@@ -753,7 +756,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
         }
         TyKind::Array(ref ty, ref length) => {
             visitor.visit_ty(ty);
-            visitor.visit_anon_const(length)
+            visitor.visit_array_length(length)
         }
         TyKind::TraitObject(bounds, ref lifetime, _syntax) => {
             for bound in bounds {
@@ -1124,6 +1127,13 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt<'v>) {
     }
 }
 
+pub fn walk_array_len<'v, V: Visitor<'v>>(visitor: &mut V, len: &'v ArrayLen) {
+    match len {
+        &ArrayLen::Infer(hir_id, _span) => visitor.visit_id(hir_id),
+        ArrayLen::Body(c) => visitor.visit_anon_const(c),
+    }
+}
+
 pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonConst) {
     visitor.visit_id(constant.hir_id);
     visitor.visit_nested_body(constant.body);
@@ -1147,7 +1157,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::ConstBlock(ref anon_const) => visitor.visit_anon_const(anon_const),
         ExprKind::Repeat(ref element, ref count) => {
             visitor.visit_expr(element);
-            visitor.visit_anon_const(count)
+            visitor.visit_array_length(count)
         }
         ExprKind::Struct(ref qpath, fields, ref optional_base) => {
             visitor.visit_qpath(qpath, expression.hir_id, expression.span);

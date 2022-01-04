@@ -1,5 +1,35 @@
+error[E0658]: using `_` for array lengths is unstable
+  --> $DIR/feature-gate-generic_arg_infer.rs:11:27
+   |
+LL |     let _x: [u8; 3] = [0; _];
+   |                           ^
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/feature-gate-generic_arg_infer.rs:11:27
+   |
+LL |     let _x: [u8; 3] = [0; _];
+   |                           ^ `_` not allowed here
+
+error[E0658]: using `_` for array lengths is unstable
+  --> $DIR/feature-gate-generic_arg_infer.rs:14:18
+   |
+LL |     let _y: [u8; _] = [0; 3];
+   |                  ^
+   |
+   = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+
+error: in expressions, `_` can only be used on the left-hand side of an assignment
+  --> $DIR/feature-gate-generic_arg_infer.rs:14:18
+   |
+LL |     let _y: [u8; _] = [0; 3];
+   |                  ^ `_` not allowed here
+
 error[E0747]: type provided when a constant was expected
-  --> $DIR/feature-gate-generic_arg_infer.rs:11:20
+  --> $DIR/feature-gate-generic_arg_infer.rs:20:20
    |
 LL |     let _x = foo::<_>([1,2]);
    |                    ^
@@ -7,6 +37,7 @@ LL |     let _x = foo::<_>([1,2]);
    = help: const arguments cannot yet be inferred with `_`
    = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0747`.
+Some errors have detailed explanations: E0658, E0747.
+For more information about an error, try `rustc --explain E0658`.
