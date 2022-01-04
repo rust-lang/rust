@@ -2108,7 +2108,7 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Val: &'a Value,
         VarInfo: &'a DIVariable,
-        AddrOps: *const i64,
+        AddrOps: *const u64,
         AddrOpsCount: c_uint,
         DL: &'a DILocation,
         InsertAtEnd: &'a BasicBlock,
@@ -2199,8 +2199,8 @@ extern "C" {
         Scope: &'a DIScope,
         InlinedAt: Option<&'a DILocation>,
     ) -> &'a DILocation;
-    pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
-    pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
+    pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
+    pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
