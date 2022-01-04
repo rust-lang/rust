@@ -1568,6 +1568,7 @@ public:
     if (isConstantValue(val)) {
       llvm::errs() << *newFunc << "\n";
       llvm::errs() << *val << "\n";
+      assert(0 && "getting diffe of constant value");
     }
     if (val->getType()->isPointerTy()) {
       llvm::errs() << *newFunc << "\n";

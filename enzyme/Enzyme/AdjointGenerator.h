@@ -3646,7 +3646,7 @@ public:
     auto called = task;
     // bool modifyPrimal = true;
 
-    bool foreignFunction = called == nullptr || called->empty();
+    bool foreignFunction = called == nullptr;
 
     SmallVector<Value *, 8> args = {0, 0, 0};
     SmallVector<Value *, 8> pre_args = {0, 0, 0};
@@ -8060,7 +8060,7 @@ public:
       return;
     }
 
-    bool foreignFunction = called == nullptr || called->empty();
+    bool foreignFunction = called == nullptr;
 
     FnTypeInfo nextTypeInfo(called);
 

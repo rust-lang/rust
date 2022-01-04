@@ -2889,6 +2889,12 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           FTy, Function::LinkageTypes::InternalLinkage,
           "fixgradient_" + key.todiff->getName(), key.todiff->getParent());
 
+      size_t argnum = 0;
+      for (Argument &Arg : NewF->args()) {
+        Arg.setName("arg" + std::to_string(argnum));
+        ++argnum;
+      }
+
       BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
       IRBuilder<> bb(BB);
 
@@ -2910,6 +2916,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       if (aug.returns.find(AugmentedStruct::Tape) != aug.returns.end()) {
         auto tapeIdx = aug.returns.find(AugmentedStruct::Tape)->second;
         tape = (tapeIdx == -1) ? cal : bb.CreateExtractValue(cal, tapeIdx);
+        if (tape->getType()->isEmptyTy())
+          tape = UndefValue::get(tape->getType());
       }
 
       if (aug.tapeType) {
@@ -3758,7 +3766,7 @@ Function *EnzymeLogic::CreateForwardDiff(
     }
   }
 
-  if (hasMetadata(todiff, "enzyme_derivative") && !hasconstant) {
+  if (hasMetadata(todiff, "enzyme_derivative")) {
     auto md = todiff->getMetadata("enzyme_derivative");
     if (!isa<MDTuple>(md)) {
       llvm::errs() << *todiff << "\n";
@@ -3771,30 +3779,15 @@ Function *EnzymeLogic::CreateForwardDiff(
     auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
     auto foundcalled = cast<Function>(gvemd->getValue());
 
-    if (!foundcalled->getReturnType()->isVoidTy()) {
+    if ((foundcalled->getReturnType()->isVoidTy() ||
+         retType != DIFFE_TYPE::CONSTANT) &&
+        !hasconstant && returnUsed)
+      return foundcalled;
+
+    if (!foundcalled->getReturnType()->isVoidTy() && !hasconstant) {
       if (returnUsed && retType == DIFFE_TYPE::CONSTANT) {
-        FunctionType *FTy = FunctionType::get(
-            todiff->getReturnType(), foundcalled->getFunctionType()->params(),
-            foundcalled->getFunctionType()->isVarArg());
-        Function *NewF = Function::Create(
-            FTy, Function::LinkageTypes::InternalLinkage,
-            "fixderivative_" + todiff->getName(), todiff->getParent());
-        for (auto pair : llvm::zip(NewF->args(), foundcalled->args())) {
-          std::get<0>(pair).setName(std::get<1>(pair).getName());
-        }
-
-        BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
-        IRBuilder<> bb(BB);
-        SmallVector<Value *, 2> args;
-        for (auto &a : NewF->args())
-          args.push_back(&a);
-        auto cal = bb.CreateCall(foundcalled, args);
-        cal->setCallingConv(foundcalled->getCallingConv());
-
-        bb.CreateRet(bb.CreateExtractValue(cal, 0));
-        return ForwardCachedFunctions[tup] = NewF;
       }
-      if (!returnUsed && retType != DIFFE_TYPE::CONSTANT) {
+      if (!returnUsed && retType != DIFFE_TYPE::CONSTANT && !hasconstant) {
         FunctionType *FTy = FunctionType::get(
             todiff->getReturnType(), foundcalled->getFunctionType()->params(),
             foundcalled->getFunctionType()->isVarArg());
@@ -3819,7 +3812,95 @@ Function *EnzymeLogic::CreateForwardDiff(
       assert(returnUsed);
     }
 
-    return foundcalled;
+    SmallVector<Type *, 2> curTypes;
+    bool legal = true;
+    std::vector<DIFFE_TYPE> nextConstantArgs;
+    for (auto tup : llvm::zip(todiff->args(), constant_args)) {
+      auto &arg = std::get<0>(tup);
+      curTypes.push_back(arg.getType());
+      if (std::get<1>(tup) != DIFFE_TYPE::CONSTANT) {
+        curTypes.push_back(arg.getType());
+        nextConstantArgs.push_back(std::get<1>(tup));
+        continue;
+      }
+      auto TT = oldTypeInfo.Arguments.find(&arg)->second[{-1}];
+      if (TT.isFloat()) {
+        nextConstantArgs.push_back(DIFFE_TYPE::DUP_ARG);
+        continue;
+      } else if (TT == BaseType::Integer) {
+        nextConstantArgs.push_back(DIFFE_TYPE::DUP_ARG);
+        continue;
+      } else {
+        legal = false;
+        break;
+      }
+    }
+    if (legal) {
+      Type *RT = todiff->getReturnType();
+      if (returnUsed && retType != DIFFE_TYPE::CONSTANT) {
+        RT = StructType::get(RT->getContext(), {RT, RT});
+      }
+      if (!returnUsed && retType == DIFFE_TYPE::CONSTANT) {
+        RT = Type::getVoidTy(RT->getContext());
+      }
+
+      FunctionType *FTy = FunctionType::get(
+          RT, curTypes, todiff->getFunctionType()->isVarArg());
+
+      Function *NewF = Function::Create(
+          FTy, Function::LinkageTypes::InternalLinkage,
+          "fixderivative_" + todiff->getName(), todiff->getParent());
+
+      auto foundArg = NewF->arg_begin();
+      SmallVector<Value *, 2> nextArgs;
+      for (auto tup : llvm::zip(todiff->args(), constant_args)) {
+        nextArgs.push_back(foundArg);
+        auto &arg = std::get<0>(tup);
+        foundArg->setName(arg.getName());
+        foundArg++;
+        if (std::get<1>(tup) != DIFFE_TYPE::CONSTANT) {
+          foundArg->setName(arg.getName() + "'");
+          nextConstantArgs.push_back(std::get<1>(tup));
+          nextArgs.push_back(foundArg);
+          foundArg++;
+          continue;
+        }
+        auto TT = oldTypeInfo.Arguments.find(&arg)->second[{-1}];
+        if (TT.isFloat()) {
+          nextArgs.push_back(Constant::getNullValue(arg.getType()));
+          nextConstantArgs.push_back(DIFFE_TYPE::DUP_ARG);
+          continue;
+        } else if (TT == BaseType::Integer) {
+          nextArgs.push_back(nextArgs.back());
+          nextConstantArgs.push_back(DIFFE_TYPE::DUP_ARG);
+          continue;
+        } else {
+          legal = false;
+          break;
+        }
+      }
+
+      BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
+      IRBuilder<> bb(BB);
+      auto cal = bb.CreateCall(foundcalled, nextArgs);
+      cal->setCallingConv(foundcalled->getCallingConv());
+
+      if (returnUsed && retType != DIFFE_TYPE::CONSTANT) {
+        bb.CreateRet(cal);
+      } else if (returnUsed) {
+        bb.CreateRet(bb.CreateExtractValue(cal, 0));
+      } else if (retType != DIFFE_TYPE::CONSTANT) {
+        bb.CreateRet(bb.CreateExtractValue(cal, 1));
+      } else {
+        bb.CreateRetVoid();
+      }
+
+      return ForwardCachedFunctions[tup] = NewF;
+    }
+
+    EmitWarning("NoCustom", todiff->getEntryBlock().begin()->getDebugLoc(),
+                todiff, &todiff->getEntryBlock(),
+                "Cannot use provided custom derivative pass");
   }
   if (todiff->empty())
     llvm::errs() << *todiff << "\n";

@@ -56,15 +56,21 @@ attributes #0 = { readnone }
 
 declare double @__enzyme_autodiff(double (double)*, ...)
 
-; CHECK: define internal {{(dso_local )?}}{ double } @diffeadd4(double %x, double %[[differet:.+]])
+
+; CHECK: define internal { double } @diffeadd4(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %[[fixaugadd2:.+]] = call fast double @augment_add2(double %x)
-; CHECK-NEXT:   %[[add2:.+]] = call { double } @fixgradient_add2(double %x, double %[[differet]])
-; CHECK-NEXT:   ret { double } %[[add2]]
+; CHECK-NEXT:   %0 = call { double } @fixgradient_add2(double %x, double %differeturn)
+; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
 
+; CHECK: define internal { double } @fixgradient_add2(double %arg0, double %arg1)
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = call double @augment_add2(double %arg0)
+; CHECK-NEXT:   %1 = call { double } @fixgradient_add2.1(double %arg0, double %arg1)
+; CHECK-NEXT:   ret { double } %1
+; CHECK-NEXT: }
 
-; CHECK: define internal { double } @fixgradient_add2(double %arg0, double %arg1) {
+; CHECK: define internal { double } @fixgradient_add2.1(double %arg0, double %arg1)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call double @gradient_add2(double %arg0, double %arg1)
 ; CHECK-NEXT:   %1 = insertvalue { double } undef, double %0, 0

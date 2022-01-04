@@ -133,9 +133,9 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   ret { double } %3
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @fixgradient_square_(double*{{( %0)?}}, double*{{( %1)?}}, double*{{( %2)?}}, double*{{( %3)?}})
+; CHECK: define internal void @fixgradient_square_(double* %arg0, double* %arg1, double* %arg2, double* %arg3)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %4 = call i8* @augment_square_(double* %0, double* %1, double* %2, double* %3)
-; CHECK-NEXT:   call void @gradient_square_(double* %0, double* %1, double* %2, double* %3, i8* %4)
+; CHECK-NEXT:   %0 = call i8* @augment_square_(double* %arg0, double* %arg1, double* %arg2, double* %arg3)
+; CHECK-NEXT:   call void @gradient_square_(double* %arg0, double* %arg1, double* %arg2, double* %arg3, i8* %0)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
