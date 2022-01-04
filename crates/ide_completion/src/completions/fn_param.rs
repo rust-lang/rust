@@ -98,8 +98,18 @@ fn should_add_self_completions(ctx: &CompletionContext, param_list: ast::ParamLi
 }
 
 fn surround_with_commas(ctx: &CompletionContext, param: String) -> Option<String> {
-    let end_of_param_list = matches!(ctx.token.next_token()?.kind(), SyntaxKind::R_PAREN);
-    let trailing = if end_of_param_list { "" } else { "," };
+    let next_token = {
+        let t = ctx.token.next_token()?;
+        if !matches!(t.kind(), SyntaxKind::WHITESPACE) {
+            t
+        } else {
+            t.next_token()?
+        }
+    };
+
+    let trailing_comma_missing = matches!(next_token.kind(), SyntaxKind::IDENT);
+    let trailing = if trailing_comma_missing { "," } else { "" };
+    dbg!(&ctx.token.next_token()?);
 
     let previous_token = if matches!(ctx.token.kind(), SyntaxKind::IDENT | SyntaxKind::WHITESPACE) {
         ctx.previous_token.as_ref()?
