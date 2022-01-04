@@ -889,20 +889,25 @@ impl AttributesExt for [ast::Attribute] {
 }
 
 crate trait NestedAttributesExt {
-    /// Returns `true` if the attribute list contains a specific `Word`
-    fn has_word(self, word: Symbol) -> bool;
+    /// Returns `true` if the attribute list contains a specific `word`
+    fn has_word(self, word: Symbol) -> bool
+    where
+        Self: std::marker::Sized,
+    {
+        <Self as NestedAttributesExt>::get_word_attr(self, word).is_some()
+    }
+
+    /// Returns `Some(attr)` if the attribute list contains 'attr'
+    /// corresponding to a specific `word`
     fn get_word_attr(self, word: Symbol) -> Option<ast::NestedMetaItem>;
 }
 
-impl<I: Iterator<Item = ast::NestedMetaItem> + IntoIterator<Item = ast::NestedMetaItem>>
-    NestedAttributesExt for I
+impl<I> NestedAttributesExt for I
+where
+    I: IntoIterator<Item = ast::NestedMetaItem>,
 {
-    fn has_word(self, word: Symbol) -> bool {
-        self.into_iter().any(|attr| attr.is_word() && attr.has_name(word))
-    }
-
-    fn get_word_attr(mut self, word: Symbol) -> Option<ast::NestedMetaItem> {
-        self.find(|attr| attr.is_word() && attr.has_name(word))
+    fn get_word_attr(self, word: Symbol) -> Option<ast::NestedMetaItem> {
+        self.into_iter().find(|attr| attr.is_word() && attr.has_name(word))
     }
 }
 
