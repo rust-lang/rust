@@ -43,7 +43,12 @@ pub(crate) fn rem_pio2f(x: f32) -> (i32, f64) {
     if ix < 0x4dc90fdb {
         /* |x| ~< 2^28*(pi/2), medium size */
         /* Use a specialized rint() to get fn.  Assume round-to-nearest. */
-        let f_n = x64 * INV_PIO2 + TOINT - TOINT;
+        let tmp = x64 * INV_PIO2 + TOINT;
+        // force rounding of tmp to it's storage format on x87 to avoid
+        // excess precision issues.
+        #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
+        let tmp = force_eval!(tmp);
+        let f_n = tmp - TOINT;
         return (f_n as i32, x64 - f_n * PIO2_1 - f_n * PIO2_1T);
     }
     if ix >= 0x7f800000 {

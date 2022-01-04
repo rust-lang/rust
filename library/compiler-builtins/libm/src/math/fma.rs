@@ -218,7 +218,11 @@ mod tests {
             -0.00000000000000022204460492503126,
         );
 
-        assert_eq!(fma(-0.992, -0.992, -0.992), -0.007936000000000007,);
+        let result = fma(-0.992, -0.992, -0.992);
+        //force rounding to storage format on x87 to prevent superious errors.
+        #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
+        let result = force_eval!(result);
+        assert_eq!(result, -0.007936000000000007,);
     }
 
     #[test]

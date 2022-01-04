@@ -147,10 +147,38 @@ mod tests {
             let (s_minus, c_minus) = sincosf(theta - 2. * PI);
 
             const TOLERANCE: f32 = 1e-6;
-            assert!((s - s_plus).abs() < TOLERANCE);
-            assert!((s - s_minus).abs() < TOLERANCE);
-            assert!((c - c_plus).abs() < TOLERANCE);
-            assert!((c - c_minus).abs() < TOLERANCE);
+            assert!(
+                (s - s_plus).abs() < TOLERANCE,
+                "|{} - {}| = {} >= {}",
+                s,
+                s_plus,
+                (s - s_plus).abs(),
+                TOLERANCE
+            );
+            assert!(
+                (s - s_minus).abs() < TOLERANCE,
+                "|{} - {}| = {} >= {}",
+                s,
+                s_minus,
+                (s - s_minus).abs(),
+                TOLERANCE
+            );
+            assert!(
+                (c - c_plus).abs() < TOLERANCE,
+                "|{} - {}| = {} >= {}",
+                c,
+                c_plus,
+                (c - c_plus).abs(),
+                TOLERANCE
+            );
+            assert!(
+                (c - c_minus).abs() < TOLERANCE,
+                "|{} - {}| = {} >= {}",
+                c,
+                c_minus,
+                (c - c_minus).abs(),
+                TOLERANCE
+            );
         }
     }
 }
