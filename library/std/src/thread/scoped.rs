@@ -1,11 +1,10 @@
 use super::{current, park, Builder, JoinInner, Result, Thread};
-use crate::any::Any;
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
-use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sync::{Arc, Mutex};
+use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use crate::sync::Arc;
 
 /// A scope to spawn scoped threads in.
 ///
@@ -22,8 +21,8 @@ pub struct ScopedJoinHandle<'scope, T>(JoinInner<'scope, T>);
 
 pub(super) struct ScopeData {
     n_running_threads: AtomicUsize,
+    a_thread_panicked: AtomicBool,
     main_thread: Thread,
-    pub(super) panic_payload: Mutex<Option<Box<dyn Any + Send>>>,
 }
 
 impl ScopeData {
@@ -32,11 +31,14 @@ impl ScopeData {
         // chance it overflows to 0, which would result in unsoundness.
         if self.n_running_threads.fetch_add(1, Ordering::Relaxed) == usize::MAX / 2 {
             // This can only reasonably happen by mem::forget()'ing many many ScopedJoinHandles.
-            self.decrement_n_running_threads();
+            self.decrement_n_running_threads(false);
             panic!("too many running threads in thread scope");
         }
     }
-    pub(super) fn decrement_n_running_threads(&self) {
+    pub(super) fn decrement_n_running_threads(&self, panic: bool) {
+        if panic {
+            self.a_thread_panicked.store(true, Ordering::Relaxed);
+        }
         if self.n_running_threads.fetch_sub(1, Ordering::Release) == 1 {
             self.main_thread.unpark();
         }
@@ -89,15 +91,16 @@ impl ScopeData {
 /// a.push(4);
 /// assert_eq!(x, a.len());
 /// ```
+#[track_caller]
 pub fn scope<'env, F, T>(f: F) -> T
 where
     F: FnOnce(&Scope<'env>) -> T,
 {
-    let mut scope = Scope {
+    let scope = Scope {
         data: ScopeData {
             n_running_threads: AtomicUsize::new(0),
             main_thread: current(),
-            panic_payload: Mutex::new(None),
+            a_thread_panicked: AtomicBool::new(false),
         },
         env: PhantomData,
     };
@@ -110,21 +113,11 @@ where
         park();
     }
 
-    // Throw any panic from `f` or from any panicked thread, or the return value of `f` otherwise.
+    // Throw any panic from `f`, or the return value of `f` if no thread panicked.
     match result {
-        Err(e) => {
-            // `f` itself panicked.
-            resume_unwind(e);
-        }
-        Ok(result) => {
-            if let Some(panic_payload) = scope.data.panic_payload.get_mut().unwrap().take() {
-                // A thread panicked.
-                resume_unwind(panic_payload);
-            } else {
-                // Nothing panicked.
-                result
-            }
-        }
+        Err(e) => resume_unwind(e),
+        Ok(_) if scope.data.a_thread_panicked.load(Ordering::Relaxed) => panic!("a thread panicked"),
+        Ok(result) => result,
     }
 }
 
@@ -293,7 +286,8 @@ impl<'env> fmt::Debug for Scope<'env> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Scope")
             .field("n_running_threads", &self.data.n_running_threads.load(Ordering::Relaxed))
-            .field("panic_payload", &self.data.panic_payload)
+            .field("a_thread_panicked", &self.data.a_thread_panicked)
+            .field("main_thread", &self.data.main_thread)
             .finish_non_exhaustive()
     }
 }

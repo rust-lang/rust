@@ -1286,16 +1286,13 @@ unsafe impl<'scope, T: Sync> Sync for Packet<'scope, T> {}
 
 impl<'scope, T> Drop for Packet<'scope, T> {
     fn drop(&mut self) {
+        // Book-keeping so the scope knows when it's done.
         if let Some(scope) = self.scope {
             // If this packet was for a thread that ran in a scope, the thread
-            // panicked, and nobody consumed the panic payload, we put the
-            // panic payload in the scope so it can re-throw it, if it didn't
-            // already capture any panic yet.
-            if let Some(Err(e)) = self.result.get_mut().take() {
-                scope.panic_payload.lock().unwrap().get_or_insert(e);
-            }
-            // Book-keeping so the scope knows when it's done.
-            scope.decrement_n_running_threads();
+            // panicked, and nobody consumed the panic payload, we make sure
+            // the scope function will panic.
+            let unhandled_panic = matches!(self.result.get_mut(), Some(Err(_)));
+            scope.decrement_n_running_threads(unhandled_panic);
         }
     }
 }
