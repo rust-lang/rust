@@ -69,4 +69,14 @@ mod issue4326 {
     }
 }
 
+// Issue #7360
+struct Foo<T, U>
+where
+    T: Clone,
+    U: Clone,
+{
+    t: T,
+    u: U,
+}
+
 fn main() {}
