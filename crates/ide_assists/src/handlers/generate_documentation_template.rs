@@ -88,7 +88,9 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> String {
 
             let is_new = ast_func.name()?.to_string() == "new";
             match is_new && ret_ty == self_ty {
-                true => Some(format!("Creates a new [`{}`].", self_type(ast_func)?)),
+                true => {
+                    Some(format!("Creates a new [`{}`].", lifetimes_removed(&self_type(ast_func)?)))
+                }
                 false => None,
             }
         } else {
@@ -228,6 +230,49 @@ fn self_type(ast_func: &ast::Fn) -> Option<String> {
         .find_map(ast::Impl::cast)
         .and_then(|i| i.self_ty())
         .map(|t| (t.to_string()))
+}
+
+/// Output the same string as the input, removing lifetimes.
+///
+/// Lifetimes are detected as starting with a `'` and ending with `,\s*` or before a `>`.
+fn lifetimes_removed(with_lifetimes: &str) -> String {
+    #[derive(Debug)]
+    enum State {
+        OutOfLifetime,
+        AfterLifetime,
+        InLifetime,
+    }
+
+    let mut state = State::OutOfLifetime;
+    let mut without_lifetimes = String::new();
+    for c in with_lifetimes.chars() {
+        match state {
+            State::OutOfLifetime => {
+                if c == '\'' {
+                    state = State::InLifetime;
+                } else {
+                    without_lifetimes.push(c);
+                }
+            }
+            State::InLifetime => {
+                if c == ',' {
+                    state = State::AfterLifetime;
+                } else if c == '>' {
+                    without_lifetimes.push(c);
+                    state = State::OutOfLifetime;
+                }
+            }
+            State::AfterLifetime => {
+                if c == '\'' {
+                    state = State::InLifetime;
+                } else if !c.is_whitespace() {
+                    without_lifetimes.push(c);
+                    state = State::OutOfLifetime;
+                }
+            }
+        }
+    }
+    without_lifetimes
 }
 
 /// Heper function to get the name of the type of `self` without generic arguments
@@ -985,6 +1030,84 @@ impl<T> MyGenericStruct<T> {
     /// ```
     pub fn new(x: T) -> MyGenericStruct<T> {
         MyGenericStruct { x }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn removes_one_lifetime_from_description() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+#[derive(Debug, PartialEq)]
+pub struct MyGenericStruct<'a, T> {
+    pub x: &'a T,
+}
+impl<'a, T> MyGenericStruct<'a, T> {
+    pub fn new$0(x: &'a T) -> Self {
+        MyGenericStruct { x }
+    }
+}
+"#,
+            r#"
+#[derive(Debug, PartialEq)]
+pub struct MyGenericStruct<'a, T> {
+    pub x: &'a T,
+}
+impl<'a, T> MyGenericStruct<'a, T> {
+    /// Creates a new [`MyGenericStruct<T>`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::MyGenericStruct;
+    ///
+    /// assert_eq!(MyGenericStruct::new(x), );
+    /// ```
+    pub fn new(x: &'a T) -> Self {
+        MyGenericStruct { x }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn removes_all_lifetimes_from_description() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+#[derive(Debug, PartialEq)]
+pub struct MyGenericStruct<'a, 'b, T> {
+    pub x: &'a T,
+    pub y: &'b T,
+}
+impl<'a, 'b, T> MyGenericStruct<'a, 'b, T> {
+    pub fn new$0(x: &'a T, y: &'b T) -> Self {
+        MyGenericStruct { x, y }
+    }
+}
+"#,
+            r#"
+#[derive(Debug, PartialEq)]
+pub struct MyGenericStruct<'a, 'b, T> {
+    pub x: &'a T,
+    pub y: &'b T,
+}
+impl<'a, 'b, T> MyGenericStruct<'a, 'b, T> {
+    /// Creates a new [`MyGenericStruct<T>`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::MyGenericStruct;
+    ///
+    /// assert_eq!(MyGenericStruct::new(x, y), );
+    /// ```
+    pub fn new(x: &'a T, y: &'b T) -> Self {
+        MyGenericStruct { x, y }
     }
 }
 "#,
