@@ -621,6 +621,19 @@ fn projection_stack<'a, 'hir>(mut e: &'a Expr<'hir>) -> (Vec<&'a Expr<'hir>>, &'
     (result, root)
 }
 
+/// Gets the mutability of the custom deref adjustment, if any.
+pub fn expr_custom_deref_adjustment(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<Mutability> {
+    cx.typeck_results()
+        .expr_adjustments(e)
+        .iter()
+        .find_map(|a| match a.kind {
+            Adjust::Deref(Some(d)) => Some(Some(d.mutbl)),
+            Adjust::Deref(None) => None,
+            _ => Some(None),
+        })
+        .and_then(|x| x)
+}
+
 /// Checks if two expressions can be mutably borrowed simultaneously
 /// and they aren't dependent on borrowing same thing twice
 pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -> bool {
@@ -629,7 +642,15 @@ pub fn can_mut_borrow_both(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>) -
     if !eq_expr_value(cx, r1, r2) {
         return true;
     }
+    if expr_custom_deref_adjustment(cx, r1).is_some() || expr_custom_deref_adjustment(cx, r2).is_some() {
+        return false;
+    }
+
     for (x1, x2) in s1.iter().zip(s2.iter()) {
+        if expr_custom_deref_adjustment(cx, x1).is_some() || expr_custom_deref_adjustment(cx, x2).is_some() {
+            return false;
+        }
+
         match (&x1.kind, &x2.kind) {
             (ExprKind::Field(_, i1), ExprKind::Field(_, i2)) => {
                 if i1 != i2 {
