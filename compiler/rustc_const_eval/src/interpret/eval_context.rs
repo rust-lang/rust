@@ -156,11 +156,11 @@ pub enum StackPopCleanup {
     /// `ret` stores the block we jump to on a normal return, while `unwind`
     /// stores the block used for cleanup during unwinding.
     Goto { ret: Option<mir::BasicBlock>, unwind: StackPopUnwind },
-    /// Just do nothing: Used by Main and for TLS hooks in miri.
+    /// The root frame of the stack: nowhere else to jump to.
     /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
     /// the entire `ecx` when it is done).
-    None { cleanup: bool },
+    Root { cleanup: bool },
 }
 
 /// State of a local variable including a memoized layout
@@ -849,7 +849,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // because this is CTFE and the final value will be thoroughly validated anyway.
         let cleanup = match return_to_block {
             StackPopCleanup::Goto { .. } => true,
-            StackPopCleanup::None { cleanup, .. } => cleanup,
+            StackPopCleanup::Root { cleanup, .. } => cleanup,
         };
 
         if !cleanup {
@@ -874,8 +874,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Follow the unwind edge.
             let unwind = match return_to_block {
                 StackPopCleanup::Goto { unwind, .. } => unwind,
-                StackPopCleanup::None { .. } => {
-                    panic!("Encountered StackPopCleanup::None when unwinding!")
+                StackPopCleanup::Root { .. } => {
+                    panic!("encountered StackPopCleanup::Root when unwinding!")
                 }
             };
             self.unwind_to_block(unwind)
@@ -883,7 +883,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Follow the normal return edge.
             match return_to_block {
                 StackPopCleanup::Goto { ret, .. } => self.return_to_block(ret),
-                StackPopCleanup::None { .. } => Ok(()),
+                StackPopCleanup::Root { .. } => {
+                    assert!(
+                        self.stack().is_empty(),
+                        "only the topmost frame can have StackPopCleanup::Root"
+                    );
+                    Ok(())
+                }
             }
         }
     }
