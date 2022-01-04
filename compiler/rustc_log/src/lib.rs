@@ -1,5 +1,42 @@
 //! This crate allows tools to enable rust logging without having to magically
 //! match rustc's tracing crate version.
+//!
+//! For example if someone is working on rustc_ast and wants to write some
+//! minimal code against it to run in a debugger, with access to the `debug!`
+//! logs emitted by rustc_ast, that can be done by writing:
+//!
+//! ```toml
+//! [dependencies]
+//! rustc_ast = { path = "../rust/compiler/rustc_ast" }
+//! rustc_log = { path = "../rust/compiler/rustc_log" }
+//! rustc_span = { path = "../rust/compiler/rustc_span" }
+//! ```
+//!
+//! ```ignore
+//! fn main() {
+//!     rustc_log::init_rustc_env_logger().unwrap();
+//!
+//!     let edition = rustc_span::edition::Edition::Edition2021;
+//!     rustc_span::create_session_globals_then(edition, || {
+//!         /* ... */
+//!     });
+//! }
+//! ```
+//!
+//! Now `RUSTC_LOG=debug cargo run` will run your minimal main.rs and show
+//! rustc's debug logging. In a workflow like this, one might also add
+//! `std::env::set_var("RUSTC_LOG", "debug")` to the top of main so that `cargo
+//! run` by itself is sufficient to get logs.
+//!
+//! The reason rustc_log is a tiny separate crate, as opposed to exposing the
+//! same things in rustc_driver only, is to enable the above workflow. If you
+//! had to depend on rustc_driver in order to turn on rustc's debug logs, that's
+//! an enormously bigger dependency tree; every change you make to rustc_ast (or
+//! whichever piece of the compiler you are interested in) would involve
+//! rebuilding all the rest of rustc up to rustc_driver in order to run your
+//! main.rs. Whereas by depending only on rustc_log and the few crates you are
+//! debugging, you can make changes inside those crates and quickly run main.rs
+//! to read the debug logs.
 
 use std::env::{self, VarError};
 use std::fmt::{self, Display};
