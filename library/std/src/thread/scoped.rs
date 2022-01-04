@@ -116,7 +116,9 @@ where
     // Throw any panic from `f`, or the return value of `f` if no thread panicked.
     match result {
         Err(e) => resume_unwind(e),
-        Ok(_) if scope.data.a_thread_panicked.load(Ordering::Relaxed) => panic!("a thread panicked"),
+        Ok(_) if scope.data.a_thread_panicked.load(Ordering::Relaxed) => {
+            panic!("a thread panicked")
+        }
         Ok(result) => result,
     }
 }
