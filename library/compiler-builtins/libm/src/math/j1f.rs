@@ -357,6 +357,8 @@ fn qonef(x: f32) -> f32 {
     return (0.375 + r / s) / x;
 }
 
+// PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520
+#[cfg(not(target_arch = "powerpc64"))]
 #[cfg(test)]
 mod tests {
     use super::{j1f, y1f};

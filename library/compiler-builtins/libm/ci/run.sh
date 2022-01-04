@@ -5,6 +5,9 @@ TARGET=$1
 
 CMD="cargo test --all --target $TARGET"
 
+# Needed for no-panic to correct detect a lack of panics
+export RUSTFLAGS="$RUSTFLAGS -Ccodegen-units=1"
+
 # stable by default
 $CMD
 $CMD --release

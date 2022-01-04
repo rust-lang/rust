@@ -40,6 +40,8 @@ pub fn ceilf(x: f32) -> f32 {
     f32::from_bits(ui)
 }
 
+// PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520
+#[cfg(not(target_arch = "powerpc64"))]
 #[cfg(test)]
 mod tests {
     use super::*;

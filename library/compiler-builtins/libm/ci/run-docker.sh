@@ -18,7 +18,7 @@ run() {
            --user $(id -u):$(id -g) \
            -e CARGO_HOME=/cargo \
            -e CARGO_TARGET_DIR=/target \
-           -v $(dirname $(dirname `which cargo`)):/cargo \
+           -v "${HOME}/.cargo":/cargo \
            -v `pwd`/target:/target \
            -v `pwd`:/checkout:ro \
            -v `rustc --print sysroot`:/rust:ro \
