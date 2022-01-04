@@ -4,7 +4,7 @@ use crate::{doc_links::token_as_doc_comment, FilePosition, NavigationTarget, Ran
 use hir::{AsAssocItem, Semantics};
 use ide_db::{
     base_db::{AnchoredPath, FileId, FileLoader},
-    defs::Definition,
+    defs::{Definition, IdentClass},
     helpers::pick_best_token,
     RootDatabase,
 };
@@ -46,20 +46,20 @@ pub(crate) fn goto_definition(
         .filter_map(|token| {
             let parent = token.parent()?;
             if let Some(tt) = ast::TokenTree::cast(parent) {
-                if let x @ Some(_) =
-                    try_lookup_include_path(sema, tt, token.clone(), position.file_id)
+                if let Some(x) = try_lookup_include_path(sema, tt, token.clone(), position.file_id)
                 {
-                    return x;
+                    return Some(vec![x]);
                 }
             }
             Some(
-                Definition::from_token(sema, &token)
+                IdentClass::classify_token(sema, &token)?
+                    .definitions()
                     .into_iter()
                     .flat_map(|def| {
                         try_find_trait_item_definition(sema.db, &def)
                             .unwrap_or_else(|| def_to_nav(sema.db, def))
                     })
-                    .collect::<Vec<_>>(),
+                    .collect(),
             )
         })
         .flatten()
@@ -74,7 +74,7 @@ fn try_lookup_include_path(
     tt: ast::TokenTree,
     token: SyntaxToken,
     file_id: FileId,
-) -> Option<Vec<NavigationTarget>> {
+) -> Option<NavigationTarget> {
     let token = ast::String::cast(token)?;
     let path = token.value()?.into_owned();
     let macro_call = tt.syntax().parent().and_then(ast::MacroCall::cast)?;
@@ -84,7 +84,7 @@ fn try_lookup_include_path(
     }
     let file_id = sema.db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
     let size = sema.db.file_text(file_id).len().try_into().ok()?;
-    Some(vec![NavigationTarget {
+    Some(NavigationTarget {
         file_id,
         full_range: TextRange::new(0.into(), size),
         name: path.into(),
@@ -93,7 +93,7 @@ fn try_lookup_include_path(
         container_name: None,
         description: None,
         docs: None,
-    }])
+    })
 }
 
 /// finds the trait definition of an impl'd item

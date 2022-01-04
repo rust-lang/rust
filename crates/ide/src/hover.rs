@@ -9,7 +9,7 @@ use either::Either;
 use hir::{HasSource, Semantics};
 use ide_db::{
     base_db::FileRange,
-    defs::Definition,
+    defs::{Definition, IdentClass},
     helpers::{pick_best_token, FamousDefs},
     FxIndexSet, RootDatabase,
 };
@@ -129,8 +129,8 @@ pub(crate) fn hover(
         .iter()
         .filter_map(|token| {
             let node = token.parent()?;
-            let defs = Definition::from_token(sema, token);
-            Some(defs.into_iter().zip(iter::once(node).cycle()))
+            let class = IdentClass::classify_token(sema, token)?;
+            Some(class.definitions().into_iter().zip(iter::once(node).cycle()))
         })
         .flatten()
         .unique_by(|&(def, _)| def)

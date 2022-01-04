@@ -42,74 +42,6 @@ pub enum Definition {
 }
 
 impl Definition {
-    pub fn from_token(
-        sema: &Semantics<RootDatabase>,
-        token: &SyntaxToken,
-    ) -> ArrayVec<Definition, 2> {
-        let parent = match token.parent() {
-            Some(parent) => parent,
-            None => return Default::default(),
-        };
-        // resolve derives if possible
-        if let Some(ident) = ast::Ident::cast(token.clone()) {
-            let attr = ast::TokenTree::cast(parent.clone())
-                .and_then(|tt| tt.parent_meta())
-                .and_then(|meta| meta.parent_attr());
-            if let Some(attr) = attr {
-                return sema
-                    .resolve_derive_ident(&attr, &ident)
-                    .map(Into::into)
-                    .into_iter()
-                    .collect();
-            }
-        }
-        Self::from_node(sema, &parent)
-    }
-
-    pub fn from_node(sema: &Semantics<RootDatabase>, node: &SyntaxNode) -> ArrayVec<Definition, 2> {
-        let mut res = ArrayVec::new();
-        (|| {
-            match_ast! {
-                match node {
-                    ast::Name(name) => {
-                        match NameClass::classify(&sema, &name)? {
-                            NameClass::Definition(it) | NameClass::ConstReference(it) => res.push(it),
-                            NameClass::PatFieldShorthand { local_def, field_ref } => {
-                                res.push(Definition::Local(local_def));
-                                res.push(Definition::Field(field_ref));
-                            }
-                        }
-                    },
-                    ast::NameRef(name_ref) => {
-                        match NameRefClass::classify(sema, &name_ref)? {
-                            NameRefClass::Definition(it) => res.push(it),
-                            NameRefClass::FieldShorthand { local_ref, field_ref } => {
-                                res.push(Definition::Local(local_ref));
-                                res.push(Definition::Field(field_ref));
-                            }
-                        }
-                    },
-                    ast::Lifetime(lifetime) => {
-                        let def = if let Some(x) = NameClass::classify_lifetime(&sema, &lifetime) {
-                            NameClass::defined(x)
-                        } else {
-                            NameRefClass::classify_lifetime(&sema, &lifetime).and_then(|class| match class {
-                                NameRefClass::Definition(it) => Some(it),
-                                _ => None,
-                            })
-                        };
-                        if let Some(def) = def {
-                            res.push(def);
-                        }
-                    },
-                    _ => (),
-                }
-            }
-            Some(())
-        })();
-        res
-    }
-
     pub fn canonical_module_path(&self, db: &RootDatabase) -> Option<impl Iterator<Item = Module>> {
         self.module(db).map(|it| it.path_to_root(db).into_iter().rev())
     }
@@ -181,6 +113,65 @@ impl Definition {
             Definition::ToolModule(_) => return None,  // FIXME
         };
         Some(name)
+    }
+}
+
+pub enum IdentClass {
+    NameClass(NameClass),
+    NameRefClass(NameRefClass),
+}
+
+impl IdentClass {
+    pub fn classify_node(sema: &Semantics<RootDatabase>, node: &SyntaxNode) -> Option<IdentClass> {
+        match_ast! {
+            match node {
+                ast::Name(name) => NameClass::classify(sema, &name).map(IdentClass::NameClass),
+                ast::NameRef(name_ref) => NameRefClass::classify(sema, &name_ref).map(IdentClass::NameRefClass),
+                ast::Lifetime(lifetime) => {
+                    NameClass::classify_lifetime(sema, &lifetime)
+                        .map(IdentClass::NameClass)
+                        .or_else(|| NameRefClass::classify_lifetime(sema, &lifetime).map(IdentClass::NameRefClass))
+                },
+                _ => None,
+            }
+        }
+    }
+
+    pub fn classify_token(
+        sema: &Semantics<RootDatabase>,
+        token: &SyntaxToken,
+    ) -> Option<IdentClass> {
+        let parent = token.parent()?;
+        // resolve derives if possible
+        if let Some(ident) = ast::Ident::cast(token.clone()) {
+            let attr = ast::TokenTree::cast(parent.clone())
+                .and_then(|tt| tt.parent_meta())
+                .and_then(|meta| meta.parent_attr());
+            if let Some(attr) = attr {
+                return NameRefClass::classify_derive(sema, &attr, &ident)
+                    .map(IdentClass::NameRefClass);
+            }
+        }
+        Self::classify_node(sema, &parent)
+    }
+
+    pub fn definitions(self) -> ArrayVec<Definition, 2> {
+        let mut res = ArrayVec::new();
+        match self {
+            IdentClass::NameClass(NameClass::Definition(it) | NameClass::ConstReference(it)) => {
+                res.push(it)
+            }
+            IdentClass::NameClass(NameClass::PatFieldShorthand { local_def, field_ref }) => {
+                res.push(Definition::Local(local_def));
+                res.push(Definition::Field(field_ref));
+            }
+            IdentClass::NameRefClass(NameRefClass::Definition(it)) => res.push(it),
+            IdentClass::NameRefClass(NameRefClass::FieldShorthand { local_ref, field_ref }) => {
+                res.push(Definition::Local(local_ref));
+                res.push(Definition::Field(field_ref));
+            }
+        }
+        res
     }
 }
 
@@ -464,6 +455,14 @@ impl NameRefClass {
             }
             _ => None,
         }
+    }
+
+    pub fn classify_derive(
+        sema: &Semantics<RootDatabase>,
+        attr: &ast::Attr,
+        ident: &ast::Ident,
+    ) -> Option<NameRefClass> {
+        sema.resolve_derive_ident(&attr, &ident).map(Definition::from).map(NameRefClass::Definition)
     }
 }
 

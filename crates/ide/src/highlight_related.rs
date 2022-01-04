@@ -1,7 +1,7 @@
 use hir::Semantics;
 use ide_db::{
     base_db::{FileId, FilePosition},
-    defs::Definition,
+    defs::{Definition, IdentClass},
     helpers::{for_each_break_expr, for_each_tail_expr, node_ext::walk_expr, pick_best_token},
     search::{FileReference, ReferenceCategory, SearchScope},
     RootDatabase,
@@ -293,7 +293,8 @@ fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange
 fn find_defs(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> FxHashSet<Definition> {
     sema.descend_into_macros(token)
         .into_iter()
-        .flat_map(|token| Definition::from_token(sema, &token))
+        .filter_map(|token| IdentClass::classify_token(sema, &token).map(IdentClass::definitions))
+        .flatten()
         .collect()
 }
 

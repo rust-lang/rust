@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use hir::{db::HirDatabase, Crate, Module, Semantics};
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabaseExt},
-    defs::Definition,
+    defs::{Definition, IdentClass},
     RootDatabase,
 };
 use rustc_hash::FxHashSet;
@@ -195,9 +195,9 @@ impl StaticIndex<'_> {
 
 fn get_definition(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Definition> {
     for token in sema.descend_into_macros(token) {
-        let def = Definition::from_token(sema, &token);
-        if let [x] = def.as_slice() {
-            return Some(*x);
+        let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions);
+        if let Some(&[x]) = def.as_deref() {
+            return Some(x);
         } else {
             continue;
         };

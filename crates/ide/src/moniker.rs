@@ -4,7 +4,7 @@
 use hir::{db::DefDatabase, AsAssocItem, AssocItemContainer, Crate, Name, Semantics};
 use ide_db::{
     base_db::{CrateOrigin, FileId, FileLoader, FilePosition},
-    defs::Definition,
+    defs::{Definition, IdentClass},
     helpers::pick_best_token,
     RootDatabase,
 };
@@ -82,11 +82,10 @@ pub(crate) fn moniker(
     let navs = sema
         .descend_into_macros(original_token.clone())
         .into_iter()
-        .map(|token| {
-            Definition::from_token(sema, &token)
-                .into_iter()
-                .flat_map(|def| def_to_moniker(sema.db, def, current_crate))
-                .collect::<Vec<_>>()
+        .filter_map(|token| {
+            IdentClass::classify_token(sema, &token).map(IdentClass::definitions).map(|it| {
+                it.into_iter().flat_map(|def| def_to_moniker(sema.db, def, current_crate))
+            })
         })
         .flatten()
         .unique()
