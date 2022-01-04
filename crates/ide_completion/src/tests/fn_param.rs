@@ -46,7 +46,20 @@ fn bar(file_id: usize) {}
 fn baz(file$0 id: u32) {}
 "#,
         expect![[r#"
-            bn file_id: usize
+            bn file_id: usize,
+            kw mut
+        "#]],
+    );
+}
+
+#[test]
+fn repeated_param_name() {
+    check(
+        r#"
+fn foo(file_id: usize) {}
+fn bar(file_id: u32, $0) {}
+"#,
+        expect![[r#"
             kw mut
         "#]],
     );
@@ -126,7 +139,6 @@ impl A {
 
 #[test]
 fn in_impl_after_self() {
-    // FIXME: self completions should not be here
     check(
         r#"
 struct A {}
@@ -137,10 +149,6 @@ impl A {
 }
 "#,
         expect![[r#"
-            bn self
-            bn &self
-            bn mut self
-            bn &mut self
             bn file_id: usize
             kw mut
             sp Self
