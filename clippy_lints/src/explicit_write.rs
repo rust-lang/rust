@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use clippy_utils::higher::FormatArgsExpn;
+use clippy_utils::macros::FormatArgsExpn;
 use clippy_utils::{is_expn_of, match_function_call, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
             } else {
                 None
             };
-            if let Some(format_args) = FormatArgsExpn::parse(write_arg);
+            if let Some(format_args) = FormatArgsExpn::parse(cx, write_arg);
             then {
                 let calling_macro =
                     // ordering is important here, since `writeln!` uses `write!` internally
@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                     )
                 };
                 let msg = format!("use of `{}.unwrap()`", used);
-                if let [write_output] = *format_args.format_string_symbols {
+                if let [write_output] = *format_args.format_string_parts {
                     let mut write_output = write_output.to_string();
                     if write_output.ends_with('\n') {
                         write_output.pop();

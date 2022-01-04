@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::higher::{FormatArgsArg, FormatArgsExpn, FormatExpn};
+use clippy_utils::macros::{FormatArgsArg, FormatArgsExpn};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_diag_trait_item, match_def_path, paths};
@@ -83,7 +83,7 @@ const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[sym::format_macro, sym::std_panic_m
 impl<'tcx> LateLintPass<'tcx> for FormatArgs {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
-            if let Some(format_args) = FormatArgsExpn::parse(expr);
+            if let Some(format_args) = FormatArgsExpn::parse(cx, expr);
             let expr_expn_data = expr.span.ctxt().outer_expn_data();
             let outermost_expn_data = outermost_expn_data(expr_expn_data);
             if let Some(macro_def_id) = outermost_expn_data.macro_def_id;
@@ -97,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
             if let Some(args) = format_args.args();
             then {
                 for (i, arg) in args.iter().enumerate() {
-                    if !arg.is_display() {
+                    if arg.format_trait != sym::Display {
                         continue;
                     }
                     if arg.has_string_formatting() {
@@ -106,8 +106,8 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs {
                     if is_aliased(&args, i) {
                         continue;
                     }
-                    check_format_in_format_args(cx, outermost_expn_data.call_site, name, arg);
-                    check_to_string_in_format_args(cx, name, arg);
+                    check_format_in_format_args(cx, outermost_expn_data.call_site, name, arg.value);
+                    check_to_string_in_format_args(cx, name, arg.value);
                 }
             }
         }
@@ -122,30 +122,31 @@ fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
     }
 }
 
-fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symbol, arg: &FormatArgsArg<'_>) {
-    if_chain! {
-        if FormatExpn::parse(arg.value).is_some();
-        if !arg.value.span.ctxt().outer_expn_data().call_site.from_expansion();
-        then {
-            span_lint_and_then(
-                cx,
-                FORMAT_IN_FORMAT_ARGS,
-                call_site,
-                &format!("`format!` in `{}!` args", name),
-                |diag| {
-                    diag.help(&format!(
-                        "combine the `format!(..)` arguments with the outer `{}!(..)` call",
-                        name
-                    ));
-                    diag.help("or consider changing `format!` to `format_args!`");
-                },
-            );
-        }
+fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symbol, arg: &Expr<'_>) {
+    let expn_data = arg.span.ctxt().outer_expn_data();
+    if expn_data.call_site.from_expansion() {
+        return;
     }
+    let Some(mac_id) = expn_data.macro_def_id else { return };
+    if !cx.tcx.is_diagnostic_item(sym::format_macro, mac_id) {
+        return;
+    }
+    span_lint_and_then(
+        cx,
+        FORMAT_IN_FORMAT_ARGS,
+        call_site,
+        &format!("`format!` in `{}!` args", name),
+        |diag| {
+            diag.help(&format!(
+                "combine the `format!(..)` arguments with the outer `{}!(..)` call",
+                name
+            ));
+            diag.help("or consider changing `format!` to `format_args!`");
+        },
+    );
 }
 
-fn check_to_string_in_format_args<'tcx>(cx: &LateContext<'tcx>, name: Symbol, arg: &FormatArgsArg<'tcx>) {
-    let value = arg.value;
+fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Expr<'_>) {
     if_chain! {
         if !value.span.from_expansion();
         if let ExprKind::MethodCall(_, _, [receiver], _) = value.kind;

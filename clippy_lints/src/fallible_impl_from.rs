@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::macros::{is_panic, root_macro_call_first_node};
+use clippy_utils::method_chain_args;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_expn_of, match_panic_def_id, method_chain_args};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -68,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
 
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef]) {
     use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-    use rustc_hir::{Expr, ExprKind, ImplItemKind, QPath};
+    use rustc_hir::{Expr, ImplItemKind};
 
     struct FindPanicUnwrap<'a, 'tcx> {
         lcx: &'a LateContext<'tcx>,
@@ -80,14 +81,8 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
         type Map = Map<'tcx>;
 
         fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-            // check for `begin_panic`
-            if_chain! {
-                if let ExprKind::Call(func_expr, _) = expr.kind;
-                if let ExprKind::Path(QPath::Resolved(_, path)) = func_expr.kind;
-                if let Some(path_def_id) = path.res.opt_def_id();
-                if match_panic_def_id(self.lcx, path_def_id);
-                if is_expn_of(expr.span, "unreachable").is_none();
-                then {
+            if let Some(macro_call) = root_macro_call_first_node(self.lcx, expr) {
+                if is_panic(self.lcx, macro_call.def_id) {
                     self.result.push(expr.span);
                 }
             }

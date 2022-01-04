@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{higher, is_direct_expn_of};
+use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
@@ -34,26 +34,30 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DebugAssertWithMutCall => [DEBUG_ASSERT_WITH_MUT_CALL]);
 
-const DEBUG_MACRO_NAMES: [&str; 3] = ["debug_assert", "debug_assert_eq", "debug_assert_ne"];
-
 impl<'tcx> LateLintPass<'tcx> for DebugAssertWithMutCall {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        for dmn in &DEBUG_MACRO_NAMES {
-            if is_direct_expn_of(e.span, dmn).is_some() {
-                if let Some(macro_args) = higher::extract_assert_macro_args(e) {
-                    for arg in macro_args {
-                        let mut visitor = MutArgVisitor::new(cx);
-                        visitor.visit_expr(arg);
-                        if let Some(span) = visitor.expr_span() {
-                            span_lint(
-                                cx,
-                                DEBUG_ASSERT_WITH_MUT_CALL,
-                                span,
-                                &format!("do not call a function with mutable arguments inside of `{}!`", dmn),
-                            );
-                        }
-                    }
-                }
+        let Some(macro_call) = root_macro_call_first_node(cx, e) else { return };
+        let macro_name = cx.tcx.item_name(macro_call.def_id);
+        if !matches!(
+            macro_name.as_str(),
+            "debug_assert" | "debug_assert_eq" | "debug_assert_ne"
+        ) {
+            return;
+        }
+        let Some((lhs, rhs, _)) = find_assert_eq_args(cx, e, macro_call.expn) else { return };
+        for arg in [lhs, rhs] {
+            let mut visitor = MutArgVisitor::new(cx);
+            visitor.visit_expr(arg);
+            if let Some(span) = visitor.expr_span() {
+                span_lint(
+                    cx,
+                    DEBUG_ASSERT_WITH_MUT_CALL,
+                    span,
+                    &format!(
+                        "do not call a function with mutable arguments inside of `{}!`",
+                        macro_name
+                    ),
+                );
             }
         }
     }

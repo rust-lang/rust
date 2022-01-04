@@ -27,7 +27,6 @@ note: first possible panic found here
    |
 LL |     panic!("This function panics")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:17:1
@@ -42,7 +41,6 @@ note: first possible panic found here
    |
 LL |     todo!()
    |     ^^^^^^^
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:22:1
@@ -61,7 +59,6 @@ note: first possible panic found here
    |
 LL |             panic!()
    |             ^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:31:1
@@ -76,7 +73,6 @@ note: first possible panic found here
    |
 LL |     if true { unreachable!() } else { panic!() }
    |                                       ^^^^^^^^
-   = note: this error originates in the macro `$crate::panic::panic_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:36:1
@@ -92,7 +88,6 @@ note: first possible panic found here
    |
 LL |     assert_eq!(x, 0);
    |     ^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:42:1
@@ -108,7 +103,6 @@ note: first possible panic found here
    |
 LL |     assert_ne!(x, 0);
    |     ^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 7 previous errors
 

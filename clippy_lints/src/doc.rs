@@ -1,8 +1,9 @@
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_note, span_lint_and_then};
+use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::source::{first_line_of_span, snippet_with_applicability};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{is_entrypoint_fn, is_expn_of, match_panic_def_id, method_chain_args, return_ty};
+use clippy_utils::{is_entrypoint_fn, method_chain_args, return_ty};
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{Async, AttrKind, Attribute, Fn, FnRetTy, ItemKind};
@@ -13,7 +14,7 @@ use rustc_errors::emitter::EmitterWriter;
 use rustc_errors::{Applicability, Handler, SuggestionStyle};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{AnonConst, Expr, ExprKind, QPath};
+use rustc_hir::{AnonConst, Expr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
@@ -805,22 +806,15 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
             return;
         }
 
-        // check for `begin_panic`
-        if_chain! {
-            if let ExprKind::Call(func_expr, _) = expr.kind;
-            if let ExprKind::Path(QPath::Resolved(_, path)) = func_expr.kind;
-            if let Some(path_def_id) = path.res.opt_def_id();
-            if match_panic_def_id(self.cx, path_def_id);
-            if is_expn_of(expr.span, "unreachable").is_none();
-            if !is_expn_of_debug_assertions(expr.span);
-            then {
-                self.panic_span = Some(expr.span);
+        if let Some(macro_call) = root_macro_call_first_node(self.cx, expr) {
+            if is_panic(self.cx, macro_call.def_id)
+                || matches!(
+                    self.cx.tcx.item_name(macro_call.def_id).as_str(),
+                    "assert" | "assert_eq" | "assert_ne" | "todo"
+                )
+            {
+                self.panic_span = Some(macro_call.span);
             }
-        }
-
-        // check for `assert_eq` or `assert_ne`
-        if is_expn_of(expr.span, "assert_eq").is_some() || is_expn_of(expr.span, "assert_ne").is_some() {
-            self.panic_span = Some(expr.span);
         }
 
         // check for `unwrap`
@@ -843,9 +837,4 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
     }
-}
-
-fn is_expn_of_debug_assertions(span: Span) -> bool {
-    const MACRO_NAMES: &[&str] = &["debug_assert", "debug_assert_eq", "debug_assert_ne"];
-    MACRO_NAMES.iter().any(|name| is_expn_of(span, name).is_some())
 }

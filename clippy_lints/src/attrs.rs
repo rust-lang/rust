@@ -1,9 +1,10 @@
 //! checks for attributes
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::macros::{is_panic, macro_backtrace};
 use clippy_utils::msrvs;
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
-use clippy_utils::{extract_msrv_attr, match_panic_def_id, meets_msrv};
+use clippy_utils::{extract_msrv_attr, meets_msrv};
 use if_chain::if_chain;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_errors::Applicability;
@@ -443,20 +444,15 @@ fn is_relevant_block(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_
 }
 
 fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>, expr: &Expr<'_>) -> bool {
+    if macro_backtrace(expr.span).last().map_or(false, |macro_call| {
+        is_panic(cx, macro_call.def_id) || cx.tcx.item_name(macro_call.def_id) == sym::unreachable
+    }) {
+        return false;
+    }
     match &expr.kind {
         ExprKind::Block(block, _) => is_relevant_block(cx, typeck_results, block),
         ExprKind::Ret(Some(e)) => is_relevant_expr(cx, typeck_results, e),
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
-        ExprKind::Call(path_expr, _) => {
-            if let ExprKind::Path(qpath) = &path_expr.kind {
-                typeck_results
-                    .qpath_res(qpath, path_expr.hir_id)
-                    .opt_def_id()
-                    .map_or(true, |fun_id| !match_panic_def_id(cx, fun_id))
-            } else {
-                true
-            }
-        },
         _ => true,
     }
 }
