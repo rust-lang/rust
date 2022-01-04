@@ -3,7 +3,7 @@
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, HasModuleItem},
-    match_ast, AstNode,
+    match_ast, AstNode, SyntaxKind,
 };
 
 use crate::{
@@ -16,24 +16,22 @@ use crate::{
 /// `spam: &mut Spam` insert text/label and `spam` lookup string will be
 /// suggested.
 pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    if !matches!(ctx.pattern_ctx, Some(PatternContext { is_param: Some(ParamKind::Function), .. }))
-    {
+    let param_of_fn =
+        matches!(ctx.pattern_ctx, Some(PatternContext { is_param: Some(ParamKind::Function), .. }));
+
+    if !param_of_fn {
         return None;
     }
 
-    let mut params = FxHashMap::default();
+    let mut file_params = FxHashMap::default();
 
-    let me = ctx.token.ancestors().find_map(ast::Fn::cast);
-    let mut process_fn = |func: ast::Fn| {
-        if Some(&func) == me.as_ref() {
-            return;
-        }
-        func.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
+    let mut extract_params = |f: ast::Fn| {
+        f.param_list().into_iter().flat_map(|it| it.params()).for_each(|param| {
             if let Some(pat) = param.pat() {
                 // FIXME: We should be able to turn these into SmolStr without having to allocate a String
-                let text = param.syntax().text().to_string();
-                let lookup = pat.syntax().text().to_string();
-                params.entry(text).or_insert(lookup);
+                let whole_param = param.syntax().text().to_string();
+                let binding = pat.syntax().text().to_string();
+                file_params.entry(whole_param).or_insert(binding);
             }
         });
     };
@@ -44,30 +42,75 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
                 ast::SourceFile(it) => it.items().filter_map(|item| match item {
                     ast::Item::Fn(it) => Some(it),
                     _ => None,
-                }).for_each(&mut process_fn),
+                }).for_each(&mut extract_params),
                 ast::ItemList(it) => it.items().filter_map(|item| match item {
                     ast::Item::Fn(it) => Some(it),
                     _ => None,
-                }).for_each(&mut process_fn),
+                }).for_each(&mut extract_params),
                 ast::AssocItemList(it) => it.assoc_items().filter_map(|item| match item {
                     ast::AssocItem::Fn(it) => Some(it),
                     _ => None,
-                }).for_each(&mut process_fn),
+                }).for_each(&mut extract_params),
                 _ => continue,
             }
         };
     }
 
+    let function = ctx.token.ancestors().find_map(ast::Fn::cast)?;
+    let param_list = function.param_list()?;
+
+    remove_duplicated(&mut file_params, param_list.params())?;
+
     let self_completion_items = ["self", "&self", "mut self", "&mut self"];
-    if ctx.impl_def.is_some() && me?.param_list()?.params().next().is_none() {
+    if should_add_self_completions(ctx, param_list) {
         self_completion_items.into_iter().for_each(|self_item| {
             add_new_item_to_acc(ctx, acc, self_item.to_string(), self_item.to_string())
         });
     }
 
-    params.into_iter().for_each(|(label, lookup)| add_new_item_to_acc(ctx, acc, label, lookup));
+    file_params.into_iter().try_for_each(|(whole_param, binding)| {
+        Some(add_new_item_to_acc(ctx, acc, surround_with_commas(ctx, whole_param)?, binding))
+    })?;
 
     Some(())
+}
+
+fn remove_duplicated(
+    file_params: &mut FxHashMap<String, String>,
+    mut fn_params: ast::AstChildren<ast::Param>,
+) -> Option<()> {
+    fn_params.try_for_each(|param| {
+        let whole_param = param.syntax().text().to_string();
+        file_params.remove(&whole_param);
+
+        let binding = param.pat()?.syntax().text().to_string();
+
+        file_params.retain(|_, v| v != &binding);
+        Some(())
+    })
+}
+
+fn should_add_self_completions(ctx: &CompletionContext, param_list: ast::ParamList) -> bool {
+    let inside_impl = ctx.impl_def.is_some();
+    let no_params = param_list.params().next().is_none() && param_list.self_param().is_none();
+
+    inside_impl && no_params
+}
+
+fn surround_with_commas(ctx: &CompletionContext, param: String) -> Option<String> {
+    let end_of_param_list = matches!(ctx.token.next_token()?.kind(), SyntaxKind::R_PAREN);
+    let trailing = if end_of_param_list { "" } else { "," };
+
+    let previous_token = if matches!(ctx.token.kind(), SyntaxKind::IDENT | SyntaxKind::WHITESPACE) {
+        ctx.previous_token.as_ref()?
+    } else {
+        &ctx.token
+    };
+
+    let needs_leading = !matches!(previous_token.kind(), SyntaxKind::L_PAREN | SyntaxKind::COMMA);
+    let leading = if needs_leading { ", " } else { "" };
+
+    Some(format!("{}{}{}", leading, param, trailing))
 }
 
 fn add_new_item_to_acc(
