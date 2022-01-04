@@ -59,7 +59,7 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
     let function = ctx.token.ancestors().find_map(ast::Fn::cast)?;
     let param_list = function.param_list()?;
 
-    remove_duplicated(&mut file_params, param_list.params())?;
+    remove_duplicated(&mut file_params, param_list.params());
 
     let self_completion_items = ["self", "&self", "mut self", "&mut self"];
     if should_add_self_completions(ctx, param_list) {
@@ -69,7 +69,7 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
     }
 
     file_params.into_iter().try_for_each(|(whole_param, binding)| {
-        Some(add_new_item_to_acc(ctx, acc, surround_with_commas(ctx, whole_param)?, binding))
+        Some(add_new_item_to_acc(ctx, acc, surround_with_commas(ctx, whole_param), binding))
     })?;
 
     Some(())
@@ -77,16 +77,16 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
 fn remove_duplicated(
     file_params: &mut FxHashMap<String, String>,
-    mut fn_params: ast::AstChildren<ast::Param>,
-) -> Option<()> {
-    fn_params.try_for_each(|param| {
+    fn_params: ast::AstChildren<ast::Param>,
+) {
+    fn_params.for_each(|param| {
         let whole_param = param.syntax().text().to_string();
         file_params.remove(&whole_param);
 
-        let binding = param.pat()?.syntax().text().to_string();
-
-        file_params.retain(|_, v| v != &binding);
-        Some(())
+        if let Some(pattern) = param.pat() {
+            let binding = pattern.syntax().text().to_string();
+            file_params.retain(|_, v| v != &binding);
+        }
     })
 }
 
@@ -97,13 +97,20 @@ fn should_add_self_completions(ctx: &CompletionContext, param_list: ast::ParamLi
     inside_impl && no_params
 }
 
-fn surround_with_commas(ctx: &CompletionContext, param: String) -> Option<String> {
+fn surround_with_commas(ctx: &CompletionContext, param: String) -> String {
+    match fallible_surround_with_commas(ctx, &param) {
+        Some(surrounded) => surrounded,
+        // fallback to the original parameter
+        None => param,
+    }
+}
+
+fn fallible_surround_with_commas(ctx: &CompletionContext, param: &str) -> Option<String> {
     let next_token = {
         let t = ctx.token.next_token()?;
-        if !matches!(t.kind(), SyntaxKind::WHITESPACE) {
-            t
-        } else {
-            t.next_token()?
+        match t.kind() {
+            SyntaxKind::WHITESPACE => t.next_token()?,
+            _ => t,
         }
     };
 
