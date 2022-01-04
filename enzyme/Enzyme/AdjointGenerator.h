@@ -6272,15 +6272,23 @@ public:
     DIFFE_TYPE subretType;
     if (gutils->isConstantValue(orig)) {
       subretType = DIFFE_TYPE::CONSTANT;
-    } else if (!orig->getType()->isFPOrFPVectorTy() &&
-               TR.query(orig).Inner0().isPossiblePointer()) {
-      if (is_value_needed_in_reverse<ValueType::ShadowPtr>(
-              TR, gutils, orig, Mode, oldUnreachable))
-        subretType = DIFFE_TYPE::DUP_ARG;
-      else
-        subretType = DIFFE_TYPE::CONSTANT;
     } else {
-      subretType = DIFFE_TYPE::OUT_DIFF;
+      if (Mode == DerivativeMode::ForwardMode ||
+          Mode == DerivativeMode::ForwardModeSplit ||
+          Mode == DerivativeMode::ForwardModeVector) {
+        subretType = DIFFE_TYPE::DUP_ARG;
+      } else {
+        if (!orig->getType()->isFPOrFPVectorTy() &&
+            TR.query(orig).Inner0().isPossiblePointer()) {
+          if (is_value_needed_in_reverse<ValueType::ShadowPtr>(
+                  TR, gutils, orig, Mode, oldUnreachable))
+            subretType = DIFFE_TYPE::DUP_ARG;
+          else
+            subretType = DIFFE_TYPE::CONSTANT;
+        } else {
+          subretType = DIFFE_TYPE::OUT_DIFF;
+        }
+      }
     }
 
     if (Mode == DerivativeMode::ForwardMode) {
@@ -8133,8 +8141,7 @@ public:
         newcalled = gutils->Logic.CreateForwardDiff(
             cast<Function>(called), subretType, argsInverted, gutils->TLI,
             TR.analyzer.interprocedural, /*returnValue*/ subretused,
-            /*subdretptr*/ false, DerivativeMode::ForwardMode, nullptr,
-            nextTypeInfo, {});
+            DerivativeMode::ForwardMode, nullptr, nextTypeInfo, {});
       } else {
 #if LLVM_VERSION_MAJOR >= 11
         auto callval = orig->getCalledOperand();

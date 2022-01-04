@@ -2718,7 +2718,7 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
   switch (mode) {
   case DerivativeMode::ForwardMode: {
     Constant *newf =
-        Logic.CreateForwardDiff(fn, retType, types, TLI, TA, false, false, mode,
+        Logic.CreateForwardDiff(fn, retType, types, TLI, TA, false, mode,
                                 nullptr, type_args, uncacheable_args);
 
     if (!newf)

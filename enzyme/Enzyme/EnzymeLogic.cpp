@@ -3724,10 +3724,11 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 Function *EnzymeLogic::CreateForwardDiff(
     Function *todiff, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, TargetLibraryInfo &TLI,
-    TypeAnalysis &TA, bool returnUsed, bool dretPtr, DerivativeMode mode,
+    TypeAnalysis &TA, bool returnUsed, DerivativeMode mode,
     llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args, bool PostOpt,
     bool omp) {
+  assert(retType != DIFFE_TYPE::OUT_DIFF);
 
   assert(mode == DerivativeMode::ForwardMode ||
          mode == DerivativeMode::ForwardModeVector ||
@@ -3742,7 +3743,7 @@ Function *EnzymeLogic::CreateForwardDiff(
       std::make_tuple(todiff, retType, constant_args,
                       std::map<Argument *, bool>(_uncacheable_args.begin(),
                                                  _uncacheable_args.end()),
-                      returnUsed, dretPtr, mode, additionalArg, oldTypeInfo);
+                      returnUsed, mode, additionalArg, oldTypeInfo);
   if (ForwardCachedFunctions.find(tup) != ForwardCachedFunctions.end()) {
     return ForwardCachedFunctions.find(tup)->second;
   }
@@ -3750,6 +3751,7 @@ Function *EnzymeLogic::CreateForwardDiff(
   // TODO change this to go by default function type assumptions
   bool hasconstant = false;
   for (auto v : constant_args) {
+    assert(v != DIFFE_TYPE::OUT_DIFF);
     if (v == DIFFE_TYPE::CONSTANT) {
       hasconstant = true;
       break;
@@ -3768,6 +3770,54 @@ Function *EnzymeLogic::CreateForwardDiff(
     assert(md2->getNumOperands() == 1);
     auto gvemd = cast<ConstantAsMetadata>(md2->getOperand(0));
     auto foundcalled = cast<Function>(gvemd->getValue());
+
+    if (!foundcalled->getReturnType()->isVoidTy()) {
+      if (returnUsed && retType == DIFFE_TYPE::CONSTANT) {
+        FunctionType *FTy = FunctionType::get(
+            todiff->getReturnType(), foundcalled->getFunctionType()->params(),
+            foundcalled->getFunctionType()->isVarArg());
+        Function *NewF = Function::Create(
+            FTy, Function::LinkageTypes::InternalLinkage,
+            "fixderivative_" + todiff->getName(), todiff->getParent());
+        for (auto pair : llvm::zip(NewF->args(), foundcalled->args())) {
+          std::get<0>(pair).setName(std::get<1>(pair).getName());
+        }
+
+        BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
+        IRBuilder<> bb(BB);
+        SmallVector<Value *, 2> args;
+        for (auto &a : NewF->args())
+          args.push_back(&a);
+        auto cal = bb.CreateCall(foundcalled, args);
+        cal->setCallingConv(foundcalled->getCallingConv());
+
+        bb.CreateRet(bb.CreateExtractValue(cal, 0));
+        return ForwardCachedFunctions[tup] = NewF;
+      }
+      if (!returnUsed && retType != DIFFE_TYPE::CONSTANT) {
+        FunctionType *FTy = FunctionType::get(
+            todiff->getReturnType(), foundcalled->getFunctionType()->params(),
+            foundcalled->getFunctionType()->isVarArg());
+        Function *NewF = Function::Create(
+            FTy, Function::LinkageTypes::InternalLinkage,
+            "fixderivative_" + todiff->getName(), todiff->getParent());
+        for (auto pair : llvm::zip(NewF->args(), foundcalled->args())) {
+          std::get<0>(pair).setName(std::get<1>(pair).getName());
+        }
+
+        BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
+        IRBuilder<> bb(BB);
+        SmallVector<Value *, 2> args;
+        for (auto &a : NewF->args())
+          args.push_back(&a);
+        auto cal = bb.CreateCall(foundcalled, args);
+        cal->setCallingConv(foundcalled->getCallingConv());
+
+        bb.CreateRet(bb.CreateExtractValue(cal, 1));
+        return ForwardCachedFunctions[tup] = NewF;
+      }
+      assert(returnUsed);
+    }
 
     return foundcalled;
   }
