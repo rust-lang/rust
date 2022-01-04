@@ -1,0 +1,16 @@
+error[E0308]: mismatched types
+  --> $DIR/str-as-char.rs:7:19
+   |
+LL |     let _: &str = 'a';
+   |            ----   ^^^ expected `&str`, found `char`
+   |            |
+   |            expected due to this
+   |
+help: if you meant to write a `str` literal, use double quotes
+   |
+LL |     let _: &str = "a";
+   |                   ~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
