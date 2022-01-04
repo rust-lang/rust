@@ -1,5 +1,5 @@
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:8:13
+  --> $DIR/redundant_slicing.rs:10:13
    |
 LL |     let _ = &slice[..]; // Redundant slice
    |             ^^^^^^^^^^ help: use the original value instead: `slice`
@@ -7,52 +7,58 @@ LL |     let _ = &slice[..]; // Redundant slice
    = note: `-D clippy::redundant-slicing` implied by `-D warnings`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:11:13
+  --> $DIR/redundant_slicing.rs:13:13
    |
 LL |     let _ = &v[..]; // Deref instead of slice
    |             ^^^^^^ help: dereference the original value instead: `&*v`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:12:13
+  --> $DIR/redundant_slicing.rs:14:13
    |
 LL |     let _ = &(&*v)[..]; // Outer borrow is redundant
    |             ^^^^^^^^^^ help: use the original value instead: `(&*v)`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:15:20
+  --> $DIR/redundant_slicing.rs:17:20
    |
 LL |     let err = &mut &S[..]; // Should reborrow instead of slice
    |                    ^^^^^^ help: reborrow the original value instead: `&*S`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:18:21
+  --> $DIR/redundant_slicing.rs:20:21
    |
 LL |     let mut_slice = &mut vec[..]; // Deref instead of slice
    |                     ^^^^^^^^^^^^ help: dereference the original value instead: `&mut *vec`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:19:13
+  --> $DIR/redundant_slicing.rs:21:13
    |
 LL |     let _ = &mut mut_slice[..]; // Should reborrow instead of slice
    |             ^^^^^^^^^^^^^^^^^^ help: reborrow the original value instead: `&mut *mut_slice`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:22:13
+  --> $DIR/redundant_slicing.rs:24:13
    |
 LL |     let _ = &ref_vec[..]; // Deref instead of slice
    |             ^^^^^^^^^^^^ help: dereference the original value instead: `&**ref_vec`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:29:13
+  --> $DIR/redundant_slicing.rs:31:13
    |
 LL |     let _ = &m!(slice)[..];
    |             ^^^^^^^^^^^^^^ help: use the original value instead: `slice`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:39:13
+  --> $DIR/redundant_slicing.rs:41:13
    |
 LL |     let _ = &slice_ref[..]; // Deref instead of slice
    |             ^^^^^^^^^^^^^^ help: dereference the original value instead: `*slice_ref`
 
-error: aborting due to 9 previous errors
+error: redundant slicing of the whole range
+  --> $DIR/redundant_slicing.rs:45:13
+   |
+LL |     let _ = (&bytes[..]).read_to_end(&mut vec![]).unwrap();
+   |             ^^^^^^^^^^^^ help: reborrow the original value instead: `(&*bytes)`
+
+error: aborting due to 10 previous errors
 
