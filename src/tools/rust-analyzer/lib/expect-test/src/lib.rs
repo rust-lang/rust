@@ -725,6 +725,11 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_trivial_assert() {
+        expect!["5"].assert_eq("5");
+    }
+
+    #[test]
     fn test_format_patch() {
         let patch = format_patch(None, "hello\nworld\n");
         expect![[r##"
