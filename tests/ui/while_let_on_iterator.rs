@@ -372,6 +372,36 @@ fn exact_match_with_single_field() {
     }
 }
 
+fn custom_deref() {
+    struct S1<T> {
+        x: T,
+    }
+    struct S2<T>(S1<T>);
+    impl<T> core::ops::Deref for S2<T> {
+        type Target = S1<T>;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    impl<T> core::ops::DerefMut for S2<T> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
+    }
+
+    let mut s = S2(S1 { x: 0..10 });
+    while let Some(x) = s.x.next() {
+        println!("{}", x);
+    }
+}
+
+fn issue_8113() {
+    let mut x = [0..10];
+    while let Some(x) = x[0].next() {
+        println!("{}", x);
+    }
+}
+
 fn main() {
     let mut it = 0..20;
     while let Some(..) = it.next() {

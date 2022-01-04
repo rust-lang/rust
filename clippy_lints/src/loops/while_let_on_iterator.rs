@@ -8,12 +8,13 @@ use clippy_utils::{
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor};
-use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, PatKind, QPath, UnOp};
+use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
-use rustc_span::{symbol::sym, Span, Symbol};
+use rustc_middle::ty::adjustment::Adjust;
+use rustc_span::{symbol::sym, Symbol};
 
 pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    let (scrutinee_expr, iter_expr, some_pat, loop_expr) = if_chain! {
+    let (scrutinee_expr, iter_expr_struct, iter_expr, some_pat, loop_expr) = if_chain! {
         if let Some(higher::WhileLet { if_then, let_pat, let_expr }) = higher::WhileLet::hir(expr);
         // check for `Some(..)` pattern
         if let PatKind::TupleStruct(QPath::Resolved(None, pat_path), some_pat, _) = let_pat.kind;
@@ -27,7 +28,7 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // get the loop containing the match expression
         if !uses_iter(cx, &iter_expr_struct, if_then);
         then {
-            (let_expr, iter_expr_struct, some_pat, expr)
+            (let_expr, iter_expr_struct, iter_expr, some_pat, expr)
         } else {
             return;
         }
@@ -47,7 +48,11 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     // If the iterator is a field or the iterator is accessed after the loop is complete it needs to be
     // borrowed mutably. TODO: If the struct can be partially moved from and the struct isn't used
     // afterwards a mutable borrow of a field isn't necessary.
-    let by_ref = if !iter_expr.fields.is_empty() || needs_mutable_borrow(cx, &iter_expr, loop_expr) {
+    let by_ref = if cx.typeck_results().expr_ty(iter_expr).ref_mutability() == Some(Mutability::Mut)
+        || !iter_expr_struct.can_move
+        || !iter_expr_struct.fields.is_empty()
+        || needs_mutable_borrow(cx, &iter_expr_struct, loop_expr)
+    {
         ".by_ref()"
     } else {
         ""
@@ -67,26 +72,36 @@ pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
 
 #[derive(Debug)]
 struct IterExpr {
-    /// The span of the whole expression, not just the path and fields stored here.
-    span: Span,
     /// The fields used, in order of child to parent.
     fields: Vec<Symbol>,
     /// The path being used.
     path: Res,
+    /// Whether or not the iterator can be moved.
+    can_move: bool,
 }
 
 /// Parses any expression to find out which field of which variable is used. Will return `None` if
 /// the expression might have side effects.
 fn try_parse_iter_expr(cx: &LateContext<'_>, mut e: &Expr<'_>) -> Option<IterExpr> {
-    let span = e.span;
     let mut fields = Vec::new();
+    let mut can_move = true;
     loop {
+        if cx
+            .typeck_results()
+            .expr_adjustments(e)
+            .iter()
+            .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
+        {
+            // Custom deref impls need to borrow the whole value as it's captured by reference
+            can_move = false;
+            fields.clear();
+        }
         match e.kind {
             ExprKind::Path(ref path) => {
                 break Some(IterExpr {
-                    span,
                     fields,
                     path: cx.qpath_res(path, e.hir_id),
+                    can_move,
                 });
             },
             ExprKind::Field(base, name) => {
@@ -99,10 +114,12 @@ fn try_parse_iter_expr(cx: &LateContext<'_>, mut e: &Expr<'_>) -> Option<IterExp
             // Shouldn't have side effects, but there's no way to trace which field is used. So forget which fields have
             // already been seen.
             ExprKind::Index(base, idx) if !idx.can_have_side_effects() => {
+                can_move = false;
                 fields.clear();
                 e = base;
             },
             ExprKind::Unary(UnOp::Deref, base) => {
+                can_move = false;
                 fields.clear();
                 e = base;
             },

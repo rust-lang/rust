@@ -123,10 +123,22 @@ LL |     while let Some(x) = it.0.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in it.0.by_ref()`
 
 error: this loop could be written as a `for` loop
-  --> $DIR/while_let_on_iterator.rs:377:5
+  --> $DIR/while_let_on_iterator.rs:393:5
+   |
+LL |     while let Some(x) = s.x.next() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in s.x.by_ref()`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:400:5
+   |
+LL |     while let Some(x) = x[0].next() {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for x in x[0].by_ref()`
+
+error: this loop could be written as a `for` loop
+  --> $DIR/while_let_on_iterator.rs:407:5
    |
 LL |     while let Some(..) = it.next() {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `for _ in it`
 
-error: aborting due to 21 previous errors
+error: aborting due to 23 previous errors
 
