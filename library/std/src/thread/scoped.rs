@@ -11,7 +11,7 @@ use crate::sync::Arc;
 /// See [`scope`] for details.
 pub struct Scope<'env> {
     data: ScopeData,
-    env: PhantomData<&'env ()>,
+    env: PhantomData<&'env mut &'env ()>,
 }
 
 /// An owned permission to join on a scoped thread (block on its termination).
