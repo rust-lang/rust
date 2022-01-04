@@ -29,7 +29,7 @@ impl ScopeData {
     pub(super) fn increment_n_running_threads(&self) {
         // We check for 'overflow' with usize::MAX / 2, to make sure there's no
         // chance it overflows to 0, which would result in unsoundness.
-        if self.n_running_threads.fetch_add(1, Ordering::Relaxed) == usize::MAX / 2 {
+        if self.n_running_threads.fetch_add(1, Ordering::Relaxed) > usize::MAX / 2 {
             // This can only reasonably happen by mem::forget()'ing many many ScopedJoinHandles.
             self.decrement_n_running_threads(false);
             panic!("too many running threads in thread scope");
