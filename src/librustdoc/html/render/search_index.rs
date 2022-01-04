@@ -363,7 +363,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
             let mut ty_generics = Vec::new();
             for bound in bound.get_bounds().unwrap_or(&[]) {
                 if let Some(path) = bound.get_trait_path() {
-                    let ty = Type::Path { path };
+                    let ty = Type::Path { path: path.clone() };
                     add_generics_and_bounds_as_types(
                         generics,
                         &ty,

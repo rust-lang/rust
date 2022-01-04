@@ -502,6 +502,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         has_sized.insert(ty.clone());
                     } else if !b
                         .get_trait_path()
+                        .cloned()
                         .and_then(|trait_| {
                             ty_to_traits
                                 .get(&ty)
