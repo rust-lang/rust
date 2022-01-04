@@ -308,18 +308,20 @@ impl Expect {
             if i == self.position.line as usize - 1 {
                 // `column` points to the first character of the macro invocation:
                 //
-                //    expect![[ ... ]]
-                //    ^
+                //    expect![[r#""#]]        expect![""]
+                //    ^       ^               ^       ^
+                //  column   offset                 offset
                 //
                 // Seek past the exclam, then skip any whitespace and
-                // delimiters to get to our argument.
+                // the macro delimiter to get to our argument.
                 let byte_offset = line
                     .char_indices()
                     .skip((self.position.column - 1).try_into().unwrap())
                     .skip_while(|&(_, c)| c != '!')
-                    .skip(1)
+                    .skip(1) // !
                     .skip_while(|&(_, c)| c.is_whitespace())
-                    .skip_while(|&(_, c)| matches!(c, '[' | '(' | '{'))
+                    .skip(1) // [({
+                    .skip_while(|&(_, c)| c.is_whitespace())
                     .next()
                     .expect("Failed to parse macro invocation")
                     .0;
@@ -345,16 +347,24 @@ impl Expect {
     }
 }
 
-fn locate_end(lit_to_eof: &str) -> Option<usize> {
-    assert!(lit_to_eof.chars().next().map_or(true, |c| !c.is_whitespace()));
+fn locate_end(arg_start_to_eof: &str) -> Option<usize> {
+    match arg_start_to_eof.chars().next()? {
+        c if c.is_whitespace() => panic!("skip whitespace before calling `locate_end`"),
 
-    let first = lit_to_eof.chars().next()?;
-    if matches!(first, ']' | '}' | ')') {
-        // expect![[ ]]
-        Some(0)
-    } else {
-        // expect![["foo"]]
-        find_str_lit_len(lit_to_eof)
+        // expect![[]]
+        '[' => {
+            let str_start_to_eof = arg_start_to_eof[1..].trim_start();
+            let str_len = find_str_lit_len(str_start_to_eof)?;
+            let str_end_to_eof = &str_start_to_eof[str_len..];
+            let closing_brace_offset = str_end_to_eof.find(']')?;
+            Some((arg_start_to_eof.len() - str_end_to_eof.len()) + closing_brace_offset + 1)
+        }
+
+        // expect![] | expect!{} | expect!()
+        ']' | '}' | ')' => Some(0),
+
+        // expect!["..."] | expect![r#"..."#]
+        _ => find_str_lit_len(arg_start_to_eof),
     }
 }
 
@@ -537,6 +547,8 @@ impl FileRuntime {
 #[derive(Debug)]
 struct Location {
     line_indent: usize,
+
+    /// The byte range of the argument to `expect!`, including the inner `[]` if it exists.
     literal_range: Range<usize>,
 }
 
