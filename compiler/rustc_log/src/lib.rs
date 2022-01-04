@@ -12,7 +12,7 @@
 //! rustc_span = { path = "../rust/compiler/rustc_span" }
 //! ```
 //!
-//! ```ignore
+//! ```
 //! fn main() {
 //!     rustc_log::init_rustc_env_logger().unwrap();
 //!
