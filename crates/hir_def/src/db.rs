@@ -55,6 +55,8 @@ pub trait InternDatabase: SourceDatabase {
 pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::input]
     fn enable_proc_attr_macros(&self) -> bool;
+    #[salsa::input]
+    fn enablse_proc_attr_macros(&self) -> bool;
 
     #[salsa::invoke(ItemTree::file_item_tree_query)]
     fn file_item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;

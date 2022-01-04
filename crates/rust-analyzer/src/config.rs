@@ -301,6 +301,7 @@ config_data! {
         /// Internal config, path to proc-macro server executable (typically,
         /// this is rust-analyzer itself, but we override this in tests).
         procMacro_server: Option<PathBuf>          = "null",
+        procMacro_dummies: FxHashMap<Box<str>, Box<[Box<str>]>>          = "{}",
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_overrideCargo: Option<String> = "null",
@@ -715,6 +716,9 @@ impl Config {
             None => AbsPathBuf::assert(std::env::current_exe().ok()?),
         };
         Some((path, vec!["proc-macro".into()]))
+    }
+    pub fn dummy_replacements(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
+        &self.data.procMacro_dummies
     }
     pub fn expand_proc_attr_macros(&self) -> bool {
         self.data.experimental_procAttrMacros
