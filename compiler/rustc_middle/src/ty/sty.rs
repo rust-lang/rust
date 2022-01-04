@@ -78,7 +78,7 @@ impl BoundRegionKind {
 ///
 /// N.B., if you change this, you'll probably want to change the corresponding
 /// AST structure in `rustc_ast/src/ast.rs` as well.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable, Debug)]
 #[derive(HashStable)]
 #[rustc_diagnostic_item = "TyKind"]
 pub enum TyKind<'tcx> {
@@ -196,6 +196,106 @@ pub enum TyKind<'tcx> {
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
     Error(DelaySpanBugEmitted),
+}
+
+// try to use less hash operations to speed up hashing compared to a derived
+// implementation
+impl<'tcx> std::hash::Hash for TyKind<'tcx> {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        let disc = std::intrinsics::discriminant_value(self) as usize;
+        // This is the number of bits to shift another small value by so that they don't overlap
+        // with the discriminant
+        const DISC_BITS: u32 = std::mem::variant_count::<TyKind<'_>>().log2() + 1;
+        match self {
+            Self::Bool | Self::Char | Self::Str | Self::Never | Self::Error(_) => disc.hash(h),
+            Self::Int(i) => {
+                (disc | ((std::intrinsics::discriminant_value(i) as usize) << DISC_BITS)).hash(h);
+            }
+            Self::Uint(u) => {
+                (disc | ((std::intrinsics::discriminant_value(u) as usize) << DISC_BITS)).hash(h);
+            }
+            Self::Float(f) => {
+                (disc | ((std::intrinsics::discriminant_value(f) as usize) << DISC_BITS)).hash(h);
+            }
+            Self::Adt(adt_def, substs) => {
+                disc.hash(h);
+                adt_def.hash(h);
+                substs.hash(h);
+            }
+            Self::Foreign(d) => {
+                disc.hash(h);
+                d.hash(h);
+            }
+            Self::Array(ty, cst) => {
+                disc.hash(h);
+                ty.hash(h);
+                cst.hash(h);
+            }
+            Self::Slice(ty) => {
+                disc.hash(h);
+                ty.hash(h);
+            }
+            Self::RawPtr(TypeAndMut { ty, mutbl }) => {
+                (disc | (std::intrinsics::discriminant_value(mutbl) as usize) << DISC_BITS).hash(h);
+                ty.hash(h);
+            }
+            Self::Ref(region, ty, mutbl) => {
+                (disc | (std::intrinsics::discriminant_value(mutbl) as usize) << DISC_BITS).hash(h);
+                region.hash(h);
+                ty.hash(h)
+            }
+            Self::Tuple(substs) => {
+                disc.hash(h);
+                substs.hash(h);
+            }
+            Self::FnDef(d, substs) | Self::Closure(d, substs) | Self::Opaque(d, substs) => {
+                disc.hash(h);
+                d.hash(h);
+                substs.hash(h);
+            }
+            Self::Generator(d, substs, movabl) => {
+                disc.hash(h);
+                d.hash(h);
+                substs.hash(h);
+                movabl.hash(h);
+            }
+            Self::FnPtr(poly_sig) => {
+                disc.hash(h);
+                poly_sig.hash(h);
+            }
+            Self::Dynamic(predicates, region) => {
+                disc.hash(h);
+                predicates.hash(h);
+                region.hash(h);
+            }
+            Self::GeneratorWitness(gen) => {
+                disc.hash(h);
+                gen.hash(h);
+            }
+            Self::Projection(projection) => {
+                disc.hash(h);
+                projection.hash(h);
+            }
+            Self::Param(ParamTy { index, name }) => {
+                disc.hash(h);
+                index.hash(h);
+                name.hash(h);
+            }
+            Self::Bound(index, bound) => {
+                disc.hash(h);
+                index.hash(h);
+                bound.hash(h);
+            }
+            Self::Placeholder(placeholder) => {
+                disc.hash(h);
+                placeholder.hash(h);
+            }
+            Self::Infer(infty) => {
+                disc.hash(h);
+                infty.hash(h);
+            }
+        }
+    }
 }
 
 impl<'tcx> TyKind<'tcx> {

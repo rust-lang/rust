@@ -35,6 +35,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(get_mut_unchecked)]
 #![feature(if_let_guard)]
+#![feature(int_log)]
 #![feature(map_first_last)]
 #![feature(never_type)]
 #![feature(extern_types)]
@@ -55,6 +56,7 @@
 #![feature(try_reserve_kind)]
 #![feature(nonzero_ops)]
 #![feature(unwrap_infallible)]
+#![feature(variant_count)]
 #![recursion_limit = "512"]
 
 #[macro_use]
