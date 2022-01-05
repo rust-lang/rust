@@ -1,4 +1,4 @@
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for return types
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/issue-80179.rs:10:24
    |
 LL | fn returns_fn_ptr() -> _ {
@@ -7,7 +7,7 @@ LL | fn returns_fn_ptr() -> _ {
    |                        not allowed in type signatures
    |                        help: replace with the correct return type: `fn() -> i32`
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for return types
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/issue-80179.rs:18:25
    |
 LL | fn returns_closure() -> _ {

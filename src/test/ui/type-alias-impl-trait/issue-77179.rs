@@ -5,7 +5,7 @@
 type Pointer<T> = impl std::ops::Deref<Target=T>;
 
 fn test() -> Pointer<_> {
-    //~^ ERROR: the type placeholder `_` is not allowed within types
+    //~^ ERROR: the placeholder `_` is not allowed within types
     Box::new(1)
 }
 

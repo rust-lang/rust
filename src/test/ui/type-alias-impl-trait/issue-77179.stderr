@@ -1,4 +1,4 @@
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for return types
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/issue-77179.rs:7:22
    |
 LL | fn test() -> Pointer<_> {
