@@ -11,6 +11,8 @@ use crate::sync::Arc;
 /// See [`scope`] for details.
 pub struct Scope<'env> {
     data: ScopeData,
+    /// Invariance over 'env, to make sure 'env cannot shrink,
+    /// which is necessary for soundness.
     env: PhantomData<&'env mut &'env ()>,
 }
 
