@@ -83,6 +83,7 @@ Rustdoc
 Compatibility Notes
 -------------------
 
+- [Try all stable method candidates first before trying unstable ones][90329]. This change ensures that adding new nightly-only methods to the Rust standard library will not break code invoking methods of the same name from traits outside the standard library.
 - Windows: [`std::process::Command` will no longer search the current directory for executables.][87704]
 - [All proc-macro backward-compatibility lints are now deny-by-default.][88041]
 - [proc_macro: Append .0 to unsuffixed float if it would otherwise become int token][90297]
@@ -96,7 +97,6 @@ These changes provide no direct user facing benefits, but represent significant
 improvements to the internals and overall performance of rustc
 and related tools.
 
-- [Try all stable method candidates first before trying unstable ones][90329]. This change ensures that adding new nightly-only methods to the Rust standard library will not break code invoking methods of the same name from traits outside the standard library.
 - [Implement coherence checks for negative trait impls][90104]
 - [Add rustc lint, warning when iterating over hashmaps][89558]
 - [Optimize live point computation][90491]
