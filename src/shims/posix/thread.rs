@@ -54,7 +54,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Abi::C { unwind: false },
             &[*func_arg],
             Some(&ret_place.into()),
-            StackPopCleanup::None { cleanup: true },
+            StackPopCleanup::Root { cleanup: true },
         )?;
 
         // Restore the old active thread frame.

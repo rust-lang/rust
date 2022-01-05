@@ -259,7 +259,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Abi::System { unwind: false },
             &[Scalar::null_ptr(this).into(), reason.into(), Scalar::null_ptr(this).into()],
             Some(&ret_place),
-            StackPopCleanup::None { cleanup: true },
+            StackPopCleanup::Root { cleanup: true },
         )?;
 
         this.enable_thread(active_thread);
@@ -282,7 +282,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Abi::C { unwind: false },
                 &[data.into()],
                 Some(&ret_place),
-                StackPopCleanup::None { cleanup: true },
+                StackPopCleanup::Root { cleanup: true },
             )?;
 
             // Enable the thread so that it steps through the destructor which
@@ -325,7 +325,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Abi::C { unwind: false },
                 &[ptr.into()],
                 Some(&ret_place),
-                StackPopCleanup::None { cleanup: true },
+                StackPopCleanup::Root { cleanup: true },
             )?;
 
             this.enable_thread(active_thread);
