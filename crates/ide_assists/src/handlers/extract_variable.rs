@@ -53,7 +53,13 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
     }
 
     let ref_kind: RefKind = if let Some(receiver_type) = get_receiver_type(&ctx, &to_extract) {
-        if receiver_type.is_mutable_reference() { RefKind::MutRef } else { RefKind::Ref }
+        if receiver_type.is_mutable_reference() {
+            RefKind::MutRef
+        } else if receiver_type.is_reference() {
+            RefKind::Ref
+        } else {
+            RefKind::None
+        }
     } else {
         RefKind::None
     };
@@ -86,7 +92,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             let reference_modifier = match ref_kind {
                 RefKind::MutRef => "&mut ",
                 RefKind::Ref => "&",
-                RefKind::None => ""
+                RefKind::None => "",
             };
 
             match anchor {
@@ -180,7 +186,7 @@ fn get_receiver(expression: ast::Expr) -> Option<ast::Expr> {
 enum RefKind {
     Ref,
     MutRef,
-    None
+    None,
 }
 
 #[derive(Debug)]
@@ -1088,6 +1094,46 @@ struct S {
 fn foo(s: &S) {
     let $0z = &s.sub.field.field;
     z.do_thing();
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_regular_parameter() {
+        check_assist(
+            extract_variable,
+            r#"
+struct X;
+
+impl X {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: S) {
+    $0s.sub$0.do_thing();
+}"#,
+            r#"
+struct X;
+
+impl X {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: S) {
+    let $0x = s.sub;
+    x.do_thing();
 }"#,
         );
     }
