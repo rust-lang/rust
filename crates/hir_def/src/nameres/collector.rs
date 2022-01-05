@@ -1124,10 +1124,13 @@ impl DefCollector<'_> {
                         }
                     }
 
-                    let def = resolver(path.clone()).filter(MacroDefId::is_attribute);
+                    let def = match resolver(path.clone()) {
+                        Some(def) if def.is_attribute() => def,
+                        _ => return true,
+                    };
                     if matches!(
                         def,
-                        Some(MacroDefId {  kind:MacroDefKind::BuiltInAttr(expander, _),.. })
+                        MacroDefId {  kind:MacroDefKind::BuiltInAttr(expander, _),.. }
                         if expander.is_derive()
                     ) {
                         // Resolved to `#[derive]`
@@ -1184,52 +1187,46 @@ impl DefCollector<'_> {
                         return true;
                     }
 
-                    // Not resolved to a derive helper or the derive attribute, so try to resolve as a normal attribute.
-                    match attr_macro_as_call_id(file_ast_id, attr, self.db, self.def_map.krate, def)
-                    {
-                        Ok(call_id) => {
-                            let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
+                    // Not resolved to a derive helper or the derive attribute, so try to treat as a normal attribute.
+                    let call_id =
+                        attr_macro_as_call_id(file_ast_id, attr, self.db, self.def_map.krate, def);
+                    let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
 
-                            // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
-                            // due to duplicating functions into macro expansions
-                            if matches!(
-                                loc.def.kind,
-                                MacroDefKind::BuiltInAttr(expander, _)
-                                if expander.is_test() || expander.is_bench()
-                            ) {
-                                return recollect_without(self);
-                            }
-
-                            if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
-                                if exp.is_dummy() {
-                                    // Proc macros that cannot be expanded are treated as not
-                                    // resolved, in order to fall back later.
-                                    self.def_map.diagnostics.push(
-                                        DefDiagnostic::unresolved_proc_macro(
-                                            directive.module_id,
-                                            loc.kind,
-                                        ),
-                                    );
-
-                                    return recollect_without(self);
-                                }
-                            }
-
-                            self.def_map.modules[directive.module_id]
-                                .scope
-                                .add_attr_macro_invoc(ast_id, call_id);
-
-                            resolved.push((
-                                directive.module_id,
-                                call_id,
-                                directive.depth,
-                                directive.container,
-                            ));
-                            res = ReachedFixedPoint::No;
-                            return false;
-                        }
-                        Err(UnresolvedMacro { .. }) => (),
+                    // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
+                    // due to duplicating functions into macro expansions
+                    if matches!(
+                        loc.def.kind,
+                        MacroDefKind::BuiltInAttr(expander, _)
+                        if expander.is_test() || expander.is_bench()
+                    ) {
+                        return recollect_without(self);
                     }
+
+                    if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
+                        if exp.is_dummy() {
+                            // Proc macros that cannot be expanded are treated as not
+                            // resolved, in order to fall back later.
+                            self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                                directive.module_id,
+                                loc.kind,
+                            ));
+
+                            return recollect_without(self);
+                        }
+                    }
+
+                    self.def_map.modules[directive.module_id]
+                        .scope
+                        .add_attr_macro_invoc(ast_id, call_id);
+
+                    resolved.push((
+                        directive.module_id,
+                        call_id,
+                        directive.depth,
+                        directive.container,
+                    ));
+                    res = ReachedFixedPoint::No;
+                    return false;
                 }
             }
 
