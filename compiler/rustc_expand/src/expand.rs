@@ -178,10 +178,10 @@ ast_fragments! {
     Arms(SmallVec<[ast::Arm; 1]>) {
         "match arm"; many fn flat_map_arm; fn visit_arm(); fn make_arms;
     }
-    Fields(SmallVec<[ast::ExprField; 1]>) {
+    ExprFields(SmallVec<[ast::ExprField; 1]>) {
         "field expression"; many fn flat_map_expr_field; fn visit_expr_field(); fn make_expr_fields;
     }
-    FieldPats(SmallVec<[ast::PatField; 1]>) {
+    PatFields(SmallVec<[ast::PatField; 1]>) {
         "field pattern";
         many fn flat_map_pat_field;
         fn visit_pat_field();
@@ -196,7 +196,7 @@ ast_fragments! {
     Params(SmallVec<[ast::Param; 1]>) {
         "function parameter"; many fn flat_map_param; fn visit_param(); fn make_params;
     }
-    StructFields(SmallVec<[ast::FieldDef; 1]>) {
+    FieldDefs(SmallVec<[ast::FieldDef; 1]>) {
         "field";
         many fn flat_map_field_def;
         fn visit_field_def();
@@ -231,11 +231,11 @@ impl AstFragmentKind {
             | AstFragmentKind::ForeignItems
             | AstFragmentKind::Crate => SupportsMacroExpansion::Yes { supports_inner_attrs: true },
             AstFragmentKind::Arms
-            | AstFragmentKind::Fields
-            | AstFragmentKind::FieldPats
+            | AstFragmentKind::ExprFields
+            | AstFragmentKind::PatFields
             | AstFragmentKind::GenericParams
             | AstFragmentKind::Params
-            | AstFragmentKind::StructFields
+            | AstFragmentKind::FieldDefs
             | AstFragmentKind::Variants => SupportsMacroExpansion::No,
         }
     }
@@ -249,11 +249,11 @@ impl AstFragmentKind {
             AstFragmentKind::Arms => {
                 AstFragment::Arms(items.map(Annotatable::expect_arm).collect())
             }
-            AstFragmentKind::Fields => {
-                AstFragment::Fields(items.map(Annotatable::expect_expr_field).collect())
+            AstFragmentKind::ExprFields => {
+                AstFragment::ExprFields(items.map(Annotatable::expect_expr_field).collect())
             }
-            AstFragmentKind::FieldPats => {
-                AstFragment::FieldPats(items.map(Annotatable::expect_pat_field).collect())
+            AstFragmentKind::PatFields => {
+                AstFragment::PatFields(items.map(Annotatable::expect_pat_field).collect())
             }
             AstFragmentKind::GenericParams => {
                 AstFragment::GenericParams(items.map(Annotatable::expect_generic_param).collect())
@@ -261,8 +261,8 @@ impl AstFragmentKind {
             AstFragmentKind::Params => {
                 AstFragment::Params(items.map(Annotatable::expect_param).collect())
             }
-            AstFragmentKind::StructFields => {
-                AstFragment::StructFields(items.map(Annotatable::expect_field_def).collect())
+            AstFragmentKind::FieldDefs => {
+                AstFragment::FieldDefs(items.map(Annotatable::expect_field_def).collect())
             }
             AstFragmentKind::Variants => {
                 AstFragment::Variants(items.map(Annotatable::expect_variant).collect())
@@ -915,11 +915,11 @@ pub fn parse_ast_fragment<'a>(
         )?),
         AstFragmentKind::Crate => AstFragment::Crate(this.parse_crate_mod()?),
         AstFragmentKind::Arms
-        | AstFragmentKind::Fields
-        | AstFragmentKind::FieldPats
+        | AstFragmentKind::ExprFields
+        | AstFragmentKind::PatFields
         | AstFragmentKind::GenericParams
         | AstFragmentKind::Params
-        | AstFragmentKind::StructFields
+        | AstFragmentKind::FieldDefs
         | AstFragmentKind::Variants => panic!("unexpected AST fragment kind"),
     })
 }
@@ -1231,7 +1231,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
         if let Some(attr) = self.take_first_attr(&mut field) {
             return self
-                .collect_attr(attr, Annotatable::ExprField(field), AstFragmentKind::Fields)
+                .collect_attr(attr, Annotatable::ExprField(field), AstFragmentKind::ExprFields)
                 .make_expr_fields();
         }
 
@@ -1243,7 +1243,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
         if let Some(attr) = self.take_first_attr(&mut fp) {
             return self
-                .collect_attr(attr, Annotatable::PatField(fp), AstFragmentKind::FieldPats)
+                .collect_attr(attr, Annotatable::PatField(fp), AstFragmentKind::PatFields)
                 .make_pat_fields();
         }
 
@@ -1267,7 +1267,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
         if let Some(attr) = self.take_first_attr(&mut sf) {
             return self
-                .collect_attr(attr, Annotatable::FieldDef(sf), AstFragmentKind::StructFields)
+                .collect_attr(attr, Annotatable::FieldDef(sf), AstFragmentKind::FieldDefs)
                 .make_field_defs();
         }
 
