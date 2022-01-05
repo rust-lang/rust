@@ -36,6 +36,7 @@ pub fn target() -> Target {
             features: "+vfp2".to_string(),
             pre_link_args,
             exe_suffix: ".elf".to_string(),
+            no_default_libraries: false,
             ..Default::default()
         },
     }
