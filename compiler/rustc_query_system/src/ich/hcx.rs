@@ -27,7 +27,9 @@ fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
 pub struct StableHashingContext<'a> {
     definitions: &'a Definitions,
     cstore: &'a dyn CrateStore,
-    sess: &'a Session,
+    // The value of `-Z incremental-ignore-spans`.
+    // This field should only be used by `debug_opts_incremental_ignore_span`
+    incremental_ignore_spans: bool,
     pub(super) body_resolver: BodyResolver<'a>,
     // Very often, we are hashing something that does not need the
     // `CachingSourceMapView`, so we initialize it lazily.
@@ -64,7 +66,7 @@ impl<'a> StableHashingContext<'a> {
             body_resolver: BodyResolver::Forbidden,
             definitions,
             cstore,
-            sess,
+            incremental_ignore_spans: sess.opts.debugging_opts.incremental_ignore_spans,
             caching_source_map: None,
             raw_source_map: sess.source_map(),
             hashing_controls: HashingControls {
@@ -181,6 +183,7 @@ impl<'a> StableHashingContext<'a> {
         IGNORED_ATTRIBUTES.with(|attrs| attrs.contains(&name))
     }
 
+    #[inline]
     pub fn hashing_controls(&self) -> HashingControls {
         self.hashing_controls.clone()
     }
@@ -201,7 +204,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
 
     #[inline]
     fn debug_opts_incremental_ignore_spans(&self) -> bool {
-        self.sess.opts.debugging_opts.incremental_ignore_spans
+        self.incremental_ignore_spans
     }
 
     #[inline]
