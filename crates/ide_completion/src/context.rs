@@ -1,5 +1,7 @@
 //! See `CompletionContext` structure.
 
+use std::iter;
+
 use base_db::SourceDatabaseExt;
 use hir::{Local, Name, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo};
 use ide_db::{
@@ -431,12 +433,17 @@ impl<'a> CompletionContext<'a> {
         mut fake_ident_token: SyntaxToken,
     ) {
         let _p = profile::span("CompletionContext::expand_and_fill");
-        loop {
-            // Expand attributes
-            if let (Some(actual_item), Some(item_with_fake_ident)) = (
-                find_node_at_offset::<ast::Item>(&original_file, offset),
-                find_node_at_offset::<ast::Item>(&speculative_file, offset),
-            ) {
+        'expansion: loop {
+            let parent_item =
+                |item: &ast::Item| item.syntax().ancestors().skip(1).find_map(ast::Item::cast);
+            let ancestor_items = iter::successors(
+                Option::zip(
+                    find_node_at_offset::<ast::Item>(&original_file, offset),
+                    find_node_at_offset::<ast::Item>(&speculative_file, offset),
+                ),
+                |(a, b)| parent_item(a).zip(parent_item(b)),
+            );
+            for (actual_item, item_with_fake_ident) in ancestor_items {
                 match (
                     self.sema.expand_attr_macro(&actual_item),
                     self.sema.speculative_expand_attr_macro(
@@ -445,19 +452,22 @@ impl<'a> CompletionContext<'a> {
                         fake_ident_token.clone(),
                     ),
                 ) {
-                    (Some(actual_expansion), Some(speculative_expansion)) => {
-                        let new_offset = speculative_expansion.1.text_range().start();
+                    // maybe parent items have attributes
+                    (None, None) => (),
+                    // successful expansions
+                    (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) => {
+                        let new_offset = fake_mapped_token.text_range().start();
                         if new_offset > actual_expansion.text_range().end() {
-                            break;
+                            break 'expansion;
                         }
                         original_file = actual_expansion;
-                        speculative_file = speculative_expansion.0;
-                        fake_ident_token = speculative_expansion.1;
+                        speculative_file = fake_expansion;
+                        fake_ident_token = fake_mapped_token;
                         offset = new_offset;
-                        continue;
+                        continue 'expansion;
                     }
-                    (None, None) => (),
-                    _ => break,
+                    // exactly one expansion failed, inconsistent state so stop expanding completely
+                    _ => break 'expansion,
                 }
             }
 
@@ -477,28 +487,31 @@ impl<'a> CompletionContext<'a> {
                     None => break,
                 };
 
-                if let (Some(actual_expansion), Some(speculative_expansion)) = (
+                match (
                     self.sema.expand(&actual_macro_call),
                     self.sema.speculative_expand(
                         &actual_macro_call,
                         &speculative_args,
-                        fake_ident_token,
+                        fake_ident_token.clone(),
                     ),
                 ) {
-                    let new_offset = speculative_expansion.1.text_range().start();
-                    if new_offset > actual_expansion.text_range().end() {
-                        break;
+                    // successful expansions
+                    (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) => {
+                        let new_offset = fake_mapped_token.text_range().start();
+                        if new_offset > actual_expansion.text_range().end() {
+                            break;
+                        }
+                        original_file = actual_expansion;
+                        speculative_file = fake_expansion;
+                        fake_ident_token = fake_mapped_token;
+                        offset = new_offset;
+                        continue;
                     }
-                    original_file = actual_expansion;
-                    speculative_file = speculative_expansion.0;
-                    fake_ident_token = speculative_expansion.1;
-                    offset = new_offset;
-                } else {
-                    break;
+                    _ => break,
                 }
-            } else {
-                break;
             }
+
+            break;
         }
 
         self.fill(&original_file, speculative_file, offset);
