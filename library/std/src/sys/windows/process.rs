@@ -19,12 +19,12 @@ use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::c::NonZeroDWORD;
+use crate::sys::cvt;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::path;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
-use crate::sys::{cvt, to_u16s};
 use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::{AsInner, IntoInner};
@@ -269,8 +269,13 @@ impl Command {
             None
         };
         let program = resolve_exe(&self.program, || env::var_os("PATH"), child_paths)?;
+        let is_batch_file = program
+            .extension()
+            .map(|ext| ext.eq_ignore_ascii_case("cmd") || ext.eq_ignore_ascii_case("bat"))
+            .unwrap_or(false);
+        let program = path::maybe_verbatim(&program)?;
         let mut cmd_str =
-            make_command_line(program.as_os_str(), &self.args, self.force_quotes_enabled)?;
+            make_command_line(&program, &self.args, self.force_quotes_enabled, is_batch_file)?;
         cmd_str.push(0); // add null terminator
 
         // stolen from the libuv code.
@@ -309,7 +314,6 @@ impl Command {
         si.hStdOutput = stdout.as_raw_handle();
         si.hStdError = stderr.as_raw_handle();
 
-        let program = to_u16s(&program)?;
         unsafe {
             cvt(c::CreateProcessW(
                 program.as_ptr(),
@@ -730,7 +734,12 @@ enum Quote {
 
 // Produces a wide string *without terminating null*; returns an error if
 // `prog` or any of the `args` contain a nul.
-fn make_command_line(prog: &OsStr, args: &[Arg], force_quotes: bool) -> io::Result<Vec<u16>> {
+fn make_command_line(
+    prog: &[u16],
+    args: &[Arg],
+    force_quotes: bool,
+    is_batch_file: bool,
+) -> io::Result<Vec<u16>> {
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
@@ -739,17 +748,18 @@ fn make_command_line(prog: &OsStr, args: &[Arg], force_quotes: bool) -> io::Resu
     // need to add an extra pair of quotes surrounding the whole command line
     // so they are properly passed on to the script.
     // See issue #91991.
-    let is_batch_file = Path::new(prog)
-        .extension()
-        .map(|ext| ext.eq_ignore_ascii_case("cmd") || ext.eq_ignore_ascii_case("bat"))
-        .unwrap_or(false);
     if is_batch_file {
         cmd.push(b'"' as u16);
     }
 
-    // Always quote the program name so CreateProcess doesn't interpret args as
-    // part of the name if the binary wasn't found first time.
-    append_arg(&mut cmd, prog, Quote::Always)?;
+    // Always quote the program name so CreateProcess to avoid ambiguity when
+    // the child process parses its arguments.
+    // Note that quotes aren't escaped here because they can't be used in arg0.
+    // But that's ok because file paths can't contain quotes.
+    cmd.push(b'"' as u16);
+    cmd.extend_from_slice(prog.strip_suffix(&[0]).unwrap_or(prog));
+    cmd.push(b'"' as u16);
+
     for arg in args {
         cmd.push(' ' as u16);
         let (arg, quote) = match arg {
