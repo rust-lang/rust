@@ -36,7 +36,11 @@ modifying rustc to see if things are generally working correctly would be the
 following:
 
 ```bash
+# First build
 ./x.py test src/test/ui
+
+# Subsequent builds (optional, but can save time)
+./x.py test src/test/ui --keep-stage 1
 ```
 
 This will run the `ui` test suite. Of course, the choice
@@ -91,6 +95,13 @@ tests for components you did not change at all.
 **Warning:** Note that bors only runs the tests with the full stage 2
 build; therefore, while the tests **usually** work fine with stage 1,
 there are some limitations.
+
+### Run all tests using a stage 2 compiler
+
+```bash
+./x.py test --stage 2
+```
+You almost never need to do this.
 
 ## Run unit tests on the compiler/library
 

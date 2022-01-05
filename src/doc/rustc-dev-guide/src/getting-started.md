@@ -96,174 +96,28 @@ See [this chapter][config] for more info about configuration.
 
 [config]: ./building/how-to-build-and-run.md#create-a-configtoml
 
-### Building and Testing `rustc`
+### Common `x.py` commands
 
-Here is a summary of the different commands for reference, but you probably
-should still read the rest of the section:
+Here are the basic invocations of the `x.py` commands most commonly used when
+working on `rustc`, `std`, `rustdoc`, and other tools.
 
 | Command | When to use it |
 | --- | --- |
-| `./x.py check` | Quick check to see if things compile; [rust-analyzer can run this automatically for you][rust-analyzer] |
-| `./x.py build --stage 0 [library/std]` | Build only the standard library, without building the compiler |
-| `./x.py build library/std` | Build just the 1st stage of the compiler, along with the standard library; this is faster than building stage 2 and usually good enough |
-| `./x.py build --keep-stage 1 library/std` | Build the 1st stage of the compiler and skips rebuilding the standard library; this is useful after you've done an ordinary stage1 build to skip compilation time, but it can cause weird problems. (Just do a regular build to resolve.) |
-| `./x.py test [--keep-stage 1]` | Run the test suite using the stage1 compiler |
-| `./x.py test --bless [--keep-stage 1]` | Run the test suite using the stage1 compiler _and_ update expected test output. |
-| `./x.py build --stage 2 compiler/rustc` | Do a full 2-stage build. You almost never want to do this. |
-| `./x.py test --stage 2` | Do a full 2-stage build and run all tests. You almost never want to do this. |
+| `./x.py check` | Quick check to see if most things compile; [rust-analyzer can run this automatically for you][rust-analyzer] |
+| `./x.py build` | Builds `rustc`, `std`, and `rustdoc` |
+| `./x.py test` | Runs all tests |
+| `./x.py fmt` | Formats all code |
 
-To do a full 2-stage build of the whole compiler, you should run this (after
-updating `config.toml` as mentioned above):
-
-```sh
-./x.py build --stage 2 compiler/rustc
-```
-
-In the process, this will also necessarily build the standard libraries, and it
-will build `rustdoc` (which doesn't take too long).
-
-To build and test everything:
-
-```sh
-./x.py test
-```
-
-For most contributions, you only need to build stage 1, which saves a lot of time:
-
-```sh
-# Build the compiler (stage 1)
-./x.py build library/std
-
-# Subsequent builds
-./x.py build --keep-stage 1 library/std
-```
-
-This will take a while, especially the first time. Be wary of accidentally
-touching or formatting the compiler, as `x.py` will try to recompile it.
-
-**NOTE**: The `--keep-stage 1` will _assume_ that the stage 0 standard library
-does not need to be rebuilt, which is usually true, which will save some time.
-However, if you are changing certain parts of the compiler, this may lead to
-weird errors. Feel free to ask on [zulip][z] if you are running into issues.
-
-This runs a ton of tests and takes a long time to complete. If you are
-working on `rustc`, you can usually get by with only the [UI tests][uitests]. These
-test are mostly for the frontend of the compiler, so if you are working on LLVM
-or codegen, this shortcut will _not_ test your changes. You can read more about the
-different test suites [in this chapter][testing].
+As written, these commands are reasonable starting points. However, there are
+additional options and arguments for each of them that are worth learning for
+serious development work. In particular, `./x.py build` and `./x.py test`
+provide many ways to compile or test a subset of the code, which can save a lot
+of time.
 
 [rust-analyzer]: ./building/suggested.html#configuring-rust-analyzer-for-rustc
-[uitests]: ./tests/adding.html#ui
-[testing]: https://rustc-dev-guide.rust-lang.org/tests/intro.html
 
-```sh
-# First build
-./x.py test src/test/ui
-
-# Subsequent builds
-./x.py test src/test/ui --keep-stage 1
-```
-
-If your changes impact test output, you can use `--bless` to automatically
-update the `.stderr` files of the affected tests:
-
-```sh
-./x.py test src/test/ui --keep-stage 1 --bless
-```
-
-While working on the compiler, it can be helpful to see if the code just
-compiles (similar to `cargo check`) without actually building it. You can do
-this with:
-
-```sh
-./x.py check
-```
-
-This command is really fast (relative to the other commands). It usually
-completes in a couple of minutes on my laptop. **A common workflow when working
-on the compiler is to make changes and repeatedly check with `./x.py check`.
-Then, run the tests as shown above when you think things should work.**
-
-Finally, the CI ensures that the codebase is using consistent style. To format
-the code:
-
-```sh
-# Actually format
-./x.py fmt
-
-# Just check formatting, exit with error
-./x.py fmt --check
-```
-
-*Note*: we don't use stable `rustfmt`; we use a pinned version with a special
-config, so this may result in different style from normal `rustfmt` if you have
-format-on-save turned on. It's a good habit to run `./x.py fmt` before every
-commit, as this reduces conflicts later. The pinned version is built under
-`build/<target>/stage0/bin/rustfmt`, so if you want, you can use it for a
-single file or for format-on-save in your editor, which can be faster than `./x.py fmt`.
-You'll have to pass the <!-- date: 2021-09 --> `--edition=2021` argument
-yourself when calling `rustfmt` directly.
-
-One last thing: you can use `RUSTC_LOG=XXX` to get debug logging. [Read more
-here][logging]. Notice the `C` in `RUSTC_LOG`. Other than that, it uses normal
-[`env_logger`][envlog]  or `tracing` syntax.
-
-[envlog]: https://crates.io/crates/env_logger
-[logging]: ./tracing.md
-
-### Building and Testing `std`/`core`/`alloc`/`test`/`proc_macro`/etc.
-
-As before, technically the proper way to build one of these libraries is to use
-the stage-2 compiler, which of course requires a 2-stage build, described above
-(`./x.py build`).
-
-In practice, though, you don't need to build the compiler unless you are
-planning to use a recently added nightly feature. Instead, you can just build
-stage 0, which uses the current beta compiler.
-
-```sh
-./x.py build --stage 0
-```
-
-```sh
-./x.py test --stage 0 library/std
-```
-
-(The same works for `library/alloc`, `library/core`, etc.)
-
-### Building and Testing `rustdoc`
-
-`rustdoc` uses `rustc` internals (and, of course, the standard library), so you
-will have to build the compiler and `std` once before you can build `rustdoc`.
-As before, you can use `./x.py build` to do this. The first time you build,
-the stage-1 compiler will also be built.
-
-```sh
-# First build
-./x.py build
-
-# Subsequent builds
-./x.py build --keep-stage 1
-```
-
-As with the compiler, you can do a fast check build:
-
-```sh
-./x.py check
-```
-
-Rustdoc has two types of tests: content tests and UI tests.
-
-```sh
-# Content tests
-./x.py test src/test/rustdoc
-
-# UI tests
-./x.py test src/test/rustdoc-ui
-
-# Both at once
-./x.py test src/test/rustdoc src/test/rustdoc-ui
-```
+See the chapters on [building](./building/how-to-build-and-run.md) and
+[testing](./tests/intro.md) for more details.
 
 ### Contributing code to other Rust projects
 

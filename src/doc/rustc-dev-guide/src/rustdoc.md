@@ -1,6 +1,9 @@
 # Rustdoc overview
 
-Rustdoc actually uses the rustc internals directly. It lives in-tree with the
+`rustdoc` uses `rustc` internals (and, of course, the standard library), so you
+will have to build the compiler and `std` once before you can build `rustdoc`.
+
+`rustdoc` lives in-tree with the
 compiler and standard library. This chapter is about how it works.
 For information about Rustdoc's features and how to use them, see
 the [Rustdoc book](https://doc.rust-lang.org/nightly/rustdoc/).
@@ -39,9 +42,11 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 * Run `./x.py setup tools` before getting started. This will configure `x.py`
   with nice settings for developing rustdoc and other tools, including
   downloading a copy of rustc rather than building it.
+* Use `./x.py check` to quickly check for compile errors.
 * Use `./x.py build` to make a usable
   rustdoc you can run on other projects.
   * Add `library/test` to be able to use `rustdoc --test`.
+  * Add `--keep-stage 1` on subsequent runs to avoid rebuilding some things.
   * Run `rustup toolchain link stage2 build/$TARGET/stage2` to add a
     custom toolchain called `stage2` to your rustup environment. After
     running that, `cargo +stage2 doc` in any directory will build with
@@ -52,7 +57,8 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   * If you want to copy those docs to a webserver, copy all of
     `build/$TARGET/doc`, since that's where the CSS, JS, fonts, and landing
     page are.
-* Use `./x.py test src/test/rustdoc*` to run the tests using a stage1 rustdoc.
+* Use `./x.py test src/test/rustdoc*` to run the tests using a stage1
+  rustdoc.
   * See [Rustdoc internals] for more information about tests.
 
 ## Code structure

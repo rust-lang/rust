@@ -125,8 +125,8 @@ Options:
     -h, --help          print this help message
 ```
 
-For hacking, often building the stage 1 compiler is enough, but for
-final testing and release, the stage 2 compiler is used.
+For hacking, often building the stage 1 compiler is enough, which saves a lot
+of time. But for final testing and release, the stage 2 compiler is used.
 
 `./x.py check` is really fast to build the rust compiler.
 It is, in particular, very useful when you're doing some kind of
@@ -168,7 +168,7 @@ there is a (hacky) workaround.  See [the section on "recommended
 workflows"](./suggested.md) below.
 
 Note that this whole command just gives you a subset of the full `rustc`
-build. The **full** `rustc` build (what you get if you say `./x.py build
+build. The **full** `rustc` build (what you get with `./x.py build
 --stage 2 compiler/rustc`) has quite a few more steps:
 
 - Build `rustc` with the stage1 compiler.
@@ -176,20 +176,16 @@ build. The **full** `rustc` build (what you get if you say `./x.py build
 - Build `std` with stage2 compiler.
 - Build `librustdoc` and a bunch of other things with the stage2 compiler.
 
-<a name=toolchain></a>
+You almost never need to do this.
 
 ## Build specific components
 
-- Build only the core library
+If you are working on the standard library, you probably don't need to build
+the compiler unless you are planning to use a recently added nightly feature.
+Instead, you can just build stage 0, which uses the current beta compiler.
 
 ```bash
-./x.py build --stage 0 library/core
-```
-
-- Build only the core and `proc_macro` libraries
-
-```bash
-./x.py build --stage 0 library/core library/proc_macro
+./x.py build --stage 0 library/std
 ```
 
 Sometimes you might just want to test if the part you’re working on can
@@ -245,7 +241,8 @@ in other sections:
 - Building things:
   - `./x.py build` – builds everything using the stage 1 compiler,
     not just up to `std`
-  - `./x.py build --stage 2` – builds the stage2 compiler
+  - `./x.py build --stage 2` – builds the stage2 compiler, along with `std` and
+    `rustdoc` (which doesn't take too long)
 - Running tests (see the [section on running tests](../tests/running.html) for
   more details):
   - `./x.py test library/std` – runs the `#[test]` tests from `std`

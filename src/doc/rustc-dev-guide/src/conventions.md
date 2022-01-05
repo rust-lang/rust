@@ -8,17 +8,25 @@ chapter covers [formatting](#formatting), [coding for correctness](#cc),
 # Formatting and the tidy script
 
 rustc is moving towards the [Rust standard coding style][fmt].
-This is enforced by the "tidy" script and can be mostly
-automated using `./x.py fmt`.
 
-As the output of [rustfmt] is not completely stable,
-formatting this repository using `cargo fmt` is not recommended.
+However, for now we don't use stable `rustfmt`; we use a pinned version with a
+special config, so this may result in different style from normal [`rustfmt`].
+Therefore, formatting this repository using `cargo fmt` is not recommended.
 
-The tidy script runs automatically when you do `./x.py test` and can be run
-in isolation with `./x.py test tidy`.
+Instead, formatting should be done using `./x.py fmt`. It's a good habit to run
+`./x.py fmt` before every commit, as this reduces conflicts later. 
+
+Formatting is checked by the "tidy" script. It runs automatically when you do
+`./x.py test` and can be run in isolation with `./x.py test tidy`. `./x.py fmt
+--check` also works.
+
+If you want to use format-on-save in your editor, the pinned version of
+`rustfmt` is built under `build/<target>/stage0/bin/rustfmt`. You'll have to
+pass the <!-- date: 2021-09 --> `--edition=2021` argument yourself when calling
+`rustfmt` directly.
 
 [fmt]: https://github.com/rust-dev-tools/fmt-rfcs
-[rustfmt]:https://github.com/rust-lang/rustfmt
+[`rustfmt`]:https://github.com/rust-lang/rustfmt
 
 <a name="copyright"></a>
 
