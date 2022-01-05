@@ -52,6 +52,12 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         }
     }
 
+    let is_mutable_reference = if let Some(receiver_type) = get_receiver_type(&ctx, &to_extract) {
+        receiver_type.is_mutable_reference()
+    } else {
+        false
+    };
+
     let anchor = Anchor::from(&to_extract)?;
     let indent = anchor.syntax().prev_sibling_or_token()?.as_token()?.clone();
     let target = to_extract.syntax().text_range();
@@ -77,11 +83,15 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
                 None => to_extract.syntax().text_range(),
             };
 
+            let reference_modifier = if is_mutable_reference { "&mut " } else { "" };
+
             match anchor {
                 Anchor::Before(_) | Anchor::Replace(_) => {
-                    format_to!(buf, "let {} = ", var_name)
+                    format_to!(buf, "let {} = {}", var_name, reference_modifier)
                 }
-                Anchor::WrapInBlock(_) => format_to!(buf, "{{ let {} = ", var_name),
+                Anchor::WrapInBlock(_) => {
+                    format_to!(buf, "{{ let {} = {}", var_name, reference_modifier)
+                }
             };
             format_to!(buf, "{}", to_extract.syntax());
 
@@ -143,6 +153,22 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
             ast::BlockExpr::cast(node).filter(|it| it.is_standalone()).map(ast::Expr::from)
         }
         _ => ast::Expr::cast(node),
+    }
+}
+
+fn get_receiver_type(ctx: &AssistContext, expression: &ast::Expr) -> Option<hir::Type> {
+    let receiver = get_receiver(expression.to_owned())?;
+    Some(ctx.sema.type_of_expr(&receiver)?.original())
+}
+
+fn get_receiver(expression: ast::Expr) -> Option<ast::Expr> {
+    match expression {
+        ast::Expr::FieldExpr(field) if field.expr().is_some() => {
+            let nested_expression = &field.expr()?;
+            get_receiver(nested_expression.to_owned())
+        }
+        ast::Expr::PathExpr(_) => Some(expression),
+        _ => None,
     }
 }
 
@@ -898,6 +924,66 @@ fn main() {
             r"
 const X: usize = $0100$0;
 ",
+        );
+    }
+
+    #[test]
+    fn test_extract_var_mutable_reference_parameter() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S {
+    vec: Vec<u8>
+}
+
+fn foo(s: &mut S) {
+    $0s.vec$0.push(0);
+}"#,
+            r#"
+struct S {
+    vec: Vec<u8>
+}
+
+fn foo(s: &mut S) {
+    let $0var_name = &mut s.vec;
+    var_name.push(0);
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_mutable_reference_parameter_deep_nesting() {
+        check_assist(
+            extract_variable,
+            r#"
+struct Y {
+    field: X
+}
+struct X {
+    field: S
+}
+struct S {
+    vec: Vec<u8>
+}
+
+fn foo(f: &mut Y) {
+    $0f.field.field.vec$0.push(0);
+}"#,
+            r#"
+struct Y {
+    field: X
+}
+struct X {
+    field: S
+}
+struct S {
+    vec: Vec<u8>
+}
+
+fn foo(f: &mut Y) {
+    let $0var_name = &mut f.field.field.vec;
+    var_name.push(0);
+}"#,
         );
     }
 }
