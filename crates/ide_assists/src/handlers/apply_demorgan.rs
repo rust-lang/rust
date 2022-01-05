@@ -42,10 +42,11 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext) -> Option<(
 
     // Walk up the tree while we have the same binary operator
     while let Some(parent_expr) = expr.syntax().parent().and_then(ast::BinExpr::cast) {
-        if let Some(parent_op) = expr.op_kind() {
-            if parent_op == op {
-                expr = parent_expr
+        match expr.op_kind() {
+            Some(parent_op) if parent_op == op => {
+                expr = parent_expr;
             }
+            _ => break,
         }
     }
 
@@ -219,5 +220,15 @@ fn f() { !(S <= S || S < S) }
     fn demorgan_doesnt_double_parens() {
         cov_mark::check!(demorgan_double_parens);
         check_assist(apply_demorgan, "fn f() { (x ||$0 x) }", "fn f() { !(!x && !x) }")
+    }
+
+    // https://github.com/rust-analyzer/rust-analyzer/issues/10963
+    #[test]
+    fn demorgan_doesnt_hang() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { 1 || 3 &&$0 4 || 5 }",
+            "fn f() { !(!1 || !3 || !4) || 5 }",
+        )
     }
 }

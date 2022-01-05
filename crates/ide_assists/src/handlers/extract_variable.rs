@@ -52,6 +52,12 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         }
     }
 
+    let reference_modifier = match get_receiver_type(&ctx, &to_extract) {
+        Some(receiver_type) if receiver_type.is_mutable_reference() => "&mut ",
+        Some(receiver_type) if receiver_type.is_reference() => "&",
+        _ => "",
+    };
+
     let anchor = Anchor::from(&to_extract)?;
     let indent = anchor.syntax().prev_sibling_or_token()?.as_token()?.clone();
     let target = to_extract.syntax().text_range();
@@ -79,9 +85,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             match anchor {
                 Anchor::Before(_) | Anchor::Replace(_) => {
-                    format_to!(buf, "let {} = ", var_name)
+                    format_to!(buf, "let {} = {}", var_name, reference_modifier)
                 }
-                Anchor::WrapInBlock(_) => format_to!(buf, "{{ let {} = ", var_name),
+                Anchor::WrapInBlock(_) => {
+                    format_to!(buf, "{{ let {} = {}", var_name, reference_modifier)
+                }
             };
             format_to!(buf, "{}", to_extract.syntax());
 
@@ -143,6 +151,22 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
             ast::BlockExpr::cast(node).filter(|it| it.is_standalone()).map(ast::Expr::from)
         }
         _ => ast::Expr::cast(node),
+    }
+}
+
+fn get_receiver_type(ctx: &AssistContext, expression: &ast::Expr) -> Option<hir::Type> {
+    let receiver = get_receiver(expression.clone())?;
+    Some(ctx.sema.type_of_expr(&receiver)?.original())
+}
+
+/// In the expression `a.b.c.x()`, find `a`
+fn get_receiver(expression: ast::Expr) -> Option<ast::Expr> {
+    match expression {
+        ast::Expr::FieldExpr(field) if field.expr().is_some() => {
+            let nested_expression = &field.expr()?;
+            get_receiver(nested_expression.to_owned())
+        }
+        _ => Some(expression),
     }
 }
 
@@ -898,6 +922,332 @@ fn main() {
             r"
 const X: usize = $0100$0;
 ",
+        );
+    }
+
+    #[test]
+    fn test_extract_var_mutable_reference_parameter() {
+        check_assist(
+            extract_variable,
+            r#"
+struct S {
+    vec: Vec<u8>
+}
+
+fn foo(s: &mut S) {
+    $0s.vec$0.push(0);
+}"#,
+            r#"
+struct S {
+    vec: Vec<u8>
+}
+
+fn foo(s: &mut S) {
+    let $0var_name = &mut s.vec;
+    var_name.push(0);
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_mutable_reference_parameter_deep_nesting() {
+        check_assist(
+            extract_variable,
+            r#"
+struct Y {
+    field: X
+}
+struct X {
+    field: S
+}
+struct S {
+    vec: Vec<u8>
+}
+
+fn foo(f: &mut Y) {
+    $0f.field.field.vec$0.push(0);
+}"#,
+            r#"
+struct Y {
+    field: X
+}
+struct X {
+    field: S
+}
+struct S {
+    vec: Vec<u8>
+}
+
+fn foo(f: &mut Y) {
+    let $0var_name = &mut f.field.field.vec;
+    var_name.push(0);
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_reference_parameter() {
+        check_assist(
+            extract_variable,
+            r#"
+struct X;
+
+impl X {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    $0s.sub$0.do_thing();
+}"#,
+            r#"
+struct X;
+
+impl X {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    let $0x = &s.sub;
+    x.do_thing();
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_reference_parameter_deep_nesting() {
+        check_assist(
+            extract_variable,
+            r#"
+struct Z;
+impl Z {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct Y {
+    field: Z
+}
+
+struct X {
+    field: Y
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    $0s.sub.field.field$0.do_thing();
+}"#,
+            r#"
+struct Z;
+impl Z {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct Y {
+    field: Z
+}
+
+struct X {
+    field: Y
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    let $0z = &s.sub.field.field;
+    z.do_thing();
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_regular_parameter() {
+        check_assist(
+            extract_variable,
+            r#"
+struct X;
+
+impl X {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: S) {
+    $0s.sub$0.do_thing();
+}"#,
+            r#"
+struct X;
+
+impl X {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: S) {
+    let $0x = s.sub;
+    x.do_thing();
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_mutable_reference_local() {
+        check_assist(
+            extract_variable,
+            r#"
+struct X;
+
+struct S {
+    sub: X
+}
+
+impl S {
+    fn new() -> S {
+        S {
+            sub: X::new()
+        }
+    }
+}
+
+impl X {
+    fn new() -> X {
+        X { }
+    }
+    fn do_thing(&self) {
+
+    }
+}
+
+
+fn foo() {
+    let local = &mut S::new();
+    $0local.sub$0.do_thing();
+}"#,
+            r#"
+struct X;
+
+struct S {
+    sub: X
+}
+
+impl S {
+    fn new() -> S {
+        S {
+            sub: X::new()
+        }
+    }
+}
+
+impl X {
+    fn new() -> X {
+        X { }
+    }
+    fn do_thing(&self) {
+
+    }
+}
+
+
+fn foo() {
+    let local = &mut S::new();
+    let $0x = &mut local.sub;
+    x.do_thing();
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_reference_local() {
+        check_assist(
+            extract_variable,
+            r#"
+struct X;
+
+struct S {
+    sub: X
+}
+
+impl S {
+    fn new() -> S {
+        S {
+            sub: X::new()
+        }
+    }
+}
+
+impl X {
+    fn new() -> X {
+        X { }
+    }
+    fn do_thing(&self) {
+
+    }
+}
+
+
+fn foo() {
+    let local = &S::new();
+    $0local.sub$0.do_thing();
+}"#,
+            r#"
+struct X;
+
+struct S {
+    sub: X
+}
+
+impl S {
+    fn new() -> S {
+        S {
+            sub: X::new()
+        }
+    }
+}
+
+impl X {
+    fn new() -> X {
+        X { }
+    }
+    fn do_thing(&self) {
+
+    }
+}
+
+
+fn foo() {
+    let local = &S::new();
+    let $0x = &local.sub;
+    x.do_thing();
+}"#,
         );
     }
 }
