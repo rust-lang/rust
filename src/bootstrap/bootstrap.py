@@ -13,7 +13,7 @@ import sys
 import tarfile
 import tempfile
 
-from time import time
+from time import time, sleep
 
 # Acquire a lock on the build directory to make sure that
 # we don't cause a race condition while building
@@ -42,8 +42,10 @@ def acquire_lock(build_dir):
             while True:
                 try:
                     curs.execute("BEGIN EXCLUSIVE")
+                    break
                 except sqlite3.OperationalError:
                     pass
+                sleep(0.25)
             return curs
     except ImportError:
         print("warning: sqlite3 not available in python, skipping build directory lock")
