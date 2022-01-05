@@ -1007,7 +1007,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     /// its position and derives following it. We have to collect the derives in order to resolve
     /// legacy derive helpers (helpers written before derives that introduce them).
     fn take_first_attr(
-        &mut self,
+        &self,
         item: &mut impl AstLike,
     ) -> Option<(ast::Attribute, usize, Vec<Path>)> {
         let mut attr = None;
@@ -1040,7 +1040,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 
     fn take_stmt_bang(
-        &mut self,
+        &self,
         stmt: ast::Stmt,
     ) -> Result<(bool, MacCall, Vec<ast::Attribute>), ast::Stmt> {
         match stmt.kind {
@@ -1071,7 +1071,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         }
     }
 
-    fn configure<T: AstLike>(&mut self, node: T) -> Option<T> {
+    fn configure<T: AstLike>(&self, node: T) -> Option<T> {
         self.cfg.configure(node)
     }
 
