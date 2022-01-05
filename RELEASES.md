@@ -4,7 +4,7 @@ Version 1.58.0 (2022-01-13)
 Language
 --------
 
-- [Format strings can now capture arguments simply by writing `{ident}` in the string.][90473]
+- [Format strings can now capture arguments simply by writing `{ident}` in the string.][90473] This works in all macros accepting format strings. Support for this in `panic!` (`panic!("{ident}")`) requires the 2021 edition; panic invocations in previous editions that appear to be trying to use this will result in a warning lint about not having the intended effect.
 - [`*const T` pointers can now be dereferenced in const contexts.][89551]
 - [The rules for when a generic struct implements `Unsize` have been relaxed.][90417]
 
@@ -12,12 +12,12 @@ Compiler
 --------
 
 - [Add LLVM CFI support to the Rust compiler][89652]
-- [Stabilize -Z strip as -C strip][90058]
+- [Stabilize -Z strip as -C strip][90058]. Note that while release builds already don't add debug symbols for the code you compile, the compiled standard library that ships with Rust includes debug symbols, so you may want to use the `strip` option to remove these symbols to produce smaller release binaries.
 - [Add support for LLVM coverage mapping format versions 5 and 6][91207]
 - [Emit LLVM optimization remarks when enabled with `-Cremark`][90833]
 - [Update the minimum external LLVM to 12][90175]
 - [Add `x86_64-unknown-none` at Tier 3*][89062]
-- [Build musl dist artifacts with debuginfo enabled][90733]
+- [Build musl dist artifacts with debuginfo enabled][90733]. When building release binaries using musl, you may want to use the newly stabilized strip option to remove these debug symbols, reducing the size of your binaries.
 - [Don't abort compilation after giving a lint error][87337]
 - [Error messages point at the source of trait bound obligations in more places][89580]
 
@@ -27,21 +27,12 @@ Compiler
 Libraries
 ---------
 
-- [Add #[must_use] to Rc::downgrade][89833]
-- [Add #[must_use] to expensive computations][89835]
-- [Add #[must_use] to mem/ptr functions][89839]
-- [Add #[must_use] to remaining core functions][89897]
-- [Add #[must_use] to remaining alloc functions][89899]
-- [Add #[must_use] to len and is_empty][89786]
-- [Add #[must_use] to thread::Builder][89789]
-- [Add #[must_use] to alloc functions that would leak memory][90427]
-- [Add #[must_use] to remaining std functions (A-N)][90430]
-- [Add #[must_use] to remaining std functions (O-Z)][90431]
+- [All remaining functions in the standard library have `#[must_use]` annotations where appropriate][89692], producing a warning when ignoring their return value. This helps catch mistakes such as expecting a function to mutate a value in place rather than return a new value.
 - [Paths are automatically canonicalized on Windows for operations that support it][89174]
-- [Re-enable `copy[_nonoverlapping]()` debug-checks][90041]
+- [Re-enable debug checks for `copy` and `copy_nonoverlapping`][90041]
 - [Implement `RefUnwindSafe` for `Rc<T>`][87467]
 - [Make RSplit<T, P>: Clone not require T: Clone][90117]
-- [Implement `Termination` for `Result<Infallible, E>`][88601]
+- [Implement `Termination` for `Result<Infallible, E>`][88601]. This allows writing `fn main() -> Result<Infallible, ErrorType>`, for a program whose successful exits never involve returning from `main` (for instance, a program that calls `exit`, or that uses `exec` to run another program).
 
 Stabilized APIs
 ---------------
@@ -95,7 +86,7 @@ Compatibility Notes
 - Windows: [`std::process::Command` will no longer search the current directory for executables.][87704]
 - [All proc-macro backward-compatibility lints are now deny-by-default.][88041]
 - [proc_macro: Append .0 to unsuffixed float if it would otherwise become int token][90297]
-- [Refactor weak symbols in std::sys::unix][90846]
+- [Refactor weak symbols in std::sys::unix][90846]. This optimizes accesses to glibc functions, by avoiding the use of dlopen. This does not increase the [minimum expected version of glibc](https://doc.rust-lang.org/nightly/rustc/platform-support.html). However, software distributions that use symbol versions to detect library dependencies, and which take weak symbols into account in that analysis, may detect rust binaries as requiring newer versions of glibc.
 - [rustdoc now rejects some unexpected semicolons in doctests][91026]
 
 Internal Changes
@@ -105,11 +96,11 @@ These changes provide no direct user facing benefits, but represent significant
 improvements to the internals and overall performance of rustc
 and related tools.
 
-- [Try all stable method candidates first before trying unstable ones][90329]
+- [Try all stable method candidates first before trying unstable ones][90329]. This change ensures that adding new nightly-only methods to the Rust standard library will not break code invoking methods of the same name from traits outside the standard library.
 - [Implement coherence checks for negative trait impls][90104]
 - [Add rustc lint, warning when iterating over hashmaps][89558]
 - [Optimize live point computation][90491]
-- [Enable verification for 1/32th of queries loaded from disk][90361]
+- [Enable verification for 1/32nd of queries loaded from disk][90361]
 - [Implement version of normalize_erasing_regions that allows for normalization failure][91255]
 
 [87337]: https://github.com/rust-lang/rust/pull/87337/
