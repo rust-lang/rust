@@ -556,6 +556,7 @@ pub use std_detect::*;
 pub use std_detect::{
     is_aarch64_feature_detected, is_arm_feature_detected, is_mips64_feature_detected,
     is_mips_feature_detected, is_powerpc64_feature_detected, is_powerpc_feature_detected,
+    is_riscv_feature_detected,
 };
 
 // Re-export macros defined in libcore.
