@@ -171,6 +171,7 @@ fn get_receiver_type(ctx: &AssistContext, expression: &ast::Expr) -> Option<hir:
     Some(ctx.sema.type_of_expr(&receiver)?.original())
 }
 
+/// In the expression `a.b.c.x()`, find `a`
 fn get_receiver(expression: ast::Expr) -> Option<ast::Expr> {
     match expression {
         ast::Expr::FieldExpr(field) if field.expr().is_some() => {
