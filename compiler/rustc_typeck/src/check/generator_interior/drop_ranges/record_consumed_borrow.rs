@@ -85,7 +85,11 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
             "consume {:?}; diag_expr_id={:?}, using parent {:?}",
             place_with_id, diag_expr_id, parent
         );
-        self.mark_consumed(parent, place_with_id.into());
+        // We do not currently support partial drops or reinits, so just ignore
+        // any places with projections.
+        if place_with_id.place.projections.is_empty() {
+            self.mark_consumed(parent, place_with_id.into());
+        }
     }
 
     fn borrow(
