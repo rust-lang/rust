@@ -119,7 +119,7 @@ where
     match result {
         Err(e) => resume_unwind(e),
         Ok(_) if scope.data.a_thread_panicked.load(Ordering::Relaxed) => {
-            panic!("a thread panicked")
+            panic!("a scoped thread panicked")
         }
         Ok(result) => result,
     }
