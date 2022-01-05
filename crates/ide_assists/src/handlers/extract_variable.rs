@@ -52,10 +52,10 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         }
     }
 
-    let ref_kind = match get_receiver_type(&ctx, &to_extract) {
-        Some(receiver_type) if receiver_type.is_mutable_reference() => RefKind::MutRef,
-        Some(receiver_type) if receiver_type.is_reference() => RefKind::Ref,
-        _ => RefKind::None,
+    let reference_modifier = match get_receiver_type(&ctx, &to_extract) {
+        Some(receiver_type) if receiver_type.is_mutable_reference() => "&mut ",
+        Some(receiver_type) if receiver_type.is_reference() => "&",
+        _ => "",
     };
 
     let anchor = Anchor::from(&to_extract)?;
@@ -81,12 +81,6 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
             let expr_range = match &field_shorthand {
                 Some(it) => it.syntax().text_range().cover(to_extract.syntax().text_range()),
                 None => to_extract.syntax().text_range(),
-            };
-
-            let reference_modifier = match ref_kind {
-                RefKind::MutRef => "&mut ",
-                RefKind::Ref => "&",
-                RefKind::None => "",
             };
 
             match anchor {
@@ -174,13 +168,6 @@ fn get_receiver(expression: ast::Expr) -> Option<ast::Expr> {
         }
         _ => Some(expression),
     }
-}
-
-#[derive(Debug)]
-enum RefKind {
-    Ref,
-    MutRef,
-    None,
 }
 
 #[derive(Debug)]
