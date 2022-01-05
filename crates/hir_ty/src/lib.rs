@@ -358,7 +358,7 @@ where
     struct ErrorReplacer {
         vars: usize,
     }
-    impl<'i> Folder<Interner> for ErrorReplacer {
+    impl Folder<Interner> for ErrorReplacer {
         type Error = NoSolution;
 
         fn as_dyn(&mut self) -> &mut dyn Folder<Interner, Error = Self::Error> {
