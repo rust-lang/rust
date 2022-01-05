@@ -201,6 +201,40 @@ pub fn partition<'tcx>(
         partitioner.internalize_symbols(cx, &mut post_inlining);
     }
 
+    let instrument_dead_code =
+        tcx.sess.instrument_coverage() && !tcx.sess.instrument_coverage_except_unused_functions();
+
+    if instrument_dead_code {
+        assert!(
+            post_inlining.codegen_units.len() > 0,
+            "There must be at least one CGU that code coverage data can be generated in."
+        );
+
+        // Find the smallest CGU that has exported symbols and put the dead
+        // function stubs in that CGU. We look for exported symbols to increase
+        // the likelihood the linker won't throw away the dead functions.
+        // FIXME(#92165): In order to truly resolve this, we need to make sure
+        // the object file (CGU) containing the dead function stubs is included
+        // in the final binary. This will probably require forcing these
+        // function symbols to be included via `-u` or `/include` linker args.
+        let mut cgus: Vec<_> = post_inlining.codegen_units.iter_mut().collect();
+        cgus.sort_by_key(|cgu| cgu.size_estimate());
+
+        let dead_code_cgu = if let Some(cgu) = cgus
+            .into_iter()
+            .rev()
+            .filter(|cgu| cgu.items().iter().any(|(_, (linkage, _))| *linkage == Linkage::External))
+            .next()
+        {
+            cgu
+        } else {
+            // If there are no CGUs that have externally linked items,
+            // then we just pick the first CGU as a fallback.
+            &mut post_inlining.codegen_units[0]
+        };
+        dead_code_cgu.make_code_coverage_dead_code_cgu();
+    }
+
     // Finally, sort by codegen unit name, so that we get deterministic results.
     let PostInliningPartitioning {
         codegen_units: mut result,
