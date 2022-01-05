@@ -288,7 +288,7 @@ impl<'env> fmt::Debug for Scope<'env> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Scope")
             .field("num_running_threads", &self.data.num_running_threads.load(Ordering::Relaxed))
-            .field("a_thread_panicked", &self.data.a_thread_panicked)
+            .field("a_thread_panicked", &self.data.a_thread_panicked.load(Ordering::Relaxed))
             .field("main_thread", &self.data.main_thread)
             .finish_non_exhaustive()
     }
