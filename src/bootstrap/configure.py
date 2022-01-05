@@ -356,6 +356,8 @@ for key in known_args:
         set('rust.lld', True)
         set('rust.llvm-tools', True)
         set('build.extended', True)
+    elif option.name == 'build.tools':
+        set('tools', value.split(','))
     elif option.name == 'option-checking':
         # this was handled above
         pass
