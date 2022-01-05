@@ -1139,7 +1139,7 @@ fn foo(s: S) {
     }
 
     #[test]
-    fn test_extract_var_reference_local() {
+    fn test_extract_var_mutable_reference_local() {
         check_assist(
             extract_variable,
             r#"
@@ -1198,7 +1198,73 @@ impl X {
 
 fn foo() {
     let local = &mut S::new();
-    let $0x = local.sub;
+    let $0x = &mut local.sub;
+    x.do_thing();
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_reference_local() {
+        check_assist(
+            extract_variable,
+            r#"
+struct X;
+
+struct S {
+    sub: X
+}
+
+impl S {
+    fn new() -> S {
+        S { 
+            sub: X::new()
+        }
+    }
+}
+
+impl X {
+    fn new() -> X {
+        X { }
+    }
+    fn do_thing(&self) {
+
+    }
+}
+
+
+fn foo() {
+    let local = &S::new();
+    $0local.sub$0.do_thing();
+}"#,
+            r#"
+struct X;
+
+struct S {
+    sub: X
+}
+
+impl S {
+    fn new() -> S {
+        S { 
+            sub: X::new()
+        }
+    }
+}
+
+impl X {
+    fn new() -> X {
+        X { }
+    }
+    fn do_thing(&self) {
+
+    }
+}
+
+
+fn foo() {
+    let local = &S::new();
+    let $0x = &local.sub;
     x.do_thing();
 }"#,
         );
