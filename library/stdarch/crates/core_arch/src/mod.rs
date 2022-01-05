@@ -56,14 +56,28 @@ pub mod arch {
         pub use crate::core_arch::aarch64::*;
     }
 
-    /// Platform-specific intrinsics for the `riscv` platform.
+    /// Platform-specific intrinsics for the `riscv32` platform.
     ///
     /// See the [module documentation](../index.html) for more details.
-    #[cfg(any(target_arch = "riscv32", target_arch = "riscv64", doc))]
-    #[doc(cfg(any(target_arch = "riscv32", target_arch = "riscv64")))]
+    #[cfg(any(target_arch = "riscv32", doc))]
+    #[doc(cfg(any(target_arch = "riscv32")))]
     #[unstable(feature = "stdsimd", issue = "27731")]
-    pub mod riscv {
-        pub use crate::core_arch::riscv::*;
+    pub mod riscv32 {
+        pub use crate::core_arch::riscv_shared::*;
+    }
+
+    /// Platform-specific intrinsics for the `riscv64` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "riscv64", doc))]
+    #[doc(cfg(any(target_arch = "riscv64")))]
+    #[unstable(feature = "stdsimd", issue = "27731")]
+    pub mod riscv64 {
+        pub use crate::core_arch::riscv64::*;
+        // RISC-V RV64 supports all RV32 instructions as well in current specifications (2022-01-05).
+        // Module `riscv_shared` includes instructions available under all RISC-V platforms,
+        // i.e. RISC-V RV32 instructions.
+        pub use crate::core_arch::riscv_shared::*;
     }
 
     /// Platform-specific intrinsics for the `wasm32` platform.
@@ -264,7 +278,11 @@ mod arm;
 
 #[cfg(any(target_arch = "riscv32", target_arch = "riscv64", doc))]
 #[doc(cfg(any(target_arch = "riscv32", target_arch = "riscv64")))]
-mod riscv;
+mod riscv_shared;
+
+#[cfg(any(target_arch = "riscv64", doc))]
+#[doc(cfg(any(target_arch = "riscv64")))]
+mod riscv64;
 
 #[cfg(any(target_family = "wasm", doc))]
 #[doc(cfg(target_family = "wasm"))]
