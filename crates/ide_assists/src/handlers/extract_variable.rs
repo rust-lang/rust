@@ -1152,7 +1152,7 @@ struct S {
 
 impl S {
     fn new() -> S {
-        S { 
+        S {
             sub: X::new()
         }
     }
@@ -1181,7 +1181,7 @@ struct S {
 
 impl S {
     fn new() -> S {
-        S { 
+        S {
             sub: X::new()
         }
     }
@@ -1218,7 +1218,7 @@ struct S {
 
 impl S {
     fn new() -> S {
-        S { 
+        S {
             sub: X::new()
         }
     }
@@ -1247,7 +1247,7 @@ struct S {
 
 impl S {
     fn new() -> S {
-        S { 
+        S {
             sub: X::new()
         }
     }
