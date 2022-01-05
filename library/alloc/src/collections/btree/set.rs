@@ -276,7 +276,7 @@ impl<T> BTreeSet<T> {
     /// assert_eq!(Some(&5), set.range(4..).next());
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range<K: ?Sized, R>(&self, range: R) -> Range<'_, T>
+    pub fn range<K: ?Sized, R>(&self, range: &R) -> Range<'_, T>
     where
         K: Ord,
         T: Borrow<K> + Ord,

@@ -248,14 +248,14 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     /// KV twice.
     unsafe fn find_leaf_edges_spanning_range<Q: ?Sized, R>(
         self,
-        range: R,
+        range: &R,
     ) -> LeafRange<BorrowType, K, V>
     where
         Q: Ord,
         K: Borrow<Q>,
         R: RangeBounds<Q>,
     {
-        match self.search_tree_for_bifurcation(&range) {
+        match self.search_tree_for_bifurcation(range) {
             Err(_) => LeafRange::none(),
             Ok((
                 node,
@@ -298,7 +298,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
-    pub fn range_search<Q, R>(self, range: R) -> LeafRange<marker::Immut<'a>, K, V>
+    pub fn range_search<Q, R>(self, range: &R) -> LeafRange<marker::Immut<'a>, K, V>
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
@@ -324,7 +324,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     ///
     /// # Safety
     /// Do not use the duplicate handles to visit the same KV twice.
-    pub fn range_search<Q, R>(self, range: R) -> LeafRange<marker::ValMut<'a>, K, V>
+    pub fn range_search<Q, R>(self, range: &R) -> LeafRange<marker::ValMut<'a>, K, V>
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,

@@ -1050,7 +1050,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range<T: ?Sized, R>(&self, range: R) -> Range<'_, K, V>
+    pub fn range<T: ?Sized, R>(&self, range: &R) -> Range<'_, K, V>
     where
         T: Ord,
         K: Borrow<T> + Ord,
@@ -1094,7 +1094,7 @@ impl<K, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<'_, K, V>
+    pub fn range_mut<T: ?Sized, R>(&mut self, range: &R) -> RangeMut<'_, K, V>
     where
         T: Ord,
         K: Borrow<T> + Ord,
