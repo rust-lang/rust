@@ -151,6 +151,7 @@
 #![feature(variant_count)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
+#![feature(rustc_encodable_decodable)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
