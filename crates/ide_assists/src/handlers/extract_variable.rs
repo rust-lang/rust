@@ -161,7 +161,7 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
 }
 
 fn get_receiver_type(ctx: &AssistContext, expression: &ast::Expr) -> Option<hir::Type> {
-    let receiver = get_receiver(expression.to_owned())?;
+    let receiver = get_receiver(expression.clone())?;
     Some(ctx.sema.type_of_expr(&receiver)?.original())
 }
 
