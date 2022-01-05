@@ -388,7 +388,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     }
 
     #[allow(clippy::similar_names)]
-    fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {
+    pub fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {
         match (&left.kind, &right.kind) {
             (&TyKind::Slice(l_vec), &TyKind::Slice(r_vec)) => self.eq_ty(l_vec, r_vec),
             (&TyKind::Array(lt, ref ll_id), &TyKind::Array(rt, ref rl_id)) => {
@@ -845,6 +845,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_path(&mut self, path: &Path<'_>) {
         match path.res {
             // constant hash since equality is dependant on inter-expression context
+            // e.g. The expressions `if let Some(x) = foo() {}` and `if let Some(y) = foo() {}` are considered equal
+            // even though the binding names are different and they have different `HirId`s.
             Res::Local(_) => 1_usize.hash(&mut self.s),
             _ => {
                 for seg in path.segments {
