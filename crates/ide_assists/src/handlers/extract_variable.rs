@@ -172,8 +172,7 @@ fn get_receiver(expression: ast::Expr) -> Option<ast::Expr> {
             let nested_expression = &field.expr()?;
             get_receiver(nested_expression.to_owned())
         }
-        ast::Expr::PathExpr(_) => Some(expression),
-        _ => None,
+        _ => Some(expression),
     }
 }
 
