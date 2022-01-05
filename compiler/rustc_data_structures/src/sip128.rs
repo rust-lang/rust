@@ -409,6 +409,20 @@ impl SipHasher128 {
     }
 }
 
+macro_rules! dispatch_value {
+    ($target: expr, $value:expr) => {
+        let value = $value;
+        #[allow(unreachable_patterns)]
+        #[allow(overflowing_literals)]
+        match value {
+            0..=0xFF => $target.short_write(value as u8),
+            0x100..=0xFFFF => $target.short_write(value as u16),
+            0x10000..=0xFFFFFFFF => $target.short_write(value as u32),
+            _ => $target.short_write(value as u64),
+        }
+    };
+}
+
 impl Hasher for SipHasher128 {
     #[inline]
     fn write_u8(&mut self, i: u8) {
@@ -422,7 +436,7 @@ impl Hasher for SipHasher128 {
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.short_write(i);
+        dispatch_value!(self, i);
     }
 
     #[inline]
@@ -452,7 +466,7 @@ impl Hasher for SipHasher128 {
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
-        self.short_write(i as u64);
+        dispatch_value!(self, i as u64);
     }
 
     #[inline]
