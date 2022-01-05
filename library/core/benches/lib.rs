@@ -3,6 +3,7 @@
 #![feature(flt2dec)]
 #![feature(int_log)]
 #![feature(test)]
+#![feature(trusted_random_access)]
 
 extern crate test;
 
