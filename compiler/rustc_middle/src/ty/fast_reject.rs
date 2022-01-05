@@ -189,7 +189,7 @@ impl<D: Copy + Debug + Ord + Eq> SimplifiedTypeGen<D> {
 
 impl<'a, D> HashStable<StableHashingContext<'a>> for SimplifiedTypeGen<D>
 where
-    D: Copy + Debug + Ord + Eq + HashStable<StableHashingContext<'a>>,
+    D: Copy + Debug + Eq + HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
