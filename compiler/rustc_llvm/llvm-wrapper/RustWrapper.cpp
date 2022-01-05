@@ -341,16 +341,12 @@ extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
                                                  unsigned Index,
                                                  LLVMRustAttribute RustAttr) {
   Function *F = unwrap<Function>(Fn);
-  Attribute Attr = Attribute::get(F->getContext(), fromRust(RustAttr));
-  auto PAL = F->getAttributes();
+  AttributeList PAL = F->getAttributes();
   AttributeList PALNew;
 #if LLVM_VERSION_LT(14, 0)
-  AttrBuilder B(Attr);
-  PALNew = PAL.removeAttributes(F->getContext(), Index, B);
+  PALNew = PAL.removeAttribute(F->getContext(), Index, fromRust(RustAttr));
 #else
-  AttributeMask M;
-  M.addAttribute(Attr);
-  PALNew = PAL.removeAttributesAtIndex(F->getContext(), Index, M);
+  PALNew = PAL.removeAttributeAtIndex(F->getContext(), Index, fromRust(RustAttr));
 #endif
   F->setAttributes(PALNew);
 }
