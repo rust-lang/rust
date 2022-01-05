@@ -52,10 +52,10 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         }
     }
 
-    let is_mutable_reference = if let Some(receiver_type) = get_receiver_type(&ctx, &to_extract) {
-        receiver_type.is_mutable_reference()
+    let ref_kind: RefKind = if let Some(receiver_type) = get_receiver_type(&ctx, &to_extract) {
+        if receiver_type.is_mutable_reference() { RefKind::MutRef } else { RefKind::Ref }
     } else {
-        false
+        RefKind::None
     };
 
     let anchor = Anchor::from(&to_extract)?;
@@ -83,7 +83,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
                 None => to_extract.syntax().text_range(),
             };
 
-            let reference_modifier = if is_mutable_reference { "&mut " } else { "" };
+            let reference_modifier = match ref_kind {
+                RefKind::MutRef => "&mut ",
+                RefKind::Ref => "&",
+                RefKind::None => ""
+            };
 
             match anchor {
                 Anchor::Before(_) | Anchor::Replace(_) => {
@@ -170,6 +174,13 @@ fn get_receiver(expression: ast::Expr) -> Option<ast::Expr> {
         ast::Expr::PathExpr(_) => Some(expression),
         _ => None,
     }
+}
+
+#[derive(Debug)]
+enum RefKind {
+    Ref,
+    MutRef,
+    None
 }
 
 #[derive(Debug)]
@@ -983,6 +994,100 @@ struct S {
 fn foo(f: &mut Y) {
     let $0var_name = &mut f.field.field.vec;
     var_name.push(0);
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_reference_parameter() {
+        check_assist(
+            extract_variable,
+            r#"
+struct X;
+
+impl X {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    $0s.sub$0.do_thing();
+}"#,
+            r#"
+struct X;
+
+impl X {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    let $0x = &s.sub;
+    x.do_thing();
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_reference_parameter_deep_nesting() {
+        check_assist(
+            extract_variable,
+            r#"
+struct Z;
+impl Z {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct Y {
+    field: Z
+}
+
+struct X {
+    field: Y
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    $0s.sub.field.field$0.do_thing();
+}"#,
+            r#"
+struct Z;
+impl Z {
+    fn do_thing(&self) {
+
+    }
+}
+
+struct Y {
+    field: Z
+}
+
+struct X {
+    field: Y
+}
+
+struct S {
+    sub: X
+}
+
+fn foo(s: &S) {
+    let $0z = &s.sub.field.field;
+    z.do_thing();
 }"#,
         );
     }
