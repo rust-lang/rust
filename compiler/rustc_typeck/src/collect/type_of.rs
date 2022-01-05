@@ -750,7 +750,7 @@ fn infer_placeholder_type<'a>(
             err.emit();
         }
         None => {
-            let mut diag = bad_placeholder(tcx, "type", vec![span], kind);
+            let mut diag = bad_placeholder(tcx, vec![span], kind);
 
             if !ty.references_error() {
                 let mut mk_nameable = MakeNameable::new(tcx);
