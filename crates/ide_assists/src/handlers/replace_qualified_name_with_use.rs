@@ -84,12 +84,12 @@ pub(crate) fn replace_qualified_name_with_use(
                 ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
                 ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
             };
+            shorten_paths(scope.as_syntax_node(), &path.clone_for_update());
             // stick the found import in front of the to be replaced path
             let path = match path_to_qualifier.and_then(|it| mod_path_to_ast(&it).qualifier()) {
                 Some(qualifier) => make::path_concat(qualifier, path),
                 None => path,
             };
-            shorten_paths(scope.as_syntax_node(), &path.clone_for_update());
             insert_use(&scope, path, &ctx.config.insert_use);
         },
     )
@@ -355,6 +355,39 @@ mod bar {
 
 fn main() {
     Foo;
+}
+",
+        );
+    }
+
+    #[test]
+    fn replace_does_not_always_try_to_replace_by_full_item_path() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+use std::mem;
+
+mod std {
+    pub mod mem {
+        pub fn drop<T>(_: T) {}
+    }
+}
+
+fn main() {
+    mem::drop$0(0);
+}
+",
+            r"
+use std::mem::{self, drop};
+
+mod std {
+    pub mod mem {
+        pub fn drop<T>(_: T) {}
+    }
+}
+
+fn main() {
+    drop(0);
 }
 ",
         );
