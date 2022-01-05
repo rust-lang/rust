@@ -942,4 +942,45 @@ impl FooB for Foo {
 "#,
         )
     }
+
+    #[test]
+    fn macro_trait_dyn_absolute_path() {
+        // https://github.com/rust-analyzer/rust-analyzer/issues/11100
+        check_assist(
+            add_missing_impl_members,
+            r#"
+macro_rules! foo {
+    () => {
+        trait MacroTrait {
+            fn trait_method(_: &dyn ::core::marker::Sized);
+        }
+    }
+}
+foo!();
+struct Foo;
+
+impl MacroTrait for Foo {
+    $0
+}
+"#,
+            r#"
+macro_rules! foo {
+    () => {
+        trait MacroTrait {
+            fn trait_method(_: &dyn ::core::marker::Sized);
+        }
+    }
+}
+foo!();
+struct Foo;
+
+impl MacroTrait for Foo {
+    fn trait_method(_: &dyn ::core::marker::Sized) {
+        ${0:todo!()}
+    }
+
+}
+"#,
+        )
+    }
 }
