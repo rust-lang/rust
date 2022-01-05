@@ -20,7 +20,6 @@ use rustc_middle::ty::{ReLateBound, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
 
-use std::collections::BTreeMap;
 use std::ops::Range;
 use std::{cmp, fmt, mem};
 
@@ -90,7 +89,7 @@ pub type VarInfos = IndexVec<RegionVid, RegionVariableInfo>;
 pub struct RegionConstraintData<'tcx> {
     /// Constraints of the form `A <= B`, where either `A` or `B` can
     /// be a region variable (or neither, as it happens).
-    pub constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
+    pub constraints: FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
 
     /// Constraints of the form `R0 member of [R1, ..., Rn]`, meaning that
     /// `R0` must be equal to one of the regions `R1..Rn`. These occur
@@ -127,7 +126,7 @@ pub struct RegionConstraintData<'tcx> {
 }
 
 /// Represents a constraint that influences the inference process.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Constraint<'tcx> {
     /// A region variable is a subregion of another.
     VarSubVar(RegionVid, RegionVid),

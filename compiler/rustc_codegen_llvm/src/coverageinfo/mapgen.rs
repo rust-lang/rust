@@ -319,7 +319,64 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
             continue;
         }
 
-        debug!("generating unused fn: {:?}", non_codegenned_def_id);
-        cx.define_unused_fn(non_codegenned_def_id);
+        if unused_def_ids_by_file.is_empty() {
+            // There are no unused functions with file names to add (in any CGU)
+            return;
+        }
+
+        // Each `CodegenUnit` (CGU) has its own function_coverage_map, and generates a specific binary
+        // with its own coverage map.
+        //
+        // Each covered function `Instance` can be included in only one coverage map, produced from a
+        // specific function_coverage_map, from a specific CGU.
+        //
+        // Since unused functions did not generate code, they are not associated with any CGU yet.
+        //
+        // To avoid injecting the unused functions in multiple coverage maps (for multiple CGUs)
+        // determine which function_coverage_map has the responsibility for publishing unreachable
+        // coverage, based on file name: For each unused function, find the CGU that generates the
+        // first function (based on sorted `DefId`) from the same file.
+        //
+        // Add a new `FunctionCoverage` to the `function_coverage_map`, with unreachable code regions
+        // for each region in it's MIR.
+
+        let mut first_covered_def_id_by_file: FxHashMap<Symbol, DefId> = FxHashMap::default();
+        for &def_id in codegenned_def_ids.iter() {
+            if let Some(covered_file_name) = tcx.covered_file_name(def_id) {
+                // Only add files known to have unused functions
+                if unused_def_ids_by_file.contains_key(covered_file_name) {
+                    first_covered_def_id_by_file.entry(*covered_file_name).or_insert(def_id);
+                }
+            }
+        }
+
+        // Get the set of def_ids with coverage regions, known by *this* CoverageContext.
+        let cgu_covered_def_ids: DefIdSet = match cx.coverage_context() {
+            Some(ctx) => ctx
+                .function_coverage_map
+                .borrow()
+                .keys()
+                .map(|&instance| instance.def.def_id())
+                .collect(),
+            None => return,
+        };
+
+        let cgu_covered_files: FxHashSet<Symbol> =
+            first_covered_def_id_by_file
+                .iter()
+                .filter_map(|(&file_name, def_id)| {
+                    if cgu_covered_def_ids.contains(def_id) { Some(file_name) } else { None }
+                })
+                .collect();
+
+        // For each file for which this CGU is responsible for adding unused function coverage,
+        // get the `def_id`s for each unused function (if any), define a synthetic function with a
+        // single LLVM coverage counter, and add the function's coverage `CodeRegion`s. to the
+        // function_coverage_map.
+        for covered_file_name in cgu_covered_files {
+            for def_id in unused_def_ids_by_file.remove(&covered_file_name).into_iter().flatten() {
+                cx.define_unused_fn(def_id);
+            }
+        }
     }
 }

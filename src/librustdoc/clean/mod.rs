@@ -31,7 +31,6 @@ use rustc_typeck::hir_ty_to_ty;
 
 use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
-use std::collections::BTreeMap;
 use std::default::Default;
 use std::hash::Hash;
 use std::{mem, vec};
@@ -575,7 +574,7 @@ fn clean_ty_generics(
 ) -> Generics {
     // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
     // since `Clean for ty::Predicate` would consume them.
-    let mut impl_trait = BTreeMap::<ImplTraitParam, Vec<GenericBound>>::default();
+    let mut impl_trait = FxHashMap::<ImplTraitParam, Vec<GenericBound>>::default();
 
     // Bounds in the type_params and lifetimes fields are repeated in the
     // predicates field (see rustc_typeck::collect::ty_generics), so remove

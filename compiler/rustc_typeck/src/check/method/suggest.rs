@@ -88,7 +88,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  err: &mut DiagnosticBuilder<'_>,
                                  mut sources: Vec<CandidateSource>,
                                  sugg_span: Span| {
-            sources.sort();
+            // FIXME: cannot sort DefIds!
+            // sources.sort();
             sources.dedup();
             // Dynamic limit to avoid hiding just one candidate, which is silly.
             let limit = if sources.len() == 5 { 5 } else { 4 };
@@ -522,7 +523,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 })
                                 .collect::<Vec<_>>();
                             if !inherent_impls_candidate.is_empty() {
-                                inherent_impls_candidate.sort();
+                                // inherent_impls_candidate.sort();
                                 inherent_impls_candidate.dedup();
 
                                 // number of type to shows at most.
@@ -1113,14 +1114,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
                 _ => false,
             });
-        let mut preds: Vec<_> = errors
+        let preds: Vec<_> = errors
             .iter()
             .filter_map(|e| match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Trait(pred) => Some(pred),
                 _ => None,
             })
             .collect();
-        preds.sort_by_key(|pred| (pred.def_id(), pred.self_ty()));
+        // preds.sort_by_key(|pred| (pred.def_id(), pred.self_ty()));
         let def_ids = preds
             .iter()
             .filter_map(|pred| match pred.self_ty().kind() {
@@ -1401,7 +1402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
-            candidates.sort();
+            // candidates.sort();
             candidates.dedup();
 
             // `TryFrom` and `FromIterator` have no methods

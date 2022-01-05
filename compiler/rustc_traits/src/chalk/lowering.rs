@@ -32,6 +32,7 @@
 //! variables from the current `Binder`.
 
 use rustc_ast::ast;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::traits::{ChalkEnvironmentAndGoal, ChalkRustInterner as RustInterner};
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
@@ -819,11 +820,11 @@ crate fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
     interner: RustInterner<'tcx>,
     tcx: TyCtxt<'tcx>,
     ty: Binder<'tcx, T>,
-) -> (T, chalk_ir::VariableKinds<RustInterner<'tcx>>, BTreeMap<DefId, u32>) {
+) -> (T, chalk_ir::VariableKinds<RustInterner<'tcx>>, FxIndexMap<DefId, u32>) {
     let mut bound_vars_collector = BoundVarsCollector::new();
     ty.as_ref().skip_binder().visit_with(&mut bound_vars_collector);
     let mut parameters = bound_vars_collector.parameters;
-    let named_parameters: BTreeMap<DefId, u32> = bound_vars_collector
+    let named_parameters: FxIndexMap<DefId, u32> = bound_vars_collector
         .named_parameters
         .into_iter()
         .enumerate()
@@ -937,11 +938,11 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
 struct NamedBoundVarSubstitutor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     binder_index: ty::DebruijnIndex,
-    named_parameters: &'a BTreeMap<DefId, u32>,
+    named_parameters: &'a FxIndexMap<DefId, u32>,
 }
 
 impl<'a, 'tcx> NamedBoundVarSubstitutor<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, named_parameters: &'a BTreeMap<DefId, u32>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, named_parameters: &'a FxIndexMap<DefId, u32>) -> Self {
         NamedBoundVarSubstitutor { tcx, binder_index: ty::INNERMOST, named_parameters }
     }
 }
@@ -985,8 +986,8 @@ crate struct ParamsSubstitutor<'tcx> {
     binder_index: ty::DebruijnIndex,
     list: Vec<rustc_middle::ty::ParamTy>,
     next_ty_placeholder: usize,
-    crate params: rustc_data_structures::fx::FxHashMap<usize, rustc_middle::ty::ParamTy>,
-    crate named_regions: BTreeMap<DefId, u32>,
+    crate params: FxIndexMap<usize, rustc_middle::ty::ParamTy>,
+    crate named_regions: FxIndexMap<DefId, u32>,
 }
 
 impl<'tcx> ParamsSubstitutor<'tcx> {
@@ -996,8 +997,8 @@ impl<'tcx> ParamsSubstitutor<'tcx> {
             binder_index: ty::INNERMOST,
             list: vec![],
             next_ty_placeholder,
-            params: rustc_data_structures::fx::FxHashMap::default(),
-            named_regions: BTreeMap::default(),
+            params: rustc_data_structures::fx::FxIndexMap::default(),
+            named_regions: FxIndexMap::default(),
         }
     }
 }

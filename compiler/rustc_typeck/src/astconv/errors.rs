@@ -1,5 +1,6 @@
 use crate::astconv::AstConv;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -9,7 +10,6 @@ use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
-use std::collections::BTreeSet;
 use std::iter;
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
@@ -241,7 +241,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// emit a generic note suggesting using a `where` clause to constraint instead.
     pub(crate) fn complain_about_missing_associated_types(
         &self,
-        associated_types: FxHashMap<Span, BTreeSet<DefId>>,
+        associated_types: FxHashMap<Span, FxHashSet<DefId>>,
         potential_assoc_types: Vec<Span>,
         trait_bounds: &[hir::PolyTraitRef<'_>],
     ) {

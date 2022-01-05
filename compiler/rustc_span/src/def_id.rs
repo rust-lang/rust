@@ -218,7 +218,7 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 /// index and a def index.
 ///
 /// You can create a `DefId` from a `LocalDefId` using `local_def_id.to_def_id()`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Copy)]
+#[derive(Clone, PartialEq, Eq, Copy)]
 // On below-64 bit systems we can simply use the derived `Hash` impl
 #[cfg_attr(not(target_pointer_width = "64"), derive(Hash))]
 #[repr(C)]
@@ -233,6 +233,12 @@ pub struct DefId {
     #[cfg(all(target_pointer_width = "64", target_endian = "big"))]
     pub index: DefIndex,
 }
+
+// To ensure correctness of incremental compilation,
+// `DefId` must not implement `Ord` or `PartialOrd`.
+// See https://github.com/rust-lang/rust/issues/90317.
+impl !Ord for DefId {}
+impl !PartialOrd for DefId {}
 
 // On 64-bit systems, we can hash the whole `DefId` as one `u64` instead of two `u32`s. This
 // improves performance without impairing `FxHash` quality. So the below code gets compiled to a

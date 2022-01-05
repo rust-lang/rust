@@ -102,7 +102,7 @@ impl<'tcx> NoMatchData<'tcx> {
 
 // A pared down enum describing just the places from which a method
 // candidate can arise. Used for error reporting only.
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CandidateSource {
     ImplSource(DefId),
     TraitSource(DefId /* trait id */),

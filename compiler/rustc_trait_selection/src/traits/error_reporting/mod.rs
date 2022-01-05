@@ -12,6 +12,7 @@ use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCod
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -1570,7 +1571,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             self.tcx.find_map_relevant_impl(trait_def_id, trait_ref.skip_binder().self_ty(), Some)
         };
         let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
-        let traits_with_same_path: std::collections::BTreeSet<_> = self
+        let traits_with_same_path: FxHashSet<_> = self
             .tcx
             .all_traits()
             .filter(|trait_def_id| *trait_def_id != trait_ref.def_id())

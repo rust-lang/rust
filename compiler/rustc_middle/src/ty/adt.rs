@@ -17,7 +17,6 @@ use rustc_span::symbol::sym;
 use rustc_target::abi::VariantIdx;
 
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
@@ -98,20 +97,6 @@ pub struct AdtDef {
     flags: AdtFlags,
     /// Repr options provided by the user.
     pub repr: ReprOptions,
-}
-
-impl PartialOrd for AdtDef {
-    fn partial_cmp(&self, other: &AdtDef) -> Option<Ordering> {
-        Some(self.cmp(&other))
-    }
-}
-
-/// There should be only one AdtDef for each `did`, therefore
-/// it is fine to implement `Ord` only based on `did`.
-impl Ord for AdtDef {
-    fn cmp(&self, other: &AdtDef) -> Ordering {
-        self.did.cmp(&other.did)
-    }
 }
 
 /// There should be only one AdtDef for each `did`, therefore

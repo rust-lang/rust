@@ -6,7 +6,7 @@
 crate mod db;
 crate mod lowering;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 
 use rustc_index::vec::IndexVec;
 
@@ -51,7 +51,7 @@ crate fn evaluate_goal<'tcx>(
         ParamsSubstitutor::new(tcx, placeholders_collector.next_ty_placeholder);
     let obligation = obligation.fold_with(&mut params_substitutor);
     // FIXME(chalk): we really should be substituting these back in the solution
-    let _params: FxHashMap<usize, ParamTy> = params_substitutor.params;
+    let _params: FxIndexMap<usize, ParamTy> = params_substitutor.params;
 
     let mut regions_substitutor = RegionsSubstitutor::new(tcx, reempty_placeholder);
     let obligation = obligation.fold_with(&mut regions_substitutor);

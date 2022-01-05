@@ -37,7 +37,6 @@ use rustc_trait_selection::traits::error_reporting::report_object_safety_error;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 
 use smallvec::SmallVec;
-use std::collections::BTreeSet;
 use std::slice;
 
 #[derive(Debug)]
@@ -1370,7 +1369,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         // Use a `BTreeSet` to keep output in a more consistent order.
-        let mut associated_types: FxHashMap<Span, BTreeSet<DefId>> = FxHashMap::default();
+        let mut associated_types: FxHashMap<Span, FxHashSet<DefId>> = FxHashMap::default();
 
         let regular_traits_refs_spans = bounds
             .trait_bounds
