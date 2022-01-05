@@ -180,6 +180,69 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
     }
 }
 
+/// Atomic combination of [`take_hook`] + [`set_hook`].
+///
+/// [`take_hook`]: ./fn.take_hook.html
+/// [`set_hook`]: ./fn.set_hook.html
+///
+/// # Panics
+///
+/// Panics if called from a panicking thread.
+///
+/// Panics if the provided closure calls any of the functions [`panic::take_hook`],
+/// [`panic::set_hook`], or [`panic::update_hook`].
+///
+/// Note: if the provided closure panics, the panic will not be able to be handled, resulting in a
+/// double panic that aborts the process with a generic error message.
+///
+/// [`panic::take_hook`]: ./fn.take_hook.html
+/// [`panic::set_hook`]: ./fn.set_hook.html
+/// [`panic::update_hook`]: ./fn.update_hook.html
+///
+/// # Examples
+///
+/// The following will print the custom message, and then the normal output of panic.
+///
+/// ```should_panic
+/// #![feature(panic_update_hook)]
+/// use std::panic;
+///
+/// panic::update_hook(|prev| {
+///     Box::new(move |panic_info| {
+///         println!("Print custom message and execute panic handler as usual");
+///         prev(panic_info);
+///     })
+/// });
+///
+/// panic!("Custom and then normal");
+/// ```
+#[unstable(feature = "panic_update_hook", issue = "92649")]
+pub fn update_hook<F>(hook_fn: F)
+where
+    F: FnOnce(
+        Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>,
+    ) -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>,
+{
+    if thread::panicking() {
+        panic!("cannot modify the panic hook from a panicking thread");
+    }
+
+    unsafe {
+        let guard = HOOK_LOCK.write();
+        let old_hook = HOOK;
+        HOOK = Hook::Default;
+
+        let hook_for_fn = match old_hook {
+            Hook::Default => Box::new(default_hook),
+            Hook::Custom(ptr) => Box::from_raw(ptr),
+        };
+
+        let hook = hook_fn(hook_for_fn);
+        HOOK = Hook::Custom(Box::into_raw(hook));
+        drop(guard);
+    }
+}
+
 fn default_hook(info: &PanicInfo<'_>) {
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
