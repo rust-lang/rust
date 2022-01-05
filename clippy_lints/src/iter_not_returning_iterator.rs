@@ -67,6 +67,10 @@ impl LateLintPass<'_> for IterNotReturningIterator {
 fn check_sig(cx: &LateContext<'_>, name: &str, sig: &FnSig<'_>, fn_id: LocalDefId) {
     if sig.decl.implicit_self.has_implicit_self() {
         let ret_ty = cx.tcx.fn_sig(fn_id).skip_binder().output();
+        let ret_ty = cx
+            .tcx
+            .try_normalize_erasing_regions(cx.param_env, ret_ty)
+            .unwrap_or(ret_ty);
         if cx
             .tcx
             .get_diagnostic_item(sym::Iterator)
