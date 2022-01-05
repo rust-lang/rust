@@ -1109,7 +1109,8 @@ pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
 }
 
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
-    let Crate { attrs, items, span, is_placeholder: _ } = krate;
+    let Crate { attrs, items, span, id, is_placeholder: _ } = krate;
+    vis.visit_id(id);
     visit_attrs(attrs, vis);
     items.flat_map_in_place(|item| vis.flat_map_item(item));
     vis.visit_span(span);
@@ -1554,6 +1555,7 @@ impl DummyAstNode for Crate {
             attrs: Default::default(),
             items: Default::default(),
             span: Default::default(),
+            id: DUMMY_NODE_ID,
             is_placeholder: Default::default(),
         }
     }

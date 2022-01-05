@@ -27,7 +27,7 @@ impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, ast::Crate> {
         let (attrs, items, span) = self.parse_mod(&token::Eof)?;
-        Ok(ast::Crate { attrs, items, span, is_placeholder: None })
+        Ok(ast::Crate { attrs, items, span, id: DUMMY_NODE_ID, is_placeholder: false })
     }
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.

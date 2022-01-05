@@ -68,7 +68,7 @@ use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
 use std::ops::ControlFlow;
-use std::{cmp, fmt, iter, ptr};
+use std::{cmp, fmt, iter, mem, ptr};
 use tracing::debug;
 
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
@@ -1394,7 +1394,7 @@ impl<'a> Resolver<'a> {
                 .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
                 .collect(),
             lint_buffer: LintBuffer::default(),
-            next_node_id: NodeId::from_u32(1),
+            next_node_id: CRATE_NODE_ID,
             node_id_to_def_id,
             def_id_to_node_id,
             placeholder_field_indices: Default::default(),
@@ -1430,8 +1430,7 @@ impl<'a> Resolver<'a> {
     pub fn next_node_id(&mut self) -> NodeId {
         let next =
             self.next_node_id.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
-        self.next_node_id = ast::NodeId::from_u32(next);
-        self.next_node_id
+        mem::replace(&mut self.next_node_id, ast::NodeId::from_u32(next))
     }
 
     pub fn lint_buffer(&mut self) -> &mut LintBuffer {

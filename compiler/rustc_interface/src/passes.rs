@@ -3,7 +3,7 @@ use crate::proc_macro_decls;
 use crate::util;
 
 use rustc_ast::mut_visit::MutVisitor;
-use rustc_ast::{self as ast, visit};
+use rustc_ast::{self as ast, visit, DUMMY_NODE_ID};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -323,7 +323,7 @@ pub fn configure_and_expand(
 
         let crate_attrs = krate.attrs.clone();
         let extern_mod_loaded = |ident: Ident, attrs, items, span| {
-            let krate = ast::Crate { attrs, items, span, is_placeholder: None };
+            let krate = ast::Crate { attrs, items, span, id: DUMMY_NODE_ID, is_placeholder: false };
             pre_expansion_lint(sess, lint_store, &krate, &crate_attrs, ident.name.as_str());
             (krate.attrs, krate.items)
         };
