@@ -1,0 +1,16 @@
+[package]
+name = "rustc_log"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+atty = "0.2"
+tracing = "0.1.28"
+tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
+tracing-tree = "0.2.0"
+
+[dev-dependencies]
+rustc_span = { path = "../rustc_span" }
+
+[features]
+max_level_info = ['tracing/max_level_info']

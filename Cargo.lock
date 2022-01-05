@@ -368,7 +368,7 @@ version = "0.1.0"
 dependencies = [
  "directories",
  "rustc-workspace-hack",
- "rustc_version 0.3.3",
+ "rustc_version",
  "serde",
  "serde_json",
  "vergen",
@@ -2276,7 +2276,7 @@ dependencies = [
  "measureme 9.1.2",
  "rand 0.8.4",
  "rustc-workspace-hack",
- "rustc_version 0.4.0",
+ "rustc_version",
  "shell-escape",
  "smallvec",
 ]
@@ -3808,7 +3808,6 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
- "atty",
  "libc",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3822,6 +3821,7 @@ dependencies = [
  "rustc_hir_pretty",
  "rustc_interface",
  "rustc_lint",
+ "rustc_log",
  "rustc_metadata",
  "rustc_middle",
  "rustc_parse",
@@ -3833,8 +3833,6 @@ dependencies = [
  "rustc_target",
  "rustc_typeck",
  "tracing",
- "tracing-subscriber",
- "tracing-tree",
  "winapi",
 ]
 
@@ -4075,6 +4073,17 @@ dependencies = [
  "build_helper",
  "cc",
  "libc",
+]
+
+[[package]]
+name = "rustc_log"
+version = "0.0.0"
+dependencies = [
+ "atty",
+ "rustc_span",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]
@@ -4575,15 +4584,6 @@ dependencies = [
  "rustc_ty_utils",
  "smallvec",
  "tracing",
-]
-
-[[package]]
-name = "rustc_version"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0dfe2087c51c460008730de8b57e6a320782fbfb312e1f4d520e6c6fae155ee"
-dependencies = [
- "semver 0.11.0",
 ]
 
 [[package]]

@@ -974,6 +974,7 @@ class RustBuild(object):
 
     def build_bootstrap(self):
         """Build bootstrap"""
+        print("Building rustbuild")
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -1133,7 +1134,7 @@ class RustBuild(object):
             recorded_submodules[data[3]] = data[2]
         for module in filtered_submodules:
             self.update_submodule(module[0], module[1], recorded_submodules)
-        print("Submodules updated in %.2f seconds" % (time() - start_time))
+        print("  Submodules updated in %.2f seconds" % (time() - start_time))
 
     def set_dist_environment(self, url):
         """Set download URL for normal environment"""
