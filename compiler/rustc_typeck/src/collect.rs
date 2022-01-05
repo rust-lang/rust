@@ -381,7 +381,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        self.tcx().ty_error_with_message(span, "bad_placeholder_type")
+        self.tcx().ty_error_with_message(span, "bad placeholder type")
     }
 
     fn ct_infer(
@@ -390,13 +390,11 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         _: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> &'tcx Const<'tcx> {
-        bad_placeholder(self.tcx(), "const", vec![span], "generic").emit();
-        // Typeck doesn't expect erased regions to be returned from `type_of`.
         let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match r {
             ty::ReErased => self.tcx.lifetimes.re_static,
             _ => r,
         });
-        self.tcx().const_error(ty)
+        self.tcx().const_error_with_message(ty, span, "bad placeholder constant")
     }
 
     fn projected_ty_from_poly_trait_ref(
