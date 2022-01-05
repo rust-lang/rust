@@ -52,16 +52,10 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         }
     }
 
-    let ref_kind: RefKind = if let Some(receiver_type) = get_receiver_type(&ctx, &to_extract) {
-        if receiver_type.is_mutable_reference() {
-            RefKind::MutRef
-        } else if receiver_type.is_reference() {
-            RefKind::Ref
-        } else {
-            RefKind::None
-        }
-    } else {
-        RefKind::None
+    let ref_kind = match get_receiver_type(&ctx, &to_extract) {
+        Some(receiver_type) if receiver_type.is_mutable_reference() => RefKind::MutRef,
+        Some(receiver_type) if receiver_type.is_reference() => RefKind::Ref,
+        _ => RefKind::None,
     };
 
     let anchor = Anchor::from(&to_extract)?;
