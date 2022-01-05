@@ -455,6 +455,12 @@ Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScri
 Internal config, path to proc-macro server executable (typically,
 this is rust-analyzer itself, but we override this in tests).
 --
+[[rust-analyzer.procMacro.dummies]]rust-analyzer.procMacro.dummies (default: `{}`)::
++
+--
+Replaces the proc-macro expanders for the named proc-macros in the named crates with
+an identity expander that outputs the input again.
+--
 [[rust-analyzer.runnables.overrideCargo]]rust-analyzer.runnables.overrideCargo (default: `null`)::
 +
 --

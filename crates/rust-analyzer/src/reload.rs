@@ -291,9 +291,6 @@ impl GlobalState {
                     }
                 },
             };
-            self.analysis_host
-                .raw_database_mut()
-                .set_enable_proc_attr_macros(self.config.expand_proc_attr_macros());
         }
 
         let watch = match files_config.watcher {
@@ -514,6 +511,8 @@ impl SourceRootConfig {
     }
 }
 
+/// Load the proc-macros for the given lib path, replacing all expanders whose names are in `dummy_replace`
+/// with an identity dummy expander.
 pub(crate) fn load_proc_macro(
     client: Option<&ProcMacroServer>,
     path: &AbsPath,
@@ -586,6 +585,7 @@ pub(crate) fn load_proc_macro(
         }
     }
 
+    /// Dummy identity expander, used for proc-macros that are deliberately ignored by the user.
     #[derive(Debug)]
     struct DummyExpander;
 

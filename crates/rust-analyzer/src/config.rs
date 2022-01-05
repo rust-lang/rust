@@ -301,6 +301,8 @@ config_data! {
         /// Internal config, path to proc-macro server executable (typically,
         /// this is rust-analyzer itself, but we override this in tests).
         procMacro_server: Option<PathBuf>          = "null",
+        /// Replaces the proc-macro expanders for the named proc-macros in the named crates with
+        /// an identity expander that outputs the input again.
         procMacro_dummies: FxHashMap<Box<str>, Box<[Box<str>]>>          = "{}",
 
         /// Command to be executed instead of 'cargo' for runnables.
@@ -1167,7 +1169,13 @@ fn get_field<T: DeserializeOwned>(
         .find_map(move |field| {
             let mut pointer = field.replace('_', "/");
             pointer.insert(0, '/');
-            json.pointer_mut(&pointer).and_then(|it| serde_json::from_value(it.take()).ok())
+            json.pointer_mut(&pointer).and_then(|it| match serde_json::from_value(it.take()) {
+                Ok(it) => Some(it),
+                Err(e) => {
+                    tracing::warn!("Failed to deserialize config field at {}: {:?}", pointer, e);
+                    None
+                }
+            })
         })
         .unwrap_or(default)
 }
@@ -1227,6 +1235,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "array",
             "items": { "type": "string" },
             "uniqueItems": true,
+        },
+        "FxHashMap<Box<str>, Box<[Box<str>]>>" => set! {
+            "type": "object",
         },
         "FxHashMap<String, SnippetDef>" => set! {
             "type": "object",
