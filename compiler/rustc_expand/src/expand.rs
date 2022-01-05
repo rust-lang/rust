@@ -377,6 +377,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             dir_path,
         });
         let krate = self.fully_expand_fragment(AstFragment::Crate(krate)).make_crate();
+        assert_eq!(krate.id, ast::CRATE_NODE_ID);
         self.cx.trace_macros_diag();
         krate
     }
@@ -1169,7 +1170,8 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         attrs: Vec::new(),
                         items: Vec::new(),
                         span,
-                        is_placeholder: None,
+                        id: self.cx.resolver.next_node_id(),
+                        is_placeholder: false,
                     };
                 }
             };
@@ -1180,7 +1182,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .make_crate();
             }
 
-            noop_visit_crate(&mut krate, self);
+            assign_id!(self, &mut krate.id, || noop_visit_crate(&mut krate, self));
             krate
         })
     }

@@ -510,8 +510,10 @@ pub struct Crate {
     pub attrs: Vec<Attribute>,
     pub items: Vec<P<Item>>,
     pub span: Span,
-    // Placeholder ID if the crate node is a macro placeholder.
-    pub is_placeholder: Option<NodeId>,
+    /// Must be equal to `CRATE_NODE_ID` after the crate root is expanded, but may hold
+    /// expansion placeholders or an unassigned value (`DUMMY_NODE_ID`) before that.
+    pub id: NodeId,
+    pub is_placeholder: bool,
 }
 
 /// Possible values inside of compile-time attribute lists.
