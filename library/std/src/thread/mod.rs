@@ -505,7 +505,7 @@ impl Builder {
         };
 
         if let Some(scope_data) = scope_data {
-            scope_data.increment_n_running_threads();
+            scope_data.increment_num_running_threads();
         }
 
         Ok(JoinInner {
@@ -1292,7 +1292,7 @@ impl<'scope, T> Drop for Packet<'scope, T> {
             // panicked, and nobody consumed the panic payload, we make sure
             // the scope function will panic.
             let unhandled_panic = matches!(self.result.get_mut(), Some(Err(_)));
-            scope.decrement_n_running_threads(unhandled_panic);
+            scope.decrement_num_running_threads(unhandled_panic);
         }
     }
 }

@@ -20,26 +20,26 @@ pub struct Scope<'env> {
 pub struct ScopedJoinHandle<'scope, T>(JoinInner<'scope, T>);
 
 pub(super) struct ScopeData {
-    n_running_threads: AtomicUsize,
+    num_running_threads: AtomicUsize,
     a_thread_panicked: AtomicBool,
     main_thread: Thread,
 }
 
 impl ScopeData {
-    pub(super) fn increment_n_running_threads(&self) {
+    pub(super) fn increment_num_running_threads(&self) {
         // We check for 'overflow' with usize::MAX / 2, to make sure there's no
         // chance it overflows to 0, which would result in unsoundness.
-        if self.n_running_threads.fetch_add(1, Ordering::Relaxed) > usize::MAX / 2 {
+        if self.num_running_threads.fetch_add(1, Ordering::Relaxed) > usize::MAX / 2 {
             // This can only reasonably happen by mem::forget()'ing many many ScopedJoinHandles.
-            self.decrement_n_running_threads(false);
+            self.decrement_num_running_threads(false);
             panic!("too many running threads in thread scope");
         }
     }
-    pub(super) fn decrement_n_running_threads(&self, panic: bool) {
+    pub(super) fn decrement_num_running_threads(&self, panic: bool) {
         if panic {
             self.a_thread_panicked.store(true, Ordering::Relaxed);
         }
-        if self.n_running_threads.fetch_sub(1, Ordering::Release) == 1 {
+        if self.num_running_threads.fetch_sub(1, Ordering::Release) == 1 {
             self.main_thread.unpark();
         }
     }
@@ -98,7 +98,7 @@ where
 {
     let scope = Scope {
         data: ScopeData {
-            n_running_threads: AtomicUsize::new(0),
+            num_running_threads: AtomicUsize::new(0),
             main_thread: current(),
             a_thread_panicked: AtomicBool::new(false),
         },
@@ -109,7 +109,7 @@ where
     let result = catch_unwind(AssertUnwindSafe(|| f(&scope)));
 
     // Wait until all the threads are finished.
-    while scope.data.n_running_threads.load(Ordering::Acquire) != 0 {
+    while scope.data.num_running_threads.load(Ordering::Acquire) != 0 {
         park();
     }
 
@@ -287,7 +287,7 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
 impl<'env> fmt::Debug for Scope<'env> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Scope")
-            .field("n_running_threads", &self.data.n_running_threads.load(Ordering::Relaxed))
+            .field("num_running_threads", &self.data.num_running_threads.load(Ordering::Relaxed))
             .field("a_thread_panicked", &self.data.a_thread_panicked)
             .field("main_thread", &self.data.main_thread)
             .finish_non_exhaustive()
