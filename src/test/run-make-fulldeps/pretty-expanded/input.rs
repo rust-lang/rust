@@ -1,8 +1,6 @@
-#[crate_type="lib"]
-
-// FIXME: Maybe this should be replaced with some other derive macro
+// FIXME: This should be replaced with some other derive macro
 #![feature(rustc_encodable_decodable)]
-// #13544
+#[crate_type="lib"] // Why is this an outer attribute?
 
 extern crate rustc_serialize;
 
