@@ -1,5 +1,7 @@
 #[crate_type="lib"]
 
+// FIXME: Maybe this should be replaced with some other derive macro
+#![feature(rustc_encodable_decodable)]
 // #13544
 
 extern crate rustc_serialize;
