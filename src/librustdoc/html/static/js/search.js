@@ -1085,7 +1085,7 @@ window.initSearch = function(rawSearchIndex) {
         return "<button>" + text + " <div class=\"count\">(" + nbElems + ")</div></button>";
     }
 
-    function showResults(results, go_to_first) {
+    function showResults(results, go_to_first, filterCrates) {
         var search = searchState.outputElement();
         if (go_to_first || (results.others.length === 1
             && getSettingValue("go-to-only-result") === "true"
@@ -1126,9 +1126,16 @@ window.initSearch = function(rawSearchIndex) {
             }
         }
 
-        var output = "<h1>Results for " + escape(query.query) +
+        let crates = `<select id="crate-search"><option value="All crates">All crates</option>`;
+        for (let c of window.ALL_CRATES) {
+            crates += `<option value="${c}" ${c == filterCrates && "selected"}>${c}</option>`;
+        }
+        crates += `</select>`;
+        var output = `<div id="search-settings">
+            <h1 class="search-results-title">Results for ${escape(query.query)} ` +
             (query.type ? " (type: " + escape(query.type) + ")" : "") + "</h1>" +
-            "<div id=\"titles\">" +
+            ` in ${crates} ` +
+            `</div><div id="titles">` +
             makeTabHeader(0, "In Names", ret_others[1]) +
             makeTabHeader(1, "In Parameters", ret_in_args[1]) +
             makeTabHeader(2, "In Return Types", ret_returned[1]) +
@@ -1141,6 +1148,7 @@ window.initSearch = function(rawSearchIndex) {
         resultsElem.appendChild(ret_returned[0]);
 
         search.innerHTML = output;
+        document.getElementById("crate-search").addEventListener("input", updateCrate);
         search.appendChild(resultsElem);
         // Reset focused elements.
         searchState.focusedByTab = [null, null, null];
@@ -1316,7 +1324,8 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         var filterCrates = getFilterCrates();
-        showResults(execSearch(query, searchWords, filterCrates), params["go_to_first"]);
+        showResults(execSearch(query, searchWords, filterCrates),
+            params["go_to_first"], filterCrates);
     }
 
     function buildIndex(rawSearchIndex) {
@@ -1552,19 +1561,6 @@ window.initSearch = function(rawSearchIndex) {
             }
         });
 
-
-        var selectCrate = document.getElementById("crate-search");
-        if (selectCrate) {
-            selectCrate.onchange = function() {
-                updateLocalStorage("rustdoc-saved-filter-crate", selectCrate.value);
-                // In case you "cut" the entry from the search input, then change the crate filter
-                // before paste back the previous search, you get the old search results without
-                // the filter. To prevent this, we need to remove the previous results.
-                currentResults = null;
-                search(undefined, true);
-            };
-        }
-
         // Push and pop states are used to add search results to the browser
         // history.
         if (searchState.browserSupportsHistoryApi()) {
@@ -1614,6 +1610,15 @@ window.initSearch = function(rawSearchIndex) {
             }
             search();
         };
+    }
+
+    function updateCrate(ev) {
+        updateLocalStorage("rustdoc-saved-filter-crate", ev.target.value);
+        // In case you "cut" the entry from the search input, then change the crate filter
+        // before paste back the previous search, you get the old search results without
+        // the filter. To prevent this, we need to remove the previous results.
+        currentResults = null;
+        search(undefined, true);
     }
 
     searchWords = buildIndex(rawSearchIndex);
