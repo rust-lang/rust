@@ -1314,7 +1314,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             return;
         }
 
-        let mut keys_and_jobs = self
+        let keys_and_jobs = self
             .tcx
             .mir_keys(())
             .iter()
@@ -1327,8 +1327,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             })
             .collect::<Vec<_>>();
-        // Sort everything to ensure a stable order for diagnotics.
-        keys_and_jobs.sort_by_key(|&(def_id, _, _)| def_id.index());
         for (def_id, encode_const, encode_opt) in keys_and_jobs.into_iter() {
             debug_assert!(encode_const || encode_opt);
 

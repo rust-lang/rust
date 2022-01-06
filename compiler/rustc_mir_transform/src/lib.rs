@@ -18,7 +18,7 @@ extern crate rustc_middle;
 
 use required_consts::RequiredConstsVisitor;
 use rustc_const_eval::util;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -136,8 +136,8 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
-fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
-    let mut set = FxHashSet::default();
+fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
+    let mut set = FxIndexSet::default();
 
     // All body-owners have MIR associated with them.
     set.extend(tcx.hir().body_owners());
@@ -146,7 +146,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
     // they don't have a BodyId, so we need to build them separately.
     struct GatherCtors<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
-        set: &'a mut FxHashSet<LocalDefId>,
+        set: &'a mut FxIndexSet<LocalDefId>,
     }
     impl<'tcx> Visitor<'tcx> for GatherCtors<'_, 'tcx> {
         fn visit_variant_data(

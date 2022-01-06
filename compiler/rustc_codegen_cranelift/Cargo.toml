@@ -19,7 +19,7 @@ gimli = { version = "0.25.0", default-features = false, features = ["write"]}
 object = { version = "0.27.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
 
 ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "do_not_remove_cg_clif_ranlib" }
-indexmap = "1.0.2"
+indexmap = "1.8.0"
 libloading = { version = "0.6.0", optional = true }
 smallvec = "1.6.1"
 
