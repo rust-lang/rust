@@ -1370,22 +1370,7 @@ impl LinkCollector<'_, '_> {
                         && item.def_id.is_local()
                         && !self.cx.tcx.features().intra_doc_pointers
                     {
-                        let span = super::source_span_for_markdown_range(
-                            self.cx.tcx,
-                            dox,
-                            &ori_link.range,
-                            &item.attrs,
-                        )
-                        .unwrap_or_else(|| item.attr_span(self.cx.tcx));
-
-                        rustc_session::parse::feature_err(
-                            &self.cx.tcx.sess.parse_sess,
-                            sym::intra_doc_pointers,
-                            span,
-                            "linking to associated items of raw pointers is experimental",
-                        )
-                        .note("rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does")
-                        .emit();
+                        self.report_rawptr_assoc_feature_gate(dox, &ori_link, item);
                     }
                 } else {
                     match disambiguator {
@@ -1410,6 +1395,20 @@ impl LinkCollector<'_, '_> {
                 Some(ItemLink { link: ori_link.link, link_text, did: id, fragment })
             }
         }
+    }
+
+    fn report_rawptr_assoc_feature_gate(&self, dox: &str, ori_link: &MarkdownLink, item: &Item) {
+        let span =
+            super::source_span_for_markdown_range(self.cx.tcx, dox, &ori_link.range, &item.attrs)
+                .unwrap_or_else(|| item.attr_span(self.cx.tcx));
+        rustc_session::parse::feature_err(
+            &self.cx.tcx.sess.parse_sess,
+            sym::intra_doc_pointers,
+            span,
+            "linking to associated items of raw pointers is experimental",
+        )
+        .note("rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does")
+        .emit();
     }
 
     fn resolve_with_disambiguator_cached(
