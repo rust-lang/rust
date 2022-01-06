@@ -470,14 +470,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Field(field) => icx.to_ty(field.ty),
 
-        Node::Expr(&Expr { kind: ExprKind::Closure(.., gen), .. }) => {
-            let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
-            if let Some(movability) = gen {
-                tcx.mk_generator(def_id.to_def_id(), substs, movability)
-            } else {
-                tcx.mk_closure(def_id.to_def_id(), substs)
-            }
-        }
+        Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => tcx.typeck(def_id).node_type(hir_id),
 
         Node::AnonConst(_) if let Some(param) = tcx.opt_const_param_of(def_id) => {
             // We defer to `type_of` of the corresponding parameter
