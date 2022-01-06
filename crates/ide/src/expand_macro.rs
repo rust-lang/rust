@@ -319,7 +319,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl< >core::clone::Clone for Foo< >{}
+                impl < >core::clone::Clone for Foo< >{}
 
             "#]],
         );
@@ -337,7 +337,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl< >core::marker::Copy for Foo< >{}
+                impl < >core::marker::Copy for Foo< >{}
 
             "#]],
         );
@@ -354,9 +354,9 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy, Clone
-                impl< >core::marker::Copy for Foo< >{}
+                impl < >core::marker::Copy for Foo< >{}
 
-                impl< >core::clone::Clone for Foo< >{}
+                impl < >core::clone::Clone for Foo< >{}
 
             "#]],
         );
