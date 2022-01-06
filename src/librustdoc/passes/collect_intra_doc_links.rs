@@ -13,7 +13,7 @@ use rustc_hir::def::{
     PerNS,
 };
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::ParentScope;
 use rustc_session::lint::Lint;
@@ -618,6 +618,39 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         })
     }
 
+    /// Convert a PrimitiveType to a Ty, where possible.
+    ///
+    /// This is used for resolving trait impls for primitives
+    fn primitive_type_to_ty(&mut self, prim: PrimitiveType) -> Option<Ty<'tcx>> {
+        use PrimitiveType::*;
+        let tcx = self.cx.tcx;
+
+        // FIXME: Only simple types are supported here, see if we can support
+        // other types such as Tuple, Array, Slice, etc.
+        // See https://github.com/rust-lang/rust/issues/90703#issuecomment-1004263455
+        Some(tcx.mk_ty(match prim {
+            Bool => ty::Bool,
+            Str => ty::Str,
+            Char => ty::Char,
+            Never => ty::Never,
+            I8 => ty::Int(ty::IntTy::I8),
+            I16 => ty::Int(ty::IntTy::I16),
+            I32 => ty::Int(ty::IntTy::I32),
+            I64 => ty::Int(ty::IntTy::I64),
+            I128 => ty::Int(ty::IntTy::I128),
+            Isize => ty::Int(ty::IntTy::Isize),
+            F32 => ty::Float(ty::FloatTy::F32),
+            F64 => ty::Float(ty::FloatTy::F64),
+            U8 => ty::Uint(ty::UintTy::U8),
+            U16 => ty::Uint(ty::UintTy::U16),
+            U32 => ty::Uint(ty::UintTy::U32),
+            U64 => ty::Uint(ty::UintTy::U64),
+            U128 => ty::Uint(ty::UintTy::U128),
+            Usize => ty::Uint(ty::UintTy::Usize),
+            _ => return None,
+        }))
+    }
+
     /// Returns:
     /// - None if no associated item was found
     /// - Some((_, _, Some(_))) if an item was found and should go through a side channel
@@ -632,7 +665,25 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         let tcx = self.cx.tcx;
 
         match root_res {
-            Res::Primitive(prim) => self.resolve_primitive_associated_item(prim, ns, item_name),
+            Res::Primitive(prim) => {
+                self.resolve_primitive_associated_item(prim, ns, item_name).or_else(|| {
+                    let assoc_item = self
+                        .primitive_type_to_ty(prim)
+                        .map(|ty| {
+                            resolve_associated_trait_item(ty, module_id, item_name, ns, self.cx)
+                        })
+                        .flatten();
+
+                    assoc_item.map(|item| {
+                        let kind = item.kind;
+                        let fragment = UrlFragment::from_assoc_item(item_name, kind, false);
+                        // HACK(jynelson): `clean` expects the type, not the associated item
+                        // but the disambiguator logic expects the associated item.
+                        // Store the kind in a side channel so that only the disambiguator logic looks at it.
+                        (root_res, fragment, Some((kind.as_def_kind(), item.def_id)))
+                    })
+                })
+            }
             Res::Def(DefKind::TyAlias, did) => {
                 // Resolve the link on the type the alias points to.
                 // FIXME: if the associated item is defined directly on the type alias,
@@ -666,8 +717,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // To handle that properly resolve() would have to support
                     // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
                     .or_else(|| {
-                        let item =
-                            resolve_associated_trait_item(did, module_id, item_name, ns, self.cx);
+                        let item = resolve_associated_trait_item(
+                            tcx.type_of(did),
+                            module_id,
+                            item_name,
+                            ns,
+                            self.cx,
+                        );
                         debug!("got associated item {:?}", item);
                         item
                     });
@@ -767,12 +823,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 /// Given `[std::io::Error::source]`, where `source` is unresolved, this would
 /// find `std::error::Error::source` and return
 /// `<io::Error as error::Error>::source`.
-fn resolve_associated_trait_item(
-    did: DefId,
+fn resolve_associated_trait_item<'a>(
+    ty: Ty<'a>,
     module: DefId,
     item_name: Symbol,
     ns: Namespace,
-    cx: &mut DocContext<'_>,
+    cx: &mut DocContext<'a>,
 ) -> Option<ty::AssocItem> {
     // FIXME: this should also consider blanket impls (`impl<T> X for T`). Unfortunately
     // `get_auto_trait_and_blanket_impls` is broken because the caching behavior is wrong. In the
@@ -780,7 +836,7 @@ fn resolve_associated_trait_item(
 
     // Next consider explicit impls: `impl MyTrait for MyType`
     // Give precedence to inherent impls.
-    let traits = traits_implemented_by(cx, did, module);
+    let traits = traits_implemented_by(cx, ty, module);
     debug!("considering traits {:?}", traits);
     let mut candidates = traits.iter().filter_map(|&trait_| {
         cx.tcx.associated_items(trait_).find_by_name_and_namespace(
@@ -799,7 +855,11 @@ fn resolve_associated_trait_item(
 ///
 /// NOTE: this cannot be a query because more traits could be available when more crates are compiled!
 /// So it is not stable to serialize cross-crate.
-fn traits_implemented_by(cx: &mut DocContext<'_>, type_: DefId, module: DefId) -> FxHashSet<DefId> {
+fn traits_implemented_by<'a>(
+    cx: &mut DocContext<'a>,
+    ty: Ty<'a>,
+    module: DefId,
+) -> FxHashSet<DefId> {
     let mut resolver = cx.resolver.borrow_mut();
     let in_scope_traits = cx.module_trait_cache.entry(module).or_insert_with(|| {
         resolver.access(|resolver| {
@@ -813,7 +873,6 @@ fn traits_implemented_by(cx: &mut DocContext<'_>, type_: DefId, module: DefId) -
     });
 
     let tcx = cx.tcx;
-    let ty = tcx.type_of(type_);
     let iter = in_scope_traits.iter().flat_map(|&trait_| {
         trace!("considering explicit impl for trait {:?}", trait_);
 
@@ -826,19 +885,10 @@ fn traits_implemented_by(cx: &mut DocContext<'_>, type_: DefId, module: DefId) -
                 "comparing type {} with kind {:?} against type {:?}",
                 impl_type,
                 impl_type.kind(),
-                type_
+                ty
             );
             // Fast path: if this is a primitive simple `==` will work
-            let saw_impl = impl_type == ty
-                || match impl_type.kind() {
-                    // Check if these are the same def_id
-                    ty::Adt(def, _) => {
-                        debug!("adt def_id: {:?}", def.did);
-                        def.did == type_
-                    }
-                    ty::Foreign(def_id) => *def_id == type_,
-                    _ => false,
-                };
+            let saw_impl = impl_type == ty;
 
             if saw_impl { Some(trait_) } else { None }
         })
