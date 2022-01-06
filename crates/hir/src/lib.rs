@@ -2064,37 +2064,75 @@ impl Local {
     }
 }
 
+// FIXME: Wrong name? This is could also be a registered attribute
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct BuiltinAttr(usize);
+pub struct BuiltinAttr {
+    krate: Option<CrateId>,
+    idx: usize,
+}
 
 impl BuiltinAttr {
-    pub(crate) fn by_name(name: &str) -> Option<Self> {
-        // FIXME: def maps registered attrs?
-        hir_def::builtin_attr::find_builtin_attr_idx(name).map(Self)
+    // FIXME: consider crates\hir_def\src\nameres\attr_resolution.rs?
+    pub(crate) fn by_name(db: &dyn HirDatabase, krate: Crate, name: &str) -> Option<Self> {
+        if let builtin @ Some(_) = Self::builtin(name) {
+            return builtin;
+        }
+        let idx = db.crate_def_map(krate.id).registered_attrs().iter().position(|it| it == name)?;
+        Some(BuiltinAttr { krate: Some(krate.id), idx })
     }
 
-    pub fn name(&self, _: &dyn HirDatabase) -> &str {
+    pub(crate) fn builtin(name: &str) -> Option<Self> {
+        hir_def::builtin_attr::INERT_ATTRIBUTES
+            .iter()
+            .position(|tool| tool.name == name)
+            .map(|idx| BuiltinAttr { krate: None, idx })
+    }
+
+    pub fn name(&self, db: &dyn HirDatabase) -> SmolStr {
         // FIXME: Return a `Name` here
-        hir_def::builtin_attr::INERT_ATTRIBUTES[self.0].name
+        match self.krate {
+            Some(krate) => db.crate_def_map(krate).registered_attrs()[self.idx].clone(),
+            None => SmolStr::new(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx].name),
+        }
     }
 
-    pub fn template(&self, _: &dyn HirDatabase) -> AttributeTemplate {
-        hir_def::builtin_attr::INERT_ATTRIBUTES[self.0].template
+    pub fn template(&self, _: &dyn HirDatabase) -> Option<AttributeTemplate> {
+        match self.krate {
+            Some(_) => None,
+            None => Some(hir_def::builtin_attr::INERT_ATTRIBUTES[self.idx].template),
+        }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ToolModule(usize);
+pub struct ToolModule {
+    krate: Option<CrateId>,
+    idx: usize,
+}
 
 impl ToolModule {
-    pub(crate) fn by_name(name: &str) -> Option<Self> {
-        // FIXME: def maps registered tools
-        hir_def::builtin_attr::TOOL_MODULES.iter().position(|&tool| tool == name).map(Self)
+    // FIXME: consider crates\hir_def\src\nameres\attr_resolution.rs?
+    pub(crate) fn by_name(db: &dyn HirDatabase, krate: Crate, name: &str) -> Option<Self> {
+        if let builtin @ Some(_) = Self::builtin(name) {
+            return builtin;
+        }
+        let idx = db.crate_def_map(krate.id).registered_tools().iter().position(|it| it == name)?;
+        Some(ToolModule { krate: Some(krate.id), idx })
     }
 
-    pub fn name(&self, _: &dyn HirDatabase) -> &str {
+    pub(crate) fn builtin(name: &str) -> Option<Self> {
+        hir_def::builtin_attr::TOOL_MODULES
+            .iter()
+            .position(|&tool| tool == name)
+            .map(|idx| ToolModule { krate: None, idx })
+    }
+
+    pub fn name(&self, db: &dyn HirDatabase) -> SmolStr {
         // FIXME: Return a `Name` here
-        hir_def::builtin_attr::TOOL_MODULES[self.0]
+        match self.krate {
+            Some(krate) => db.crate_def_map(krate).registered_tools()[self.idx].clone(),
+            None => SmolStr::new(hir_def::builtin_attr::TOOL_MODULES[self.idx]),
+        }
     }
 }
 

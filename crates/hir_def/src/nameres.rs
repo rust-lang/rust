@@ -296,6 +296,12 @@ impl DefMap {
     pub fn exported_proc_macros(&self) -> impl Iterator<Item = (MacroDefId, Name)> + '_ {
         self.exported_proc_macros.iter().map(|(id, def)| (*id, def.name.clone()))
     }
+    pub fn registered_tools(&self) -> &[SmolStr] {
+        &self.registered_tools
+    }
+    pub fn registered_attrs(&self) -> &[SmolStr] {
+        &self.registered_attrs
+    }
     pub fn root(&self) -> LocalModuleId {
         self.root
     }
