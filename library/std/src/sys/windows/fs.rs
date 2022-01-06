@@ -547,6 +547,218 @@ impl File {
         })?;
         Ok(())
     }
+    /// Get only basic file information such as attributes and file times.
+    fn basic_info(&self) -> io::Result<c::FILE_BASIC_INFO> {
+        unsafe {
+            let mut info: c::FILE_BASIC_INFO = mem::zeroed();
+            let size = mem::size_of_val(&info);
+            cvt(c::GetFileInformationByHandleEx(
+                self.handle.as_raw_handle(),
+                c::FileBasicInfo,
+                &mut info as *mut _ as *mut libc::c_void,
+                size as c::DWORD,
+            ))?;
+            Ok(info)
+        }
+    }
+    /// Delete using POSIX semantics.
+    ///
+    /// Files will be deleted as soon as the handle is closed. This is supported
+    /// for Windows 10 1607 (aka RS1) and later. However some filesystem
+    /// drivers will not support it even then, e.g. FAT32.
+    ///
+    /// If the operation is not supported for this filesystem or OS version
+    /// then errors will be `ERROR_NOT_SUPPORTED` or `ERROR_INVALID_PARAMETER`.
+    fn posix_delete(&self) -> io::Result<()> {
+        let mut info = c::FILE_DISPOSITION_INFO_EX {
+            Flags: c::FILE_DISPOSITION_DELETE
+                | c::FILE_DISPOSITION_POSIX_SEMANTICS
+                | c::FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE,
+        };
+        let size = mem::size_of_val(&info);
+        cvt(unsafe {
+            c::SetFileInformationByHandle(
+                self.handle.as_raw_handle(),
+                c::FileDispositionInfoEx,
+                &mut info as *mut _ as *mut _,
+                size as c::DWORD,
+            )
+        })?;
+        Ok(())
+    }
+
+    /// Delete a file using win32 semantics. The file won't actually be deleted
+    /// until all file handles are closed. However, marking a file for deletion
+    /// will prevent anyone from opening a new handle to the file.
+    fn win32_delete(&self) -> io::Result<()> {
+        let mut info = c::FILE_DISPOSITION_INFO { DeleteFile: c::TRUE as _ };
+        let size = mem::size_of_val(&info);
+        cvt(unsafe {
+            c::SetFileInformationByHandle(
+                self.handle.as_raw_handle(),
+                c::FileDispositionInfo,
+                &mut info as *mut _ as *mut _,
+                size as c::DWORD,
+            )
+        })?;
+        Ok(())
+    }
+
+    /// Fill the given buffer with as many directory entries as will fit.
+    /// This will remember its position and continue from the last call unless
+    /// `restart` is set to `true`.
+    ///
+    /// The returned bool indicates if there are more entries or not.
+    /// It is an error if `self` is not a directory.
+    ///
+    /// # Symlinks and other reparse points
+    ///
+    /// On Windows a file is either a directory or a non-directory.
+    /// A symlink directory is simply an empty directory with some "reparse" metadata attached.
+    /// So if you open a link (not its target) and iterate the directory,
+    /// you will always iterate an empty directory regardless of the target.
+    fn fill_dir_buff(&self, buffer: &mut DirBuff, restart: bool) -> io::Result<bool> {
+        let class =
+            if restart { c::FileIdBothDirectoryRestartInfo } else { c::FileIdBothDirectoryInfo };
+
+        unsafe {
+            let result = cvt(c::GetFileInformationByHandleEx(
+                self.handle.as_raw_handle(),
+                class,
+                buffer.as_mut_ptr().cast(),
+                buffer.capacity() as _,
+            ));
+            match result {
+                Ok(_) => Ok(true),
+                Err(e) if e.raw_os_error() == Some(c::ERROR_NO_MORE_FILES as _) => Ok(false),
+                Err(e) => Err(e),
+            }
+        }
+    }
+}
+
+/// A buffer for holding directory entries.
+struct DirBuff {
+    buffer: Vec<u8>,
+}
+impl DirBuff {
+    fn new() -> Self {
+        const BUFFER_SIZE: usize = 1024;
+        Self { buffer: vec![0_u8; BUFFER_SIZE] }
+    }
+    fn capacity(&self) -> usize {
+        self.buffer.len()
+    }
+    fn as_mut_ptr(&mut self) -> *mut u8 {
+        self.buffer.as_mut_ptr().cast()
+    }
+    /// Returns a `DirBuffIter`.
+    fn iter(&self) -> DirBuffIter<'_> {
+        DirBuffIter::new(self)
+    }
+}
+impl AsRef<[u8]> for DirBuff {
+    fn as_ref(&self) -> &[u8] {
+        &self.buffer
+    }
+}
+
+/// An iterator over entries stored in a `DirBuff`.
+///
+/// Currently only returns file names (UTF-16 encoded).
+struct DirBuffIter<'a> {
+    buffer: Option<&'a [u8]>,
+    cursor: usize,
+}
+impl<'a> DirBuffIter<'a> {
+    fn new(buffer: &'a DirBuff) -> Self {
+        Self { buffer: Some(buffer.as_ref()), cursor: 0 }
+    }
+}
+impl<'a> Iterator for DirBuffIter<'a> {
+    type Item = &'a [u16];
+    fn next(&mut self) -> Option<Self::Item> {
+        use crate::mem::size_of;
+        let buffer = &self.buffer?[self.cursor..];
+
+        // Get the name and next entry from the buffer.
+        // SAFETY: The buffer contains a `FILE_ID_BOTH_DIR_INFO` struct but the
+        // last field (the file name) is unsized. So an offset has to be
+        // used to get the file name slice.
+        let (name, next_entry) = unsafe {
+            let info = buffer.as_ptr().cast::<c::FILE_ID_BOTH_DIR_INFO>();
+            let next_entry = (*info).NextEntryOffset as usize;
+            let name = crate::slice::from_raw_parts(
+                (*info).FileName.as_ptr().cast::<u16>(),
+                (*info).FileNameLength as usize / size_of::<u16>(),
+            );
+            (name, next_entry)
+        };
+
+        if next_entry == 0 {
+            self.buffer = None
+        } else {
+            self.cursor += next_entry
+        }
+
+        // Skip `.` and `..` pseudo entries.
+        const DOT: u16 = b'.' as u16;
+        match name {
+            [DOT] | [DOT, DOT] => self.next(),
+            _ => Some(name),
+        }
+    }
+}
+
+/// Open a link relative to the parent directory, ensure no symlinks are followed.
+fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<File> {
+    // This is implemented using the lower level `NtOpenFile` function as
+    // unfortunately opening a file relative to a parent is not supported by
+    // win32 functions. It is however a fundamental feature of the NT kernel.
+    //
+    // See https://docs.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntopenfile
+    unsafe {
+        let mut handle = ptr::null_mut();
+        let mut io_status = c::IO_STATUS_BLOCK::default();
+        let name_str = c::UNICODE_STRING::from_ref(name);
+        use crate::sync::atomic::{AtomicU32, Ordering};
+        // The `OBJ_DONT_REPARSE` attribute ensures that we haven't been
+        // tricked into following a symlink. However, it may not be available in
+        // earlier versions of Windows.
+        static ATTRIBUTES: AtomicU32 = AtomicU32::new(c::OBJ_DONT_REPARSE);
+        let object = c::OBJECT_ATTRIBUTES {
+            ObjectName: &name_str,
+            RootDirectory: parent.as_raw_handle(),
+            Attributes: ATTRIBUTES.load(Ordering::Relaxed),
+            ..c::OBJECT_ATTRIBUTES::default()
+        };
+        let status = c::NtOpenFile(
+            &mut handle,
+            access,
+            &object,
+            &mut io_status,
+            c::FILE_SHARE_DELETE | c::FILE_SHARE_READ | c::FILE_SHARE_WRITE,
+            // If `name` is a symlink then open the link rather than the target.
+            c::FILE_OPEN_REPARSE_POINT,
+        );
+        // Convert an NTSTATUS to the more familiar Win32 error codes (aka "DosError")
+        if c::nt_success(status) {
+            Ok(File::from_raw_handle(handle))
+        } else if status == c::STATUS_DELETE_PENDING {
+            // We make a special exception for `STATUS_DELETE_PENDING` because
+            // otherwise this will be mapped to `ERROR_ACCESS_DENIED` which is
+            // very unhelpful.
+            Err(io::Error::from_raw_os_error(c::ERROR_DELETE_PENDING as _))
+        } else if status == c::STATUS_INVALID_PARAMETER
+            && ATTRIBUTES.load(Ordering::Relaxed) == c::OBJ_DONT_REPARSE
+        {
+            // Try without `OBJ_DONT_REPARSE`. See above.
+            ATTRIBUTES.store(0, Ordering::Relaxed);
+            open_link_no_reparse(parent, name, access)
+        } else {
+            Err(io::Error::from_raw_os_error(c::RtlNtStatusToDosError(status) as _))
+        }
+    }
 }
 
 impl AsInner<Handle> for File {
@@ -756,30 +968,106 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
     Ok(())
 }
 
+/// Open a file or directory without following symlinks.
+fn open_link(path: &Path, access_mode: u32) -> io::Result<File> {
+    let mut opts = OpenOptions::new();
+    opts.access_mode(access_mode);
+    // `FILE_FLAG_BACKUP_SEMANTICS` allows opening directories.
+    // `FILE_FLAG_OPEN_REPARSE_POINT` opens a link instead of its target.
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
+    File::open(path, &opts)
+}
+
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
-    let filetype = lstat(path)?.file_type();
-    if filetype.is_symlink() {
-        // On Windows symlinks to files and directories are removed differently.
-        // rmdir only deletes dir symlinks and junctions, not file symlinks.
-        rmdir(path)
+    let file = open_link(path, c::DELETE | c::FILE_LIST_DIRECTORY)?;
+
+    // Test if the file is not a directory or a symlink to a directory.
+    if (file.basic_info()?.FileAttributes & c::FILE_ATTRIBUTE_DIRECTORY) == 0 {
+        return Err(io::Error::from_raw_os_error(c::ERROR_DIRECTORY as _));
+    }
+    let mut delete: fn(&File) -> io::Result<()> = File::posix_delete;
+    let result = match delete(&file) {
+        Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty => {
+            match remove_dir_all_recursive(&file, delete) {
+                // Return unexpected errors.
+                Err(e) if e.kind() != io::ErrorKind::DirectoryNotEmpty => return Err(e),
+                result => result,
+            }
+        }
+        // If POSIX delete is not supported for this filesystem then fallback to win32 delete.
+        Err(e)
+            if e.raw_os_error() == Some(c::ERROR_NOT_SUPPORTED as i32)
+                || e.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as i32) =>
+        {
+            delete = File::win32_delete;
+            Err(e)
+        }
+        result => result,
+    };
+    if result.is_ok() {
+        Ok(())
     } else {
-        remove_dir_all_recursive(path)
+        // This is a fallback to make sure the directory is actually deleted.
+        // Otherwise this function is prone to failing with `DirectoryNotEmpty`
+        // due to possible delays between marking a file for deletion and the
+        // file actually being deleted from the filesystem.
+        //
+        // So we retry a few times before giving up.
+        for _ in 0..5 {
+            match remove_dir_all_recursive(&file, delete) {
+                Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty => {}
+                result => return result,
+            }
+        }
+        // Try one last time.
+        delete(&file)
     }
 }
 
-fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
-    for child in readdir(path)? {
-        let child = child?;
-        let child_type = child.file_type()?;
-        if child_type.is_dir() {
-            remove_dir_all_recursive(&child.path())?;
-        } else if child_type.is_symlink_dir() {
-            rmdir(&child.path())?;
-        } else {
-            unlink(&child.path())?;
+fn remove_dir_all_recursive(f: &File, delete: fn(&File) -> io::Result<()>) -> io::Result<()> {
+    let mut buffer = DirBuff::new();
+    let mut restart = true;
+    // Fill the buffer and iterate the entries.
+    while f.fill_dir_buff(&mut buffer, restart)? {
+        for name in buffer.iter() {
+            // Open the file without following symlinks and try deleting it.
+            // We try opening will all needed permissions and if that is denied
+            // fallback to opening without `FILE_LIST_DIRECTORY` permission.
+            // Note `SYNCHRONIZE` permission is needed for synchronous access.
+            let mut result =
+                open_link_no_reparse(&f, name, c::SYNCHRONIZE | c::DELETE | c::FILE_LIST_DIRECTORY);
+            if matches!(&result, Err(e) if e.kind() == io::ErrorKind::PermissionDenied) {
+                result = open_link_no_reparse(&f, name, c::SYNCHRONIZE | c::DELETE);
+            }
+            match result {
+                Ok(file) => match delete(&file) {
+                    Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty => {
+                        // Iterate the directory's files.
+                        // Ignore `DirectoryNotEmpty` errors here. They will be
+                        // caught when `remove_dir_all` tries to delete the top
+                        // level directory. It can then decide if to retry or not.
+                        match remove_dir_all_recursive(&file, delete) {
+                            Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty => {}
+                            result => result?,
+                        }
+                    }
+                    result => result?,
+                },
+                // Ignore error if a delete is already in progress or the file
+                // has already been deleted. It also ignores sharing violations
+                // (where a file is locked by another process) as these are
+                // usually temporary.
+                Err(e)
+                    if e.raw_os_error() == Some(c::ERROR_DELETE_PENDING as _)
+                        || e.kind() == io::ErrorKind::NotFound
+                        || e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as _) => {}
+                Err(e) => return Err(e),
+            }
         }
+        // Continue reading directory entries without restarting from the beginning,
+        restart = false;
     }
-    rmdir(path)
+    delete(&f)
 }
 
 pub fn readlink(path: &Path) -> io::Result<PathBuf> {
