@@ -958,17 +958,7 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
             {
                 self.cx.tcx.parent(did)
             }
-            Some(did) => match self.cx.tcx.parent(did) {
-                // HACK(jynelson): `clean` marks associated types as `TypedefItem`, not as `AssocTypeItem`.
-                // Fixing this breaks `fn render_deref_methods`.
-                // As a workaround, see if the parent of the item is an `impl`; if so this must be an associated item,
-                // regardless of what rustdoc wants to call it.
-                Some(parent) => {
-                    let parent_kind = self.cx.tcx.def_kind(parent);
-                    Some(if parent_kind == DefKind::Impl { parent } else { did })
-                }
-                None => Some(did),
-            },
+            Some(did) => Some(did),
         };
 
         // FIXME(jynelson): this shouldn't go through stringification, rustdoc should just use the DefId directly
