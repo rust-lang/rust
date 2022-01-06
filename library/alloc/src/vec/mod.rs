@@ -2277,16 +2277,6 @@ impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
     }
 }
 
-struct ExtendDefault;
-impl<T: Default> ExtendWith<T> for ExtendDefault {
-    fn next(&mut self) -> T {
-        Default::default()
-    }
-    fn last(self) -> T {
-        Default::default()
-    }
-}
-
 struct ExtendFunc<F>(F);
 impl<T, F: FnMut() -> T> ExtendWith<T> for ExtendFunc<F> {
     fn next(&mut self) -> T {
