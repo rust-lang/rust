@@ -77,5 +77,5 @@ trait T {}
 /// Link to [fn@std]
 //~^ ERROR unresolved link to `std`
 //~| NOTE this link resolves to the crate `std`
-//~| HELP to link to the module, prefix with `mod@`
+//~| HELP to link to the crate, prefix with `mod@`
 pub fn f() {}

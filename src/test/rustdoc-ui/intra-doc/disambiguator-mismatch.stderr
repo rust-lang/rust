@@ -144,7 +144,7 @@ error: unresolved link to `std`
 LL | /// Link to [fn@std]
    |              ^^^^^^ this link resolves to the crate `std`, which is not in the value namespace
    |
-help: to link to the module, prefix with `mod@`
+help: to link to the crate, prefix with `mod@`
    |
 LL | /// Link to [mod@std]
    |              ~~~~

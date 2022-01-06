@@ -109,6 +109,45 @@ impl Res {
             Res::Primitive(_) => None,
         }
     }
+
+    /// Used for error reporting.
+    fn disambiguator_suggestion(self) -> Suggestion {
+        let kind = match self {
+            Res::Primitive(_) => return Suggestion::Prefix("prim"),
+            Res::Def(kind, _) => kind,
+        };
+        if kind == DefKind::Macro(MacroKind::Bang) {
+            return Suggestion::Macro;
+        } else if kind == DefKind::Fn || kind == DefKind::AssocFn {
+            return Suggestion::Function;
+        } else if kind == DefKind::Field {
+            return Suggestion::RemoveDisambiguator;
+        }
+
+        let prefix = match kind {
+            DefKind::Struct => "struct",
+            DefKind::Enum => "enum",
+            DefKind::Trait => "trait",
+            DefKind::Union => "union",
+            DefKind::Mod => "mod",
+            DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
+                "const"
+            }
+            DefKind::Static => "static",
+            DefKind::Macro(MacroKind::Derive) => "derive",
+            // Now handle things that don't have a specific disambiguator
+            _ => match kind
+                .ns()
+                .expect("tried to calculate a disambiguator for a def without a namespace?")
+            {
+                Namespace::TypeNS => "type",
+                Namespace::ValueNS => "value",
+                Namespace::MacroNS => "macro",
+            },
+        };
+
+        Suggestion::Prefix(prefix)
+    }
 }
 
 impl TryFrom<ResolveRes> for Res {
@@ -1267,7 +1306,7 @@ impl LinkCollector<'_, '_> {
             }
         }
 
-        let report_mismatch = |specified: Disambiguator, resolved: Disambiguator| {
+        let report_mismatch = |specified: Disambiguator, resolved: Res| {
             // The resolved item did not match the disambiguator; give a better error than 'not found'
             let msg = format!("incompatible link kind for `{}`", path_str);
             let callback = |diag: &mut DiagnosticBuilder<'_>, sp: Option<rustc_span::Span>| {
@@ -1276,7 +1315,7 @@ impl LinkCollector<'_, '_> {
                     resolved.article(),
                     resolved.descr(),
                     specified.article(),
-                    specified.descr()
+                    specified.descr(),
                 );
                 if let Some(sp) = sp {
                     diag.span_label(sp, &note);
@@ -1311,7 +1350,7 @@ impl LinkCollector<'_, '_> {
                 => {}
                 (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
                 (_, Some(specified @ Disambiguator::Kind(_) | specified @ Disambiguator::Primitive)) => {
-                    report_mismatch(specified, Disambiguator::Kind(kind));
+                    report_mismatch(specified, Res::Def(kind, id));
                     return None;
                 }
             }
@@ -1362,7 +1401,7 @@ impl LinkCollector<'_, '_> {
                     match disambiguator {
                         Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {}
                         Some(other) => {
-                            report_mismatch(other, Disambiguator::Primitive);
+                            report_mismatch(other, res);
                             return None;
                         }
                     }
@@ -1674,53 +1713,6 @@ impl Disambiguator {
             }
             Ok(None)
         }
-    }
-
-    fn from_res(res: Res) -> Self {
-        match res {
-            Res::Def(kind, _) => Disambiguator::Kind(kind),
-            Res::Primitive(_) => Disambiguator::Primitive,
-        }
-    }
-
-    /// Used for error reporting.
-    fn suggestion(self) -> Suggestion {
-        let kind = match self {
-            Disambiguator::Primitive => return Suggestion::Prefix("prim"),
-            Disambiguator::Kind(kind) => kind,
-            Disambiguator::Namespace(_) => panic!("display_for cannot be used on namespaces"),
-        };
-        if kind == DefKind::Macro(MacroKind::Bang) {
-            return Suggestion::Macro;
-        } else if kind == DefKind::Fn || kind == DefKind::AssocFn {
-            return Suggestion::Function;
-        } else if kind == DefKind::Field {
-            return Suggestion::RemoveDisambiguator;
-        }
-
-        let prefix = match kind {
-            DefKind::Struct => "struct",
-            DefKind::Enum => "enum",
-            DefKind::Trait => "trait",
-            DefKind::Union => "union",
-            DefKind::Mod => "mod",
-            DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
-                "const"
-            }
-            DefKind::Static => "static",
-            DefKind::Macro(MacroKind::Derive) => "derive",
-            // Now handle things that don't have a specific disambiguator
-            _ => match kind
-                .ns()
-                .expect("tried to calculate a disambiguator for a def without a namespace?")
-            {
-                Namespace::TypeNS => "type",
-                Namespace::ValueNS => "value",
-                Namespace::MacroNS => "macro",
-            },
-        };
-
-        Suggestion::Prefix(prefix)
     }
 
     fn ns(self) -> Namespace {
@@ -2070,15 +2062,9 @@ fn resolution_failure(
                     ResolutionFailure::NotResolved { .. } => unreachable!("handled above"),
                     ResolutionFailure::Dummy => continue,
                     ResolutionFailure::WrongNamespace { res, expected_ns } => {
-                        if let Res::Def(kind, _) = res {
-                            let disambiguator = Disambiguator::Kind(kind);
-                            suggest_disambiguator(
-                                disambiguator,
-                                diag,
-                                path_str,
-                                diag_info.ori_link,
-                                sp,
-                            )
+                        // FIXME: does this need to be behind an `if`?
+                        if matches!(res, Res::Def(..)) {
+                            suggest_disambiguator(res, diag, path_str, diag_info.ori_link, sp);
                         }
 
                         format!(
@@ -2214,8 +2200,7 @@ fn ambiguity_error(
         }
 
         for res in candidates {
-            let disambiguator = Disambiguator::from_res(res);
-            suggest_disambiguator(disambiguator, diag, path_str, diag_info.ori_link, sp);
+            suggest_disambiguator(res, diag, path_str, diag_info.ori_link, sp);
         }
     });
 }
@@ -2223,14 +2208,14 @@ fn ambiguity_error(
 /// In case of an ambiguity or mismatched disambiguator, suggest the correct
 /// disambiguator.
 fn suggest_disambiguator(
-    disambiguator: Disambiguator,
+    res: Res,
     diag: &mut DiagnosticBuilder<'_>,
     path_str: &str,
     ori_link: &str,
     sp: Option<rustc_span::Span>,
 ) {
-    let suggestion = disambiguator.suggestion();
-    let help = format!("to link to the {}, {}", disambiguator.descr(), suggestion.descr());
+    let suggestion = res.disambiguator_suggestion();
+    let help = format!("to link to the {}, {}", res.descr(), suggestion.descr());
 
     if let Some(sp) = sp {
         let mut spans = suggestion.as_help_span(path_str, ori_link, sp);
