@@ -36,11 +36,7 @@ modifying rustc to see if things are generally working correctly would be the
 following:
 
 ```bash
-# First build
 ./x.py test src/test/ui
-
-# Subsequent builds (optional, but can save time)
-./x.py test src/test/ui --keep-stage 1
 ```
 
 This will run the `ui` test suite. Of course, the choice

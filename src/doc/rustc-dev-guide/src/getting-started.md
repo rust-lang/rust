@@ -116,8 +116,8 @@ of time.
 
 [rust-analyzer]: ./building/suggested.html#configuring-rust-analyzer-for-rustc
 
-See the chapters on [building](./building/how-to-build-and-run.md) and
-[testing](./tests/intro.md) for more details.
+See the chapters on [building](./building/how-to-build-and-run.md),
+[testing](./tests/intro.md), and [rustdoc](./rustdoc.md) for more details.
 
 ### Contributing code to other Rust projects
 
