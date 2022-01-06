@@ -781,12 +781,10 @@ fn attr_macro_as_call_id(
     macro_attr: &Attr,
     db: &dyn db::DefDatabase,
     krate: CrateId,
-    def: Option<MacroDefId>,
-) -> Result<MacroCallId, UnresolvedMacro> {
+    def: MacroDefId,
+) -> MacroCallId {
     let attr_path = &item_attr.path;
-    let def = def.ok_or_else(|| UnresolvedMacro { path: attr_path.clone() })?;
-    let last_segment =
-        attr_path.segments().last().ok_or_else(|| UnresolvedMacro { path: attr_path.clone() })?;
+    let last_segment = attr_path.segments().last().expect("empty attribute path");
     let mut arg = match macro_attr.input.as_deref() {
         Some(attr::AttrInput::TokenTree(tt, map)) => (tt.clone(), map.clone()),
         _ => Default::default(),
@@ -805,5 +803,5 @@ fn attr_macro_as_call_id(
             invoc_attr_index: macro_attr.id.ast_index,
         },
     );
-    Ok(res)
+    res
 }

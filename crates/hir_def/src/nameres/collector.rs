@@ -20,11 +20,11 @@ use itertools::Itertools;
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::{ast, SmolStr};
+use syntax::ast;
 
 use crate::{
     attr::{Attr, AttrId, AttrInput, Attrs},
-    attr_macro_as_call_id, builtin_attr,
+    attr_macro_as_call_id,
     db::DefDatabase,
     derive_macro_as_call_id,
     intern::Interned,
@@ -97,8 +97,6 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         from_glob_import: Default::default(),
         skip_attrs: Default::default(),
         derive_helpers_in_scope: Default::default(),
-        registered_attrs: Default::default(),
-        registered_tools: Default::default(),
     };
     if tree_id.is_block() {
         collector.seed_with_inner(tree_id);
@@ -251,10 +249,6 @@ struct DefCollector<'a> {
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
     derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<Name>>,
-    /// Custom attributes registered with `#![register_attr]`.
-    registered_attrs: Vec<SmolStr>,
-    /// Custom tool modules registered with `#![register_tool]`.
-    registered_tools: Vec<SmolStr>,
 }
 
 impl DefCollector<'_> {
@@ -291,10 +285,10 @@ impl DefCollector<'_> {
                 };
 
                 if *attr_name == hir_expand::name![register_attr] {
-                    self.registered_attrs.push(registered_name.to_smol_str());
+                    self.def_map.registered_attrs.push(registered_name.to_smol_str());
                     cov_mark::hit!(register_attr);
                 } else {
-                    self.registered_tools.push(registered_name.to_smol_str());
+                    self.def_map.registered_tools.push(registered_name.to_smol_str());
                     cov_mark::hit!(register_tool);
                 }
             }
@@ -1124,10 +1118,13 @@ impl DefCollector<'_> {
                         }
                     }
 
-                    let def = resolver(path.clone()).filter(MacroDefId::is_attribute);
+                    let def = match resolver(path.clone()) {
+                        Some(def) if def.is_attribute() => def,
+                        _ => return true,
+                    };
                     if matches!(
                         def,
-                        Some(MacroDefId {  kind:MacroDefKind::BuiltInAttr(expander, _),.. })
+                        MacroDefId {  kind:MacroDefKind::BuiltInAttr(expander, _),.. }
                         if expander.is_derive()
                     ) {
                         // Resolved to `#[derive]`
@@ -1184,52 +1181,46 @@ impl DefCollector<'_> {
                         return true;
                     }
 
-                    // Not resolved to a derive helper or the derive attribute, so try to resolve as a normal attribute.
-                    match attr_macro_as_call_id(file_ast_id, attr, self.db, self.def_map.krate, def)
-                    {
-                        Ok(call_id) => {
-                            let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
+                    // Not resolved to a derive helper or the derive attribute, so try to treat as a normal attribute.
+                    let call_id =
+                        attr_macro_as_call_id(file_ast_id, attr, self.db, self.def_map.krate, def);
+                    let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
 
-                            // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
-                            // due to duplicating functions into macro expansions
-                            if matches!(
-                                loc.def.kind,
-                                MacroDefKind::BuiltInAttr(expander, _)
-                                if expander.is_test() || expander.is_bench()
-                            ) {
-                                return recollect_without(self);
-                            }
-
-                            if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
-                                if exp.is_dummy() {
-                                    // Proc macros that cannot be expanded are treated as not
-                                    // resolved, in order to fall back later.
-                                    self.def_map.diagnostics.push(
-                                        DefDiagnostic::unresolved_proc_macro(
-                                            directive.module_id,
-                                            loc.kind,
-                                        ),
-                                    );
-
-                                    return recollect_without(self);
-                                }
-                            }
-
-                            self.def_map.modules[directive.module_id]
-                                .scope
-                                .add_attr_macro_invoc(ast_id, call_id);
-
-                            resolved.push((
-                                directive.module_id,
-                                call_id,
-                                directive.depth,
-                                directive.container,
-                            ));
-                            res = ReachedFixedPoint::No;
-                            return false;
-                        }
-                        Err(UnresolvedMacro { .. }) => (),
+                    // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
+                    // due to duplicating functions into macro expansions
+                    if matches!(
+                        loc.def.kind,
+                        MacroDefKind::BuiltInAttr(expander, _)
+                        if expander.is_test() || expander.is_bench()
+                    ) {
+                        return recollect_without(self);
                     }
+
+                    if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
+                        if exp.is_dummy() {
+                            // Proc macros that cannot be expanded are treated as not
+                            // resolved, in order to fall back later.
+                            self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
+                                directive.module_id,
+                                loc.kind,
+                            ));
+
+                            return recollect_without(self);
+                        }
+                    }
+
+                    self.def_map.modules[directive.module_id]
+                        .scope
+                        .add_attr_macro_invoc(ast_id, call_id);
+
+                    resolved.push((
+                        directive.module_id,
+                        call_id,
+                        directive.depth,
+                        directive.container,
+                    ));
+                    res = ReachedFixedPoint::No;
+                    return false;
                 }
             }
 
@@ -1794,7 +1785,7 @@ impl ModCollector<'_, '_> {
             });
 
         for attr in iter {
-            if self.is_builtin_or_registered_attr(&attr.path) {
+            if self.def_collector.def_map.is_builtin_or_registered_attr(&attr.path) {
                 continue;
             }
             tracing::debug!("non-builtin attribute {}", attr.path);
@@ -1820,37 +1811,6 @@ impl ModCollector<'_, '_> {
         }
 
         Ok(())
-    }
-
-    fn is_builtin_or_registered_attr(&self, path: &ModPath) -> bool {
-        if path.kind != PathKind::Plain {
-            return false;
-        }
-
-        let segments = path.segments();
-
-        if let Some(name) = segments.first() {
-            let name = name.to_smol_str();
-            let pred = |n: &_| *n == name;
-
-            let registered = self.def_collector.registered_tools.iter().map(SmolStr::as_str);
-            let is_tool = builtin_attr::TOOL_MODULES.iter().copied().chain(registered).any(pred);
-            // FIXME: tool modules can be shadowed by actual modules
-            if is_tool {
-                return true;
-            }
-
-            if segments.len() == 1 {
-                let registered = self.def_collector.registered_attrs.iter().map(SmolStr::as_str);
-                let is_inert = builtin_attr::INERT_ATTRIBUTES
-                    .iter()
-                    .map(|it| it.name)
-                    .chain(registered)
-                    .any(pred);
-                return is_inert;
-            }
-        }
-        false
     }
 
     /// If `attrs` registers a procedural macro, collects its definition.
@@ -2104,8 +2064,6 @@ mod tests {
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
             derive_helpers_in_scope: Default::default(),
-            registered_attrs: Default::default(),
-            registered_tools: Default::default(),
         };
         collector.seed_with_top_level();
         collector.collect();

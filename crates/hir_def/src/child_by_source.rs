@@ -30,6 +30,7 @@ pub trait ChildBySource {
 impl ChildBySource for TraitId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = db.trait_data(*self);
+        // FIXME attribute macros
         for (_name, item) in data.items.iter() {
             match *item {
                 AssocItemId::FunctionId(func) => {
@@ -61,6 +62,7 @@ impl ChildBySource for TraitId {
 impl ChildBySource for ImplId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = db.impl_data(*self);
+        // FIXME attribute macros
         for &item in data.items.iter() {
             match item {
                 AssocItemId::FunctionId(func) => {

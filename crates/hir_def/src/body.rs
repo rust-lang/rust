@@ -12,7 +12,8 @@ use cfg::{CfgExpr, CfgOptions};
 use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{
-    ast_id_map::AstIdMap, hygiene::Hygiene, AstId, ExpandResult, HirFileId, InFile, MacroDefId,
+    ast_id_map::AstIdMap, hygiene::Hygiene, AstId, ExpandError, ExpandResult, HirFileId, InFile,
+    MacroCallId, MacroDefId,
 };
 use la_arena::{Arena, ArenaMap};
 use limit::Limit;
@@ -124,6 +125,23 @@ impl Expander {
             }
         };
 
+        Ok(self.enter_expand_inner(db, call_id, err))
+    }
+
+    pub fn enter_expand_id<T: ast::AstNode>(
+        &mut self,
+        db: &dyn DefDatabase,
+        call_id: MacroCallId,
+    ) -> ExpandResult<Option<(Mark, T)>> {
+        self.enter_expand_inner(db, call_id, None)
+    }
+
+    fn enter_expand_inner<T: ast::AstNode>(
+        &mut self,
+        db: &dyn DefDatabase,
+        call_id: MacroCallId,
+        mut err: Option<ExpandError>,
+    ) -> ExpandResult<Option<(Mark, T)>> {
         if err.is_none() {
             err = db.macro_expand_error(call_id);
         }
@@ -138,9 +156,9 @@ impl Expander {
                     tracing::warn!("no error despite `parse_or_expand` failing");
                 }
 
-                return Ok(ExpandResult::only_err(err.unwrap_or_else(|| {
+                return ExpandResult::only_err(err.unwrap_or_else(|| {
                     mbe::ExpandError::Other("failed to parse macro invocation".into())
-                })));
+                }));
             }
         };
 
@@ -148,7 +166,7 @@ impl Expander {
             Some(it) => it,
             None => {
                 // This can happen without being an error, so only forward previous errors.
-                return Ok(ExpandResult { value: None, err });
+                return ExpandResult { value: None, err };
             }
         };
 
@@ -164,7 +182,7 @@ impl Expander {
         self.current_file_id = file_id;
         self.ast_id_map = db.ast_id_map(file_id);
 
-        Ok(ExpandResult { value: Some((mark, node)), err })
+        ExpandResult { value: Some((mark, node)), err }
     }
 
     pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {

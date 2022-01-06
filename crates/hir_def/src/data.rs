@@ -2,19 +2,20 @@
 
 use std::sync::Arc;
 
-use hir_expand::{name::Name, InFile};
+use hir_expand::{name::Name, AstId, ExpandResult, InFile};
 use syntax::ast;
 
 use crate::{
     attr::Attrs,
-    body::Expander,
+    body::{Expander, Mark},
     db::DefDatabase,
     intern::Interned,
     item_tree::{self, AssocItem, FnFlags, ItemTreeId, ModItem, Param},
+    nameres::attr_resolution::ResolvedAttr,
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
-    AssocItemId, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId, Intern,
-    ItemContainerId, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
+    AssocItemId, AstIdWithPath, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
+    Intern, ItemContainerId, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -348,12 +349,27 @@ fn collect_items(
     let item_tree = tree_id.item_tree(db);
     let crate_graph = db.crate_graph();
     let cfg_options = &crate_graph[module.krate].cfg_options;
+    let def_map = module.def_map(db);
 
     let mut items = Vec::new();
-    for item in assoc_items {
+    'items: for item in assoc_items {
         let attrs = item_tree.attrs(db, module.krate, ModItem::from(item).into());
         if !attrs.is_cfg_enabled(cfg_options) {
             continue;
+        }
+
+        for attr in &*attrs {
+            let ast_id = AstIdWithPath {
+                path: (*attr.path).clone(),
+                ast_id: AstId::new(expander.current_file_id(), item.ast_id(&item_tree).upcast()),
+            };
+            if let Ok(ResolvedAttr::Macro(call_id)) =
+                def_map.resolve_attr_macro(db, module.local_id, ast_id, attr)
+            {
+                let res = expander.enter_expand_id(db, call_id);
+                items.extend(collect_macro_items(db, module, expander, container, limit, res));
+                continue 'items;
+            }
         }
 
         match item {
@@ -385,28 +401,34 @@ fn collect_items(
                 let res = expander.enter_expand(db, call);
 
                 if let Ok(res) = res {
-                    if let Some((mark, mac)) = res.value {
-                        let src: InFile<ast::MacroItems> = expander.to_source(mac);
-                        let tree_id = item_tree::TreeId::new(src.file_id, None);
-                        let item_tree = tree_id.item_tree(db);
-                        let iter =
-                            item_tree.top_level_items().iter().filter_map(ModItem::as_assoc_item);
-                        items.extend(collect_items(
-                            db,
-                            module,
-                            expander,
-                            iter,
-                            tree_id,
-                            container,
-                            limit - 1,
-                        ));
-
-                        expander.exit(db, mark);
-                    }
+                    items.extend(collect_macro_items(db, module, expander, container, limit, res));
                 }
             }
         }
     }
 
     items
+}
+
+fn collect_macro_items(
+    db: &dyn DefDatabase,
+    module: ModuleId,
+    expander: &mut Expander,
+    container: ItemContainerId,
+    limit: usize,
+    res: ExpandResult<Option<(Mark, ast::MacroItems)>>,
+) -> Vec<(Name, AssocItemId)> {
+    if let Some((mark, mac)) = res.value {
+        let src: InFile<ast::MacroItems> = expander.to_source(mac);
+        let tree_id = item_tree::TreeId::new(src.file_id, None);
+        let item_tree = tree_id.item_tree(db);
+        let iter = item_tree.top_level_items().iter().filter_map(ModItem::as_assoc_item);
+        let items = collect_items(db, module, expander, iter, tree_id, container, limit - 1);
+
+        expander.exit(db, mark);
+
+        return items;
+    }
+
+    Vec::new()
 }

@@ -920,6 +920,17 @@ impl From<AssocItem> for ModItem {
     }
 }
 
+impl AssocItem {
+    pub fn ast_id(self, tree: &ItemTree) -> FileAstId<ast::AssocItem> {
+        match self {
+            AssocItem::Function(id) => tree[id].ast_id.upcast(),
+            AssocItem::TypeAlias(id) => tree[id].ast_id.upcast(),
+            AssocItem::Const(id) => tree[id].ast_id.upcast(),
+            AssocItem::MacroCall(id) => tree[id].ast_id.upcast(),
+        }
+    }
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct Variant {
     pub name: Name,
