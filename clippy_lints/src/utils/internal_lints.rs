@@ -4,8 +4,8 @@ use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
 use clippy_utils::{
-    higher, is_else_clause, is_expn_of, is_expr_path_def_path, is_lint_allowed, match_def_path, method_calls,
-    path_to_res, paths, peel_blocks_with_stmt, SpanlessEq,
+    def_path_res, higher, is_else_clause, is_expn_of, is_expr_path_def_path, is_lint_allowed, match_def_path,
+    method_calls, paths, peel_blocks_with_stmt, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast as ast;
@@ -844,7 +844,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
             // Extract the path to the matched type
             if let Some(segments) = path_to_matched_type(cx, ty_path);
             let segments: Vec<&str> = segments.iter().map(Symbol::as_str).collect();
-            if let Some(ty_did) = path_to_res(cx, &segments[..]).opt_def_id();
+            if let Some(ty_did) = def_path_res(cx, &segments[..]).opt_def_id();
             // Check if the matched type is a diagnostic item
             if let Some(item_name) = cx.tcx.get_diagnostic_name(ty_did);
             then {
@@ -917,7 +917,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
 // This is not a complete resolver for paths. It works on all the paths currently used in the paths
 // module.  That's all it does and all it needs to do.
 pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
-    if path_to_res(cx, path) != Res::Err {
+    if def_path_res(cx, path) != Res::Err {
         return true;
     }
 
@@ -999,7 +999,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
         }
 
         for &module in &[&paths::KW_MODULE, &paths::SYM_MODULE] {
-            if let Some(def_id) = path_to_res(cx, module).opt_def_id() {
+            if let Some(def_id) = def_path_res(cx, module).opt_def_id() {
                 for item in cx.tcx.module_children(def_id).iter() {
                     if_chain! {
                         if let Res::Def(DefKind::Const, item_def_id) = item.res;

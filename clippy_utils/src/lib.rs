@@ -497,8 +497,9 @@ pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
     path_to_local(expr) == Some(id)
 }
 
-/// Gets the definition associated to a path.
-pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
+/// Resolves a def path like `std::vec::Vec`.
+/// This function is expensive and should be used sparingly.
+pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
     macro_rules! try_res {
         ($e:expr) => {
             match $e {
@@ -574,7 +575,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
 /// Convenience function to get the `DefId` of a trait by path.
 /// It could be a trait or trait alias.
 pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
-    match path_to_res(cx, path) {
+    match def_path_res(cx, path) {
         Res::Def(DefKind::Trait | DefKind::TraitAlias, trait_id) => Some(trait_id),
         _ => None,
     }
