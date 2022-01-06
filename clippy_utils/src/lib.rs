@@ -357,15 +357,6 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
     }
 }
 
-/// If the expression is a path, resolve it. Otherwise, return `Res::Err`.
-pub fn expr_path_res(cx: &LateContext<'_>, expr: &Expr<'_>) -> Res {
-    if let ExprKind::Path(p) = &expr.kind {
-        cx.qpath_res(p, expr.hir_id)
-    } else {
-        Res::Err
-    }
-}
-
 /// Resolves the path to a `DefId` and checks if it matches the given path.
 pub fn is_qpath_def_path(cx: &LateContext<'_>, path: &QPath<'_>, hir_id: HirId, segments: &[&str]) -> bool {
     cx.qpath_res(path, hir_id)
@@ -377,17 +368,13 @@ pub fn is_qpath_def_path(cx: &LateContext<'_>, path: &QPath<'_>, hir_id: HirId, 
 ///
 /// Please use `is_expr_diagnostic_item` if the target is a diagnostic item.
 pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
-    expr_path_res(cx, expr)
-        .opt_def_id()
-        .map_or(false, |id| match_def_path(cx, id, segments))
+    path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, segments))
 }
 
 /// If the expression is a path, resolves it to a `DefId` and checks if it matches the given
 /// diagnostic item.
 pub fn is_expr_diagnostic_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
-    expr_path_res(cx, expr)
-        .opt_def_id()
-        .map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
+    path_def_id(cx, expr).map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
 }
 
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
