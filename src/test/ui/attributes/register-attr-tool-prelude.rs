@@ -1,5 +1,5 @@
 #![feature(register_attr)]
-#![feature(register_tool)]
+#![cfg_attr(bootstrap, feature(register_tool))]
 
 #![register_attr(attr)]
 #![register_tool(tool)]

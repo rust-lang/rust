@@ -1,5 +1,5 @@
 #![feature(register_attr)]
-#![feature(register_tool)]
+#![cfg_attr(bootstrap, feature(register_tool))]
 
 #![register_attr] //~ ERROR malformed `register_attr` attribute input
 #![register_tool] //~ ERROR malformed `register_tool` attribute input

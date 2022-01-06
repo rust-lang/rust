@@ -479,8 +479,6 @@ declare_features! (
     (active, raw_ref_op, "1.41.0", Some(64490), None),
     /// Allows using the `#[register_attr]` attribute.
     (active, register_attr, "1.41.0", Some(66080), None),
-    /// Allows using the `#[register_tool]` attribute.
-    (active, register_tool, "1.41.0", Some(66079), None),
     /// Allows the `#[repr(i128)]` attribute for enums.
     (incomplete, repr128, "1.16.0", Some(56071), None),
     /// Allows `repr(simd)` and importing the various simd intrinsics.

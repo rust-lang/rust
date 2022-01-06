@@ -437,9 +437,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         register_attr, CrateLevel, template!(List: "attr1, attr2, ..."), DuplicatesOk,
         experimental!(register_attr),
     ),
-    gated!(
+    ungated!(
         register_tool, CrateLevel, template!(List: "tool1, tool2, ..."), DuplicatesOk,
-        experimental!(register_tool),
     ),
 
     gated!(

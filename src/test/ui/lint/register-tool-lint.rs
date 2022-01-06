@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
-#![feature(register_tool)]
+#![cfg_attr(bootstrap, feature(register_tool))]
 #![register_tool(xyz)]
 #![warn(xyz::my_lint)] // this should not error
 #![warn(abc::my_lint)]

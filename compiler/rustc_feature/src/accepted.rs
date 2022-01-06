@@ -233,6 +233,8 @@ declare_features! (
     /// Allows relaxing the coherence rules such that
     /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
     (accepted, re_rebalance_coherence, "1.41.0", Some(55437), None),
+    /// Allows using the `#[register_tool]` attribute.
+    (accepted, register_tool, "1.59.0", Some(66079), None),
     /// Allows numeric fields in struct expressions and patterns.
     (accepted, relaxed_adts, "1.19.0", Some(35626), None),
     /// Lessens the requirements for structs to implement `Unsize`.

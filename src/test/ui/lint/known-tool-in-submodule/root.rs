@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(register_tool)]
+#![cfg_attr(bootstrap, feature(register_tool))]
 #![register_tool(tool)]
 
 mod submodule;
