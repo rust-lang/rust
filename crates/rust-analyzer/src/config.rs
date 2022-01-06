@@ -301,9 +301,10 @@ config_data! {
         /// Internal config, path to proc-macro server executable (typically,
         /// this is rust-analyzer itself, but we override this in tests).
         procMacro_server: Option<PathBuf>          = "null",
-        /// Replaces the proc-macro expanders for the named proc-macros in the named crates with
-        /// an identity expander that outputs the input again.
-        procMacro_dummies: FxHashMap<Box<str>, Box<[Box<str>]>>          = "{}",
+        /// These proc-macros will be ignored when trying to expand them.
+        ///
+        /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
+        procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = "{}",
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_overrideCargo: Option<String> = "null",
@@ -720,7 +721,7 @@ impl Config {
         Some((path, vec!["proc-macro".into()]))
     }
     pub fn dummy_replacements(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
-        &self.data.procMacro_dummies
+        &self.data.procMacro_ignored
     }
     pub fn expand_proc_attr_macros(&self) -> bool {
         self.data.experimental_procAttrMacros

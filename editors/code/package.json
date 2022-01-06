@@ -880,8 +880,8 @@
                         "string"
                     ]
                 },
-                "rust-analyzer.procMacro.dummies": {
-                    "markdownDescription": "Replaces the proc-macro expanders for the named proc-macros in the named crates with\nan identity expander that outputs the input again.",
+                "rust-analyzer.procMacro.ignored": {
+                    "markdownDescription": "These proc-macros will be ignored when trying to expand them.\n\nThis config takes a map of crate names with the exported proc-macro names to ignore as values.",
                     "default": {},
                     "type": "object"
                 },
