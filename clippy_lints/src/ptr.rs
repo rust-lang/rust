@@ -3,10 +3,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::expr_sig;
-use clippy_utils::{
-    expr_path_res, get_expr_use_or_unification_node, is_lint_allowed, is_lint_allowed, match_any_diagnostic_items,
-    path_def_id, path_to_local, paths, paths,
-};
+use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
