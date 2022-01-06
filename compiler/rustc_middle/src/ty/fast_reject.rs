@@ -143,6 +143,18 @@ pub fn simplify_type(
 }
 
 impl<D: Copy + Debug + Ord + Eq> SimplifiedTypeGen<D> {
+    pub fn def(self) -> Option<D> {
+        match self {
+            AdtSimplifiedType(d)
+            | ForeignSimplifiedType(d)
+            | TraitSimplifiedType(d)
+            | ClosureSimplifiedType(d)
+            | GeneratorSimplifiedType(d)
+            | OpaqueSimplifiedType(d) => Some(d),
+            _ => None,
+        }
+    }
+
     pub fn map_def<U, F>(self, map: F) -> SimplifiedTypeGen<U>
     where
         F: Fn(D) -> U,

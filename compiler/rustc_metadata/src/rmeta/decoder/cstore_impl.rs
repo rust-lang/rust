@@ -133,9 +133,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     generator_kind => { cdata.generator_kind(def_id.index) }
     opt_def_kind => { Some(cdata.def_kind(def_id.index)) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
-    def_ident_span => {
-        cdata.try_item_ident(def_id.index, &tcx.sess).ok().map(|ident| ident.span)
-    }
+    def_ident_span => { cdata.opt_item_ident(def_id.index, &tcx.sess).map(|ident| ident.span) }
     lookup_stability => {
         cdata.get_stability(def_id.index).map(|s| tcx.intern_stability(s))
     }
@@ -145,9 +143,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     lookup_deprecation_entry => {
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
-    item_attrs => { tcx.arena.alloc_from_iter(
-        cdata.get_item_attrs(def_id.index, tcx.sess)
-    ) }
+    item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     fn_arg_names => { cdata.get_fn_param_names(tcx, def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
@@ -196,14 +192,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     extra_filename => { cdata.root.extra_filename.clone() }
 
     traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
+    all_trait_implementations => { tcx.arena.alloc_from_iter(cdata.get_trait_impls()) }
 
-    implementations_of_trait => {
-        cdata.get_implementations_for_trait(tcx, Some(other))
-    }
-
-    all_trait_implementations => {
-        cdata.get_implementations_for_trait(tcx, None)
-    }
+    implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
 
     visibility => { cdata.get_visibility(def_id.index) }
     dep_kind => {
@@ -470,7 +461,7 @@ impl CStore {
         self.get_crate_data(cnum).num_def_ids()
     }
 
-    pub fn item_attrs(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
+    pub fn item_attrs_untracked(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
         self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess).collect()
     }
 

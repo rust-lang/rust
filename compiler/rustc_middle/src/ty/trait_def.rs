@@ -1,5 +1,5 @@
 use crate::traits::specialization_graph;
-use crate::ty::fast_reject::{self, SimplifyParams, StripReferences};
+use crate::ty::fast_reject::{self, SimplifiedType, SimplifyParams, StripReferences};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ty, TyCtxt};
 use rustc_hir as hir;
@@ -68,7 +68,7 @@ pub enum TraitSpecializationKind {
 pub struct TraitImpls {
     blanket_impls: Vec<DefId>,
     /// Impls indexed by their simplified self type, for fast lookup.
-    non_blanket_impls: FxIndexMap<fast_reject::SimplifiedType, Vec<DefId>>,
+    non_blanket_impls: FxIndexMap<SimplifiedType, Vec<DefId>>,
 }
 
 impl TraitImpls {
