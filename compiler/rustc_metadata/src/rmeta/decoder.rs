@@ -1365,39 +1365,39 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.traits.decode(self).map(|index| self.local_def_id(index))
     }
 
-    fn get_implementations_for_trait(
+    fn get_trait_impls(&'a self) -> impl Iterator<Item = (DefId, Option<SimplifiedType>)> + 'a {
+        self.trait_impls.values().flat_map(move |impls| {
+            impls
+                .decode(self)
+                .map(|(idx, simplified_self_ty)| (self.local_def_id(idx), simplified_self_ty))
+        })
+    }
+
+    fn get_implementations_of_trait(
         &self,
         tcx: TyCtxt<'tcx>,
-        filter: Option<DefId>,
+        trait_def_id: DefId,
     ) -> &'tcx [(DefId, Option<SimplifiedType>)] {
         if self.root.is_proc_macro_crate() {
             // proc-macro crates export no trait impls.
             return &[];
         }
 
-        if let Some(def_id) = filter {
-            // Do a reverse lookup beforehand to avoid touching the crate_num
-            // hash map in the loop below.
-            let filter = match self.reverse_translate_def_id(def_id) {
-                Some(def_id) => (def_id.krate.as_u32(), def_id.index),
-                None => return &[],
-            };
+        // Do a reverse lookup beforehand to avoid touching the crate_num
+        // hash map in the loop below.
+        let key = match self.reverse_translate_def_id(trait_def_id) {
+            Some(def_id) => (def_id.krate.as_u32(), def_id.index),
+            None => return &[],
+        };
 
-            if let Some(impls) = self.trait_impls.get(&filter) {
-                tcx.arena.alloc_from_iter(
-                    impls.decode(self).map(|(idx, simplified_self_ty)| {
-                        (self.local_def_id(idx), simplified_self_ty)
-                    }),
-                )
-            } else {
-                &[]
-            }
-        } else {
-            tcx.arena.alloc_from_iter(self.trait_impls.values().flat_map(|impls| {
+        if let Some(impls) = self.trait_impls.get(&key) {
+            tcx.arena.alloc_from_iter(
                 impls
                     .decode(self)
-                    .map(|(idx, simplified_self_ty)| (self.local_def_id(idx), simplified_self_ty))
-            }))
+                    .map(|(idx, simplified_self_ty)| (self.local_def_id(idx), simplified_self_ty)),
+            )
+        } else {
+            &[]
         }
     }
 

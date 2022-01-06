@@ -192,14 +192,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     extra_filename => { cdata.root.extra_filename.clone() }
 
     traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
+    all_trait_implementations => { tcx.arena.alloc_from_iter(cdata.get_trait_impls()) }
 
-    implementations_of_trait => {
-        cdata.get_implementations_for_trait(tcx, Some(other))
-    }
-
-    all_trait_implementations => {
-        cdata.get_implementations_for_trait(tcx, None)
-    }
+    implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
 
     visibility => { cdata.get_visibility(def_id.index) }
     dep_kind => {
