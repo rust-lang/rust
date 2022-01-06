@@ -513,7 +513,31 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         path_str: &'path str,
         ns: Namespace,
         module_id: DefId,
-        extra_fragment: &Option<UrlFragment>,
+        user_fragment: &Option<UrlFragment>,
+    ) -> Result<(Res, Option<UrlFragment>), ErrorKind<'path>> {
+        let (res, rustdoc_fragment) = self.resolve_inner(path_str, ns, module_id)?;
+        let chosen_fragment = match (user_fragment, rustdoc_fragment) {
+            (Some(_), Some(r_frag)) => {
+                let diag_res = match r_frag {
+                    UrlFragment::Def(_, did) => Res::Def(self.cx.tcx.def_kind(did), did),
+                    // FIXME: eliminate this branch somehow
+                    UrlFragment::UserWritten(_) => unreachable!(),
+                };
+                let failure = AnchorFailure::RustdocAnchorConflict(diag_res);
+                return Err(ErrorKind::AnchorFailure(failure));
+            }
+            (Some(u_frag), None) => Some(u_frag.clone()),
+            (None, Some(r_frag)) => Some(r_frag),
+            (None, None) => None,
+        };
+        Ok((res, chosen_fragment))
+    }
+
+    fn resolve_inner<'path>(
+        &mut self,
+        path_str: &'path str,
+        ns: Namespace,
+        module_id: DefId,
     ) -> Result<(Res, Option<UrlFragment>), ErrorKind<'path>> {
         if let Some(res) = self.resolve_path(path_str, ns, module_id) {
             match res {
@@ -522,17 +546,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => assert_eq!(ns, ValueNS),
                 Res::Def(DefKind::AssocTy, _) => assert_eq!(ns, TypeNS),
                 Res::Def(DefKind::Variant, _) => {
-                    if extra_fragment.is_some() {
-                        // NOTE: `res` can never be a primitive since this match arm means
-                        //       `tcx.def_kind(res) == DefKind::Variant`.
-                        return Err(ErrorKind::AnchorFailure(
-                            AnchorFailure::RustdocAnchorConflict(res),
-                        ));
-                    }
                     return handle_variant(self.cx, res);
                 }
                 // Not a trait item; just return what we found.
-                _ => return Ok((res, extra_fragment.clone())),
+                _ => return Ok((res, None)),
             }
         }
 
@@ -565,21 +582,14 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .and_then(|ty_res| {
                 let (res, fragment, side_channel) =
                     self.resolve_associated_item(ty_res, item_name, ns, module_id)?;
-                let result = if extra_fragment.is_some() {
-                    // NOTE: can never be a primitive since `side_channel.is_none()` only when `res`
-                    // is a trait (and the side channel DefId is always an associated item).
-                    let diag_res = side_channel.map_or(res, |(k, r)| Res::Def(k, r));
-                    Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(diag_res)))
-                } else {
-                    // HACK(jynelson): `clean` expects the type, not the associated item
-                    // but the disambiguator logic expects the associated item.
-                    // Store the kind in a side channel so that only the disambiguator logic looks at it.
-                    if let Some((kind, id)) = side_channel {
-                        self.kind_side_channel.set(Some((kind, id)));
-                    }
-                    Ok((res, Some(fragment)))
-                };
-                Some(result)
+
+                // HACK(jynelson): `clean` expects the type, not the associated item
+                // but the disambiguator logic expects the associated item.
+                // Store the kind in a side channel so that only the disambiguator logic looks at it.
+                if let Some((kind, id)) = side_channel {
+                    self.kind_side_channel.set(Some((kind, id)));
+                }
+                Some(Ok((res, Some(fragment))))
             })
             .unwrap_or_else(|| {
                 if ns == Namespace::ValueNS {
