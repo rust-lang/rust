@@ -1072,7 +1072,11 @@ pub fn compile_unit_metadata<'ll, 'tcx>(
     let output_filenames = tcx.output_filenames(());
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
         output_filenames
-            .split_dwarf_path(tcx.sess.split_debuginfo(), Some(codegen_unit_name))
+            .split_dwarf_path(
+                tcx.sess.split_debuginfo(),
+                tcx.sess.opts.debugging_opts.split_dwarf_kind,
+                Some(codegen_unit_name),
+            )
             // We get a path relative to the working directory from split_dwarf_path
             .map(|f| tcx.sess.source_map().path_mapping().map_prefix(f).0)
     } else {

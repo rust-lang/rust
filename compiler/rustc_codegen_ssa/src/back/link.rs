@@ -1,11 +1,13 @@
+use rustc_arena::TypedArena;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{ErrorReported, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
-use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
+use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SplitDwarfKind};
 use rustc_session::cstore::DllImport;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -32,7 +34,10 @@ use cc::windows_registry;
 use regex::Regex;
 use tempfile::Builder as TempFileBuilder;
 
-use std::ffi::{OsStr, OsString};
+use std::borrow::Borrow;
+use std::ffi::OsString;
+use std::fs::{File, OpenOptions};
+use std::io::{BufWriter, Write};
 use std::lazy::OnceCell;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
@@ -134,31 +139,47 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
         }
     }
 
-    // Remove the temporary object file and metadata if we aren't saving temps
+    // Remove the temporary object file and metadata if we aren't saving temps.
     sess.time("link_binary_remove_temps", || {
-        if !sess.opts.cg.save_temps {
-            let remove_temps_from_module = |module: &CompiledModule| {
-                if let Some(ref obj) = module.object {
-                    ensure_removed(sess.diagnostic(), obj);
-                }
+        // If the user requests that temporaries are saved, don't delete any.
+        if sess.opts.cg.save_temps {
+            return;
+        }
 
+        let remove_temps_from_module = |module: &CompiledModule| {
+            if let Some(ref obj) = module.object {
+                ensure_removed(sess.diagnostic(), obj);
+            }
+        };
+
+        // Otherwise, always remove the metadata and allocator module temporaries.
+        if let Some(ref metadata_module) = codegen_results.metadata_module {
+            remove_temps_from_module(metadata_module);
+        }
+
+        if let Some(ref allocator_module) = codegen_results.allocator_module {
+            remove_temps_from_module(allocator_module);
+        }
+
+        // If no requested outputs require linking, then the object temporaries should
+        // be kept.
+        if !sess.opts.output_types.should_link() {
+            return;
+        }
+
+        // Potentially keep objects for their debuginfo.
+        let (preserve_objects, preserve_dwarf_objects) = preserve_objects_for_their_debuginfo(sess);
+        debug!(?preserve_objects, ?preserve_dwarf_objects);
+
+        for module in &codegen_results.modules {
+            if !preserve_objects {
+                remove_temps_from_module(module);
+            }
+
+            if !preserve_dwarf_objects {
                 if let Some(ref obj) = module.dwarf_object {
                     ensure_removed(sess.diagnostic(), obj);
                 }
-            };
-
-            if sess.opts.output_types.should_link() && !preserve_objects_for_their_debuginfo(sess) {
-                for module in &codegen_results.modules {
-                    remove_temps_from_module(module);
-                }
-            }
-
-            if let Some(ref metadata_module) = codegen_results.metadata_module {
-                remove_temps_from_module(metadata_module);
-            }
-
-            if let Some(ref allocator_module) = codegen_results.allocator_module {
-                remove_temps_from_module(allocator_module);
             }
         }
     });
@@ -245,8 +266,14 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 
     let mut ab = <B as ArchiveBuilder>::new(sess, out_filename, None);
 
-    for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
-        ab.add_file(obj);
+    for m in &codegen_results.modules {
+        if let Some(obj) = m.object.as_ref() {
+            ab.add_file(obj);
+        }
+
+        if let Some(dwarf_obj) = m.dwarf_object.as_ref() {
+            ab.add_file(dwarf_obj);
+        }
     }
 
     // Note that in this loop we are ignoring the value of `lib.cfg`. That is,
@@ -502,59 +529,108 @@ fn escape_stdout_stderr_string(s: &[u8]) -> String {
     })
 }
 
-const LLVM_DWP_EXECUTABLE: &'static str = "rust-llvm-dwp";
-
-/// Invoke `llvm-dwp` (shipped alongside rustc) to link debuginfo in object files into a `dwp`
-/// file.
-fn link_dwarf_object<'a, I>(sess: &'a Session, executable_out_filename: &Path, object_files: I)
-where
-    I: IntoIterator<Item: AsRef<OsStr>>,
-{
-    info!("preparing dwp to {}.dwp", executable_out_filename.to_str().unwrap());
-
+/// Use `thorin` (rust implementation of a dwarf packaging utility) to link DWARF objects into a
+/// DWARF package.
+fn link_dwarf_object<'a>(
+    sess: &'a Session,
+    cg_results: &CodegenResults,
+    executable_out_filename: &Path,
+) {
     let dwp_out_filename = executable_out_filename.with_extension("dwp");
-    let mut cmd = Command::new(LLVM_DWP_EXECUTABLE);
-    cmd.arg("-o");
-    cmd.arg(&dwp_out_filename);
-    cmd.args(object_files);
+    debug!(?dwp_out_filename, ?executable_out_filename);
 
-    let mut new_path = sess.get_tools_search_paths(false);
-    if let Some(path) = env::var_os("PATH") {
-        new_path.extend(env::split_paths(&path));
+    #[derive(Default)]
+    struct ThorinSession<Relocations> {
+        arena_data: TypedArena<Vec<u8>>,
+        arena_mmap: TypedArena<Mmap>,
+        arena_relocations: TypedArena<Relocations>,
     }
-    let new_path = env::join_paths(new_path).unwrap();
-    cmd.env("PATH", new_path);
 
-    info!("{:?}", &cmd);
-    match sess.time("run_dwp", || cmd.output()) {
-        Ok(prog) if !prog.status.success() => {
-            sess.struct_err(&format!(
-                "linking dwarf objects with `{}` failed: {}",
-                LLVM_DWP_EXECUTABLE, prog.status
-            ))
-            .note(&format!("{:?}", &cmd))
-            .note(&escape_stdout_stderr_string(&prog.stdout))
-            .note(&escape_stdout_stderr_string(&prog.stderr))
-            .emit();
-            info!("linker stderr:\n{}", escape_stdout_stderr_string(&prog.stderr));
-            info!("linker stdout:\n{}", escape_stdout_stderr_string(&prog.stdout));
+    impl<Relocations> ThorinSession<Relocations> {
+        fn alloc_mmap<'arena>(&'arena self, data: Mmap) -> &'arena Mmap {
+            (*self.arena_mmap.alloc(data)).borrow()
         }
-        Ok(_) => {}
-        Err(e) => {
-            let dwp_not_found = e.kind() == io::ErrorKind::NotFound;
-            let mut err = if dwp_not_found {
-                sess.struct_err(&format!("linker `{}` not found", LLVM_DWP_EXECUTABLE))
-            } else {
-                sess.struct_err(&format!("could not exec the linker `{}`", LLVM_DWP_EXECUTABLE))
-            };
+    }
 
-            err.note(&e.to_string());
+    impl<Relocations> thorin::Session<Relocations> for ThorinSession<Relocations> {
+        fn alloc_data<'arena>(&'arena self, data: Vec<u8>) -> &'arena [u8] {
+            (*self.arena_data.alloc(data)).borrow()
+        }
 
-            if !dwp_not_found {
-                err.note(&format!("{:?}", &cmd));
+        fn alloc_relocation<'arena>(&'arena self, data: Relocations) -> &'arena Relocations {
+            (*self.arena_relocations.alloc(data)).borrow()
+        }
+
+        fn read_input<'arena>(&'arena self, path: &Path) -> std::io::Result<&'arena [u8]> {
+            let file = File::open(&path)?;
+            let mmap = (unsafe { Mmap::map(file) })?;
+            Ok(self.alloc_mmap(mmap))
+        }
+    }
+
+    match sess.time("run_thorin", || -> Result<(), thorin::Error> {
+        let thorin_sess = ThorinSession::default();
+        let mut package = thorin::DwarfPackage::new(&thorin_sess);
+
+        // Input objs contain .o/.dwo files from the current crate.
+        match sess.opts.debugging_opts.split_dwarf_kind {
+            SplitDwarfKind::Single => {
+                for input_obj in cg_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+                    package.add_input_object(input_obj)?;
+                }
             }
+            SplitDwarfKind::Split => {
+                for input_obj in cg_results.modules.iter().filter_map(|m| m.dwarf_object.as_ref()) {
+                    package.add_input_object(input_obj)?;
+                }
+            }
+        }
 
-            err.emit();
+        // Input rlibs contain .o/.dwo files from dependencies.
+        let input_rlibs = cg_results
+            .crate_info
+            .used_crate_source
+            .values()
+            .filter_map(|csource| csource.rlib.as_ref())
+            .map(|(path, _)| path);
+        for input_rlib in input_rlibs {
+            debug!(?input_rlib);
+            package.add_input_object(input_rlib)?;
+        }
+
+        // Failing to read the referenced objects is expected for dependencies where the path in the
+        // executable will have been cleaned by Cargo, but the referenced objects will be contained
+        // within rlibs provided as inputs.
+        //
+        // If paths have been remapped, then .o/.dwo files from the current crate also won't be
+        // found, but are provided explicitly above.
+        //
+        // Adding an executable is primarily done to make `thorin` check that all the referenced
+        // dwarf objects are found in the end.
+        package.add_executable(
+            &executable_out_filename,
+            thorin::MissingReferencedObjectBehaviour::Skip,
+        )?;
+
+        let output = package.finish()?.write()?;
+        let mut output_stream = BufWriter::new(
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(dwp_out_filename)?,
+        );
+        output_stream.write_all(&output)?;
+        output_stream.flush()?;
+
+        Ok(())
+    }) {
+        Ok(()) => {}
+        Err(e) => {
+            sess.struct_err("linking dwarf objects with thorin failed")
+                .note(&format!("{:?}", e))
+                .emit();
         }
     }
 }
@@ -900,14 +976,11 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         SplitDebuginfo::Packed if sess.target.is_like_msvc => {}
 
         // ... and otherwise we're processing a `*.dwp` packed dwarf file.
+        //
         // We cannot rely on the .o paths in the exectuable because they may have been
-        // remapped by --remap-path-prefix and therefore invalid. So we need to provide
-        // the .o paths explicitly
-        SplitDebuginfo::Packed => link_dwarf_object(
-            sess,
-            &out_filename,
-            codegen_results.modules.iter().filter_map(|m| m.object.as_ref()),
-        ),
+        // remapped by --remap-path-prefix and therefore invalid, so we need to provide
+        // the .o/.dwo paths explicitly.
+        SplitDebuginfo::Packed => link_dwarf_object(sess, codegen_results, out_filename),
     }
 
     let strip = strip_value(sess);
@@ -1138,26 +1211,36 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
     bug!("Not enough information provided to determine how to invoke the linker");
 }
 
-/// Returns a boolean indicating whether we should preserve the object files on
-/// the filesystem for their debug information. This is often useful with
-/// split-dwarf like schemes.
-fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
+/// Returns a pair of boolean indicating whether we should preserve the object and
+/// dwarf object files on the filesystem for their debug information. This is often
+/// useful with split-dwarf like schemes.
+fn preserve_objects_for_their_debuginfo(sess: &Session) -> (bool, bool) {
     // If the objects don't have debuginfo there's nothing to preserve.
     if sess.opts.debuginfo == config::DebugInfo::None {
-        return false;
+        return (false, false);
     }
 
     // If we're only producing artifacts that are archives, no need to preserve
     // the objects as they're losslessly contained inside the archives.
-    let output_linked =
-        sess.crate_types().iter().any(|&x| x != CrateType::Rlib && x != CrateType::Staticlib);
-    if !output_linked {
-        return false;
+    if sess.crate_types().iter().all(|&x| x.is_archive()) {
+        return (false, false);
     }
 
-    // "unpacked" split debuginfo means that we leave object files as the
-    // debuginfo is found in the original object files themselves
-    sess.split_debuginfo() == SplitDebuginfo::Unpacked
+    match (sess.split_debuginfo(), sess.opts.debugging_opts.split_dwarf_kind) {
+        // If there is no split debuginfo then do not preserve objects.
+        (SplitDebuginfo::Off, _) => (false, false),
+        // If there is packed split debuginfo, then the debuginfo in the objects
+        // has been packaged and the objects can be deleted.
+        (SplitDebuginfo::Packed, _) => (false, false),
+        // If there is unpacked split debuginfo and the current target can not use
+        // split dwarf, then keep objects.
+        (SplitDebuginfo::Unpacked, _) if !sess.target_can_use_split_dwarf() => (true, false),
+        // If there is unpacked split debuginfo and the target can use split dwarf, then
+        // keep the object containing that debuginfo (whether that is an object file or
+        // dwarf object file depends on the split dwarf kind).
+        (SplitDebuginfo::Unpacked, SplitDwarfKind::Single) => (true, false),
+        (SplitDebuginfo::Unpacked, SplitDwarfKind::Split) => (false, true),
+    }
 }
 
 fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {

@@ -398,12 +398,12 @@ impl Step for Rustc {
             // component for now.
             maybe_install_llvm_runtime(builder, host, image);
 
-            let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
             let dst_dir = image.join("lib/rustlib").join(&*host.triple).join("bin");
             t!(fs::create_dir_all(&dst_dir));
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
+                let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
                 let rust_lld = exe("rust-lld", compiler.host);
                 builder.copy(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
                 // for `-Z gcc-ld=lld`
@@ -416,10 +416,6 @@ impl Step for Rustc {
                         .copy(&gcc_lld_src_dir.join(&exe_name), &gcc_lld_dst_dir.join(&exe_name));
                 }
             }
-
-            // Copy over llvm-dwp if it's there
-            let exe = exe("rust-llvm-dwp", compiler.host);
-            builder.copy(&src_dir.join(&exe), &dst_dir.join(&exe));
 
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));

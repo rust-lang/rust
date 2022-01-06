@@ -231,6 +231,37 @@ pub enum DebugInfo {
     Full,
 }
 
+/// Split debug-information is enabled by `-C split-debuginfo`, this enum is only used if split
+/// debug-information is enabled (in either `Packed` or `Unpacked` modes), and the platform
+/// uses DWARF for debug-information.
+///
+/// Some debug-information requires link-time relocation and some does not. LLVM can partition
+/// the debuginfo into sections depending on whether or not it requires link-time relocation. Split
+/// DWARF provides a mechanism which allows the linker to skip the sections which don't require
+/// link-time relocation - either by putting those sections in DWARF object files, or by keeping
+/// them in the object file in such a way that the linker will skip them.
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum SplitDwarfKind {
+    /// Sections which do not require relocation are written into object file but ignored by the
+    /// linker.
+    Single,
+    /// Sections which do not require relocation are written into a DWARF object (`.dwo`) file
+    /// which is ignored by the linker.
+    Split,
+}
+
+impl FromStr for SplitDwarfKind {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, ()> {
+        Ok(match s {
+            "single" => SplitDwarfKind::Single,
+            "split" => SplitDwarfKind::Split,
+            _ => return Err(()),
+        })
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 #[derive(Encodable, Decodable)]
 pub enum OutputType {
@@ -378,7 +409,7 @@ impl OutputTypes {
         self.0.len()
     }
 
-    // Returns `true` if any of the output types require codegen or linking.
+    /// Returns `true` if any of the output types require codegen or linking.
     pub fn should_codegen(&self) -> bool {
         self.0.keys().any(|k| match *k {
             OutputType::Bitcode
@@ -391,7 +422,7 @@ impl OutputTypes {
         })
     }
 
-    // Returns `true` if any of the output types require linking.
+    /// Returns `true` if any of the output types require linking.
     pub fn should_link(&self) -> bool {
         self.0.keys().any(|k| match *k {
             OutputType::Bitcode
@@ -681,18 +712,23 @@ impl OutputFilenames {
     pub fn split_dwarf_path(
         &self,
         split_debuginfo_kind: SplitDebuginfo,
+        split_dwarf_kind: SplitDwarfKind,
         cgu_name: Option<&str>,
     ) -> Option<PathBuf> {
         let obj_out = self.temp_path(OutputType::Object, cgu_name);
         let dwo_out = self.temp_path_dwo(cgu_name);
-        match split_debuginfo_kind {
-            SplitDebuginfo::Off => None,
+        match (split_debuginfo_kind, split_dwarf_kind) {
+            (SplitDebuginfo::Off, SplitDwarfKind::Single | SplitDwarfKind::Split) => None,
             // Single mode doesn't change how DWARF is emitted, but does add Split DWARF attributes
             // (pointing at the path which is being determined here). Use the path to the current
             // object file.
-            SplitDebuginfo::Packed => Some(obj_out),
+            (SplitDebuginfo::Packed | SplitDebuginfo::Unpacked, SplitDwarfKind::Single) => {
+                Some(obj_out)
+            }
             // Split mode emits the DWARF into a different file, use that path.
-            SplitDebuginfo::Unpacked => Some(dwo_out),
+            (SplitDebuginfo::Packed | SplitDebuginfo::Unpacked, SplitDwarfKind::Split) => {
+                Some(dwo_out)
+            }
         }
     }
 }
@@ -820,6 +856,18 @@ pub enum CrateType {
 }
 
 impl_stable_hash_via_hash!(CrateType);
+
+impl CrateType {
+    /// When generated, is this crate type an archive?
+    pub fn is_archive(&self) -> bool {
+        match *self {
+            CrateType::Rlib | CrateType::Staticlib => true,
+            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => {
+                false
+            }
+        }
+    }
+}
 
 #[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub enum Passes {
