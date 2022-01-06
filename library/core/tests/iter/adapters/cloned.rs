@@ -1,4 +1,6 @@
 use core::iter::*;
+use core::ops::Drop;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
 fn test_cloned() {
@@ -32,6 +34,40 @@ fn test_cloned_side_effects() {
         for _ in iter {}
     }
     assert_eq!(count, 2);
+}
+
+#[test]
+fn test_cloned_clone_elision() {
+    static CLONE_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    struct CloneWitness;
+
+    impl Clone for CloneWitness {
+        fn clone(&self) -> Self {
+            CloneWitness
+        }
+    }
+
+    impl Drop for CloneWitness {
+        fn drop(&mut self) {
+            CLONE_COUNTER.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    let ary: [CloneWitness; 5] = core::array::from_fn(|_| CloneWitness);
+    let iter = ary.iter();
+    iter.clone().cloned().skip(4).next();
+    assert_eq!(CLONE_COUNTER.swap(0, Ordering::Relaxed), 1);
+    iter.clone().cloned().last();
+    assert_eq!(CLONE_COUNTER.swap(0, Ordering::Relaxed), 1);
+    iter.clone().cloned().nth(4);
+    assert_eq!(CLONE_COUNTER.swap(0, Ordering::Relaxed), 1);
+    iter.clone().cloned().take(2).next_back();
+    assert_eq!(CLONE_COUNTER.swap(0, Ordering::Relaxed), 1);
+    iter.clone().cloned().count();
+    assert_eq!(CLONE_COUNTER.swap(0, Ordering::Relaxed), 0);
+    let _ = iter.clone().cloned().advance_by(5);
+    assert_eq!(CLONE_COUNTER.swap(0, Ordering::Relaxed), 0);
 }
 
 #[test]
