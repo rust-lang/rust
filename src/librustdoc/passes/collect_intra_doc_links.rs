@@ -827,19 +827,28 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     ) -> Option<Res> {
         // resolve() can't be used for macro namespace
         let result = match ns {
-            Namespace::MacroNS => self.resolve_macro(path_str, module_id).map_err(ErrorKind::from),
+            Namespace::MacroNS => self
+                .resolve_macro(path_str, module_id)
+                .map(|res| (res, None))
+                .map_err(ErrorKind::from),
             Namespace::TypeNS | Namespace::ValueNS => {
-                self.resolve(path_str, ns, module_id, extra_fragment).map(|(res, _)| res)
+                self.resolve(path_str, ns, module_id, extra_fragment)
             }
         };
 
         let res = match result {
-            Ok(res) => Some(res),
+            Ok((res, frag)) => {
+                if let Some(UrlFragment::Def(_, id)) = frag {
+                    Some(Res::Def(self.cx.tcx.def_kind(id), id))
+                } else {
+                    Some(res)
+                }
+            }
             Err(ErrorKind::Resolve(box kind)) => kind.full_res(),
             Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res))) => Some(res),
             Err(ErrorKind::AnchorFailure(AnchorFailure::MultipleAnchors)) => None,
         };
-        self.kind_side_channel.take().map(|(kind, id)| Res::Def(kind, id)).or(res)
+        res
     }
 }
 
