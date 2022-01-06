@@ -26,7 +26,7 @@ use rustc_middle::mir::interpret;
 use rustc_middle::thir;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
-use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
+use rustc_middle::ty::fast_reject::{self, SimplifiedType, SimplifyParams, StripReferences};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, SymbolName, Ty, TyCtxt};
 use rustc_serialize::{opaque, Encodable, Encoder};
@@ -2055,7 +2055,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
 struct ImplsVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    impls: FxHashMap<DefId, Vec<(DefIndex, Option<fast_reject::SimplifiedType>)>>,
+    impls: FxHashMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>>,
 }
 
 impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplsVisitor<'tcx> {

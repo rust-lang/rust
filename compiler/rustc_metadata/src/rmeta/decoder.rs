@@ -27,6 +27,7 @@ use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
 use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::cstore::{
@@ -92,8 +93,7 @@ crate struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls:
-        FxHashMap<(u32, DefIndex), Lazy<[(DefIndex, Option<ty::fast_reject::SimplifiedType>)]>>,
+    trait_impls: FxHashMap<(u32, DefIndex), Lazy<[(DefIndex, Option<SimplifiedType>)]>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
@@ -1376,7 +1376,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self,
         tcx: TyCtxt<'tcx>,
         filter: Option<DefId>,
-    ) -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
+    ) -> &'tcx [(DefId, Option<SimplifiedType>)] {
         if self.root.is_proc_macro_crate() {
             // proc-macro crates export no trait impls.
             return &[];

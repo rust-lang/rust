@@ -16,6 +16,7 @@ use rustc_middle::hir::exports::Export;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir;
 use rustc_middle::thir;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
@@ -261,7 +262,7 @@ crate struct CrateDep {
 #[derive(MetadataEncodable, MetadataDecodable)]
 crate struct TraitImpls {
     trait_id: (u32, DefIndex),
-    impls: Lazy<[(DefIndex, Option<ty::fast_reject::SimplifiedType>)]>,
+    impls: Lazy<[(DefIndex, Option<SimplifiedType>)]>,
 }
 
 /// Define `LazyTables` and `TableBuilders` at the same time.
