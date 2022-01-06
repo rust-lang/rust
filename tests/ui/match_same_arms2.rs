@@ -174,4 +174,17 @@ fn main() {
         Some(2) => 2,
         _ => 1,
     };
+
+    enum Foo {
+        X(u32),
+        Y(u32),
+        Z(u32),
+    }
+
+    let _ = match Foo::X(0) {
+        Foo::X(0) => 1,
+        Foo::X(_) | Foo::Y(_) | Foo::Z(0) => 2,
+        Foo::Z(_) => 1,
+        _ => 0,
+    };
 }
