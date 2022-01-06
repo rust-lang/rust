@@ -1,7 +1,9 @@
 #![deny(rustdoc::broken_intra_doc_links)]
+#![allow(incomplete_features)] // inherent_associated_types
 #![feature(lang_items)]
 #![feature(no_core)]
 #![feature(rustdoc_internals)]
+#![feature(inherent_associated_types)]
 #![no_core]
 
 #[lang = "usize"]
@@ -17,10 +19,9 @@ impl usize {
     /// 10 and 2^32 are basically the same.
     pub const MAX: usize = 10;
 
-    // FIXME(#8995) uncomment this when associated types in inherent impls are supported
-    // @ has - '//a[@href="{{channel}}/std/primitive.usize.html#associatedtype.ME"]' 'Self::ME'
-    // / [Self::ME]
-    //pub type ME = usize;
+    // @has - '//a[@href="primitive.usize.html#associatedtype.ME"]' 'Self::ME'
+    /// [Self::ME]
+    pub type ME = usize;
 }
 
 #[doc(primitive = "usize")]
