@@ -1517,7 +1517,8 @@ pub(crate) mod builtin {
     #[unstable(
         feature = "rustc_encodable_decodable",
         issue = "none",
-        reason = "RustcDecodable cannot be used stably"
+        soft,
+        reason = "unstable implementation detail of the `rustc` compiler, do not use"
     )]
     pub macro RustcDecodable($item:item) {
         /* compiler built-in */
@@ -1534,7 +1535,8 @@ pub(crate) mod builtin {
     #[unstable(
         feature = "rustc_encodable_decodable",
         issue = "none",
-        reason = "RustcDecodable cannot be used stably"
+        soft,
+        reason = "unstable implementation detail of the `rustc` compiler, do not use"
     )]
     pub macro RustcEncodable($item:item) {
         /* compiler built-in */

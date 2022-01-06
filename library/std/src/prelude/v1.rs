@@ -55,7 +55,12 @@ pub use core::prelude::v1::{
 pub use core::prelude::v1::concat_bytes;
 
 // Do not `doc(inline)` these `doc(hidden)` items.
-#[unstable(feature = "rustc_encodable_decodable", issue = "none")]
+#[unstable(
+    feature = "rustc_encodable_decodable",
+    issue = "none",
+    soft,
+    reason = "unstable implementation detail of the `rustc` compiler, do not use"
+)]
 #[allow(deprecated)]
 pub use core::prelude::v1::{RustcDecodable, RustcEncodable};
 
