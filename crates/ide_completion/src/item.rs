@@ -139,6 +139,8 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub is_local: bool,
+    /// Set for method completions of the `core::ops` family.
+    pub is_op_method: bool,
     /// This is set in cases like these:
     ///
     /// ```
@@ -197,6 +199,9 @@ impl CompletionRelevance {
         };
         if self.is_local {
             score += 1;
+        }
+        if self.is_op_method {
+            score -= 1;
         }
         if self.exact_postfix_snippet_match {
             score += 100;
@@ -588,10 +593,8 @@ mod tests {
                 ..CompletionRelevance::default()
             }],
             vec![CompletionRelevance {
-                exact_name_match: false,
-                type_match: None,
-                is_local: false,
                 exact_postfix_snippet_match: true,
+                ..CompletionRelevance::default()
             }],
         ];
 

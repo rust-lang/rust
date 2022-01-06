@@ -144,8 +144,8 @@ impl LangItems {
         let _p = profile::span("lang_item_query");
         let lang_items = db.crate_lang_items(start_crate);
         let start_crate_target = lang_items.items.get(&item);
-        if let Some(target) = start_crate_target {
-            return Some(*target);
+        if let Some(&target) = start_crate_target {
+            return Some(target);
         }
         db.crate_graph()[start_crate]
             .dependencies
