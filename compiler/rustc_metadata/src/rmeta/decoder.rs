@@ -722,25 +722,24 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self.raw_proc_macros.unwrap()[pos]
     }
 
-    fn try_item_ident(&self, item_index: DefIndex, sess: &Session) -> Result<Ident, String> {
-        let name = self
-            .def_key(item_index)
-            .disambiguated_data
-            .data
-            .get_opt_name()
-            .ok_or_else(|| format!("Missing opt name for {:?}", item_index))?;
-        let span = self
-            .root
-            .tables
-            .ident_span
-            .get(self, item_index)
-            .ok_or_else(|| format!("Missing ident span for {:?} ({:?})", name, item_index))?
-            .decode((self, sess));
-        Ok(Ident::new(name, span))
+    fn opt_item_ident(&self, item_index: DefIndex, sess: &Session) -> Option<Ident> {
+        let name = self.def_key(item_index).disambiguated_data.data.get_opt_name()?;
+        let span = match self.root.tables.ident_span.get(self, item_index) {
+            Some(lazy_span) => lazy_span.decode((self, sess)),
+            None => {
+                // FIXME: this weird case of a name with no span is specific to `extern crate`
+                // items, which are supposed to be treated like `use` items and only be encoded
+                // to metadata as `Export`s, return `None` because that's what all the callers
+                // expect in this case.
+                assert_eq!(self.def_kind(item_index), DefKind::ExternCrate);
+                return None;
+            }
+        };
+        Some(Ident::new(name, span))
     }
 
     fn item_ident(&self, item_index: DefIndex, sess: &Session) -> Ident {
-        self.try_item_ident(item_index, sess).unwrap()
+        self.opt_item_ident(item_index, sess).expect("no encoded ident for item")
     }
 
     fn maybe_kind(&self, item_id: DefIndex) -> Option<EntryKind> {
@@ -1102,27 +1101,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         // Iterate over all children.
         if let Some(children) = self.root.tables.children.get(self, id) {
             for child_index in children.decode((self, sess)) {
-                // FIXME: Merge with the logic below.
-                if let None | Some(EntryKind::ForeignMod | EntryKind::Impl(_)) =
-                    self.maybe_kind(child_index)
-                {
-                    continue;
-                }
-
-                let def_key = self.def_key(child_index);
-                if def_key.disambiguated_data.data.get_opt_name().is_some() {
-                    let span = self.get_span(child_index, sess);
+                if let Some(ident) = self.opt_item_ident(child_index, sess) {
                     let kind = self.def_kind(child_index);
-                    let ident = self.item_ident(child_index, sess);
-                    let vis = self.get_visibility(child_index);
+                    if matches!(kind, DefKind::Macro(..)) {
+                        // FIXME: Macros are currently encoded twice, once as items and once as
+                        // reexports. We ignore the items here and only use the reexports.
+                        continue;
+                    }
                     let def_id = self.local_def_id(child_index);
                     let res = Res::Def(kind, def_id);
+                    let vis = self.get_visibility(child_index);
+                    let span = self.get_span(child_index, sess);
 
-                    // FIXME: Macros are currently encoded twice, once as items and once as
-                    // reexports. We ignore the items here and only use the reexports.
-                    if !matches!(kind, DefKind::Macro(..)) {
-                        callback(Export { res, ident, vis, span });
-                    }
+                    callback(Export { ident, res, vis, span });
 
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
