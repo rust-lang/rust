@@ -25,7 +25,6 @@ use smallvec::{smallvec, SmallVec};
 use pulldown_cmark::LinkType;
 
 use std::borrow::Cow;
-use std::cell::Cell;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Write;
 use std::mem;
@@ -48,12 +47,8 @@ crate const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
 };
 
 fn collect_intra_doc_links(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    let mut collector = LinkCollector {
-        cx,
-        mod_ids: Vec::new(),
-        kind_side_channel: Cell::new(None),
-        visited_links: FxHashMap::default(),
-    };
+    let mut collector =
+        LinkCollector { cx, mod_ids: Vec::new(), visited_links: FxHashMap::default() };
     collector.visit_crate(&krate);
     krate
 }
@@ -319,7 +314,6 @@ struct DiagnosticInfo<'a> {
 #[derive(Clone, Debug, Hash)]
 struct CachedLink {
     pub res: (Res, Option<UrlFragment>),
-    pub side_channel: Option<(DefKind, DefId)>,
 }
 
 struct LinkCollector<'a, 'tcx> {
@@ -329,10 +323,6 @@ struct LinkCollector<'a, 'tcx> {
     /// The last module will be used if the parent scope of the current item is
     /// unknown.
     mod_ids: Vec<DefId>,
-    /// This is used to store the kind of associated items,
-    /// because `clean` and the disambiguator code expect them to be different.
-    /// See the code for associated items on inherent impls for details.
-    kind_side_channel: Cell<Option<(DefKind, DefId)>>,
     /// Cache the resolved links so we can avoid resolving (and emitting errors for) the same link.
     /// The link will be `None` if it could not be resolved (i.e. the error was cached).
     visited_links: FxHashMap<ResolutionInfo, Option<CachedLink>>,
@@ -430,7 +420,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         prim_ty: PrimitiveType,
         ns: Namespace,
         item_name: Symbol,
-    ) -> Option<(Res, UrlFragment, Option<(DefKind, DefId)>)> {
+    ) -> Option<(Res, UrlFragment)> {
         let tcx = self.cx.tcx;
 
         prim_ty.impls(tcx).into_iter().find_map(|&impl_| {
@@ -439,7 +429,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 .map(|item| {
                     let kind = item.kind;
                     let fragment = UrlFragment::from_assoc_item(item.def_id, kind, false);
-                    (Res::Primitive(prim_ty), fragment, Some((kind.as_def_kind(), item.def_id)))
+                    (Res::Primitive(prim_ty), fragment)
                 })
         })
     }
@@ -580,15 +570,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         resolve_primitive(&path_root, TypeNS)
             .or_else(|| self.resolve_path(&path_root, TypeNS, module_id))
             .and_then(|ty_res| {
-                let (res, fragment, side_channel) =
+                let (res, fragment) =
                     self.resolve_associated_item(ty_res, item_name, ns, module_id)?;
 
-                // HACK(jynelson): `clean` expects the type, not the associated item
-                // but the disambiguator logic expects the associated item.
-                // Store the kind in a side channel so that only the disambiguator logic looks at it.
-                if let Some((kind, id)) = side_channel {
-                    self.kind_side_channel.set(Some((kind, id)));
-                }
                 Some(Ok((res, Some(fragment))))
             })
             .unwrap_or_else(|| {
@@ -686,7 +670,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         item_name: Symbol,
         ns: Namespace,
         module_id: DefId,
-    ) -> Option<(Res, UrlFragment, Option<(DefKind, DefId)>)> {
+    ) -> Option<(Res, UrlFragment)> {
         let tcx = self.cx.tcx;
 
         match root_res {
@@ -702,10 +686,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     assoc_item.map(|item| {
                         let kind = item.kind;
                         let fragment = UrlFragment::from_assoc_item(item.def_id, kind, false);
-                        // HACK(jynelson): `clean` expects the type, not the associated item
-                        // but the disambiguator logic expects the associated item.
-                        // Store the kind in a side channel so that only the disambiguator logic looks at it.
-                        (root_res, fragment, Some((kind.as_def_kind(), item.def_id)))
+                        (root_res, fragment)
                     })
                 })
             }
@@ -756,10 +737,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 if let Some(item) = assoc_item {
                     let kind = item.kind;
                     let fragment = UrlFragment::from_assoc_item(item.def_id, kind, false);
-                    // HACK(jynelson): `clean` expects the type, not the associated item
-                    // but the disambiguator logic expects the associated item.
-                    // Store the kind in a side channel so that only the disambiguator logic looks at it.
-                    return Some((root_res, fragment, Some((kind.as_def_kind(), item.def_id))));
+                    return Some((root_res, fragment));
                 }
 
                 if ns != Namespace::ValueNS {
@@ -790,11 +768,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     .fields
                     .iter()
                     .find(|item| item.ident.name == item_name)?;
-                Some((
-                    root_res,
-                    UrlFragment::Def(FragmentKind::StructField, field.did),
-                    Some((DefKind::Field, field.did)),
-                ))
+                Some((root_res, UrlFragment::Def(FragmentKind::StructField, field.did)))
             }
             Res::Def(DefKind::Trait, did) => tcx
                 .associated_items(did)
@@ -806,7 +780,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         !item.defaultness.has_value(),
                     );
                     let res = Res::Def(item.kind.as_def_kind(), item.def_id);
-                    (res, fragment, None)
+                    (res, fragment)
                 }),
             _ => None,
         }
@@ -1436,7 +1410,6 @@ impl LinkCollector<'_, '_> {
         if let Some(ref cached) = self.visited_links.get(&key) {
             match cached {
                 Some(cached) => {
-                    self.kind_side_channel.set(cached.side_channel);
                     return Some(cached.res.clone());
                 }
                 None if cache_resolution_failure => return None,
@@ -1453,13 +1426,7 @@ impl LinkCollector<'_, '_> {
         // Cache only if resolved successfully - don't silence duplicate errors
         if let Some(res) = res {
             // Store result for the actual namespace
-            self.visited_links.insert(
-                key,
-                Some(CachedLink {
-                    res: res.clone(),
-                    side_channel: self.kind_side_channel.clone().into_inner(),
-                }),
-            );
+            self.visited_links.insert(key, Some(CachedLink { res: res.clone() }));
 
             Some(res)
         } else {
