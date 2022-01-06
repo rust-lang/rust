@@ -3,10 +3,14 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
 use if_chain::if_chain;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
-use rustc_hir::{def::Res, GenericBound, Generics, ParamName, Path, QPath, Ty, TyKind, WherePredicate};
+use rustc_hir::def::Res;
+use rustc_hir::{
+    GenericBound, Generics, Item, ItemKind, Node, ParamName, Path, PathSegment, QPath, TraitItem, Ty, TyKind,
+    WherePredicate,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -83,6 +87,46 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
         self.check_type_repetition(cx, gen);
         check_trait_bound_duplication(cx, gen);
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'tcx>) {
+        let Generics { where_clause, .. } = &item.generics;
+        let mut self_bounds_set = FxHashSet::default();
+
+        for predicate in where_clause.predicates {
+            if_chain! {
+                if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
+                if !bound_predicate.span.from_expansion();
+                if let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind;
+                if let Some(PathSegment { res: Some(Res::SelfTy(Some(def_id), _)), .. }) = segments.first();
+
+                if let Some(
+                    Node::Item(
+                        Item {
+                            kind: ItemKind::Trait(_, _, _, self_bounds, _),
+                            .. }
+                        )
+                    ) = cx.tcx.hir().get_if_local(*def_id);
+                then {
+                    if self_bounds_set.is_empty() {
+                        for bound in self_bounds.iter() {
+                            let Some((self_res, _)) = get_trait_res_span_from_bound(bound) else { continue };
+                            self_bounds_set.insert(self_res);
+                        }
+                    }
+
+                    bound_predicate
+                        .bounds
+                        .iter()
+                        .filter_map(get_trait_res_span_from_bound)
+                        .for_each(|(trait_item_res, span)| {
+                            if self_bounds_set.get(&trait_item_res).is_some() {
+                                emit_lint(cx, span);
+                            }
+                        });
+                }
+            }
+        }
     }
 }
 
@@ -198,17 +242,21 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
                     if let Some((_, span_direct)) = trait_resolutions_direct
                                                 .iter()
                                                 .find(|(res_direct, _)| *res_direct == res_where) {
-                        span_lint_and_help(
-                            cx,
-                            TRAIT_DUPLICATION_IN_BOUNDS,
-                            *span_direct,
-                            "this trait bound is already specified in the where clause",
-                            None,
-                            "consider removing this trait bound",
-                        );
+                        emit_lint(cx, *span_direct);
                     }
                 }
             }
         }
     }
+}
+
+fn emit_lint(cx: &LateContext<'_>, span: Span) {
+    span_lint_and_help(
+        cx,
+        TRAIT_DUPLICATION_IN_BOUNDS,
+        span,
+        "this trait bound is already specified in the where clause",
+        None,
+        "consider removing this trait bound",
+    );
 }

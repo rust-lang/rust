@@ -19,5 +19,37 @@ LL | fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
    |
    = help: consider removing this trait bound
 
-error: aborting due to 2 previous errors
+error: this trait bound is already specified in the where clause
+  --> $DIR/trait_duplication_in_bounds.rs:34:15
+   |
+LL |         Self: Default;
+   |               ^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound is already specified in the where clause
+  --> $DIR/trait_duplication_in_bounds.rs:46:15
+   |
+LL |         Self: Default + Clone;
+   |               ^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound is already specified in the where clause
+  --> $DIR/trait_duplication_in_bounds.rs:52:15
+   |
+LL |         Self: Default + Clone;
+   |               ^^^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: this trait bound is already specified in the where clause
+  --> $DIR/trait_duplication_in_bounds.rs:52:25
+   |
+LL |         Self: Default + Clone;
+   |                         ^^^^^
+   |
+   = help: consider removing this trait bound
+
+error: aborting due to 6 previous errors
 
