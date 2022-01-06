@@ -705,10 +705,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         }))
     }
 
-    /// Returns:
-    /// - None if no associated item was found
-    /// - Some((_, _, Some(_))) if an item was found and should go through a side channel
-    /// - Some((_, _, None)) otherwise
+    /// Resolve an associated item, returning its containing page's `Res`
+    /// and the fragment targeting the associated item on its page.
     fn resolve_associated_item(
         &mut self,
         root_res: Res,
@@ -1475,7 +1473,6 @@ impl LinkCollector<'_, '_> {
         diag: DiagnosticInfo<'_>,
         cache_resolution_failure: bool,
     ) -> Option<(Res, Option<UrlFragment>)> {
-        // Try to look up both the result and the corresponding side channel value
         if let Some(ref cached) = self.visited_links.get(&key) {
             match cached {
                 Some(cached) => {
