@@ -61,6 +61,16 @@ where
     }
 
     #[inline]
+    fn count(self) -> usize {
+        self.it.count()
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        self.it.last().cloned()
+    }
+
+    #[inline]
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
         self.it.advance_by(n)
     }
