@@ -1353,7 +1353,9 @@ impl LinkCollector<'_, '_> {
 
         match res {
             Res::Primitive(prim) => {
-                if let Some((kind, id)) = self.kind_side_channel.take() {
+                if let Some(UrlFragment::Def(_, id)) = fragment {
+                    let kind = self.cx.tcx.def_kind(id);
+
                     // We're actually resolving an associated item of a primitive, so we need to
                     // verify the disambiguator (if any) matches the type of the associated item.
                     // This case should really follow the same flow as the `Res::Def` branch below,
