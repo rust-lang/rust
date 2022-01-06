@@ -2062,10 +2062,7 @@ fn resolution_failure(
                     ResolutionFailure::NotResolved { .. } => unreachable!("handled above"),
                     ResolutionFailure::Dummy => continue,
                     ResolutionFailure::WrongNamespace { res, expected_ns } => {
-                        // FIXME: does this need to be behind an `if`?
-                        if matches!(res, Res::Def(..)) {
-                            suggest_disambiguator(res, diag, path_str, diag_info.ori_link, sp);
-                        }
+                        suggest_disambiguator(res, diag, path_str, diag_info.ori_link, sp);
 
                         format!(
                             "this link resolves to {}, which is not in the {} namespace",
