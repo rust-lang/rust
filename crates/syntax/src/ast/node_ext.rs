@@ -108,6 +108,17 @@ impl HasName for Macro {
 
 impl HasAttrs for Macro {}
 
+impl From<ast::AssocItem> for ast::Item {
+    fn from(assoc: ast::AssocItem) -> Self {
+        match assoc {
+            ast::AssocItem::Const(it) => ast::Item::Const(it),
+            ast::AssocItem::Fn(it) => ast::Item::Fn(it),
+            ast::AssocItem::MacroCall(it) => ast::Item::MacroCall(it),
+            ast::AssocItem::TypeAlias(it) => ast::Item::TypeAlias(it),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AttrKind {
     Inner,

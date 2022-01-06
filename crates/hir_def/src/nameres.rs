@@ -47,6 +47,7 @@
 //! path and, upon success, we run macro expansion and "collect module" phase on
 //! the result
 
+pub mod attr_resolution;
 pub mod diagnostics;
 mod collector;
 mod mod_resolution;
@@ -64,7 +65,7 @@ use la_arena::Arena;
 use profile::Count;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
-use syntax::ast;
+use syntax::{ast, SmolStr};
 
 use crate::{
     db::DefDatabase,
@@ -106,6 +107,11 @@ pub struct DefMap {
     ///
     /// (the primary purpose is to resolve derive helpers and fetch a proc-macros name)
     exported_proc_macros: FxHashMap<MacroDefId, ProcMacroDef>,
+
+    /// Custom attributes registered with `#![register_attr]`.
+    registered_attrs: Vec<SmolStr>,
+    /// Custom tool modules registered with `#![register_tool]`.
+    registered_tools: Vec<SmolStr>,
 
     edition: Edition,
     diagnostics: Vec<DefDiagnostic>,
@@ -271,6 +277,8 @@ impl DefMap {
             prelude: None,
             root,
             modules,
+            registered_attrs: Vec::new(),
+            registered_tools: Vec::new(),
             diagnostics: Vec::new(),
         }
     }
@@ -443,6 +451,8 @@ impl DefMap {
             extern_prelude,
             diagnostics,
             modules,
+            registered_attrs,
+            registered_tools,
             block: _,
             edition: _,
             krate: _,
@@ -454,6 +464,8 @@ impl DefMap {
         exported_proc_macros.shrink_to_fit();
         diagnostics.shrink_to_fit();
         modules.shrink_to_fit();
+        registered_attrs.shrink_to_fit();
+        registered_tools.shrink_to_fit();
         for (_, module) in modules.iter_mut() {
             module.children.shrink_to_fit();
             module.scope.shrink_to_fit();
