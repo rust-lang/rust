@@ -880,6 +880,11 @@
                         "string"
                     ]
                 },
+                "rust-analyzer.procMacro.ignored": {
+                    "markdownDescription": "These proc-macros will be ignored when trying to expand them.\n\nThis config takes a map of crate names with the exported proc-macro names to ignore as values.",
+                    "default": {},
+                    "type": "object"
+                },
                 "rust-analyzer.runnables.overrideCargo": {
                     "markdownDescription": "Command to be executed instead of 'cargo' for runnables.",
                     "default": null,

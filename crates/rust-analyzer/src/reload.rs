@@ -10,6 +10,7 @@ use ide_db::base_db::{
 };
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
+use syntax::SmolStr;
 use vfs::{file_set::FileSetConfig, AbsPath, AbsPathBuf, ChangeKind};
 
 use crate::{
@@ -306,8 +307,9 @@ impl GlobalState {
         // Create crate graph from all the workspaces
         let crate_graph = {
             let proc_macro_client = self.proc_macro_client.as_ref();
-            let mut load_proc_macro =
-                move |path: &AbsPath| load_proc_macro(proc_macro_client, path);
+            let mut load_proc_macro = move |path: &AbsPath, dummy_replace: &_| {
+                load_proc_macro(proc_macro_client, path, dummy_replace)
+            };
 
             let vfs = &mut self.vfs.write().0;
             let loader = &mut self.loader;
@@ -328,7 +330,11 @@ impl GlobalState {
 
             let mut crate_graph = CrateGraph::default();
             for ws in self.workspaces.iter() {
-                crate_graph.extend(ws.to_crate_graph(&mut load_proc_macro, &mut load));
+                crate_graph.extend(ws.to_crate_graph(
+                    self.config.dummy_replacements(),
+                    &mut load_proc_macro,
+                    &mut load,
+                ));
             }
             crate_graph
         };
@@ -505,7 +511,13 @@ impl SourceRootConfig {
     }
 }
 
-pub(crate) fn load_proc_macro(client: Option<&ProcMacroServer>, path: &AbsPath) -> Vec<ProcMacro> {
+/// Load the proc-macros for the given lib path, replacing all expanders whose names are in `dummy_replace`
+/// with an identity dummy expander.
+pub(crate) fn load_proc_macro(
+    client: Option<&ProcMacroServer>,
+    path: &AbsPath,
+    dummy_replace: &[Box<str>],
+) -> Vec<ProcMacro> {
     let dylib = match MacroDylib::new(path.to_path_buf()) {
         Ok(it) => it,
         Err(err) => {
@@ -532,17 +544,25 @@ pub(crate) fn load_proc_macro(client: Option<&ProcMacroServer>, path: &AbsPath) 
                 Vec::new()
             }
         })
-        .map(expander_to_proc_macro)
+        .map(|expander| expander_to_proc_macro(expander, dummy_replace))
         .collect();
 
-    fn expander_to_proc_macro(expander: proc_macro_api::ProcMacro) -> ProcMacro {
-        let name = expander.name().into();
+    fn expander_to_proc_macro(
+        expander: proc_macro_api::ProcMacro,
+        dummy_replace: &[Box<str>],
+    ) -> ProcMacro {
+        let name = SmolStr::from(expander.name());
         let kind = match expander.kind() {
             proc_macro_api::ProcMacroKind::CustomDerive => ProcMacroKind::CustomDerive,
             proc_macro_api::ProcMacroKind::FuncLike => ProcMacroKind::FuncLike,
             proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
         };
-        let expander = Arc::new(Expander(expander));
+        let expander: Arc<dyn ProcMacroExpander> =
+            if dummy_replace.iter().any(|replace| &**replace == name) {
+                Arc::new(DummyExpander)
+            } else {
+                Arc::new(Expander(expander))
+            };
         ProcMacro { name, kind, expander }
     }
 
@@ -562,6 +582,21 @@ pub(crate) fn load_proc_macro(client: Option<&ProcMacroServer>, path: &AbsPath) 
                 Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
                 Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
             }
+        }
+    }
+
+    /// Dummy identity expander, used for proc-macros that are deliberately ignored by the user.
+    #[derive(Debug)]
+    struct DummyExpander;
+
+    impl ProcMacroExpander for DummyExpander {
+        fn expand(
+            &self,
+            subtree: &tt::Subtree,
+            _: Option<&tt::Subtree>,
+            _: &Env,
+        ) -> Result<tt::Subtree, ProcMacroExpansionError> {
+            Ok(subtree.clone())
         }
     }
 }

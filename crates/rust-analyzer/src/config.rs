@@ -301,6 +301,10 @@ config_data! {
         /// Internal config, path to proc-macro server executable (typically,
         /// this is rust-analyzer itself, but we override this in tests).
         procMacro_server: Option<PathBuf>          = "null",
+        /// These proc-macros will be ignored when trying to expand them.
+        ///
+        /// This config takes a map of crate names with the exported proc-macro names to ignore as values.
+        procMacro_ignored: FxHashMap<Box<str>, Box<[Box<str>]>>          = "{}",
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_overrideCargo: Option<String> = "null",
@@ -715,6 +719,9 @@ impl Config {
             None => AbsPathBuf::assert(std::env::current_exe().ok()?),
         };
         Some((path, vec!["proc-macro".into()]))
+    }
+    pub fn dummy_replacements(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
+        &self.data.procMacro_ignored
     }
     pub fn expand_proc_attr_macros(&self) -> bool {
         self.data.experimental_procAttrMacros
@@ -1163,7 +1170,13 @@ fn get_field<T: DeserializeOwned>(
         .find_map(move |field| {
             let mut pointer = field.replace('_', "/");
             pointer.insert(0, '/');
-            json.pointer_mut(&pointer).and_then(|it| serde_json::from_value(it.take()).ok())
+            json.pointer_mut(&pointer).and_then(|it| match serde_json::from_value(it.take()) {
+                Ok(it) => Some(it),
+                Err(e) => {
+                    tracing::warn!("Failed to deserialize config field at {}: {:?}", pointer, e);
+                    None
+                }
+            })
         })
         .unwrap_or(default)
 }
@@ -1223,6 +1236,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "array",
             "items": { "type": "string" },
             "uniqueItems": true,
+        },
+        "FxHashMap<Box<str>, Box<[Box<str>]>>" => set! {
+            "type": "object",
         },
         "FxHashMap<String, SnippetDef>" => set! {
             "type": "object",
