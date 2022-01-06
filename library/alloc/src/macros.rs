@@ -37,6 +37,7 @@
 #[cfg(not(test))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "vec_macro"]
 #[allow_internal_unstable(box_syntax, liballoc_internals)]
 macro_rules! vec {
     () => (

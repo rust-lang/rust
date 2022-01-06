@@ -142,6 +142,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// [`std::thread::LocalKey`]: crate::thread::LocalKey
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "thread_local_macro")]
 #[allow_internal_unstable(thread_local_internals)]
 macro_rules! thread_local {
     // empty (base case for the recursion)

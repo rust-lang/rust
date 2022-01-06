@@ -57,6 +57,7 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "print_macro")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::io::_print($crate::format_args!($($arg)*)));
@@ -90,6 +91,7 @@ macro_rules! print {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "println_macro")]
 #[allow_internal_unstable(print_internals, format_args_nl)]
 macro_rules! println {
     () => ($crate::print!("\n"));
@@ -121,6 +123,7 @@ macro_rules! println {
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "eprint_macro")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! eprint {
     ($($arg:tt)*) => ($crate::io::_eprint($crate::format_args!($($arg)*)));
@@ -149,6 +152,7 @@ macro_rules! eprint {
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "eprintln_macro")]
 #[allow_internal_unstable(print_internals, format_args_nl)]
 macro_rules! eprintln {
     () => ($crate::eprint!("\n"));
@@ -282,6 +286,7 @@ macro_rules! eprintln {
 /// [`debug!`]: https://docs.rs/log/*/log/macro.debug.html
 /// [`log`]: https://crates.io/crates/log
 #[macro_export]
+#[cfg_attr(not(test), rustc_diagnostic_item = "dbg_macro")]
 #[stable(feature = "dbg_macro", since = "1.32.0")]
 macro_rules! dbg {
     // NOTE: We cannot use `concat!` to make a static string as a format argument
