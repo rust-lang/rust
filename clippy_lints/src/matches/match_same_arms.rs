@@ -21,27 +21,30 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
     };
 
     let arena = DroplessArena::default();
-    let resolved_pats: Vec<_> = arms.iter().map(|a| ResolvedPat::from_pat(cx, &arena, a.pat)).collect();
+    let normalized_pats: Vec<_> = arms
+        .iter()
+        .map(|a| NormalizedPat::from_pat(cx, &arena, a.pat))
+        .collect();
 
     // The furthast forwards a pattern can move without semantic changes
-    let forwards_blocking_idxs: Vec<_> = resolved_pats
+    let forwards_blocking_idxs: Vec<_> = normalized_pats
         .iter()
         .enumerate()
         .map(|(i, pat)| {
-            resolved_pats[i + 1..]
+            normalized_pats[i + 1..]
                 .iter()
                 .enumerate()
                 .find_map(|(j, other)| pat.can_also_match(other).then(|| i + 1 + j))
-                .unwrap_or(resolved_pats.len())
+                .unwrap_or(normalized_pats.len())
         })
         .collect();
 
     // The furthast backwards a pattern can move without semantic changes
-    let backwards_blocking_idxs: Vec<_> = resolved_pats
+    let backwards_blocking_idxs: Vec<_> = normalized_pats
         .iter()
         .enumerate()
         .map(|(i, pat)| {
-            resolved_pats[..i]
+            normalized_pats[..i]
                 .iter()
                 .enumerate()
                 .rev()
@@ -133,18 +136,18 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
 }
 
 #[derive(Clone, Copy)]
-enum ResolvedPat<'hir, 'arena> {
+enum NormalizedPat<'a> {
     Wild,
-    Struct(Option<DefId>, &'arena [(Symbol, Self)]),
-    Tuple(Option<DefId>, &'arena [Self]),
-    Or(&'arena [Self]),
+    Struct(Option<DefId>, &'a [(Symbol, Self)]),
+    Tuple(Option<DefId>, &'a [Self]),
+    Or(&'a [Self]),
     Path(Option<DefId>),
     LitStr(Symbol),
-    LitBytes(&'hir [u8]),
+    LitBytes(&'a [u8]),
     LitInt(u128),
     LitBool(bool),
     Range(PatRange),
-    Slice(&'arena [Self], &'arena [Self], bool),
+    Slice(&'a [Self], Option<&'a [Self]>),
 }
 
 #[derive(Clone, Copy)]
@@ -183,9 +186,9 @@ impl PatRange {
 }
 
 #[allow(clippy::similar_names)]
-impl<'hir, 'arena> ResolvedPat<'hir, 'arena> {
+impl<'a> NormalizedPat<'a> {
     #[allow(clippy::too_many_lines)]
-    fn from_pat(cx: &LateContext<'_>, arena: &'arena DroplessArena, pat: &'hir Pat<'_>) -> Self {
+    fn from_pat(cx: &LateContext<'_>, arena: &'a DroplessArena, pat: &'a Pat<'_>) -> Self {
         match pat.kind {
             PatKind::Wild | PatKind::Binding(.., None) => Self::Wild,
             PatKind::Binding(.., Some(pat)) | PatKind::Box(pat) | PatKind::Ref(pat, _) => {
@@ -284,8 +287,7 @@ impl<'hir, 'arena> ResolvedPat<'hir, 'arena> {
             },
             PatKind::Slice(front, wild_pat, back) => Self::Slice(
                 arena.alloc_from_iter(front.iter().map(|pat| Self::from_pat(cx, arena, pat))),
-                arena.alloc_from_iter(back.iter().map(|pat| Self::from_pat(cx, arena, pat))),
-                wild_pat.is_some(),
+                wild_pat.map(|_| &*arena.alloc_from_iter(back.iter().map(|pat| Self::from_pat(cx, arena, pat)))),
             ),
         }
     }
@@ -345,6 +347,25 @@ impl<'hir, 'arena> ResolvedPat<'hir, 'arena> {
             (Self::LitBool(x), Self::LitBool(y)) => x == y,
             (Self::Range(ref x), Self::Range(ref y)) => x.overlaps(y),
             (Self::Range(ref range), Self::LitInt(x)) | (Self::LitInt(x), Self::Range(ref range)) => range.contains(x),
+            (Self::Slice(lpats, None), Self::Slice(rpats, None)) => {
+                lpats.len() == rpats.len() && lpats.iter().zip(rpats.iter()).all(|(x, y)| x.can_also_match(y))
+            },
+            (Self::Slice(pats, None), Self::Slice(front, Some(back)))
+            | (Self::Slice(front, Some(back)), Self::Slice(pats, None)) => {
+                if pats.len() < front.len() + back.len() {
+                    return false;
+                }
+                pats[..front.len()]
+                    .iter()
+                    .zip(front.iter())
+                    .chain(pats[pats.len() - back.len()..].iter().zip(back.iter()))
+                    .all(|(x, y)| x.can_also_match(y))
+            },
+            (Self::Slice(lfront, Some(lback)), Self::Slice(rfront, Some(rback))) => lfront
+                .iter()
+                .zip(rfront.iter())
+                .chain(lback.iter().rev().zip(rback.iter().rev()))
+                .all(|(x, y)| x.can_also_match(y)),
 
             // Todo: Lit* with Path, Range with Path, LitBytes with Slice, Slice with Slice
             _ => true,
