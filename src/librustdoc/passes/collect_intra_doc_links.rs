@@ -514,7 +514,14 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 Res::Def(DefKind::AssocFn | DefKind::AssocConst, _) => assert_eq!(ns, ValueNS),
                 Res::Def(DefKind::AssocTy, _) => assert_eq!(ns, TypeNS),
                 Res::Def(DefKind::Variant, _) => {
-                    return handle_variant(self.cx, res, extra_fragment);
+                    if extra_fragment.is_some() {
+                        // NOTE: `res` can never be a primitive since this match arm means
+                        //       `tcx.def_kind(res) == DefKind::Variant`.
+                        return Err(ErrorKind::AnchorFailure(
+                            AnchorFailure::RustdocAnchorConflict(res),
+                        ));
+                    }
+                    return handle_variant(self.cx, res);
                 }
                 // Not a trait item; just return what we found.
                 _ => return Ok((res, extra_fragment.clone())),
@@ -2272,14 +2279,9 @@ fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: 
 fn handle_variant(
     cx: &DocContext<'_>,
     res: Res,
-    extra_fragment: &Option<UrlFragment>,
 ) -> Result<(Res, Option<UrlFragment>), ErrorKind<'static>> {
     use rustc_middle::ty::DefIdTree;
 
-    if extra_fragment.is_some() {
-        // NOTE: `res` can never be a primitive since this function is only called when `tcx.def_kind(res) == DefKind::Variant`.
-        return Err(ErrorKind::AnchorFailure(AnchorFailure::RustdocAnchorConflict(res)));
-    }
     cx.tcx
         .parent(res.def_id(cx.tcx))
         .map(|parent| {
