@@ -545,6 +545,10 @@ nav.sub {
 	position: relative;
 }
 
+.search-loading {
+	text-align: center;
+}
+
 #results > table {
 	width: 100%;
 	table-layout: fixed;
