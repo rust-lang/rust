@@ -1309,7 +1309,11 @@ impl LinkCollector<'_, '_> {
         };
 
         let verify = |kind: DefKind, id: DefId| {
-            let (kind, id) = self.kind_side_channel.take().unwrap_or((kind, id));
+            let (kind, id) = if let Some(UrlFragment::Def(_, id)) = fragment {
+                (self.cx.tcx.def_kind(id), id)
+            } else {
+                (kind, id)
+            };
             debug!("intra-doc link to {} resolved to {:?} (id: {:?})", path_str, res, id);
 
             // Disallow e.g. linking to enums with `struct@`
