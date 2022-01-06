@@ -357,13 +357,6 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
     }
 }
 
-/// Resolves the path to a `DefId` and checks if it matches the given path.
-pub fn is_qpath_def_path(cx: &LateContext<'_>, path: &QPath<'_>, hir_id: HirId, segments: &[&str]) -> bool {
-    cx.qpath_res(path, hir_id)
-        .opt_def_id()
-        .map_or(false, |id| match_def_path(cx, id, segments))
-}
-
 /// If the expression is a path, resolves it to a `DefId` and checks if it matches the given path.
 ///
 /// Please use `is_expr_diagnostic_item` if the target is a diagnostic item.
@@ -1775,8 +1768,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
 
     match expr.kind {
         ExprKind::Closure(_, _, body_id, _, _) => is_body_identity_function(cx, cx.tcx.hir().body(body_id)),
-        ExprKind::Path(ref path) => is_qpath_def_path(cx, path, expr.hir_id, &paths::CONVERT_IDENTITY),
-        _ => false,
+        _ => path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
     }
 }
 

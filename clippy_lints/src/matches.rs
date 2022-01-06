@@ -1765,22 +1765,22 @@ where
 mod redundant_pattern_match {
     use super::REDUNDANT_PATTERN_MATCHING;
     use clippy_utils::diagnostics::span_lint_and_then;
-    use clippy_utils::higher;
     use clippy_utils::source::snippet;
     use clippy_utils::sugg::Sugg;
     use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, is_type_lang_item, match_type};
-    use clippy_utils::{is_lang_ctor, is_qpath_def_path, is_trait_method, paths};
+    use clippy_utils::{higher, match_def_path};
+    use clippy_utils::{is_lang_ctor, is_trait_method, paths};
     use if_chain::if_chain;
     use rustc_ast::ast::LitKind;
     use rustc_data_structures::fx::FxHashSet;
     use rustc_errors::Applicability;
-    use rustc_hir::LangItem::{OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
+    use rustc_hir::LangItem::{OptionNone, PollPending};
     use rustc_hir::{
         intravisit::{walk_expr, Visitor},
         Arm, Block, Expr, ExprKind, LangItem, MatchSource, Node, Pat, PatKind, QPath, UnOp,
     };
     use rustc_lint::LateContext;
-    use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
+    use rustc_middle::ty::{self, subst::GenericArgKind, DefIdTree, Ty};
     use rustc_span::sym;
 
     pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -1956,28 +1956,31 @@ mod redundant_pattern_match {
         has_else: bool,
     ) {
         // also look inside refs
-        let mut kind = &let_pat.kind;
         // if we have &None for example, peel it so we can detect "if let None = x"
-        if let PatKind::Ref(inner, _mutability) = kind {
-            kind = &inner.kind;
-        }
+        let check_pat = match let_pat.kind {
+            PatKind::Ref(inner, _mutability) => inner,
+            _ => let_pat,
+        };
         let op_ty = cx.typeck_results().expr_ty(let_expr);
         // Determine which function should be used, and the type contained by the corresponding
         // variant.
-        let (good_method, inner_ty) = match kind {
-            PatKind::TupleStruct(ref path, [sub_pat], _) => {
+        let (good_method, inner_ty) = match check_pat.kind {
+            PatKind::TupleStruct(ref qpath, [sub_pat], _) => {
                 if let PatKind::Wild = sub_pat.kind {
-                    if is_lang_ctor(cx, path, ResultOk) {
+                    let res = cx.typeck_results().qpath_res(qpath, check_pat.hir_id);
+                    let Some(id) = res.opt_def_id().and_then(|ctor_id| cx.tcx.parent(ctor_id)) else { return };
+                    let lang_items = cx.tcx.lang_items();
+                    if Some(id) == lang_items.result_ok_variant() {
                         ("is_ok()", try_get_generic_ty(op_ty, 0).unwrap_or(op_ty))
-                    } else if is_lang_ctor(cx, path, ResultErr) {
+                    } else if Some(id) == lang_items.result_err_variant() {
                         ("is_err()", try_get_generic_ty(op_ty, 1).unwrap_or(op_ty))
-                    } else if is_lang_ctor(cx, path, OptionSome) {
+                    } else if Some(id) == lang_items.option_some_variant() {
                         ("is_some()", op_ty)
-                    } else if is_lang_ctor(cx, path, PollReady) {
+                    } else if Some(id) == lang_items.poll_ready_variant() {
                         ("is_ready()", op_ty)
-                    } else if is_qpath_def_path(cx, path, sub_pat.hir_id, &paths::IPADDR_V4) {
+                    } else if match_def_path(cx, id, &paths::IPADDR_V4) {
                         ("is_ipv4()", op_ty)
-                    } else if is_qpath_def_path(cx, path, sub_pat.hir_id, &paths::IPADDR_V6) {
+                    } else if match_def_path(cx, id, &paths::IPADDR_V6) {
                         ("is_ipv6()", op_ty)
                     } else {
                         return;
@@ -2177,17 +2180,22 @@ mod redundant_pattern_match {
         should_be_left: &'a str,
         should_be_right: &'a str,
     ) -> Option<&'a str> {
-        let body_node_pair = if is_qpath_def_path(cx, path_left, arms[0].pat.hir_id, expected_left)
-            && is_qpath_def_path(cx, path_right, arms[1].pat.hir_id, expected_right)
-        {
-            (&(*arms[0].body).kind, &(*arms[1].body).kind)
-        } else if is_qpath_def_path(cx, path_right, arms[1].pat.hir_id, expected_left)
-            && is_qpath_def_path(cx, path_left, arms[0].pat.hir_id, expected_right)
-        {
-            (&(*arms[1].body).kind, &(*arms[0].body).kind)
-        } else {
-            return None;
-        };
+        let left_id = cx
+            .typeck_results()
+            .qpath_res(path_left, arms[0].pat.hir_id)
+            .opt_def_id()?;
+        let right_id = cx
+            .typeck_results()
+            .qpath_res(path_right, arms[1].pat.hir_id)
+            .opt_def_id()?;
+        let body_node_pair =
+            if match_def_path(cx, left_id, expected_left) && match_def_path(cx, right_id, expected_right) {
+                (&(*arms[0].body).kind, &(*arms[1].body).kind)
+            } else if match_def_path(cx, right_id, expected_left) && match_def_path(cx, right_id, expected_right) {
+                (&(*arms[1].body).kind, &(*arms[0].body).kind)
+            } else {
+                return None;
+            };
 
         match body_node_pair {
             (ExprKind::Lit(ref lit_left), ExprKind::Lit(ref lit_right)) => match (&lit_left.node, &lit_right.node) {
