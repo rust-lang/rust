@@ -1,0 +1,57 @@
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:7:5
+   |
+LL |     a[0] = String::new();
+   |     ^^^^
+   |     |
+   |     statics cannot evaluate destructors
+   |     value is dropped here
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:5:9
+   |
+LL |     let a: [String; 1];
+   |         ^ statics cannot evaluate destructors
+...
+LL | };
+   | - value is dropped here
+
+error[E0381]: use of possibly-uninitialized variable: `a`
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:7:5
+   |
+LL |     a[0] = String::new();
+   |     ^^^^ use of possibly-uninitialized `a`
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:18:9
+   |
+LL |         self.0[0] = other;
+   |         ^^^^^^^^^
+   |         |
+   |         constant functions cannot evaluate destructors
+   |         value is dropped here
+
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:16:13
+   |
+LL |         let _this = self;
+   |             ^^^^^ constant functions cannot evaluate destructors
+...
+LL |     }
+   |     - value is dropped here
+
+error[E0382]: use of moved value: `self.0`
+  --> $DIR/drop-elaboration-after-borrowck-error.rs:18:9
+   |
+LL |     pub const fn f(mut self, other: T) -> Self {
+   |                    -------- move occurs because `self` has type `B<T>`, which does not implement the `Copy` trait
+LL |         let _this = self;
+   |                     ---- value moved here
+LL |
+LL |         self.0[0] = other;
+   |         ^^^^^^^^^ value used here after move
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0381, E0382, E0493.
+For more information about an error, try `rustc --explain E0381`.

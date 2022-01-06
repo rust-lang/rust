@@ -1411,16 +1411,14 @@ rustc_queries! {
 
     /// Given a crate and a trait, look up all impls of that trait in the crate.
     /// Return `(impl_id, self_ty)`.
-    query implementations_of_trait(_: (CrateNum, DefId))
-        -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
+    query implementations_of_trait(_: (CrateNum, DefId)) -> &'tcx [(DefId, Option<SimplifiedType>)] {
         desc { "looking up implementations of a trait in a crate" }
         separate_provide_extern
     }
 
     /// Given a crate, look up all trait impls in that crate.
     /// Return `(impl_id, self_ty)`.
-    query all_trait_implementations(_: CrateNum)
-        -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
+    query all_trait_implementations(_: CrateNum) -> &'tcx [(DefId, Option<SimplifiedType>)] {
         desc { "looking up all (?) trait implementations" }
         separate_provide_extern
     }

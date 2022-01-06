@@ -316,12 +316,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 LookupResult::Parent(Some(parent)) => {
                     let (_maybe_live, maybe_dead) = self.init_data.maybe_live_dead(parent);
                     if maybe_dead {
-                        span_bug!(
+                        self.tcx.sess.delay_span_bug(
                             terminator.source_info.span,
-                            "drop of untracked, uninitialized value {:?}, place {:?} ({:?})",
-                            bb,
-                            place,
-                            path
+                            &format!(
+                                "drop of untracked, uninitialized value {:?}, place {:?} ({:?})",
+                                bb, place, path,
+                            ),
                         );
                     }
                     continue;
@@ -368,10 +368,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             bb,
                         ),
                         LookupResult::Parent(..) => {
-                            span_bug!(
+                            self.tcx.sess.delay_span_bug(
                                 terminator.source_info.span,
-                                "drop of untracked value {:?}",
-                                bb
+                                &format!("drop of untracked value {:?}", bb),
                             );
                         }
                     }
