@@ -1,0 +1,7 @@
+// Example code blocks sometimes have a "Run" button to run them on the
+// Playground. That button is hidden until the user hovers over the code block.
+// This test checks that it is hidden, and that it shows on hover.
+goto: file://|DOC_PATH|/test_docs/fn.foo.html
+assert-css: (".test-arrow", {"visibility": "hidden"})
+move-cursor-to: ".example-wrap"
+assert-css: (".test-arrow", {"visibility": "visible"})

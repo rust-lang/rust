@@ -295,11 +295,8 @@ a.test-arrow:hover{
 	color: #999;
 }
 
-:target, :target > * {
-	background-color: #494a3d;
-}
-
 :target {
+	background-color: #494a3d;
 	border-right: 3px solid #bb7410;
 }
 

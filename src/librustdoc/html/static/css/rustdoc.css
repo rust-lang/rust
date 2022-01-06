@@ -1080,8 +1080,11 @@ body.blur > :not(#help) {
 
 .impl-items .srclink, .impl .srclink, .methods .srclink {
 	/* Override header settings otherwise it's too bold */
-	font-size: 1.0625rem;
 	font-weight: normal;
+	font-size: 1rem;
+}
+.impl .srclink {
+	font-size: 1.0625rem;
 }
 
 .rightside {
@@ -1117,6 +1120,7 @@ pre.rust .question-mark {
 
 a.test-arrow {
 	display: inline-block;
+	visibility: hidden;
 	position: absolute;
 	padding: 5px 10px 5px 10px;
 	border-radius: 5px;
@@ -1125,10 +1129,12 @@ a.test-arrow {
 	right: 5px;
 	z-index: 1;
 }
+.example-wrap:hover .test-arrow {
+	visibility: visible;
+}
 a.test-arrow:hover{
 	text-decoration: none;
 }
-
 .section-header:hover a:before {
 	position: absolute;
 	left: -25px;
