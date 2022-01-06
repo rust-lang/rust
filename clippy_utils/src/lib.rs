@@ -262,44 +262,6 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
 }
 
-/// Checks if the first type parameter is a lang item.
-pub fn is_ty_param_lang_item<'tcx>(
-    cx: &LateContext<'_>,
-    qpath: &QPath<'tcx>,
-    item: LangItem,
-) -> Option<&'tcx hir::Ty<'tcx>> {
-    let ty = qpath_generic_tys(qpath).next()?;
-
-    if let TyKind::Path(qpath) = &ty.kind {
-        cx.qpath_res(qpath, ty.hir_id)
-            .opt_def_id()
-            .map_or(false, |id| {
-                cx.tcx.lang_items().require(item).map_or(false, |lang_id| id == lang_id)
-            })
-            .then(|| ty)
-    } else {
-        None
-    }
-}
-
-/// Checks if the first type parameter is a diagnostic item.
-pub fn is_ty_param_diagnostic_item<'tcx>(
-    cx: &LateContext<'_>,
-    qpath: &QPath<'tcx>,
-    item: Symbol,
-) -> Option<&'tcx hir::Ty<'tcx>> {
-    let ty = qpath_generic_tys(qpath).next()?;
-
-    if let TyKind::Path(qpath) = &ty.kind {
-        cx.qpath_res(qpath, ty.hir_id)
-            .opt_def_id()
-            .map_or(false, |id| cx.tcx.is_diagnostic_item(item, id))
-            .then(|| ty)
-    } else {
-        None
-    }
-}
-
 /// Checks if the method call given in `expr` belongs to the given trait.
 /// This is a deprecated function, consider using [`is_trait_method`].
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
