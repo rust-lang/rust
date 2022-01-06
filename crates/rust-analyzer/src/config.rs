@@ -341,7 +341,7 @@ config_data! {
 
 impl Default for ConfigData {
     fn default() -> Self {
-        ConfigData::from_json(serde_json::Value::Null)
+        ConfigData::from_json(serde_json::Value::Null, &mut Vec::new())
     }
 }
 
@@ -492,16 +492,21 @@ impl Config {
             snippets: Default::default(),
         }
     }
-    pub fn update(&mut self, mut json: serde_json::Value) {
+    pub fn update(
+        &mut self,
+        mut json: serde_json::Value,
+    ) -> Result<(), Vec<(String, serde_json::Error)>> {
         tracing::info!("updating config from JSON: {:#}", json);
         if json.is_null() || json.as_object().map_or(false, |it| it.is_empty()) {
-            return;
+            return Ok(());
         }
-        self.detached_files = get_field::<Vec<PathBuf>>(&mut json, "detachedFiles", None, "[]")
-            .into_iter()
-            .map(AbsPathBuf::assert)
-            .collect();
-        self.data = ConfigData::from_json(json);
+        let mut errors = Vec::new();
+        self.detached_files =
+            get_field::<Vec<PathBuf>>(&mut json, &mut errors, "detachedFiles", None, "[]")
+                .into_iter()
+                .map(AbsPathBuf::assert)
+                .collect();
+        self.data = ConfigData::from_json(json, &mut errors);
         self.snippets.clear();
         for (name, def) in self.data.completion_snippets.iter() {
             if def.prefix.is_empty() && def.postfix.is_empty() {
@@ -523,6 +528,11 @@ impl Config {
                 Some(snippet) => self.snippets.push(snippet),
                 None => tracing::info!("Invalid snippet {}", name),
             }
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
         }
     }
 
@@ -1116,10 +1126,11 @@ macro_rules! _config_data {
         #[derive(Debug, Clone)]
         struct $name { $($field: $ty,)* }
         impl $name {
-            fn from_json(mut json: serde_json::Value) -> $name {
+            fn from_json(mut json: serde_json::Value, error_sink: &mut Vec<(String, serde_json::Error)>) -> $name {
                 $name {$(
                     $field: get_field(
                         &mut json,
+                        error_sink,
                         stringify!($field),
                         None$(.or(Some(stringify!($alias))))*,
                         $default,
@@ -1156,6 +1167,7 @@ use _config_data as config_data;
 
 fn get_field<T: DeserializeOwned>(
     json: &mut serde_json::Value,
+    error_sink: &mut Vec<(String, serde_json::Error)>,
     field: &'static str,
     alias: Option<&'static str>,
     default: &str,
@@ -1174,6 +1186,7 @@ fn get_field<T: DeserializeOwned>(
                 Ok(it) => Some(it),
                 Err(e) => {
                     tracing::warn!("Failed to deserialize config field at {}: {:?}", pointer, e);
+                    error_sink.push((pointer, e));
                     None
                 }
             })
