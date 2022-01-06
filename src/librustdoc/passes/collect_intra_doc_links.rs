@@ -6,13 +6,12 @@ use rustc_ast as ast;
 use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtensionKind;
-use rustc_hir as hir;
 use rustc_hir::def::{
     DefKind,
     Namespace::{self, *},
     PerNS,
 };
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_ID};
 use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::ParentScope;
@@ -1736,9 +1735,9 @@ impl Disambiguator {
     fn descr(self) -> &'static str {
         match self {
             Self::Namespace(n) => n.descr(),
-            // HACK(jynelson): by looking at the source I saw the DefId we pass
-            // for `expected.descr()` doesn't matter, since it's not a crate
-            Self::Kind(k) => k.descr(DefId::local(hir::def_id::DefIndex::from_usize(0))),
+            // HACK(jynelson): the source of `DefKind::descr` only uses the DefId for
+            // printing "module" vs "crate" so using the wrong ID is not a huge problem
+            Self::Kind(k) => k.descr(CRATE_DEF_ID.to_def_id()),
             Self::Primitive => "builtin type",
         }
     }
