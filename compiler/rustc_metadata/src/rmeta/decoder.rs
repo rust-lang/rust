@@ -1309,24 +1309,26 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_item_attrs(
         &'a self,
-        node_id: DefIndex,
+        id: DefIndex,
         sess: &'a Session,
     ) -> impl Iterator<Item = ast::Attribute> + 'a {
-        // The attributes for a tuple struct/variant are attached to the definition, not the ctor;
-        // we assume that someone passing in a tuple struct ctor is actually wanting to
-        // look at the definition
-        let def_key = self.def_key(node_id);
-        let item_id = if def_key.disambiguated_data.data == DefPathData::Ctor {
-            def_key.parent.unwrap()
-        } else {
-            node_id
-        };
-
         self.root
             .tables
             .attributes
-            .get(self, item_id)
-            .unwrap_or_else(Lazy::empty)
+            .get(self, id)
+            .unwrap_or_else(|| {
+                // Structure and variant constructors don't have any attributes encoded for them,
+                // but we assume that someone passing a constructor ID actually wants to look at
+                // the attributes on the corresponding struct or variant.
+                let def_key = self.def_key(id);
+                assert_eq!(def_key.disambiguated_data.data, DefPathData::Ctor);
+                let parent_id = def_key.parent.expect("no parent for a constructor");
+                self.root
+                    .tables
+                    .attributes
+                    .get(self, parent_id)
+                    .expect("no encoded attributes for a structure or variant")
+            })
             .decode((self, sess))
     }
 
