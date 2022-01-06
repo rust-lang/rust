@@ -904,7 +904,7 @@ fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {
 
 fn has_ref(token: &SyntaxToken) -> bool {
     let mut token = token.clone();
-    for skip in [WHITESPACE, IDENT, T![mut]] {
+    for skip in [IDENT, WHITESPACE, T![mut]] {
         if token.kind() == skip {
             token = match token.prev_token() {
                 Some(it) => it,
@@ -1019,6 +1019,20 @@ fn bar(x: &u32) {}
         check_expected_type_and_name(
             r#"
 fn foo() { bar(&mut $0); }
+fn bar(x: &mut u32) {}
+"#,
+            expect![[r#"ty: u32, name: x"#]],
+        );
+        check_expected_type_and_name(
+            r#"
+fn foo() { bar(& c$0); }
+fn bar(x: &u32) {}
+        "#,
+            expect![[r#"ty: u32, name: x"#]],
+        );
+        check_expected_type_and_name(
+            r#"
+fn foo() { bar(&mut c$0); }
 fn bar(x: &mut u32) {}
 "#,
             expect![[r#"ty: u32, name: x"#]],

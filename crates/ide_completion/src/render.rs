@@ -1151,6 +1151,22 @@ fn main() {
                 fn foo(…) []
             "#]],
         );
+        check_relevance(
+            r#"
+struct S;
+fn foo(s: &mut S) {}
+fn main() {
+    let mut ssss = S;
+    foo(&mut s$0);
+}
+            "#,
+            expect![[r#"
+                lc ssss [type+local]
+                st S []
+                fn main() []
+                fn foo(…) []
+            "#]],
+        );
     }
 
     #[test]
