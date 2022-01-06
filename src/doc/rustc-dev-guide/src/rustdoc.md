@@ -42,7 +42,7 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 * Run `./x.py setup tools` before getting started. This will configure `x.py`
   with nice settings for developing rustdoc and other tools, including
   downloading a copy of rustc rather than building it.
-* Use `./x.py check` to quickly check for compile errors.
+* Use `./x.py check src/tools/rustdoc` to quickly check for compile errors.
 * Use `./x.py build` to make a usable
   rustdoc you can run on other projects.
   * Add `library/test` to be able to use `rustdoc --test`.

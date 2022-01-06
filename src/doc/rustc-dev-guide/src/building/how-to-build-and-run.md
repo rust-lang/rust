@@ -182,7 +182,7 @@ You almost never need to do this.
 
 If you are working on the standard library, you probably don't need to build
 the compiler unless you are planning to use a recently added nightly feature.
-Instead, you can just build stage 0, which uses the current beta compiler.
+Instead, you can just build using the bootstrap compiler.
 
 ```bash
 ./x.py build --stage 0 library/std
