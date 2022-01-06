@@ -2695,7 +2695,7 @@ impl Type {
     // This would be nicer if it just returned an iterator, but that runs into
     // lifetime problems, because we need to borrow temp `CrateImplDefs`.
     pub fn iterate_assoc_items<T>(
-        self,
+        &self,
         db: &dyn HirDatabase,
         krate: Crate,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
@@ -2709,7 +2709,7 @@ impl Type {
     }
 
     fn iterate_assoc_items_dyn(
-        self,
+        &self,
         db: &dyn HirDatabase,
         krate: Crate,
         callback: &mut dyn FnMut(AssocItemId) -> bool,
@@ -2751,6 +2751,7 @@ impl Type {
     ) -> Option<T> {
         let _p = profile::span("iterate_method_candidates");
         let mut slot = None;
+
         self.iterate_method_candidates_dyn(
             db,
             krate,
