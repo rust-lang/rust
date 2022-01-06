@@ -1,10 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::{path_to_local, search_same, SpanlessEq, SpanlessHash};
+use core::iter;
+use rustc_arena::DroplessArena;
 use rustc_ast::ast::LitKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdMap, HirIdSet, Pat, PatKind, RangeEnd};
 use rustc_lint::LateContext;
+use rustc_middle::ty;
 use rustc_span::Symbol;
 use std::collections::hash_map::Entry;
 
@@ -17,7 +20,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
         h.finish()
     };
 
-    let resolved_pats: Vec<_> = arms.iter().map(|a| ResolvedPat::from_pat(cx, a.pat)).collect();
+    let arena = DroplessArena::default();
+    let resolved_pats: Vec<_> = arms.iter().map(|a| ResolvedPat::from_pat(cx, &arena, a.pat)).collect();
 
     // The furthast forwards a pattern can move without semantic changes
     let forwards_blocking_idxs: Vec<_> = resolved_pats
@@ -128,21 +132,22 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
     }
 }
 
-#[derive(Debug)]
-enum ResolvedPat<'hir> {
+#[derive(Clone, Copy)]
+enum ResolvedPat<'hir, 'arena> {
     Wild,
-    Struct(Option<DefId>, Vec<(Symbol, ResolvedPat<'hir>)>),
-    Sequence(Option<DefId>, Vec<ResolvedPat<'hir>>, Option<usize>),
-    Or(Vec<ResolvedPat<'hir>>),
+    Struct(Option<DefId>, &'arena [(Symbol, Self)]),
+    Tuple(Option<DefId>, &'arena [Self]),
+    Or(&'arena [Self]),
     Path(Option<DefId>),
     LitStr(Symbol),
     LitBytes(&'hir [u8]),
     LitInt(u128),
     LitBool(bool),
     Range(PatRange),
+    Slice(&'arena [Self], &'arena [Self], bool),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy)]
 struct PatRange {
     start: u128,
     end: u128,
@@ -177,28 +182,66 @@ impl PatRange {
     }
 }
 
-impl<'hir> ResolvedPat<'hir> {
-    fn from_pat(cx: &LateContext<'_>, pat: &'hir Pat<'_>) -> Self {
+#[allow(clippy::similar_names)]
+impl<'hir, 'arena> ResolvedPat<'hir, 'arena> {
+    #[allow(clippy::too_many_lines)]
+    fn from_pat(cx: &LateContext<'_>, arena: &'arena DroplessArena, pat: &'hir Pat<'_>) -> Self {
         match pat.kind {
             PatKind::Wild | PatKind::Binding(.., None) => Self::Wild,
-            PatKind::Binding(.., Some(pat)) | PatKind::Box(pat) | PatKind::Ref(pat, _) => Self::from_pat(cx, pat),
+            PatKind::Binding(.., Some(pat)) | PatKind::Box(pat) | PatKind::Ref(pat, _) => {
+                Self::from_pat(cx, arena, pat)
+            },
             PatKind::Struct(ref path, fields, _) => {
-                let mut fields: Vec<_> = fields
-                    .iter()
-                    .map(|f| (f.ident.name, Self::from_pat(cx, f.pat)))
-                    .collect();
+                let fields =
+                    arena.alloc_from_iter(fields.iter().map(|f| (f.ident.name, Self::from_pat(cx, arena, f.pat))));
                 fields.sort_by_key(|&(name, _)| name);
                 Self::Struct(cx.qpath_res(path, pat.hir_id).opt_def_id(), fields)
             },
-            PatKind::TupleStruct(ref path, pats, wild_idx) => Self::Sequence(
-                cx.qpath_res(path, pat.hir_id).opt_def_id(),
-                pats.iter().map(|pat| Self::from_pat(cx, pat)).collect(),
-                wild_idx,
-            ),
-            PatKind::Or(pats) => Self::Or(pats.iter().map(|pat| Self::from_pat(cx, pat)).collect()),
+            PatKind::TupleStruct(ref path, pats, wild_idx) => {
+                let adt = match cx.typeck_results().pat_ty(pat).ty_adt_def() {
+                    Some(x) => x,
+                    None => return Self::Wild,
+                };
+                let (var_id, variant) = if adt.is_enum() {
+                    match cx.qpath_res(path, pat.hir_id).opt_def_id() {
+                        Some(x) => (Some(x), adt.variant_with_ctor_id(x)),
+                        None => return Self::Wild,
+                    }
+                } else {
+                    (None, adt.non_enum_variant())
+                };
+                let (front, back) = match wild_idx {
+                    Some(i) => pats.split_at(i),
+                    None => (pats, [].as_slice()),
+                };
+                let pats = arena.alloc_from_iter(
+                    front
+                        .iter()
+                        .map(|pat| Self::from_pat(cx, arena, pat))
+                        .chain(iter::repeat_with(|| Self::Wild).take(variant.fields.len() - pats.len()))
+                        .chain(back.iter().map(|pat| Self::from_pat(cx, arena, pat))),
+                );
+                Self::Tuple(var_id, pats)
+            },
+            PatKind::Or(pats) => Self::Or(arena.alloc_from_iter(pats.iter().map(|pat| Self::from_pat(cx, arena, pat)))),
             PatKind::Path(ref path) => Self::Path(cx.qpath_res(path, pat.hir_id).opt_def_id()),
             PatKind::Tuple(pats, wild_idx) => {
-                Self::Sequence(None, pats.iter().map(|pat| Self::from_pat(cx, pat)).collect(), wild_idx)
+                let field_count = match cx.typeck_results().pat_ty(pat).kind() {
+                    ty::Tuple(subs) => subs.len(),
+                    _ => return Self::Wild,
+                };
+                let (front, back) = match wild_idx {
+                    Some(i) => pats.split_at(i),
+                    None => (pats, [].as_slice()),
+                };
+                let pats = arena.alloc_from_iter(
+                    front
+                        .iter()
+                        .map(|pat| Self::from_pat(cx, arena, pat))
+                        .chain(iter::repeat_with(|| Self::Wild).take(field_count - pats.len()))
+                        .chain(back.iter().map(|pat| Self::from_pat(cx, arena, pat))),
+                );
+                Self::Tuple(None, pats)
             },
             PatKind::Lit(e) => match &e.kind {
                 ExprKind::Lit(lit) => match lit.node {
@@ -239,13 +282,10 @@ impl<'hir> ResolvedPat<'hir> {
                 };
                 Self::Range(PatRange { start, end, bounds })
             },
-            PatKind::Slice(pats, wild, pats2) => Self::Sequence(
-                None,
-                pats.iter()
-                    .chain(pats2.iter())
-                    .map(|pat| Self::from_pat(cx, pat))
-                    .collect(),
-                wild.map(|_| pats.len()),
+            PatKind::Slice(front, wild_pat, back) => Self::Slice(
+                arena.alloc_from_iter(front.iter().map(|pat| Self::from_pat(cx, arena, pat))),
+                arena.alloc_from_iter(back.iter().map(|pat| Self::from_pat(cx, arena, pat))),
+                wild_pat.is_some(),
             ),
         }
     }
@@ -253,9 +293,11 @@ impl<'hir> ResolvedPat<'hir> {
     /// Checks if two patterns overlap in the values they can match assuming they are for the same
     /// type.
     fn can_also_match(&self, other: &Self) -> bool {
-        match (self, other) {
+        match (*self, *other) {
             (Self::Wild, _) | (_, Self::Wild) => true,
-            (Self::Or(pats), other) | (other, Self::Or(pats)) => pats.iter().any(|pat| pat.can_also_match(other)),
+            (Self::Or(pats), ref other) | (ref other, Self::Or(pats)) => {
+                pats.iter().any(|pat| pat.can_also_match(other))
+            },
             (Self::Struct(lpath, lfields), Self::Struct(rpath, rfields)) => {
                 if lpath != rpath {
                     return false;
@@ -287,28 +329,13 @@ impl<'hir> ResolvedPat<'hir> {
                 }
                 true
             },
-            (Self::Sequence(lpath, lpats, lwild_idx), Self::Sequence(rpath, rpats, rwild_idx)) => {
+            (Self::Tuple(lpath, lpats), Self::Tuple(rpath, rpats)) => {
                 if lpath != rpath {
                     return false;
                 }
-
-                let (lpats_start, lpats_end) = lwild_idx
-                    .or(*rwild_idx)
-                    .map_or((&**lpats, [].as_slice()), |idx| lpats.split_at(idx));
-                let (rpats_start, rpats_end) = rwild_idx
-                    .or(*lwild_idx)
-                    .map_or((&**rpats, [].as_slice()), |idx| rpats.split_at(idx));
-
-                lpats_start
+                lpats
                     .iter()
-                    .zip(rpats_start.iter())
-                    .all(|(lpat, rpat)| lpat.can_also_match(rpat))
-                    // `lpats_end` and `rpats_end` lengths may be disjointed, so start from the end and ignore any
-                    // extras.
-                    && lpats_end
-                    .iter()
-                    .rev()
-                    .zip(rpats_end.iter().rev())
+                    .zip(rpats.iter())
                     .all(|(lpat, rpat)| lpat.can_also_match(rpat))
             },
             (Self::Path(x), Self::Path(y)) => x == y,
@@ -316,10 +343,10 @@ impl<'hir> ResolvedPat<'hir> {
             (Self::LitBytes(x), Self::LitBytes(y)) => x == y,
             (Self::LitInt(x), Self::LitInt(y)) => x == y,
             (Self::LitBool(x), Self::LitBool(y)) => x == y,
-            (Self::Range(x), Self::Range(y)) => x.overlaps(y),
-            (Self::Range(range), Self::LitInt(x)) | (Self::LitInt(x), Self::Range(range)) => range.contains(*x),
+            (Self::Range(ref x), Self::Range(ref y)) => x.overlaps(y),
+            (Self::Range(ref range), Self::LitInt(x)) | (Self::LitInt(x), Self::Range(ref range)) => range.contains(x),
 
-            // Todo: Lit* with Path, Range with Path, LitBytes with Sequence
+            // Todo: Lit* with Path, Range with Path, LitBytes with Slice, Slice with Slice
             _ => true,
         }
     }

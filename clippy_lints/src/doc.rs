@@ -637,12 +637,6 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 loop {
                     match parser.parse_item(ForceCollect::No) {
                         Ok(Some(item)) => match &item.kind {
-                            // Tests with one of these items are ignored
-                            ItemKind::Static(..)
-                            | ItemKind::Const(..)
-                            | ItemKind::ExternCrate(..)
-                            | ItemKind::ForeignMod(..) => return false,
-                            // We found a main function ...
                             ItemKind::Fn(box Fn {
                                 sig, body: Some(block), ..
                             }) if item.ident.name == sym::main => {
@@ -661,8 +655,13 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                                     return false;
                                 }
                             },
-                            // Another function was found; this case is ignored too
-                            ItemKind::Fn(..) => return false,
+                            // Tests with one of these items are ignored
+                            ItemKind::Static(..)
+                            | ItemKind::Const(..)
+                            | ItemKind::ExternCrate(..)
+                            | ItemKind::ForeignMod(..)
+                            // Another function was found; this case is ignored
+                            | ItemKind::Fn(..) => return false,
                             _ => {},
                         },
                         Ok(None) => break,
