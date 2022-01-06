@@ -5,14 +5,12 @@ write: (".search-input", "test")
 wait-for: "#titles"
 assert-text: ("#results .externcrate", "test_docs")
 
-goto: file://|DOC_PATH|/test_docs/index.html
+wait-for: "#crate-search"
 // We now want to change the crate filter.
 click: "#crate-search"
 // We select "lib2" option then press enter to change the filter.
 press-key: "ArrowDown"
 press-key: "Enter"
-// We now make the search again.
-write: (".search-input", "test")
 // Waiting for the search results to appear...
 wait-for: "#titles"
 // We check that there is no more "test_docs" appearing.
