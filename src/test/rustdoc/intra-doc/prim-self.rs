@@ -7,7 +7,7 @@
 #[lang = "usize"]
 /// [Self::f]
 /// [Self::MAX]
-// @has intra_link_prim_self/primitive.usize.html
+// @has prim_self/primitive.usize.html
 // @has - '//a[@href="primitive.usize.html#method.f"]' 'Self::f'
 // @has - '//a[@href="primitive.usize.html#associatedconstant.MAX"]' 'Self::MAX'
 impl usize {
