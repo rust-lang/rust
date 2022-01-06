@@ -393,7 +393,10 @@ fn render_builtin_attr(db: &RootDatabase, attr: hir::BuiltinAttr) -> Option<Mark
     let name = attr.name(db);
     let desc = format!("#[{}]", name);
 
-    let AttributeTemplate { word, list, name_value_str } = attr.template(db);
+    let AttributeTemplate { word, list, name_value_str } = match attr.template(db) {
+        Some(template) => template,
+        None => return Some(Markup::fenced_block(&attr.name(db))),
+    };
     let mut docs = "Valid forms are:".to_owned();
     if word {
         format_to!(docs, "\n - #\\[{}]", name);

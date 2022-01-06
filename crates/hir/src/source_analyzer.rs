@@ -346,7 +346,11 @@ impl SourceAnalyzer {
             return match resolve_hir_path_qualifier(db, &self.resolver, &hir_path) {
                 None if is_path_of_attr => {
                     path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
-                        ToolModule::by_name(&name_ref.text()).map(PathResolution::ToolModule)
+                        match self.resolver.krate() {
+                            Some(krate) => ToolModule::by_name(db, krate.into(), &name_ref.text()),
+                            None => ToolModule::builtin(&name_ref.text()),
+                        }
+                        .map(PathResolution::ToolModule)
                     })
                 }
                 res => res,
@@ -356,8 +360,10 @@ impl SourceAnalyzer {
             // in this case we have to check for inert/builtin attributes and tools and prioritize
             // resolution of attributes over other namespaces
             let name_ref = path.as_single_name_ref();
-            let builtin =
-                name_ref.as_ref().map(ast::NameRef::text).as_deref().and_then(BuiltinAttr::by_name);
+            let builtin = name_ref.as_ref().and_then(|name_ref| match self.resolver.krate() {
+                Some(krate) => BuiltinAttr::by_name(db, krate.into(), &name_ref.text()),
+                None => BuiltinAttr::builtin(&name_ref.text()),
+            });
             if let builtin @ Some(_) = builtin {
                 return builtin.map(PathResolution::BuiltinAttr);
             }
@@ -366,7 +372,11 @@ impl SourceAnalyzer {
                 // this labels any path that starts with a tool module as the tool itself, this is technically wrong
                 // but there is no benefit in differentiating these two cases for the time being
                 _ => path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
-                    ToolModule::by_name(&name_ref.text()).map(PathResolution::ToolModule)
+                    match self.resolver.krate() {
+                        Some(krate) => ToolModule::by_name(db, krate.into(), &name_ref.text()),
+                        None => ToolModule::builtin(&name_ref.text()),
+                    }
+                    .map(PathResolution::ToolModule)
                 }),
             };
         }
