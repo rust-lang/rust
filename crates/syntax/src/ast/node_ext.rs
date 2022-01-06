@@ -445,13 +445,10 @@ impl ast::AstNode for NameLike {
     }
 }
 
-mod __ {
-    use super::{
-        ast::{Lifetime, Name, NameRef},
-        NameLike,
-    };
+const _: () = {
+    use ast::{Lifetime, Name, NameRef};
     stdx::impl_from!(NameRef, Name, Lifetime for NameLike);
-}
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum NameOrNameRef {
