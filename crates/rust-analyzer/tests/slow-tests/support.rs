@@ -137,7 +137,7 @@ impl<'a> Project<'a> {
             },
         );
         config.discovered_projects = Some(discovered_projects);
-        config.update(self.config);
+        let _ = config.update(self.config);
 
         Server::new(tmp_dir, config)
     }

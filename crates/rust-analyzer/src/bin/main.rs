@@ -150,7 +150,7 @@ fn run_server() -> Result<()> {
 
     let mut config = Config::new(root_path, initialize_params.capabilities);
     if let Some(json) = initialize_params.initialization_options {
-        config.update(json);
+        let _ = config.update(json);
     }
 
     let server_capabilities = rust_analyzer::server_capabilities(&config);
