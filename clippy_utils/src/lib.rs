@@ -326,14 +326,6 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         })
 }
 
-pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
-    match *path {
-        QPath::Resolved(_, path) => path.segments.get(0),
-        QPath::TypeRelative(_, seg) => Some(seg),
-        QPath::LangItem(..) => None,
-    }
-}
-
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
 /// entire path or resolved `DefId`. Prefer using `match_def_path`. Consider getting a `DefId` from
 /// `QPath::Resolved.1.res.opt_def_id()`.
