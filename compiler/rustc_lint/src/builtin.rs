@@ -3158,7 +3158,10 @@ declare_lint! {
     /// of this, GNU assembler [local labels] *must* be used instead of labels
     /// with a name. Using named labels might cause assembler or linker errors.
     ///
+    /// See the explanation in [Rust By Example] for more details.
+    ///
     /// [local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
+    /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels
     pub NAMED_ASM_LABELS,
     Deny,
     "named labels in inline assembly",
