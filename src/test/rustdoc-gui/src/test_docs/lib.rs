@@ -1,5 +1,6 @@
 //! The point of this crate is to be able to have enough different "kinds" of
 //! documentation generated so we can test each different features.
+#![doc(html_playground_url="https://play.rust-lang.org/")]
 
 #![crate_name = "test_docs"]
 #![feature(rustdoc_internals)]
