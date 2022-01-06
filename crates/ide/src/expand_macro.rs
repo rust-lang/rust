@@ -307,6 +307,25 @@ fn main() {
     }
 
     #[test]
+    fn macro_expand_with_dyn_absolute_path() {
+        check(
+            r#"
+macro_rules! foo {
+    () => {fn f<T>(_: &dyn ::std::marker::Copy) {}};
+}
+
+fn main() {
+    let res = fo$0o!();
+}
+"#,
+            expect![[r#"
+                foo
+                fn f<T>(_: &dyn ::std::marker::Copy){}
+            "#]],
+        );
+    }
+
+    #[test]
     fn macro_expand_derive() {
         check(
             r#"
