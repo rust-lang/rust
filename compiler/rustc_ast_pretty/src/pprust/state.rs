@@ -1287,13 +1287,16 @@ impl<'a> State<'a> {
                 self.print_visibility(&item.vis);
                 self.print_defaultness(defaultness);
                 self.print_unsafety(unsafety);
-                self.word_nbsp("impl");
-                self.print_constness(constness);
+                self.word("impl");
 
-                if !generics.params.is_empty() {
+                if generics.params.is_empty() {
+                    self.nbsp();
+                } else {
                     self.print_generic_params(&generics.params);
                     self.space();
                 }
+
+                self.print_constness(constness);
 
                 if let ast::ImplPolarity::Negative(_) = polarity {
                     self.word("!");

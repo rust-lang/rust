@@ -603,13 +603,19 @@ fn test_item() {
         stringify_item!(
             impl<T> Struct<T> {}
         ),
-        "impl <T> Struct<T> {}", // FIXME
+        "impl<T> Struct<T> {}",
     );
     assert_eq!(
         stringify_item!(
             pub impl Trait for Struct {}
         ),
         "pub impl Trait for Struct {}",
+    );
+    assert_eq!(
+        stringify_item!(
+            impl<T> const Trait for T {}
+        ),
+        "impl<T> const Trait for T {}",
     );
     assert_eq!(
         stringify_item!(
