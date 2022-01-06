@@ -737,6 +737,7 @@ impl Attr {
                 matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. })))
             })
             .into_iter()
+            .filter(|(comma, _)| !*comma)
             .map(|(_, tts)| {
                 let segments = tts.filter_map(|tt| match tt {
                     tt::TokenTree::Leaf(tt::Leaf::Ident(id)) => Some(id.as_name()),
