@@ -92,6 +92,8 @@ pub(crate) struct Options {
     pub(crate) debugging_opts: DebuggingOptions,
     /// Debugging (`-Z`) options strings to pass to the compiler.
     pub(crate) debugging_opts_strs: Vec<String>,
+    /// Path remapping (`--remap-path-prefix`) directives to hand to the compiler.
+    pub(crate) remap_path_prefix_strs: Vec<String>,
     /// The target used to compile the crate against.
     pub(crate) target: TargetTriple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
@@ -179,6 +181,7 @@ impl fmt::Debug for Options {
             .field("check-cfgs", &self.check_cfgs)
             .field("codegen_options", &"...")
             .field("debugging_options", &"...")
+            .field("remap_path_prefixes", &"...")
             .field("target", &self.target)
             .field("edition", &self.edition)
             .field("maybe_sysroot", &self.maybe_sysroot)
@@ -644,6 +647,7 @@ impl Options {
         let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let codegen_options_strs = matches.opt_strs("C");
         let debugging_opts_strs = matches.opt_strs("Z");
+        let remap_path_prefix_strs = matches.opt_strs("remap-path-prefix");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
         let runtool = matches.opt_str("runtool");
@@ -687,6 +691,7 @@ impl Options {
             codegen_options_strs,
             debugging_opts,
             debugging_opts_strs,
+            remap_path_prefix_strs,
             target,
             edition,
             maybe_sysroot,

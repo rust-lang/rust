@@ -35,7 +35,7 @@ endif
 # workaround for two problems causing tests to fail on Windows:
 #
 # 1. When multiple files appear in the `llvm-cov show` results, each file's coverage results can
-#    appear in different a different order. Whether this is random or, somehow, platform-specific,
+#    appear in a different order. Whether this is random or, somehow, platform-specific,
 #    the Windows output flips the order of the files, compared to Linux. In the `uses_crate.rs`
 #    test, the only test-unique (interesting) results we care about are the results for only one
 #    of the two files, `mod/uses_crate.rs`, so the workaround is to ignore all but this one file.

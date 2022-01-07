@@ -278,6 +278,14 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("C", |o| {
             o.optmulti("C", "codegen", "pass a codegen option to rustc", "OPT[=VALUE]")
         }),
+        unstable("remap-path-prefix", |o| {
+            o.optmulti(
+                "",
+                "remap-path-prefix",
+                "Remap source names in all output (compiler messages and output files)",
+                "FROM=TO",
+            )
+        }),
         stable("document-private-items", |o| {
             o.optflagmulti("", "document-private-items", "document private items")
         }),

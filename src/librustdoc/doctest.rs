@@ -360,6 +360,9 @@ fn run_test(
     for debugging_option_str in &rustdoc_options.debugging_opts_strs {
         compiler.arg("-Z").arg(&debugging_option_str);
     }
+    for remap_path_prefix_str in &rustdoc_options.remap_path_prefix_strs {
+        compiler.arg("--remap-path-prefix").arg(&remap_path_prefix_str);
+    }
     if no_run && !lang_string.compile_fail && rustdoc_options.persist_doctests.is_none() {
         compiler.arg("--emit=metadata");
     }
