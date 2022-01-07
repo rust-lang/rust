@@ -26,12 +26,18 @@ use std::cmp;
 use std::iter;
 use std::ops::ControlFlow;
 
+pub enum UseRevealSelection {
+    Yes,
+    No,
+}
+
 /// Check if a given constant can be evaluated.
 pub fn is_const_evaluatable<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     uv: ty::Unevaluated<'tcx, ()>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
+    use_reveal_sel: UseRevealSelection,
 ) -> Result<(), NotConstEvaluatable> {
     debug!("is_const_evaluatable({:?})", uv);
     if infcx.tcx.features().generic_const_exprs {
@@ -147,8 +153,12 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     // and hopefully soon change this to an error.
     //
     // See #74595 for more details about this.
-    let concrete =
-        infcx.const_eval_resolve(param_env.with_reveal_selection(), uv.expand(), Some(span));
+    let param_env_resolve = match use_reveal_sel {
+        UseRevealSelection::Yes => param_env.with_reveal_selection(),
+        UseRevealSelection::No => param_env,
+    };
+
+    let concrete = infcx.const_eval_resolve(param_env_resolve, uv.expand(), Some(span));
 
     if concrete.is_ok() && uv.substs(infcx.tcx).definitely_has_param_types_or_consts(infcx.tcx) {
         match infcx.tcx.def_kind(uv.def.did) {
@@ -174,6 +184,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
             Err(NotConstEvaluatable::Error(ErrorReported))
         }
         Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+        Err(ErrorHandled::Silent) => Err(NotConstEvaluatable::Silent),
         Ok(_) => Ok(()),
     }
 }

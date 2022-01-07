@@ -528,12 +528,15 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 }
 
                 ty::PredicateKind::ConstEvaluatable(uv) => {
-                    match const_evaluatable::is_const_evaluatable(
+                    let res = const_evaluatable::is_const_evaluatable(
                         self.selcx.infcx(),
                         uv,
-                        obligation.param_env,
+                        obligation.param_env.with_reveal_selection(),
                         obligation.cause.span,
-                    ) {
+                        const_evaluatable::UseRevealSelection::Yes,
+                    );
+
+                    match res {
                         Ok(()) => ProcessResult::Changed(vec![]),
                         Err(NotConstEvaluatable::MentionsInfer) => {
                             pending_obligation.stalled_on.clear();
@@ -546,7 +549,8 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         }
                         Err(
                             e @ NotConstEvaluatable::MentionsParam
-                            | e @ NotConstEvaluatable::Error(_),
+                            | e @ NotConstEvaluatable::Error(_)
+                            | e @ NotConstEvaluatable::Silent,
                         ) => ProcessResult::Error(CodeSelectionError(
                             SelectionError::NotConstEvaluatable(e),
                         )),
@@ -626,9 +630,9 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                             )
                         }
                         (Err(ErrorHandled::Silent), _) | (_, Err(ErrorHandled::Silent)) => {
-                            ProcessResult::Error(CodeSelectionError(ConstEvalFailure(
-                                ErrorHandled::Silent,
-                            )))
+                            ProcessResult::Error(CodeSelectionError(
+                                SelectionError::NotConstEvaluatable(NotConstEvaluatable::Silent),
+                            ))
                         }
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
                             if c1.has_infer_types_or_consts() || c2.has_infer_types_or_consts() {

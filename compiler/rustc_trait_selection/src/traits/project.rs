@@ -26,6 +26,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -296,7 +297,7 @@ where
 
 pub(crate) fn needs_normalization<'tcx, T: TypeFoldable<'tcx>>(value: &T, reveal: Reveal) -> bool {
     match reveal {
-        Reveal::UserFacing => value
+        Reveal::Selection | Reveal::UserFacing => value
             .has_type_flags(ty::TypeFlags::HAS_TY_PROJECTION | ty::TypeFlags::HAS_CT_PROJECTION),
         Reveal::All => value.has_type_flags(
             ty::TypeFlags::HAS_TY_PROJECTION

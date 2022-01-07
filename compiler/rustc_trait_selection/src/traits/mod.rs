@@ -273,6 +273,7 @@ fn do_normalize_predicates<'tcx>(
 
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
+#[instrument(skip(tcx), level = "debug")]
 pub fn normalize_param_env_or_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     region_context: DefId,

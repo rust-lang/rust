@@ -625,6 +625,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         uv,
                         obligation.param_env,
                         obligation.cause.span,
+                        const_evaluatable::UseRevealSelection::Yes,
                     ) {
                         Ok(()) => Ok(EvaluatedToOk),
                         Err(NotConstEvaluatable::MentionsInfer) => Ok(EvaluatedToAmbig),
@@ -2659,11 +2660,7 @@ impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
     }
 
     fn depth(&self) -> usize {
-        if let Some(head) = self.head {
-            head.depth
-        } else {
-            0
-        }
+        if let Some(head) = self.head { head.depth } else { 0 }
     }
 }
 

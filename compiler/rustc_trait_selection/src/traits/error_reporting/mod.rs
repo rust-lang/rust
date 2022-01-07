@@ -2,10 +2,10 @@ pub mod on_unimplemented;
 pub mod suggestions;
 
 use super::{
-    EvaluationResult, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
-    Obligation, ObligationCause, ObligationCauseCode, OnUnimplementedDirective,
-    OnUnimplementedNote, OutputTypeParameterMismatch, Overflow, PredicateObligation,
-    SelectionContext, SelectionError, TraitNotObjectSafe,
+    const_evaluatable, EvaluationResult, FulfillmentError, FulfillmentErrorCode,
+    MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
+    OnUnimplementedDirective, OnUnimplementedNote, OutputTypeParameterMismatch, Overflow,
+    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
 };
 
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
@@ -86,6 +86,14 @@ pub trait InferCtxtExt<'tcx> {
         found_args: Vec<ArgKind>,
         is_closure: bool,
     ) -> DiagnosticBuilder<'tcx>;
+
+    fn report_const_eval_failure(
+        &self,
+        uv: ty::Unevaluated<'tcx, ()>,
+        obligation: PredicateObligation<'tcx>,
+        root_obligation: &PredicateObligation<'tcx>,
+        fallback_has_occurred: bool,
+    );
 }
 
 impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
@@ -238,6 +246,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         error: &SelectionError<'tcx>,
         fallback_has_occurred: bool,
     ) {
+        debug!("report_selection_error(error: {:?})", error);
         let tcx = self.tcx;
         let mut span = obligation.cause.span;
 
@@ -799,7 +808,42 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 bug!(
                     "MentionsInfer should have been handled in `traits/fulfill.rs` or `traits/select/mod.rs`"
                 )
-            ConstEvalFailure(ErrorHandled::Silent) => {
+            }
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Silent) => {
+                let pred = obligation.predicate.clone();
+
+                // Try to prove the obligation again without Reveal::Selection for
+                // better diagnostics
+                match pred.kind().skip_binder() {
+                    ty::PredicateKind::ConstEvaluatable(uv) => {
+                        self.report_const_eval_failure(
+                            uv,
+                            obligation.clone(),
+                            root_obligation,
+                            fallback_has_occurred,
+                        );
+                    }
+                    ty::PredicateKind::ConstEquate(c1, c2) => {
+                        if let Some(uv1) = c1.try_get_unevaluated() {
+                            self.report_const_eval_failure(
+                                uv1.shrink(),
+                                obligation.clone(),
+                                root_obligation,
+                                fallback_has_occurred,
+                            );
+                        }
+
+                        if let Some(uv2) = c2.try_get_unevaluated() {
+                            self.report_const_eval_failure(
+                                uv2.shrink(),
+                                obligation.clone(),
+                                root_obligation,
+                                fallback_has_occurred,
+                            );
+                        }
+                    }
+                    _ => {}
+                }
                 tcx.sess.struct_span_err(span, "failed to evaluate the given constant")
             }
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsParam) => {
@@ -1062,6 +1106,45 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         err
+    }
+
+    #[instrument(skip(self, obligation, root_obligation, fallback_has_occurred), level = "debug")]
+    fn report_const_eval_failure(
+        &self,
+        uv: ty::Unevaluated<'tcx, ()>,
+        obligation: PredicateObligation<'tcx>,
+        root_obligation: &PredicateObligation<'tcx>,
+        fallback_has_occurred: bool,
+    ) {
+        let res = const_evaluatable::is_const_evaluatable(
+            self,
+            uv,
+            obligation.param_env.with_user_facing(),
+            obligation.cause.span,
+            const_evaluatable::UseRevealSelection::No,
+        );
+        debug!(?res);
+
+        match res {
+            Err(NotConstEvaluatable::Silent) => {
+                bug!("called with Reveal::UserFacing, but Silent error returned")
+            }
+            Err(e @ NotConstEvaluatable::MentionsParam | e @ NotConstEvaluatable::Error(_)) => {
+                let err = SelectionError::NotConstEvaluatable(e);
+
+                self.report_selection_error(
+                    obligation,
+                    root_obligation,
+                    &err,
+                    fallback_has_occurred,
+                );
+            }
+            Ok(()) => bug!(
+                "ConstEvaluatable predicate of {:?} failed with Reveal::Selection but succeeded with Reveal::UserFacing?",
+                uv
+            ),
+            _ => {}
+        }
     }
 }
 
