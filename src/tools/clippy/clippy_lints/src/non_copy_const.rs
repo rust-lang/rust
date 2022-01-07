@@ -134,7 +134,7 @@ fn is_unfrozen<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 
 fn is_value_unfrozen_raw<'tcx>(
     cx: &LateContext<'tcx>,
-    result: Result<ConstValue<'tcx>, ErrorHandled>,
+    result: Result<ConstValue<'tcx>, ErrorHandled<'tcx>>,
     ty: Ty<'tcx>,
 ) -> bool {
     fn inner<'tcx>(cx: &LateContext<'tcx>, val: &'tcx Const<'tcx>) -> bool {
