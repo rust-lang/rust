@@ -114,15 +114,23 @@ impl ChildBySource for ItemScope {
             }
         });
         self.unnamed_consts().for_each(|konst| {
-            let src = konst.lookup(db).source(db);
-            res[keys::CONST].insert(src, konst);
+            let loc = konst.lookup(db);
+            if loc.id.file_id() == file_id {
+                let src = loc.source(db);
+                res[keys::CONST].insert(src, konst);
+            }
         });
         self.impls().for_each(|imp| add_impl(db, file_id, res, imp));
         self.attr_macro_invocs().for_each(|(ast_id, call_id)| {
-            let item = ast_id.with_value(ast_id.to_node(db.upcast()));
-            res[keys::ATTR_MACRO_CALL].insert(item, call_id);
+            if ast_id.file_id == file_id {
+                let item = ast_id.with_value(ast_id.to_node(db.upcast()));
+                res[keys::ATTR_MACRO_CALL].insert(item, call_id);
+            }
         });
         self.derive_macro_invocs().for_each(|(ast_id, calls)| {
+            if ast_id.file_id != file_id {
+                return;
+            }
             let adt = ast_id.to_node(db.upcast());
             for (attr_id, calls) in calls {
                 if let Some(Either::Right(attr)) =
