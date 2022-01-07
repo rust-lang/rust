@@ -154,14 +154,14 @@ impl<'a> Ctx<'a> {
                     let parent = path.syntax().parent()?;
                     if let Some(parent) = ast::Path::cast(parent.clone()) {
                         // Path inside path means that there is an associated
-                        // type on the type parameter. It is necessary to fully
-                        // qualify the type with `as Trait`. Even though it
-                        // might be unnecessary if `subst` is generic type,
-                        // always fully qualifying the path is safer because of
-                        // potential clash of associated types from multiple
-                        // traits
+                        // type/constant on the type parameter. It is necessary
+                        // to fully qualify the type with `as Trait`. Even
+                        // though it might be unnecessary if `subst` is generic
+                        // type, always fully qualifying the path is safer
+                        // because of potential clash of associated types from
+                        // multiple traits
 
-                        let trait_ref = find_trait_for_assoc_type(
+                        let trait_ref = find_trait_for_assoc_item(
                             self.source_scope,
                             tp,
                             parent.segment()?.name_ref()?,
@@ -252,24 +252,25 @@ fn get_type_args_from_arg_list(generic_arg_list: ast::GenericArgList) -> Option<
     Some(result)
 }
 
-fn find_trait_for_assoc_type(
+fn find_trait_for_assoc_item(
     scope: &SemanticsScope,
     type_param: hir::TypeParam,
-    assoc_type: ast::NameRef,
+    assoc_item: ast::NameRef,
 ) -> Option<hir::Trait> {
     let db = scope.db;
     let trait_bounds = type_param.trait_bounds(db);
 
-    let assoc_type_name = assoc_type.text();
+    let assoc_item_name = assoc_item.text();
 
     for trait_ in trait_bounds {
-        let type_aliases = trait_.items(db).into_iter().filter_map(|item| match item {
-            hir::AssocItem::TypeAlias(ta) => Some(ta),
+        let names = trait_.items(db).into_iter().filter_map(|item| match item {
+            hir::AssocItem::TypeAlias(ta) => Some(ta.name(db)),
+            hir::AssocItem::Const(cst) => cst.name(db),
             _ => None,
         });
 
-        for type_alias in type_aliases {
-            if assoc_type_name.as_str() == type_alias.name(db).as_text()?.as_str() {
+        for name in names {
+            if assoc_item_name.as_str() == name.as_text()?.as_str() {
                 // It is fine to return the first match because in case of
                 // multiple possibilities, the exact trait must be disambiguated
                 // in the definition of trait being implemented, so this search

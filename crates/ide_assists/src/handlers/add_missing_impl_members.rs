@@ -1248,4 +1248,60 @@ impl Behavior<u32> for Impl {
 }"#,
         );
     }
+
+    #[test]
+    fn test_transform_path_in_path_expr() {
+        check_assist(
+            add_missing_default_members,
+            r#"
+pub trait Const {
+    const FOO: u32;
+}
+
+pub trait Trait<T: Const> {
+    fn foo() -> bool {
+        match T::FOO {
+            0 => true,
+            _ => false,
+        }
+    }
+}
+
+impl Const for u32 {
+    const FOO: u32 = 1;
+}
+
+struct Impl;
+
+impl Trait<u32> for Impl { $0 }"#,
+            r#"
+pub trait Const {
+    const FOO: u32;
+}
+
+pub trait Trait<T: Const> {
+    fn foo() -> bool {
+        match T::FOO {
+            0 => true,
+            _ => false,
+        }
+    }
+}
+
+impl Const for u32 {
+    const FOO: u32 = 1;
+}
+
+struct Impl;
+
+impl Trait<u32> for Impl {
+    $0fn foo() -> bool {
+        match <u32 as Const>::FOO {
+            0 => true,
+            _ => false,
+        }
+    }
+}"#,
+        );
+    }
 }
