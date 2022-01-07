@@ -18,7 +18,8 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::storage::AlwaysLiveLocals;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Limit;
-use rustc_span::{Pos, Span};
+use rustc_span::Pos;
+use rustc_span::Span;
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
@@ -265,6 +266,13 @@ impl<'mir, 'tcx, Tag: Provenance, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     }
 }
 
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'mir, 'tcx, M> {
+    #[inline]
+    fn data_layout(&self) -> &TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
 impl<'tcx> fmt::Display for FrameInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
@@ -288,13 +296,6 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             }
             Ok(())
         })
-    }
-}
-
-impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'mir, 'tcx, M> {
-    #[inline]
-    fn data_layout(&self) -> &TargetDataLayout {
-        &self.tcx.data_layout
     }
 }
 
@@ -926,6 +927,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn eval_to_allocation(
         &self,
         gid: GlobalId<'tcx>,
@@ -941,8 +943,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.param_env
         };
         let param_env = param_env.with_const();
-        let val = self.tcx.eval_to_allocation_raw(param_env.and(gid))?;
-        self.raw_const_to_mplace(val)
+        let val = self.tcx.dedup_eval_alloc_raw(param_env.and(gid), None);
+        debug!(?val);
+
+        self.raw_const_to_mplace(val?)
     }
 
     #[must_use]

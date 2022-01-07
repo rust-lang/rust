@@ -10,10 +10,10 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::interpret::{ConstDedupResult, ErrorHandled};
 use rustc_middle::mir::pretty::display_allocation;
 use rustc_middle::traits::Reveal;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::{LayoutError, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
@@ -28,6 +28,7 @@ pub fn note_on_undefined_behavior_error() -> &'static str {
 }
 
 // Returns a pointer to where the result lives
+#[instrument(skip(ecx, body), level = "debug")]
 fn eval_body_using_ecx<'mir, 'tcx>(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     cid: GlobalId<'tcx>,
@@ -160,6 +161,7 @@ pub(super) fn op_to_const<'tcx>(
             ConstValue::Scalar(Scalar::ZST)
         }
     };
+
     match immediate {
         Ok(ref mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
@@ -212,76 +214,75 @@ fn turn_into_const_value<'tcx>(
     op_to_const(&ecx, &mplace.into())
 }
 
+#[instrument(skip(tcx), level = "debug")]
 pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
     assert!(key.param_env.constness() == hir::Constness::Const);
-    // see comment in eval_to_allocation_raw_provider for what we're doing here
-    if key.param_env.reveal() == Reveal::All {
-        let mut key = key;
-        key.param_env = key.param_env.with_user_facing();
-        match tcx.eval_to_const_value_raw(key) {
-            // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {}
-            // deduplicate calls
-            other => return other,
-        }
-    }
+    let (param_env, id) = key.into_parts();
+    let reveal = param_env.reveal();
 
     // We call `const_eval` for zero arg intrinsics, too, in order to cache their value.
     // Catch such calls and evaluate them instead of trying to load a constant's MIR.
     if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
-        let ty = key.value.instance.ty(tcx, key.param_env);
+        let ty = key.value.instance.ty(tcx, param_env);
         let substs = match ty.kind() {
             ty::FnDef(_, substs) => substs,
             _ => bug!("intrinsic with type {:?}", ty),
         };
-        return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs).map_err(|error| {
-            let span = tcx.def_span(def_id);
-            let error = ConstEvalErr { error: error.into_kind(), stacktrace: vec![], span };
-            error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
-        });
+
+        match eval_nullary_intrinsic(tcx, param_env, def_id, substs) {
+            Ok(val) => {
+                // store result for deduplication
+                let res = ConstDedupResult::new(reveal, val);
+                tcx.save_const_value_for_dedup(id, res);
+
+                return Ok(val);
+            }
+            Err(e) => {
+                let span = tcx.def_span(def_id);
+                let error = ConstEvalErr { error: e.into_kind(), stacktrace: vec![], span };
+
+                return Err(
+                    error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
+                );
+            }
+        }
     }
 
-    tcx.eval_to_allocation_raw(key).map(|val| turn_into_const_value(tcx, val, key))
+    let result =
+        tcx.dedup_eval_alloc_raw(key, None).map(|val| turn_into_const_value(tcx, val, key));
+
+    match result {
+        Ok(val) => {
+            tcx.save_const_value_for_dedup(id, ConstDedupResult::new(reveal, val));
+        }
+        _ => {}
+    }
+
+    result
 }
 
+#[instrument(skip(tcx), level = "debug")]
 pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
     assert!(key.param_env.constness() == hir::Constness::Const);
-    // Because the constant is computed twice (once per value of `Reveal`), we are at risk of
-    // reporting the same error twice here. To resolve this, we check whether we can evaluate the
-    // constant in the more restrictive `Reveal::UserFacing`, which most likely already was
-    // computed. For a large percentage of constants that will already have succeeded. Only
-    // associated constants of generic functions will fail due to not enough monomorphization
-    // information being available.
+    let (param_env, cid) = key.into_parts();
+    let reveal = param_env.reveal();
+    let def = cid.instance.def.with_opt_param();
 
-    // In case we fail in the `UserFacing` variant, we just do the real computation.
-    if key.param_env.reveal() == Reveal::All {
-        let mut key = key;
-        key.param_env = key.param_env.with_user_facing();
-        match tcx.eval_to_allocation_raw(key) {
-            // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {}
-            // deduplicate calls
-            other => return other,
-        }
-    }
     if cfg!(debug_assertions) {
         // Make sure we format the instance even if we do not print it.
         // This serves as a regression test against an ICE on printing.
         // The next two lines concatenated contain some discussion:
         // https://rust-lang.zulipchat.com/#narrow/stream/146212-t-compiler.2Fconst-eval/
         // subject/anon_const_instance_printing/near/135980032
-        let instance = with_no_trimmed_paths(|| key.value.instance.to_string());
+        let instance = with_no_trimmed_paths(|| cid.instance.to_string());
         trace!("const eval: {:?} ({})", key, instance);
     }
-
-    let cid = key.value;
-    let def = cid.instance.def.with_opt_param();
 
     if let Some(def) = def.as_local() {
         if tcx.has_typeck_results(def.did) {
@@ -316,6 +317,20 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
         Err(error) => {
+            debug!("error from eval_body_using_ecx: {:?}", error);
+            if reveal == Reveal::Selection {
+                match error.kind() {
+                    err_inval!(Layout(LayoutError::Unknown(_)))
+                    | err_inval!(TooGeneric)
+                    | err_inval!(AlreadyReported(_)) => {
+                        // We do want to report these errors
+                    }
+                    _ => {
+                        return Err(ErrorHandled::Silent);
+                    }
+                }
+            }
+
             let err = ConstEvalErr::new(&ecx, error, None);
             // Some CTFE errors raise just a lint, not a hard error; see
             // <https://github.com/rust-lang/rust/issues/71800>.
@@ -328,7 +343,6 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 // use of broken constant from other crate: always an error
                 true
             };
-
             if is_hard_err {
                 let msg = if is_static {
                     Cow::from("could not evaluate static initializer")
@@ -345,7 +359,6 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                         Cow::from("evaluation of constant value failed")
                     }
                 };
-
                 Err(err.report_as_error(ecx.tcx.at(ecx.cur_span()), &msg))
             } else {
                 let hir_id = tcx.hir().local_def_id_to_hir_id(def.as_local().unwrap().did);
@@ -377,10 +390,26 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 }
             };
             let alloc_id = mplace.ptr.provenance.unwrap();
+
             if let Err(error) = validation {
                 // Validation failed, report an error. This is always a hard error.
                 let err = ConstEvalErr::new(&ecx, error, None);
-                Err(err.struct_error(
+
+                // FIXME Do we also want to keep these silent with Reveal::Selection?
+                if reveal == Reveal::Selection {
+                    match err.error {
+                        err_inval!(Layout(LayoutError::Unknown(_)))
+                        | err_inval!(TooGeneric)
+                        | err_inval!(AlreadyReported(_)) => {
+                            // We do want to report these errors
+                        }
+                        _ => {
+                            return Err(ErrorHandled::Silent);
+                        }
+                    }
+                }
+
+                let error = Err(err.struct_error(
                     ecx.tcx,
                     "it is undefined behavior to use this value",
                     |mut diag| {
@@ -394,10 +423,20 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                         ));
                         diag.emit();
                     },
-                ))
+                ));
+
+                debug!(?error);
+
+                error
             } else {
                 // Convert to raw constant
-                Ok(ConstAlloc { alloc_id, ty: mplace.layout.ty })
+                let const_alloc = ConstAlloc { alloc_id, ty: mplace.layout.ty };
+                let val = ConstDedupResult::new(reveal, const_alloc);
+
+                // store result in order to deduplicate later
+                tcx.save_alloc_for_dedup(cid, val);
+
+                Ok(const_alloc)
             }
         }
     }
