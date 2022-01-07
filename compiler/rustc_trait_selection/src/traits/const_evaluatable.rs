@@ -32,7 +32,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     uv: ty::Unevaluated<'tcx, ()>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
-) -> Result<(), NotConstEvaluatable> {
+) -> Result<(), NotConstEvaluatable<'tcx>> {
     debug!("is_const_evaluatable({:?})", uv);
     if infcx.tcx.features().generic_const_exprs {
         let tcx = infcx.tcx;
@@ -174,6 +174,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
             Err(NotConstEvaluatable::Error(ErrorReported))
         }
         Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
+        Err(ErrorHandled::Silent(id)) => Err(NotConstEvaluatable::Silent(id)),
         Ok(_) => Ok(()),
     }
 }

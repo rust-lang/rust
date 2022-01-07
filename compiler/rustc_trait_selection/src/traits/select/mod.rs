@@ -675,10 +675,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
-                        (Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Silent), _)
-                        | (_, Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Silent)) => {
-                            Ok(EvaluatedToErr)
-                        }
+                        (
+                            Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Silent(_)),
+                            _,
+                        )
+                        | (
+                            _,
+                            Err(ErrorHandled::Reported(ErrorReported) | ErrorHandled::Silent(_)),
+                        ) => Ok(EvaluatedToErr),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
                                 obligation.cause.span(self.tcx()),
@@ -2659,11 +2663,7 @@ impl<'o, 'tcx> TraitObligationStackList<'o, 'tcx> {
     }
 
     fn depth(&self) -> usize {
-        if let Some(head) = self.head {
-            head.depth
-        } else {
-            0
-        }
+        if let Some(head) = self.head { head.depth } else { 0 }
     }
 }
 
