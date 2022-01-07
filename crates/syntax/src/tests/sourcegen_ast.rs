@@ -777,6 +777,33 @@ fn extract_struct_traits(ast: &mut AstSrc) {
             extract_struct_trait(node, name, methods);
         }
     }
+
+    let nodes_with_doc_comments = [
+        "SourceFile",
+        "Fn",
+        "Struct",
+        "Union",
+        "RecordField",
+        "TupleField",
+        "Enum",
+        "Variant",
+        "Trait",
+        "Module",
+        "Static",
+        "Const",
+        "TypeAlias",
+        "Impl",
+        "MacroRules",
+        "MacroDef",
+        "Macro",
+        "Use",
+    ];
+
+    for node in &mut ast.nodes {
+        if nodes_with_doc_comments.contains(&&*node.name) {
+            node.traits.push("HasDocComments".into());
+        }
+    }
 }
 
 fn extract_struct_trait(node: &mut AstNodeSrc, trait_name: &str, methods: &[&str]) {

@@ -771,21 +771,4 @@ impl ast::HasLoopBody for ast::ForExpr {
     }
 }
 
-impl ast::HasDocComments for ast::SourceFile {}
-impl ast::HasDocComments for ast::Fn {}
-impl ast::HasDocComments for ast::Struct {}
-impl ast::HasDocComments for ast::Union {}
-impl ast::HasDocComments for ast::RecordField {}
-impl ast::HasDocComments for ast::TupleField {}
-impl ast::HasDocComments for ast::Enum {}
-impl ast::HasDocComments for ast::Variant {}
-impl ast::HasDocComments for ast::Trait {}
-impl ast::HasDocComments for ast::Module {}
-impl ast::HasDocComments for ast::Static {}
-impl ast::HasDocComments for ast::Const {}
-impl ast::HasDocComments for ast::TypeAlias {}
-impl ast::HasDocComments for ast::Impl {}
-impl ast::HasDocComments for ast::MacroRules {}
-impl ast::HasDocComments for ast::MacroDef {}
-impl ast::HasDocComments for ast::Macro {}
-impl ast::HasDocComments for ast::Use {}
+impl ast::HasAttrs for ast::AnyHasDocComments {}
