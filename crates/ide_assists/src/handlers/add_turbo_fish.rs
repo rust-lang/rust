@@ -77,7 +77,13 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         }
     }
 
-    let number_of_arguments = generics.len();
+    let number_of_arguments = generics
+        .iter()
+        .filter(|param| match param {
+            hir::GenericParam::TypeParam(_) => true,
+            _ => false,
+        })
+        .count();
     let fish_head = std::iter::repeat("_").take(number_of_arguments).collect::<Vec<_>>().join(",");
 
     acc.add(
@@ -337,6 +343,25 @@ fn main() {
 }
 "#,
             "Add `: _` before assignment operator",
+        );
+    }
+
+    #[test]
+    fn add_turbo_fish_function_lifetime_parameter() {
+        check_assist(
+            add_turbo_fish,
+            r#"
+fn make<'a, T, A>(t: T, a: A) {}
+fn main() {
+    make$0(5, 2);
+}
+"#,
+            r#"
+fn make<'a, T, A>(t: T, a: A) {}
+fn main() {
+    make::<${0:_,_}>(5, 2);
+}
+"#,
         );
     }
 }
