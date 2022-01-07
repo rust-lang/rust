@@ -79,7 +79,9 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
 
     let number_of_arguments = generics
         .iter()
-        .filter(|param| matches!(param, hir::GenericParam::TypeParam(_) | hir::GenericParam::ConstParam(_)))
+        .filter(|param| {
+            matches!(param, hir::GenericParam::TypeParam(_) | hir::GenericParam::ConstParam(_))
+        })
         .count();
     let fish_head = std::iter::repeat("_").take(number_of_arguments).collect::<Vec<_>>().join(",");
 
