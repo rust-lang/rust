@@ -34,6 +34,7 @@ pub enum NotConstEvaluatable {
     Error(ErrorReported),
     MentionsInfer,
     MentionsParam,
+    Silent,
 }
 
 impl From<ErrorReported> for NotConstEvaluatable {
