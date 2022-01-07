@@ -1043,6 +1043,10 @@ pub struct GlobalCtxt<'tcx> {
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
 
+    /// Used to deduplicate calls to `eval_to_allocation_raw` and
+    /// `eval_to_const_value_raw`.
+    pub dedup_const_map: Lock<interpret::ConstDedupMap<'tcx>>,
+
     output_filenames: Arc<OutputFilenames>,
 }
 
@@ -1187,6 +1191,7 @@ impl<'tcx> TyCtxt<'tcx> {
             stability_interner: Default::default(),
             const_stability_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
+            dedup_const_map: Lock::new(interpret::ConstDedupMap::new()),
             output_filenames: Arc::new(output_filenames),
         }
     }
