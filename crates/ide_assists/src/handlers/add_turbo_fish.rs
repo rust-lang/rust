@@ -83,7 +83,6 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             matches!(param, hir::GenericParam::TypeParam(_) | hir::GenericParam::ConstParam(_))
         })
         .count();
-    let fish_head = std::iter::repeat("_").take(number_of_arguments).collect::<Vec<_>>().join(",");
 
     acc.add(
         AssistId("add_turbo_fish", AssistKind::RefactorRewrite),
@@ -91,15 +90,31 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         ident.text_range(),
         |builder| match ctx.config.snippet_cap {
             Some(cap) => {
-                let snip = format!("::<${{0:{}}}>", fish_head);
+                let snip = format!("::<{}>", get_snippet_fish_head(number_of_arguments));
                 builder.insert_snippet(cap, ident.text_range().end(), snip)
             }
             None => {
+                let fish_head =
+                    std::iter::repeat("_").take(number_of_arguments).collect::<Vec<_>>().join(", ");
                 let snip = format!("::<{}>", fish_head);
                 builder.insert(ident.text_range().end(), snip);
             }
         },
     )
+}
+
+/// This will create a snippet string with tabstops marked
+fn get_snippet_fish_head(number_of_arguments: usize) -> String {
+    let mut fish_head = String::new();
+    let mut i = 1;
+    while i < number_of_arguments {
+        fish_head.push_str(&format!("${{{}:_}},", i));
+        i = i + 1;
+    }
+
+    // tabstop 0 is a special case and always the last one
+    fish_head.push_str("${0:_}");
+    fish_head
 }
 
 #[cfg(test)]
@@ -140,7 +155,7 @@ fn main() {
             r#"
 fn make<T, A>() -> T {}
 fn main() {
-    make::<${0:_,_}>();
+    make::<${1:_},${0:_}>();
 }
 "#,
         );
@@ -159,7 +174,7 @@ fn main() {
             r#"
 fn make<T, A, B, C, D, E, F>() -> T {}
 fn main() {
-    make::<${0:_,_,_,_,_,_,_}>();
+    make::<${1:_},${2:_},${3:_},${4:_},${5:_},${6:_},${0:_}>();
 }
 "#,
         );
@@ -358,7 +373,7 @@ fn main() {
             r#"
 fn make<'a, T, A>(t: T, a: A) {}
 fn main() {
-    make::<${0:_,_}>(5, 2);
+    make::<${1:_},${0:_}>(5, 2);
 }
 "#,
         );
@@ -377,7 +392,7 @@ fn main() {
             r#"
 fn make<T, const N: usize>(t: T) {}
 fn main() {
-    make::<${0:_,_}>(3);
+    make::<${1:_},${0:_}>(3);
 }
 "#,
         );
