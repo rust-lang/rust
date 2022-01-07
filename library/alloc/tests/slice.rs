@@ -1783,12 +1783,10 @@ thread_local!(static SILENCE_PANIC: Cell<bool> = Cell::new(false));
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)] // no threads
 fn panic_safe() {
-    panic::update_hook(|prev| {
-        Box::new(move |info| {
-            if !SILENCE_PANIC.with(|s| s.get()) {
-                prev(info);
-            }
-        })
+    panic::update_hook(move |prev, info| {
+        if !SILENCE_PANIC.with(|s| s.get()) {
+            prev(info);
+        }
     });
 
     let mut rng = thread_rng();

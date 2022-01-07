@@ -76,6 +76,12 @@ enum Hook {
     Custom(*mut (dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send)),
 }
 
+impl Hook {
+    fn custom(f: impl Fn(&PanicInfo<'_>) + 'static + Sync + Send) -> Self {
+        Self::Custom(Box::into_raw(Box::new(f)))
+    }
+}
+
 static HOOK_LOCK: StaticRWLock = StaticRWLock::new();
 static mut HOOK: Hook = Hook::Default;
 
@@ -180,7 +186,8 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
     }
 }
 
-/// Atomic combination of [`take_hook`] + [`set_hook`].
+/// Atomic combination of [`take_hook`] and [`set_hook`]. Use this to replace the panic handler with
+/// a new panic handler that does something and then executes the old handler.
 ///
 /// [`take_hook`]: ./fn.take_hook.html
 /// [`set_hook`]: ./fn.set_hook.html
@@ -188,16 +195,6 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 /// # Panics
 ///
 /// Panics if called from a panicking thread.
-///
-/// Panics if the provided closure calls any of the functions [`panic::take_hook`],
-/// [`panic::set_hook`], or [`panic::update_hook`].
-///
-/// Note: if the provided closure panics, the panic will not be able to be handled, resulting in a
-/// double panic that aborts the process with a generic error message.
-///
-/// [`panic::take_hook`]: ./fn.take_hook.html
-/// [`panic::set_hook`]: ./fn.set_hook.html
-/// [`panic::update_hook`]: ./fn.update_hook.html
 ///
 /// # Examples
 ///
@@ -207,11 +204,15 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 /// #![feature(panic_update_hook)]
 /// use std::panic;
 ///
-/// panic::update_hook(|prev| {
-///     Box::new(move |panic_info| {
-///         println!("Print custom message and execute panic handler as usual");
-///         prev(panic_info);
-///     })
+/// // Equivalent to
+/// // let prev = panic::take_hook();
+/// // panic::set_hook(move |info| {
+/// //     println!("...");
+/// //     prev(info);
+/// // );
+/// panic::update_hook(move |prev, info| {
+///     println!("Print custom message and execute panic handler as usual");
+///     prev(info);
 /// });
 ///
 /// panic!("Custom and then normal");
@@ -219,9 +220,10 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 #[unstable(feature = "panic_update_hook", issue = "92649")]
 pub fn update_hook<F>(hook_fn: F)
 where
-    F: FnOnce(
-        Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>,
-    ) -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>,
+    F: Fn(&(dyn Fn(&PanicInfo<'_>) + Send + Sync + 'static), &PanicInfo<'_>)
+        + Sync
+        + Send
+        + 'static,
 {
     if thread::panicking() {
         panic!("cannot modify the panic hook from a panicking thread");
@@ -232,13 +234,12 @@ where
         let old_hook = HOOK;
         HOOK = Hook::Default;
 
-        let hook_for_fn = match old_hook {
+        let prev = match old_hook {
             Hook::Default => Box::new(default_hook),
             Hook::Custom(ptr) => Box::from_raw(ptr),
         };
 
-        let hook = hook_fn(hook_for_fn);
-        HOOK = Hook::Custom(Box::into_raw(hook));
+        HOOK = Hook::custom(move |info| hook_fn(&prev, info));
         drop(guard);
     }
 }
