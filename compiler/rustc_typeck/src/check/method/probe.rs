@@ -168,27 +168,11 @@ enum ProbeResult {
 /// (at most) one of these. Either the receiver has type `T` and we convert it to `&T` (or with
 /// `mut`), or it has type `*mut T` and we convert it to `*const T`.
 #[derive(Debug, PartialEq, Clone)]
-pub enum AutorefOrPtrAdjustment<'tcx> {
-    /// Receiver has type `T`, add `&` or `&mut` (it `T` is `mut`), and maybe also "unsize" it.
-    /// Unsizing is used to convert a `[T; N]` to `[T]`, which only makes sense when autorefing.
-    Autoref {
-        mutbl: hir::Mutability,
-
-        /// Indicates that the source expression should be "unsized" to a target type. This should
-        /// probably eventually go away in favor of just coercing method receivers.
-        unsize: Option<Ty<'tcx>>,
-    },
+pub enum AutorefOrPtrAdjustment {
+    /// Receiver has type `T`, add `&` or `&mut` (it `T` is `mut`)
+    Autoref { mutbl: hir::Mutability },
     /// Receiver has type `*mut T`, convert to `*const T`
     ToConstPtr,
-}
-
-impl<'tcx> AutorefOrPtrAdjustment<'tcx> {
-    fn get_unsize(&self) -> Option<Ty<'tcx>> {
-        match self {
-            AutorefOrPtrAdjustment::Autoref { mutbl: _, unsize } => *unsize,
-            AutorefOrPtrAdjustment::ToConstPtr => None,
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -204,7 +188,7 @@ pub struct Pick<'tcx> {
 
     /// Indicates that we want to add an autoref (and maybe also unsize it), or if the receiver is
     /// `*mut T`, convert it to `*const T`.
-    pub autoref_or_ptr_adjustment: Option<AutorefOrPtrAdjustment<'tcx>>,
+    pub autoref_or_ptr_adjustment: Option<AutorefOrPtrAdjustment>,
     pub self_ty: Ty<'tcx>,
 }
 
@@ -371,7 +355,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                         autoderefs: 0,
                         from_unsafe_deref: false,
-                        unsize: false,
                     }]),
                     opt_bad_ty: None,
                     reached_recursion_limit: false,
@@ -483,7 +466,7 @@ fn method_autoderef_steps<'tcx>(
                 .include_raw_pointers()
                 .silence_errors();
         let mut reached_raw_pointer = false;
-        let mut steps: Vec<_> = autoderef
+        let steps: Vec<_> = autoderef
             .by_ref()
             .map(|(ty, d)| {
                 let step = CandidateStep {
@@ -493,7 +476,6 @@ fn method_autoderef_steps<'tcx>(
                     ),
                     autoderefs: d,
                     from_unsafe_deref: reached_raw_pointer,
-                    unsize: false,
                 };
                 if let ty::RawPtr(_) = ty.kind() {
                     // all the subsequent steps will be from_unsafe_deref
@@ -510,23 +492,6 @@ fn method_autoderef_steps<'tcx>(
                 ty: infcx
                     .make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
             }),
-            ty::Array(elem_ty, _) => {
-                let dereferences = steps.len() - 1;
-
-                steps.push(CandidateStep {
-                    self_ty: infcx.make_query_response_ignoring_pending_obligations(
-                        inference_vars,
-                        infcx.tcx.mk_slice(elem_ty),
-                    ),
-                    autoderefs: dereferences,
-                    // this could be from an unsafe deref if we had
-                    // a *mut/const [T; N]
-                    from_unsafe_deref: reached_raw_pointer,
-                    unsize: true,
-                });
-
-                None
-            }
             _ => None,
         };
 
@@ -1189,10 +1154,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
-        if step.unsize {
-            return None;
-        }
-
         self.pick_method(self_ty, unstable_candidates).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
@@ -1200,10 +1161,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // Insert a `&*` or `&mut *` if this is a reference type:
                 if let ty::Ref(_, _, mutbl) = *step.self_ty.value.value.kind() {
                     pick.autoderefs += 1;
-                    pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
-                        mutbl,
-                        unsize: pick.autoref_or_ptr_adjustment.and_then(|a| a.get_unsize()),
-                    })
+                    pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref { mutbl })
                 }
 
                 pick
@@ -1227,10 +1185,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.pick_method(autoref_ty, unstable_candidates).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
-                pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
-                    mutbl,
-                    unsize: step.unsize.then_some(self_ty),
-                });
+                pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref { mutbl });
                 pick
             })
         })
@@ -1245,11 +1200,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
-        // Don't convert an unsized reference to ptr
-        if step.unsize {
-            return None;
-        }
-
         let ty = match self_ty.kind() {
             ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut }) => ty,
             _ => return None,

@@ -188,7 +188,6 @@ pub struct CandidateStep<'tcx> {
     /// `fn by_raw_ptr(self: *const Self)` and `fn by_ref(&self)`, then
     /// `foo.by_raw_ptr()` will work and `foo.by_ref()` won't.
     pub from_unsafe_deref: bool,
-    pub unsize: bool,
 }
 
 #[derive(Clone, Debug, HashStable)]

@@ -166,7 +166,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
 
         match &pick.autoref_or_ptr_adjustment {
-            Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
+            Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl }) => {
                 let region = self.next_region_var(infer::Autoref(self.span));
                 target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl: *mutbl, ty: target });
                 let mutbl = match mutbl {
@@ -181,14 +181,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                     target,
                 });
-
-                if let Some(unsize_target) = unsize {
-                    target = self
-                        .tcx
-                        .mk_ref(region, ty::TypeAndMut { mutbl: mutbl.into(), ty: unsize_target });
-                    adjustments
-                        .push(Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target });
-                }
             }
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
                 target = match target.kind() {
