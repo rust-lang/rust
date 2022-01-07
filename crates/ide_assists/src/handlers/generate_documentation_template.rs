@@ -88,7 +88,9 @@ fn introduction_builder(ast_func: &ast::Fn, ctx: &AssistContext) -> String {
 
             let is_new = ast_func.name()?.to_string() == "new";
             match is_new && ret_ty == self_ty {
-                true => Some(format!("Creates a new [`{}`].", self_type(ast_func)?)),
+                true => {
+                    Some(format!("Creates a new [`{}`].", self_type_without_lifetimes(ast_func)?))
+                }
                 false => None,
             }
         } else {
@@ -221,18 +223,34 @@ fn self_name(ast_func: &ast::Fn) -> Option<String> {
 }
 
 /// Heper function to get the name of the type of `self`
-fn self_type(ast_func: &ast::Fn) -> Option<String> {
-    ast_func
-        .syntax()
-        .ancestors()
-        .find_map(ast::Impl::cast)
-        .and_then(|i| i.self_ty())
-        .map(|t| (t.to_string()))
+fn self_type(ast_func: &ast::Fn) -> Option<ast::Type> {
+    ast_func.syntax().ancestors().find_map(ast::Impl::cast).and_then(|i| i.self_ty())
+}
+
+/// Output the real name of `Self` like `MyType<T>`, without the lifetimes.
+fn self_type_without_lifetimes(ast_func: &ast::Fn) -> Option<String> {
+    let path_segment = match self_type(ast_func)? {
+        ast::Type::PathType(path_type) => path_type.path()?.segment()?,
+        _ => return None,
+    };
+    let mut name = path_segment.name_ref()?.to_string();
+    let generics = path_segment
+        .generic_arg_list()?
+        .generic_args()
+        .filter(|generic| matches!(generic, ast::GenericArg::TypeArg(_)))
+        .map(|generic| generic.to_string());
+    let generics: String = generics.format(", ").to_string();
+    if !generics.is_empty() {
+        name.push('<');
+        name.push_str(&generics);
+        name.push('>');
+    }
+    Some(name)
 }
 
 /// Heper function to get the name of the type of `self` without generic arguments
 fn self_partial_type(ast_func: &ast::Fn) -> Option<String> {
-    let mut self_type = self_type(ast_func)?;
+    let mut self_type = self_type(ast_func)?.to_string();
     if let Some(idx) = self_type.find(|c| ['<', ' '].contains(&c)) {
         self_type.truncate(idx);
     }
@@ -309,7 +327,7 @@ fn arguments_from_params(param_list: &ast::ParamList) -> String {
         },
         _ => "_".to_string(),
     });
-    Itertools::intersperse(args_iter, ", ".to_string()).collect()
+    args_iter.format(", ").to_string()
 }
 
 /// Helper function to build a function call. `None` if expected `self_name` was not provided
@@ -985,6 +1003,124 @@ impl<T> MyGenericStruct<T> {
     /// ```
     pub fn new(x: T) -> MyGenericStruct<T> {
         MyGenericStruct { x }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn removes_one_lifetime_from_description() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+#[derive(Debug, PartialEq)]
+pub struct MyGenericStruct<'a, T> {
+    pub x: &'a T,
+}
+impl<'a, T> MyGenericStruct<'a, T> {
+    pub fn new$0(x: &'a T) -> Self {
+        MyGenericStruct { x }
+    }
+}
+"#,
+            r#"
+#[derive(Debug, PartialEq)]
+pub struct MyGenericStruct<'a, T> {
+    pub x: &'a T,
+}
+impl<'a, T> MyGenericStruct<'a, T> {
+    /// Creates a new [`MyGenericStruct<T>`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::MyGenericStruct;
+    ///
+    /// assert_eq!(MyGenericStruct::new(x), );
+    /// ```
+    pub fn new(x: &'a T) -> Self {
+        MyGenericStruct { x }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn removes_all_lifetimes_from_description() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+#[derive(Debug, PartialEq)]
+pub struct MyGenericStruct<'a, 'b, T> {
+    pub x: &'a T,
+    pub y: &'b T,
+}
+impl<'a, 'b, T> MyGenericStruct<'a, 'b, T> {
+    pub fn new$0(x: &'a T, y: &'b T) -> Self {
+        MyGenericStruct { x, y }
+    }
+}
+"#,
+            r#"
+#[derive(Debug, PartialEq)]
+pub struct MyGenericStruct<'a, 'b, T> {
+    pub x: &'a T,
+    pub y: &'b T,
+}
+impl<'a, 'b, T> MyGenericStruct<'a, 'b, T> {
+    /// Creates a new [`MyGenericStruct<T>`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::MyGenericStruct;
+    ///
+    /// assert_eq!(MyGenericStruct::new(x, y), );
+    /// ```
+    pub fn new(x: &'a T, y: &'b T) -> Self {
+        MyGenericStruct { x, y }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn removes_all_lifetimes_and_brackets_from_description() {
+        check_assist(
+            generate_documentation_template,
+            r#"
+#[derive(Debug, PartialEq)]
+pub struct MyGenericStruct<'a, 'b> {
+    pub x: &'a usize,
+    pub y: &'b usize,
+}
+impl<'a, 'b> MyGenericStruct<'a, 'b> {
+    pub fn new$0(x: &'a usize, y: &'b usize) -> Self {
+        MyGenericStruct { x, y }
+    }
+}
+"#,
+            r#"
+#[derive(Debug, PartialEq)]
+pub struct MyGenericStruct<'a, 'b> {
+    pub x: &'a usize,
+    pub y: &'b usize,
+}
+impl<'a, 'b> MyGenericStruct<'a, 'b> {
+    /// Creates a new [`MyGenericStruct`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use test::MyGenericStruct;
+    ///
+    /// assert_eq!(MyGenericStruct::new(x, y), );
+    /// ```
+    pub fn new(x: &'a usize, y: &'b usize) -> Self {
+        MyGenericStruct { x, y }
     }
 }
 "#,
