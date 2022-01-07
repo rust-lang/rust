@@ -80,7 +80,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let number_of_arguments = generics
         .iter()
         .filter(|param| match param {
-            hir::GenericParam::TypeParam(_) => true,
+            hir::GenericParam::TypeParam(_) | hir::GenericParam::ConstParam(_) => true,
             _ => false,
         })
         .count();
@@ -360,6 +360,25 @@ fn main() {
 fn make<'a, T, A>(t: T, a: A) {}
 fn main() {
     make::<${0:_,_}>(5, 2);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_turbo_fish_function_const_parameter() {
+        check_assist(
+            add_turbo_fish,
+            r#"
+fn make<T, const N: usize>(t: T) {}
+fn main() {
+    make$0(3);
+}
+"#,
+            r#"
+fn make<T, const N: usize>(t: T) {}
+fn main() {
+    make::<${0:_,_}>(3);
 }
 "#,
         );
