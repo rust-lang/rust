@@ -31,30 +31,8 @@ impl ChildBySource for TraitId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = db.trait_data(*self);
         // FIXME attribute macros
-        for (_name, item) in data.items.iter() {
-            match *item {
-                AssocItemId::FunctionId(func) => {
-                    let loc = func.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::FUNCTION].insert(src, func)
-                    }
-                }
-                AssocItemId::ConstId(konst) => {
-                    let loc = konst.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::CONST].insert(src, konst)
-                    }
-                }
-                AssocItemId::TypeAliasId(ty) => {
-                    let loc = ty.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::TYPE_ALIAS].insert(src, ty)
-                    }
-                }
-            }
+        for &(_, item) in data.items.iter() {
+            child_by_source_assoc_items(db, res, file_id, item);
         }
     }
 }
@@ -64,28 +42,37 @@ impl ChildBySource for ImplId {
         let data = db.impl_data(*self);
         // FIXME attribute macros
         for &item in data.items.iter() {
-            match item {
-                AssocItemId::FunctionId(func) => {
-                    let loc = func.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::FUNCTION].insert(src, func)
-                    }
-                }
-                AssocItemId::ConstId(konst) => {
-                    let loc = konst.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::CONST].insert(src, konst)
-                    }
-                }
-                AssocItemId::TypeAliasId(ty) => {
-                    let loc = ty.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::TYPE_ALIAS].insert(src, ty)
-                    }
-                }
+            child_by_source_assoc_items(db, res, file_id, item);
+        }
+    }
+}
+
+fn child_by_source_assoc_items(
+    db: &dyn DefDatabase,
+    res: &mut DynMap,
+    file_id: HirFileId,
+    item: AssocItemId,
+) {
+    match item {
+        AssocItemId::FunctionId(func) => {
+            let loc = func.lookup(db);
+            if loc.id.file_id() == file_id {
+                let src = loc.source(db);
+                res[keys::FUNCTION].insert(src, func)
+            }
+        }
+        AssocItemId::ConstId(konst) => {
+            let loc = konst.lookup(db);
+            if loc.id.file_id() == file_id {
+                let src = loc.source(db);
+                res[keys::CONST].insert(src, konst)
+            }
+        }
+        AssocItemId::TypeAliasId(ty) => {
+            let loc = ty.lookup(db);
+            if loc.id.file_id() == file_id {
+                let src = loc.source(db);
+                res[keys::TYPE_ALIAS].insert(src, ty)
             }
         }
     }
@@ -114,15 +101,23 @@ impl ChildBySource for ItemScope {
             }
         });
         self.unnamed_consts().for_each(|konst| {
-            let src = konst.lookup(db).source(db);
-            res[keys::CONST].insert(src, konst);
+            let loc = konst.lookup(db);
+            if loc.id.file_id() == file_id {
+                let src = loc.source(db);
+                res[keys::CONST].insert(src, konst);
+            }
         });
         self.impls().for_each(|imp| add_impl(db, file_id, res, imp));
         self.attr_macro_invocs().for_each(|(ast_id, call_id)| {
-            let item = ast_id.with_value(ast_id.to_node(db.upcast()));
-            res[keys::ATTR_MACRO_CALL].insert(item, call_id);
+            if ast_id.file_id == file_id {
+                let item = ast_id.with_value(ast_id.to_node(db.upcast()));
+                res[keys::ATTR_MACRO_CALL].insert(item, call_id);
+            }
         });
         self.derive_macro_invocs().for_each(|(ast_id, calls)| {
+            if ast_id.file_id != file_id {
+                return;
+            }
             let adt = ast_id.to_node(db.upcast());
             for (attr_id, calls) in calls {
                 if let Some(Either::Right(attr)) =
