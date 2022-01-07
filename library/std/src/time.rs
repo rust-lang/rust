@@ -133,9 +133,12 @@ pub use core::time::FromFloatSecsError;
 /// if available, which is the case for all [tier 1] platforms.
 /// In practice such guarantees are – under rare circumstances – broken by hardware, virtualization
 /// or operating system bugs. To work around these bugs and platforms not offering monotonic clocks
-/// [`duration_since`], [`elapsed`] and [`sub`] saturate to zero. [`checked_duration_since`] can
-/// be used to detect and handle situations where monotonicity is violated, or `Instant`s are
-/// subtracted in the wrong order.
+/// [`duration_since`], [`elapsed`] and [`sub`] saturate to zero. In older rust versions this
+/// lead to a panic instead. [`checked_duration_since`] can be used to detect and handle situations
+/// where monotonicity is violated, or `Instant`s are subtracted in the wrong order.
+///
+/// This workaround obscures programming errors where earlier and later instants are accidentally
+/// swapped. For this reason future rust versions may reintroduce panics.
 ///
 /// [tier 1]: https://doc.rust-lang.org/rustc/platform-support.html
 /// [`duration_since`]: Instant::duration_since
@@ -271,6 +274,13 @@ impl Instant {
     /// Returns the amount of time elapsed from another instant to this one,
     /// or zero duration if that instant is later than this one.
     ///
+    /// # Panics
+    ///
+    /// Previous rust versions panicked when `earlier` was later than `self`. Currently this
+    /// method saturates. Future versions may reintroduce the panic in some circumstances.
+    /// See [Monotonicity].
+    ///
+    /// [Monotonicity]: Instant#monotonicity
     ///
     /// # Examples
     ///
@@ -338,6 +348,14 @@ impl Instant {
     }
 
     /// Returns the amount of time elapsed since this instant was created.
+    ///
+    /// # Panics
+    ///
+    /// Previous rust versions panicked when self was earlier than the current time. Currently this
+    /// method returns a Duration of zero in that case. Future versions may reintroduce the panic.
+    /// See [Monotonicity].
+    ///
+    /// [Monotonicity]: Instant#monotonicity
     ///
     /// # Examples
     ///
@@ -413,6 +431,16 @@ impl SubAssign<Duration> for Instant {
 impl Sub<Instant> for Instant {
     type Output = Duration;
 
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or zero duration if that instant is later than this one.
+    ///
+    /// # Panics
+    ///
+    /// Previous rust versions panicked when `other` was later than `self`. Currently this
+    /// method saturates. Future versions may reintroduce the panic in some circumstances.
+    /// See [Monotonicity].
+    ///
+    /// [Monotonicity]: Instant#monotonicity
     fn sub(self, other: Instant) -> Duration {
         self.duration_since(other)
     }
