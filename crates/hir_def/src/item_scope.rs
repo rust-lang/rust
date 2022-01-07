@@ -67,7 +67,7 @@ pub struct ItemScope {
     /// The derive macro invocations in this scope, keyed by the owner item over the actual derive attributes
     /// paired with the derive macro invocations for the specific attribute.
     derive_macros:
-        FxHashMap<AstId<ast::Item>, SmallVec<[(AttrId, SmallVec<[Option<MacroCallId>; 1]>); 1]>>,
+        FxHashMap<AstId<ast::Adt>, SmallVec<[(AttrId, SmallVec<[Option<MacroCallId>; 1]>); 1]>>,
 }
 
 pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
@@ -204,12 +204,12 @@ impl ItemScope {
 
     pub(crate) fn set_derive_macro_invoc(
         &mut self,
-        item: AstId<ast::Item>,
+        adt: AstId<ast::Adt>,
         call: MacroCallId,
         attr_id: AttrId,
         idx: usize,
     ) {
-        if let Some(derives) = self.derive_macros.get_mut(&item) {
+        if let Some(derives) = self.derive_macros.get_mut(&adt) {
             if let Some((_, invocs)) = derives.iter_mut().find(|&&mut (id, _)| id == attr_id) {
                 invocs[idx] = Some(call);
             }
@@ -221,17 +221,17 @@ impl ItemScope {
     /// independent of their indices.
     pub(crate) fn init_derive_attribute(
         &mut self,
-        item: AstId<ast::Item>,
+        adt: AstId<ast::Adt>,
         attr_id: AttrId,
         len: usize,
     ) {
-        self.derive_macros.entry(item).or_default().push((attr_id, smallvec![None; len]));
+        self.derive_macros.entry(adt).or_default().push((attr_id, smallvec![None; len]));
     }
 
     pub(crate) fn derive_macro_invocs(
         &self,
     ) -> impl Iterator<
-        Item = (AstId<ast::Item>, impl Iterator<Item = (AttrId, &[Option<MacroCallId>])>),
+        Item = (AstId<ast::Adt>, impl Iterator<Item = (AttrId, &[Option<MacroCallId>])>),
     > + '_ {
         self.derive_macros
             .iter()

@@ -6,7 +6,7 @@
 
 use either::Either;
 use hir_expand::HirFileId;
-use syntax::ast::HasAttrs;
+use syntax::ast::HasDocComments;
 
 use crate::{
     db::DefDatabase,
@@ -110,7 +110,7 @@ impl ChildBySource for ItemScope {
                     // FIXME: Do we need to add proc-macros into a PROCMACRO dynmap here?
                     Either::Right(_fn) => return,
                 };
-                res[keys::MACRO].insert(src, makro);
+                res[keys::MACRO_CALL].insert(src, makro);
             }
         });
         self.unnamed_consts().for_each(|konst| {
@@ -120,13 +120,16 @@ impl ChildBySource for ItemScope {
         self.impls().for_each(|imp| add_impl(db, file_id, res, imp));
         self.attr_macro_invocs().for_each(|(ast_id, call_id)| {
             let item = ast_id.with_value(ast_id.to_node(db.upcast()));
-            res[keys::ATTR_MACRO].insert(item, call_id);
+            res[keys::ATTR_MACRO_CALL].insert(item, call_id);
         });
         self.derive_macro_invocs().for_each(|(ast_id, calls)| {
-            let item = ast_id.to_node(db.upcast());
+            let adt = ast_id.to_node(db.upcast());
             for (attr_id, calls) in calls {
-                if let Some(attr) = item.attrs().nth(attr_id.ast_index as usize) {
-                    res[keys::DERIVE_MACRO].insert(ast_id.with_value(attr), calls.into());
+                if let Some(Either::Right(attr)) =
+                    adt.doc_comments_and_attrs().nth(attr_id.ast_index as usize)
+                {
+                    res[keys::DERIVE_MACRO_CALL]
+                        .insert(ast_id.with_value(attr), (attr_id, calls.into()));
                 }
             }
         });

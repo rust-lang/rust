@@ -18,7 +18,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasAttrs, HasGenericParams, HasLoopBody},
+    ast::{self, HasAttrs as _, HasGenericParams, HasLoopBody},
     match_ast, AstNode, AstToken, Direction, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken,
     TextSize, T,
 };
@@ -27,9 +27,9 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Access, AssocItem, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource,
-    HirFileId, Impl, InFile, Label, LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path,
-    ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    Access, AssocItem, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasAttrs as _,
+    HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local, MacroDef, Module, ModuleDef,
+    Name, Path, ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -486,7 +486,7 @@ impl<'db> SemanticsImpl<'db> {
         let adt = InFile::new(file_id, &adt);
         let src = InFile::new(file_id, attr.clone());
         self.with_ctx(|ctx| {
-            let res = ctx.attr_to_derive_macro_call(adt, src)?;
+            let (_, res) = ctx.attr_to_derive_macro_call(adt, src)?;
             Some(res.to_vec())
         })
     }
@@ -917,15 +917,14 @@ impl<'db> SemanticsImpl<'db> {
         let tt = derive.token_tree()?;
         let file = self.find_file(derive.syntax());
         let adt = derive.syntax().parent().and_then(ast::Adt::cast)?;
-
+        let adt_def = ToDef::to_def(self, file.with_value(adt.clone()))?;
         let res = self.with_ctx(|ctx| {
-            let attr_def = ctx.attr_to_def(file.with_value(derive.clone()))?;
-            let derives = ctx.attr_to_derive_macro_call(
+            let (attr_id, derives) = ctx.attr_to_derive_macro_call(
                 file.with_value(&adt),
                 file.with_value(derive.clone()),
             )?;
-
-            let mut derive_paths = attr_def.parse_path_comma_token_tree()?;
+            let attrs = adt_def.attrs(self.db);
+            let mut derive_paths = attrs[attr_id].parse_path_comma_token_tree()?;
 
             let derive_idx = tt
                 .syntax()
@@ -1225,7 +1224,6 @@ to_def_impls![
     (crate::Local, ast::SelfParam, self_param_to_def),
     (crate::Label, ast::Label, label_to_def),
     (crate::Adt, ast::Adt, adt_to_def),
-    (crate::Attr, ast::Attr, attr_to_def),
 ];
 
 fn find_root(node: &SyntaxNode) -> SyntaxNode {

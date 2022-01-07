@@ -751,7 +751,7 @@ fn macro_call_as_call_id(
 }
 
 fn derive_macro_as_call_id(
-    item_attr: &AstIdWithPath<ast::Item>,
+    item_attr: &AstIdWithPath<ast::Adt>,
     derive_attr: AttrId,
     db: &dyn db::DefDatabase,
     krate: CrateId,

@@ -33,7 +33,7 @@ pub enum DefDiagnosticKind {
 
     InvalidDeriveTarget { ast: AstId<ast::Item>, id: u32 },
 
-    MalformedDerive { ast: AstId<ast::Item>, id: u32 },
+    MalformedDerive { ast: AstId<ast::Adt>, id: u32 },
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -121,7 +121,7 @@ impl DefDiagnostic {
 
     pub(super) fn malformed_derive(
         container: LocalModuleId,
-        ast: AstId<ast::Item>,
+        ast: AstId<ast::Adt>,
         id: AttrId,
     ) -> Self {
         Self {

@@ -121,7 +121,7 @@ pub enum MacroCallKind {
         expand_to: ExpandTo,
     },
     Derive {
-        ast_id: AstId<ast::Item>,
+        ast_id: AstId<ast::Adt>,
         derive_name: Box<str>,
         /// Syntactical index of the invoking `#[derive]` attribute.
         ///
@@ -328,11 +328,10 @@ impl MacroDefId {
 impl MacroCallKind {
     /// Returns the file containing the macro invocation.
     fn file_id(&self) -> HirFileId {
-        match self {
-            MacroCallKind::FnLike { ast_id, .. } => ast_id.file_id,
-            MacroCallKind::Derive { ast_id, .. } | MacroCallKind::Attr { ast_id, .. } => {
-                ast_id.file_id
-            }
+        match *self {
+            MacroCallKind::FnLike { ast_id: InFile { file_id, .. }, .. }
+            | MacroCallKind::Derive { ast_id: InFile { file_id, .. }, .. }
+            | MacroCallKind::Attr { ast_id: InFile { file_id, .. }, .. } => file_id,
         }
     }
 
@@ -341,7 +340,10 @@ impl MacroCallKind {
             MacroCallKind::FnLike { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }
-            MacroCallKind::Derive { ast_id, .. } | MacroCallKind::Attr { ast_id, .. } => {
+            MacroCallKind::Derive { ast_id, .. } => {
+                ast_id.with_value(ast_id.to_node(db).syntax().clone())
+            }
+            MacroCallKind::Attr { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }
         }
@@ -352,9 +354,8 @@ impl MacroCallKind {
             MacroCallKind::FnLike { ast_id, .. } => {
                 Some(ast_id.to_node(db).token_tree()?.syntax().clone())
             }
-            MacroCallKind::Derive { ast_id, .. } | MacroCallKind::Attr { ast_id, .. } => {
-                Some(ast_id.to_node(db).syntax().clone())
-            }
+            MacroCallKind::Derive { ast_id, .. } => Some(ast_id.to_node(db).syntax().clone()),
+            MacroCallKind::Attr { ast_id, .. } => Some(ast_id.to_node(db).syntax().clone()),
         }
     }
 
