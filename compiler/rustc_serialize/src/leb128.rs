@@ -54,8 +54,17 @@ macro_rules! impl_read_unsigned_leb128 {
     ($fn_name:ident, $int_ty:ty) => {
         #[inline]
         pub fn $fn_name(slice: &[u8], position: &mut usize) -> $int_ty {
-            let mut result = 0;
-            let mut shift = 0;
+            // The first iteration of this loop is unpeeled. This is a
+            // performance win because this code is hot and integer values less
+            // than 128 are very common, typically occurring 50-80% or more of
+            // the time, even for u64 and u128.
+            let byte = slice[*position];
+            *position += 1;
+            if (byte & 0x80) == 0 {
+                return byte as $int_ty;
+            }
+            let mut result = (byte & 0x7F) as $int_ty;
+            let mut shift = 7;
             loop {
                 let byte = slice[*position];
                 *position += 1;
