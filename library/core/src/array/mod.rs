@@ -14,6 +14,8 @@ use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
+#[cfg(not(bootstrap))]
+use crate::ops::{Deref, DerefMut};
 use crate::slice::{Iter, IterMut};
 
 mod equality;
@@ -298,6 +300,28 @@ where
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(self as &mut [T], index)
+    }
+}
+
+#[stable(feature = "deref_on_arrays", since = "1.60.0")]
+#[rustc_const_unstable(feature = "const_deref_on_arrays", issue = "none")]
+#[cfg(not(bootstrap))]
+impl<T, const N: usize> const Deref for [T; N] {
+    type Target = [T];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self as &[T]
+    }
+}
+
+#[stable(feature = "deref_on_arrays", since = "1.60.0")]
+#[rustc_const_unstable(feature = "const_deref_on_arrays", issue = "none")]
+#[cfg(not(bootstrap))]
+impl<T, const N: usize> const DerefMut for [T; N] {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self as &mut [T]
     }
 }
 
