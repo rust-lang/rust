@@ -39,6 +39,7 @@ pub struct ConfirmResult<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    #[tracing::instrument(level = "debug", skip(self, span, self_expr, call_expr, segment))]
     pub fn confirm_method(
         &self,
         span: Span,
@@ -48,10 +49,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pick: probe::Pick<'tcx>,
         segment: &hir::PathSegment<'_>,
     ) -> ConfirmResult<'tcx> {
-        debug!(
-            "confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
-            unadjusted_self_ty, pick, segment.args,
-        );
+        debug!(?segment.args);
 
         let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
         confirm_cx.confirm(unadjusted_self_ty, pick, segment)
@@ -81,7 +79,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let rcvr_substs = self.fresh_receiver_substs(self_ty, &pick);
         let all_substs = self.instantiate_method_substs(&pick, segment, rcvr_substs);
 
-        debug!("all_substs={:?}", all_substs);
+        debug!(?all_substs);
 
         // Create the final signature for the method, replacing late-bound regions.
         let (method_sig, method_predicates) = self.instantiate_method_sig(&pick, all_substs);
@@ -93,10 +91,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
         let method_sig_rcvr = self.normalize_associated_types_in(self.span, method_sig.inputs()[0]);
-        debug!(
-            "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
-            self_ty, method_sig_rcvr, method_sig, method_predicates
-        );
+        debug!(?self_ty, ?method_sig_rcvr, ?method_sig, ?method_predicates);
         self.unify_receivers(self_ty, method_sig_rcvr, &pick, all_substs);
 
         let (method_sig, method_predicates) =

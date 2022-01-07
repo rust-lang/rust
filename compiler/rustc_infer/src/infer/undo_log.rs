@@ -29,6 +29,23 @@ pub(crate) enum UndoLog<'tcx> {
     PushRegionObligation,
 }
 
+impl<'tcx> std::fmt::Debug for UndoLog<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::TypeVariables(_) => f.debug_tuple("TypeVariables").finish(),
+            Self::ConstUnificationTable(_) => f.debug_tuple("ConstUnificationTable").finish(),
+            Self::IntUnificationTable(_) => f.debug_tuple("IntUnificationTable").finish(),
+            Self::FloatUnificationTable(_) => f.debug_tuple("FloatUnificationTable").finish(),
+            Self::RegionConstraintCollector(_) => {
+                f.debug_tuple("RegionConstraintCollector").finish()
+            }
+            Self::RegionUnificationTable(_) => f.debug_tuple("RegionUnificationTable").finish(),
+            Self::ProjectionCache(_) => f.debug_tuple("ProjectionCache").finish(),
+            Self::PushRegionObligation => write!(f, "PushRegionObligation"),
+        }
+    }
+}
+
 macro_rules! impl_from {
     ($($ctor: ident ($ty: ty),)*) => {
         $(
@@ -165,12 +182,26 @@ impl<'tcx> InferCtxtInner<'tcx> {
 
         self.undo_log.num_open_snapshots -= 1;
     }
+
+    pub fn any_instantiations(&mut self, snapshot: &Snapshot<'tcx>) -> bool {
+        self.undo_log.instantiations_in_snapshot(snapshot).next().is_some()
+    }
 }
 
 impl<'tcx> InferCtxtUndoLogs<'tcx> {
     pub fn start_snapshot(&mut self) -> Snapshot<'tcx> {
         self.num_open_snapshots += 1;
         Snapshot { undo_len: self.logs.len(), _marker: PhantomData }
+    }
+
+    pub(crate) fn instantiations_in_snapshot(
+        &self,
+        s: &Snapshot<'tcx>,
+    ) -> impl Iterator<Item = &'_ type_variable::UndoLog<'tcx>> + Clone {
+        self.logs[s.undo_len..].iter().filter_map(|log| match log {
+            UndoLog::TypeVariables(log) => Some(log),
+            _ => None,
+        })
     }
 
     pub(crate) fn region_constraints_in_snapshot(

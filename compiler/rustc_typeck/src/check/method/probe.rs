@@ -468,12 +468,11 @@ pub fn provide(providers: &mut ty::query::Providers) {
     providers.method_autoderef_steps = method_autoderef_steps;
 }
 
+#[tracing::instrument(level = "debug", skip(tcx))]
 fn method_autoderef_steps<'tcx>(
     tcx: TyCtxt<'tcx>,
     goal: CanonicalTyGoal<'tcx>,
 ) -> MethodAutoderefStepsResult<'tcx> {
-    debug!("method_autoderef_steps({:?})", goal);
-
     tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &goal, |ref infcx, goal, inference_vars| {
         let ParamEnvAnd { param_env, value: self_ty } = goal;
 
@@ -529,7 +528,7 @@ fn method_autoderef_steps<'tcx>(
             _ => None,
         };
 
-        debug!("method_autoderef_steps: steps={:?} opt_bad_ty={:?}", steps, opt_bad_ty);
+        debug!(?steps, ?opt_bad_ty);
 
         MethodAutoderefStepsResult {
             steps: tcx.arena.alloc_from_iter(steps),

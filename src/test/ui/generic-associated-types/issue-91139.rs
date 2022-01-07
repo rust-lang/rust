@@ -25,7 +25,9 @@ impl<T> Foo<T> for () {
 
 fn foo<T>() {
     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
-    //[migrate]~^ the parameter type `T` may not live long enough
+    //[migrate]~^ the parameter type
+    //[migrate]~| the parameter type
+    //[migrate]~| the parameter type
 }
 
 pub fn main() {}

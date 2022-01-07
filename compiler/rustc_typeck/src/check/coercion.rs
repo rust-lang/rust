@@ -86,6 +86,21 @@ impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
 
 type CoerceResult<'tcx> = InferResult<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>;
 
+trait CoerceResultExt<'tcx>: Sized {
+    fn with_addl_obligations(self, obligations: Vec<traits::PredicateObligation<'tcx>>) -> Self;
+}
+impl<'tcx> CoerceResultExt<'tcx> for CoerceResult<'tcx> {
+    fn with_addl_obligations(self, obligations: Vec<traits::PredicateObligation<'tcx>>) -> Self {
+        match self {
+            Ok(mut ok) => {
+                ok.obligations.extend(obligations.into_iter());
+                Ok(ok)
+            }
+            Err(err) => Err(err),
+        }
+    }
+}
+
 /// Coercing a mutable reference to an immutable works, while
 /// coercing `&T` to `&mut T` should be forbidden.
 fn coerce_mutbls<'tcx>(
@@ -172,6 +187,51 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return self.coerce_from_inference_variable(a, b, identity);
         }
 
+        let mut selcx = traits::SelectionContext::new(self);
+        selcx.normalization_mode.eager_inference_replacement = false;
+        let mut normalize_obligations = Vec::new();
+
+        let b = traits::normalize_with_depth_to(
+            &mut selcx,
+            self.param_env,
+            self.cause.clone(),
+            0,
+            b,
+            &mut normalize_obligations,
+        );
+        let a = match a.kind() {
+            ty::Projection(projection_ty) => {
+                let normalize_obligation = Obligation::new(
+                    self.cause.clone(),
+                    self.param_env,
+                    ty::ProjectionPredicate {
+                        projection_ty: *projection_ty,
+                        term: ty::Term::Ty(b),
+                    },
+                );
+                let infcx = selcx.infcx();
+                let result =
+                    infcx.commit_if_ok(|_| -> Result<_, traits::MismatchedProjectionTypes<'tcx>> {
+                        traits::project_and_unify_type(&mut selcx, &normalize_obligation)
+                    });
+                match result {
+                    Ok(Ok(Some(obligations))) => {
+                        normalize_obligations.extend(obligations.into_iter());
+                        b
+                    }
+                    _ => a,
+                }
+            }
+            _ => traits::normalize_with_depth_to(
+                &mut selcx,
+                self.param_env,
+                self.cause.clone(),
+                0,
+                a,
+                &mut normalize_obligations,
+            ),
+        };
+
         // Consider coercing the subtype to a DST
         //
         // NOTE: this is wrapped in a `commit_if_ok` because it creates
@@ -181,7 +241,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match unsize {
             Ok(_) => {
                 debug!("coerce: unsize successful");
-                return unsize;
+                return unsize.with_addl_obligations(normalize_obligations);
             }
             Err(TypeError::ObjectUnsafeCoercion(did)) => {
                 debug!("coerce: unsize not object safe");
@@ -195,10 +255,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Examine the supertype and consider auto-borrowing.
         match *b.kind() {
             ty::RawPtr(mt_b) => {
-                return self.coerce_unsafe_ptr(a, b, mt_b.mutbl);
+                return self
+                    .coerce_unsafe_ptr(a, b, mt_b.mutbl)
+                    .with_addl_obligations(normalize_obligations);
             }
             ty::Ref(r_b, _, mutbl_b) => {
-                return self.coerce_borrowed_pointer(a, b, r_b, mutbl_b);
+                return self
+                    .coerce_borrowed_pointer(a, b, r_b, mutbl_b)
+                    .with_addl_obligations(normalize_obligations);
             }
             _ => {}
         }
@@ -228,6 +292,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 self.unify_and(a, b, identity)
             }
         }
+        .with_addl_obligations(normalize_obligations)
     }
 
     /// Coercing *from* an inference variable. In this case, we have no information

@@ -42,7 +42,7 @@ pub type ProjectionObligation<'tcx> = Obligation<'tcx, ty::ProjectionPredicate<'
 
 pub type ProjectionTyObligation<'tcx> = Obligation<'tcx, ty::ProjectionTy<'tcx>>;
 
-pub(super) struct InProgress;
+pub struct InProgress;
 
 /// When attempting to resolve `<T as TraitRef>::Name` ...
 #[derive(Debug)]
@@ -188,7 +188,7 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
 /// If successful, this may result in additional obligations.
 ///
 /// See [poly_project_and_unify_type] for an explanation of the return value.
-fn project_and_unify_type<'cx, 'tcx>(
+pub fn project_and_unify_type<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionObligation<'tcx>,
 ) -> Result<
@@ -484,7 +484,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 // there won't be bound vars there.
 
                 let data = data.super_fold_with(self);
-                let normalized_ty = if self.eager_inference_replacement {
+                let normalized_ty = if self.selcx.normalization_mode.eager_inference_replacement {
                     normalize_projection_type(
                         self.selcx,
                         self.param_env,
@@ -914,7 +914,8 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     // Don't use the projection cache in intercrate mode -
     // the `infcx` may be re-used between intercrate in non-intercrate
     // mode, which could lead to using incorrect cache results.
-    let use_cache = !selcx.is_intercrate();
+    let use_cache =
+        !selcx.is_intercrate() && selcx.normalization_mode.allow_infer_constraint_during_projection;
 
     let projection_ty = infcx.resolve_vars_if_possible(projection_ty);
     let cache_key = ProjectionCacheKey::new(projection_ty);
@@ -1168,7 +1169,7 @@ fn project<'cx, 'tcx>(
 
     match candidates {
         ProjectionCandidateSet::Single(candidate) => {
-            Ok(Projected::Progress(confirm_candidate(selcx, obligation, candidate)))
+            Ok(confirm_candidate(selcx, obligation, candidate))
         }
         ProjectionCandidateSet::None => Ok(Projected::NoProgress(
             // FIXME(associated_const_generics): this may need to change in the future?
@@ -1583,7 +1584,7 @@ fn confirm_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     candidate: ProjectionCandidate<'tcx>,
-) -> Progress<'tcx> {
+) -> Projected<'tcx> {
     debug!(?obligation, ?candidate, "confirm_candidate");
     let mut progress = match candidate {
         ProjectionCandidate::ParamEnv(poly_projection)
@@ -1596,7 +1597,7 @@ fn confirm_candidate<'cx, 'tcx>(
         }
 
         ProjectionCandidate::Select(impl_source) => {
-            confirm_select_candidate(selcx, obligation, impl_source)
+            Projected::Progress(confirm_select_candidate(selcx, obligation, impl_source))
         }
     };
 
@@ -1605,9 +1606,11 @@ fn confirm_candidate<'cx, 'tcx>(
     // with new region variables, we need to resolve them to existing variables
     // when possible for this to work. See `auto-trait-projection-recursion.rs`
     // for a case where this matters.
-    if progress.term.has_infer_regions() {
-        progress.term =
-            progress.term.fold_with(&mut OpportunisticRegionResolver::new(selcx.infcx()));
+    if let Projected::Progress(progress) = &mut progress {
+        if progress.term.has_infer_regions() {
+            progress.term =
+                progress.term.fold_with(&mut OpportunisticRegionResolver::new(selcx.infcx()));
+        }
     }
     progress
 }
@@ -1688,9 +1691,12 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         }
     });
 
-    confirm_param_env_candidate(selcx, obligation, predicate, false)
-        .with_addl_obligations(impl_source.nested)
-        .with_addl_obligations(obligations)
+    let progress = confirm_param_env_candidate(selcx, obligation, predicate, false);
+    let progress = match progress {
+        Projected::Progress(progress) => progress,
+        Projected::NoProgress(_) => bug!(),
+    };
+    progress.with_addl_obligations(impl_source.nested).with_addl_obligations(obligations)
 }
 
 fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
@@ -1715,7 +1721,12 @@ fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
 
     // We get here from `poly_project_and_unify_type` which replaces bound vars
     // with placeholders, so dummy is okay here.
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
+    let progress =
+        confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false);
+    match progress {
+        Projected::Progress(progress) => progress,
+        Projected::NoProgress(_) => bug!(),
+    }
 }
 
 fn confirm_pointee_candidate<'cx, 'tcx>(
@@ -1746,8 +1757,12 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
         term: metadata_ty.into(),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
-        .with_addl_obligations(obligations)
+    let progress =
+        confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false);
+    match progress {
+        Projected::Progress(progress) => progress.with_addl_obligations(obligations),
+        Projected::NoProgress(_) => bug!(),
+    }
 }
 
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(
@@ -1819,7 +1834,11 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         term: ret_type.into(),
     });
 
-    confirm_param_env_candidate(selcx, obligation, predicate, true)
+    let progress = confirm_param_env_candidate(selcx, obligation, predicate, true);
+    match progress {
+        Projected::Progress(progress) => progress,
+        Projected::NoProgress(_) => bug!(),
+    }
 }
 
 fn confirm_param_env_candidate<'cx, 'tcx>(
@@ -1827,7 +1846,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     poly_cache_entry: ty::PolyProjectionPredicate<'tcx>,
     potentially_unnormalized_candidate: bool,
-) -> Progress<'tcx> {
+) -> Projected<'tcx> {
     let infcx = selcx.infcx();
     let cause = &obligation.cause;
     let param_env = obligation.param_env;
@@ -1868,23 +1887,42 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
 
     debug!(?cache_projection, ?obligation_projection);
 
-    match infcx.at(cause, param_env).eq(cache_projection, obligation_projection) {
-        Ok(InferOk { value: _, obligations }) => {
-            nested_obligations.extend(obligations);
-            assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
-            // FIXME(associated_const_equality): Handle consts here as well? Maybe this progress type should just take
-            // a term instead.
-            Progress { term: cache_entry.term, obligations: nested_obligations }
+    match infcx.commit_if_ok(|snapshot| {
+        let progress = match infcx.at(cause, param_env).eq(cache_projection, obligation_projection)
+        {
+            Ok(InferOk { value: _, obligations }) => {
+                nested_obligations.extend(obligations);
+                assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
+                // FIXME(associated_const_equality): Handle consts here as well? Maybe this progress type should just take
+                // a term instead.
+                Progress { term: cache_entry.term, obligations: nested_obligations }
+            }
+            Err(e) => {
+                let msg = format!(
+                    "Failed to unify obligation `{:?}` with poly_projection `{:?}`: {:?}",
+                    obligation, poly_cache_entry, e,
+                );
+                debug!("confirm_param_env_candidate: {}", msg);
+                let err = infcx.tcx.ty_error_with_message(obligation.cause.span, &msg);
+                Progress { term: err.into(), obligations: vec![] }
+            }
+        };
+
+        let any_instantiations = infcx.any_instantiations(&snapshot);
+
+        if any_instantiations && !selcx.normalization_mode.allow_infer_constraint_during_projection
+        {
+            Err(ty::Term::Ty(
+                infcx
+                    .tcx
+                    .mk_projection(obligation_projection.item_def_id, obligation_projection.substs),
+            ))
+        } else {
+            Ok(progress)
         }
-        Err(e) => {
-            let msg = format!(
-                "Failed to unify obligation `{:?}` with poly_projection `{:?}`: {:?}",
-                obligation, poly_cache_entry, e,
-            );
-            debug!("confirm_param_env_candidate: {}", msg);
-            let err = infcx.tcx.ty_error_with_message(obligation.cause.span, &msg);
-            Progress { term: err.into(), obligations: vec![] }
-        }
+    }) {
+        Ok(p) => Projected::Progress(p),
+        Err(p) => Projected::NoProgress(p),
     }
 }
 

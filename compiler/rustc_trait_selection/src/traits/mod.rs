@@ -55,7 +55,10 @@ pub use self::object_safety::is_vtable_safe_method;
 pub use self::object_safety::MethodViolationCode;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
-pub use self::project::{normalize, normalize_projection_type, normalize_to};
+pub use self::project::{
+    normalize, normalize_projection_type, normalize_to, normalize_with_depth_to,
+    project_and_unify_type,
+};
 pub use self::select::{EvaluationCache, SelectionCache, SelectionContext};
 pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
 pub use self::specialize::specialization_graph::FutureCompatOverlapError;

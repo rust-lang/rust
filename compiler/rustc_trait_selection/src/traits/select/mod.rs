@@ -132,6 +132,17 @@ pub struct SelectionContext<'cx, 'tcx> {
     /// policy. In essence, canonicalized queries need their errors propagated
     /// rather than immediately reported because we do not have accurate spans.
     query_mode: TraitQueryMode,
+
+    pub normalization_mode: NormalizationMode,
+}
+
+#[derive(Copy, Clone)]
+pub struct NormalizationMode {
+    pub allow_infer_constraint_during_projection: bool,
+    /// If true, when a projection is unable to be completed, an inference
+    /// variable will be created and an obligation registered to project to that
+    /// inference variable. Also, constants will be eagerly evaluated.
+    pub eager_inference_replacement: bool,
 }
 
 // A stack that walks back up the stack frame.
@@ -221,6 +232,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
             query_mode: TraitQueryMode::Standard,
+            normalization_mode: NormalizationMode {
+                allow_infer_constraint_during_projection: true,
+                eager_inference_replacement: true,
+            },
         }
     }
 
@@ -232,6 +247,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
             query_mode: TraitQueryMode::Standard,
+            normalization_mode: NormalizationMode {
+                allow_infer_constraint_during_projection: true,
+                eager_inference_replacement: true,
+            },
         }
     }
 
@@ -247,6 +266,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls,
             query_mode: TraitQueryMode::Standard,
+            normalization_mode: NormalizationMode {
+                allow_infer_constraint_during_projection: true,
+                eager_inference_replacement: true,
+            },
         }
     }
 
@@ -262,6 +285,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
             query_mode,
+            normalization_mode: NormalizationMode {
+                allow_infer_constraint_during_projection: true,
+                eager_inference_replacement: true,
+            },
         }
     }
 
@@ -295,6 +322,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     pub fn is_intercrate(&self) -> bool {
         self.intercrate
+    }
+
+    pub fn normalization_mode(&self) -> NormalizationMode {
+        self.normalization_mode
     }
 
     ///////////////////////////////////////////////////////////////////////////

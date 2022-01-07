@@ -920,6 +920,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .region_constraints_added_in_snapshot(&snapshot.undo_snapshot)
     }
 
+    pub fn any_instantiations(&self, snapshot: &CombinedSnapshot<'a, 'tcx>) -> bool {
+        self.inner.borrow_mut().any_instantiations(&snapshot.undo_snapshot)
+    }
+
     pub fn add_given(&self, sub: ty::Region<'tcx>, sup: ty::RegionVid) {
         self.inner.borrow_mut().unwrap_region_constraints().add_given(sub, sup);
     }

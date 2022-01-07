@@ -2101,8 +2101,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_fn_ptr_from = tcx.mk_fn_ptr(fn_sig);
 
+                        let ty = self.normalize(*ty, location);
                         if let Err(terr) = self.eq_types(
-                            *ty,
+                            ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
                             ConstraintCategory::Cast,
@@ -2124,9 +2125,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             _ => bug!(),
                         };
                         let ty_fn_ptr_from = tcx.mk_fn_ptr(tcx.signature_unclosure(sig, *unsafety));
+                        let ty_fn_ptr_from = self.normalize(ty_fn_ptr_from, location);
 
+                        let ty = self.normalize(*ty, location);
                         if let Err(terr) = self.eq_types(
-                            *ty,
+                            ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
                             ConstraintCategory::Cast,
@@ -2154,8 +2157,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
+                        let ty = self.normalize(*ty, location);
                         if let Err(terr) = self.eq_types(
-                            *ty,
+                            ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
                             ConstraintCategory::Cast,

@@ -159,7 +159,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Note that inspecting a type's structure *directly* may expose the fact
     /// that there are actually multiple representations for `Error`, so avoid
     /// that when err needs to be handled differently.
-    #[instrument(skip(self, expr), level = "debug")]
     pub(super) fn check_expr_with_expectation(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
@@ -170,6 +169,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Same as `check_expr_with_expectation`, but allows us to pass in the arguments of a
     /// `ExprKind::Call` when evaluating its callee when it is an `ExprKind::Path`.
+    #[instrument(skip(self, expr), level = "debug")]
     pub(super) fn check_expr_with_expectation_and_args(
         &self,
         expr: &'tcx hir::Expr<'tcx>,

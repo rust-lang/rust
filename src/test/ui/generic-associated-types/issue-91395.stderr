@@ -1,0 +1,17 @@
+error[E0310]: the associated type `<<T as Table>::Blocks<'_> as Foo>::Item` may not live long enough
+  --> $DIR/issue-91395.rs:29:5
+   |
+LL |     box_static_block(block);
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `<<T as Table>::Blocks<'_> as Foo>::Item: 'static`...
+   = note: ...so that the type `<<T as Table>::Blocks<'_> as Foo>::Item` will meet its required lifetime bounds...
+note: ...that is required by this bound
+  --> $DIR/issue-91395.rs:20:24
+   |
+LL | fn box_static_block<U: 'static>(_block: U) {}
+   |                        ^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0310`.

@@ -1,0 +1,18 @@
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/issue-91693.rs:36:7
+   |
+LL | pub fn bar<T>(m: Mutator<T>) {
+   |            - help: consider adding an explicit lifetime bound...: `T: 'a`
+LL |     m.for_each(|_: &mut T| {});
+   |       ^^^^^^^^ ...so that the type `Mutator<T>` will meet its required lifetime bounds
+
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/issue-91693.rs:36:7
+   |
+LL | pub fn bar<T>(m: Mutator<T>) {
+   |            - help: consider adding an explicit lifetime bound...: `T: 'a`
+LL |     m.for_each(|_: &mut T| {});
+   |       ^^^^^^^^ ...so that the type `Mutator<T>` will meet its required lifetime bounds
+
+error: aborting due to 2 previous errors
+

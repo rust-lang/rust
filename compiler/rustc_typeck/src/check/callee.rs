@@ -330,6 +330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         false
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn confirm_builtin_call(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
@@ -508,7 +509,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // have been normalized before.
         let fn_sig =
             self.replace_bound_vars_with_fresh_vars(call_expr.span, infer::FnCall, fn_sig).0;
-        let fn_sig = self.normalize_associated_types_in(call_expr.span, fn_sig);
+
+        debug!(?fn_sig);
+
+        //let fn_sig = self.normalize_associated_types_in(call_expr.span, fn_sig);
+
+        let mut selcx = traits::SelectionContext::new(self.inh);
+        selcx.normalization_mode.allow_infer_constraint_during_projection = false;
+        let cause = ObligationCause::misc(call_expr.span, self.body_id);
+        use rustc_trait_selection::traits;
+        let mut obligations = Vec::new();
+        let fn_sig = traits::normalize_with_depth_to(
+            &mut selcx,
+            self.param_env,
+            cause,
+            0,
+            fn_sig,
+            &mut obligations,
+        );
+        self.inh.register_predicates(obligations);
+
+        debug!(?fn_sig);
 
         // Call the generic checker.
         let expected_arg_tys = self.expected_inputs_for_expected_output(

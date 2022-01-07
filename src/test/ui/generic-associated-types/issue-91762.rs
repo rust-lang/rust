@@ -1,12 +1,17 @@
 // check-fail
-
-// FIXME(generic_associated_types): We almost certaintly want this to pass, but
-// it's particularly difficult currently, because we need a way of specifying
-// that `<Self::Base as Functor>::With<T> = Self` without using that when we have
-// a `U`. See `https://github.com/rust-lang/rust/pull/92728` for a (hacky)
-// solution. This might be better to just wait for Chalk.
+// compile-flags: -Zverbose
 
 #![feature(generic_associated_types)]
+#![feature(lang_items)]
+#![feature(no_core)]
+#![no_core]
+#![crate_type = "rlib"]
+
+#[lang = "sized"]
+pub trait Sized {}
+
+#[lang = "copy"]
+pub trait Copy {}
 
 pub trait Functor {
     type With<T>;
@@ -23,8 +28,7 @@ pub trait FunctorExt<T>: Sized {
 
         arg = self;
         ret = <Self::Base as Functor>::fmap(arg);
-        //~^ type annotations needed
+        //~^ cannot infer type
+        //~| type annotations needed
     }
 }
-
-fn main() {}
