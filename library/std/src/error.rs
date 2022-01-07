@@ -1284,9 +1284,7 @@ where
 
             for (ind, error) in cause.chain().enumerate() {
                 writeln!(f)?;
-                let mut indented = Indented {
-                    inner: f,
-                };
+                let mut indented = Indented { inner: f };
                 if multiple {
                     write!(indented, "{: >4}: {}", ind, error)?;
                 } else {
@@ -1310,8 +1308,7 @@ where
     }
 }
 
-impl Report<Box<dyn Error>>
-{
+impl Report<Box<dyn Error>> {
     fn backtrace(&self) -> Option<&Backtrace> {
         // have to grab the backtrace on the first error directly since that error may not be
         // 'static
@@ -1353,9 +1350,7 @@ impl Report<Box<dyn Error>>
 
             for (ind, error) in cause.chain().enumerate() {
                 writeln!(f)?;
-                let mut indented = Indented {
-                    inner: f,
-                };
+                let mut indented = Indented { inner: f };
                 if multiple {
                     write!(indented, "{: >4}: {}", ind, error)?;
                 } else {
@@ -1411,8 +1406,7 @@ where
 }
 
 #[unstable(feature = "error_reporter", issue = "90172")]
-impl fmt::Display for Report<Box<dyn Error>>
-{
+impl fmt::Display for Report<Box<dyn Error>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.pretty { self.fmt_multiline(f) } else { self.fmt_singleline(f) }
     }

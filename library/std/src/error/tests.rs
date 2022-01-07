@@ -82,11 +82,13 @@ fn multi_line_formatting() {
     let error = SuperError { source: SuperErrorSideKick };
     let report = Report::new(&error).pretty(true);
     let actual = report.to_string();
-    let expected = String::from("\
+    let expected = String::from(
+        "\
 SuperError is here!
 
 Caused by:
-      SuperErrorSideKick is here!");
+      SuperErrorSideKick is here!",
+    );
 
     assert_eq!(expected, actual);
 }
@@ -112,19 +114,21 @@ fn error_with_no_sources_formats_multi_line_correctly() {
 #[test]
 fn error_with_backtrace_outputs_correctly_with_one_source() {
     let trace = Backtrace::force_capture();
-    let expected = format!("\
+    let expected = format!(
+        "\
 The source of the error
 
 Caused by:
       Error with backtrace
 
 Stack backtrace:
-{}", trace);
+{}",
+        trace
+    );
     let error = GenericError::new("Error with backtrace");
     let mut error = GenericError::new_with_source("The source of the error", error);
     error.backtrace = Some(trace);
     let report = Report::new(error).pretty(true).show_backtrace(true);
-
 
     println!("Error: {}", report);
     assert_eq!(expected.trim_end(), report.to_string());
@@ -133,7 +137,8 @@ Stack backtrace:
 #[test]
 fn error_with_backtrace_outputs_correctly_with_two_sources() {
     let trace = Backtrace::force_capture();
-    let expected = format!("\
+    let expected = format!(
+        "\
 Error with two sources
 
 Caused by:
@@ -141,13 +146,14 @@ Caused by:
    1: Error with backtrace
 
 Stack backtrace:
-{}", trace);
+{}",
+        trace
+    );
     let mut error = GenericError::new("Error with backtrace");
     error.backtrace = Some(trace);
     let error = GenericError::new_with_source("The source of the error", error);
     let error = GenericError::new_with_source("Error with two sources", error);
     let report = Report::new(error).pretty(true).show_backtrace(true);
-
 
     println!("Error: {}", report);
     assert_eq!(expected.trim_end(), report.to_string());
@@ -313,11 +319,11 @@ The message
 
 
 Caused by:
-   0: 
-      The message
-      
-   1: 
-      The message
+   0: \
+\n      The message
+      \
+\n   1: \
+\n      The message
       ";
 
     let actual = report.to_string();
@@ -399,11 +405,11 @@ line 2
 
 Caused by:
    0: line 1
-      
-      line 2
+      \
+\n      line 2
    1: line 1
-      
-      line 2";
+      \
+\n      line 2";
 
     let actual = report.to_string();
     assert_eq!(expected, actual);
