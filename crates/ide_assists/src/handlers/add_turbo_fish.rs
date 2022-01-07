@@ -1,4 +1,5 @@
 use ide_db::defs::{Definition, NameRefClass};
+use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxKind, T};
 
 use crate::{
@@ -77,8 +78,12 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         }
     }
 
-    let number_of_arguments = generics.len();
-    let fish_head = std::iter::repeat("_").take(number_of_arguments).collect::<Vec<_>>().join(",");
+    let number_of_arguments = generics
+        .iter()
+        .filter(|param| {
+            matches!(param, hir::GenericParam::TypeParam(_) | hir::GenericParam::ConstParam(_))
+        })
+        .count();
 
     acc.add(
         AssistId("add_turbo_fish", AssistKind::RefactorRewrite),
@@ -86,15 +91,27 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         ident.text_range(),
         |builder| match ctx.config.snippet_cap {
             Some(cap) => {
-                let snip = format!("::<${{0:{}}}>", fish_head);
+                let snip = format!("::<{}>", get_snippet_fish_head(number_of_arguments));
                 builder.insert_snippet(cap, ident.text_range().end(), snip)
             }
             None => {
+                let fish_head = std::iter::repeat("_").take(number_of_arguments).format(", ");
                 let snip = format!("::<{}>", fish_head);
                 builder.insert(ident.text_range().end(), snip);
             }
         },
     )
+}
+
+/// This will create a snippet string with tabstops marked
+fn get_snippet_fish_head(number_of_arguments: usize) -> String {
+    let mut fish_head = (1..number_of_arguments)
+        .format_with("", |i, f| f(&format_args!("${{{}:_}}, ", i)))
+        .to_string();
+
+    // tabstop 0 is a special case and always the last one
+    fish_head.push_str("${0:_}");
+    fish_head
 }
 
 #[cfg(test)]
@@ -135,7 +152,7 @@ fn main() {
             r#"
 fn make<T, A>() -> T {}
 fn main() {
-    make::<${0:_,_}>();
+    make::<${1:_}, ${0:_}>();
 }
 "#,
         );
@@ -154,7 +171,7 @@ fn main() {
             r#"
 fn make<T, A, B, C, D, E, F>() -> T {}
 fn main() {
-    make::<${0:_,_,_,_,_,_,_}>();
+    make::<${1:_}, ${2:_}, ${3:_}, ${4:_}, ${5:_}, ${6:_}, ${0:_}>();
 }
 "#,
         );
@@ -337,6 +354,44 @@ fn main() {
 }
 "#,
             "Add `: _` before assignment operator",
+        );
+    }
+
+    #[test]
+    fn add_turbo_fish_function_lifetime_parameter() {
+        check_assist(
+            add_turbo_fish,
+            r#"
+fn make<'a, T, A>(t: T, a: A) {}
+fn main() {
+    make$0(5, 2);
+}
+"#,
+            r#"
+fn make<'a, T, A>(t: T, a: A) {}
+fn main() {
+    make::<${1:_}, ${0:_}>(5, 2);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn add_turbo_fish_function_const_parameter() {
+        check_assist(
+            add_turbo_fish,
+            r#"
+fn make<T, const N: usize>(t: T) {}
+fn main() {
+    make$0(3);
+}
+"#,
+            r#"
+fn make<T, const N: usize>(t: T) {}
+fn main() {
+    make::<${1:_}, ${0:_}>(3);
+}
+"#,
         );
     }
 }
