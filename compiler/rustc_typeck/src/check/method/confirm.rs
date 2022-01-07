@@ -149,7 +149,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // time writing the results into the various typeck results.
         let mut autoderef =
             self.autoderef_overloaded_span(self.span, unadjusted_self_ty, self.call_expr.span);
-        let (_, n) = match autoderef.nth(pick.autoderefs) {
+        let (ty, n) = match autoderef.nth(pick.autoderefs) {
             Some(n) => n,
             None => {
                 return self.tcx.ty_error_with_message(
@@ -161,14 +161,15 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         assert_eq!(n, pick.autoderefs);
 
         let mut adjustments = self.adjust_steps(&autoderef);
+        let mut target = self.structurally_resolved_type(autoderef.span(), ty);
 
-        let mut target =
-            self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
-
-        match &pick.autoref_or_ptr_adjustment {
+        match pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
                 let region = self.next_region_var(infer::Autoref(self.span));
-                target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl: *mutbl, ty: target });
+                // Type we're wrapping in a reference, used later for unsizing
+                let base_ty = target;
+
+                target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl, ty: target });
                 let mutbl = match mutbl {
                     hir::Mutability::Not => AutoBorrowMutability::Not,
                     hir::Mutability::Mut => AutoBorrowMutability::Mut {
@@ -182,10 +183,18 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     target,
                 });
 
-                if let Some(unsize_target) = unsize {
+                if unsize {
+                    let unsized_ty = if let ty::Array(elem_ty, _) = base_ty.kind() {
+                        self.tcx.mk_slice(elem_ty)
+                    } else {
+                        bug!(
+                            "AutorefOrPtrAdjustment's unsize flag should only be set for array ty, found {}",
+                            base_ty
+                        )
+                    };
                     target = self
                         .tcx
-                        .mk_ref(region, ty::TypeAndMut { mutbl: mutbl.into(), ty: unsize_target });
+                        .mk_ref(region, ty::TypeAndMut { mutbl: mutbl.into(), ty: unsized_ty });
                     adjustments
                         .push(Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), target });
                 }
