@@ -124,9 +124,7 @@ impl<'tcx> Cx<'tcx> {
                 ExprKind::Deref { arg: self.thir.exprs.push(expr) }
             }
             Adjust::Deref(Some(deref)) => {
-                // We don't need to do call adjust_span here since
-                // deref coercions always start with a built-in deref.
-                let call = deref.method_call(self.tcx(), expr.ty);
+                let source_ty = expr.ty;
 
                 expr = Expr {
                     temp_lifetime,
@@ -140,9 +138,37 @@ impl<'tcx> Cx<'tcx> {
                     },
                 };
 
-                let expr = Box::new([self.thir.exprs.push(expr)]);
+                let deref_arg_expr = self.thir.exprs.push(expr);
 
-                self.overloaded_place(hir_expr, adjustment.target, Some(call), expr, deref.span)
+                // FIXME: this is a hack to allow us to evaluate `<[T; N]>::deref` as const, since
+                // it's really just a pointer unsize from `&[T; N]` -> `&[T]`
+                if let ty::Array(elem_ty, _) = source_ty.kind() {
+                    expr = Expr {
+                        temp_lifetime,
+                        ty: self.tcx.mk_ref(
+                            deref.region,
+                            ty::TypeAndMut { ty: self.tcx.mk_slice(elem_ty), mutbl: deref.mutbl },
+                        ),
+                        span,
+                        kind: ExprKind::Pointer {
+                            cast: PointerCast::Unsize,
+                            source: deref_arg_expr,
+                        },
+                    };
+                    ExprKind::Deref { arg: self.thir.exprs.push(expr) }
+                } else {
+                    // We don't need to do call adjust_span here since
+                    // deref coercions always start with a built-in deref.
+                    let call = deref.method_call(self.tcx(), source_ty);
+
+                    self.overloaded_place(
+                        hir_expr,
+                        adjustment.target,
+                        Some(call),
+                        Box::new([deref_arg_expr]),
+                        deref.span,
+                    )
+                }
             }
             Adjust::Borrow(AutoBorrow::Ref(_, m)) => ExprKind::Borrow {
                 borrow_kind: m.to_borrow_kind(),
