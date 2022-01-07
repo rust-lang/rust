@@ -25,7 +25,7 @@ use std::{hash::Hash, iter, sync::Arc};
 use base_db::{impl_intern_key, salsa, CrateId, FileId, FileRange};
 use syntax::{
     algo::{self, skip_trivia_token},
-    ast::{self, AstNode, HasAttrs},
+    ast::{self, AstNode, HasDocComments},
     Direction, SyntaxNode, SyntaxToken,
 };
 
@@ -201,8 +201,9 @@ impl HirFileId {
                     MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
                         let tt = ast_id
                             .to_node(db)
-                            .attrs()
-                            .nth(invoc_attr_index as usize)?
+                            .doc_comments_and_attrs()
+                            .nth(invoc_attr_index as usize)
+                            .and_then(Either::right)?
                             .token_tree()?;
                         Some(InFile::new(ast_id.file_id, tt))
                     }
@@ -429,8 +430,11 @@ impl ExpansionInfo {
 
             let token_range = token.value.text_range();
             match &loc.kind {
-                MacroCallKind::Attr { attr_args, invoc_attr_index, .. } => {
-                    let attr = item.attrs().nth(*invoc_attr_index as usize)?;
+                MacroCallKind::Attr { attr_args: (_, map), invoc_attr_index, .. } => {
+                    let attr = item
+                        .doc_comments_and_attrs()
+                        .nth(*invoc_attr_index as usize)
+                        .and_then(Either::right)?;
                     match attr.token_tree() {
                         Some(token_tree)
                             if token_tree.syntax().text_range().contains_range(token_range) =>
@@ -440,9 +444,8 @@ impl ExpansionInfo {
                             let relative_range =
                                 token.value.text_range().checked_sub(attr_input_start)?;
                             // shift by the item's tree's max id
-                            let token_id = self
-                                .macro_arg_shift
-                                .shift(attr_args.1.token_by_range(relative_range)?);
+                            let token_id =
+                                self.macro_arg_shift.shift(map.token_by_range(relative_range)?);
                             Some(token_id)
                         }
                         _ => None,

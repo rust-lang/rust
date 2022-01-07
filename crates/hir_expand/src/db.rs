@@ -3,12 +3,13 @@
 use std::sync::Arc;
 
 use base_db::{salsa, SourceDatabase};
+use either::Either;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ExpandError, ExpandResult};
 use rustc_hash::FxHashSet;
 use syntax::{
     algo::diff,
-    ast::{self, HasAttrs},
+    ast::{self, HasAttrs, HasDocComments},
     AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken, T,
 };
 
@@ -153,7 +154,10 @@ pub fn expand_speculative(
             // Attributes may have an input token tree, build the subtree and map for this as well
             // then try finding a token id for our token if it is inside this input subtree.
             let item = ast::Item::cast(speculative_args.clone())?;
-            let attr = item.attrs().nth(invoc_attr_index as usize)?;
+            let attr = item
+                .doc_comments_and_attrs()
+                .nth(invoc_attr_index as usize)
+                .and_then(Either::right)?;
             match attr.token_tree() {
                 Some(token_tree) => {
                     let (mut tree, map) = syntax_node_to_token_tree(attr.token_tree()?.syntax());
@@ -328,8 +332,9 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
             MacroCallKind::Attr { invoc_attr_index, .. } => {
                 cov_mark::hit!(attribute_macro_attr_censoring);
                 ast::Item::cast(node.clone())?
-                    .attrs()
+                    .doc_comments_and_attrs()
                     .nth(invoc_attr_index as usize)
+                    .and_then(Either::right)
                     .map(|attr| attr.syntax().clone())
                     .into_iter()
                     .collect()
