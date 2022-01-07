@@ -71,6 +71,7 @@
 #![feature(never_type)]
 #![feature(unwrap_infallible)]
 #![feature(result_into_ok_or_err)]
+#![feature(peekable_map_while)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
 #![feature(once_cell)]

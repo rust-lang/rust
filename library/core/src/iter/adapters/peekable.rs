@@ -1,4 +1,7 @@
-use crate::iter::{adapters::SourceIter, FusedIterator, TrustedLen};
+use crate::iter::{
+    adapters::{PeekableMapWhile, SourceIter},
+    FusedIterator, TrustedLen,
+};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator with a `peek()` that returns an optional reference to the next
@@ -314,6 +317,35 @@ impl<I: Iterator> Peekable<I> {
         I::Item: PartialEq<T>,
     {
         self.next_if(|next| next == expected)
+    }
+
+    /// Creates an iterator which yields elements based on a predicate. This differs from
+    /// [`map_while`] in that this will not advance the iterator if the predicate fails.
+    ///
+    /// [`map_while`]: Iterator::map_while
+    ///
+    /// # Example
+    /// Consumes numbers until parsing them fails.
+    /// ```
+    /// let vec = vec!["0", "1", "2", "three", "four"];
+    /// let mut xs = vec.iter().peekable();
+    /// let ys: Vec<u8> = xs.peekable_map_while(|x| x.parse().ok()).collect();
+    ///
+    /// assert_eq!(ys, vec![0, 1, 2]);
+    /// assert_eq!(xs.next(), Some(&"three"));
+    /// assert_eq!(xs.next(), Some(&"four"));
+    /// assert_eq!(xs.next(), None);
+    /// ```
+    #[unstable(feature = "peekable_map_while", issue = "none")]
+    pub fn peekable_map_while<'iter, B, P>(
+        &'iter mut self,
+        predicate: P,
+    ) -> PeekableMapWhile<'iter, I, P>
+    where
+        Self: Sized,
+        P: FnMut(&I::Item) -> Option<B>,
+    {
+        PeekableMapWhile::new(self, predicate)
     }
 }
 
