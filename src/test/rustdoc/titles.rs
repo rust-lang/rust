@@ -1,10 +1,11 @@
 #![crate_name = "foo"]
-
 #![feature(rustdoc_internals)]
 
 // @matches 'foo/index.html' '//h1' 'Crate foo'
+// @matches 'foo/index.html' '//h2[@class="location"]' 'Crate foo'
 
 // @matches 'foo/foo_mod/index.html' '//h1' 'Module foo::foo_mod'
+// @matches 'foo/foo_mod/index.html' '//h2[@class="location"]' 'Module foo_mod'
 pub mod foo_mod {
     pub struct __Thing {}
 }
@@ -18,15 +19,19 @@ extern "C" {
 pub fn foo_fn() {}
 
 // @matches 'foo/trait.FooTrait.html' '//h1' 'Trait foo::FooTrait'
+// @matches 'foo/trait.FooTrait.html' '//h2[@class="location"]' 'FooTrait'
 pub trait FooTrait {}
 
 // @matches 'foo/struct.FooStruct.html' '//h1' 'Struct foo::FooStruct'
+// @matches 'foo/struct.FooStruct.html' '//h2[@class="location"]' 'FooStruct'
 pub struct FooStruct;
 
 // @matches 'foo/enum.FooEnum.html' '//h1' 'Enum foo::FooEnum'
+// @matches 'foo/enum.FooEnum.html' '//h2[@class="location"]' 'FooEnum'
 pub enum FooEnum {}
 
 // @matches 'foo/type.FooType.html' '//h1' 'Type Definition foo::FooType'
+// @matches 'foo/type.FooType.html' '//h2[@class="location"]' 'FooType'
 pub type FooType = FooStruct;
 
 // @matches 'foo/macro.foo_macro.html' '//h1' 'Macro foo::foo_macro'

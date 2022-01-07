@@ -5,4 +5,4 @@ size: (1080, 600)
 assert-count: (".docblock > .example-wrap", 2)
 assert: ".docblock > .example-wrap > .language-txt"
 assert: ".docblock > .example-wrap > .rust-example-rendered"
-assert-css: (".docblock > .example-wrap > pre", {"width": "796px", "overflow-x": "auto"}, ALL)
+assert-css: (".docblock > .example-wrap > pre", {"width": "785.25px", "overflow-x": "auto"}, ALL)
