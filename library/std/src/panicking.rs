@@ -124,6 +124,11 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>) {
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
+    // SAFETY:
+    //
+    // - `HOOK` can only be modified while holding write access to `HOOK_LOCK`.
+    // - The argument of `Box::from_raw` is always a valid pointer that was created using
+    // `Box::into_raw`.
     unsafe {
         let guard = HOOK_LOCK.write();
         let old_hook = HOOK;
@@ -173,6 +178,11 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
+    // SAFETY:
+    //
+    // - `HOOK` can only be modified while holding write access to `HOOK_LOCK`.
+    // - The argument of `Box::from_raw` is always a valid pointer that was created using
+    // `Box::into_raw`.
     unsafe {
         let guard = HOOK_LOCK.write();
         let hook = HOOK;
@@ -229,6 +239,11 @@ where
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
+    // SAFETY:
+    //
+    // - `HOOK` can only be modified while holding write access to `HOOK_LOCK`.
+    // - The argument of `Box::from_raw` is always a valid pointer that was created using
+    // `Box::into_raw`.
     unsafe {
         let guard = HOOK_LOCK.write();
         let old_hook = HOOK;
