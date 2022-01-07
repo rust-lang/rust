@@ -39,4 +39,12 @@ fn main() {
     ]);
     concat_bytes!(5u16); //~ ERROR cannot concatenate numeric literals
     concat_bytes!([5u16]); //~ ERROR numeric literal is not a `u8`
+    concat_bytes!([3; ()]); //~ ERROR repeat count is not a positive number
+    concat_bytes!([3; -2]); //~ ERROR repeat count is not a positive number
+    concat_bytes!([pie; -2]); //~ ERROR repeat count is not a positive number
+    concat_bytes!([pie; 2]); //~ ERROR expected a byte literal
+    concat_bytes!([2.2; 0]); //~ ERROR cannot concatenate float literals
+    concat_bytes!([5.5; ()]); //~ ERROR repeat count is not a positive number
+    concat_bytes!([[1, 2, 3]; 3]); //~ ERROR cannot concatenate doubly nested array
+    concat_bytes!([[42; 2]; 3]); //~ ERROR cannot concatenate doubly nested array
 }

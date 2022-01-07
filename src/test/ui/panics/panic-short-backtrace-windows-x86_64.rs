@@ -1,3 +1,7 @@
+// This test has been spuriously failing a lot recently (#92000).
+// Ignore it until the underlying issue is fixed.
+// ignore-test
+
 // Regression test for #87481: short backtrace formatting cut off the entire stack trace.
 
 // Codegen-units is specified here so that we can replicate a typical rustc invocation which

@@ -136,15 +136,15 @@ impl Attribute {
 
     pub fn value_str(&self) -> Option<Symbol> {
         match self.kind {
-            AttrKind::Normal(ref item, _) => item.meta(self.span).and_then(|meta| meta.value_str()),
+            AttrKind::Normal(ref item, _) => item.meta_kind().and_then(|kind| kind.value_str()),
             AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn meta_item_list(&self) -> Option<Vec<NestedMetaItem>> {
         match self.kind {
-            AttrKind::Normal(ref item, _) => match item.meta(self.span) {
-                Some(MetaItem { kind: MetaItemKind::List(list), .. }) => Some(list),
+            AttrKind::Normal(ref item, _) => match item.meta_kind() {
+                Some(MetaItemKind::List(list)) => Some(list),
                 _ => None,
             },
             AttrKind::DocComment(..) => None,
@@ -228,6 +228,10 @@ impl AttrItem {
             span,
         })
     }
+
+    pub fn meta_kind(&self) -> Option<MetaItemKind> {
+        Some(MetaItemKind::from_mac_args(&self.args)?)
+    }
 }
 
 impl Attribute {
@@ -242,7 +246,7 @@ impl Attribute {
         match self.kind {
             AttrKind::DocComment(.., data) => Some(data),
             AttrKind::Normal(ref item, _) if item.path == sym::doc => {
-                item.meta(self.span).and_then(|meta| meta.value_str())
+                item.meta_kind().and_then(|kind| kind.value_str())
             }
             _ => None,
         }
@@ -266,6 +270,13 @@ impl Attribute {
     pub fn meta(&self) -> Option<MetaItem> {
         match self.kind {
             AttrKind::Normal(ref item, _) => item.meta(self.span),
+            AttrKind::DocComment(..) => None,
+        }
+    }
+
+    pub fn meta_kind(&self) -> Option<MetaItemKind> {
+        match self.kind {
+            AttrKind::Normal(ref item, _) => item.meta_kind(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -436,6 +447,16 @@ impl MetaItem {
 }
 
 impl MetaItemKind {
+    pub fn value_str(&self) -> Option<Symbol> {
+        match self {
+            MetaItemKind::NameValue(ref v) => match v.kind {
+                LitKind::Str(ref s, _) => Some(*s),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn mac_args(&self, span: Span) -> MacArgs {
         match self {
             MetaItemKind::Word => MacArgs::Empty,

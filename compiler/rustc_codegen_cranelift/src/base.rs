@@ -715,30 +715,6 @@ fn codegen_stmt<'tcx>(
                     let operand = operand.load_scalar(fx);
                     lval.write_cvalue(fx, CValue::by_val(operand, box_layout));
                 }
-                Rvalue::NullaryOp(NullOp::Box, content_ty) => {
-                    let usize_type = fx.clif_type(fx.tcx.types.usize).unwrap();
-                    let content_ty = fx.monomorphize(content_ty);
-                    let layout = fx.layout_of(content_ty);
-                    let llsize = fx.bcx.ins().iconst(usize_type, layout.size.bytes() as i64);
-                    let llalign = fx.bcx.ins().iconst(usize_type, layout.align.abi.bytes() as i64);
-                    let box_layout = fx.layout_of(fx.tcx.mk_box(content_ty));
-
-                    // Allocate space:
-                    let def_id =
-                        match fx.tcx.lang_items().require(rustc_hir::LangItem::ExchangeMalloc) {
-                            Ok(id) => id,
-                            Err(s) => {
-                                fx.tcx
-                                    .sess
-                                    .fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
-                            }
-                        };
-                    let instance = ty::Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
-                    let func_ref = fx.get_function_ref(instance);
-                    let call = fx.bcx.ins().call(func_ref, &[llsize, llalign]);
-                    let ptr = fx.bcx.inst_results(call)[0];
-                    lval.write_cvalue(fx, CValue::by_val(ptr, box_layout));
-                }
                 Rvalue::NullaryOp(null_op, ty) => {
                     assert!(
                         lval.layout()
@@ -749,7 +725,6 @@ fn codegen_stmt<'tcx>(
                     let val = match null_op {
                         NullOp::SizeOf => layout.size.bytes(),
                         NullOp::AlignOf => layout.align.abi.bytes(),
-                        NullOp::Box => unreachable!(),
                     };
                     let val = CValue::const_val(fx, fx.layout_of(fx.tcx.types.usize), val.into());
                     lval.write_cvalue(fx, val);

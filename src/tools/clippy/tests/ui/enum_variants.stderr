@@ -6,6 +6,18 @@ LL |     cFoo,
    |
    = note: `-D clippy::enum-variant-names` implied by `-D warnings`
 
+error: all variants have the same prefix: `c`
+  --> $DIR/enum_variants.rs:14:1
+   |
+LL | / enum Foo {
+LL | |     cFoo,
+LL | |     cBar,
+LL | |     cBaz,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
 error: variant name starts with the enum's name
   --> $DIR/enum_variants.rs:26:5
    |
@@ -60,6 +72,18 @@ LL | | }
    |
    = help: remove the prefixes and use full paths to the variants instead of glob imports
 
+error: all variants have the same prefix: `C`
+  --> $DIR/enum_variants.rs:59:1
+   |
+LL | / enum Something {
+LL | |     CCall,
+LL | |     CCreate,
+LL | |     CCryogenize,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes and use full paths to the variants instead of glob imports
+
 error: all variants have the same prefix: `WithOut`
   --> $DIR/enum_variants.rs:81:1
    |
@@ -67,18 +91,6 @@ LL | / enum Seallll {
 LL | |     WithOutCake,
 LL | |     WithOutTea,
 LL | |     WithOut,
-LL | | }
-   | |_^
-   |
-   = help: remove the prefixes and use full paths to the variants instead of glob imports
-
-error: all variants have the same prefix: `Prefix`
-  --> $DIR/enum_variants.rs:87:1
-   |
-LL | / enum NonCaps {
-LL | |     Prefix的,
-LL | |     PrefixTea,
-LL | |     PrefixCake,
 LL | | }
    | |_^
    |
@@ -108,5 +120,5 @@ LL | | }
    |
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 

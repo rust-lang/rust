@@ -1201,8 +1201,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn do_not_inline(&mut self, llret: &'ll Value) {
-        llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
+    fn apply_attrs_to_cleanup_callsite(&mut self, llret: &'ll Value) {
+        // Cleanup is always the cold path.
+        llvm::Attribute::Cold.apply_callsite(llvm::AttributePlace::Function, llret);
+
+        // In LLVM versions with deferred inlining (currently, system LLVM < 14),
+        // inlining drop glue can lead to exponential size blowup, see #41696 and #92110.
+        if !llvm_util::is_rust_llvm() && llvm_util::get_version() < (14, 0, 0) {
+            llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
+        }
     }
 }
 

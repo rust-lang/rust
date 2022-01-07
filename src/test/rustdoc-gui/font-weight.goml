@@ -37,8 +37,8 @@ assert-css: (
     {"font-weight": "400"},
 )
 
-assert-count: (".methods .type", 1)
-assert-css: (".methods .type", {"font-weight": "600"})
+assert-count: (".methods .associatedtype", 1)
+assert-css: (".methods .associatedtype", {"font-weight": "600"})
 assert-count: (".methods .constant", 1)
 assert-css: (".methods .constant", {"font-weight": "600"})
 assert-css: (".methods .method", {"font-weight": "600"})

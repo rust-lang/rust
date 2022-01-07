@@ -63,7 +63,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         cid.instance,
         body,
         Some(&ret.into()),
-        StackPopCleanup::None { cleanup: false },
+        StackPopCleanup::Root { cleanup: false },
     )?;
 
     // The main interpreter loop.

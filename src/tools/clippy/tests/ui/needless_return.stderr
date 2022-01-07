@@ -70,127 +70,139 @@ error: unneeded `return` statement
   --> $DIR/needless_return.rs:74:14
    |
 LL |         _ => return,
-   |              ^^^^^^ help: replace `return` with an empty block: `{}`
+   |              ^^^^^^ help: replace `return` with a unit value: `()`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:89:9
-   |
-LL |         return String::from("test");
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `String::from("test")`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:91:9
-   |
-LL |         return String::new();
-   |         ^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `String::new()`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:113:32
-   |
-LL |         bar.unwrap_or_else(|_| return)
-   |                                ^^^^^^ help: replace `return` with an empty block: `{}`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:118:13
+  --> $DIR/needless_return.rs:83:13
    |
 LL |             return;
    |             ^^^^^^^ help: remove `return`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:120:20
-   |
-LL |         let _ = || return;
-   |                    ^^^^^^ help: replace `return` with an empty block: `{}`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:126:32
-   |
-LL |         res.unwrap_or_else(|_| return Foo)
-   |                                ^^^^^^^^^^ help: remove `return`: `Foo`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:135:5
-   |
-LL |     return true;
-   |     ^^^^^^^^^^^^ help: remove `return`: `true`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:139:5
-   |
-LL |     return true;
-   |     ^^^^^^^^^^^^ help: remove `return`: `true`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:144:9
-   |
-LL |         return true;
-   |         ^^^^^^^^^^^^ help: remove `return`: `true`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:146:9
-   |
-LL |         return false;
-   |         ^^^^^^^^^^^^^ help: remove `return`: `false`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:152:17
-   |
-LL |         true => return false,
-   |                 ^^^^^^^^^^^^ help: remove `return`: `false`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:154:13
-   |
-LL |             return true;
-   |             ^^^^^^^^^^^^ help: remove `return`: `true`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:161:9
-   |
-LL |         return true;
-   |         ^^^^^^^^^^^^ help: remove `return`: `true`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:163:16
-   |
-LL |     let _ = || return true;
-   |                ^^^^^^^^^^^ help: remove `return`: `true`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:171:5
-   |
-LL |     return;
-   |     ^^^^^^^ help: remove `return`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:176:9
-   |
-LL |         return;
-   |         ^^^^^^^ help: remove `return`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:178:9
-   |
-LL |         return;
-   |         ^^^^^^^ help: remove `return`
-
-error: unneeded `return` statement
-  --> $DIR/needless_return.rs:185:14
+  --> $DIR/needless_return.rs:85:14
    |
 LL |         _ => return,
-   |              ^^^^^^ help: replace `return` with an empty block: `{}`
+   |              ^^^^^^ help: replace `return` with a unit value: `()`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:200:9
+  --> $DIR/needless_return.rs:100:9
    |
 LL |         return String::from("test");
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `String::from("test")`
 
 error: unneeded `return` statement
-  --> $DIR/needless_return.rs:202:9
+  --> $DIR/needless_return.rs:102:9
    |
 LL |         return String::new();
    |         ^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `String::new()`
 
-error: aborting due to 32 previous errors
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:124:32
+   |
+LL |         bar.unwrap_or_else(|_| return)
+   |                                ^^^^^^ help: replace `return` with an empty block: `{}`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:129:13
+   |
+LL |             return;
+   |             ^^^^^^^ help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:131:20
+   |
+LL |         let _ = || return;
+   |                    ^^^^^^ help: replace `return` with an empty block: `{}`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:137:32
+   |
+LL |         res.unwrap_or_else(|_| return Foo)
+   |                                ^^^^^^^^^^ help: remove `return`: `Foo`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:146:5
+   |
+LL |     return true;
+   |     ^^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:150:5
+   |
+LL |     return true;
+   |     ^^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:155:9
+   |
+LL |         return true;
+   |         ^^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:157:9
+   |
+LL |         return false;
+   |         ^^^^^^^^^^^^^ help: remove `return`: `false`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:163:17
+   |
+LL |         true => return false,
+   |                 ^^^^^^^^^^^^ help: remove `return`: `false`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:165:13
+   |
+LL |             return true;
+   |             ^^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:172:9
+   |
+LL |         return true;
+   |         ^^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:174:16
+   |
+LL |     let _ = || return true;
+   |                ^^^^^^^^^^^ help: remove `return`: `true`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:182:5
+   |
+LL |     return;
+   |     ^^^^^^^ help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:187:9
+   |
+LL |         return;
+   |         ^^^^^^^ help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:189:9
+   |
+LL |         return;
+   |         ^^^^^^^ help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:196:14
+   |
+LL |         _ => return,
+   |              ^^^^^^ help: replace `return` with a unit value: `()`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:211:9
+   |
+LL |         return String::from("test");
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `String::from("test")`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:213:9
+   |
+LL |         return String::new();
+   |         ^^^^^^^^^^^^^^^^^^^^^ help: remove `return`: `String::new()`
+
+error: aborting due to 34 previous errors
 

@@ -2336,8 +2336,6 @@ pub enum NullOp {
     SizeOf,
     /// Returns the minimum alignment of a type
     AlignOf,
-    /// Creates a new uninitialized box for a value of that type
-    Box,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

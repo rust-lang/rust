@@ -1,0 +1,12 @@
+// This test ensures that the "[src]" have the same font size as their headers
+// to avoid having some weird height difference in the background when the element
+// is selected.
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+show-text: true
+// Check the impl headers.
+assert-css: (".impl.has-srclink .srclink", {"font-size": "17px"}, ALL)
+// The ".6" part is because the font-size is actually "1.1em".
+assert-css: (".impl.has-srclink .code-header.in-band", {"font-size": "17.6px"}, ALL)
+// Check the impl items.
+assert-css: (".impl-items .has-srclink .srclink", {"font-size": "16px"}, ALL)
+assert-css: (".impl-items .has-srclink .code-header", {"font-size": "16px"}, ALL)

@@ -4,4 +4,4 @@
 // pp-exact
 
 #[rustfmt::r#final(final)]
-fn main() { }
+fn main() {}

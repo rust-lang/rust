@@ -1,0 +1,24 @@
+From b1ae000f6da1abd3b8e9b80c40bc11c89b8ae93c Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Thu, 30 Dec 2021 16:54:40 +0100
+Subject: [PATCH] [core] Disable portable-simd test
+
+---
+ library/core/tests/lib.rs | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/library/core/tests/lib.rs b/library/core/tests/lib.rs
+index ec70034..7cd9e21 100644
+--- a/library/core/tests/lib.rs
++++ b/library/core/tests/lib.rs
+@@ -121,7 +121,6 @@ mod pattern;
+ mod pin;
+ mod ptr;
+ mod result;
+-mod simd;
+ mod slice;
+ mod str;
+ mod str_lossy;
+-- 
+2.26.2.7.g19db9cfb68
+

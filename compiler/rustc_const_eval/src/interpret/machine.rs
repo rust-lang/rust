@@ -212,12 +212,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
         right: &ImmTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<Self::PointerTag>, bool, Ty<'tcx>)>;
 
-    /// Heap allocations via the `box` keyword.
-    fn box_alloc(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        dest: &PlaceTy<'tcx, Self::PointerTag>,
-    ) -> InterpResult<'tcx>;
-
     /// Called to read the specified `local` from the `frame`.
     /// Since reading a ZST is not actually accessing memory or locals, this is never invoked
     /// for ZST reads.

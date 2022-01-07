@@ -138,7 +138,7 @@ fn compute_implied_outlives_bounds<'tcx>(
 /// this down to determine what relationships would have to hold for
 /// `T: 'a` to hold. We get to assume that the caller has validated
 /// those relationships.
-fn implied_bounds_from_components(
+fn implied_bounds_from_components<'tcx>(
     sub_region: ty::Region<'tcx>,
     sup_components: SmallVec<[Component<'tcx>; 4]>,
 ) -> Vec<OutlivesBound<'tcx>> {

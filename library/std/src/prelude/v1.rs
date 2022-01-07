@@ -54,33 +54,30 @@ pub use core::prelude::v1::{
 #[doc(no_inline)]
 pub use core::prelude::v1::concat_bytes;
 
-// FIXME: Attribute and internal derive macros are not documented because for them rustdoc generates
-// dead links which fail link checker testing.
+// Do not `doc(inline)` these `doc(hidden)` items.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(deprecated, deprecated_in_future)]
-#[doc(hidden)]
-pub use core::prelude::v1::{
-    bench, global_allocator, test, test_case, RustcDecodable, RustcEncodable,
-};
+#[allow(deprecated)]
+pub use core::prelude::v1::{RustcDecodable, RustcEncodable};
 
+// Do not `doc(no_inline)` so that they become doc items on their own
+// (no public module for them to be re-exported from).
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[doc(hidden)]
-pub use core::prelude::v1::derive;
+pub use core::prelude::v1::{bench, derive, global_allocator, test, test_case};
 
+// Do not `doc(no_inline)` either.
 #[unstable(
     feature = "cfg_accessible",
     issue = "64797",
     reason = "`cfg_accessible` is not fully implemented"
 )]
-#[doc(hidden)]
 pub use core::prelude::v1::cfg_accessible;
 
+// Do not `doc(no_inline)` either.
 #[unstable(
     feature = "cfg_eval",
     issue = "82679",
     reason = "`cfg_eval` is a recently implemented feature"
 )]
-#[doc(hidden)]
 pub use core::prelude::v1::cfg_eval;
 
 // The file so far is equivalent to src/libcore/prelude/v1.rs,

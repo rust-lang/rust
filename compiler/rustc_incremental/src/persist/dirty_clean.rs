@@ -9,6 +9,13 @@
 //! - `#[rustc_clean(cfg="rev2")]` same as above, except that the
 //!   fingerprints must be the SAME (along with all other fingerprints).
 //!
+//! - `#[rustc_clean(cfg="rev2", loaded_from_disk='typeck")]` asserts that
+//!   the query result for `DepNode::typeck(X)` was actually
+//!   loaded from disk (not just marked green). This can be useful
+//!   to ensure that a test is actually exercising the deserialization
+//!   logic for a particular query result. This can be combined with
+//!   `except`
+//!
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
@@ -28,6 +35,7 @@ use rustc_span::Span;
 use std::iter::FromIterator;
 use std::vec::Vec;
 
+const LOADED_FROM_DISK: Symbol = sym::loaded_from_disk;
 const EXCEPT: Symbol = sym::except;
 const CFG: Symbol = sym::cfg;
 
@@ -124,6 +132,7 @@ type Labels = FxHashSet<String>;
 struct Assertion {
     clean: Labels,
     dirty: Labels,
+    loaded_from_disk: Labels,
 }
 
 pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
@@ -174,6 +183,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     fn assertion_auto(&mut self, item_id: LocalDefId, attr: &Attribute) -> Assertion {
         let (name, mut auto) = self.auto_labels(item_id, attr);
         let except = self.except(attr);
+        let loaded_from_disk = self.loaded_from_disk(attr);
         for e in except.iter() {
             if !auto.remove(e) {
                 let msg = format!(
@@ -183,7 +193,19 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 self.tcx.sess.span_fatal(attr.span, &msg);
             }
         }
-        Assertion { clean: auto, dirty: except }
+        Assertion { clean: auto, dirty: except, loaded_from_disk }
+    }
+
+    /// `loaded_from_disk=` attribute value
+    fn loaded_from_disk(&self, attr: &Attribute) -> Labels {
+        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
+            if item.has_name(LOADED_FROM_DISK) {
+                let value = expect_associated_value(self.tcx, &item);
+                return self.resolve_labels(&item, value);
+            }
+        }
+        // If `loaded_from_disk=` is not specified, don't assert anything
+        Labels::default()
     }
 
     /// `except=` attribute value
@@ -332,6 +354,18 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         }
     }
 
+    fn assert_loaded_from_disk(&self, item_span: Span, dep_node: DepNode) {
+        debug!("assert_loaded_from_disk({:?})", dep_node);
+
+        if !self.tcx.dep_graph.debug_was_loaded_from_disk(dep_node) {
+            let dep_node_str = self.dep_node_str(&dep_node);
+            self.tcx.sess.span_err(
+                item_span,
+                &format!("`{}` should have been loaded from disk but it was not", dep_node_str),
+            );
+        }
+    }
+
     fn check_item(&mut self, item_id: LocalDefId, item_span: Span) {
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
         for attr in self.tcx.get_attrs(item_id.to_def_id()).iter() {
@@ -347,6 +381,10 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             for label in assertion.dirty {
                 let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
                 self.assert_dirty(item_span, dep_node);
+            }
+            for label in assertion.loaded_from_disk {
+                let dep_node = DepNode::from_label_string(self.tcx, &label, def_path_hash).unwrap();
+                self.assert_loaded_from_disk(item_span, dep_node);
             }
         }
     }
@@ -382,7 +420,7 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
             let value = expect_associated_value(tcx, &item);
             debug!("check_config: searching for cfg {:?}", value);
             cfg = Some(config.contains(&(value, None)));
-        } else if !item.has_name(EXCEPT) {
+        } else if !(item.has_name(EXCEPT) || item.has_name(LOADED_FROM_DISK)) {
             tcx.sess.span_err(attr.span, &format!("unknown item `{}`", item.name_or_empty()));
         }
     }

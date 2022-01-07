@@ -9,8 +9,8 @@
 fn main() {
     #![rustc_dummy]
     #[rustc_dummy]
-    fn f() { }
+    fn f() {}
 
     #[rustc_dummy]
-    fn g() { }
+    fn g() {}
 }

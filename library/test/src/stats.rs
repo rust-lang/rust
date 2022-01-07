@@ -1,5 +1,4 @@
 #![allow(missing_docs)]
-#![allow(deprecated)] // Float
 
 use std::mem;
 

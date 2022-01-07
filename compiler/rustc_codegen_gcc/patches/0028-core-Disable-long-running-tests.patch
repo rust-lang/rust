@@ -1,0 +1,30 @@
+From 0ffdd8eda8df364391c8ac6e1ce92c73ba9254d4 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Fri, 3 Dec 2021 12:16:30 +0100
+Subject: [PATCH] Disable long running tests
+
+---
+ library/core/tests/slice.rs | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/library/core/tests/slice.rs b/library/core/tests/slice.rs
+index 2c8f00a..44847ee 100644
+--- a/library/core/tests/slice.rs
++++ b/library/core/tests/slice.rs
+@@ -2332,7 +2332,8 @@ macro_rules! empty_max_mut {
+     };
+ }
+ 
++/*
+ #[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
+ take_tests! {
+     slice: &[(); usize::MAX], method: take,
+     (take_in_bounds_max_range_to, (..usize::MAX), Some(EMPTY_MAX), &[(); 0]),
+@@ -2345,3 +2347,4 @@ take_tests! {
+     (take_mut_oob_max_range_to_inclusive, (..=usize::MAX), None, empty_max_mut!()),
+     (take_mut_in_bounds_max_range_from, (usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
+ }
++*/
+-- 
+2.26.2.7.g19db9cfb68
+

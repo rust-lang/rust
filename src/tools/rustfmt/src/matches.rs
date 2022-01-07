@@ -322,7 +322,11 @@ fn flatten_arm_body<'a>(
     if let Some(block) = block_can_be_flattened(context, body) {
         if let ast::StmtKind::Expr(ref expr) = block.stmts[0].kind {
             if let ast::ExprKind::Block(..) = expr.kind {
-                flatten_arm_body(context, expr, None)
+                if expr.attrs.is_empty() {
+                    flatten_arm_body(context, expr, None)
+                } else {
+                    (true, body)
+                }
             } else {
                 let cond_becomes_muti_line = opt_shape
                     .and_then(|shape| rewrite_cond(context, expr, shape))

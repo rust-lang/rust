@@ -12,10 +12,10 @@ use thiserror::Error;
 use crate::attr::MetaVisitor;
 use crate::config::FileName;
 use crate::items::is_mod_decl;
-use crate::syntux::parser::{
+use crate::parse::parser::{
     Directory, DirectoryOwnership, ModError, ModulePathSuccess, Parser, ParserError,
 };
-use crate::syntux::session::ParseSess;
+use crate::parse::session::ParseSess;
 use crate::utils::{contains_skip, mk_sp};
 
 mod visitor;

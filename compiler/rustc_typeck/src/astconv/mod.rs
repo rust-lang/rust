@@ -2363,8 +2363,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.normalize_ty(span, tcx.at(span).type_of(def_id).subst(tcx, substs))
             }
             hir::TyKind::Array(ref ty, ref length) => {
-                let length_def_id = tcx.hir().local_def_id(length.hir_id);
-                let length = ty::Const::from_anon_const(tcx, length_def_id);
+                let length = match length {
+                    &hir::ArrayLen::Infer(_, span) => self.ct_infer(tcx.types.usize, None, span),
+                    hir::ArrayLen::Body(constant) => {
+                        let length_def_id = tcx.hir().local_def_id(constant.hir_id);
+                        ty::Const::from_anon_const(tcx, length_def_id)
+                    }
+                };
+
                 let array_ty = tcx.mk_ty(ty::Array(self.ast_ty_to_ty(ty), length));
                 self.normalize_ty(ast_ty.span, array_ty)
             }

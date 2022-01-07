@@ -122,7 +122,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         if typ.is_integral() {
             TypeKind::Integer
         }
-        else if typ.is_vector().is_some() {
+        else if typ.dyncast_vector().is_some() {
             TypeKind::Vector
         }
         else {
@@ -141,10 +141,10 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn element_type(&self, ty: Type<'gcc>) -> Type<'gcc> {
-        if let Some(typ) = ty.is_array() {
+        if let Some(typ) = ty.dyncast_array() {
             typ
         }
-        else if let Some(vector_type) = ty.is_vector() {
+        else if let Some(vector_type) = ty.dyncast_vector() {
             vector_type.get_element_type()
         }
         else if let Some(typ) = ty.get_pointee() {

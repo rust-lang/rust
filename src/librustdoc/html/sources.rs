@@ -142,7 +142,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
     }
 }
 
-impl SourceCollector<'_, 'tcx> {
+impl SourceCollector<'_, '_> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(
         &mut self,

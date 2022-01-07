@@ -13,7 +13,8 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use lazy_static::lazy_static;
+// FIXME: replace with std::lazy after it gets stabilized and reaches beta
+use once_cell::sync::Lazy;
 
 use crate::builder::Step;
 
@@ -222,9 +223,7 @@ impl Interner {
     }
 }
 
-lazy_static! {
-    pub static ref INTERNER: Interner = Interner::default();
-}
+pub static INTERNER: Lazy<Interner> = Lazy::new(Interner::default);
 
 /// This is essentially a `HashMap` which allows storing any type in its input and
 /// any type in its output. It is a write-once cache; values are never evicted,

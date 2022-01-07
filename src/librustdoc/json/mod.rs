@@ -19,12 +19,11 @@ use rustc_session::Session;
 use rustdoc_json_types as types;
 
 use crate::clean;
-use crate::clean::ExternalCrate;
+use crate::clean::types::{ExternalCrate, ExternalLocation};
 use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
-use crate::html::render::cache::ExternalLocation;
 use crate::json::conversions::{from_item_id, IntoWithTcx};
 
 #[derive(Clone)]
@@ -38,7 +37,7 @@ crate struct JsonRenderer<'tcx> {
     cache: Rc<Cache>,
 }
 
-impl JsonRenderer<'tcx> {
+impl<'tcx> JsonRenderer<'tcx> {
     fn sess(&self) -> &'tcx Session {
         self.tcx.sess
     }

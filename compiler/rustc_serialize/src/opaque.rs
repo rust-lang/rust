@@ -92,7 +92,8 @@ impl serialize::Encoder for Encoder {
 
     #[inline]
     fn emit_u16(&mut self, v: u16) -> EncodeResult {
-        write_leb128!(self, v, u16, write_u16_leb128)
+        self.data.extend_from_slice(&v.to_le_bytes());
+        Ok(())
     }
 
     #[inline]
@@ -123,7 +124,8 @@ impl serialize::Encoder for Encoder {
 
     #[inline]
     fn emit_i16(&mut self, v: i16) -> EncodeResult {
-        write_leb128!(self, v, i16, write_i16_leb128)
+        self.data.extend_from_slice(&v.to_le_bytes());
+        Ok(())
     }
 
     #[inline]
@@ -446,7 +448,7 @@ impl serialize::Encoder for FileEncoder {
 
     #[inline]
     fn emit_u16(&mut self, v: u16) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, u16, write_u16_leb128)
+        self.write_all(&v.to_le_bytes())
     }
 
     #[inline]
@@ -476,13 +478,12 @@ impl serialize::Encoder for FileEncoder {
 
     #[inline]
     fn emit_i16(&mut self, v: i16) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, i16, write_i16_leb128)
+        self.write_all(&v.to_le_bytes())
     }
 
     #[inline]
     fn emit_i8(&mut self, v: i8) -> FileEncodeResult {
-        let as_u8: u8 = unsafe { std::mem::transmute(v) };
-        self.emit_u8(as_u8)
+        self.emit_u8(v as u8)
     }
 
     #[inline]
@@ -591,7 +592,10 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_u16(&mut self) -> Result<u16, Self::Error> {
-        read_leb128!(self, read_u16_leb128)
+        let bytes = [self.data[self.position], self.data[self.position + 1]];
+        let value = u16::from_le_bytes(bytes);
+        self.position += 2;
+        Ok(value)
     }
 
     #[inline]
@@ -623,7 +627,10 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_i16(&mut self) -> Result<i16, Self::Error> {
-        read_leb128!(self, read_i16_leb128)
+        let bytes = [self.data[self.position], self.data[self.position + 1]];
+        let value = i16::from_le_bytes(bytes);
+        self.position += 2;
+        Ok(value)
     }
 
     #[inline]

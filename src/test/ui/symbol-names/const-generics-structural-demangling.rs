@@ -1,5 +1,5 @@
 // build-fail
-// compile-flags: -Z symbol-mangling-version=v0 --crate-name=c
+// compile-flags: -C symbol-mangling-version=v0 --crate-name=c
 
 // NOTE(eddyb) we need `core` for `core::option::Option`, normalize away its
 // disambiguator hash, which can/should change (including between stage{1,2}).

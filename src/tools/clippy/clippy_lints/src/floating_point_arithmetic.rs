@@ -356,7 +356,7 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
             if eq_expr_value(cx, lmul_lhs, lmul_rhs);
             if eq_expr_value(cx, rmul_lhs, rmul_rhs);
             then {
-                return Some(format!("{}.hypot({})", Sugg::hir(cx, lmul_lhs, ".."), Sugg::hir(cx, rmul_lhs, "..")));
+                return Some(format!("{}.hypot({})", Sugg::hir(cx, lmul_lhs, "..").maybe_par(), Sugg::hir(cx, rmul_lhs, "..")));
             }
         }
 
@@ -379,7 +379,7 @@ fn detect_hypot(cx: &LateContext<'_>, args: &[Expr<'_>]) -> Option<String> {
             if let Some((rvalue, _)) = constant(cx, cx.typeck_results(), rargs_1);
             if Int(2) == lvalue && Int(2) == rvalue;
             then {
-                return Some(format!("{}.hypot({})", Sugg::hir(cx, largs_0, ".."), Sugg::hir(cx, rargs_0, "..")));
+                return Some(format!("{}.hypot({})", Sugg::hir(cx, largs_0, "..").maybe_par(), Sugg::hir(cx, rargs_0, "..")));
             }
         }
     }
@@ -654,26 +654,52 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue) &&
                (F32(180_f32) == lvalue || F64(180_f64) == lvalue)
             {
+                let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, ".."));
+                if_chain! {
+                    if let ExprKind::Lit(ref literal) = mul_lhs.kind;
+                    if let ast::LitKind::Float(ref value, float_type) = literal.node;
+                    if float_type == ast::LitFloatType::Unsuffixed;
+                    then {
+                        if value.as_str().ends_with('.') {
+                            proposal = format!("{}0_f64.to_degrees()", Sugg::hir(cx, mul_lhs, ".."));
+                        } else {
+                            proposal = format!("{}_f64.to_degrees()", Sugg::hir(cx, mul_lhs, ".."));
+                        }
+                    }
+                }
                 span_lint_and_sugg(
                     cx,
                     SUBOPTIMAL_FLOPS,
                     expr.span,
                     "conversion to degrees can be done more accurately",
                     "consider using",
-                    format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..")),
+                    proposal,
                     Applicability::MachineApplicable,
                 );
             } else if
                 (F32(180_f32) == rvalue || F64(180_f64) == rvalue) &&
                 (F32(f32_consts::PI) == lvalue || F64(f64_consts::PI) == lvalue)
             {
+                let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, ".."));
+                if_chain! {
+                    if let ExprKind::Lit(ref literal) = mul_lhs.kind;
+                    if let ast::LitKind::Float(ref value, float_type) = literal.node;
+                    if float_type == ast::LitFloatType::Unsuffixed;
+                    then {
+                        if value.as_str().ends_with('.') {
+                            proposal = format!("{}0_f64.to_radians()", Sugg::hir(cx, mul_lhs, ".."));
+                        } else {
+                            proposal = format!("{}_f64.to_radians()", Sugg::hir(cx, mul_lhs, ".."));
+                        }
+                    }
+                }
                 span_lint_and_sugg(
                     cx,
                     SUBOPTIMAL_FLOPS,
                     expr.span,
                     "conversion to radians can be done more accurately",
                     "consider using",
-                    format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..")),
+                    proposal,
                     Applicability::MachineApplicable,
                 );
             }

@@ -231,6 +231,37 @@ pub enum DebugInfo {
     Full,
 }
 
+/// Split debug-information is enabled by `-C split-debuginfo`, this enum is only used if split
+/// debug-information is enabled (in either `Packed` or `Unpacked` modes), and the platform
+/// uses DWARF for debug-information.
+///
+/// Some debug-information requires link-time relocation and some does not. LLVM can partition
+/// the debuginfo into sections depending on whether or not it requires link-time relocation. Split
+/// DWARF provides a mechanism which allows the linker to skip the sections which don't require
+/// link-time relocation - either by putting those sections in DWARF object files, or by keeping
+/// them in the object file in such a way that the linker will skip them.
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum SplitDwarfKind {
+    /// Sections which do not require relocation are written into object file but ignored by the
+    /// linker.
+    Single,
+    /// Sections which do not require relocation are written into a DWARF object (`.dwo`) file
+    /// which is ignored by the linker.
+    Split,
+}
+
+impl FromStr for SplitDwarfKind {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, ()> {
+        Ok(match s {
+            "single" => SplitDwarfKind::Single,
+            "split" => SplitDwarfKind::Split,
+            _ => return Err(()),
+        })
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 #[derive(Encodable, Decodable)]
 pub enum OutputType {
@@ -378,7 +409,7 @@ impl OutputTypes {
         self.0.len()
     }
 
-    // Returns `true` if any of the output types require codegen or linking.
+    /// Returns `true` if any of the output types require codegen or linking.
     pub fn should_codegen(&self) -> bool {
         self.0.keys().any(|k| match *k {
             OutputType::Bitcode
@@ -391,7 +422,7 @@ impl OutputTypes {
         })
     }
 
-    // Returns `true` if any of the output types require linking.
+    /// Returns `true` if any of the output types require linking.
     pub fn should_link(&self) -> bool {
         self.0.keys().any(|k| match *k {
             OutputType::Bitcode
@@ -681,18 +712,23 @@ impl OutputFilenames {
     pub fn split_dwarf_path(
         &self,
         split_debuginfo_kind: SplitDebuginfo,
+        split_dwarf_kind: SplitDwarfKind,
         cgu_name: Option<&str>,
     ) -> Option<PathBuf> {
         let obj_out = self.temp_path(OutputType::Object, cgu_name);
         let dwo_out = self.temp_path_dwo(cgu_name);
-        match split_debuginfo_kind {
-            SplitDebuginfo::Off => None,
+        match (split_debuginfo_kind, split_dwarf_kind) {
+            (SplitDebuginfo::Off, SplitDwarfKind::Single | SplitDwarfKind::Split) => None,
             // Single mode doesn't change how DWARF is emitted, but does add Split DWARF attributes
             // (pointing at the path which is being determined here). Use the path to the current
             // object file.
-            SplitDebuginfo::Packed => Some(obj_out),
+            (SplitDebuginfo::Packed | SplitDebuginfo::Unpacked, SplitDwarfKind::Single) => {
+                Some(obj_out)
+            }
             // Split mode emits the DWARF into a different file, use that path.
-            SplitDebuginfo::Unpacked => Some(dwo_out),
+            (SplitDebuginfo::Packed | SplitDebuginfo::Unpacked, SplitDwarfKind::Split) => {
+                Some(dwo_out)
+            }
         }
     }
 }
@@ -781,6 +817,10 @@ impl Options {
             },
         }
     }
+
+    pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
+        self.cg.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
+    }
 }
 
 impl DebuggingOptions {
@@ -793,10 +833,6 @@ impl DebuggingOptions {
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
         }
-    }
-
-    pub fn get_symbol_mangling_version(&self) -> SymbolManglingVersion {
-        self.symbol_mangling_version.unwrap_or(SymbolManglingVersion::Legacy)
     }
 }
 
@@ -821,6 +857,18 @@ pub enum CrateType {
 
 impl_stable_hash_via_hash!(CrateType);
 
+impl CrateType {
+    /// When generated, is this crate type an archive?
+    pub fn is_archive(&self) -> bool {
+        match *self {
+            CrateType::Rlib | CrateType::Staticlib => true,
+            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => {
+                false
+            }
+        }
+    }
+}
+
 #[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub enum Passes {
     Some(Vec<String>),
@@ -840,6 +888,30 @@ impl Passes {
             Passes::Some(ref mut v) => v.extend(passes),
             Passes::All => {}
         }
+    }
+}
+
+#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+pub enum PAuthKey {
+    A,
+    B,
+}
+
+#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+pub struct PacRet {
+    pub leaf: bool,
+    pub key: PAuthKey,
+}
+
+#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+pub struct BranchProtection {
+    pub bti: bool,
+    pub pac_ret: Option<PacRet>,
+}
+
+impl Default for BranchProtection {
+    fn default() -> Self {
+        BranchProtection { bti: false, pac_ret: None }
     }
 }
 
@@ -2092,6 +2164,34 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         );
     }
 
+    // Handle both `-Z symbol-mangling-version` and `-C symbol-mangling-version`; the latter takes
+    // precedence.
+    match (cg.symbol_mangling_version, debugging_opts.symbol_mangling_version) {
+        (Some(smv_c), Some(smv_z)) if smv_c != smv_z => {
+            early_error(
+                error_format,
+                "incompatible values passed for `-C symbol-mangling-version` \
+                and `-Z symbol-mangling-version`",
+            );
+        }
+        (Some(SymbolManglingVersion::V0), _) => {}
+        (Some(_), _) if !debugging_opts.unstable_options => {
+            early_error(
+                error_format,
+                "`-C symbol-mangling-version=legacy` requires `-Z unstable-options`",
+            );
+        }
+        (None, None) => {}
+        (None, smv) => {
+            early_warn(
+                error_format,
+                "`-Z symbol-mangling-version` is deprecated; use `-C symbol-mangling-version`",
+            );
+            cg.symbol_mangling_version = smv;
+        }
+        _ => {}
+    }
+
     if debugging_opts.instrument_coverage.is_some()
         && debugging_opts.instrument_coverage != Some(InstrumentCoverage::Off)
     {
@@ -2103,19 +2203,17 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             );
         }
 
-        // `-Z instrument-coverage` implies `-Z symbol-mangling-version=v0` - to ensure consistent
+        // `-Z instrument-coverage` implies `-C symbol-mangling-version=v0` - to ensure consistent
         // and reversible name mangling. Note, LLVM coverage tools can analyze coverage over
         // multiple runs, including some changes to source code; so mangled names must be consistent
         // across compilations.
-        match debugging_opts.symbol_mangling_version {
-            None => {
-                debugging_opts.symbol_mangling_version = Some(SymbolManglingVersion::V0);
-            }
+        match cg.symbol_mangling_version {
+            None => cg.symbol_mangling_version = Some(SymbolManglingVersion::V0),
             Some(SymbolManglingVersion::Legacy) => {
                 early_warn(
                     error_format,
                     "-Z instrument-coverage requires symbol mangling version `v0`, \
-                    but `-Z symbol-mangling-version=legacy` was specified",
+                    but `-C symbol-mangling-version=legacy` was specified",
                 );
             }
             Some(SymbolManglingVersion::V0) => {}
@@ -2497,9 +2595,9 @@ impl PpMode {
 crate mod dep_tracking {
     use super::LdImpl;
     use super::{
-        CFGuard, CrateType, DebugInfo, ErrorOutputType, InstrumentCoverage, LinkerPluginLto,
-        LocationDetail, LtoCli, OptLevel, OutputType, OutputTypes, Passes, SourceFileHashAlgorithm,
-        SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
+        BranchProtection, CFGuard, CrateType, DebugInfo, ErrorOutputType, InstrumentCoverage,
+        LinkerPluginLto, LocationDetail, LtoCli, OptLevel, OutputType, OutputTypes, Passes,
+        SourceFileHashAlgorithm, SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2593,6 +2691,7 @@ crate mod dep_tracking {
         OutputType,
         RealFileName,
         LocationDetail,
+        BranchProtection,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

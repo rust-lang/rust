@@ -195,6 +195,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
+    traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
+
     implementations_of_trait => {
         cdata.get_implementations_for_trait(tcx, Some(other))
     }
@@ -239,7 +241,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
@@ -527,5 +529,9 @@ impl CrateStore for CStore {
         hash: ExpnHash,
     ) -> ExpnId {
         self.get_crate_data(cnum).expn_hash_to_expn_id(sess, index_guess, hash)
+    }
+
+    fn import_source_files(&self, sess: &Session, cnum: CrateNum) {
+        self.get_crate_data(cnum).imported_source_files(sess);
     }
 }

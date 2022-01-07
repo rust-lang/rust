@@ -29,6 +29,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(functions::MUST_USE_UNIT),
     LintId::of(functions::RESULT_UNIT_ERR),
     LintId::of(inherent_to_string::INHERENT_TO_STRING),
+    LintId::of(init_numbered_fields::INIT_NUMBERED_FIELDS),
     LintId::of(len_zero::COMPARISON_TO_EMPTY),
     LintId::of(len_zero::LEN_WITHOUT_IS_EMPTY),
     LintId::of(len_zero::LEN_ZERO),

@@ -441,7 +441,7 @@ fn is_empty_string(expr: &Expr<'_>) -> bool {
     if let ExprKind::Lit(ref lit) = expr.kind {
         if let LitKind::Str(lit, _) = lit.node {
             let lit = lit.as_str();
-            return lit == "";
+            return lit.is_empty();
         }
     }
     false

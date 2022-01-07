@@ -72,6 +72,52 @@ fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_ne
     }
 }
 
+fn handle_array_element(
+    cx: &mut base::ExtCtxt<'_>,
+    has_errors: &mut bool,
+    missing_literals: &mut Vec<rustc_span::Span>,
+    expr: &P<rustc_ast::Expr>,
+) -> Option<u8> {
+    match expr.kind {
+        ast::ExprKind::Array(_) | ast::ExprKind::Repeat(_, _) => {
+            if !*has_errors {
+                cx.span_err(expr.span, "cannot concatenate doubly nested array");
+            }
+            *has_errors = true;
+            None
+        }
+        ast::ExprKind::Lit(ref lit) => match lit.kind {
+            ast::LitKind::Int(
+                val,
+                ast::LitIntType::Unsuffixed | ast::LitIntType::Unsigned(ast::UintTy::U8),
+            ) if val <= u8::MAX.into() => Some(val as u8),
+
+            ast::LitKind::Byte(val) => Some(val),
+            ast::LitKind::ByteStr(_) => {
+                if !*has_errors {
+                    cx.struct_span_err(expr.span, "cannot concatenate doubly nested array")
+                        .note("byte strings are treated as arrays of bytes")
+                        .help("try flattening the array")
+                        .emit();
+                }
+                *has_errors = true;
+                None
+            }
+            _ => {
+                if !*has_errors {
+                    invalid_type_err(cx, expr, true);
+                }
+                *has_errors = true;
+                None
+            }
+        },
+        _ => {
+            missing_literals.push(expr.span);
+            None
+        }
+    }
+}
+
 pub fn expand_concat_bytes(
     cx: &mut base::ExtCtxt<'_>,
     sp: rustc_span::Span,
@@ -88,48 +134,27 @@ pub fn expand_concat_bytes(
         match e.kind {
             ast::ExprKind::Array(ref exprs) => {
                 for expr in exprs {
-                    match expr.kind {
-                        ast::ExprKind::Array(_) => {
-                            if !has_errors {
-                                cx.span_err(expr.span, "cannot concatenate doubly nested array");
-                            }
-                            has_errors = true;
-                        }
-                        ast::ExprKind::Lit(ref lit) => match lit.kind {
-                            ast::LitKind::Int(
-                                val,
-                                ast::LitIntType::Unsuffixed
-                                | ast::LitIntType::Unsigned(ast::UintTy::U8),
-                            ) if val <= u8::MAX.into() => {
-                                accumulator.push(val as u8);
-                            }
-
-                            ast::LitKind::Byte(val) => {
-                                accumulator.push(val);
-                            }
-                            ast::LitKind::ByteStr(_) => {
-                                if !has_errors {
-                                    cx.struct_span_err(
-                                        expr.span,
-                                        "cannot concatenate doubly nested array",
-                                    )
-                                    .note("byte strings are treated as arrays of bytes")
-                                    .help("try flattening the array")
-                                    .emit();
-                                }
-                                has_errors = true;
-                            }
-                            _ => {
-                                if !has_errors {
-                                    invalid_type_err(cx, expr, true);
-                                }
-                                has_errors = true;
-                            }
-                        },
-                        _ => {
-                            missing_literals.push(expr.span);
+                    if let Some(elem) =
+                        handle_array_element(cx, &mut has_errors, &mut missing_literals, expr)
+                    {
+                        accumulator.push(elem);
+                    }
+                }
+            }
+            ast::ExprKind::Repeat(ref expr, ref count) => {
+                if let ast::ExprKind::Lit(ast::Lit {
+                    kind: ast::LitKind::Int(count_val, _), ..
+                }) = count.value.kind
+                {
+                    if let Some(elem) =
+                        handle_array_element(cx, &mut has_errors, &mut missing_literals, expr)
+                    {
+                        for _ in 0..count_val {
+                            accumulator.push(elem);
                         }
                     }
+                } else {
+                    cx.span_err(count.value.span, "repeat count is not a positive number");
                 }
             }
             ast::ExprKind::Lit(ref lit) => match lit.kind {

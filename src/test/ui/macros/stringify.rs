@@ -235,7 +235,7 @@ fn test_expr() {
             #[attr]
             {}
         ),
-        "#[attr] { }", // FIXME
+        "#[attr] {}",
     );
     assert_eq!(
         stringify_expr!(
@@ -256,7 +256,7 @@ fn test_expr() {
     assert_eq!(stringify_expr!(expr.await), "expr.await");
 
     // ExprKind::TryBlock
-    assert_eq!(stringify_expr!(try {}), "try  {}"); // FIXME
+    assert_eq!(stringify_expr!(try {}), "try {}");
 
     // ExprKind::Assign
     assert_eq!(stringify_expr!(expr = true), "expr = true");
@@ -382,13 +382,13 @@ fn test_item() {
         stringify_item!(
             static S: ();
         ),
-        "static S: () ;", // FIXME
+        "static S: ();",
     );
     assert_eq!(
         stringify_item!(
             static mut S: ();
         ),
-        "static mut S: () ;",
+        "static mut S: ();",
     );
 
     // ItemKind::Const
@@ -402,7 +402,7 @@ fn test_item() {
         stringify_item!(
             const S: ();
         ),
-        "const S: () ;", // FIXME
+        "const S: ();",
     );
 
     // ItemKind::Fn
@@ -661,9 +661,9 @@ fn test_pat() {
     assert_eq!(stringify_pat!(ref mut _x @ _), "ref mut _x @ _");
 
     // PatKind::Struct
-    assert_eq!(stringify_pat!(Struct {}), "Struct {  }"); // FIXME
-    assert_eq!(stringify_pat!(Struct::<u8> {}), "Struct::<u8> {  }");
-    assert_eq!(stringify_pat!(Struct::<'static> {}), "Struct::<'static> {  }");
+    assert_eq!(stringify_pat!(Struct {}), "Struct {}");
+    assert_eq!(stringify_pat!(Struct::<u8> {}), "Struct::<u8> {}");
+    assert_eq!(stringify_pat!(Struct::<'static> {}), "Struct::<'static> {}");
     assert_eq!(stringify_pat!(Struct { x }), "Struct { x }");
     assert_eq!(stringify_pat!(Struct { x: _x }), "Struct { x: _x }");
     assert_eq!(stringify_pat!(Struct { .. }), "Struct { .. }");
@@ -672,7 +672,7 @@ fn test_pat() {
     #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5151
     assert_eq!(
         stringify_pat!(<Struct as Trait>::Type {}),
-        "<Struct as Trait>::Type {  }",
+        "<Struct as Trait>::Type {}",
     );
 
     // PatKind::TupleStruct
@@ -712,10 +712,10 @@ fn test_pat() {
 
     // PatKind::Range
     assert_eq!(stringify_pat!(..1), "..1");
-    assert_eq!(stringify_pat!(0..), "0 .."); // FIXME
-    assert_eq!(stringify_pat!(0..1), "0 ..1");
-    assert_eq!(stringify_pat!(0..=1), "0 ..=1");
-    assert_eq!(stringify_pat!(-2..=-1), "-2 ..=-1");
+    assert_eq!(stringify_pat!(0..), "0..");
+    assert_eq!(stringify_pat!(0..1), "0..1");
+    assert_eq!(stringify_pat!(0..=1), "0..=1");
+    assert_eq!(stringify_pat!(-2..=-1), "-2..=-1");
 
     // PatKind::Slice
     assert_eq!(stringify_pat!([]), "[]");
@@ -803,7 +803,7 @@ fn test_ty() {
     assert_eq!(stringify_ty!(fn(x: u8)), "fn(x: u8)");
     #[rustfmt::skip]
     assert_eq!(stringify_ty!(for<> fn()), "fn()");
-    assert_eq!(stringify_ty!(for<'a> fn()), "for<'a>fn()"); // FIXME
+    assert_eq!(stringify_ty!(for<'a> fn()), "for<'a> fn()");
 
     // TyKind::Never
     assert_eq!(stringify_ty!(!), "!");

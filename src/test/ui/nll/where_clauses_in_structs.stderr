@@ -9,6 +9,9 @@ LL |     Foo { x, y };
    |           ^ this usage requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of the type Cell<&u32>, which makes the generic argument &u32 invariant
+   = note: the struct Cell<T> is invariant over the parameter T
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to previous error
 

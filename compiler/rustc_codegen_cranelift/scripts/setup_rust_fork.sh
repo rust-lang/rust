@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-./y.rs build
+./y.rs build --no-unstable-features
 source scripts/config.sh
 
 echo "[SETUP] Rust fork"

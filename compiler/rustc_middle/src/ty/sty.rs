@@ -2282,36 +2282,26 @@ pub enum VarianceDiagInfo<'tcx> {
     /// We will not add any additional information to error messages.
     #[default]
     None,
-    /// We switched our variance because a type occurs inside
-    /// the generic argument of a mutable reference or pointer
-    /// (`*mut T` or `&mut T`). In either case, our variance
-    /// will always be `Invariant`.
-    Mut {
-        /// Tracks whether we had a mutable pointer or reference,
-        /// for better error messages
-        kind: VarianceDiagMutKind,
-        /// The type parameter of the mutable pointer/reference
-        /// (the `T` in `&mut T` or `*mut T`).
+    /// We switched our variance because a generic argument occurs inside
+    /// the invariant generic argument of another type.
+    Invariant {
+        /// The generic type containing the generic parameter
+        /// that changes the variance (e.g. `*mut T`, `MyStruct<T>`)
         ty: Ty<'tcx>,
+        /// The index of the generic parameter being used
+        /// (e.g. `0` for `*mut T`, `1` for `MyStruct<'CovariantParam, 'InvariantParam>`)
+        param_index: u32,
     },
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum VarianceDiagMutKind {
-    /// A mutable raw pointer (`*mut T`)
-    RawPtr,
-    /// A mutable reference (`&mut T`)
-    Ref,
 }
 
 impl<'tcx> VarianceDiagInfo<'tcx> {
     /// Mirrors `Variance::xform` - used to 'combine' the existing
     /// and new `VarianceDiagInfo`s when our variance changes.
     pub fn xform(self, other: VarianceDiagInfo<'tcx>) -> VarianceDiagInfo<'tcx> {
-        // For now, just use the first `VarianceDiagInfo::Mut` that we see
+        // For now, just use the first `VarianceDiagInfo::Invariant` that we see
         match self {
             VarianceDiagInfo::None => other,
-            VarianceDiagInfo::Mut { .. } => self,
+            VarianceDiagInfo::Invariant { .. } => self,
         }
     }
 }

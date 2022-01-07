@@ -1238,12 +1238,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_repeat(
         &self,
         element: &'tcx hir::Expr<'tcx>,
-        count: &'tcx hir::AnonConst,
+        count: &'tcx hir::ArrayLen,
         expected: Expectation<'tcx>,
         _expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let count = self.to_const(count);
+        let count = self.array_length_to_const(count);
 
         let uty = match expected {
             ExpectHasType(uty) => match *uty.kind() {

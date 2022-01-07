@@ -344,8 +344,8 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     }
 
     fn visit_crate(&mut self, krate: &'a Crate) {
-        if let Some(id) = krate.is_placeholder {
-            self.visit_macro_invoc(id)
+        if krate.is_placeholder {
+            self.visit_macro_invoc(krate.id)
         } else {
             visit::walk_crate(self, krate)
         }

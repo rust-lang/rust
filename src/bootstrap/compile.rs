@@ -662,6 +662,8 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         .env("CFG_VERSION", builder.rust_version());
 
     let libdir_relative = builder.config.libdir_relative().unwrap_or_else(|| Path::new("lib"));
+    let target_config = builder.config.target_config.get(&target);
+
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
 
     if let Some(ref ver_date) = builder.rust_info.commit_date() {
@@ -673,9 +675,15 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     if !builder.unstable_features() {
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
-    if let Some(ref s) = builder.config.rustc_default_linker {
+
+    // Prefer the current target's own default_linker, else a globally
+    // specified one.
+    if let Some(s) = target_config.and_then(|c| c.default_linker.as_ref()) {
+        cargo.env("CFG_DEFAULT_LINKER", s);
+    } else if let Some(ref s) = builder.config.rustc_default_linker {
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
+
     if builder.config.rustc_parallel {
         cargo.rustflag("--cfg=parallel_compiler");
         cargo.rustdocflag("--cfg=parallel_compiler");
@@ -700,7 +708,6 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         }
         let llvm_config = builder.ensure(native::Llvm { target });
         cargo.env("LLVM_CONFIG", &llvm_config);
-        let target_config = builder.config.target_config.get(&target);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             cargo.env("CFG_LLVM_ROOT", s);
         }
@@ -1136,7 +1143,6 @@ impl Step for Assemble {
         let libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
         let libdir_bin = libdir.parent().unwrap().join("bin");
         t!(fs::create_dir_all(&libdir_bin));
-
         if let Some(lld_install) = lld_install {
             let src_exe = exe("lld", target_compiler.host);
             let dst_exe = exe("rust-lld", target_compiler.host);
@@ -1154,17 +1160,11 @@ impl Step for Assemble {
             }
         }
 
-        // Similarly, copy `llvm-dwp` into libdir for Split DWARF. Only copy it when the LLVM
-        // backend is used to avoid unnecessarily building LLVM and because LLVM is not checked
-        // out by default when the LLVM backend is not enabled.
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
-            let src_exe = exe("llvm-dwp", target_compiler.host);
-            let dst_exe = exe("rust-llvm-dwp", target_compiler.host);
             let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
             if !builder.config.dry_run {
                 let llvm_bin_dir = output(Command::new(llvm_config_bin).arg("--bindir"));
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
-                builder.copy(&llvm_bin_dir.join(&src_exe), &libdir_bin.join(&dst_exe));
 
                 // Since we've already built the LLVM tools, install them to the sysroot.
                 // This is the equivalent of installing the `llvm-tools-preview` component via

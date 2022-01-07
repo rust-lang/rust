@@ -121,14 +121,20 @@ unsafe fn configure_llvm(sess: &Session) {
 
     llvm::LLVMInitializePasses();
 
-    // Register LLVM plugins by loading them into the compiler process.
-    for plugin in &sess.opts.debugging_opts.llvm_plugins {
-        let lib = Library::new(plugin).unwrap_or_else(|e| bug!("couldn't load plugin: {}", e));
-        debug!("LLVM plugin loaded successfully {:?} ({})", lib, plugin);
+    // Use the legacy plugin registration if we don't use the new pass manager
+    if !should_use_new_llvm_pass_manager(
+        &sess.opts.debugging_opts.new_llvm_pass_manager,
+        &sess.target.arch,
+    ) {
+        // Register LLVM plugins by loading them into the compiler process.
+        for plugin in &sess.opts.debugging_opts.llvm_plugins {
+            let lib = Library::new(plugin).unwrap_or_else(|e| bug!("couldn't load plugin: {}", e));
+            debug!("LLVM plugin loaded successfully {:?} ({})", lib, plugin);
 
-        // Intentionally leak the dynamic library. We can't ever unload it
-        // since the library can make things that will live arbitrarily long.
-        mem::forget(lib);
+            // Intentionally leak the dynamic library. We can't ever unload it
+            // since the library can make things that will live arbitrarily long.
+            mem::forget(lib);
+        }
     }
 
     rustc_llvm::initialize_available_targets();
@@ -215,6 +221,12 @@ pub fn get_version() -> (u32, u32, u32) {
     unsafe {
         (llvm::LLVMRustVersionMajor(), llvm::LLVMRustVersionMinor(), llvm::LLVMRustVersionPatch())
     }
+}
+
+/// Returns `true` if this LLVM is Rust's bundled LLVM (and not system LLVM).
+pub fn is_rust_llvm() -> bool {
+    // Can be called without initializing LLVM
+    unsafe { llvm::LLVMRustIsRustLLVM() }
 }
 
 pub fn print_passes() {
@@ -410,4 +422,14 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
 pub fn tune_cpu(sess: &Session) -> Option<&str> {
     let name = sess.opts.debugging_opts.tune_cpu.as_ref()?;
     Some(handle_native(name))
+}
+
+pub(crate) fn should_use_new_llvm_pass_manager(user_opt: &Option<bool>, target_arch: &str) -> bool {
+    // The new pass manager is enabled by default for LLVM >= 13.
+    // This matches Clang, which also enables it since Clang 13.
+
+    // FIXME: There are some perf issues with the new pass manager
+    // when targeting s390x, so it is temporarily disabled for that
+    // arch, see https://github.com/rust-lang/rust/issues/89609
+    user_opt.unwrap_or_else(|| target_arch != "s390x" && llvm_util::get_version() >= (13, 0, 0))
 }

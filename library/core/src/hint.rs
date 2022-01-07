@@ -123,6 +123,21 @@ pub fn spin_loop() {
         }
     }
 
+    // RISC-V platform spin loop hint implementation
+    {
+        // RISC-V RV32 and RV64 share the same PAUSE instruction, but they are located in different
+        // modules in `core::arch`.
+        // In this case, here we call `pause` function in each core arch module.
+        #[cfg(target_arch = "riscv32")]
+        {
+            crate::arch::riscv32::pause();
+        }
+        #[cfg(target_arch = "riscv64")]
+        {
+            crate::arch::riscv64::pause();
+        }
+    }
+
     #[cfg(any(target_arch = "aarch64", all(target_arch = "arm", target_feature = "v6")))]
     {
         #[cfg(target_arch = "aarch64")]
@@ -136,11 +151,6 @@ pub fn spin_loop() {
             // with support for the v6 feature.
             unsafe { crate::arch::arm::__yield() };
         }
-    }
-
-    #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
-    {
-        crate::arch::riscv::pause();
     }
 }
 

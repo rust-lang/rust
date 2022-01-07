@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::HybridBitSet;
+use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::ty::{Ty, TypeFoldable};
@@ -105,12 +106,12 @@ struct LivenessResults<'me, 'typeck, 'flow, 'tcx> {
 
     /// Points where the current variable is "use live" -- meaning
     /// that there is a future "full use" that may use its value.
-    use_live_at: HybridBitSet<PointIndex>,
+    use_live_at: IntervalSet<PointIndex>,
 
     /// Points where the current variable is "drop live" -- meaning
     /// that there is no future "full use" that may use its value, but
     /// there is a future drop.
-    drop_live_at: HybridBitSet<PointIndex>,
+    drop_live_at: IntervalSet<PointIndex>,
 
     /// Locations where drops may occur.
     drop_locations: Vec<Location>,
@@ -125,8 +126,8 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         LivenessResults {
             cx,
             defs: HybridBitSet::new_empty(num_points),
-            use_live_at: HybridBitSet::new_empty(num_points),
-            drop_live_at: HybridBitSet::new_empty(num_points),
+            use_live_at: IntervalSet::new(num_points),
+            drop_live_at: IntervalSet::new(num_points),
             drop_locations: vec![],
             stack: vec![],
         }
@@ -165,7 +166,7 @@ impl<'me, 'typeck, 'flow, 'tcx> LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         drop_used: Vec<(Local, Location)>,
         live_locals: FxHashSet<Local>,
     ) {
-        let locations = HybridBitSet::new_empty(self.cx.elements.num_points());
+        let locations = IntervalSet::new(self.cx.elements.num_points());
 
         for (local, location) in drop_used {
             if !live_locals.contains(&local) {
@@ -456,7 +457,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     fn add_use_live_facts_for(
         &mut self,
         value: impl TypeFoldable<'tcx>,
-        live_at: &HybridBitSet<PointIndex>,
+        live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("add_use_live_facts_for(value={:?})", value);
 
@@ -473,7 +474,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         dropped_local: Local,
         dropped_ty: Ty<'tcx>,
         drop_locations: &[Location],
-        live_at: &HybridBitSet<PointIndex>,
+        live_at: &IntervalSet<PointIndex>,
     ) {
         debug!(
             "add_drop_live_constraint(\
@@ -521,7 +522,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         elements: &RegionValueElements,
         typeck: &mut TypeChecker<'_, 'tcx>,
         value: impl TypeFoldable<'tcx>,
-        live_at: &HybridBitSet<PointIndex>,
+        live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("make_all_regions_live(value={:?})", value);
         debug!(

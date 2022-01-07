@@ -5,8 +5,8 @@ use crate::check::FnCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Namespace, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def::Namespace;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1922,76 +1922,10 @@ impl Ord for TraitInfo {
     }
 }
 
-/// Retrieves all traits in this crate and any dependent crates.
+/// Retrieves all traits in this crate and any dependent crates,
+/// and wraps them into `TraitInfo` for custom sorting.
 pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
-    tcx.all_traits(()).iter().map(|&def_id| TraitInfo { def_id }).collect()
-}
-
-/// Computes all traits in this crate and any dependent crates.
-fn compute_all_traits(tcx: TyCtxt<'_>, (): ()) -> &[DefId] {
-    use hir::itemlikevisit;
-
-    let mut traits = vec![];
-
-    // Crate-local:
-
-    struct Visitor<'a> {
-        traits: &'a mut Vec<DefId>,
-    }
-
-    impl<'v, 'a> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a> {
-        fn visit_item(&mut self, i: &'v hir::Item<'v>) {
-            match i.kind {
-                hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) => {
-                    self.traits.push(i.def_id.to_def_id());
-                }
-                _ => (),
-            }
-        }
-
-        fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
-
-        fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
-
-        fn visit_foreign_item(&mut self, _foreign_item: &hir::ForeignItem<'_>) {}
-    }
-
-    tcx.hir().visit_all_item_likes(&mut Visitor { traits: &mut traits });
-
-    // Cross-crate:
-
-    let mut external_mods = FxHashSet::default();
-    fn handle_external_res(
-        tcx: TyCtxt<'_>,
-        traits: &mut Vec<DefId>,
-        external_mods: &mut FxHashSet<DefId>,
-        res: Res<!>,
-    ) {
-        match res {
-            Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) => {
-                traits.push(def_id);
-            }
-            Res::Def(DefKind::Mod, def_id) => {
-                if !external_mods.insert(def_id) {
-                    return;
-                }
-                for child in tcx.item_children(def_id).iter() {
-                    handle_external_res(tcx, traits, external_mods, child.res)
-                }
-            }
-            _ => {}
-        }
-    }
-    for &cnum in tcx.crates(()).iter() {
-        let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
-        handle_external_res(tcx, &mut traits, &mut external_mods, Res::Def(DefKind::Mod, def_id));
-    }
-
-    tcx.arena.alloc_from_iter(traits)
-}
-
-pub fn provide(providers: &mut ty::query::Providers) {
-    providers.all_traits = compute_all_traits;
+    tcx.all_traits().map(|def_id| TraitInfo { def_id }).collect()
 }
 
 fn find_use_placement<'tcx>(tcx: TyCtxt<'tcx>, target_module: LocalDefId) -> (Option<Span>, bool) {

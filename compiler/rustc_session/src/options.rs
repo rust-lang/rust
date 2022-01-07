@@ -412,9 +412,13 @@ mod desc {
     pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub const parse_split_debuginfo: &str =
         "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
+    pub const parse_split_dwarf_kind: &str =
+        "one of supported split dwarf modes (`split` or `single`)";
     pub const parse_gcc_ld: &str = "one of: no value, `lld`";
     pub const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
+    pub const parse_branch_protection: &str =
+        "a `,` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf`";
 }
 
 mod parse {
@@ -939,6 +943,14 @@ mod parse {
         true
     }
 
+    crate fn parse_split_dwarf_kind(slot: &mut SplitDwarfKind, v: Option<&str>) -> bool {
+        match v.and_then(|s| SplitDwarfKind::from_str(s).ok()) {
+            Some(e) => *slot = e,
+            _ => return false,
+        }
+        true
+    }
+
     crate fn parse_gcc_ld(slot: &mut Option<LdImpl>, v: Option<&str>) -> bool {
         match v {
             None => *slot = None,
@@ -951,6 +963,32 @@ mod parse {
     crate fn parse_stack_protector(slot: &mut StackProtector, v: Option<&str>) -> bool {
         match v.and_then(|s| StackProtector::from_str(s).ok()) {
             Some(ssp) => *slot = ssp,
+            _ => return false,
+        }
+        true
+    }
+
+    crate fn parse_branch_protection(slot: &mut BranchProtection, v: Option<&str>) -> bool {
+        match v {
+            Some(s) => {
+                for opt in s.split(',') {
+                    match opt {
+                        "bti" => slot.bti = true,
+                        "pac-ret" if slot.pac_ret.is_none() => {
+                            slot.pac_ret = Some(PacRet { leaf: false, key: PAuthKey::A })
+                        }
+                        "leaf" => match slot.pac_ret.as_mut() {
+                            Some(pac) => pac.leaf = true,
+                            _ => return false,
+                        },
+                        "b-key" => match slot.pac_ret.as_mut() {
+                            Some(pac) => pac.key = PAuthKey::B,
+                            _ => return false,
+                        },
+                        _ => return false,
+                    };
+                }
+            }
             _ => return false,
         }
         true
@@ -1055,6 +1093,9 @@ options! {
         "how to handle split-debuginfo, a platform-specific option"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
+    symbol_mangling_version: Option<SymbolManglingVersion> = (None,
+        parse_symbol_mangling_version, [TRACKED],
+        "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (`rustc --print target-cpus` for details)"),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
@@ -1096,6 +1137,8 @@ options! {
         (default: no)"),
     borrowck: String = ("migrate".to_string(), parse_string, [UNTRACKED],
         "select which borrowck is used (`mir` or `migrate`) (default: `migrate`)"),
+    branch_protection: BranchProtection = (BranchProtection::default(), parse_branch_protection, [TRACKED],
+        "set options for branch target identification and pointer authentication on AArch64"),
     cgu_partitioning_strategy: Option<String> = (None, parse_opt_string, [TRACKED],
         "the codegen unit partitioning strategy to use"),
     chalk: bool = (false, parse_bool, [TRACKED],
@@ -1197,7 +1240,7 @@ options! {
     instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`); \
-        implies `-Z symbol-mangling-version=v0`. Optional values are:
+        implies `-C symbol-mangling-version=v0`. Optional values are:
         `=all` (implicit value)
         `=except-unused-generics`
         `=except-unused-functions`
@@ -1370,6 +1413,14 @@ options! {
         "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
+    split_dwarf_kind: SplitDwarfKind = (SplitDwarfKind::Split, parse_split_dwarf_kind, [UNTRACKED],
+        "split dwarf variant (only if -Csplit-debuginfo is enabled and on relevant platform)
+        (default: `split`)
+
+        `split`: sections which do not require relocation are written into a DWARF object (`.dwo`)
+                 file which is ignored by the linker
+        `single`: sections which do not require relocation are written into object file but ignored
+                  by the linker"),
     split_dwarf_inlining: bool = (true, parse_bool, [UNTRACKED],
         "provide minimal debug info in the object/executable to facilitate online \
          symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),

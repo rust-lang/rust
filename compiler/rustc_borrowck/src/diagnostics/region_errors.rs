@@ -6,7 +6,7 @@ use rustc_infer::infer::{
     error_reporting::unexpected_hidden_region_diagnostic, NllRegionVariableOrigin,
 };
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
-use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{BytePos, Span};
@@ -334,13 +334,43 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         match variance_info {
             ty::VarianceDiagInfo::None => {}
-            ty::VarianceDiagInfo::Mut { kind, ty } => {
-                let kind_name = match kind {
-                    ty::VarianceDiagMutKind::Ref => "reference",
-                    ty::VarianceDiagMutKind::RawPtr => "pointer",
+            ty::VarianceDiagInfo::Invariant { ty, param_index } => {
+                let (desc, note) = match ty.kind() {
+                    ty::RawPtr(ty_mut) => {
+                        assert_eq!(ty_mut.mutbl, rustc_hir::Mutability::Mut);
+                        (
+                            format!("a mutable pointer to {}", ty_mut.ty),
+                            "mutable pointers are invariant over their type parameter".to_string(),
+                        )
+                    }
+                    ty::Ref(_, inner_ty, mutbl) => {
+                        assert_eq!(*mutbl, rustc_hir::Mutability::Mut);
+                        (
+                            format!("a mutable reference to {}", inner_ty),
+                            "mutable references are invariant over their type parameter"
+                                .to_string(),
+                        )
+                    }
+                    ty::Adt(adt, substs) => {
+                        let generic_arg = substs[param_index as usize];
+                        let identity_substs =
+                            InternalSubsts::identity_for_item(self.infcx.tcx, adt.did);
+                        let base_ty = self.infcx.tcx.mk_adt(adt, identity_substs);
+                        let base_generic_arg = identity_substs[param_index as usize];
+                        let adt_desc = adt.descr();
+
+                        let desc = format!(
+                            "the type {ty}, which makes the generic argument {generic_arg} invariant"
+                        );
+                        let note = format!(
+                            "the {adt_desc} {base_ty} is invariant over the parameter {base_generic_arg}"
+                        );
+                        (desc, note)
+                    }
+                    _ => panic!("Unexpected type {:?}", ty),
                 };
-                diag.note(&format!("requirement occurs because of a mutable {kind_name} to {ty}",));
-                diag.note(&format!("mutable {kind_name}s are invariant over their type parameter"));
+                diag.note(&format!("requirement occurs because of {desc}",));
+                diag.note(&note);
                 diag.help("see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance");
             }
         }

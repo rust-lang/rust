@@ -64,7 +64,7 @@ impl TabsInDocComments {
         if let ast::AttrKind::DocComment(_, comment) = attr.kind {
             let comment = comment.as_str();
 
-            for (lo, hi) in get_chunks_of_tabs(&comment) {
+            for (lo, hi) in get_chunks_of_tabs(comment) {
                 // +3 skips the opening delimiter
                 let new_span = Span::new(
                     attr.span.lo() + BytePos(3 + lo),

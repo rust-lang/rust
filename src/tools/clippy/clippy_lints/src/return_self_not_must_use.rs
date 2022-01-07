@@ -1,11 +1,12 @@
-use clippy_utils::{diagnostics::span_lint, must_use_attr, nth_arg, return_ty};
+use clippy_utils::ty::is_must_use_ty;
+use clippy_utils::{diagnostics::span_lint, nth_arg, return_ty};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, HirId, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -50,9 +51,9 @@ fn check_method(cx: &LateContext<'tcx>, decl: &'tcx FnDecl<'tcx>, fn_def: LocalD
         if decl.implicit_self.has_implicit_self();
         // We only show this warning for public exported methods.
         if cx.access_levels.is_exported(fn_def);
+        // We don't want to emit this lint if the `#[must_use]` attribute is already there.
+        if !cx.tcx.hir().attrs(hir_id).iter().any(|attr| attr.has_name(sym::must_use));
         if cx.tcx.visibility(fn_def.to_def_id()).is_public();
-        // No need to warn if the attribute is already present.
-        if must_use_attr(cx.tcx.hir().attrs(hir_id)).is_none();
         let ret_ty = return_ty(cx, hir_id);
         let self_arg = nth_arg(cx, hir_id, 0);
         // If `Self` has the same type as the returned type, then we want to warn.
@@ -60,6 +61,8 @@ fn check_method(cx: &LateContext<'tcx>, decl: &'tcx FnDecl<'tcx>, fn_def: LocalD
         // For this check, we don't want to remove the reference on the returned type because if
         // there is one, we shouldn't emit a warning!
         if self_arg.peel_refs() == ret_ty;
+        // If `Self` is already marked as `#[must_use]`, no need for the attribute here.
+        if !is_must_use_ty(cx, ret_ty);
 
         then {
             span_lint(

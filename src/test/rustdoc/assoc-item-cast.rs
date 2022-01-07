@@ -1,6 +1,5 @@
 #![crate_name = "foo"]
 
-
 pub trait Expression {
     type SqlType;
 }
@@ -11,5 +10,5 @@ pub trait AsExpression<T> {
 }
 
 // @has foo/type.AsExprOf.html
-// @has - '//*[@class="rust typedef"]' 'type AsExprOf<Item, Type> = <Item as AsExpression<Type>>::Expression;'
+// @has - '//pre[@class="rust typedef"]' 'type AsExprOf<Item, Type> = <Item as AsExpression<Type>>::Expression;'
 pub type AsExprOf<Item, Type> = <Item as AsExpression<Type>>::Expression;

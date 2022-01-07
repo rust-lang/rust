@@ -1394,10 +1394,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             Rvalue::NullaryOp(_op, _ty) => {
                 // nullary ops take no dynamic input; no borrowck effect.
-                //
-                // FIXME: is above actually true? Do we want to track
-                // the fact that uninitialized data can be created via
-                // `NullOp::Box`?
             }
 
             Rvalue::Aggregate(ref aggregate_kind, ref operands) => {

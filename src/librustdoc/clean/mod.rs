@@ -148,7 +148,7 @@ fn clean_trait_ref_with_bindings(
     path
 }
 
-impl Clean<Path> for ty::TraitRef<'tcx> {
+impl Clean<Path> for ty::TraitRef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Path {
         clean_trait_ref_with_bindings(cx, *self, &[])
     }
@@ -549,7 +549,7 @@ impl Clean<Generics> for hir::Generics<'_> {
 fn clean_ty_generics(
     cx: &mut DocContext<'_>,
     gens: &ty::Generics,
-    preds: ty::GenericPredicates<'tcx>,
+    preds: ty::GenericPredicates<'_>,
 ) -> Generics {
     // Don't populate `cx.impl_trait_bounds` before `clean`ning `where` clauses,
     // since `Clean for ty::Predicate` would consume them.
@@ -579,7 +579,7 @@ fn clean_ty_generics(
         .collect::<Vec<GenericParamDef>>();
 
     // param index -> [(DefId of trait, associated type name, type)]
-    let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'tcx>)>>::default();
+    let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'_>)>>::default();
 
     let where_predicates = preds
         .predicates
@@ -708,8 +708,8 @@ fn clean_ty_generics(
 
 fn clean_fn_or_proc_macro(
     item: &hir::Item<'_>,
-    sig: &'a hir::FnSig<'a>,
-    generics: &'a hir::Generics<'a>,
+    sig: &hir::FnSig<'_>,
+    generics: &hir::Generics<'_>,
     body_id: hir::BodyId,
     name: &mut Symbol,
     cx: &mut DocContext<'_>,
@@ -1350,17 +1350,23 @@ impl Clean<Type> for hir::Ty<'_> {
             }
             TyKind::Slice(ref ty) => Slice(box ty.clean(cx)),
             TyKind::Array(ref ty, ref length) => {
-                let def_id = cx.tcx.hir().local_def_id(length.hir_id);
-                // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
-                // as we currently do not supply the parent generics to anonymous constants
-                // but do allow `ConstKind::Param`.
-                //
-                // `const_eval_poly` tries to to first substitute generic parameters which
-                // results in an ICE while manually constructing the constant and using `eval`
-                // does nothing for `ConstKind::Param`.
-                let ct = ty::Const::from_anon_const(cx.tcx, def_id);
-                let param_env = cx.tcx.param_env(def_id);
-                let length = print_const(cx, ct.eval(cx.tcx, param_env));
+                let length = match length {
+                    hir::ArrayLen::Infer(_, _) => "_".to_string(),
+                    hir::ArrayLen::Body(anon_const) => {
+                        let def_id = cx.tcx.hir().local_def_id(anon_const.hir_id);
+                        // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
+                        // as we currently do not supply the parent generics to anonymous constants
+                        // but do allow `ConstKind::Param`.
+                        //
+                        // `const_eval_poly` tries to to first substitute generic parameters which
+                        // results in an ICE while manually constructing the constant and using `eval`
+                        // does nothing for `ConstKind::Param`.
+                        let ct = ty::Const::from_anon_const(cx.tcx, def_id);
+                        let param_env = cx.tcx.param_env(def_id);
+                        print_const(cx, ct.eval(cx.tcx, param_env))
+                    }
+                };
+
                 Array(box ty.clean(cx), length)
             }
             TyKind::Tup(tys) => Tuple(tys.iter().map(|x| x.clean(cx)).collect()),
@@ -1387,7 +1393,7 @@ impl Clean<Type> for hir::Ty<'_> {
 }
 
 /// Returns `None` if the type could not be normalized
-fn normalize(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
+fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
     // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
     if !cx.tcx.sess.opts.debugging_opts.normalize_docs {
         return None;

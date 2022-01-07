@@ -2,6 +2,7 @@
 
 use crate::prelude::*;
 
+use cranelift_codegen::ir::Endianness;
 use cranelift_codegen::isa::{unwind::UnwindInfo, TargetIsa};
 
 use cranelift_object::ObjectProduct;
@@ -17,8 +18,11 @@ pub(crate) struct UnwindContext {
 }
 
 impl UnwindContext {
-    pub(crate) fn new(tcx: TyCtxt<'_>, isa: &dyn TargetIsa, pic_eh_frame: bool) -> Self {
-        let endian = super::target_endian(tcx);
+    pub(crate) fn new(isa: &dyn TargetIsa, pic_eh_frame: bool) -> Self {
+        let endian = match isa.endianness() {
+            Endianness::Little => RunTimeEndian::Little,
+            Endianness::Big => RunTimeEndian::Big,
+        };
         let mut frame_table = FrameTable::default();
 
         let cie_id = if let Some(mut cie) = isa.create_systemv_cie() {

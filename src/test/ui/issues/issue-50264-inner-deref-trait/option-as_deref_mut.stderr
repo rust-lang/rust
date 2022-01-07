@@ -5,7 +5,6 @@ LL |     let _result = &mut Some(42).as_deref_mut();
    |                                 ^^^^^^^^^^^^ method cannot be called on `Option<{integer}>` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
-           `{integer}: DerefMut`
            `{integer}: Deref`
 
 error: aborting due to previous error

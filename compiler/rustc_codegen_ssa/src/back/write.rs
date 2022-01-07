@@ -113,6 +113,7 @@ pub struct ModuleConfig {
     pub inline_threshold: Option<u32>,
     pub new_llvm_pass_manager: Option<bool>,
     pub emit_lifetime_markers: bool,
+    pub llvm_plugins: Vec<String>,
 }
 
 impl ModuleConfig {
@@ -260,6 +261,7 @@ impl ModuleConfig {
             inline_threshold: sess.opts.cg.inline_threshold,
             new_llvm_pass_manager: sess.opts.debugging_opts.new_llvm_pass_manager,
             emit_lifetime_markers: sess.emit_lifetime_markers(),
+            llvm_plugins: if_regular!(sess.opts.debugging_opts.llvm_plugins.clone(), vec![]),
         }
     }
 
@@ -284,7 +286,11 @@ impl TargetMachineFactoryConfig {
         module_name: &str,
     ) -> TargetMachineFactoryConfig {
         let split_dwarf_file = if cgcx.target_can_use_split_dwarf {
-            cgcx.output_filenames.split_dwarf_path(cgcx.split_debuginfo, Some(module_name))
+            cgcx.output_filenames.split_dwarf_path(
+                cgcx.split_debuginfo,
+                cgcx.split_dwarf_kind,
+                Some(module_name),
+            )
         } else {
             None
         };
@@ -327,6 +333,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub target_arch: String,
     pub debuginfo: config::DebugInfo,
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
+    pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
 
     // Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
@@ -1058,6 +1065,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         target_arch: tcx.sess.target.arch.clone(),
         debuginfo: tcx.sess.opts.debuginfo,
         split_debuginfo: tcx.sess.split_debuginfo(),
+        split_dwarf_kind: tcx.sess.opts.debugging_opts.split_dwarf_kind,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.

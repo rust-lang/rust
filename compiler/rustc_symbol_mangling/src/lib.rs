@@ -237,7 +237,7 @@ fn compute_symbol_name<'tcx>(
 
     // Pick the crate responsible for the symbol mangling version, which has to:
     // 1. be stable for each instance, whether it's being defined or imported
-    // 2. obey each crate's own `-Z symbol-mangling-version`, as much as possible
+    // 2. obey each crate's own `-C symbol-mangling-version`, as much as possible
     // We solve these as follows:
     // 1. because symbol names depend on both `def_id` and `instantiating_crate`,
     // both their `CrateNum`s are stable for any given instance, so we can pick
@@ -245,7 +245,7 @@ fn compute_symbol_name<'tcx>(
     // 2. we favor `instantiating_crate` where possible (i.e. when `Some`)
     let mangling_version_crate = instantiating_crate.unwrap_or(def_id.krate);
     let mangling_version = if mangling_version_crate == LOCAL_CRATE {
-        tcx.sess.opts.debugging_opts.get_symbol_mangling_version()
+        tcx.sess.opts.get_symbol_mangling_version()
     } else {
         tcx.symbol_mangling_version(mangling_version_crate)
     };

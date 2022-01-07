@@ -14,8 +14,8 @@
 
 // NOTE(eddyb) output differs between symbol mangling schemes
 // revisions: legacy v0
-// [legacy] compile-flags: -Zsymbol-mangling-version=legacy
-//     [v0] compile-flags: -Zsymbol-mangling-version=v0
+// [legacy] compile-flags: -Zunstable-options -Csymbol-mangling-version=legacy
+//     [v0] compile-flags: -Csymbol-mangling-version=v0
 
 fn main() {
     panic!()

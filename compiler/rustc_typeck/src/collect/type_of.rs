@@ -13,7 +13,7 @@ use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
 use super::ItemCtxt;
-use super::{bad_placeholder_type, is_suggestable_infer_ty};
+use super::{bad_placeholder, is_suggestable_infer_ty};
 
 /// Computes the relevant generic parameter for a potential generic const argument.
 ///
@@ -490,7 +490,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             match parent_node {
                 Node::Ty(&Ty { kind: TyKind::Array(_, ref constant), .. })
                 | Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
-                    if constant.hir_id == hir_id =>
+                    if constant.hir_id() == hir_id =>
                 {
                     tcx.types.usize
                 }
@@ -788,7 +788,7 @@ fn infer_placeholder_type<'a>(
             err.emit();
         }
         None => {
-            let mut diag = bad_placeholder_type(tcx, vec![span], kind);
+            let mut diag = bad_placeholder(tcx, "type", vec![span], kind);
 
             if !ty.references_error() {
                 let mut mk_nameable = MakeNameable::new(tcx);

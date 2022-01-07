@@ -1,9 +1,7 @@
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::source::{
-    snippet, snippet_opt, snippet_with_applicability, snippet_with_context, snippet_with_macro_callsite,
-};
+use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_with_macro_callsite};
 use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{ast, token};
@@ -33,7 +31,7 @@ pub enum Sugg<'a> {
     MaybeParen(Cow<'a, str>),
     /// A binary operator expression, including `as`-casts and explicit type
     /// coercion.
-    BinOp(AssocOp, Cow<'a, str>),
+    BinOp(AssocOp, Cow<'a, str>, Cow<'a, str>),
 }
 
 /// Literal constant `0`, for convenience.
@@ -46,7 +44,8 @@ pub const EMPTY: Sugg<'static> = Sugg::NonParen(Cow::Borrowed(""));
 impl Display for Sugg<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match *self {
-            Sugg::NonParen(ref s) | Sugg::MaybeParen(ref s) | Sugg::BinOp(_, ref s) => s.fmt(f),
+            Sugg::NonParen(ref s) | Sugg::MaybeParen(ref s) => s.fmt(f),
+            Sugg::BinOp(op, ref lhs, ref rhs) => binop_to_string(op, lhs, rhs).fmt(f),
         }
     }
 }
@@ -55,10 +54,8 @@ impl Display for Sugg<'_> {
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
     pub fn hir_opt(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Self> {
-        snippet_opt(cx, expr.span).map(|snippet| {
-            let snippet = Cow::Owned(snippet);
-            Self::hir_from_snippet(expr, snippet)
-        })
+        let get_snippet = |span| snippet(cx, span, "");
+        snippet_opt(cx, expr.span).map(|_| Self::hir_from_snippet(expr, get_snippet))
     }
 
     /// Convenience function around `hir_opt` for suggestions with a default
@@ -93,9 +90,8 @@ impl<'a> Sugg<'a> {
 
     /// Same as `hir`, but will use the pre expansion span if the `expr` was in a macro.
     pub fn hir_with_macro_callsite(cx: &LateContext<'_>, expr: &hir::Expr<'_>, default: &'a str) -> Self {
-        let snippet = snippet_with_macro_callsite(cx, expr.span, default);
-
-        Self::hir_from_snippet(expr, snippet)
+        let get_snippet = |span| snippet_with_macro_callsite(cx, span, default);
+        Self::hir_from_snippet(expr, get_snippet)
     }
 
     /// Same as `hir`, but first walks the span up to the given context. This will result in the
@@ -112,24 +108,26 @@ impl<'a> Sugg<'a> {
         default: &'a str,
         applicability: &mut Applicability,
     ) -> Self {
-        let (snippet, in_macro) = snippet_with_context(cx, expr.span, ctxt, default, applicability);
-
-        if in_macro {
-            Sugg::NonParen(snippet)
+        if expr.span.ctxt() == ctxt {
+            Self::hir_from_snippet(expr, |span| snippet(cx, span, default))
         } else {
-            Self::hir_from_snippet(expr, snippet)
+            let snip = snippet_with_applicability(cx, expr.span, default, applicability);
+            Sugg::NonParen(snip)
         }
     }
 
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
     /// function variants of `Sugg`, since these use different snippet functions.
-    fn hir_from_snippet(expr: &hir::Expr<'_>, snippet: Cow<'a, str>) -> Self {
+    fn hir_from_snippet(expr: &hir::Expr<'_>, get_snippet: impl Fn(Span) -> Cow<'a, str>) -> Self {
         if let Some(range) = higher::Range::hir(expr) {
             let op = match range.limits {
                 ast::RangeLimits::HalfOpen => AssocOp::DotDot,
                 ast::RangeLimits::Closed => AssocOp::DotDotEq,
             };
-            return Sugg::BinOp(op, snippet);
+            let start = range.start.map_or("".into(), |expr| get_snippet(expr.span));
+            let end = range.end.map_or("".into(), |expr| get_snippet(expr.span));
+
+            return Sugg::BinOp(op, start, end);
         }
 
         match expr.kind {
@@ -139,7 +137,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Let(..)
             | hir::ExprKind::Closure(..)
             | hir::ExprKind::Unary(..)
-            | hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
+            | hir::ExprKind::Match(..) => Sugg::MaybeParen(get_snippet(expr.span)),
             hir::ExprKind::Continue(..)
             | hir::ExprKind::Yield(..)
             | hir::ExprKind::Array(..)
@@ -160,12 +158,20 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Tup(..)
             | hir::ExprKind::DropTemps(_)
-            | hir::ExprKind::Err => Sugg::NonParen(snippet),
-            hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
-            hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
-            hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(op.node.into()), snippet),
-            hir::ExprKind::Cast(..) => Sugg::BinOp(AssocOp::As, snippet),
-            hir::ExprKind::Type(..) => Sugg::BinOp(AssocOp::Colon, snippet),
+            | hir::ExprKind::Err => Sugg::NonParen(get_snippet(expr.span)),
+            hir::ExprKind::Assign(lhs, rhs, _) => {
+                Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
+            },
+            hir::ExprKind::AssignOp(op, lhs, rhs) => {
+                Sugg::BinOp(hirbinop2assignop(op), get_snippet(lhs.span), get_snippet(rhs.span))
+            },
+            hir::ExprKind::Binary(op, lhs, rhs) => Sugg::BinOp(
+                AssocOp::from_ast_binop(op.node.into()),
+                get_snippet(lhs.span),
+                get_snippet(rhs.span),
+            ),
+            hir::ExprKind::Cast(lhs, ty) => Sugg::BinOp(AssocOp::As, get_snippet(lhs.span), get_snippet(ty.span)),
+            hir::ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::Colon, get_snippet(lhs.span), get_snippet(ty.span)),
         }
     }
 
@@ -173,10 +179,12 @@ impl<'a> Sugg<'a> {
     pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
         use rustc_ast::ast::RangeLimits;
 
-        let snippet = if expr.span.from_expansion() {
-            snippet_with_macro_callsite(cx, expr.span, default)
-        } else {
-            snippet(cx, expr.span, default)
+        let get_whole_snippet = || {
+            if expr.span.from_expansion() {
+                snippet_with_macro_callsite(cx, expr.span, default)
+            } else {
+                snippet(cx, expr.span, default)
+            }
         };
 
         match expr.kind {
@@ -186,7 +194,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::If(..)
             | ast::ExprKind::Let(..)
             | ast::ExprKind::Unary(..)
-            | ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
+            | ast::ExprKind::Match(..) => Sugg::MaybeParen(get_whole_snippet()),
             ast::ExprKind::Async(..)
             | ast::ExprKind::Block(..)
             | ast::ExprKind::Break(..)
@@ -215,14 +223,42 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
-            | ast::ExprKind::Err => Sugg::NonParen(snippet),
-            ast::ExprKind::Range(.., RangeLimits::HalfOpen) => Sugg::BinOp(AssocOp::DotDot, snippet),
-            ast::ExprKind::Range(.., RangeLimits::Closed) => Sugg::BinOp(AssocOp::DotDotEq, snippet),
-            ast::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
-            ast::ExprKind::AssignOp(op, ..) => Sugg::BinOp(astbinop2assignop(op), snippet),
-            ast::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(op.node), snippet),
-            ast::ExprKind::Cast(..) => Sugg::BinOp(AssocOp::As, snippet),
-            ast::ExprKind::Type(..) => Sugg::BinOp(AssocOp::Colon, snippet),
+            | ast::ExprKind::Err => Sugg::NonParen(get_whole_snippet()),
+            ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::HalfOpen) => Sugg::BinOp(
+                AssocOp::DotDot,
+                lhs.as_ref().map_or("".into(), |lhs| snippet(cx, lhs.span, default)),
+                rhs.as_ref().map_or("".into(), |rhs| snippet(cx, rhs.span, default)),
+            ),
+            ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::Closed) => Sugg::BinOp(
+                AssocOp::DotDotEq,
+                lhs.as_ref().map_or("".into(), |lhs| snippet(cx, lhs.span, default)),
+                rhs.as_ref().map_or("".into(), |rhs| snippet(cx, rhs.span, default)),
+            ),
+            ast::ExprKind::Assign(ref lhs, ref rhs, _) => Sugg::BinOp(
+                AssocOp::Assign,
+                snippet(cx, lhs.span, default),
+                snippet(cx, rhs.span, default),
+            ),
+            ast::ExprKind::AssignOp(op, ref lhs, ref rhs) => Sugg::BinOp(
+                astbinop2assignop(op),
+                snippet(cx, lhs.span, default),
+                snippet(cx, rhs.span, default),
+            ),
+            ast::ExprKind::Binary(op, ref lhs, ref rhs) => Sugg::BinOp(
+                AssocOp::from_ast_binop(op.node),
+                snippet(cx, lhs.span, default),
+                snippet(cx, rhs.span, default),
+            ),
+            ast::ExprKind::Cast(ref lhs, ref ty) => Sugg::BinOp(
+                AssocOp::As,
+                snippet(cx, lhs.span, default),
+                snippet(cx, ty.span, default),
+            ),
+            ast::ExprKind::Type(ref lhs, ref ty) => Sugg::BinOp(
+                AssocOp::Colon,
+                snippet(cx, lhs.span, default),
+                snippet(cx, ty.span, default),
+            ),
         }
     }
 
@@ -306,14 +342,48 @@ impl<'a> Sugg<'a> {
                     Sugg::NonParen(format!("({})", sugg).into())
                 }
             },
-            Sugg::BinOp(_, sugg) => {
-                if has_enclosing_paren(&sugg) {
-                    Sugg::NonParen(sugg)
-                } else {
-                    Sugg::NonParen(format!("({})", sugg).into())
-                }
+            Sugg::BinOp(op, lhs, rhs) => {
+                let sugg = binop_to_string(op, &lhs, &rhs);
+                Sugg::NonParen(format!("({})", sugg).into())
             },
         }
+    }
+}
+
+/// Generates a string from the operator and both sides.
+fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
+    match op {
+        AssocOp::Add
+        | AssocOp::Subtract
+        | AssocOp::Multiply
+        | AssocOp::Divide
+        | AssocOp::Modulus
+        | AssocOp::LAnd
+        | AssocOp::LOr
+        | AssocOp::BitXor
+        | AssocOp::BitAnd
+        | AssocOp::BitOr
+        | AssocOp::ShiftLeft
+        | AssocOp::ShiftRight
+        | AssocOp::Equal
+        | AssocOp::Less
+        | AssocOp::LessEqual
+        | AssocOp::NotEqual
+        | AssocOp::Greater
+        | AssocOp::GreaterEqual => format!(
+            "{} {} {}",
+            lhs,
+            op.to_ast_binop().expect("Those are AST ops").to_string(),
+            rhs
+        ),
+        AssocOp::Assign => format!("{} = {}", lhs, rhs),
+        AssocOp::AssignOp(op) => {
+            format!("{} {}= {}", lhs, token_kind_to_string(&token::BinOp(op)), rhs)
+        },
+        AssocOp::As => format!("{} as {}", lhs, rhs),
+        AssocOp::DotDot => format!("{}..{}", lhs, rhs),
+        AssocOp::DotDotEq => format!("{}..={}", lhs, rhs),
+        AssocOp::Colon => format!("{}: {}", lhs, rhs),
     }
 }
 
@@ -391,10 +461,25 @@ impl Neg for Sugg<'_> {
     }
 }
 
-impl Not for Sugg<'_> {
-    type Output = Sugg<'static>;
-    fn not(self) -> Sugg<'static> {
-        make_unop("!", self)
+impl Not for Sugg<'a> {
+    type Output = Sugg<'a>;
+    fn not(self) -> Sugg<'a> {
+        use AssocOp::{Equal, Greater, GreaterEqual, Less, LessEqual, NotEqual};
+
+        if let Sugg::BinOp(op, lhs, rhs) = self {
+            let to_op = match op {
+                Equal => NotEqual,
+                NotEqual => Equal,
+                Less => GreaterEqual,
+                GreaterEqual => Less,
+                Greater => LessEqual,
+                LessEqual => Greater,
+                _ => return make_unop("!", Sugg::BinOp(op, lhs, rhs)),
+            };
+            Sugg::BinOp(to_op, lhs, rhs)
+        } else {
+            make_unop("!", self)
+        }
     }
 }
 
@@ -463,53 +548,21 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
             || is_shift(other) && is_arith(op)
     }
 
-    let lhs_paren = if let Sugg::BinOp(lop, _) = *lhs {
+    let lhs_paren = if let Sugg::BinOp(lop, _, _) = *lhs {
         needs_paren(op, lop, Associativity::Left)
     } else {
         false
     };
 
-    let rhs_paren = if let Sugg::BinOp(rop, _) = *rhs {
+    let rhs_paren = if let Sugg::BinOp(rop, _, _) = *rhs {
         needs_paren(op, rop, Associativity::Right)
     } else {
         false
     };
 
-    let lhs = ParenHelper::new(lhs_paren, lhs);
-    let rhs = ParenHelper::new(rhs_paren, rhs);
-    let sugg = match op {
-        AssocOp::Add
-        | AssocOp::BitAnd
-        | AssocOp::BitOr
-        | AssocOp::BitXor
-        | AssocOp::Divide
-        | AssocOp::Equal
-        | AssocOp::Greater
-        | AssocOp::GreaterEqual
-        | AssocOp::LAnd
-        | AssocOp::LOr
-        | AssocOp::Less
-        | AssocOp::LessEqual
-        | AssocOp::Modulus
-        | AssocOp::Multiply
-        | AssocOp::NotEqual
-        | AssocOp::ShiftLeft
-        | AssocOp::ShiftRight
-        | AssocOp::Subtract => format!(
-            "{} {} {}",
-            lhs,
-            op.to_ast_binop().expect("Those are AST ops").to_string(),
-            rhs
-        ),
-        AssocOp::Assign => format!("{} = {}", lhs, rhs),
-        AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, token_kind_to_string(&token::BinOp(op)), rhs),
-        AssocOp::As => format!("{} as {}", lhs, rhs),
-        AssocOp::DotDot => format!("{}..{}", lhs, rhs),
-        AssocOp::DotDotEq => format!("{}..={}", lhs, rhs),
-        AssocOp::Colon => format!("{}: {}", lhs, rhs),
-    };
-
-    Sugg::BinOp(op, sugg.into())
+    let lhs = ParenHelper::new(lhs_paren, lhs).to_string();
+    let rhs = ParenHelper::new(rhs_paren, rhs).to_string();
+    Sugg::BinOp(op, lhs.into(), rhs.into())
 }
 
 /// Convenience wrapper around `make_assoc` and `AssocOp::from_ast_binop`.
@@ -1007,10 +1060,32 @@ mod test {
 
     #[test]
     fn binop_maybe_par() {
-        let sugg = Sugg::BinOp(AssocOp::Add, "(1 + 1)".into());
+        let sugg = Sugg::BinOp(AssocOp::Add, "1".into(), "1".into());
         assert_eq!("(1 + 1)", sugg.maybe_par().to_string());
 
-        let sugg = Sugg::BinOp(AssocOp::Add, "(1 + 1) + (1 + 1)".into());
+        let sugg = Sugg::BinOp(AssocOp::Add, "(1 + 1)".into(), "(1 + 1)".into());
         assert_eq!("((1 + 1) + (1 + 1))", sugg.maybe_par().to_string());
+    }
+    #[test]
+    fn not_op() {
+        use AssocOp::{Add, Equal, Greater, GreaterEqual, LAnd, LOr, Less, LessEqual, NotEqual};
+
+        fn test_not(op: AssocOp, correct: &str) {
+            let sugg = Sugg::BinOp(op, "x".into(), "y".into());
+            assert_eq!((!sugg).to_string(), correct);
+        }
+
+        // Invert the comparison operator.
+        test_not(Equal, "x != y");
+        test_not(NotEqual, "x == y");
+        test_not(Less, "x >= y");
+        test_not(LessEqual, "x > y");
+        test_not(Greater, "x <= y");
+        test_not(GreaterEqual, "x < y");
+
+        // Other operators are inverted like !(..).
+        test_not(Add, "!(x + y)");
+        test_not(LAnd, "!(x && y)");
+        test_not(LOr, "!(x || y)");
     }
 }

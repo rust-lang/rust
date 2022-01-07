@@ -109,6 +109,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "env_logger",
     "expect-test",
     "fake-simd",
+    "fallible-iterator", // dependency of `thorin`
     "filetime",
     "fixedbitset",
     "flate2",
@@ -201,6 +202,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "tempfile",
     "termcolor",
     "termize",
+    "thorin-dwp",
     "thread_local",
     "time",
     "tinyvec",

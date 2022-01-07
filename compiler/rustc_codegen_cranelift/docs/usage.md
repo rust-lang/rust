@@ -9,7 +9,7 @@ Assuming `$cg_clif_dir` is the directory you cloned this repo into and you follo
 In the directory with your project (where you can do the usual `cargo build`), run:
 
 ```bash
-$ $cg_clif_dir/build/cargo build
+$ $cg_clif_dir/build/cargo-clif build
 ```
 
 This will build your project with rustc_codegen_cranelift instead of the usual LLVM backend.
@@ -32,7 +32,7 @@ In jit mode cg_clif will immediately execute your code without creating an execu
 > The jit mode will probably need cargo integration to make this possible.
 
 ```bash
-$ $cg_clif_dir/build/cargo jit
+$ $cg_clif_dir/build/cargo-clif jit
 ```
 
 or
@@ -45,7 +45,7 @@ There is also an experimental lazy jit mode. In this mode functions are only com
 first called.
 
 ```bash
-$ $cg_clif_dir/build/cargo lazy-jit
+$ $cg_clif_dir/build/cargo-clif lazy-jit
 ```
 
 ## Shell

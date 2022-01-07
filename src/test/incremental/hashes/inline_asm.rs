@@ -8,6 +8,7 @@
 // build-pass (FIXME(62277): could be check-pass?)
 // revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
 // compile-flags: -Z query-dep-graph
+// needs-asm-support
 // [cfail1]compile-flags: -Zincremental-ignore-spans
 // [cfail2]compile-flags: -Zincremental-ignore-spans
 // [cfail3]compile-flags: -Zincremental-ignore-spans

@@ -88,6 +88,11 @@ struct DepGraphData<K: DepKind> {
     previous_work_products: FxHashMap<WorkProductId, WorkProduct>,
 
     dep_node_debug: Lock<FxHashMap<DepNode<K>, String>>,
+
+    /// Used by incremental compilation tests to assert that
+    /// a particular query result was decoded from disk
+    /// (not just marked green)
+    debug_loaded_from_disk: Lock<FxHashSet<DepNode<K>>>,
 }
 
 pub fn hash_result<R>(hcx: &mut StableHashingContext<'_>, result: &R) -> Fingerprint
@@ -135,6 +140,7 @@ impl<K: DepKind> DepGraph<K> {
                 processed_side_effects: Default::default(),
                 previous: prev_graph,
                 colors: DepNodeColorMap::new(prev_graph_node_count),
+                debug_loaded_from_disk: Default::default(),
             })),
             virtual_dep_node_index: Lrc::new(AtomicU32::new(0)),
         }
@@ -436,6 +442,14 @@ impl<K: DepKind> DepGraph<K> {
     /// used during saving of the dep-graph.
     pub fn previous_work_products(&self) -> &FxHashMap<WorkProductId, WorkProduct> {
         &self.data.as_ref().unwrap().previous_work_products
+    }
+
+    pub fn mark_debug_loaded_from_disk(&self, dep_node: DepNode<K>) {
+        self.data.as_ref().unwrap().debug_loaded_from_disk.lock().insert(dep_node);
+    }
+
+    pub fn debug_was_loaded_from_disk(&self, dep_node: DepNode<K>) -> bool {
+        self.data.as_ref().unwrap().debug_loaded_from_disk.lock().contains(&dep_node)
     }
 
     #[inline(always)]

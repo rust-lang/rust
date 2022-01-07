@@ -1,16 +1,6 @@
 use std::cell::{Cell, RefCell};
 
-use gccjit::{
-    Block,
-    Context,
-    CType,
-    Function,
-    FunctionType,
-    LValue,
-    RValue,
-    Struct,
-    Type,
-};
+use gccjit::{Block, CType, Context, Function, FunctionType, LValue, RValue, Struct, Type};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::{
     BackendTypes,

@@ -49,8 +49,9 @@ pub(super) fn check(
                 if cast_from.kind() == cast_to.kind() =>
             {
                 if let Some(src) = snippet_opt(cx, lit.span) {
-                    let num_lit = NumericLiteral::from_lit_kind(&src, &lit.node).unwrap();
-                    lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
+                    if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node) {
+                        lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
+                    }
                 }
             },
             _ => {

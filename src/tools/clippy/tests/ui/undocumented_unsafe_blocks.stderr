@@ -7,7 +7,7 @@ LL |     unsafe {}
    = note: `-D clippy::undocumented-unsafe-blocks` implied by `-D warnings`
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
+LL ~     // SAFETY: ...
 LL +     unsafe {}
    |
 
@@ -19,7 +19,7 @@ LL |     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
    |
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
+LL ~     // SAFETY: ...
 LL +     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
    |
 
@@ -31,7 +31,7 @@ LL |     let _ = (42, unsafe {}, "test", unsafe {});
    |
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
+LL ~     // SAFETY: ...
 LL +     let _ = (42, unsafe {}, "test", unsafe {});
    |
 
@@ -43,7 +43,7 @@ LL |     let _ = *unsafe { &42 };
    |
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
+LL ~     // SAFETY: ...
 LL +     let _ = *unsafe { &42 };
    |
 
@@ -55,7 +55,7 @@ LL |     let _ = match unsafe {} {
    |
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
+LL ~     // SAFETY: ...
 LL +     let _ = match unsafe {} {
    |
 
@@ -67,7 +67,7 @@ LL |     let _ = &unsafe {};
    |
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
+LL ~     // SAFETY: ...
 LL +     let _ = &unsafe {};
    |
 
@@ -79,7 +79,7 @@ LL |     let _ = [unsafe {}; 5];
    |
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
+LL ~     // SAFETY: ...
 LL +     let _ = [unsafe {}; 5];
    |
 
@@ -91,7 +91,7 @@ LL |     let _ = unsafe {};
    |
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
+LL ~     // SAFETY: ...
 LL +     let _ = unsafe {};
    |
 
@@ -103,7 +103,7 @@ LL |     t!(unsafe {});
    |
 help: consider adding a safety comment
    |
-LL ~     t!(// Safety: ...
+LL ~     t!(// SAFETY: ...
 LL ~     unsafe {});
    |
 
@@ -122,13 +122,13 @@ LL |     t!();
 error: unsafe block missing a safety comment
   --> $DIR/undocumented_unsafe_blocks.rs:270:5
    |
-LL |     unsafe {} // Safety:
+LL |     unsafe {} // SAFETY:
    |     ^^^^^^^^^
    |
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
-LL ~     unsafe {} // Safety:
+LL ~     // SAFETY: ...
+LL ~     unsafe {} // SAFETY:
    |
 
 error: unsafe block missing a safety comment
@@ -139,7 +139,7 @@ LL |     unsafe {
    |
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
+LL ~     // SAFETY: ...
 LL +     unsafe {
    |
 
@@ -151,7 +151,7 @@ LL |     unsafe {};
    |
 help: consider adding a safety comment
    |
-LL ~     // Safety: ...
+LL ~     // SAFETY: ...
 LL ~     unsafe {};
    |
 
@@ -163,7 +163,7 @@ LL |     println!("{}", unsafe { String::from_utf8_unchecked(vec![]) });
    |
 help: consider adding a safety comment
    |
-LL ~     println!("{}", // Safety: ...
+LL ~     println!("{}", // SAFETY: ...
 LL ~     unsafe { String::from_utf8_unchecked(vec![]) });
    |
 

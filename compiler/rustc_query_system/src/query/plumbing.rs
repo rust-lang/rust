@@ -519,6 +519,10 @@ where
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         if let Some(result) = result {
+            if unlikely!(tcx.dep_context().sess().opts.debugging_opts.query_dep_graph) {
+                dep_graph.mark_debug_loaded_from_disk(*dep_node)
+            }
+
             let prev_fingerprint = tcx
                 .dep_context()
                 .dep_graph()

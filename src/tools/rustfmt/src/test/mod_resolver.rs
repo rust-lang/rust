@@ -41,3 +41,12 @@ fn out_of_line_nested_inline_within_out_of_line() {
         ],
     );
 }
+
+#[test]
+fn skip_out_of_line_nested_inline_within_out_of_line() {
+    // See also https://github.com/rust-lang/rustfmt/issues/5065
+    verify_mod_resolution(
+        "tests/mod-resolver/skip-files-issue-5065/main.rs",
+        &["tests/mod-resolver/skip-files-issue-5065/one.rs"],
+    );
+}

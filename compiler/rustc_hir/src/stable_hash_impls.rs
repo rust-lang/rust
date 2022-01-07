@@ -2,7 +2,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHas
 
 use crate::hir::{
     AttributeMap, BodyId, Crate, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item,
-    ItemId, Mod, OwnerNodes, TraitCandidate, TraitItem, TraitItemId, Ty, VisibilityKind,
+    ItemId, OwnerNodes, TraitCandidate, TraitItem, TraitItemId, Ty, VisibilityKind,
 };
 use crate::hir_id::{HirId, ItemLocalId};
 use rustc_span::def_id::DefPathHash;
@@ -16,7 +16,6 @@ pub trait HashStableContext:
     fn hash_hir_id(&mut self, _: HirId, hasher: &mut StableHasher);
     fn hash_body_id(&mut self, _: BodyId, hasher: &mut StableHasher);
     fn hash_reference_to_item(&mut self, _: HirId, hasher: &mut StableHasher);
-    fn hash_hir_mod(&mut self, _: &Mod<'_>, hasher: &mut StableHasher);
     fn hash_hir_expr(&mut self, _: &Expr<'_>, hasher: &mut StableHasher);
     fn hash_hir_ty(&mut self, _: &Ty<'_>, hasher: &mut StableHasher);
     fn hash_hir_visibility_kind(&mut self, _: &VisibilityKind<'_>, hasher: &mut StableHasher);
@@ -129,12 +128,6 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItemId {
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItemId {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
         hcx.hash_reference_to_item(self.hir_id(), hasher)
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Mod<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_hir_mod(self, hasher)
     }
 }
 

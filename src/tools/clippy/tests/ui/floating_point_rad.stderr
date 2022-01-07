@@ -6,11 +6,35 @@ LL |     let _ = x * 180f32 / std::f32::consts::PI;
    |
    = note: `-D clippy::suboptimal-flops` implied by `-D warnings`
 
-error: conversion to radians can be done more accurately
+error: conversion to degrees can be done more accurately
   --> $DIR/floating_point_rad.rs:14:13
+   |
+LL |     let _ = 90. * 180f64 / std::f64::consts::PI;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `90.0_f64.to_degrees()`
+
+error: conversion to degrees can be done more accurately
+  --> $DIR/floating_point_rad.rs:15:13
+   |
+LL |     let _ = 90.5 * 180f64 / std::f64::consts::PI;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `90.5_f64.to_degrees()`
+
+error: conversion to radians can be done more accurately
+  --> $DIR/floating_point_rad.rs:16:13
    |
 LL |     let _ = x * std::f32::consts::PI / 180f32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.to_radians()`
 
-error: aborting due to 2 previous errors
+error: conversion to radians can be done more accurately
+  --> $DIR/floating_point_rad.rs:17:13
+   |
+LL |     let _ = 90. * std::f32::consts::PI / 180f32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `90.0_f64.to_radians()`
+
+error: conversion to radians can be done more accurately
+  --> $DIR/floating_point_rad.rs:18:13
+   |
+LL |     let _ = 90.5 * std::f32::consts::PI / 180f32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `90.5_f64.to_radians()`
+
+error: aborting due to 6 previous errors
 

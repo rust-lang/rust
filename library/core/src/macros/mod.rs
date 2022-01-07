@@ -866,7 +866,6 @@ pub(crate) mod builtin {
                   language use and is subject to change"
     )]
     #[allow_internal_unstable(fmt_internals)]
-    #[doc(hidden)]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! format_args_nl {
@@ -1428,6 +1427,10 @@ pub(crate) mod builtin {
     }
 
     /// Attribute macro used to apply derive macros.
+    ///
+    /// See [the reference] for more info.
+    ///
+    /// [the reference]: ../../../reference/attributes/derive.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     pub macro derive($item:item) {
@@ -1435,6 +1438,10 @@ pub(crate) mod builtin {
     }
 
     /// Attribute macro applied to a function to turn it into a unit test.
+    ///
+    /// See [the reference] for more info.
+    ///
+    /// [the reference]: ../../../reference/attributes/testing.html#the-test-attribute
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
@@ -1469,7 +1476,7 @@ pub(crate) mod builtin {
 
     /// Attribute macro applied to a static to register it as a global allocator.
     ///
-    /// See also [`std::alloc::GlobalAlloc`](../std/alloc/trait.GlobalAlloc.html).
+    /// See also [`std::alloc::GlobalAlloc`](../../../std/alloc/trait.GlobalAlloc.html).
     #[stable(feature = "global_allocator", since = "1.28.0")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
@@ -1507,6 +1514,7 @@ pub(crate) mod builtin {
         since = "1.52.0",
         reason = "rustc-serialize is deprecated and no longer supported"
     )]
+    #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
     pub macro RustcDecodable($item:item) {
         /* compiler built-in */
     }
@@ -1519,6 +1527,7 @@ pub(crate) mod builtin {
         since = "1.52.0",
         reason = "rustc-serialize is deprecated and no longer supported"
     )]
+    #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
     pub macro RustcEncodable($item:item) {
         /* compiler built-in */
     }

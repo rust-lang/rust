@@ -80,73 +80,73 @@ function base_sysroot_tests() {
 
 function extended_sysroot_tests() {
     pushd rand
-    ../build/cargo clean
+    ../build/cargo-clif clean
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         echo "[TEST] rust-random/rand"
-        ../build/cargo test --workspace
+        ../build/cargo-clif test --workspace
     else
         echo "[AOT] rust-random/rand"
-        ../build/cargo build --workspace --target $TARGET_TRIPLE --tests
+        ../build/cargo-clif build --workspace --target $TARGET_TRIPLE --tests
     fi
     popd
 
     pushd simple-raytracer
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         echo "[BENCH COMPILE] ebobby/simple-raytracer"
-        hyperfine --runs "${RUN_RUNS:-10}" --warmup 1 --prepare "../build/cargo clean" \
+        hyperfine --runs "${RUN_RUNS:-10}" --warmup 1 --prepare "../build/cargo-clif clean" \
         "RUSTC=rustc RUSTFLAGS='' cargo build" \
-        "../build/cargo build"
+        "../build/cargo-clif build"
 
         echo "[BENCH RUN] ebobby/simple-raytracer"
         cp ./target/debug/main ./raytracer_cg_clif
         hyperfine --runs "${RUN_RUNS:-10}" ./raytracer_cg_llvm ./raytracer_cg_clif
     else
-        ../build/cargo clean
+        ../build/cargo-clif clean
         echo "[BENCH COMPILE] ebobby/simple-raytracer (skipped)"
         echo "[COMPILE] ebobby/simple-raytracer"
-        ../build/cargo build --target $TARGET_TRIPLE
+        ../build/cargo-clif build --target $TARGET_TRIPLE
         echo "[BENCH RUN] ebobby/simple-raytracer (skipped)"
     fi
     popd
 
     pushd build_sysroot/sysroot_src/library/core/tests
     echo "[TEST] libcore"
-    ../../../../../build/cargo clean
+    ../../../../../build/cargo-clif clean
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
-        ../../../../../build/cargo test
+        ../../../../../build/cargo-clif test
     else
-        ../../../../../build/cargo build --target $TARGET_TRIPLE --tests
+        ../../../../../build/cargo-clif build --target $TARGET_TRIPLE --tests
     fi
     popd
 
     pushd regex
     echo "[TEST] rust-lang/regex example shootout-regex-dna"
-    ../build/cargo clean
+    ../build/cargo-clif clean
     export RUSTFLAGS="$RUSTFLAGS --cap-lints warn" # newer aho_corasick versions throw a deprecation warning
     # Make sure `[codegen mono items] start` doesn't poison the diff
-    ../build/cargo build --example shootout-regex-dna --target $TARGET_TRIPLE
+    ../build/cargo-clif build --example shootout-regex-dna --target $TARGET_TRIPLE
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         cat examples/regexdna-input.txt \
-            | ../build/cargo run --example shootout-regex-dna --target $TARGET_TRIPLE \
+            | ../build/cargo-clif run --example shootout-regex-dna --target $TARGET_TRIPLE \
             | grep -v "Spawned thread" > res.txt
         diff -u res.txt examples/regexdna-output.txt
     fi
 
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         echo "[TEST] rust-lang/regex tests"
-        ../build/cargo test --tests -- --exclude-should-panic --test-threads 1 -Zunstable-options -q
+        ../build/cargo-clif test --tests -- --exclude-should-panic --test-threads 1 -Zunstable-options -q
     else
         echo "[AOT] rust-lang/regex tests"
-        ../build/cargo build --tests --target $TARGET_TRIPLE
+        ../build/cargo-clif build --tests --target $TARGET_TRIPLE
     fi
     popd
 
     pushd portable-simd
     echo "[TEST] rust-lang/portable-simd"
-    ../build/cargo clean
-    ../build/cargo build --all-targets --target $TARGET_TRIPLE
+    ../build/cargo-clif clean
+    ../build/cargo-clif build --all-targets --target $TARGET_TRIPLE
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
-        ../build/cargo test -q
+        ../build/cargo-clif test -q
     fi
     popd
 }

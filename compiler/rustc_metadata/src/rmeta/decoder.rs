@@ -45,7 +45,8 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 use tracing::debug;
 
-pub use cstore_impl::{provide, provide_extern};
+pub(super) use cstore_impl::provide;
+pub use cstore_impl::provide_extern;
 use rustc_span::hygiene::HygieneDecodeContext;
 
 mod cstore_impl;
@@ -1099,10 +1100,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         };
 
         // Iterate over all children.
-        let macros_only = self.dep_kind.lock().macros_only();
-        if !macros_only {
-            let children = self.root.tables.children.get(self, id).unwrap_or_else(Lazy::empty);
-
+        if let Some(children) = self.root.tables.children.get(self, id) {
             for child_index in children.decode((self, sess)) {
                 // FIXME: Merge with the logic below.
                 if let None | Some(EntryKind::ForeignMod | EntryKind::Impl(_)) =
@@ -1171,11 +1169,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
         if let EntryKind::Mod(exports) = kind {
             for exp in exports.decode((self, sess)) {
-                match exp.res {
-                    Res::Def(DefKind::Macro(..), _) => {}
-                    _ if macros_only => continue,
-                    _ => {}
-                }
                 callback(exp);
             }
         }
@@ -1373,6 +1366,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .decode(self)
                 .map(|index| self.local_def_id(index)),
         )
+    }
+
+    fn get_traits(&'a self) -> impl Iterator<Item = DefId> + 'a {
+        self.root.traits.decode(self).map(|index| self.local_def_id(index))
     }
 
     fn get_implementations_for_trait(

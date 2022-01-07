@@ -168,6 +168,14 @@ impl Constant {
             None
         }
     }
+
+    #[must_use]
+    pub fn peel_refs(mut self) -> Self {
+        while let Constant::Ref(r) = self {
+            self = *r;
+        }
+        self
+    }
 }
 
 /// Parses a `LitKind` to a `Constant`.
@@ -320,7 +328,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     let res = self.typeck_results.qpath_res(qpath, callee.hir_id);
                     if let Some(def_id) = res.opt_def_id();
                     let def_path = self.lcx.get_def_path(def_id);
-                    let def_path: Vec<&str> = def_path.iter().take(4).map(|s| s.as_str()).collect();
+                    let def_path: Vec<&str> = def_path.iter().take(4).map(Symbol::as_str).collect();
                     if let ["core", "num", int_impl, "max_value"] = *def_path;
                     then {
                        let value = match int_impl {

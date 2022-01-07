@@ -1512,8 +1512,8 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_crate(&mut self, krate: &'b ast::Crate) {
-        if let Some(id) = krate.is_placeholder {
-            self.visit_invoc_in_module(id);
+        if krate.is_placeholder {
+            self.visit_invoc_in_module(krate.id);
         } else {
             visit::walk_crate(self, krate);
             self.contains_macro_use(&krate.attrs);

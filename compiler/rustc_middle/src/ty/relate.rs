@@ -6,7 +6,7 @@
 
 use crate::mir::interpret::{get_slice_bytes, ConstValue, GlobalAlloc, Scalar};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
+use crate::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
@@ -59,8 +59,9 @@ pub trait TypeRelation<'tcx>: Sized {
             item_def_id, a_subst, b_subst
         );
 
-        let opt_variances = self.tcx().variances_of(item_def_id);
-        relate_substs(self, Some(opt_variances), a_subst, b_subst)
+        let tcx = self.tcx();
+        let opt_variances = tcx.variances_of(item_def_id);
+        relate_substs(self, Some((item_def_id, opt_variances)), a_subst, b_subst)
     }
 
     /// Switch variance for the purpose of relating `a` and `b`.
@@ -116,7 +117,7 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
     a: ty::TypeAndMut<'tcx>,
     b: ty::TypeAndMut<'tcx>,
-    kind: ty::VarianceDiagMutKind,
+    base_ty: Ty<'tcx>,
 ) -> RelateResult<'tcx, ty::TypeAndMut<'tcx>> {
     debug!("{}.mts({:?}, {:?})", relation.tag(), a, b);
     if a.mutbl != b.mutbl {
@@ -125,7 +126,9 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
         let mutbl = a.mutbl;
         let (variance, info) = match mutbl {
             ast::Mutability::Not => (ty::Covariant, ty::VarianceDiagInfo::None),
-            ast::Mutability::Mut => (ty::Invariant, ty::VarianceDiagInfo::Mut { kind, ty: a.ty }),
+            ast::Mutability::Mut => {
+                (ty::Invariant, ty::VarianceDiagInfo::Invariant { ty: base_ty, param_index: 0 })
+            }
         };
         let ty = relation.relate_with_variance(variance, info, a.ty, b.ty)?;
         Ok(ty::TypeAndMut { ty, mutbl })
@@ -134,15 +137,29 @@ pub fn relate_type_and_mut<'tcx, R: TypeRelation<'tcx>>(
 
 pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
-    variances: Option<&[ty::Variance]>,
+    variances: Option<(DefId, &[ty::Variance])>,
     a_subst: SubstsRef<'tcx>,
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
     let tcx = relation.tcx();
+    let mut cached_ty = None;
 
     let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
-        let variance = variances.map_or(ty::Invariant, |v| v[i]);
-        relation.relate_with_variance(variance, ty::VarianceDiagInfo::default(), a, b)
+        let (variance, variance_info) = match variances {
+            Some((ty_def_id, variances)) => {
+                let variance = variances[i];
+                let variance_info = if variance == ty::Invariant {
+                    let ty =
+                        cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
+                    ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
+                } else {
+                    ty::VarianceDiagInfo::default()
+                };
+                (variance, variance_info)
+            }
+            None => (ty::Invariant, ty::VarianceDiagInfo::default()),
+        };
+        relation.relate_with_variance(variance, variance_info, a, b)
     });
 
     tcx.mk_substs(params)
@@ -436,7 +453,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         }
 
         (&ty::RawPtr(a_mt), &ty::RawPtr(b_mt)) => {
-            let mt = relate_type_and_mut(relation, a_mt, b_mt, ty::VarianceDiagMutKind::RawPtr)?;
+            let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;
             Ok(tcx.mk_ptr(mt))
         }
 
@@ -449,7 +466,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             )?;
             let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
             let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
-            let mt = relate_type_and_mut(relation, a_mt, b_mt, ty::VarianceDiagMutKind::Ref)?;
+            let mt = relate_type_and_mut(relation, a_mt, b_mt, a)?;
             Ok(tcx.mk_ref(r, mt))
         }
 

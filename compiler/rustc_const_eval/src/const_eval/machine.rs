@@ -398,13 +398,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Err(ConstEvalErrKind::NeedsRfc("pointer arithmetic or comparison".to_string()).into())
     }
 
-    fn box_alloc(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _dest: &PlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
-        Err(ConstEvalErrKind::NeedsRfc("heap allocations via `box` keyword".to_string()).into())
-    }
-
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         // The step limit has already been hit in a previous call to `before_terminator`.
         if ecx.machine.steps_remaining == 0 {

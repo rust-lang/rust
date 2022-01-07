@@ -102,8 +102,7 @@ impl<T> OnceCell<T> {
     /// Returns `None` if the cell is empty.
     #[unstable(feature = "once_cell", issue = "74465")]
     pub fn get_mut(&mut self) -> Option<&mut T> {
-        // SAFETY: Safe because we have unique access
-        unsafe { &mut *self.inner.get() }.as_mut()
+        self.inner.get_mut().as_mut()
     }
 
     /// Sets the contents of the cell to `value`.

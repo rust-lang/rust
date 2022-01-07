@@ -34,7 +34,7 @@ fn main() {
         //~| pattern on the left, should be on the right
         //~| binding on the right, should be on the left
         //~| HELP switch the order
-        //~| SUGGESTION e @ 1 ..=5
+        //~| SUGGESTION e @ 1..=5
         _ => {}
     }
 }

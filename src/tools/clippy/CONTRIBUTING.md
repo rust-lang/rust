@@ -118,7 +118,7 @@ which `IntelliJ Rust` will be able to understand.
 Run `cargo dev setup intellij --repo-path <repo-path>` where `<repo-path>` is a path to the rustc repo
 you just cloned.
 The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
-Clippys `Cargo.toml`s and should allow `IntelliJ Rust` to understand most of the types that Clippy uses.
+Clippy's `Cargo.toml`s and should allow `IntelliJ Rust` to understand most of the types that Clippy uses.
 Just make sure to remove the dependencies again before finally making a pull request!
 
 [rustc_repo]: https://github.com/rust-lang/rust/
@@ -126,8 +126,8 @@ Just make sure to remove the dependencies again before finally making a pull req
 
 ### Rust Analyzer
 As of [#6869][6869], [`rust-analyzer`][ra_homepage] can understand that Clippy uses compiler-internals
-using `extern crate` when `package.metadata.rust-analyzer.rustc_private` is set to `true` in Clippys `Cargo.toml.`
-You will required a `nightly` toolchain with the `rustc-dev` component installed.
+using `extern crate` when `package.metadata.rust-analyzer.rustc_private` is set to `true` in Clippy's `Cargo.toml.`
+You will require a `nightly` toolchain with the `rustc-dev` component installed.
 Make sure that in the `rust-analyzer` configuration, you set
 ```
 { "rust-analyzer.rustcSource": "discover" }
@@ -228,7 +228,7 @@ about `subtree`s in the Rust repository see [Rust's `CONTRIBUTING.md`][subtree].
 
 ### Patching git-subtree to work with big repos
 
-Currently there's a bug in `git-subtree` that prevents it from working properly
+Currently, there's a bug in `git-subtree` that prevents it from working properly
 with the [`rust-lang/rust`] repo. There's an open PR to fix that, but it's stale.
 Before continuing with the following steps, we need to manually apply that fix to
 our local copy of `git-subtree`.

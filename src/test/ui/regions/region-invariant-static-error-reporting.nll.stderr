@@ -11,6 +11,10 @@ LL |         x.unwrap()
    |         |
    |         `x` escapes the function body here
    |         argument requires that `'a` must outlive `'static`
+   |
+   = note: requirement occurs because of the type Invariant<'_>, which makes the generic argument '_ invariant
+   = note: the struct Invariant<'a> is invariant over the parameter 'a
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to previous error
 

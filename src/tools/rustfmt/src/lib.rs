@@ -15,6 +15,7 @@ extern crate log;
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
+extern crate rustc_builtin_macros;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_expand;
@@ -40,8 +41,8 @@ use crate::emitter::Emitter;
 use crate::formatting::{FormatErrorMap, FormattingError, ReportedErrors, SourceFile};
 use crate::issues::Issue;
 use crate::modules::ModuleResolutionError;
+use crate::parse::parser::DirectoryOwnership;
 use crate::shape::Indent;
-use crate::syntux::parser::DirectoryOwnership;
 use crate::utils::indent_next_line;
 
 pub use crate::config::{
@@ -77,6 +78,7 @@ mod missed_spans;
 pub(crate) mod modules;
 mod overflow;
 mod pairs;
+mod parse;
 mod patterns;
 mod release_channel;
 mod reorder;
@@ -89,7 +91,6 @@ pub(crate) mod source_map;
 mod spanned;
 mod stmt;
 mod string;
-mod syntux;
 #[cfg(test)]
 mod test;
 mod types;

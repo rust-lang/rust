@@ -51,7 +51,11 @@ pub mod point {
 pub mod fn_calls_methods_in_same_impl {
     use point::Point;
 
-    #[rustc_clean(cfg="cfail2")]
+    // The cached result should actually be loaded from disk
+    // (not just marked green) - for example, `DeadVisitor`
+    // always runs during compilation as a "pass", and loads
+    // the typeck results for bodies.
+    #[rustc_clean(cfg="cfail2", loaded_from_disk="typeck")]
     pub fn check() {
         let x = Point { x: 2.0, y: 2.0 };
         x.distance_from_origin();

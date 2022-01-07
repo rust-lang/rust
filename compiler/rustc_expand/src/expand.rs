@@ -377,6 +377,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             dir_path,
         });
         let krate = self.fully_expand_fragment(AstFragment::Crate(krate)).make_crate();
+        assert_eq!(krate.id, ast::CRATE_NODE_ID);
         self.cx.trace_macros_diag();
         krate
     }
@@ -1160,13 +1161,19 @@ macro_rules! assign_id {
 
 impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_crate(&mut self, krate: &mut ast::Crate) {
-        let span = krate.span;
-        let empty_crate =
-            || ast::Crate { attrs: Vec::new(), items: Vec::new(), span, is_placeholder: None };
-        let mut fold_crate = |krate: ast::Crate| {
+        visit_clobber(krate, |krate| {
+            let span = krate.span;
             let mut krate = match self.configure(krate) {
                 Some(krate) => krate,
-                None => return empty_crate(),
+                None => {
+                    return ast::Crate {
+                        attrs: Vec::new(),
+                        items: Vec::new(),
+                        span,
+                        id: self.cx.resolver.next_node_id(),
+                        is_placeholder: false,
+                    };
+                }
             };
 
             if let Some(attr) = self.take_first_attr(&mut krate) {
@@ -1175,12 +1182,9 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     .make_crate();
             }
 
-            noop_visit_crate(&mut krate, self);
+            assign_id!(self, &mut krate.id, || noop_visit_crate(&mut krate, self));
             krate
-        };
-
-        // Cannot use `visit_clobber` here, see the FIXME on it.
-        *krate = fold_crate(mem::replace(krate, empty_crate()));
+        })
     }
 
     fn visit_expr(&mut self, expr: &mut P<ast::Expr>) {

@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                         if let LitKind::Int(0, _) = cond_lit.node {
                             if cx.typeck_results().expr_ty(cond_left).is_signed() {
                             } else {
-                                print_lint_and_sugg(cx, &var_name, expr);
+                                print_lint_and_sugg(cx, var_name, expr);
                             };
                         }
                     },
@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                             let mut int_ids = INT_TYPES.iter().filter_map(|&ty| cx.tcx.lang_items().require(ty).ok());
                             if int_ids.any(|int_id| int_id == impl_id);
                             then {
-                                print_lint_and_sugg(cx, &var_name, expr)
+                                print_lint_and_sugg(cx, var_name, expr)
                             }
                         }
                     },
@@ -121,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                             let mut int_ids = INT_TYPES.iter().filter_map(|&ty| cx.tcx.lang_items().require(ty).ok());
                             if int_ids.any(|int_id| int_id == impl_id);
                             then {
-                                print_lint_and_sugg(cx, &var_name, expr)
+                                print_lint_and_sugg(cx, var_name, expr)
                             }
                         }
                     },

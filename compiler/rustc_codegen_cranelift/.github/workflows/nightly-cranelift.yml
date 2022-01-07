@@ -3,7 +3,7 @@ name: Test nightly Cranelift
 on:
   push:
   schedule:
-    - cron: '1 17 * * *' # At 01:17 UTC every day.
+    - cron: '17 1 * * *' # At 01:17 UTC every day.
 
 jobs:
   build:

@@ -22,6 +22,7 @@ use core::str::next_code_point;
 
 use crate::borrow::Cow;
 use crate::char;
+use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::iter::FromIterator;
@@ -231,9 +232,45 @@ impl Wtf8Buf {
         self.bytes.reserve(additional)
     }
 
+    /// Tries to reserve capacity for at least `additional` more length units
+    /// in the given `Wtf8Buf`. The `Wtf8Buf` may reserve more space to avoid
+    /// frequent reallocations. After calling `try_reserve`, capacity will be
+    /// greater than or equal to `self.len() + additional`. Does nothing if
+    /// capacity is already sufficient.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    #[inline]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.bytes.try_reserve(additional)
+    }
+
     #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.bytes.reserve_exact(additional)
+    }
+
+    /// Tries to reserve the minimum capacity for exactly `additional`
+    /// length units in the given `Wtf8Buf`. After calling
+    /// `try_reserve_exact`, capacity will be greater than or equal to
+    /// `self.len() + additional` if it returns `Ok(())`.
+    /// Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the `Wtf8Buf` more space than it
+    /// requests. Therefore, capacity can not be relied upon to be precisely
+    /// minimal. Prefer [`try_reserve`] if future insertions are expected.
+    ///
+    /// [`try_reserve`]: Wtf8Buf::try_reserve
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    #[inline]
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.bytes.try_reserve_exact(additional)
     }
 
     #[inline]

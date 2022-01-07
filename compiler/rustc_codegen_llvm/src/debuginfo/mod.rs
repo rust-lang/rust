@@ -160,17 +160,17 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         // the values should match the ones in the DWARF standard anyway.
         let op_deref = || unsafe { llvm::LLVMRustDIBuilderCreateOpDeref() };
         let op_plus_uconst = || unsafe { llvm::LLVMRustDIBuilderCreateOpPlusUconst() };
-        let mut addr_ops = SmallVec::<[_; 8]>::new();
+        let mut addr_ops = SmallVec::<[u64; 8]>::new();
 
         if direct_offset.bytes() > 0 {
             addr_ops.push(op_plus_uconst());
-            addr_ops.push(direct_offset.bytes() as i64);
+            addr_ops.push(direct_offset.bytes() as u64);
         }
         for &offset in indirect_offsets {
             addr_ops.push(op_deref());
             if offset.bytes() > 0 {
                 addr_ops.push(op_plus_uconst());
-                addr_ops.push(offset.bytes() as i64);
+                addr_ops.push(offset.bytes() as u64);
             }
         }
 

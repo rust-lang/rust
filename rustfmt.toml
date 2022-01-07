@@ -19,7 +19,6 @@ ignore = [
     "library/backtrace",
     "library/portable-simd",
     "library/stdarch",
-    "compiler/rustc_codegen_cranelift",
     "compiler/rustc_codegen_gcc",
     "src/doc/book",
     "src/doc/edition-guide",
@@ -36,4 +35,9 @@ ignore = [
     "src/tools/rust-analyzer",
     "src/tools/rustfmt",
     "src/tools/rust-installer",
+
+    # these are ignored by a standard cargo fmt run
+    "compiler/rustc_codegen_cranelift/y.rs", # running rustfmt breaks this file
+    "compiler/rustc_codegen_cranelift/example",
+    "compiler/rustc_codegen_cranelift/scripts",
 ]

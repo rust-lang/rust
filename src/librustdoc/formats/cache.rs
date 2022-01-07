@@ -6,13 +6,13 @@ use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
-use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
+use crate::clean::{self, types::ExternalLocation, ExternalCrate, ItemId, PrimitiveType};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
 use crate::html::markdown::short_markdown_summary;
-use crate::html::render::cache::{get_index_search_type, ExternalLocation};
+use crate::html::render::search_index::get_function_type_for_search;
 use crate::html::render::IndexItem;
 
 /// This cache is used to store information about the [`clean::Crate`] being
@@ -303,7 +303,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             desc,
                             parent,
                             parent_idx: None,
-                            search_type: get_index_search_type(&item, self.tcx, self.cache),
+                            search_type: get_function_type_for_search(&item, self.tcx),
                             aliases: item.attrs.get_doc_aliases(),
                         });
                     }

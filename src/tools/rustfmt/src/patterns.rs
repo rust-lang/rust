@@ -318,10 +318,12 @@ fn rewrite_struct_pat(
     let mut fields_str = write_list(&item_vec, &fmt)?;
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
 
+    let has_trailing_comma = fmt.needs_trailing_separator();
+
     if ellipsis {
         if fields_str.contains('\n') || fields_str.len() > one_line_width {
             // Add a missing trailing comma.
-            if context.config.trailing_comma() == SeparatorTactic::Never {
+            if !has_trailing_comma {
                 fields_str.push(',');
             }
             fields_str.push('\n');
@@ -329,8 +331,7 @@ fn rewrite_struct_pat(
         } else {
             if !fields_str.is_empty() {
                 // there are preceding struct fields being matched on
-                if tactic == DefinitiveListTactic::Vertical {
-                    // if the tactic is Vertical, write_list already added a trailing ,
+                if has_trailing_comma {
                     fields_str.push(' ');
                 } else {
                     fields_str.push_str(", ");

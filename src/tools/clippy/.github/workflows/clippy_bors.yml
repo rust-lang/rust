@@ -121,6 +121,10 @@ jobs:
       run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
       working-directory: clippy_lints
 
+    - name: Test clippy_utils
+      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
+      working-directory: clippy_utils
+
     - name: Test rustc_tools_util
       run: cargo test --features deny-warnings
       working-directory: rustc_tools_util

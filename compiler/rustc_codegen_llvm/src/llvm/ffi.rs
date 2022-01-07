@@ -1902,6 +1902,8 @@ extern "C" {
     pub fn LLVMRustVersionMinor() -> u32;
     pub fn LLVMRustVersionPatch() -> u32;
 
+    pub fn LLVMRustIsRustLLVM() -> bool;
+
     pub fn LLVMRustAddModuleFlag(M: &Module, name: *const c_char, value: u32);
 
     pub fn LLVMRustMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
@@ -2106,7 +2108,7 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Val: &'a Value,
         VarInfo: &'a DIVariable,
-        AddrOps: *const i64,
+        AddrOps: *const u64,
         AddrOpsCount: c_uint,
         DL: &'a DILocation,
         InsertAtEnd: &'a BasicBlock,
@@ -2197,8 +2199,8 @@ extern "C" {
         Scope: &'a DIScope,
         InlinedAt: Option<&'a DILocation>,
     ) -> &'a DILocation;
-    pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
-    pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
+    pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
+    pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
@@ -2313,6 +2315,8 @@ extern "C" {
         end_callback: SelfProfileAfterPassCallback,
         ExtraPasses: *const c_char,
         ExtraPassesLen: size_t,
+        LLVMPlugins: *const c_char,
+        LLVMPluginsLen: size_t,
     ) -> LLVMRustResult;
     pub fn LLVMRustPrintModule(
         M: &Module,

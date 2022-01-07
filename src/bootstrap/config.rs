@@ -18,7 +18,6 @@ pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
 use crate::util::exe;
 use build_helper::t;
-use merge::Merge;
 use serde::Deserialize;
 
 macro_rules! check_ci_llvm {
@@ -294,6 +293,7 @@ pub struct Target {
     pub cxx: Option<PathBuf>,
     pub ar: Option<PathBuf>,
     pub ranlib: Option<PathBuf>,
+    pub default_linker: Option<PathBuf>,
     pub linker: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
     pub sanitizers: Option<bool>,
@@ -333,6 +333,10 @@ struct TomlConfig {
     profile: Option<String>,
 }
 
+trait Merge {
+    fn merge(&mut self, other: Self);
+}
+
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
@@ -356,105 +360,136 @@ impl Merge for TomlConfig {
     }
 }
 
-/// TOML representation of various global build decisions.
-#[derive(Deserialize, Default, Clone, Merge)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-struct Build {
-    build: Option<String>,
-    host: Option<Vec<String>>,
-    target: Option<Vec<String>>,
-    // This is ignored, the rust code always gets the build directory from the `BUILD_DIR` env variable
-    build_dir: Option<String>,
-    cargo: Option<String>,
-    rustc: Option<String>,
-    rustfmt: Option<PathBuf>,
-    docs: Option<bool>,
-    compiler_docs: Option<bool>,
-    docs_minification: Option<bool>,
-    submodules: Option<bool>,
-    fast_submodules: Option<bool>,
-    gdb: Option<String>,
-    nodejs: Option<String>,
-    npm: Option<String>,
-    python: Option<String>,
-    locked_deps: Option<bool>,
-    vendor: Option<bool>,
-    full_bootstrap: Option<bool>,
-    extended: Option<bool>,
-    tools: Option<HashSet<String>>,
-    verbose: Option<usize>,
-    sanitizers: Option<bool>,
-    profiler: Option<bool>,
-    cargo_native_static: Option<bool>,
-    low_priority: Option<bool>,
-    configure_args: Option<Vec<String>>,
-    local_rebuild: Option<bool>,
-    print_step_timings: Option<bool>,
-    print_step_rusage: Option<bool>,
-    check_stage: Option<u32>,
-    doc_stage: Option<u32>,
-    build_stage: Option<u32>,
-    test_stage: Option<u32>,
-    install_stage: Option<u32>,
-    dist_stage: Option<u32>,
-    bench_stage: Option<u32>,
-    patch_binaries_for_nix: Option<bool>,
+// We are using a decl macro instead of a derive proc macro here to reduce the compile time of
+// rustbuild.
+macro_rules! derive_merge {
+    ($(#[$attr:meta])* struct $name:ident {
+        $($field:ident: $field_ty:ty,)*
+    }) => {
+        $(#[$attr])*
+        struct $name {
+            $($field: $field_ty,)*
+        }
+
+        impl Merge for $name {
+            fn merge(&mut self, other: Self) {
+                $(
+                    if !self.$field.is_some() {
+                        self.$field = other.$field;
+                    }
+                )*
+            }
+        }
+    }
 }
 
-/// TOML representation of various global install decisions.
-#[derive(Deserialize, Default, Clone, Merge)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-struct Install {
-    prefix: Option<String>,
-    sysconfdir: Option<String>,
-    docdir: Option<String>,
-    bindir: Option<String>,
-    libdir: Option<String>,
-    mandir: Option<String>,
-    datadir: Option<String>,
+derive_merge! {
+    /// TOML representation of various global build decisions.
+    #[derive(Deserialize, Default, Clone)]
+    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+    struct Build {
+        build: Option<String>,
+        host: Option<Vec<String>>,
+        target: Option<Vec<String>>,
+        // This is ignored, the rust code always gets the build directory from the `BUILD_DIR` env variable
+        build_dir: Option<String>,
+        cargo: Option<String>,
+        rustc: Option<String>,
+        rustfmt: Option<PathBuf>,
+        docs: Option<bool>,
+        compiler_docs: Option<bool>,
+        docs_minification: Option<bool>,
+        submodules: Option<bool>,
+        fast_submodules: Option<bool>,
+        gdb: Option<String>,
+        nodejs: Option<String>,
+        npm: Option<String>,
+        python: Option<String>,
+        locked_deps: Option<bool>,
+        vendor: Option<bool>,
+        full_bootstrap: Option<bool>,
+        extended: Option<bool>,
+        tools: Option<HashSet<String>>,
+        verbose: Option<usize>,
+        sanitizers: Option<bool>,
+        profiler: Option<bool>,
+        cargo_native_static: Option<bool>,
+        low_priority: Option<bool>,
+        configure_args: Option<Vec<String>>,
+        local_rebuild: Option<bool>,
+        print_step_timings: Option<bool>,
+        print_step_rusage: Option<bool>,
+        check_stage: Option<u32>,
+        doc_stage: Option<u32>,
+        build_stage: Option<u32>,
+        test_stage: Option<u32>,
+        install_stage: Option<u32>,
+        dist_stage: Option<u32>,
+        bench_stage: Option<u32>,
+        patch_binaries_for_nix: Option<bool>,
+    }
 }
 
-/// TOML representation of how the LLVM build is configured.
-#[derive(Deserialize, Default, Merge)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-struct Llvm {
-    skip_rebuild: Option<bool>,
-    optimize: Option<bool>,
-    thin_lto: Option<bool>,
-    release_debuginfo: Option<bool>,
-    assertions: Option<bool>,
-    tests: Option<bool>,
-    plugins: Option<bool>,
-    ccache: Option<StringOrBool>,
-    version_check: Option<bool>,
-    static_libstdcpp: Option<bool>,
-    ninja: Option<bool>,
-    targets: Option<String>,
-    experimental_targets: Option<String>,
-    link_jobs: Option<u32>,
-    link_shared: Option<bool>,
-    version_suffix: Option<String>,
-    clang_cl: Option<String>,
-    cflags: Option<String>,
-    cxxflags: Option<String>,
-    ldflags: Option<String>,
-    use_libcxx: Option<bool>,
-    use_linker: Option<String>,
-    allow_old_toolchain: Option<bool>,
-    polly: Option<bool>,
-    clang: Option<bool>,
-    download_ci_llvm: Option<StringOrBool>,
+derive_merge! {
+    /// TOML representation of various global install decisions.
+    #[derive(Deserialize, Default, Clone)]
+    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+    struct Install {
+        prefix: Option<String>,
+        sysconfdir: Option<String>,
+        docdir: Option<String>,
+        bindir: Option<String>,
+        libdir: Option<String>,
+        mandir: Option<String>,
+        datadir: Option<String>,
+    }
 }
 
-#[derive(Deserialize, Default, Clone, Merge)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-struct Dist {
-    sign_folder: Option<String>,
-    gpg_password_file: Option<String>,
-    upload_addr: Option<String>,
-    src_tarball: Option<bool>,
-    missing_tools: Option<bool>,
-    compression_formats: Option<Vec<String>>,
+derive_merge! {
+    /// TOML representation of how the LLVM build is configured.
+    #[derive(Deserialize, Default)]
+    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+    struct Llvm {
+        skip_rebuild: Option<bool>,
+        optimize: Option<bool>,
+        thin_lto: Option<bool>,
+        release_debuginfo: Option<bool>,
+        assertions: Option<bool>,
+        tests: Option<bool>,
+        plugins: Option<bool>,
+        ccache: Option<StringOrBool>,
+        version_check: Option<bool>,
+        static_libstdcpp: Option<bool>,
+        ninja: Option<bool>,
+        targets: Option<String>,
+        experimental_targets: Option<String>,
+        link_jobs: Option<u32>,
+        link_shared: Option<bool>,
+        version_suffix: Option<String>,
+        clang_cl: Option<String>,
+        cflags: Option<String>,
+        cxxflags: Option<String>,
+        ldflags: Option<String>,
+        use_libcxx: Option<bool>,
+        use_linker: Option<String>,
+        allow_old_toolchain: Option<bool>,
+        polly: Option<bool>,
+        clang: Option<bool>,
+        download_ci_llvm: Option<StringOrBool>,
+    }
+}
+
+derive_merge! {
+    #[derive(Deserialize, Default, Clone)]
+    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+    struct Dist {
+        sign_folder: Option<String>,
+        gpg_password_file: Option<String>,
+        upload_addr: Option<String>,
+        src_tarball: Option<bool>,
+        missing_tools: Option<bool>,
+        compression_formats: Option<Vec<String>>,
+    }
 }
 
 #[derive(Deserialize)]
@@ -470,79 +505,84 @@ impl Default for StringOrBool {
     }
 }
 
-/// TOML representation of how the Rust build is configured.
-#[derive(Deserialize, Default, Merge)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-struct Rust {
-    optimize: Option<bool>,
-    debug: Option<bool>,
-    codegen_units: Option<u32>,
-    codegen_units_std: Option<u32>,
-    debug_assertions: Option<bool>,
-    debug_assertions_std: Option<bool>,
-    overflow_checks: Option<bool>,
-    overflow_checks_std: Option<bool>,
-    debug_logging: Option<bool>,
-    debuginfo_level: Option<u32>,
-    debuginfo_level_rustc: Option<u32>,
-    debuginfo_level_std: Option<u32>,
-    debuginfo_level_tools: Option<u32>,
-    debuginfo_level_tests: Option<u32>,
-    run_dsymutil: Option<bool>,
-    backtrace: Option<bool>,
-    incremental: Option<bool>,
-    parallel_compiler: Option<bool>,
-    default_linker: Option<String>,
-    channel: Option<String>,
-    description: Option<String>,
-    musl_root: Option<String>,
-    rpath: Option<bool>,
-    verbose_tests: Option<bool>,
-    optimize_tests: Option<bool>,
-    codegen_tests: Option<bool>,
-    ignore_git: Option<bool>,
-    dist_src: Option<bool>,
-    save_toolstates: Option<String>,
-    codegen_backends: Option<Vec<String>>,
-    lld: Option<bool>,
-    use_lld: Option<bool>,
-    llvm_tools: Option<bool>,
-    deny_warnings: Option<bool>,
-    backtrace_on_ice: Option<bool>,
-    verify_llvm_ir: Option<bool>,
-    thin_lto_import_instr_limit: Option<u32>,
-    remap_debuginfo: Option<bool>,
-    jemalloc: Option<bool>,
-    test_compare_mode: Option<bool>,
-    llvm_libunwind: Option<String>,
-    control_flow_guard: Option<bool>,
-    new_symbol_mangling: Option<bool>,
-    profile_generate: Option<String>,
-    profile_use: Option<String>,
-    // ignored; this is set from an env var set by bootstrap.py
-    download_rustc: Option<StringOrBool>,
+derive_merge! {
+    /// TOML representation of how the Rust build is configured.
+    #[derive(Deserialize, Default)]
+    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+    struct Rust {
+        optimize: Option<bool>,
+        debug: Option<bool>,
+        codegen_units: Option<u32>,
+        codegen_units_std: Option<u32>,
+        debug_assertions: Option<bool>,
+        debug_assertions_std: Option<bool>,
+        overflow_checks: Option<bool>,
+        overflow_checks_std: Option<bool>,
+        debug_logging: Option<bool>,
+        debuginfo_level: Option<u32>,
+        debuginfo_level_rustc: Option<u32>,
+        debuginfo_level_std: Option<u32>,
+        debuginfo_level_tools: Option<u32>,
+        debuginfo_level_tests: Option<u32>,
+        run_dsymutil: Option<bool>,
+        backtrace: Option<bool>,
+        incremental: Option<bool>,
+        parallel_compiler: Option<bool>,
+        default_linker: Option<String>,
+        channel: Option<String>,
+        description: Option<String>,
+        musl_root: Option<String>,
+        rpath: Option<bool>,
+        verbose_tests: Option<bool>,
+        optimize_tests: Option<bool>,
+        codegen_tests: Option<bool>,
+        ignore_git: Option<bool>,
+        dist_src: Option<bool>,
+        save_toolstates: Option<String>,
+        codegen_backends: Option<Vec<String>>,
+        lld: Option<bool>,
+        use_lld: Option<bool>,
+        llvm_tools: Option<bool>,
+        deny_warnings: Option<bool>,
+        backtrace_on_ice: Option<bool>,
+        verify_llvm_ir: Option<bool>,
+        thin_lto_import_instr_limit: Option<u32>,
+        remap_debuginfo: Option<bool>,
+        jemalloc: Option<bool>,
+        test_compare_mode: Option<bool>,
+        llvm_libunwind: Option<String>,
+        control_flow_guard: Option<bool>,
+        new_symbol_mangling: Option<bool>,
+        profile_generate: Option<String>,
+        profile_use: Option<String>,
+        // ignored; this is set from an env var set by bootstrap.py
+        download_rustc: Option<StringOrBool>,
+    }
 }
 
-/// TOML representation of how each build target is configured.
-#[derive(Deserialize, Default, Merge)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-struct TomlTarget {
-    cc: Option<String>,
-    cxx: Option<String>,
-    ar: Option<String>,
-    ranlib: Option<String>,
-    linker: Option<String>,
-    llvm_config: Option<String>,
-    llvm_filecheck: Option<String>,
-    android_ndk: Option<String>,
-    sanitizers: Option<bool>,
-    profiler: Option<bool>,
-    crt_static: Option<bool>,
-    musl_root: Option<String>,
-    musl_libdir: Option<String>,
-    wasi_root: Option<String>,
-    qemu_rootfs: Option<String>,
-    no_std: Option<bool>,
+derive_merge! {
+    /// TOML representation of how each build target is configured.
+    #[derive(Deserialize, Default)]
+    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+    struct TomlTarget {
+        cc: Option<String>,
+        cxx: Option<String>,
+        ar: Option<String>,
+        ranlib: Option<String>,
+        default_linker: Option<PathBuf>,
+        linker: Option<String>,
+        llvm_config: Option<String>,
+        llvm_filecheck: Option<String>,
+        android_ndk: Option<String>,
+        sanitizers: Option<bool>,
+        profiler: Option<bool>,
+        crt_static: Option<bool>,
+        musl_root: Option<String>,
+        musl_libdir: Option<String>,
+        wasi_root: Option<String>,
+        qemu_rootfs: Option<String>,
+        no_std: Option<bool>,
+    }
 }
 
 impl Config {
@@ -1107,10 +1147,6 @@ impl Config {
 
     pub fn verbose(&self) -> bool {
         self.verbose > 0
-    }
-
-    pub fn very_verbose(&self) -> bool {
-        self.verbose > 1
     }
 
     pub fn sanitizers_enabled(&self, target: TargetSelection) -> bool {

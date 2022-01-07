@@ -2,7 +2,7 @@ error: the range pattern here has ambiguous interpretation
   --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:8:10
    |
 LL |         &0.. | _ => {}
-   |          ^^^ help: add parentheses to clarify the precedence: `(0 ..)`
+   |          ^^^ help: add parentheses to clarify the precedence: `(0..)`
 
 error[E0586]: inclusive range with no end
   --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:10:11
@@ -16,7 +16,7 @@ error: the range pattern here has ambiguous interpretation
   --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:10:10
    |
 LL |         &0..= | _ => {}
-   |          ^^^^ help: add parentheses to clarify the precedence: `(0 ..=)`
+   |          ^^^^ help: add parentheses to clarify the precedence: `(0..=)`
 
 error[E0586]: inclusive range with no end
   --> $DIR/half-open-range-pats-ref-ambiguous-interp.rs:13:11

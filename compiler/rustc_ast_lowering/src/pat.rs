@@ -24,7 +24,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(&*s));
                         break self.lower_pat_ident(pattern, binding_mode, ident, lower_sub);
                     }
-                    PatKind::Lit(ref e) => break hir::PatKind::Lit(self.lower_expr(e)),
+                    PatKind::Lit(ref e) => {
+                        break hir::PatKind::Lit(self.lower_expr_within_pat(e, false));
+                    }
                     PatKind::TupleStruct(ref qself, ref path, ref pats) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
@@ -81,8 +83,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     PatKind::Range(ref e1, ref e2, Spanned { node: ref end, .. }) => {
                         break hir::PatKind::Range(
-                            e1.as_deref().map(|e| self.lower_expr(e)),
-                            e2.as_deref().map(|e| self.lower_expr(e)),
+                            e1.as_deref().map(|e| self.lower_expr_within_pat(e, true)),
+                            e2.as_deref().map(|e| self.lower_expr_within_pat(e, true)),
                             self.lower_range_end(end, e2.is_some()),
                         );
                     }
@@ -313,5 +315,34 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // No end; so `X..` behaves like `RangeFrom`.
             RangeEnd::Excluded | RangeEnd::Included(_) => hir::RangeEnd::Included,
         }
+    }
+
+    /// Matches `'-' lit | lit (cf. parser::Parser::parse_literal_maybe_minus)`,
+    /// or paths for ranges.
+    //
+    // FIXME: do we want to allow `expr -> pattern` conversion to create path expressions?
+    // That means making this work:
+    //
+    // ```rust,ignore (FIXME)
+    // struct S;
+    // macro_rules! m {
+    //     ($a:expr) => {
+    //         let $a = S;
+    //     }
+    // }
+    // m!(S);
+    // ```
+    fn lower_expr_within_pat(&mut self, expr: &Expr, allow_paths: bool) -> &'hir hir::Expr<'hir> {
+        match expr.kind {
+            ExprKind::Lit(..) | ExprKind::ConstBlock(..) | ExprKind::Err => {}
+            ExprKind::Path(..) if allow_paths => {}
+            ExprKind::Unary(UnOp::Neg, ref inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
+            _ => {
+                self.diagnostic()
+                    .span_err(expr.span, "arbitrary expressions aren't allowed in patterns");
+                return self.arena.alloc(self.expr_err(expr.span));
+            }
+        }
+        self.lower_expr(expr)
     }
 }

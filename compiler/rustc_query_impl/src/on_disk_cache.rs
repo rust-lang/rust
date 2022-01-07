@@ -495,6 +495,20 @@ impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
             .entry(index)
             .or_insert_with(|| {
                 let stable_id = file_index_to_stable_id[&index].translate(tcx);
+
+                // If this `SourceFile` is from a foreign crate, then make sure
+                // that we've imported all of the source files from that crate.
+                // This has usually already been done during macro invocation.
+                // However, when encoding query results like `TypeckResults`,
+                // we might encode an `AdtDef` for a foreign type (because it
+                // was referenced in the body of the function). There is no guarantee
+                // that we will load the source files from that crate during macro
+                // expansion, so we use `import_source_files` to ensure that the foreign
+                // source files are actually imported before we call `source_file_by_stable_id`.
+                if stable_id.cnum != LOCAL_CRATE {
+                    self.tcx.cstore_untracked().import_source_files(self.tcx.sess, stable_id.cnum);
+                }
+
                 source_map
                     .source_file_by_stable_id(stable_id)
                     .expect("failed to lookup `SourceFile` in new context")

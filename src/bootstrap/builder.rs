@@ -351,7 +351,6 @@ pub enum Kind {
     Check,
     Clippy,
     Fix,
-    Format,
     Test,
     Bench,
     Dist,
@@ -399,7 +398,7 @@ impl<'a> Builder<'a> {
                 native::Lld,
                 native::CrtBeginEnd
             ),
-            Kind::Check | Kind::Clippy { .. } | Kind::Fix | Kind::Format => describe!(
+            Kind::Check | Kind::Clippy { .. } | Kind::Fix => describe!(
                 check::Std,
                 check::Rustc,
                 check::Rustdoc,
@@ -989,10 +988,20 @@ impl<'a> Builder<'a> {
             }
         };
 
-        if use_new_symbol_mangling {
-            rustflags.arg("-Zsymbol-mangling-version=v0");
+        // cfg(bootstrap) -- drop the compiler.stage == 0 branch.
+        if compiler.stage == 0 {
+            if use_new_symbol_mangling {
+                rustflags.arg("-Zsymbol-mangling-version=v0");
+            } else {
+                rustflags.arg("-Zsymbol-mangling-version=legacy");
+            }
         } else {
-            rustflags.arg("-Zsymbol-mangling-version=legacy");
+            if use_new_symbol_mangling {
+                rustflags.arg("-Csymbol-mangling-version=v0");
+            } else {
+                rustflags.arg("-Csymbol-mangling-version=legacy");
+                rustflags.arg("-Zunstable-options");
+            }
         }
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,

@@ -129,7 +129,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
     // `tcx.crates(())` doesn't include the local crate, and `tcx.all_trait_implementations`
     // doesn't work with it anyway, so pull them from the HIR map instead
     let mut extra_attrs = Vec::new();
-    for &trait_did in cx.tcx.all_traits(()).iter() {
+    for trait_did in cx.tcx.all_traits() {
         for &impl_did in cx.tcx.hir().trait_impls(trait_did) {
             let impl_did = impl_did.to_def_id();
             cx.tcx.sess.prof.generic_activity("build_local_trait_impl").run(|| {

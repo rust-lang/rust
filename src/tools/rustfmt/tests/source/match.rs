@@ -568,3 +568,22 @@ fn issue_3774() {
         }
     }
 }
+
+// #4109
+fn issue_4109() {
+    match () {
+        _ => {
+#[cfg(debug_assertions)]
+{
+println!("Foo");
+}
+}
+}
+
+match () {
+_ => {
+#[allow(unsafe_code)]
+unsafe {}
+}
+}
+}

@@ -1603,10 +1603,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         pat_src: PatternSource,
         bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) {
+        // We walk the pattern before declaring the pattern's inner bindings,
+        // so that we avoid resolving a literal expression to a binding defined
+        // by the pattern.
+        visit::walk_pat(self, pat);
         self.resolve_pattern_inner(pat, pat_src, bindings);
         // This has to happen *after* we determine which pat_idents are variants:
         self.check_consistent_bindings_top(pat);
-        visit::walk_pat(self, pat);
     }
 
     /// Resolve bindings in a pattern. This is a helper to `resolve_pattern`.
@@ -2376,7 +2379,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::While(ref cond, ref block, label) => {
                 self.with_resolved_label(label, expr.id, |this| {
                     this.with_rib(ValueNS, NormalRibKind, |this| {
+                        let old = this.diagnostic_metadata.in_if_condition.replace(cond);
                         this.visit_expr(cond);
+                        this.diagnostic_metadata.in_if_condition = old;
                         this.visit_block(block);
                     })
                 });

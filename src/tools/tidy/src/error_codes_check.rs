@@ -10,8 +10,8 @@ use regex::Regex;
 
 // A few of those error codes can't be tested but all the others can and *should* be tested!
 const EXEMPTED_FROM_TEST: &[&str] = &[
-    "E0227", "E0279", "E0280", "E0313", "E0377", "E0461", "E0462", "E0465", "E0476", "E0514",
-    "E0519", "E0523", "E0554", "E0640", "E0717", "E0729",
+    "E0279", "E0280", "E0313", "E0377", "E0461", "E0462", "E0465", "E0476", "E0514", "E0519",
+    "E0523", "E0554", "E0640", "E0717", "E0729",
 ];
 
 // Some error codes don't have any tests apparently...

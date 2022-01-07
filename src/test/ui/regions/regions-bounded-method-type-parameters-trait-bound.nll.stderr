@@ -15,6 +15,9 @@ LL |     f.method(b);
    |     argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type Inv<'_>, which makes the generic argument '_ invariant
+   = note: the struct Inv<'a> is invariant over the parameter 'a
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to previous error
 

@@ -187,7 +187,7 @@ struct TokenIter<'a> {
     src: &'a str,
 }
 
-impl Iterator for TokenIter<'a> {
+impl<'a> Iterator for TokenIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<(TokenKind, &'a str)> {
         if self.src.is_empty() {
@@ -227,7 +227,7 @@ struct PeekIter<'a> {
     iter: TokenIter<'a>,
 }
 
-impl PeekIter<'a> {
+impl<'a> PeekIter<'a> {
     fn new(iter: TokenIter<'a>) -> Self {
         Self { stored: VecDeque::new(), peek_pos: 0, iter }
     }
@@ -254,7 +254,7 @@ impl PeekIter<'a> {
     }
 }
 
-impl Iterator for PeekIter<'a> {
+impl<'a> Iterator for PeekIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<Self::Item> {
         self.peek_pos = 0;

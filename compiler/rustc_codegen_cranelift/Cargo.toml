@@ -40,28 +40,9 @@ unstable-features = ["jit", "inline_asm"]
 jit = ["cranelift-jit", "libloading"]
 inline_asm = []
 
-[profile.dev]
-# By compiling dependencies with optimizations, performing tests gets much faster.
-opt-level = 3
-
-[profile.dev.package.rustc_codegen_cranelift]
-# Disabling optimizations for cg_clif itself makes compilation after a change faster.
-opt-level = 0
-
-[profile.release.package.rustc_codegen_cranelift]
-incremental = true
-
 # Disable optimizations and debuginfo of build scripts and some of the heavy build deps, as the
 # execution time of build scripts is so fast that optimizing them slows down the total build time.
-[profile.dev.build-override]
-opt-level = 0
-debug = false
-
 [profile.release.build-override]
-opt-level = 0
-debug = false
-
-[profile.dev.package.cranelift-codegen-meta]
 opt-level = 0
 debug = false
 

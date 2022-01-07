@@ -26,7 +26,7 @@ fn main() {
     let exit_code = match execute(&opts) {
         Ok(code) => code,
         Err(e) => {
-            eprintln!("{}", e.to_string());
+            eprintln!("{}", e);
             1
         }
     };

@@ -50,7 +50,8 @@ pub fn placeholder(
             attrs: Default::default(),
             items: Default::default(),
             span,
-            is_placeholder: Some(id),
+            id,
+            is_placeholder: true,
         }),
         AstFragmentKind::Expr => AstFragment::Expr(expr_placeholder()),
         AstFragmentKind::OptExpr => AstFragment::OptExpr(Some(expr_placeholder())),
@@ -362,8 +363,8 @@ impl MutVisitor for PlaceholderExpander {
     }
 
     fn visit_crate(&mut self, krate: &mut ast::Crate) {
-        if let Some(id) = krate.is_placeholder {
-            *krate = self.remove(id).make_crate();
+        if krate.is_placeholder {
+            *krate = self.remove(krate.id).make_crate();
         } else {
             noop_visit_crate(krate, self)
         }

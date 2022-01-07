@@ -23,7 +23,7 @@
 //! These threads are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
 
-crate mod cache;
+crate mod search_index;
 
 #[cfg(test)]
 mod tests;
@@ -788,7 +788,7 @@ fn assoc_type(
 ) {
     write!(
         w,
-        "{}type <a href=\"{}\" class=\"type\">{}</a>",
+        "{}type <a href=\"{}\" class=\"associatedtype\">{}</a>",
         extra,
         naive_assoc_href(it, link, cx),
         it.name.as_ref().unwrap()

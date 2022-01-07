@@ -448,10 +448,8 @@ where
                     true
                 } else if starts_with_newline(comment) {
                     false
-                } else if comment.trim().contains('\n') || comment.trim().len() > width {
-                    true
                 } else {
-                    false
+                    comment.trim().contains('\n') || comment.trim().len() > width
                 };
 
                 rewrite_comment(

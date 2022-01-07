@@ -1,0 +1,2 @@
+error: incorrect value `leaf` for debugging option `branch-protection` - a `,` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf` was expected
+

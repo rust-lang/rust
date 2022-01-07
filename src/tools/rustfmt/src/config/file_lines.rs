@@ -13,9 +13,9 @@ use thiserror::Error;
 
 /// A range of lines in a file, inclusive of both ends.
 pub struct LineRange {
-    pub file: Lrc<SourceFile>,
-    pub lo: usize,
-    pub hi: usize,
+    pub(crate) file: Lrc<SourceFile>,
+    pub(crate) lo: usize,
+    pub(crate) hi: usize,
 }
 
 /// Defines the name of an input - either a file or stdin.
@@ -75,7 +75,7 @@ impl Serialize for FileName {
 }
 
 impl LineRange {
-    pub fn file_name(&self) -> FileName {
+    pub(crate) fn file_name(&self) -> FileName {
         self.file.name.clone().into()
     }
 }

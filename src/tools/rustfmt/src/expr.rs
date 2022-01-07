@@ -108,9 +108,21 @@ pub(crate) fn format_expr(
         ast::ExprKind::Unary(op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
         ast::ExprKind::Struct(ref struct_expr) => {
             let ast::StructExpr {
-                fields, path, rest, ..
+                qself,
+                fields,
+                path,
+                rest,
             } = &**struct_expr;
-            rewrite_struct_lit(context, path, fields, rest, &expr.attrs, expr.span, shape)
+            rewrite_struct_lit(
+                context,
+                path,
+                qself.as_ref(),
+                fields,
+                rest,
+                &expr.attrs,
+                expr.span,
+                shape,
+            )
         }
         ast::ExprKind::Tup(ref items) => {
             rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1)
@@ -1511,6 +1523,7 @@ fn struct_lit_can_be_aligned(fields: &[ast::ExprField], has_base: bool) -> bool 
 fn rewrite_struct_lit<'a>(
     context: &RewriteContext<'_>,
     path: &ast::Path,
+    qself: Option<&ast::QSelf>,
     fields: &'a [ast::ExprField],
     struct_rest: &ast::StructRest,
     attrs: &[ast::Attribute],
@@ -1527,7 +1540,7 @@ fn rewrite_struct_lit<'a>(
 
     // 2 = " {".len()
     let path_shape = shape.sub_width(2)?;
-    let path_str = rewrite_path(context, PathContext::Expr, None, path, path_shape)?;
+    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
 
     let has_base_or_rest = match struct_rest {
         ast::StructRest::None if fields.is_empty() => return Some(format!("{} {{}}", path_str)),
@@ -2003,9 +2016,7 @@ fn choose_rhs<R: Rewrite>(
     has_rhs_comment: bool,
 ) -> Option<String> {
     match orig_rhs {
-        Some(ref new_str) if new_str.is_empty() => {
-            return Some(String::new());
-        }
+        Some(ref new_str) if new_str.is_empty() => Some(String::new()),
         Some(ref new_str)
             if !new_str.contains('\n') && unicode_str_width(new_str) <= shape.width =>
         {

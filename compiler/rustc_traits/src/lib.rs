@@ -2,7 +2,6 @@
 //! the guts are broken up into modules; see the comments in those modules.
 
 #![feature(crate_visibility_modifier)]
-#![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 

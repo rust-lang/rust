@@ -10,3 +10,4 @@ doctest = false
 arrayvec = { version = "0.7", default-features = false }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_macros = { path = "../rustc_macros" }
+smallvec = "1"

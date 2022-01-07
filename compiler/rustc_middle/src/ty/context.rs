@@ -1577,6 +1577,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_limit(self) -> Limit {
         self.limits(()).const_eval_limit
     }
+
+    pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
+        iter::once(LOCAL_CRATE)
+            .chain(self.crates(()).iter().copied())
+            .flat_map(move |cnum| self.traits_in_crate(cnum).iter().copied())
+    }
 }
 
 /// A trait implemented for all `X<'a>` types that can be safely and

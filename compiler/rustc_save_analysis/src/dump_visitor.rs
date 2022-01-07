@@ -1326,12 +1326,18 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 }
                 intravisit::walk_qpath(self, path, t.hir_id, t.span);
             }
-            hir::TyKind::Array(ref ty, ref anon_const) => {
+            hir::TyKind::Array(ref ty, ref length) => {
                 self.visit_ty(ty);
                 let map = self.tcx.hir();
-                self.nest_typeck_results(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
-                    v.visit_expr(&map.body(anon_const.body).value)
-                });
+                match length {
+                    // FIXME(generic_arg_infer): We probably want to
+                    // output the inferred type here? :shrug:
+                    hir::ArrayLen::Infer(..) => {}
+                    hir::ArrayLen::Body(anon_const) => self
+                        .nest_typeck_results(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
+                            v.visit_expr(&map.body(anon_const.body).value)
+                        }),
+                }
             }
             hir::TyKind::OpaqueDef(item_id, _) => {
                 let item = self.tcx.hir().item(item_id);
@@ -1390,12 +1396,18 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     v.visit_expr(&body.value)
                 });
             }
-            hir::ExprKind::Repeat(ref expr, ref anon_const) => {
+            hir::ExprKind::Repeat(ref expr, ref length) => {
                 self.visit_expr(expr);
                 let map = self.tcx.hir();
-                self.nest_typeck_results(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
-                    v.visit_expr(&map.body(anon_const.body).value)
-                });
+                match length {
+                    // FIXME(generic_arg_infer): We probably want to
+                    // output the inferred type here? :shrug:
+                    hir::ArrayLen::Infer(..) => {}
+                    hir::ArrayLen::Body(anon_const) => self
+                        .nest_typeck_results(self.tcx.hir().local_def_id(anon_const.hir_id), |v| {
+                            v.visit_expr(&map.body(anon_const.body).value)
+                        }),
+                }
             }
             // In particular, we take this branch for call and path expressions,
             // where we'll index the idents involved just by continuing to walk.

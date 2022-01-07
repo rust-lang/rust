@@ -200,7 +200,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     fn check_ptr_call<'b>(&mut self, _typ: &str, func_ptr: RValue<'gcc>, args: &'b [RValue<'gcc>]) -> Cow<'b, [RValue<'gcc>]> {
         let mut all_args_match = true;
         let mut param_types = vec![];
-        let gcc_func = func_ptr.get_type().is_function_ptr_type().expect("function ptr");
+        let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
         for (index, arg) in args.iter().enumerate().take(gcc_func.get_param_count()) {
             let param = gcc_func.get_param_type(index);
             if param != arg.get_type() {
@@ -277,7 +277,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
-        let gcc_func = func_ptr.get_type().is_function_ptr_type().expect("function ptr");
+        let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
         let mut return_type = gcc_func.get_return_type();
         let current_block = self.current_block.borrow().expect("block");
         let void_type = self.context.new_type::<()>();
@@ -605,22 +605,17 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn and(&mut self, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
-        // FIXME(antoyo): hack by putting the result in a variable to workaround this bug:
-        // https://gcc.gnu.org/bugzilla//show_bug.cgi?id=95498
         if a.get_type() != b.get_type() {
             b = self.context.new_cast(None, b, a.get_type());
         }
-        let res = self.current_func().new_local(None, b.get_type(), "andResult");
-        self.llbb().add_assignment(None, res, a & b);
-        res.to_rvalue()
+        a & b
     }
 
-    fn or(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // FIXME(antoyo): hack by putting the result in a variable to workaround this bug:
-        // https://gcc.gnu.org/bugzilla//show_bug.cgi?id=95498
-        let res = self.current_func().new_local(None, b.get_type(), "orResult");
-        self.llbb().add_assignment(None, res, a | b);
-        res.to_rvalue()
+    fn or(&mut self, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
+        if a.get_type() != b.get_type() {
+            b = self.context.new_cast(None, b, a.get_type());
+        }
+        a | b
     }
 
     fn xor(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -628,8 +623,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn neg(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): use new_unary_op()?
-        self.cx.context.new_rvalue_from_long(a.get_type(), 0) - a
+        self.cx.context.new_unary_op(None, UnaryOp::Minus, a.get_type(), a)
     }
 
     fn fneg(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
@@ -816,7 +810,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let atomic_load = self.context.get_builtin_function(&format!("__atomic_load_{}", size.bytes()));
         let ordering = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
 
-        let volatile_const_void_ptr_type = self.context.new_type::<*mut ()>().make_const().make_volatile();
+        let volatile_const_void_ptr_type = self.context.new_type::<()>()
+            .make_const()
+            .make_volatile()
+            .make_pointer();
         let ptr = self.context.new_cast(None, ptr, volatile_const_void_ptr_type);
         self.context.new_call(None, atomic_load, &[ptr, ordering])
     }
@@ -941,7 +938,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo): handle alignment.
         let atomic_store = self.context.get_builtin_function(&format!("__atomic_store_{}", size.bytes()));
         let ordering = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
-        let volatile_const_void_ptr_type = self.context.new_type::<*mut ()>().make_const().make_volatile();
+        let volatile_const_void_ptr_type = self.context.new_type::<()>()
+            .make_volatile()
+            .make_pointer();
         let ptr = self.context.new_cast(None, ptr, volatile_const_void_ptr_type);
 
         // FIXME(antoyo): fix libgccjit to allow comparing an integer type with an aligned integer type because
@@ -981,12 +980,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         assert_eq!(idx as usize as u64, idx);
         let value = ptr.dereference(None).to_rvalue();
 
-        if value_type.is_array().is_some() {
+        if value_type.dyncast_array().is_some() {
             let index = self.context.new_rvalue_from_long(self.u64_type, i64::try_from(idx).expect("i64::try_from"));
             let element = self.context.new_array_access(None, value, index);
             element.get_address(None)
         }
-        else if let Some(vector_type) = value_type.is_vector() {
+        else if let Some(vector_type) = value_type.dyncast_vector() {
             let array_type = vector_type.get_element_type().make_pointer();
             let array = self.bitcast(ptr, array_type);
             let index = self.context.new_rvalue_from_long(self.u64_type, i64::try_from(idx).expect("i64::try_from"));
@@ -1009,7 +1008,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn sext(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         // TODO(antoyo): check that it indeed sign extend the value.
-        if dest_ty.is_vector().is_some() {
+        if dest_ty.dyncast_vector().is_some() {
             // TODO(antoyo): nothing to do as it is only for LLVM?
             return value;
         }
@@ -1081,7 +1080,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let right_type = rhs.get_type();
         if left_type != right_type {
             // NOTE: because libgccjit cannot compare function pointers.
-            if left_type.is_function_ptr_type().is_some() && right_type.is_function_ptr_type().is_some() {
+            if left_type.dyncast_function_ptr_type().is_some() && right_type.dyncast_function_ptr_type().is_some() {
                 lhs = self.context.new_cast(None, lhs, self.usize_type.make_pointer());
                 rhs = self.context.new_cast(None, rhs, self.usize_type.make_pointer());
             }
@@ -1189,12 +1188,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         assert_eq!(idx as usize as u64, idx);
         let value_type = aggregate_value.get_type();
 
-        if value_type.is_array().is_some() {
+        if value_type.dyncast_array().is_some() {
             let index = self.context.new_rvalue_from_long(self.u64_type, i64::try_from(idx).expect("i64::try_from"));
             let element = self.context.new_array_access(None, aggregate_value, index);
             element.get_address(None)
         }
-        else if value_type.is_vector().is_some() {
+        else if value_type.dyncast_vector().is_some() {
             panic!();
         }
         else if let Some(pointer_type) = value_type.get_pointee() {
@@ -1221,11 +1220,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let value_type = aggregate_value.get_type();
 
         let lvalue =
-            if value_type.is_array().is_some() {
+            if value_type.dyncast_array().is_some() {
                 let index = self.context.new_rvalue_from_long(self.u64_type, i64::try_from(idx).expect("i64::try_from"));
                 self.context.new_array_access(None, aggregate_value, index)
             }
-            else if value_type.is_vector().is_some() {
+            else if value_type.dyncast_vector().is_some() {
                 panic!();
             }
             else if let Some(pointer_type) = value_type.get_pointee() {
@@ -1404,7 +1403,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.cx
     }
 
-    fn do_not_inline(&mut self, _llret: RValue<'gcc>) {
+    fn apply_attrs_to_cleanup_callsite(&mut self, _llret: RValue<'gcc>) {
         unimplemented!();
     }
 

@@ -358,7 +358,7 @@ impl<'a> State<'a> {
                 self.word("[");
                 self.print_type(&ty);
                 self.word("; ");
-                self.print_anon_const(length);
+                self.print_array_length(length);
                 self.word("]");
             }
             hir::TyKind::Typeof(ref e) => {
@@ -1065,6 +1065,13 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
+    pub fn print_array_length(&mut self, len: &hir::ArrayLen) {
+        match len {
+            hir::ArrayLen::Infer(_, _) => self.word("_"),
+            hir::ArrayLen::Body(ct) => self.print_anon_const(ct),
+        }
+    }
+
     pub fn print_anon_const(&mut self, constant: &hir::AnonConst) {
         self.ann.nested(self, Nested::Body(constant.body))
     }
@@ -1140,12 +1147,12 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::AnonConst) {
+    fn print_expr_repeat(&mut self, element: &hir::Expr<'_>, count: &hir::ArrayLen) {
         self.ibox(INDENT_UNIT);
         self.word("[");
         self.print_expr(element);
         self.word_space(";");
-        self.print_anon_const(count);
+        self.print_array_length(count);
         self.word("]");
         self.end()
     }
@@ -1874,7 +1881,11 @@ impl<'a> State<'a> {
             PatKind::Struct(ref qpath, ref fields, etc) => {
                 self.print_qpath(qpath, true);
                 self.nbsp();
-                self.word_space("{");
+                self.word("{");
+                let empty = fields.is_empty() && !etc;
+                if !empty {
+                    self.space();
+                }
                 self.commasep_cmnt(
                     Consistent,
                     &fields,
@@ -1895,7 +1906,9 @@ impl<'a> State<'a> {
                     }
                     self.word("..");
                 }
-                self.space();
+                if !empty {
+                    self.space();
+                }
                 self.word("}");
             }
             PatKind::Or(ref pats) => {
@@ -1948,7 +1961,6 @@ impl<'a> State<'a> {
             PatKind::Range(ref begin, ref end, ref end_kind) => {
                 if let Some(expr) = begin {
                     self.print_expr(expr);
-                    self.space();
                 }
                 match *end_kind {
                     RangeEnd::Included => self.word("..."),
@@ -2327,10 +2339,7 @@ impl<'a> State<'a> {
         arg_names: &[Ident],
     ) {
         self.ibox(INDENT_UNIT);
-        if !generic_params.is_empty() {
-            self.word("for");
-            self.print_generic_params(generic_params);
-        }
+        self.print_formal_generic_params(generic_params);
         let generics = hir::Generics {
             params: &[],
             where_clause: hir::WhereClause { predicates: &[], span: rustc_span::DUMMY_SP },

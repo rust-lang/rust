@@ -145,4 +145,10 @@ enum HIDataRequest {
     DeleteUnpubHIData(String),
 }
 
+enum North {
+    Normal,
+    NoLeft,
+    NoRight,
+}
+
 fn main() {}

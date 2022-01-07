@@ -16,13 +16,13 @@ use crate::items::{
 };
 use crate::macros::{macro_style, rewrite_macro, rewrite_macro_def, MacroPosition};
 use crate::modules::Module;
+use crate::parse::session::ParseSess;
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::skip::{is_skip_attr, SkipContext};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
 use crate::stmt::Stmt;
-use crate::syntux::session::ParseSess;
 use crate::utils::{
     self, contains_skip, count_newlines, depr_skip_annotation, format_unsafety, inner_attributes,
     last_line_width, mk_sp, ptr_vec_to_ref_vec, rewrite_ident, starts_with_newline, stmt_expr,
@@ -552,7 +552,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                             _ => visit::FnCtxt::Foreign,
                         };
                         self.visit_fn(
-                            visit::FnKind::Fn(fn_ctxt, item.ident, &sig, &item.vis, Some(body)),
+                            visit::FnKind::Fn(fn_ctxt, item.ident, sig, &item.vis, Some(body)),
                             generics,
                             &sig.decl,
                             item.span,
@@ -562,14 +562,14 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     } else {
                         let indent = self.block_indent;
                         let rewrite = self.rewrite_required_fn(
-                            indent, item.ident, &sig, &item.vis, generics, item.span,
+                            indent, item.ident, sig, &item.vis, generics, item.span,
                         );
                         self.push_rewrite(item.span, rewrite);
                     }
                 }
                 ast::ItemKind::TyAlias(ref ty_alias) => {
                     use ItemVisitorKind::Item;
-                    self.visit_ty_alias_kind(ty_alias, &Item(&item), item.span);
+                    self.visit_ty_alias_kind(ty_alias, &Item(item), item.span);
                 }
                 ast::ItemKind::GlobalAsm(..) => {
                     let snippet = Some(self.snippet(item.span).to_owned());
@@ -619,17 +619,17 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         skip_out_of_file_lines_range_visitor!(self, ai.span);
 
         if self.visit_attrs(&ai.attrs, ast::AttrStyle::Outer) {
-            self.push_skipped_with_span(&ai.attrs.as_slice(), skip_span, skip_span);
+            self.push_skipped_with_span(ai.attrs.as_slice(), skip_span, skip_span);
             return;
         }
 
         // TODO(calebcartwright): consider enabling box_patterns feature gate
         match (&ai.kind, visitor_kind) {
             (ast::AssocItemKind::Const(..), AssocTraitItem(_)) => {
-                self.visit_static(&StaticParts::from_trait_item(&ai))
+                self.visit_static(&StaticParts::from_trait_item(ai))
             }
             (ast::AssocItemKind::Const(..), AssocImplItem(_)) => {
-                self.visit_static(&StaticParts::from_impl_item(&ai))
+                self.visit_static(&StaticParts::from_impl_item(ai))
             }
             (ast::AssocItemKind::Fn(ref fn_kind), _) => {
                 let ast::Fn {
@@ -948,12 +948,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     pub(crate) fn format_separate_mod(&mut self, m: &Module<'_>, end_pos: BytePos) {
         self.block_indent = Indent::empty();
-        if self.visit_attrs(m.attrs(), ast::AttrStyle::Inner) {
-            self.push_skipped_with_span(m.attrs(), m.span, m.span);
-        } else {
-            self.walk_mod_items(&m.items);
-            self.format_missing_with_indent(end_pos);
-        }
+        let skipped = self.visit_attrs(m.attrs(), ast::AttrStyle::Inner);
+        assert!(
+            !skipped,
+            "Skipping module must be handled before reaching this line."
+        );
+        self.walk_mod_items(&m.items);
+        self.format_missing_with_indent(end_pos);
     }
 
     pub(crate) fn skip_empty_lines(&mut self, end_pos: BytePos) {

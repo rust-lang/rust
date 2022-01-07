@@ -74,11 +74,6 @@ impl fmt::Display for TestName {
     }
 }
 
-/// Represents a benchmark function.
-pub trait TDynBenchFn: Send {
-    fn run(&self, harness: &mut Bencher);
-}
-
 // A function that runs a test. If the function returns successfully,
 // the test succeeds; if the function panics then the test fails. We
 // may need to come up with a more clever definition of test in order
@@ -87,7 +82,7 @@ pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
     DynTestFn(Box<dyn FnOnce() + Send>),
-    DynBenchFn(Box<dyn TDynBenchFn + 'static>),
+    DynBenchFn(Box<dyn Fn(&mut Bencher) + Send>),
 }
 
 impl TestFn {

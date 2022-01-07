@@ -585,6 +585,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     #[inline]
+    #[track_caller]
     pub const fn swap(&mut self, a: usize, b: usize) {
         let _ = &self[a];
         let _ = &self[b];
@@ -1501,6 +1502,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[track_caller]
     pub fn split_at(&self, mid: usize) -> (&[T], &[T]) {
         assert!(mid <= self.len());
         // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
@@ -1531,6 +1533,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[track_caller]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         assert!(mid <= self.len());
         // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
@@ -1670,6 +1673,7 @@ impl<T> [T] {
     /// ```
     #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
+    #[track_caller]
     pub fn split_array_ref<const N: usize>(&self) -> (&[T; N], &[T]) {
         let (a, b) = self.split_at(N);
         // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at)
@@ -1701,6 +1705,7 @@ impl<T> [T] {
     /// ```
     #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
     #[inline]
+    #[track_caller]
     pub fn split_array_mut<const N: usize>(&mut self) -> (&mut [T; N], &mut [T]) {
         let (a, b) = self.split_at_mut(N);
         // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)

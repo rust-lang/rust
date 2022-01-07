@@ -94,8 +94,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchExprVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
         match ex.kind {
-            ExprKind::MethodCall(segment, _, [receiver], _)
-                if self.case_altered(segment.ident.as_str(), receiver) => {},
+            ExprKind::MethodCall(segment, _, [receiver], _) if self.case_altered(segment.ident.as_str(), receiver) => {
+            },
             _ => walk_expr(self, ex),
         }
     }
@@ -142,7 +142,7 @@ fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(
                             }) = arm.pat.kind;
             if let LitKind::Str(symbol, _) = lit.node;
             let input = symbol.as_str();
-            if !case_check(&input);
+            if !case_check(input);
             then {
                 return Some((lit.span, symbol));
             }

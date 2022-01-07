@@ -583,9 +583,12 @@ impl<'tcx> Cx<'tcx> {
                 ExprKind::ConstBlock { value }
             }
             // Now comes the rote stuff:
-            hir::ExprKind::Repeat(ref v, ref count) => {
-                let count_def_id = self.tcx.hir().local_def_id(count.hir_id);
-                let count = ty::Const::from_anon_const(self.tcx, count_def_id);
+            hir::ExprKind::Repeat(ref v, _) => {
+                let ty = self.typeck_results().expr_ty(expr);
+                let count = match ty.kind() {
+                    ty::Array(_, ct) => ct,
+                    _ => span_bug!(expr.span, "unexpected repeat expr ty: {:?}", ty),
+                };
 
                 ExprKind::Repeat { value: self.mirror_expr(v), count }
             }

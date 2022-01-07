@@ -78,8 +78,6 @@ pub struct TestProps {
     pub unset_rustc_env: Vec<String>,
     // Environment settings to use during execution
     pub exec_env: Vec<(String, String)>,
-    // Lines to check if they appear in the expected debugger output
-    pub check_lines: Vec<String>,
     // Build documentation for all specified aux-builds as well
     pub build_aux_docs: bool,
     // Flag to force a crate to be built with the host architecture
@@ -165,7 +163,6 @@ impl TestProps {
             rustc_env: vec![],
             unset_rustc_env: vec![],
             exec_env: vec![],
-            check_lines: vec![],
             build_aux_docs: false,
             force_host: false,
             check_stdout: false,
@@ -316,10 +313,6 @@ impl TestProps {
 
                 if let Some(ev) = config.parse_name_value_directive(ln, "unset-rustc-env") {
                     self.unset_rustc_env.push(ev);
-                }
-
-                if let Some(cl) = config.parse_check_line(ln) {
-                    self.check_lines.push(cl);
                 }
 
                 if let Some(of) = config.parse_forbid_output(ln) {
@@ -553,10 +546,6 @@ impl Config {
 
     fn parse_run_flags(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "run-flags")
-    }
-
-    fn parse_check_line(&self, line: &str) -> Option<String> {
-        self.parse_name_value_directive(line, "check")
     }
 
     fn parse_force_host(&self, line: &str) -> bool {

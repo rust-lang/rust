@@ -1,5 +1,7 @@
+// run-rustfix
 #![warn(clippy::neg_multiply)]
-#![allow(clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::precedence)]
+#![allow(unused)]
 
 use std::ops::Mul;
 
@@ -27,6 +29,14 @@ fn main() {
     x * -1;
 
     -1 * x;
+
+    100 + x * -1;
+
+    (100 + x) * -1;
+
+    -1 * 17;
+
+    0xcafe | 0xff00 * -1;
 
     -1 * -1; // should be ok
 

@@ -41,6 +41,15 @@ fn main() {
     x;
     !x;
     !(x && y);
+    let a = 0;
+    let b = 1;
+
+    a != b;
+    a == b;
+    a >= b;
+    a > b;
+    a <= b;
+    a < b;
     if x {
         x
     } else {

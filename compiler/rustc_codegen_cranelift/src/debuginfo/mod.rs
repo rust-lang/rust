@@ -10,7 +10,7 @@ use crate::prelude::*;
 use rustc_index::vec::IndexVec;
 
 use cranelift_codegen::entity::EntityRef;
-use cranelift_codegen::ir::{LabelValueLoc, ValueLabel};
+use cranelift_codegen::ir::{Endianness, LabelValueLoc, ValueLabel};
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::ValueLocRange;
 
@@ -22,15 +22,6 @@ use gimli::{Encoding, Format, LineEncoding, RunTimeEndian, X86_64};
 
 pub(crate) use emit::{DebugReloc, DebugRelocName};
 pub(crate) use unwind::UnwindContext;
-
-fn target_endian(tcx: TyCtxt<'_>) -> RunTimeEndian {
-    use rustc_target::abi::Endian;
-
-    match tcx.data_layout.endian {
-        Endian::Big => RunTimeEndian::Big,
-        Endian::Little => RunTimeEndian::Little,
-    }
-}
 
 pub(crate) struct DebugContext<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -58,6 +49,11 @@ impl<'tcx> DebugContext<'tcx> {
                 4
             },
             address_size: isa.frontend_config().pointer_bytes(),
+        };
+
+        let endian = match isa.endianness() {
+            Endianness::Little => RunTimeEndian::Little,
+            Endianness::Big => RunTimeEndian::Big,
         };
 
         let mut dwarf = DwarfUnit::new(encoding);
@@ -108,7 +104,7 @@ impl<'tcx> DebugContext<'tcx> {
         DebugContext {
             tcx,
 
-            endian: target_endian(tcx),
+            endian,
 
             dwarf,
             unit_range_list: RangeList(Vec::new()),

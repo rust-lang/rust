@@ -1,0 +1,40 @@
+error: where clause not allowed here
+  --> $DIR/type-alias-where.rs:8:15
+   |
+LL | type Bar = () where u32: Copy;
+   |         -     ^^^^^^^^^^^^^^^
+   |         |
+   |         help: move it here: `where u32: Copy`
+
+error: where clause not allowed here
+  --> $DIR/type-alias-where.rs:10:15
+   |
+LL | type Baz = () where;
+   |               ^^^^^
+
+error: where clause not allowed here
+  --> $DIR/type-alias-where.rs:24:38
+   |
+LL |     type Assoc2 where u32: Copy = () where i32: Copy;
+   |                                -     ^^^^^^^^^^^^^^^
+   |                                |
+   |                                help: move it here: `, i32: Copy`
+
+error: where clause not allowed here
+  --> $DIR/type-alias-where.rs:30:21
+   |
+LL |     type Assoc = () where u32: Copy;
+   |               -     ^^^^^^^^^^^^^^^
+   |               |
+   |               help: move it here: `where u32: Copy`
+
+error: where clause not allowed here
+  --> $DIR/type-alias-where.rs:33:22
+   |
+LL |     type Assoc2 = () where u32: Copy, i32: Copy;
+   |                -     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                |
+   |                help: move it here: `where u32: Copy, i32: Copy`
+
+error: aborting due to 5 previous errors
+

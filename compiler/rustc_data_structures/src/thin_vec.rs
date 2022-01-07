@@ -5,7 +5,7 @@ use std::iter::FromIterator;
 /// A vector type optimized for cases where this size is usually 0 (cf. `SmallVec`).
 /// The `Option<Box<..>>` wrapping allows us to represent a zero sized vector with `None`,
 /// which uses only a single (null) pointer.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, Hash, Eq, PartialEq)]
 pub struct ThinVec<T>(Option<Box<Vec<T>>>);
 
 impl<T> ThinVec<T> {
@@ -19,6 +19,13 @@ impl<T> ThinVec<T> {
 
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
         self.into_iter()
+    }
+
+    pub fn push(&mut self, item: T) {
+        match *self {
+            ThinVec(Some(ref mut vec)) => vec.push(item),
+            ThinVec(None) => *self = vec![item].into(),
+        }
     }
 }
 
@@ -101,10 +108,7 @@ impl<T> Extend<T> for ThinVec<T> {
     }
 
     fn extend_one(&mut self, item: T) {
-        match *self {
-            ThinVec(Some(ref mut vec)) => vec.push(item),
-            ThinVec(None) => *self = vec![item].into(),
-        }
+        self.push(item)
     }
 
     fn extend_reserve(&mut self, additional: usize) {

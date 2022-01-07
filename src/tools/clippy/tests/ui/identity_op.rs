@@ -2,10 +2,20 @@ const ONE: i64 = 1;
 const NEG_ONE: i64 = -1;
 const ZERO: i64 = 0;
 
+struct A(String);
+
+impl std::ops::Shl<i32> for A {
+    type Output = A;
+    fn shl(mut self, other: i32) -> Self {
+        self.0.push_str(&format!("{}", other));
+        self
+    }
+}
 #[allow(
     clippy::eq_op,
     clippy::no_effect,
     clippy::unnecessary_operation,
+    clippy::op_ref,
     clippy::double_parens
 )]
 #[warn(clippy::identity_op)]
@@ -38,4 +48,9 @@ fn main() {
     42 << 0;
     1 >> 0;
     42 >> 0;
+    &x >> 0;
+    x >> &0;
+
+    let mut a = A("".into());
+    let b = a << 0; // no error: non-integer
 }

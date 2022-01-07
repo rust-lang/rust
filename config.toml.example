@@ -488,9 +488,12 @@ changelog-seen = 2
 # FIXME(#75760): Some UI tests fail when this option is enabled.
 #parallel-compiler = false
 
-# The default linker that will be hard-coded into the generated compiler for
-# targets that don't specify linker explicitly in their target specifications.
-# Note that this is not the linker used to link said compiler.
+# The default linker that will be hard-coded into the generated
+# compiler for targets that don't specify a default linker explicitly
+# in their target specifications.  Note that this is not the linker
+# used to link said compiler. It can also be set per-target (via the
+# `[target.<triple>]` block), which may be useful in a cross-compilation
+# setting.
 #
 # See https://doc.rust-lang.org/rustc/codegen-options/index.html#linker for more information.
 #default-linker = <none> (path)
