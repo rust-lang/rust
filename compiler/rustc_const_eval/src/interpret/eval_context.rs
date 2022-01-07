@@ -1,13 +1,12 @@
 use std::cell::Cell;
-use std::fmt;
 use std::mem;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{InterpError, InvalidProgramInfo};
+use rustc_middle::mir::interpret::{FrameInfo, InterpError, InvalidProgramInfo};
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
@@ -18,7 +17,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::storage::AlwaysLiveLocals;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Limit;
-use rustc_span::{Pos, Span};
+use rustc_span::Span;
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
@@ -127,14 +126,6 @@ pub struct Frame<'mir, 'tcx, Tag: Provenance = AllocId, Extra = ()> {
     /// frames without cleanup code).
     /// We basically abuse `Result` as `Either`.
     pub(super) loc: Result<mir::Location, Span>,
-}
-
-/// What we store about a frame in an interpreter backtrace.
-#[derive(Debug)]
-pub struct FrameInfo<'tcx> {
-    pub instance: ty::Instance<'tcx>,
-    pub span: Span,
-    pub lint_root: Option<hir::HirId>,
 }
 
 /// Unwind information.
@@ -262,32 +253,6 @@ impl<'mir, 'tcx, Tag: Provenance, Extra> Frame<'mir, 'tcx, Tag, Extra> {
             Ok(loc) => self.body.source_info(loc).span,
             Err(span) => span,
         }
-    }
-}
-
-impl<'tcx> fmt::Display for FrameInfo<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| {
-            if tcx.def_key(self.instance.def_id()).disambiguated_data.data
-                == DefPathData::ClosureExpr
-            {
-                write!(f, "inside closure")?;
-            } else {
-                write!(f, "inside `{}`", self.instance)?;
-            }
-            if !self.span.is_dummy() {
-                let sm = tcx.sess.source_map();
-                let lo = sm.lookup_char_pos(self.span.lo());
-                write!(
-                    f,
-                    " at {}:{}:{}",
-                    sm.filename_for_diagnostics(&lo.file.name),
-                    lo.line,
-                    lo.col.to_usize() + 1
-                )?;
-            }
-            Ok(())
-        })
     }
 }
 
@@ -926,6 +891,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn eval_to_allocation(
         &self,
         gid: GlobalId<'tcx>,
@@ -941,8 +907,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.param_env
         };
         let param_env = param_env.with_const();
-        let val = self.tcx.eval_to_allocation_raw(param_env.and(gid))?;
-        self.raw_const_to_mplace(val)
+        let val = self.tcx.dedup_eval_alloc_raw(param_env.and(gid), None);
+        debug!(?val);
+
+        self.raw_const_to_mplace(val?)
     }
 
     #[must_use]

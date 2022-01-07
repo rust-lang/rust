@@ -58,6 +58,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Evaluate a constant.
+    #[instrument(skip(self), level = "debug")]
     pub fn const_eval_global_id(
         self,
         param_env: ty::ParamEnv<'tcx>,
@@ -68,18 +69,18 @@ impl<'tcx> TyCtxt<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.erase_regions(param_env.and(cid));
-        if let Some(span) = span {
-            self.at(span).eval_to_const_value_raw(inputs)
-        } else {
-            self.eval_to_const_value_raw(inputs)
-        }
+
+        let raw_const = self.dedup_eval_const_value_raw(inputs);
+        debug!(?raw_const);
+
+        raw_const
     }
 
     /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
     pub fn eval_static_initializer(
         self,
         def_id: DefId,
-    ) -> Result<&'tcx mir::Allocation, ErrorHandled> {
+    ) -> Result<&'tcx mir::Allocation, ErrorHandled<'tcx>> {
         trace!("eval_static_initializer: Need to compute {:?}", def_id);
         assert!(self.is_static(def_id));
         let instance = ty::Instance::mono(self, def_id);
@@ -88,14 +89,17 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Evaluate anything constant-like, returning the allocation of the final memory.
+    #[instrument(skip(self), level = "debug")]
     fn eval_to_allocation(
         self,
         gid: GlobalId<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> Result<&'tcx mir::Allocation, ErrorHandled> {
+    ) -> Result<&'tcx mir::Allocation, ErrorHandled<'tcx>> {
         let param_env = param_env.with_const();
         trace!("eval_to_allocation: Need to compute {:?}", gid);
-        let raw_const = self.eval_to_allocation_raw(param_env.and(gid))?;
-        Ok(self.global_alloc(raw_const.alloc_id).unwrap_memory())
+        let raw_const = self.dedup_eval_alloc_raw(param_env.and(gid), None);
+        debug!(?raw_const);
+
+        Ok(self.global_alloc(raw_const?.alloc_id).unwrap_memory())
     }
 }
