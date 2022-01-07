@@ -7,6 +7,7 @@ fn main() {
     enum Stuff {
         Bar = foo
         //~^ ERROR attempt to use a non-constant value in a constant
+        //~| ERROR failed to evaluate
     }
 
     println!("{:?}", Stuff::Bar);

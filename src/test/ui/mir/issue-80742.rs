@@ -3,8 +3,7 @@
 // This test used to cause an ICE in rustc_mir::interpret::step::eval_rvalue_into_place
 
 #![allow(incomplete_features)]
-#![feature(const_evaluatable_checked)]
-#![feature(const_generics)]
+#![feature(generic_const_exprs)]
 
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -29,7 +28,7 @@ where
 
 fn main() {
     let dst = Inline::<dyn Debug>::new(0);
-    //~^ ERROR failed to evaluate the given constant
+    //~^ ERROR the function or associated item `new` exists for struct
     //~| ERROR the size for values of type
-    //~| ERROR no function or associated item
+    //~| ERROR failed to evaluate
 }

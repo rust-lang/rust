@@ -6,5 +6,11 @@ LL |     let _array = [4; <A as Foo>::Y];
    |
    = note: this may fail depending on what value the parameter takes
 
-error: aborting due to previous error
+error: failed to evaluate the given constant
+  --> $DIR/associated-const-type-parameter-arrays-2.rs:16:22
+   |
+LL |     let _array = [4; <A as Foo>::Y];
+   |                      ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

@@ -19,4 +19,6 @@ impl TraitB for B { //~ ERROR not all trait items implemented, missing: `MyA`
 
 fn main() {
     let _ = [0; B::VALUE];
+    //~^ ERROR evaluation of constant value failed
+    //~| ERROR failed to evaluate the given
 }

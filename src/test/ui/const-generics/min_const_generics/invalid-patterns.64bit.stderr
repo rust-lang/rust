@@ -4,26 +4,50 @@ error[E0308]: mismatched types
 LL |   get_flag::<false, 0xFF>();
    |                     ^^^^ expected `char`, found `u8`
 
+error: failed to evaluate the given constant
+  --> $DIR/invalid-patterns.rs:29:21
+   |
+LL |   get_flag::<false, 0xFF>();
+   |                     ^^^^
+
 error[E0308]: mismatched types
-  --> $DIR/invalid-patterns.rs:31:14
+  --> $DIR/invalid-patterns.rs:32:14
    |
 LL |   get_flag::<7, 'c'>();
    |              ^ expected `bool`, found integer
 
+error: failed to evaluate the given constant
+  --> $DIR/invalid-patterns.rs:32:14
+   |
+LL |   get_flag::<7, 'c'>();
+   |              ^
+
 error[E0308]: mismatched types
-  --> $DIR/invalid-patterns.rs:33:14
+  --> $DIR/invalid-patterns.rs:35:14
    |
 LL |   get_flag::<42, 0x5ad>();
    |              ^^ expected `bool`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/invalid-patterns.rs:33:18
+  --> $DIR/invalid-patterns.rs:35:18
    |
 LL |   get_flag::<42, 0x5ad>();
    |                  ^^^^^ expected `char`, found `u8`
 
+error: failed to evaluate the given constant
+  --> $DIR/invalid-patterns.rs:35:14
+   |
+LL |   get_flag::<42, 0x5ad>();
+   |              ^^
+
+error: failed to evaluate the given constant
+  --> $DIR/invalid-patterns.rs:35:18
+   |
+LL |   get_flag::<42, 0x5ad>();
+   |                  ^^^^^
+
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:38:21
+  --> $DIR/invalid-patterns.rs:42:21
    |
 LL |   get_flag::<false, { unsafe { char_raw.character } }>();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
@@ -33,8 +57,14 @@ LL |   get_flag::<false, { unsafe { char_raw.character } }>();
                __ __ __ __                                     │ ░░░░
            }
 
+error: failed to evaluate the given constant
+  --> $DIR/invalid-patterns.rs:42:21
+   |
+LL |   get_flag::<false, { unsafe { char_raw.character } }>();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:40:14
+  --> $DIR/invalid-patterns.rs:45:14
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x42, but expected a boolean
@@ -44,8 +74,14 @@ LL |   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
                42                                              │ B
            }
 
+error: failed to evaluate the given constant
+  --> $DIR/invalid-patterns.rs:45:14
+   |
+LL |   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:42:14
+  --> $DIR/invalid-patterns.rs:48:14
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x42, but expected a boolean
@@ -56,7 +92,7 @@ LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-patterns.rs:42:47
+  --> $DIR/invalid-patterns.rs:48:47
    |
 LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)
@@ -66,7 +102,19 @@ LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character
                __ __ __ __                                     │ ░░░░
            }
 
-error: aborting due to 8 previous errors
+error: failed to evaluate the given constant
+  --> $DIR/invalid-patterns.rs:48:14
+   |
+LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: failed to evaluate the given constant
+  --> $DIR/invalid-patterns.rs:48:47
+   |
+LL |   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
 
 Some errors have detailed explanations: E0080, E0308.
 For more information about an error, try `rustc --explain E0080`.

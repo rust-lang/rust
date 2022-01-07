@@ -9,4 +9,6 @@ fn foo<const N: usize, const A: [u8; N]>() {}
 fn main() {
     foo::<_, {[1]}>();
     //[full]~^ ERROR mismatched types
+    //[full]~| ERROR failed to evaluate
+    //[full]~| ERROR failed to evaluate
 }

@@ -10,6 +10,7 @@ trait Mat {
 fn m<M: Mat>() {
     let a = [3; M::Row::DIM];
     //~^ ERROR constant expression depends on a generic parameter
+    //~| ERROR failed to evaluate
 }
 fn main() {
 }

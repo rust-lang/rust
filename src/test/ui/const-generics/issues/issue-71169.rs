@@ -8,4 +8,6 @@ fn foo<const LEN: usize, const DATA: [u8; LEN]>() {}
 fn main() {
     const DATA: [u8; 4] = *b"ABCD";
     foo::<4, DATA>();
+    //[full]~^ ERROR failed to evaluate
+    //[full]~| ERROR failed to evaluate
 }

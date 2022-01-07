@@ -16,6 +16,7 @@ const A_I8_I
     = [0; (i8::MAX + 1u8) as usize];
 //~^ ERROR mismatched types
 //~| ERROR cannot add `u8` to `i8`
+//~| ERROR failed to evaluate
 
 fn main() {
     foo(&A_I8_I[..]);

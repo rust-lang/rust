@@ -5,32 +5,12 @@ note: ...which requires simplifying constant for the type system `Tr::A`...
    |
 LL |     const A: u8 = Self::B;
    |     ^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `Tr::A`...
-  --> $DIR/defaults-cyclic-fail.rs:6:5
-   |
-LL |     const A: u8 = Self::B;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `Tr::A`...
-  --> $DIR/defaults-cyclic-fail.rs:6:5
-   |
-LL |     const A: u8 = Self::B;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `Tr::A`...
   --> $DIR/defaults-cyclic-fail.rs:6:5
    |
 LL |     const A: u8 = Self::B;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires normalizing `<() as Tr>::B`...
-note: ...which requires simplifying constant for the type system `Tr::B`...
-  --> $DIR/defaults-cyclic-fail.rs:8:5
-   |
-LL |     const B: u8 = Self::A;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `Tr::B`...
-  --> $DIR/defaults-cyclic-fail.rs:8:5
-   |
-LL |     const B: u8 = Self::A;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires simplifying constant for the type system `Tr::B`...
   --> $DIR/defaults-cyclic-fail.rs:8:5
    |

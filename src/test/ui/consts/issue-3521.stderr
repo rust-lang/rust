@@ -7,6 +7,12 @@ LL |     let foo: isize = 100;
 LL |         Bar = foo
    |               ^^^ non-constant value
 
-error: aborting due to previous error
+error: failed to evaluate the given constant
+  --> $DIR/issue-3521.rs:8:15
+   |
+LL |         Bar = foo
+   |               ^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0435`.

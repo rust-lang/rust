@@ -5,16 +5,6 @@ note: ...which requires simplifying constant for the type system `FOO`...
    |
 LL | const FOO: usize = FOO;
    | ^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `FOO`...
-  --> $DIR/issue-17252.rs:1:1
-   |
-LL | const FOO: usize = FOO;
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `FOO`...
-  --> $DIR/issue-17252.rs:1:1
-   |
-LL | const FOO: usize = FOO;
-   | ^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `FOO`...
   --> $DIR/issue-17252.rs:1:1
    |

@@ -8,6 +8,7 @@ enum MyWeirdOption<T> {
     None = 0,
     Some(T) = core::mem::size_of::<*mut T>(),
     //~^ ERROR generic parameters may not be used
+    //~| ERROR failed to evaluate
 }
 
 fn main() {

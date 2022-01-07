@@ -6,11 +6,13 @@ fn foo<const N: usize>() {
     let a = 1;
     legacy_const_generics::foo(0, a, 2);
     //~^ ERROR attempt to use a non-constant value in a constant
+    //~| ERROR failed to evaluate
 
     legacy_const_generics::foo(0, N, 2);
 
     legacy_const_generics::foo(0, N + 1, 2);
     //~^ ERROR generic parameters may not be used in const operations
+    //~| ERROR failed to evaluate
 }
 
 fn main() {}

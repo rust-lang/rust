@@ -18,7 +18,7 @@ impl<const X: usize> ArrayHolder<X> {
         ArrayHolder([0; Self::SIZE])
         //~^ ERROR mismatched types
         //[full]~^^ ERROR unconstrained generic constant
-        //[min]~^^^ ERROR constant expression depends on a generic parameter
+        //[min]~^^^ ERROR failed to evaluate
     }
 }
 

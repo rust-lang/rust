@@ -3,6 +3,7 @@ fn main() {
     // that pointer comparison is disallowed, not that parts of a pointer are accessed as raw
     // bytes.
     let _: [u8; 0] = [4; {
+          //~^ ERROR failed to evaluate
         match &1 as *const i32 as usize {
             //~^ ERROR pointers cannot be cast to integers during const eval
             0 => 42,

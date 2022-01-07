@@ -1,5 +1,5 @@
 error: pointers cannot be cast to integers during const eval
-  --> $DIR/match-test-ptr-null.rs:6:15
+  --> $DIR/match-test-ptr-null.rs:7:15
    |
 LL |         match &1 as *const i32 as usize {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,5 +7,18 @@ LL |         match &1 as *const i32 as usize {
    = note: at compile-time, pointers do not have an integer value
    = note: avoiding this restriction via `transmute`, `union`, or raw pointers leads to compile-time undefined behavior
 
-error: aborting due to previous error
+error: failed to evaluate the given constant
+  --> $DIR/match-test-ptr-null.rs:5:26
+   |
+LL |       let _: [u8; 0] = [4; {
+   |  __________________________^
+LL | |
+LL | |         match &1 as *const i32 as usize {
+LL | |
+...  |
+LL | |         }
+LL | |     }];
+   | |_____^
+
+error: aborting due to 2 previous errors
 

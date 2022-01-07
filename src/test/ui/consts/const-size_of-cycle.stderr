@@ -4,16 +4,6 @@ error[E0391]: cycle detected when simplifying constant for the type system `Foo:
 LL |     bytes: [u8; std::mem::size_of::<Foo>()]
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires simplifying constant for the type system `Foo::bytes::{constant#0}`...
-  --> $DIR/const-size_of-cycle.rs:4:17
-   |
-LL |     bytes: [u8; std::mem::size_of::<Foo>()]
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `Foo::bytes::{constant#0}`...
-  --> $DIR/const-size_of-cycle.rs:4:17
-   |
-LL |     bytes: [u8; std::mem::size_of::<Foo>()]
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `Foo::bytes::{constant#0}`...
   --> $DIR/const-size_of-cycle.rs:4:17
    |

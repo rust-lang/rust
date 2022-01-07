@@ -4,6 +4,18 @@ error[E0770]: the type of const parameters must not depend on other generic para
 LL | fn foo<const LEN: usize, const DATA: [u8; LEN]>() {}
    |                                           ^^^ the type must not depend on the parameter `LEN`
 
-error: aborting due to previous error
+error: failed to evaluate the given constant
+  --> $DIR/issue-71169.rs:10:14
+   |
+LL |     foo::<4, DATA>();
+   |              ^^^^
+
+error: failed to evaluate the given constant
+  --> $DIR/issue-71169.rs:10:14
+   |
+LL |     foo::<4, DATA>();
+   |              ^^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0770`.

@@ -8,6 +8,7 @@
 const C: [(); 42] = {
     [(); return || {
     //~^ ERROR: return statement outside of function body [E0572]
+    //~| ERROR: failed to evaluate the given constant
         let tx;
     }]
 };

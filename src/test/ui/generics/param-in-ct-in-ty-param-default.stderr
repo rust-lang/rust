@@ -7,5 +7,11 @@ LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
    = note: type parameters may not be used in const expressions
    = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
-error: aborting due to previous error
+error: failed to evaluate the given constant
+  --> $DIR/param-in-ct-in-ty-param-default.rs:1:15
+   |
+LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
+   |               ^
+
+error: aborting due to 2 previous errors
 

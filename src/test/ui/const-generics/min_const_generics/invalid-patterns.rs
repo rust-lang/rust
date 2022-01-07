@@ -28,18 +28,26 @@ fn main() {
   assert!(get_flag::<false, 'x'>().is_none());
   get_flag::<false, 0xFF>();
   //~^ ERROR mismatched types
+  //~| ERROR failed to evaluate
   get_flag::<7, 'c'>();
   //~^ ERROR mismatched types
+  //~| ERROR failed to evaluate
   get_flag::<42, 0x5ad>();
   //~^ ERROR mismatched types
+  //~| ERROR failed to evaluate
+  //~| ERROR failed to evaluate
   //~| ERROR mismatched types
 
 
   get_flag::<false, { unsafe { char_raw.character } }>();
   //~^ ERROR it is undefined behavior
+  //~| ERROR failed to evaluate
   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
   //~^ ERROR it is undefined behavior
+  //~| ERROR failed to evaluate
   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
   //~^ ERROR it is undefined behavior
   //~| ERROR it is undefined behavior
+  //~| ERROR failed to evaluate
+  //~| ERROR failed to evaluate
 }

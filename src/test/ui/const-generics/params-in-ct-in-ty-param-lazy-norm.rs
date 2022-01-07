@@ -4,9 +4,11 @@
 
 struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
 //[min]~^ ERROR generic parameters may not be used in const operations
+//[min]~| ERROR failed to evaluate
 
 struct Bar<T = [u8; N], const N: usize>(T);
 //~^ ERROR generic parameters with a default cannot use forward declared identifiers
 //~| ERROR generic parameters with a default
+//[min]~| ERROR failed to evaluate
 
 fn main() {}

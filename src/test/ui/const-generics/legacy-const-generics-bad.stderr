@@ -7,7 +7,7 @@ LL |     legacy_const_generics::foo(0, a, 2);
    |                                   ^ non-constant value
 
 error: generic parameters may not be used in const operations
-  --> $DIR/legacy-const-generics-bad.rs:12:35
+  --> $DIR/legacy-const-generics-bad.rs:13:35
    |
 LL |     legacy_const_generics::foo(0, N + 1, 2);
    |                                   ^ cannot perform const operation using `N`
@@ -15,6 +15,18 @@ LL |     legacy_const_generics::foo(0, N + 1, 2);
    = help: const parameters may only be used as standalone arguments, i.e. `N`
    = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
-error: aborting due to 2 previous errors
+error: failed to evaluate the given constant
+  --> $DIR/legacy-const-generics-bad.rs:7:35
+   |
+LL |     legacy_const_generics::foo(0, a, 2);
+   |                                   ^
+
+error: failed to evaluate the given constant
+  --> $DIR/legacy-const-generics-bad.rs:13:35
+   |
+LL |     legacy_const_generics::foo(0, N + 1, 2);
+   |                                   ^^^^^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0435`.

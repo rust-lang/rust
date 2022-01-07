@@ -4,12 +4,24 @@ error[E0572]: return statement outside of function body
 LL |       [(); return || {
    |  __________^
 LL | |
+LL | |
+LL | |         let tx;
+LL | |     }]
+   | |_____^
+
+error: failed to evaluate the given constant
+  --> $DIR/issue-86188-return-not-in-fn-body.rs:9:10
+   |
+LL |       [(); return || {
+   |  __________^
+LL | |
+LL | |
 LL | |         let tx;
 LL | |     }]
    | |_____^
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-86188-return-not-in-fn-body.rs:20:14
+  --> $DIR/issue-86188-return-not-in-fn-body.rs:21:14
    |
 LL | /     fn bar() {
 LL | |
@@ -21,7 +33,7 @@ LL | |     }
    | |_____- ...not the enclosing function body
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-86188-return-not-in-fn-body.rs:28:14
+  --> $DIR/issue-86188-return-not-in-fn-body.rs:29:14
    |
 LL | /     fn foo() {
 LL | |
@@ -33,7 +45,7 @@ LL | |     }
    | |_____- ...not the enclosing function body
 
 error[E0572]: return statement outside of function body
-  --> $DIR/issue-86188-return-not-in-fn-body.rs:36:10
+  --> $DIR/issue-86188-return-not-in-fn-body.rs:37:10
    |
 LL |  / fn main() {
 LL |  |
@@ -47,6 +59,6 @@ LL | ||     }];
 LL |  | }
    |  |_- ...not the enclosing function body
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0572`.

@@ -6,7 +6,8 @@ impl<A, B> Foo<A, B> {
     pub fn crash() -> bool {
         [5; Self::HOST_SIZE] == [6; 0]
         //~^ ERROR constant expression depends on a generic parameter
-        //~| ERROR constant expression depends on a generic parameter
+        //~| ERROR failed to evaluate
+        //~| ERROR failed to evaluate
         //~| ERROR can't compare `[{integer}; _]` with `[{integer}; 0]`
     }
 }

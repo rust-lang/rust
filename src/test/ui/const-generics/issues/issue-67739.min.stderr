@@ -6,5 +6,11 @@ LL |         [0u8; mem::size_of::<Self::Associated>()];
    |
    = note: this may fail depending on what value the parameter takes
 
-error: aborting due to previous error
+error: failed to evaluate the given constant
+  --> $DIR/issue-67739.rs:11:15
+   |
+LL |         [0u8; mem::size_of::<Self::Associated>()];
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

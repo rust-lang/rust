@@ -4,16 +4,6 @@ error[E0391]: cycle detected when simplifying constant for the type system `X::A
 LL |     A = X::A as isize,
    |         ^^^^^^^^^^^^^
    |
-note: ...which requires simplifying constant for the type system `X::A::{constant#0}`...
-  --> $DIR/issue-23302-1.rs:4:9
-   |
-LL |     A = X::A as isize,
-   |         ^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `X::A::{constant#0}`...
-  --> $DIR/issue-23302-1.rs:4:9
-   |
-LL |     A = X::A as isize,
-   |         ^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `X::A::{constant#0}`...
   --> $DIR/issue-23302-1.rs:4:9
    |

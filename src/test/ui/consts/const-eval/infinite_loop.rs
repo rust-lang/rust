@@ -6,6 +6,7 @@ fn main() {
         while n != 0 {
             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
             //~^ ERROR evaluation of constant value failed
+            //~| ERROR evaluation of constant value failed
         }
         n
     }];

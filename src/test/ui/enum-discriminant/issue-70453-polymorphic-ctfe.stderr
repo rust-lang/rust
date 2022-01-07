@@ -7,5 +7,11 @@ LL |     Some(T) = core::mem::size_of::<*mut T>(),
    = note: type parameters may not be used in const expressions
    = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
-error: aborting due to previous error
+error: failed to evaluate the given constant
+  --> $DIR/issue-70453-polymorphic-ctfe.rs:9:15
+   |
+LL |     Some(T) = core::mem::size_of::<*mut T>(),
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

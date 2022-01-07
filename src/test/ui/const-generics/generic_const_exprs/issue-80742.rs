@@ -29,4 +29,5 @@ where
 fn main() {
     let dst = Inline::<dyn Debug>::new(0); //~ ERROR
     //~^ ERROR
+    //~| ERROR failed to evaluate
 }

@@ -1,5 +1,6 @@
 fn main() {
     [1; <Multiply<Five, Five>>::VAL];
+    //~^ ERROR failed to evaluate
 }
 trait TypeVal<T> {
     const VAL: T;

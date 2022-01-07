@@ -7,13 +7,11 @@ LL |         ArrayHolder([0; Self::SIZE])
    = note: expected array `[u32; X]`
               found array `[u32; _]`
 
-error: constant expression depends on a generic parameter
+error: failed to evaluate the given constant
   --> $DIR/issue-62504.rs:18:25
    |
 LL |         ArrayHolder([0; Self::SIZE])
    |                         ^^^^^^^^^^
-   |
-   = note: this may fail depending on what value the parameter takes
 
 error: aborting due to 2 previous errors
 

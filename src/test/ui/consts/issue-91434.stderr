@@ -18,6 +18,12 @@ LL |     [9; [[9E; h]]];
    |
    = note: this may fail depending on what value the parameter takes
 
-error: aborting due to 3 previous errors
+error: failed to evaluate the given constant
+  --> $DIR/issue-91434.rs:2:9
+   |
+LL |     [9; [[9E; h]]];
+   |         ^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

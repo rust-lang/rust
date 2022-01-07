@@ -11,6 +11,12 @@ LL | use std::f32::consts::LOG10_2;
 LL | use std::f64::consts::LOG10_2;
    |
 
-error: aborting due to previous error
+error: failed to evaluate the given constant
+  --> $DIR/issue-50599.rs:4:29
+   |
+LL |     let mut digits = [0u32; M];
+   |                             ^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

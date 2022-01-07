@@ -2,15 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/issue-49296.rs:11:16
    |
 LL | const X: u64 = *wat(42);
-<<<<<<< HEAD
    |                ^^^^^^^^ pointer to alloc2 was dereferenced after this allocation got freed
-=======
-   | ---------------^^^^^^^^-
-   |                |
-   |                pointer to alloc4 was dereferenced after this allocation got freed
-   |
-   = note: `#[deny(const_err)]` on by default
->>>>>>> 9ee0d801b76 (update tests)
 
 error: aborting due to previous error
 
