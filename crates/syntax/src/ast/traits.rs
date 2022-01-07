@@ -73,17 +73,17 @@ pub trait HasAttrs: AstNode {
 }
 
 pub trait HasDocComments: HasAttrs {
-    fn doc_comments(&self) -> CommentIter {
-        CommentIter { iter: self.syntax().children_with_tokens() }
+    fn doc_comments(&self) -> DocCommentIter {
+        DocCommentIter { iter: self.syntax().children_with_tokens() }
     }
     fn doc_comments_and_attrs(&self) -> AttrCommentIter {
         AttrCommentIter { iter: self.syntax().children_with_tokens() }
     }
 }
 
-impl CommentIter {
-    pub fn from_syntax_node(syntax_node: &ast::SyntaxNode) -> CommentIter {
-        CommentIter { iter: syntax_node.children_with_tokens() }
+impl DocCommentIter {
+    pub fn from_syntax_node(syntax_node: &ast::SyntaxNode) -> DocCommentIter {
+        DocCommentIter { iter: syntax_node.children_with_tokens() }
     }
 
     #[cfg(test)]
@@ -100,14 +100,16 @@ impl CommentIter {
     }
 }
 
-pub struct CommentIter {
+pub struct DocCommentIter {
     iter: SyntaxElementChildren,
 }
 
-impl Iterator for CommentIter {
+impl Iterator for DocCommentIter {
     type Item = ast::Comment;
     fn next(&mut self) -> Option<ast::Comment> {
-        self.iter.by_ref().find_map(|el| el.into_token().and_then(ast::Comment::cast))
+        self.iter.by_ref().find_map(|el| {
+            el.into_token().and_then(ast::Comment::cast).filter(ast::Comment::is_doc)
+        })
     }
 }
 
@@ -120,7 +122,9 @@ impl Iterator for AttrCommentIter {
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.by_ref().find_map(|el| match el {
             SyntaxElement::Node(node) => ast::Attr::cast(node).map(Either::Right),
-            SyntaxElement::Token(tok) => ast::Comment::cast(tok).map(Either::Left),
+            SyntaxElement::Token(tok) => {
+                ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Left)
+            }
         })
     }
 }

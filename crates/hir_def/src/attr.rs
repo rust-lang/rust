@@ -5,7 +5,7 @@ use std::{fmt, hash::Hash, ops, sync::Arc};
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_expand::{hygiene::Hygiene, name::AsName, AstId, InFile};
+use hir_expand::{hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile};
 use itertools::Itertools;
 use la_arena::ArenaMap;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
@@ -81,6 +81,14 @@ impl ops::Deref for Attrs {
             Some(it) => &*it,
             None => &[],
         }
+    }
+}
+
+impl ops::Index<AttrId> for Attrs {
+    type Output = Attr;
+
+    fn index(&self, AttrId { ast_index, .. }: AttrId) -> &Self::Output {
+        &(**self)[ast_index as usize]
     }
 }
 
@@ -509,23 +517,23 @@ fn inner_attributes(
 ) -> Option<(impl Iterator<Item = ast::Attr>, impl Iterator<Item = ast::Comment>)> {
     let (attrs, docs) = match_ast! {
         match syntax {
-            ast::SourceFile(it) => (it.attrs(), ast::CommentIter::from_syntax_node(it.syntax())),
+            ast::SourceFile(it) => (it.attrs(), ast::DocCommentIter::from_syntax_node(it.syntax())),
             ast::ExternBlock(it) => {
                 let extern_item_list = it.extern_item_list()?;
-                (extern_item_list.attrs(), ast::CommentIter::from_syntax_node(extern_item_list.syntax()))
+                (extern_item_list.attrs(), ast::DocCommentIter::from_syntax_node(extern_item_list.syntax()))
             },
             ast::Fn(it) => {
                 let body = it.body()?;
                 let stmt_list = body.stmt_list()?;
-                (stmt_list.attrs(), ast::CommentIter::from_syntax_node(body.syntax()))
+                (stmt_list.attrs(), ast::DocCommentIter::from_syntax_node(body.syntax()))
             },
             ast::Impl(it) => {
                 let assoc_item_list = it.assoc_item_list()?;
-                (assoc_item_list.attrs(), ast::CommentIter::from_syntax_node(assoc_item_list.syntax()))
+                (assoc_item_list.attrs(), ast::DocCommentIter::from_syntax_node(assoc_item_list.syntax()))
             },
             ast::Module(it) => {
                 let item_list = it.item_list()?;
-                (item_list.attrs(), ast::CommentIter::from_syntax_node(item_list.syntax()))
+                (item_list.attrs(), ast::DocCommentIter::from_syntax_node(item_list.syntax()))
             },
             // FIXME: BlockExpr's only accept inner attributes in specific cases
             // Excerpt from the reference:
@@ -542,27 +550,20 @@ fn inner_attributes(
 
 #[derive(Debug)]
 pub struct AttrSourceMap {
-    attrs: Vec<InFile<ast::Attr>>,
-    doc_comments: Vec<InFile<ast::Comment>>,
+    source: Vec<Either<ast::Attr, ast::Comment>>,
+    file_id: HirFileId,
 }
 
 impl AttrSourceMap {
     fn new(owner: InFile<&dyn ast::HasAttrs>) -> Self {
-        let mut attrs = Vec::new();
-        let mut doc_comments = Vec::new();
-        for (_, attr) in collect_attrs(owner.value) {
-            match attr {
-                Either::Left(attr) => attrs.push(owner.with_value(attr)),
-                Either::Right(comment) => doc_comments.push(owner.with_value(comment)),
-            }
+        Self {
+            source: collect_attrs(owner.value).map(|(_, it)| it).collect(),
+            file_id: owner.file_id,
         }
-
-        Self { attrs, doc_comments }
     }
 
     fn merge(&mut self, other: Self) {
-        self.attrs.extend(other.attrs);
-        self.doc_comments.extend(other.doc_comments);
+        self.source.extend(other.source);
     }
 
     /// Maps the lowered `Attr` back to its original syntax node.
@@ -571,24 +572,15 @@ impl AttrSourceMap {
     ///
     /// Note that the returned syntax node might be a `#[cfg_attr]`, or a doc comment, instead of
     /// the attribute represented by `Attr`.
-    pub fn source_of(&self, attr: &Attr) -> InFile<Either<ast::Attr, ast::Comment>> {
+    pub fn source_of(&self, attr: &Attr) -> InFile<&Either<ast::Attr, ast::Comment>> {
         self.source_of_id(attr.id)
     }
 
-    fn source_of_id(&self, id: AttrId) -> InFile<Either<ast::Attr, ast::Comment>> {
-        if id.is_doc_comment {
-            self.doc_comments
-                .get(id.ast_index as usize)
-                .unwrap_or_else(|| panic!("cannot find doc comment at index {:?}", id))
-                .clone()
-                .map(Either::Right)
-        } else {
-            self.attrs
-                .get(id.ast_index as usize)
-                .unwrap_or_else(|| panic!("cannot find `Attr` at index {:?}", id))
-                .clone()
-                .map(Either::Left)
-        }
+    fn source_of_id(&self, id: AttrId) -> InFile<&Either<ast::Attr, ast::Comment>> {
+        self.source
+            .get(id.ast_index as usize)
+            .map(|it| InFile::new(self.file_id, it))
+            .unwrap_or_else(|| panic!("cannot find attr at index {:?}", id))
     }
 }
 
@@ -656,8 +648,7 @@ fn get_doc_string_in_attr(it: &ast::Attr) -> Option<ast::String> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct AttrId {
-    is_doc_comment: bool,
+pub struct AttrId {
     pub(crate) ast_index: u32,
 }
 
@@ -816,27 +807,20 @@ fn collect_attrs(
         .map_or((None, None), |(attrs, docs)| (Some(attrs), Some(docs)));
 
     let outer_attrs = owner.attrs().filter(|attr| attr.kind().is_outer());
-    let attrs =
-        outer_attrs.chain(inner_attrs.into_iter().flatten()).enumerate().map(|(idx, attr)| {
-            (
-                AttrId { ast_index: idx as u32, is_doc_comment: false },
-                attr.syntax().text_range().start(),
-                Either::Left(attr),
-            )
-        });
+    let attrs = outer_attrs
+        .chain(inner_attrs.into_iter().flatten())
+        .map(|attr| (attr.syntax().text_range().start(), Either::Left(attr)));
 
     let outer_docs =
-        ast::CommentIter::from_syntax_node(owner.syntax()).filter(ast::Comment::is_outer);
-    let docs =
-        outer_docs.chain(inner_docs.into_iter().flatten()).enumerate().map(|(idx, docs_text)| {
-            (
-                AttrId { ast_index: idx as u32, is_doc_comment: true },
-                docs_text.syntax().text_range().start(),
-                Either::Right(docs_text),
-            )
-        });
+        ast::DocCommentIter::from_syntax_node(owner.syntax()).filter(ast::Comment::is_outer);
+    let docs = outer_docs
+        .chain(inner_docs.into_iter().flatten())
+        .map(|docs_text| (docs_text.syntax().text_range().start(), Either::Right(docs_text)));
     // sort here by syntax node offset because the source can have doc attributes and doc strings be interleaved
-    docs.chain(attrs).sorted_by_key(|&(_, offset, _)| offset).map(|(id, _, attr)| (id, attr))
+    docs.chain(attrs)
+        .sorted_by_key(|&(offset, _)| offset)
+        .enumerate()
+        .map(|(id, (_, attr))| (AttrId { ast_index: id as u32 }, attr))
 }
 
 pub(crate) fn variants_attrs_source_map(

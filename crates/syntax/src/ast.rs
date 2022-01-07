@@ -30,7 +30,7 @@ pub use self::{
         QuoteOffsets, Radix,
     },
     traits::{
-        CommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericParams, HasLoopBody,
+        DocCommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericParams, HasLoopBody,
         HasModuleItem, HasName, HasTypeBounds, HasVisibility,
     },
 };

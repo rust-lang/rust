@@ -772,3 +772,13 @@ impl ast::HasLoopBody for ast::ForExpr {
 }
 
 impl ast::HasAttrs for ast::AnyHasDocComments {}
+
+impl From<ast::Adt> for ast::Item {
+    fn from(it: ast::Adt) -> Self {
+        match it {
+            ast::Adt::Enum(it) => ast::Item::Enum(it),
+            ast::Adt::Struct(it) => ast::Item::Struct(it),
+            ast::Adt::Union(it) => ast::Item::Union(it),
+        }
+    }
+}
