@@ -85,7 +85,7 @@ crate fn evaluate_goal<'tcx>(
                         chalk_ir::VariableKind::Lifetime,
                         chalk_ir::UniverseIndex { counter: ui.index() },
                     ),
-                    CanonicalVarKind::Const(_ui) => unimplemented!(),
+                    CanonicalVarKind::Const(_ui, _ty) => unimplemented!(),
                     CanonicalVarKind::PlaceholderConst(_pc) => unimplemented!(),
                 }),
             ),
@@ -127,9 +127,9 @@ crate fn evaluate_goal<'tcx>(
                     chalk_ir::VariableKind::Lifetime => CanonicalVarKind::Region(
                         ty::UniverseIndex::from_usize(var.skip_kind().counter),
                     ),
-                    chalk_ir::VariableKind::Const(_) => CanonicalVarKind::Const(
-                        ty::UniverseIndex::from_usize(var.skip_kind().counter),
-                    ),
+                    // FIXME(compiler-errors): We don't currently have a way of turning
+                    // a Chalk ty back into a rustc ty, right?
+                    chalk_ir::VariableKind::Const(_) => todo!(),
                 };
                 CanonicalVarInfo { kind }
             })

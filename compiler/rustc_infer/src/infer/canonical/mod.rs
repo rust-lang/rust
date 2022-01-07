@@ -137,12 +137,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 self.tcx.mk_region(ty::RePlaceholder(placeholder_mapped)).into()
             }
 
-            CanonicalVarKind::Const(ui) => self
+            CanonicalVarKind::Const(ui, ty) => self
                 .next_const_var_in_universe(
-                    self.next_ty_var_in_universe(
-                        TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span },
-                        universe_map(ui),
-                    ),
+                    ty,
                     ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
                     universe_map(ui),
                 )

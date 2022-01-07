@@ -23,7 +23,7 @@
 
 use crate::infer::MemberConstraint;
 use crate::ty::subst::GenericArg;
-use crate::ty::{self, BoundVar, List, Region, TyCtxt};
+use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use smallvec::SmallVec;
@@ -104,7 +104,7 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
             CanonicalVarKind::PlaceholderTy(_) => false,
             CanonicalVarKind::Region(_) => true,
             CanonicalVarKind::PlaceholderRegion(..) => false,
-            CanonicalVarKind::Const(_) => true,
+            CanonicalVarKind::Const(..) => true,
             CanonicalVarKind::PlaceholderConst(_) => false,
         }
     }
@@ -130,7 +130,7 @@ pub enum CanonicalVarKind<'tcx> {
     PlaceholderRegion(ty::PlaceholderRegion),
 
     /// Some kind of const inference variable.
-    Const(ty::UniverseIndex),
+    Const(ty::UniverseIndex, Ty<'tcx>),
 
     /// A "placeholder" that represents "any const".
     PlaceholderConst(ty::PlaceholderConst<'tcx>),
@@ -147,7 +147,7 @@ impl<'tcx> CanonicalVarKind<'tcx> {
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe,
             CanonicalVarKind::Region(ui) => ui,
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe,
-            CanonicalVarKind::Const(ui) => ui,
+            CanonicalVarKind::Const(ui, _) => ui,
             CanonicalVarKind::PlaceholderConst(placeholder) => placeholder.universe,
         }
     }
