@@ -31,30 +31,8 @@ impl ChildBySource for TraitId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = db.trait_data(*self);
         // FIXME attribute macros
-        for (_name, item) in data.items.iter() {
-            match *item {
-                AssocItemId::FunctionId(func) => {
-                    let loc = func.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::FUNCTION].insert(src, func)
-                    }
-                }
-                AssocItemId::ConstId(konst) => {
-                    let loc = konst.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::CONST].insert(src, konst)
-                    }
-                }
-                AssocItemId::TypeAliasId(ty) => {
-                    let loc = ty.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::TYPE_ALIAS].insert(src, ty)
-                    }
-                }
-            }
+        for &(_, item) in data.items.iter() {
+            child_by_source_assoc_items(db, res, file_id, item);
         }
     }
 }
@@ -64,28 +42,37 @@ impl ChildBySource for ImplId {
         let data = db.impl_data(*self);
         // FIXME attribute macros
         for &item in data.items.iter() {
-            match item {
-                AssocItemId::FunctionId(func) => {
-                    let loc = func.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::FUNCTION].insert(src, func)
-                    }
-                }
-                AssocItemId::ConstId(konst) => {
-                    let loc = konst.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::CONST].insert(src, konst)
-                    }
-                }
-                AssocItemId::TypeAliasId(ty) => {
-                    let loc = ty.lookup(db);
-                    if loc.id.file_id() == file_id {
-                        let src = loc.source(db);
-                        res[keys::TYPE_ALIAS].insert(src, ty)
-                    }
-                }
+            child_by_source_assoc_items(db, res, file_id, item);
+        }
+    }
+}
+
+fn child_by_source_assoc_items(
+    db: &dyn DefDatabase,
+    res: &mut DynMap,
+    file_id: HirFileId,
+    item: AssocItemId,
+) {
+    match item {
+        AssocItemId::FunctionId(func) => {
+            let loc = func.lookup(db);
+            if loc.id.file_id() == file_id {
+                let src = loc.source(db);
+                res[keys::FUNCTION].insert(src, func)
+            }
+        }
+        AssocItemId::ConstId(konst) => {
+            let loc = konst.lookup(db);
+            if loc.id.file_id() == file_id {
+                let src = loc.source(db);
+                res[keys::CONST].insert(src, konst)
+            }
+        }
+        AssocItemId::TypeAliasId(ty) => {
+            let loc = ty.lookup(db);
+            if loc.id.file_id() == file_id {
+                let src = loc.source(db);
+                res[keys::TYPE_ALIAS].insert(src, ty)
             }
         }
     }
