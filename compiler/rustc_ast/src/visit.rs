@@ -492,8 +492,10 @@ pub fn walk_assoc_constraint<'a, V: Visitor<'a>>(visitor: &mut V, constraint: &'
         visitor.visit_generic_args(gen_args.span(), gen_args);
     }
     match constraint.kind {
-        AssocConstraintKind::Equality { ref ty } => visitor.visit_ty(ty),
-        AssocConstraintKind::ConstEquality { ref c } => visitor.visit_anon_const(c),
+        AssocConstraintKind::Equality { ref term } => match term {
+            Term::Ty(ty) => visitor.visit_ty(ty),
+            Term::Const(c) => visitor.visit_anon_const(c),
+        },
         AssocConstraintKind::Bound { ref bounds } => {
             walk_list!(visitor, visit_param_bound, bounds);
         }

@@ -1853,11 +1853,28 @@ pub struct AssocConstraint {
 
 /// The kinds of an `AssocConstraint`.
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub enum Term {
+    Ty(P<Ty>),
+    Const(AnonConst),
+}
+
+impl From<P<Ty>> for Term {
+    fn from(v: P<Ty>) -> Self {
+        Term::Ty(v)
+    }
+}
+
+impl From<AnonConst> for Term {
+    fn from(v: AnonConst) -> Self {
+        Term::Const(v)
+    }
+}
+
+/// The kinds of an `AssocConstraint`.
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AssocConstraintKind {
-    /// E.g., `A = Bar` in `Foo<A = Bar>` where A is an associated type.
-    Equality { ty: P<Ty> },
-    /// E.g., `A = 3` in `Foo<N = 3>` where N is an associated const.
-    ConstEquality { c: AnonConst },
+    /// E.g., `A = Bar`, `A = 3` in `Foo<A = Bar>` where A is an associated type.
+    Equality { term: Term },
     /// E.g. `A: TraitA + TraitB` in `Foo<A: TraitA + TraitB>`.
     Bound { bounds: GenericBounds },
 }

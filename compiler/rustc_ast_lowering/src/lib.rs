@@ -997,12 +997,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         let kind = match constraint.kind {
-            AssocConstraintKind::Equality { ref ty } => {
-                hir::TypeBindingKind::Equality { ty: self.lower_ty(ty, itctx) }
-            }
-            AssocConstraintKind::ConstEquality { ref c } => {
-                hir::TypeBindingKind::Const { c: self.lower_anon_const(c) }
-            }
+            AssocConstraintKind::Equality { ref term } => match term {
+                Term::Ty(ref ty) => hir::TypeBindingKind::Equality { ty: self.lower_ty(ty, itctx) },
+                Term::Const(ref c) => hir::TypeBindingKind::Const { c: self.lower_anon_const(c) },
+            },
             AssocConstraintKind::Bound { ref bounds } => {
                 let mut capturable_lifetimes;
                 let mut parent_def_id = self.current_hir_id_owner;

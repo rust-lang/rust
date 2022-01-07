@@ -1,7 +1,7 @@
 use libloading::Library;
 use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, AttrVec, BlockCheckMode};
+use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Term};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[cfg(parallel_compiler)]
@@ -739,9 +739,11 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                                     },
                                     ast::AngleBracketedArg::Constraint(c) => match c.kind {
                                         ast::AssocConstraintKind::Bound { .. } => true,
-                                        ast::AssocConstraintKind::ConstEquality { .. } => false,
-                                        ast::AssocConstraintKind::Equality { ref ty } => {
-                                            involves_impl_trait(ty)
+                                        ast::AssocConstraintKind::Equality { ref term } => {
+                                            match term {
+                                                Term::Ty(ty) => involves_impl_trait(ty),
+                                                Term::Const(_) => false,
+                                            }
                                         }
                                     },
                                 })

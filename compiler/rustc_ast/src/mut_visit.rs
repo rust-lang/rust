@@ -440,8 +440,10 @@ pub fn noop_visit_constraint<T: MutVisitor>(
         vis.visit_generic_args(gen_args);
     }
     match kind {
-        AssocConstraintKind::Equality { ref mut ty } => vis.visit_ty(ty),
-        AssocConstraintKind::ConstEquality { ref mut c } => vis.visit_anon_const(c),
+        AssocConstraintKind::Equality { ref mut term } => match term {
+            Term::Ty(ty) => vis.visit_ty(ty),
+            Term::Const(c) => vis.visit_anon_const(c),
+        },
         AssocConstraintKind::Bound { ref mut bounds } => visit_bounds(bounds, vis),
     }
     vis.visit_span(span);

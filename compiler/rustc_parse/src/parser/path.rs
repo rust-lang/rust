@@ -505,7 +505,9 @@ impl<'a> Parser<'a> {
         let span = ident.span.to(self.prev_token.span);
         let ty = match arg {
             Some(GenericArg::Type(ty)) => ty,
-            Some(GenericArg::Const(c)) => return Ok(AssocConstraintKind::ConstEquality { c }),
+            Some(GenericArg::Const(c)) => {
+                return Ok(AssocConstraintKind::Equality { term: c.into() });
+            }
             Some(GenericArg::Lifetime(lt)) => {
                 self.struct_span_err(span, "associated lifetimes are not supported")
                     .span_label(lt.ident.span, "the lifetime is given here")
@@ -540,7 +542,7 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
         };
-        Ok(AssocConstraintKind::Equality { ty })
+        Ok(AssocConstraintKind::Equality { term: ty.into() })
     }
 
     /// We do not permit arbitrary expressions as const arguments. They must be one of:

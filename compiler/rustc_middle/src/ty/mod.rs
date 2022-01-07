@@ -799,6 +799,7 @@ pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 /// syntax, but it roughly corresponds to the syntactic forms:
 ///
 /// 1. `T: TraitRef<..., Item = Type>`
+/// - Or `T: TraitRef<..., Item = Const>`
 /// 2. `<T as TraitRef<...>>::Item == Type` (NYI)
 ///
 /// In particular, form #1 is "desugared" to the combination of a

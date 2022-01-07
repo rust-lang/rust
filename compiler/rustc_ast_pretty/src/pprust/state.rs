@@ -1,7 +1,6 @@
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
 
-use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, BinOpToken, CommentKind, DelimToken, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
@@ -9,6 +8,7 @@ use rustc_ast::util::classify;
 use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast::{self as ast, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::{attr, Term};
 use rustc_ast::{GenericArg, MacArgs, ModKind};
 use rustc_ast::{GenericBound, SelfKind, TraitBoundModifier};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
@@ -957,13 +957,12 @@ impl<'a> State<'a> {
         constraint.gen_args.as_ref().map(|args| self.print_generic_args(args, false));
         self.space();
         match &constraint.kind {
-            ast::AssocConstraintKind::Equality { ty } => {
+            ast::AssocConstraintKind::Equality { term } => {
                 self.word_space("=");
-                self.print_type(ty);
-            }
-            ast::AssocConstraintKind::ConstEquality { c } => {
-                self.word_space("=");
-                self.print_expr_anon_const(c);
+                match term {
+                    Term::Ty(ty) => self.print_type(ty),
+                    Term::Const(c) => self.print_expr_anon_const(c),
+                }
             }
             ast::AssocConstraintKind::Bound { bounds } => {
                 self.print_type_bounds(":", &*bounds);

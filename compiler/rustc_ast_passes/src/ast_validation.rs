@@ -141,7 +141,6 @@ impl<'a> AstValidator<'a> {
     fn visit_assoc_constraint_from_generic_args(&mut self, constraint: &'a AssocConstraint) {
         match constraint.kind {
             AssocConstraintKind::Equality { .. } => {}
-            AssocConstraintKind::ConstEquality { .. } => {}
             AssocConstraintKind::Bound { .. } => {
                 if self.is_assoc_ty_bound_banned {
                     self.err_handler().span_err(
@@ -1592,7 +1591,7 @@ fn deny_equality_constraints(
                                         ident: *ident,
                                         gen_args,
                                         kind: AssocConstraintKind::Equality {
-                                            ty: predicate.rhs_ty.clone(),
+                                            term: predicate.rhs_ty.clone().into(),
                                         },
                                         span: ident.span,
                                     });
