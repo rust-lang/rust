@@ -229,15 +229,17 @@ fn self_type(ast_func: &ast::Fn) -> Option<ast::Type> {
 
 /// Output the real name of `Self` like `MyType<T>`, without the lifetimes.
 fn self_type_without_lifetimes(ast_func: &ast::Fn) -> Option<String> {
-    let path_segment =
-        ast::PathType::cast(self_type(ast_func)?.syntax().clone())?.path()?.segment()?;
+    let path_segment = match self_type(ast_func)? {
+        ast::Type::PathType(path_type) => path_type.path()?.segment()?,
+        _ => return None,
+    };
     let mut name = path_segment.name_ref()?.to_string();
     let generics = path_segment
         .generic_arg_list()?
         .generic_args()
         .filter(|generic| matches!(generic, ast::GenericArg::TypeArg(_)))
         .map(|generic| generic.to_string());
-    let generics: String = Itertools::intersperse(generics, ", ".to_string()).collect();
+    let generics: String = generics.format(", ").to_string();
     if !generics.is_empty() {
         name.push('<');
         name.push_str(&generics);
@@ -325,7 +327,7 @@ fn arguments_from_params(param_list: &ast::ParamList) -> String {
         },
         _ => "_".to_string(),
     });
-    Itertools::intersperse(args_iter, ", ".to_string()).collect()
+    args_iter.format(", ").to_string()
 }
 
 /// Helper function to build a function call. `None` if expected `self_name` was not provided
