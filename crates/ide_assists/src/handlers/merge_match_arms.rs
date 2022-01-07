@@ -1,5 +1,7 @@
 use std::iter::successors;
 
+use hir::{TypeInfo, HirDisplay};
+use itertools::Itertools;
 use syntax::{
     algo::neighbor,
     ast::{self, AstNode},
@@ -40,13 +42,33 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
     }
     let current_expr = current_arm.expr()?;
     let current_text_range = current_arm.syntax().text_range();
+    let current_arm_types = get_arm_types(&ctx, &current_arm);
 
     // We check if the following match arms match this one. We could, but don't,
     // compare to the previous match arm as well.
     let arms_to_merge = successors(Some(current_arm), |it| neighbor(it, Direction::Next))
         .take_while(|arm| match arm.expr() {
-            Some(expr) if arm.guard().is_none() => {
-                expr.syntax().text() == current_expr.syntax().text()
+            Some(expr) if arm.guard().is_none() && arm.pat().is_some() => {
+                let same_text = expr.syntax().text() == current_expr.syntax().text();
+                if !same_text {
+                    return false;
+                }
+
+                let arm_types = get_arm_types(&ctx, &arm);
+                for i in 0..arm_types.len() {
+                    let other_arm_type = &arm_types[i].as_ref();
+                    let current_arm_type = current_arm_types[i].as_ref();
+                    if other_arm_type.is_some() && current_arm_type.is_some() {
+                        let other_arm_type = other_arm_type.unwrap().original.clone().as_adt();
+                        let current_arm_type = current_arm_type.unwrap().original.clone().as_adt();
+                        println!("Same types!");
+                        println!("{:?}", other_arm_type);
+                        println!("{:?}", current_arm_type);
+                        return other_arm_type == current_arm_type;
+                    }
+                }
+
+                true
             }
             _ => false,
         })
@@ -86,6 +108,20 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
 
 fn contains_placeholder(a: &ast::MatchArm) -> bool {
     matches!(a.pat(), Some(ast::Pat::WildcardPat(..)))
+}
+
+fn get_arm_types(ctx: &AssistContext, arm: &ast::MatchArm) -> Vec<Option<TypeInfo>> {
+    match arm.pat() {
+        Some(ast::Pat::TupleStructPat(tp)) => tp
+            .fields()
+            .into_iter()
+            .map(|field| {
+                let pat_type = ctx.sema.type_of_pat(&field);
+                pat_type
+            })
+            .collect_vec(),
+        _ => Vec::new(),
+    }
 }
 
 #[cfg(test)]
@@ -244,4 +280,26 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn merge_match_arms_different_type() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+fn func() {
+    match Result::<i32, f32>::Ok(0) {
+        Ok(x) => $0x.to_string(),
+        Err(x) => x.to_string()
+    };
 }
+"#,
+        );
+    }
+}
+
+// fn func() {
+//     match Result::<i32, f32>::Ok(0) {
+//         Ok(x) => x.to_string(),
+//         Err(x) => x.to_string()
+//     };
+// }
