@@ -150,11 +150,7 @@ pub struct MainDefinition {
 
 impl MainDefinition {
     pub fn opt_fn_def_id(self) -> Option<DefId> {
-        if let Res::Def(DefKind::Fn, def_id) = self.res {
-            Some(def_id)
-        } else {
-            None
-        }
+        if let Res::Def(DefKind::Fn, def_id) = self.res { Some(def_id) } else { None }
     }
 }
 
@@ -1184,11 +1180,7 @@ impl WithOptConstParam<LocalDefId> {
     }
 
     pub fn def_id_for_type_of(self) -> DefId {
-        if let Some(did) = self.const_param_did {
-            did
-        } else {
-            self.did.to_def_id()
-        }
+        if let Some(did) = self.const_param_did { did } else { self.did.to_def_id() }
     }
 }
 
@@ -1245,23 +1237,28 @@ struct ParamTag {
 }
 
 unsafe impl rustc_data_structures::tagged_ptr::Tag for ParamTag {
-    const BITS: usize = 2;
+    const BITS: usize = 3;
     #[inline]
     fn into_usize(self) -> usize {
         match self {
-            Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst } => 0,
-            Self { reveal: traits::Reveal::All, constness: hir::Constness::NotConst } => 1,
-            Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const } => 2,
-            Self { reveal: traits::Reveal::All, constness: hir::Constness::Const } => 3,
+            Self { reveal: traits::Reveal::Selection, constness: hir::Constness::NotConst } => 0,
+            Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst } => 1,
+            Self { reveal: traits::Reveal::All, constness: hir::Constness::NotConst } => 2,
+            Self { reveal: traits::Reveal::Selection, constness: hir::Constness::Const } => 3,
+            Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const } => 4,
+            Self { reveal: traits::Reveal::All, constness: hir::Constness::Const } => 5,
         }
     }
+
     #[inline]
     unsafe fn from_usize(ptr: usize) -> Self {
         match ptr {
-            0 => Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst },
-            1 => Self { reveal: traits::Reveal::All, constness: hir::Constness::NotConst },
-            2 => Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const },
-            3 => Self { reveal: traits::Reveal::All, constness: hir::Constness::Const },
+            0 => Self { reveal: traits::Reveal::Selection, constness: hir::Constness::NotConst },
+            1 => Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::NotConst },
+            2 => Self { reveal: traits::Reveal::All, constness: hir::Constness::NotConst },
+            3 => Self { reveal: traits::Reveal::Selection, constness: hir::Constness::Const },
+            4 => Self { reveal: traits::Reveal::UserFacing, constness: hir::Constness::Const },
+            5 => Self { reveal: traits::Reveal::All, constness: hir::Constness::Const },
             _ => std::hint::unreachable_unchecked(),
         }
     }
@@ -1352,7 +1349,7 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 
     pub fn with_reveal_selection(mut self) -> Self {
-        self.packed.set_tag(Reveal::Selection);
+        self.packed.set_tag(ParamTag { reveal: Reveal::Selection, ..self.packed.tag() });
         self
     }
 

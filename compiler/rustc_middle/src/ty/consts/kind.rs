@@ -3,6 +3,7 @@ use std::fmt;
 
 use crate::mir::interpret::{AllocId, ConstValue, Scalar};
 use crate::mir::Promoted;
+use crate::traits::Reveal;
 use crate::ty::subst::{InternalSubsts, SubstsRef};
 use crate::ty::ParamEnv;
 use crate::ty::{self, TyCtxt, TypeFoldable};
@@ -160,10 +161,15 @@ impl<'tcx> ConstKind<'tcx> {
             // Note that we erase regions *before* calling `with_reveal_all_normalized`,
             // so that we don't try to invoke this query with
             // any region variables.
-            let param_env_and = tcx
-                .erase_regions(param_env)
-                .with_reveal_all_normalized(tcx)
-                .and(tcx.erase_regions(unevaluated));
+            let param_env_and = match param_env.reveal() {
+                Reveal::Selection => {
+                    tcx.erase_regions(param_env).and(tcx.erase_regions(unevaluated))
+                }
+                _ => tcx
+                    .erase_regions(param_env)
+                    .with_reveal_all_normalized(tcx)
+                    .and(tcx.erase_regions(unevaluated)),
+            };
 
             // HACK(eddyb) when the query key would contain inference variables,
             // attempt using identity substs and `ParamEnv` instead, that will succeed

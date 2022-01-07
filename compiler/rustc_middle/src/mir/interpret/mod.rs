@@ -95,8 +95,10 @@ mod pointer;
 mod queries;
 mod value;
 
+use std::cell::RefCell;
 use std::convert::TryFrom;
 use std::fmt;
+use std::fmt::Debug;
 use std::io;
 use std::io::{Read, Write};
 use std::num::{NonZeroU32, NonZeroU64};
@@ -106,10 +108,13 @@ use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
+use rustc_hir::definitions::DefPathData;
+use rustc_middle::traits::Reveal;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
+use rustc_span::{Pos, Span};
 use rustc_target::abi::Endian;
 
 use crate::mir;
@@ -446,6 +451,88 @@ impl<'tcx> AllocMap<'tcx> {
     }
 }
 
+/// What we store about a frame in an interpreter backtrace.
+#[derive(Debug)]
+pub struct FrameInfo<'tcx> {
+    pub instance: ty::Instance<'tcx>,
+    pub span: Span,
+    pub lint_root: Option<hir::HirId>,
+}
+
+impl<'tcx> fmt::Display for FrameInfo<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ty::tls::with(|tcx| {
+            if tcx.def_key(self.instance.def_id()).disambiguated_data.data
+                == DefPathData::ClosureExpr
+            {
+                write!(f, "inside closure")?;
+            } else {
+                write!(f, "inside `{}`", self.instance)?;
+            }
+            if !self.span.is_dummy() {
+                let sm = tcx.sess.source_map();
+                let lo = sm.lookup_char_pos(self.span.lo());
+                write!(
+                    f,
+                    " at {}:{}:{}",
+                    sm.filename_for_diagnostics(&lo.file.name),
+                    lo.line,
+                    lo.col.to_usize() + 1
+                )?;
+            }
+            Ok(())
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ConstDedupResult<T: Clone + Copy + Debug> {
+    Selection(T),
+    UserFacing(T),
+    All(T),
+}
+
+impl<T: Clone + Copy + Debug> ConstDedupResult<T> {
+    pub fn new(reveal: Reveal, val: T) -> Self {
+        match reveal {
+            Reveal::Selection => ConstDedupResult::Selection(val),
+            Reveal::UserFacing => ConstDedupResult::UserFacing(val),
+            Reveal::All => ConstDedupResult::All(val),
+        }
+    }
+}
+
+/// Used to store results of calls to `eval_to_allocation_raw` and
+/// `eval_to_const_value_raw`.
+#[derive(Debug)]
+pub struct ConstDedupMap<'tcx> {
+    // interning for deduplication of `eval_to_allocation_raw`
+    pub alloc_map: RefCell<FxHashMap<GlobalId<'tcx>, ConstDedupResult<ConstAlloc<'tcx>>>>,
+
+    // interning for deduplication of `eval_to_const_value_raw`
+    pub const_val_map: RefCell<FxHashMap<GlobalId<'tcx>, ConstDedupResult<ConstValue<'tcx>>>>,
+}
+
+impl<'tcx> ConstDedupMap<'tcx> {
+    pub fn new() -> Self {
+        ConstDedupMap { alloc_map: Default::default(), const_val_map: Default::default() }
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn insert_alloc(&self, id: GlobalId<'tcx>, val: ConstDedupResult<ConstAlloc<'tcx>>) {
+        let mut alloc_map = self.alloc_map.borrow_mut();
+        alloc_map.insert(id, val);
+        debug!("alloc_map after update: {:#?}", alloc_map);
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn insert_const_val(&self, id: GlobalId<'tcx>, val: ConstDedupResult<ConstValue<'tcx>>) {
+        let mut const_val_map = self.const_val_map.borrow_mut();
+        const_val_map.insert(id, val);
+        debug!("const_val_map after update: {:#?}", const_val_map);
+    }
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     /// Obtains a new allocation ID that can be referenced but does not
     /// yet have an allocation backing it.
@@ -553,6 +640,129 @@ impl<'tcx> TyCtxt<'tcx> {
     /// twice for the same `(AllocId, Allocation)` pair.
     fn set_alloc_id_same_memory(self, id: AllocId, mem: &'tcx Allocation) {
         self.alloc_map.lock().alloc_map.insert_same(id, GlobalAlloc::Memory(mem));
+    }
+
+    /// Store the result of a call to `eval_to_allocation_raw` in order to
+    /// allow deduplication.
+    #[instrument(skip(self), level = "debug")]
+    pub fn save_alloc_for_dedup(self, id: GlobalId<'tcx>, val: ConstDedupResult<ConstAlloc<'tcx>>) {
+        let dedup_const_map = self.dedup_const_map.lock();
+        dedup_const_map.insert_alloc(id, val);
+        debug!("dedup_const_map after insert: {:#?}", dedup_const_map);
+    }
+
+    /// Store the result of a call to `eval_to_const_value_raw` in order to deduplicate it.
+    #[instrument(skip(self), level = "debug")]
+    pub fn save_const_value_for_dedup(
+        self,
+        id: GlobalId<'tcx>,
+        val: ConstDedupResult<ConstValue<'tcx>>,
+    ) {
+        let dedup_const_map = self.dedup_const_map.lock();
+        dedup_const_map.insert_const_val(id, val);
+        debug!("dedup_const_map after insert: {:#?}", dedup_const_map);
+    }
+
+    /// Tries to deduplicate a call to `eval_to_allocation_raw`. If deduplication isn't
+    /// successful `eval_to_allocation_raw` query is executed.
+    #[instrument(skip(self, opt_span), level = "debug")]
+    pub fn dedup_eval_alloc_raw(
+        self,
+        key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+        opt_span: Option<Span>,
+    ) -> EvalToAllocationRawResult<'tcx> {
+        use ConstDedupResult::*;
+
+        let (param_env, id) = key.into_parts();
+        let dedup_const_map = self.dedup_const_map.lock();
+        debug!("dedup_const_map: {:#?}", dedup_const_map);
+        let alloc_map = dedup_const_map.alloc_map.borrow();
+        debug!("alloc_map: {:#?}", alloc_map);
+
+        let dedup_result = alloc_map.get(&id);
+        debug!(?dedup_result);
+
+        match param_env.reveal() {
+            Reveal::Selection => match dedup_result {
+                Some(Selection(alloc) | UserFacing(alloc)) => return Ok(*alloc),
+                _ => {}
+            },
+            Reveal::UserFacing => match dedup_result {
+                Some(Selection(alloc) | UserFacing(alloc)) => {
+                    return Ok(*alloc);
+                }
+                _ => {}
+            },
+            Reveal::All => match dedup_result {
+                Some(Selection(alloc) | UserFacing(alloc) | All(alloc)) => {
+                    return Ok(*alloc);
+                }
+                _ => {}
+            },
+        }
+
+        // Important to drop the lock here
+        drop(alloc_map);
+        drop(dedup_const_map);
+
+        debug!("unable to deduplicate");
+
+        // We weren't able to deduplicate
+        match opt_span {
+            Some(span) => self.at(span).eval_to_allocation_raw(key),
+            None => self.eval_to_allocation_raw(key),
+        }
+    }
+
+    /// Tries to deduplicate a call to `eval_to_const_value_raw`. If deduplication isn't
+    /// successful, `eval_to_const_value_raw` query is executed.
+    #[instrument(skip(self), level = "debug")]
+    pub fn dedup_eval_const_value_raw(
+        self,
+        key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+        opt_span: Option<Span>,
+    ) -> EvalToConstValueResult<'tcx> {
+        use ConstDedupResult::*;
+
+        let (param_env, id) = key.into_parts();
+        let dedup_const_map = self.dedup_const_map.lock();
+        debug!("dedup_const_map: {:#?}", dedup_const_map);
+        let const_val_map = dedup_const_map.const_val_map.borrow();
+        debug!("const_val_map: {:#?}", const_val_map);
+
+        let dedup_result = const_val_map.get(&id);
+        debug!(?dedup_result);
+
+        match param_env.reveal() {
+            Reveal::Selection => match dedup_result {
+                Some(Selection(const_val) | UserFacing(const_val)) => return Ok(*const_val),
+                _ => {}
+            },
+            Reveal::UserFacing => match dedup_result {
+                Some(Selection(const_value) | UserFacing(const_value)) => {
+                    return Ok(*const_value);
+                }
+                _ => {}
+            },
+            Reveal::All => match dedup_result {
+                Some(Selection(const_value) | UserFacing(const_value) | All(const_value)) => {
+                    return Ok(*const_value);
+                }
+                _ => {}
+            },
+        }
+
+        // Important to drop the lock here
+        drop(const_val_map);
+        drop(dedup_const_map);
+
+        debug!("unable to deduplicate");
+
+        // We weren't able to deduplicate
+        match opt_span {
+            Some(span) => self.at(span).eval_to_const_value_raw(key),
+            None => self.eval_to_const_value_raw(key),
+        }
     }
 }
 
