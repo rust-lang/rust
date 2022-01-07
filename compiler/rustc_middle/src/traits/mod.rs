@@ -456,7 +456,7 @@ pub struct DerivedObligationCause<'tcx> {
     pub parent_code: Lrc<ObligationCauseCode<'tcx>>,
 }
 
-#[derive(Clone, Debug, TypeFoldable, Lift)]
+#[derive(Clone, Debug, TypeFoldable)]
 pub enum SelectionError<'tcx> {
     /// The trait is not implemented.
     Unimplemented,
@@ -471,7 +471,7 @@ pub enum SelectionError<'tcx> {
     /// The trait pointed by `DefId` is not object safe.
     TraitNotObjectSafe(DefId),
     /// A given constant couldn't be evaluated.
-    NotConstEvaluatable(NotConstEvaluatable),
+    NotConstEvaluatable(NotConstEvaluatable<'tcx>),
     /// Exceeded the recursion depth during type projection.
     Overflow,
     /// Signaling that an error has already been emitted, to avoid

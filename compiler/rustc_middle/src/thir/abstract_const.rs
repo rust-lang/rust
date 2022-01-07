@@ -1,5 +1,6 @@
 //! A subset of a mir body used for const evaluatability checking.
 use crate::mir;
+use crate::mir::interpret::GlobalId;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_errors::ErrorReported;
 
@@ -30,20 +31,21 @@ pub enum Node<'tcx> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
-pub enum NotConstEvaluatable {
+pub enum NotConstEvaluatable<'tcx> {
     Error(ErrorReported),
     MentionsInfer,
     MentionsParam,
+    Silent(GlobalId<'tcx>),
 }
 
-impl From<ErrorReported> for NotConstEvaluatable {
-    fn from(e: ErrorReported) -> NotConstEvaluatable {
+impl<'tcx> From<ErrorReported> for NotConstEvaluatable<'tcx> {
+    fn from(e: ErrorReported) -> NotConstEvaluatable<'tcx> {
         NotConstEvaluatable::Error(e)
     }
 }
 
 TrivialTypeFoldableAndLiftImpls! {
-    NotConstEvaluatable,
+    NotConstEvaluatable<'tcx>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
