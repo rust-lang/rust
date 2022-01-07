@@ -1,18 +1,20 @@
-use super::{AllocId, ConstAlloc, Pointer, Scalar};
+use super::{AllocId, ConstAlloc, ConstValue, FrameInfo, GlobalId, Pointer, Scalar};
 
-use crate::mir::interpret::ConstValue;
-use crate::ty::{layout, query::TyCtxtAt, tls, FnSig, Ty};
+use crate::ty::layout::LayoutError;
+use crate::ty::{query::TyCtxtAt, tls, FnSig, Ty};
 
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{pluralize, struct_span_err, DiagnosticBuilder, ErrorReported};
+use rustc_hir as hir;
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::def_id::DefId;
+use rustc_span::Span;
 use rustc_target::abi::{call, Align, Size};
 use std::{any::Any, backtrace::Backtrace, fmt};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
-pub enum ErrorHandled {
+pub enum ErrorHandled<'tcx> {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
     Reported(ErrorReported),
@@ -20,24 +22,24 @@ pub enum ErrorHandled {
     Linted,
     /// Encountered an error without emitting anything. Only returned
     /// with `Reveal::Selection`.
-    Silent,
+    Silent(GlobalId<'tcx>),
     /// Don't emit an error, the evaluation failed because the MIR was generic
     /// and the substs didn't fully monomorphize it.
     TooGeneric,
 }
 
-impl From<ErrorReported> for ErrorHandled {
-    fn from(err: ErrorReported) -> ErrorHandled {
+impl<'tcx> From<ErrorReported> for ErrorHandled<'tcx> {
+    fn from(err: ErrorReported) -> ErrorHandled<'tcx> {
         ErrorHandled::Reported(err)
     }
 }
 
 TrivialTypeFoldableAndLiftImpls! {
-    ErrorHandled,
+    ErrorHandled<'tcx>,
 }
 
-pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
-pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
+pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled<'tcx>>;
+pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled<'tcx>>;
 
 pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'tcx> {
     struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
@@ -88,10 +90,12 @@ fn print_backtrace(backtrace: &Backtrace) {
     eprintln!("\n\nAn error occurred in miri:\n{}", backtrace);
 }
 
-impl From<ErrorHandled> for InterpErrorInfo<'_> {
-    fn from(err: ErrorHandled) -> Self {
+impl<'tcx> From<ErrorHandled<'tcx>> for InterpErrorInfo<'tcx> {
+    fn from(err: ErrorHandled<'tcx>) -> Self {
         match err {
-            ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted | ErrorHandled::Silent => {
+            ErrorHandled::Reported(ErrorReported)
+            | ErrorHandled::Linted
+            | ErrorHandled::Silent(_) => {
                 err_inval!(ReferencedConstant)
             }
             ErrorHandled::TooGeneric => err_inval!(TooGeneric),
@@ -143,7 +147,7 @@ pub enum InvalidProgramInfo<'tcx> {
     /// Abort in case errors are already reported.
     AlreadyReported(ErrorReported),
     /// An error occurred during layout computation.
-    Layout(layout::LayoutError<'tcx>),
+    Layout(LayoutError<'tcx>),
     /// An error occurred during FnAbi computation: the passed --target lacks FFI support
     /// (which unfortunately typeck does not reject).
     /// Not using `FnAbiError` as that contains a nested `LayoutError`.
@@ -560,6 +564,153 @@ impl InterpError<'_> {
             UndefinedBehavior(_) => true,
             ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted) => true,
             _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum ConstErrorEmitted<'tcx> {
+    Emitted(ErrorHandled<'tcx>),
+    NotEmitted(ErrorHandled<'tcx>),
+}
+
+impl<'tcx> ConstErrorEmitted<'tcx> {
+    pub fn get_error(self) -> ErrorHandled<'tcx> {
+        match self {
+            ConstErrorEmitted::Emitted(e) => e,
+            ConstErrorEmitted::NotEmitted(e) => e,
+        }
+    }
+}
+
+/// When const-evaluation errors, this type is constructed with the resulting information,
+/// and then used to emit the error as a lint or hard error.
+#[derive(Debug)]
+pub struct ConstEvalErr<'tcx> {
+    pub span: Span,
+    pub error: InterpError<'tcx>,
+    pub stacktrace: Vec<FrameInfo<'tcx>>,
+}
+
+impl<'tcx> ConstEvalErr<'tcx> {
+    pub fn struct_error(
+        &self,
+        tcx: TyCtxtAt<'tcx>,
+        message: &str,
+        emit: impl FnOnce(DiagnosticBuilder<'_>),
+    ) -> ConstErrorEmitted<'tcx> {
+        self.struct_generic(tcx, message, emit, None)
+    }
+
+    pub fn report_as_error(&self, tcx: TyCtxtAt<'tcx>, message: &str) -> ConstErrorEmitted<'tcx> {
+        self.struct_error(tcx, message, |mut e| e.emit())
+    }
+
+    pub fn report_as_lint(
+        &self,
+        tcx: TyCtxtAt<'tcx>,
+        message: &str,
+        lint_root: hir::HirId,
+        span: Option<Span>,
+    ) -> ConstErrorEmitted<'tcx> {
+        self.struct_generic(
+            tcx,
+            message,
+            |mut lint: DiagnosticBuilder<'_>| {
+                // Apply the span.
+                if let Some(span) = span {
+                    let primary_spans = lint.span.primary_spans().to_vec();
+                    // point at the actual error as the primary span
+                    lint.replace_span_with(span);
+                    // point to the `const` statement as a secondary span
+                    // they don't have any label
+                    for sp in primary_spans {
+                        if sp != span {
+                            lint.span_label(sp, "");
+                        }
+                    }
+                }
+                lint.emit();
+            },
+            Some(lint_root),
+        )
+    }
+
+    /// Create a diagnostic for this const eval error.
+    ///
+    /// Sets the message passed in via `message` and adds span labels with detailed error
+    /// information before handing control back to `emit` to do any final processing.
+    /// It's the caller's responsibility to call emit(), stash(), etc. within the `emit`
+    /// function to dispose of the diagnostic properly.
+    ///
+    /// If `lint_root.is_some()` report it as a lint, else report it as a hard error.
+    /// (Except that for some errors, we ignore all that -- see `must_error` below.)
+    #[instrument(skip(tcx, emit, lint_root), level = "debug")]
+    fn struct_generic(
+        &self,
+        tcx: TyCtxtAt<'tcx>,
+        message: &str,
+        emit: impl FnOnce(DiagnosticBuilder<'_>),
+        lint_root: Option<hir::HirId>,
+    ) -> ConstErrorEmitted<'tcx> {
+        debug!("self.error: {:?}", self.error);
+
+        let finish = |mut err: DiagnosticBuilder<'_>, span_msg: Option<String>| {
+            trace!("reporting const eval failure at {:?}", self.span);
+            if let Some(span_msg) = span_msg {
+                err.span_label(self.span, span_msg);
+            }
+            // Add spans for the stacktrace. Don't print a single-line backtrace though.
+            if self.stacktrace.len() > 1 {
+                for frame_info in &self.stacktrace {
+                    err.span_label(frame_info.span, frame_info.to_string());
+                }
+            }
+            // Let the caller finish the job.
+            emit(err)
+        };
+
+        // Special handling for certain errors
+        match &self.error {
+            // Don't emit a new diagnostic for these errors
+            err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
+                debug!("returning TooGeneric");
+                return ConstErrorEmitted::NotEmitted(ErrorHandled::TooGeneric);
+            }
+            err_inval!(AlreadyReported(error_reported)) => {
+                debug!("Already Reported");
+                return ConstErrorEmitted::NotEmitted(ErrorHandled::Reported(*error_reported));
+            }
+            err_inval!(Layout(LayoutError::SizeOverflow(_))) => {
+                // We must *always* hard error on these, even if the caller wants just a lint.
+                // The `message` makes little sense here, this is a more serious error than the
+                // caller thinks anyway.
+                // See <https://github.com/rust-lang/rust/pull/63152>.
+                finish(struct_error(tcx, &self.error.to_string()), None);
+                return ConstErrorEmitted::Emitted(ErrorHandled::Reported(ErrorReported));
+            }
+            _ => {}
+        };
+
+        let err_msg = self.error.to_string();
+        debug!(?err_msg);
+
+        // Regular case - emit a lint.
+        if let Some(lint_root) = lint_root {
+            // Report as lint.
+            let hir_id =
+                self.stacktrace.iter().rev().find_map(|frame| frame.lint_root).unwrap_or(lint_root);
+            tcx.struct_span_lint_hir(
+                rustc_session::lint::builtin::CONST_ERR,
+                hir_id,
+                tcx.span,
+                |lint| finish(lint.build(message), Some(err_msg)),
+            );
+            ConstErrorEmitted::Emitted(ErrorHandled::Linted)
+        } else {
+            // Report as hard error.
+            finish(struct_error(tcx, message), Some(err_msg));
+            ConstErrorEmitted::Emitted(ErrorHandled::Reported(ErrorReported))
         }
     }
 }

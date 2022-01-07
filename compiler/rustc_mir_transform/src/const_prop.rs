@@ -29,7 +29,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 
 use crate::MirPass;
-use rustc_const_eval::const_eval::ConstEvalErr;
+use rustc_const_eval::const_eval::ConstEvalError;
 use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, Allocation, ConstValue, CtfeValidationMode, Frame, ImmTy,
     Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, MemoryKind, OpTy,
@@ -490,7 +490,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
-                let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
+                let err = ConstEvalError::new(&self.ecx, error, Some(c.span)).into_inner();
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal {
                         ConstantKind::Ty(ct) => match ct.val {
@@ -509,12 +509,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
                         // generic functions using associated constants of the generic parameters.
-                        err.report_as_lint(tcx, "erroneous constant used", lint_root, Some(c.span));
+                        err.report_as_lint(tcx, "erroneous constant used", lint_root, Some(c.span))
+                            .get_error();
                     } else {
-                        err.report_as_error(tcx, "erroneous constant used");
+                        err.report_as_error(tcx, "erroneous constant used").get_error();
                     }
                 } else {
-                    err.report_as_error(tcx, "erroneous constant used");
+                    err.report_as_error(tcx, "erroneous constant used").get_error();
                 }
                 None
             }
