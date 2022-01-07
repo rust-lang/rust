@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::impl_stable_hash_via_hash;
 
 use rustc_target::abi::{Align, TargetDataLayout};
-use rustc_target::spec::{SplitDebuginfo, Target, TargetTriple, TargetWarnings};
+use rustc_target::spec::{LinkerFlavor, SplitDebuginfo, Target, TargetTriple, TargetWarnings};
 
 use rustc_serialize::json;
 
@@ -2235,6 +2235,16 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 "options `-C embed-bitcode=no` and `-C lto` are incompatible",
             ),
         }
+    }
+
+    if cg.linker_flavor == Some(LinkerFlavor::L4Bender)
+        && !nightly_options::is_unstable_enabled(matches)
+    {
+        early_error(
+            error_format,
+            "`l4-bender` linker flavor is unstable, `-Z unstable-options` \
+             flag must also be passed to explicitly use it",
+        );
     }
 
     let prints = collect_print_requests(&mut cg, &mut debugging_opts, matches, error_format);
