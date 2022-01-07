@@ -2516,7 +2516,7 @@ impl ItemSection {
             Self::OpaqueTypes => "Opaque Types",
             Self::AttributeMacros => "Attribute Macros",
             Self::DeriveMacros => "Derive Macros",
-            Self::TraitAliases => "Trait aliases",
+            Self::TraitAliases => "Trait Aliases",
         }
     }
 }
