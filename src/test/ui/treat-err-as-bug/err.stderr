@@ -8,5 +8,5 @@ error: internal compiler error: unexpected panic
 
 query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `C`
-#1 [eval_to_allocation_raw] const-evaluating + checking `C`
+#1 [analysis] running analysis passes on this crate
 end of query stack

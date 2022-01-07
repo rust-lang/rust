@@ -8,4 +8,6 @@ fn test<const N: usize>() -> [u8; N - 1] {
 
 fn main() {
     test::<0>();
+    //~^ ERROR failed to evaluate
+    //~| ERROR failed to evaluate
 }

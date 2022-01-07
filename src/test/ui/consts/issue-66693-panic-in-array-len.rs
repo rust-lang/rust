@@ -9,6 +9,8 @@ fn main() {
     // ensure that conforming panics are handled correctly
     let _ = [false; panic!()];
     //~^ ERROR: evaluation of constant value failed
+    //~| ERROR: evaluation of constant value failed
+    //~| ERROR failed to evaluate the given constant
 
     // typechecking halts before getting to this one
     let _ = ['a', panic!("panic in array len")];

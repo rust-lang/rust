@@ -4,12 +4,18 @@ error[E0080]: evaluation of constant value failed
 LL |     = [0; (i8::MAX + 1) as usize];
    |           ^^^^^^^^^^^^^ attempt to compute `i8::MAX + 1_i8`, which would overflow
 
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-eval-overflow-3.rs:18:11
+   |
+LL |     = [0; (i8::MAX + 1) as usize];
+   |           ^^^^^^^^^^^^^ attempt to compute `i8::MAX + 1_i8`, which would overflow
+
 error: failed to evaluate the given constant
   --> $DIR/const-eval-overflow-3.rs:18:11
    |
 LL |     = [0; (i8::MAX + 1) as usize];
    |           ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

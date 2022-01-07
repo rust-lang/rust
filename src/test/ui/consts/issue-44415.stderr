@@ -4,16 +4,6 @@ error[E0391]: cycle detected when simplifying constant for the type system `Foo:
 LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
    |                 ^^^^^^
    |
-note: ...which requires simplifying constant for the type system `Foo::bytes::{constant#0}`...
-  --> $DIR/issue-44415.rs:6:17
-   |
-LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
-   |                 ^^^^^^
-note: ...which requires simplifying constant for the type system `Foo::bytes::{constant#0}`...
-  --> $DIR/issue-44415.rs:6:17
-   |
-LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
-   |                 ^^^^^^
 note: ...which requires const-evaluating + checking `Foo::bytes::{constant#0}`...
   --> $DIR/issue-44415.rs:6:17
    |

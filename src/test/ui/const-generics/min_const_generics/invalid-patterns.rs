@@ -37,9 +37,17 @@ fn main() {
 
   get_flag::<false, { unsafe { char_raw.character } }>();
   //~^ ERROR it is undefined behavior
+  //~| ERROR it is undefined behavior
+  //~| ERROR failed to evaluate
   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
   //~^ ERROR it is undefined behavior
+  //~| ERROR it is undefined behavior
+  //~| ERROR failed to evaluate
   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
   //~^ ERROR it is undefined behavior
   //~| ERROR it is undefined behavior
+  //~| ERROR it is undefined behavior
+  //~| ERROR it is undefined behavior
+  //~| ERROR failed to evaluate
+  //~| ERROR failed to evaluate
 }

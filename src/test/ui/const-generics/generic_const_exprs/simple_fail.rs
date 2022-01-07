@@ -11,4 +11,6 @@ fn test<const N: usize>() -> Arr<N> where [u8; N - 1]: Sized {
 
 fn main() {
     test::<0>();
+    //~^ ERROR failed to evaluate
+    //~| ERROR failed to evaluate
 }

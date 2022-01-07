@@ -9,8 +9,8 @@ pub trait Trait {
 
     fn associated_size(&self) -> usize {
         [0u8; mem::size_of::<Self::Associated>()];
-        //[min]~^ ERROR constant expression depends on a generic parameter
-        //[full]~^^ ERROR unconstrained generic constant
+        //[full]~^ ERROR unconstrained generic constant
+        //[min]~^^ ERROR constant expression depends on a generic parameter
         0
     }
 }
