@@ -24,19 +24,19 @@ impl Trait for Struct {
     // @has trait_impl/struct.Struct.html '//*[@id="method.a"]/../../div[@class="docblock"]/p' 'Some long docs'
     // @!has - '//*[@id="method.a"]/../../div[@class="docblock"]/p' 'link will be added'
     // @has - '//*[@id="method.a"]/../../div[@class="docblock"]/p/a' 'Read more'
-    // @has - '//*[@id="method.a"]/../../div[@class="docblock"]/p/a/@href' 'trait.Trait.html#tymethod.a'
+    // @has - '//*[@id="method.a"]/../../div[@class="docblock"]/p/a/@href' 'trait.Trait.html#method.a'
     fn a() {}
 
     // @has - '//*[@id="method.b"]/../../div[@class="docblock"]/p' 'These docs contain'
     // @has - '//*[@id="method.b"]/../../div[@class="docblock"]/p/a' 'reference link'
     // @has - '//*[@id="method.b"]/../../div[@class="docblock"]/p/a/@href' 'https://example.com'
     // @has - '//*[@id="method.b"]/../../div[@class="docblock"]/p/a' 'Read more'
-    // @has - '//*[@id="method.b"]/../../div[@class="docblock"]/p/a/@href' 'trait.Trait.html#tymethod.b'
+    // @has - '//*[@id="method.b"]/../../div[@class="docblock"]/p/a/@href' 'trait.Trait.html#method.b'
     fn b() {}
 
     // @!has - '//*[@id="method.c"]/../../div[@class="docblock"]/p' 'code block'
     // @has - '//*[@id="method.c"]/../../div[@class="docblock"]/a' 'Read more'
-    // @has - '//*[@id="method.c"]/../../div[@class="docblock"]/a/@href' 'trait.Trait.html#tymethod.c'
+    // @has - '//*[@id="method.c"]/../../div[@class="docblock"]/a/@href' 'trait.Trait.html#method.c'
     fn c() {}
 
     // @has - '//*[@id="method.d"]/../../div[@class="docblock"]/p' 'Escaped formatting a*b*c* works'

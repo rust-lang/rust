@@ -169,7 +169,7 @@ const EXPECTED = [
                 'path': 'doc_alias::Trait',
                 'name': 'function',
                 'alias': 'TraitFunctionItem',
-                'href': '../doc_alias/trait.Trait.html#tymethod.function',
+                'href': '../doc_alias/trait.Trait.html#method.function',
                 'is_alias': true
             },
         ],

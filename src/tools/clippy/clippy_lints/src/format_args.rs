@@ -39,7 +39,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for [`ToString::to_string`](https://doc.rust-lang.org/std/string/trait.ToString.html#tymethod.to_string)
+    /// Checks for [`ToString::to_string`](https://doc.rust-lang.org/std/string/trait.ToString.html#method.to_string)
     /// applied to a type that implements [`Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html)
     /// in a macro that does formatting.
     ///

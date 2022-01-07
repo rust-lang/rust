@@ -4,7 +4,7 @@
 // @has - '//a/@href' 'enum.ThisEnum.html'
 // @has - '//a/@href' 'enum.ThisEnum.html#variant.ThisVariant'
 // @has - '//a/@href' 'trait.ThisTrait.html'
-// @has - '//a/@href' 'trait.ThisTrait.html#tymethod.this_associated_method'
+// @has - '//a/@href' 'trait.ThisTrait.html#method.this_associated_method'
 // @has - '//a/@href' 'trait.ThisTrait.html#associatedtype.ThisAssociatedType'
 // @has - '//a/@href' 'trait.ThisTrait.html#associatedconstant.THIS_ASSOCIATED_CONST'
 // @has - '//a/@href' 'trait.ThisTrait.html'
@@ -53,14 +53,19 @@ pub struct ThisType;
 impl ThisType {
     pub fn this_method() {}
 }
-pub enum ThisEnum { ThisVariant, ThisVariantCtor(u32), }
+pub enum ThisEnum {
+    ThisVariant,
+    ThisVariantCtor(u32),
+}
 pub trait ThisTrait {
     type ThisAssociatedType;
     const THIS_ASSOCIATED_CONST: u8;
     fn this_associated_method();
 }
 pub type ThisAlias = Result<(), ()>;
-pub union ThisUnion { this_field: usize, }
+pub union ThisUnion {
+    this_field: usize,
+}
 
 pub fn this_function() {}
 pub const THIS_CONST: usize = 5usize;
@@ -70,7 +75,6 @@ pub trait SoAmbiguous {}
 
 #[allow(nonstandard_style)]
 pub fn SoAmbiguous() {}
-
 
 // @has basic/struct.SomeOtherType.html '//a/@href' 'struct.ThisType.html'
 // @has - '//a/@href' 'struct.ThisType.html#method.this_method'

@@ -6,8 +6,8 @@
 // @has foo/trait.Trait.html
 // @has - '//*[@id="associatedtype.Foo"]' 'type Foo'
 // @has - '//*[@id="associatedtype.Bar"]' 'type Bar'
-// @has - '//*[@id="tymethod.f"]' 'fn f()'
-// @has - '//*[@id="tymethod.g"]' 'fn g()'
+// @has - '//*[@id="method.f"]' 'fn f()'
+// @has - '//*[@id="method.g"]' 'fn g()'
 pub trait Trait {
     #[doc(hidden)]
     type Foo;

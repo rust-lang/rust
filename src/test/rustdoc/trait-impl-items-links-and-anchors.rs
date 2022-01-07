@@ -13,7 +13,7 @@ impl MyTrait for String {
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-1"]//a[@class="constant"]/@href' #associatedconstant.VALUE
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-1"]//a[@class="anchor"]/@href' #associatedconstant.VALUE-1
     const VALUE: u32 = 5;
-    // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="method.trait_function"]//a[@class="fnname"]/@href' #tymethod.trait_function
+    // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="method.trait_function"]//a[@class="fnname"]/@href' #method.trait_function
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="method.trait_function"]//a[@class="anchor"]/@href' #method.trait_function
     fn trait_function(&self) {}
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="method.defaulted_override-1"]//a[@class="fnname"]/@href' #method.defaulted_override
@@ -28,7 +28,7 @@ impl MyTrait for Vec<u8> {
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-2"]//a[@class="constant"]/@href' #associatedconstant.VALUE
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="associatedconstant.VALUE-2"]//a[@class="anchor"]/@href' #associatedconstant.VALUE-2
     const VALUE: u32 = 5;
-    // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="method.trait_function"]//a[@class="fnname"]/@href' #tymethod.trait_function
+    // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="method.trait_function"]//a[@class="fnname"]/@href' #method.trait_function
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="method.trait_function-1"]//a[@class="anchor"]/@href' #method.trait_function-1
     fn trait_function(&self) {}
     // @has trait_impl_items_links_and_anchors/trait.MyTrait.html '//div[@id="method.defaulted_override-2"]//a[@class="fnname"]/@href' #method.defaulted_override
@@ -45,7 +45,7 @@ impl MyTrait for MyStruct {
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="associatedconstant.VALUE"]//a[@class="constant"]/@href' trait.MyTrait.html#associatedconstant.VALUE
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="associatedconstant.VALUE"]//a[@class="anchor"]/@href' #associatedconstant.VALUE
     const VALUE: u32 = 20;
-    // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="method.trait_function"]//a[@class="fnname"]/@href' trait.MyTrait.html#tymethod.trait_function
+    // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="method.trait_function"]//a[@class="fnname"]/@href' trait.MyTrait.html#method.trait_function
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="method.trait_function"]//a[@class="anchor"]/@href' #method.trait_function
     fn trait_function(&self) {}
     // @has trait_impl_items_links_and_anchors/struct.MyStruct.html '//div[@id="method.defaulted_override"]//a[@class="fnname"]/@href' trait.MyTrait.html#method.defaulted_override

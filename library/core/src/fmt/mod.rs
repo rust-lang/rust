@@ -103,7 +103,7 @@ pub struct Error;
 /// otherwise you should implement [`std::io::Write`].
 ///
 /// [`std::io::Write`]: ../../std/io/trait.Write.html
-/// [flushable]: ../../std/io/trait.Write.html#tymethod.flush
+/// [flushable]: ../../std/io/trait.Write.html#method.flush
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Write {
     /// Writes a string slice into this writer, returning whether the write

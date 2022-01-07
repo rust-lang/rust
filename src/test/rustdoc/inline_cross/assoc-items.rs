@@ -35,7 +35,7 @@ pub use assoc_items::MyStruct;
 // @has - '//*[@id="associatedtype.TypeNoDefault"]' 'type TypeNoDefault'
 // @has - '//*[@class="docblock"]' 'docs for TypeNoDefault'
 // @has - '//*[@class="docblock"]' 'docs for TypeWithDefault'
-// @has - '//*[@id="tymethod.method_no_default"]' 'fn method_no_default()'
+// @has - '//*[@id="method.method_no_default"]' 'fn method_no_default()'
 // @has - '//*[@class="docblock"]' 'docs for method_no_default'
 // @has - '//*[@id="method.method_with_default"]' 'fn method_with_default()'
 // @has - '//*[@class="docblock"]' 'docs for method_with_default'

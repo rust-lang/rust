@@ -71,7 +71,7 @@ impl<'a> DocFolder for Stripper<'a> {
 
             clean::ImplItem(..) => {}
 
-            // tymethods have no control over privacy
+            // trait methods have no control over privacy
             clean::TyMethodItem(..) => {}
 
             // Proc-macros are always public
