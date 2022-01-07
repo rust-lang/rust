@@ -1,7 +1,7 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
-use rustc_ast::ast::{self, FnRetTy, Mutability};
+use rustc_ast::ast::{self, FnRetTy, Mutability, Term};
 use rustc_ast::ptr;
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
@@ -178,7 +178,7 @@ impl<'a> Rewrite for SegmentParam<'a> {
 
 impl Rewrite for ast::AssocConstraint {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        use ast::AssocConstraintKind::{Bound, Equality, ConstEquality};
+        use ast::AssocConstraintKind::{Bound, Equality};
 
         let mut result = String::with_capacity(128);
         result.push_str(rewrite_ident(context, self.ident));
@@ -192,8 +192,8 @@ impl Rewrite for ast::AssocConstraint {
 
         let infix = match (&self.kind, context.config.type_punctuation_density()) {
             (Bound { .. }, _) => ": ",
-            (ConstEquality { .. } | Equality { .. }, TypeDensity::Wide) => " = ",
-            (ConstEquality { .. } | Equality { .. }, TypeDensity::Compressed) => "=",
+            (Equality { .. }, TypeDensity::Wide) => " = ",
+            (Equality { .. }, TypeDensity::Compressed) => "=",
         };
         result.push_str(infix);
 
@@ -209,8 +209,10 @@ impl Rewrite for ast::AssocConstraint {
 impl Rewrite for ast::AssocConstraintKind {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
-            ast::AssocConstraintKind::Equality { ty } => ty.rewrite(context, shape),
-            ast::AssocConstraintKind::ConstEquality { c } => c.rewrite(context, shape),
+            ast::AssocConstraintKind::Equality { term } => match term {
+                Term::Ty(ty) => ty.rewrite(context, shape),
+                Term::Const(c) => c.rewrite(context,shape),
+            },
             ast::AssocConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
         }
     }
