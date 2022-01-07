@@ -208,12 +208,12 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             ItemType::Macro => 4,
             ItemType::Struct => 5,
             ItemType::Enum => 6,
-            ItemType::Constant => 7,
-            ItemType::Static => 8,
-            ItemType::Trait => 9,
-            ItemType::Function => 10,
-            ItemType::Typedef => 12,
-            ItemType::Union => 13,
+            ItemType::Typedef => 7,
+            ItemType::Union => 8,
+            ItemType::Constant => 9,
+            ItemType::Static => 10,
+            ItemType::Trait => 11,
+            ItemType::Function => 12,
             _ => 14 + ty as u8,
         }
     }
