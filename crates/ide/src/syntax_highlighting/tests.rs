@@ -62,7 +62,17 @@ impl Foo {
 }
 
 use self::FooCopy::{self as BarCopy};
+
 #[derive(Copy)]
+/// This is a doc comment
+// This is a normal comment
+/// This is a doc comment
+#[derive(Copy)]
+// This is another normal comment
+/// This is another doc comment
+// This is another normal comment
+#[derive(Copy)]
+// The reason for these being here is to test AttrIds
 struct FooCopy {
     x: u32,
 }

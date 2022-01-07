@@ -7,6 +7,7 @@ use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
 
 use crate::{
+    attr::AttrId,
     dyn_map::{DynMap, Policy},
     ConstId, ConstParamId, EnumId, EnumVariantId, FieldId, FunctionId, ImplId, LifetimeParamId,
     StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
@@ -31,9 +32,9 @@ pub const TYPE_PARAM: Key<ast::TypeParam, TypeParamId> = Key::new();
 pub const LIFETIME_PARAM: Key<ast::LifetimeParam, LifetimeParamId> = Key::new();
 pub const CONST_PARAM: Key<ast::ConstParam, ConstParamId> = Key::new();
 
-pub const MACRO: Key<ast::Macro, MacroDefId> = Key::new();
-pub const ATTR_MACRO: Key<ast::Item, MacroCallId> = Key::new();
-pub const DERIVE_MACRO: Key<ast::Attr, Box<[Option<MacroCallId>]>> = Key::new();
+pub const MACRO_CALL: Key<ast::Macro, MacroDefId> = Key::new();
+pub const ATTR_MACRO_CALL: Key<ast::Item, MacroCallId> = Key::new();
+pub const DERIVE_MACRO_CALL: Key<ast::Attr, (AttrId, Box<[Option<MacroCallId>]>)> = Key::new();
 
 /// XXX: AST Nodes and SyntaxNodes have identity equality semantics: nodes are
 /// equal if they point to exactly the same object.

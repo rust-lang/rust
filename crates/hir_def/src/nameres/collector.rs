@@ -8,6 +8,7 @@ use std::iter;
 use base_db::{CrateId, Edition, FileId, ProcMacroId};
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::{
+    ast_id_map::FileAstId,
     builtin_attr_macro::find_builtin_attr,
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
@@ -30,8 +31,8 @@ use crate::{
     intern::Interned,
     item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
-        self, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, MacroCall, MacroDef,
-        MacroRules, Mod, ModItem, ModKind, TreeId,
+        self, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode, MacroCall,
+        MacroDef, MacroRules, Mod, ModItem, ModKind, TreeId,
     },
     macro_call_as_call_id,
     nameres::{
@@ -217,7 +218,7 @@ struct MacroDirective {
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum MacroDirectiveKind {
     FnLike { ast_id: AstIdWithPath<ast::MacroCall>, expand_to: ExpandTo },
-    Derive { ast_id: AstIdWithPath<ast::Item>, derive_attr: AttrId, derive_pos: usize },
+    Derive { ast_id: AstIdWithPath<ast::Adt>, derive_attr: AttrId, derive_pos: usize },
     Attr { ast_id: AstIdWithPath<ast::Item>, attr: Attr, mod_item: ModItem, tree: TreeId },
 }
 
@@ -1129,8 +1130,11 @@ impl DefCollector<'_> {
                     ) {
                         // Resolved to `#[derive]`
 
-                        match mod_item {
-                            ModItem::Struct(_) | ModItem::Union(_) | ModItem::Enum(_) => (),
+                        let item_tree = tree.item_tree(self.db);
+                        let ast_adt_id: FileAstId<ast::Adt> = match *mod_item {
+                            ModItem::Struct(strukt) => item_tree[strukt].ast_id().upcast(),
+                            ModItem::Union(union) => item_tree[union].ast_id().upcast(),
+                            ModItem::Enum(enum_) => item_tree[enum_].ast_id().upcast(),
                             _ => {
                                 let diag = DefDiagnostic::invalid_derive_target(
                                     directive.module_id,
@@ -1140,7 +1144,8 @@ impl DefCollector<'_> {
                                 self.def_map.diagnostics.push(diag);
                                 return recollect_without(self);
                             }
-                        }
+                        };
+                        let ast_id = ast_id.with_value(ast_adt_id);
 
                         match attr.parse_path_comma_token_tree() {
                             Some(derive_macros) => {
@@ -1274,7 +1279,7 @@ impl DefCollector<'_> {
                 if let Some(def) = def_map.exported_proc_macros.get(&loc.def) {
                     if let ProcMacroKind::CustomDerive { helpers } = &def.kind {
                         self.derive_helpers_in_scope
-                            .entry(*ast_id)
+                            .entry(ast_id.map(|it| it.upcast()))
                             .or_default()
                             .extend(helpers.iter().cloned());
                     }

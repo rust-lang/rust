@@ -649,8 +649,12 @@ impl Module {
                             let node = ast_id.to_node(db.upcast());
                             ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))
                         }
-                        MacroCallKind::Derive { ast_id, .. }
-                        | MacroCallKind::Attr { ast_id, .. } => {
+                        MacroCallKind::Derive { ast_id, .. } => {
+                            // FIXME: point to the attribute instead, this creates very large diagnostics
+                            let node = ast_id.to_node(db.upcast());
+                            ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))
+                        }
+                        MacroCallKind::Attr { ast_id, .. } => {
                             // FIXME: point to the attribute instead, this creates very large diagnostics
                             let node = ast_id.to_node(db.upcast());
                             ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))

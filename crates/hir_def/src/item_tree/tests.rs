@@ -30,9 +30,9 @@ use crate::{A, B};
 use a::{c, d::{e}};
         "#,
         expect![[r##"
-            #![doc = " file comment"]  // AttrId { is_doc_comment: true, ast_index: 0 }
-            #![no_std]  // AttrId { is_doc_comment: false, ast_index: 0 }
-            #![doc = " another file comment"]  // AttrId { is_doc_comment: true, ast_index: 1 }
+            #![doc = " file comment"]  // AttrId { ast_index: 0 }
+            #![no_std]  // AttrId { ast_index: 1 }
+            #![doc = " another file comment"]  // AttrId { ast_index: 2 }
 
             pub(self) extern crate self as renamed;
 
@@ -42,7 +42,7 @@ use a::{c, d::{e}};
 
             pub(self) use globs::*;
 
-            #[doc = " docs on import"]  // AttrId { is_doc_comment: true, ast_index: 0 }
+            #[doc = " docs on import"]  // AttrId { ast_index: 0 }
             pub(self) use crate::{A, B};
 
             pub(self) use a::{c, d::{e}};
@@ -67,15 +67,15 @@ extern "C" {
 }
         "#,
         expect![[r##"
-            #[on_extern_block]  // AttrId { is_doc_comment: false, ast_index: 0 }
+            #[on_extern_block]  // AttrId { ast_index: 0 }
             extern "C" {
-                #[on_extern_type]  // AttrId { is_doc_comment: false, ast_index: 0 }
+                #[on_extern_type]  // AttrId { ast_index: 0 }
                 pub(self) type ExType;
 
-                #[on_extern_static]  // AttrId { is_doc_comment: false, ast_index: 0 }
+                #[on_extern_static]  // AttrId { ast_index: 0 }
                 pub(self) static EX_STATIC: u8 = _;
 
-                #[on_extern_fn]  // AttrId { is_doc_comment: false, ast_index: 0 }
+                #[on_extern_fn]  // AttrId { ast_index: 0 }
                 // flags = 0x20
                 pub(self) fn ex_fn() -> ();
             }
@@ -116,14 +116,14 @@ enum E {
         expect![[r##"
             pub(self) struct Unit;
 
-            #[derive(Debug)]  // AttrId { is_doc_comment: false, ast_index: 0 }
+            #[derive(Debug)]  // AttrId { ast_index: 0 }
             pub(self) struct Struct {
-                #[doc = " fld docs"]  // AttrId { is_doc_comment: true, ast_index: 0 }
+                #[doc = " fld docs"]  // AttrId { ast_index: 0 }
                 pub(self) fld: (),
             }
 
             pub(self) struct Tuple(
-                #[attr]  // AttrId { is_doc_comment: false, ast_index: 0 }
+                #[attr]  // AttrId { ast_index: 0 }
                 pub(self) 0: u8,
             );
 
@@ -133,14 +133,14 @@ enum E {
             }
 
             pub(self) enum E {
-                #[doc = " comment on Unit"]  // AttrId { is_doc_comment: true, ast_index: 0 }
+                #[doc = " comment on Unit"]  // AttrId { ast_index: 0 }
                 Unit,
-                #[doc = " comment on Tuple"]  // AttrId { is_doc_comment: true, ast_index: 0 }
+                #[doc = " comment on Tuple"]  // AttrId { ast_index: 0 }
                 Tuple(
                     pub(self) 0: u8,
                 ),
                 Struct {
-                    #[doc = " comment on a: u8"]  // AttrId { is_doc_comment: true, ast_index: 0 }
+                    #[doc = " comment on a: u8"]  // AttrId { ast_index: 0 }
                     pub(self) a: u8,
                 },
             }
@@ -171,11 +171,11 @@ trait Tr: SuperTrait + 'lifetime {
 
             pub(self) const _: Anon = _;
 
-            #[attr]  // AttrId { is_doc_comment: false, ast_index: 0 }
-            #[inner_attr_in_fn]  // AttrId { is_doc_comment: false, ast_index: 1 }
+            #[attr]  // AttrId { ast_index: 0 }
+            #[inner_attr_in_fn]  // AttrId { ast_index: 1 }
             // flags = 0x2
             pub(self) fn f(
-                #[attr]  // AttrId { is_doc_comment: false, ast_index: 0 }
+                #[attr]  // AttrId { ast_index: 0 }
                 arg: u8,
                 _: (),
             ) -> ();
@@ -212,8 +212,8 @@ mod inline {
 mod outline;
         "#,
         expect![[r##"
-            #[doc = " outer"]  // AttrId { is_doc_comment: true, ast_index: 0 }
-            #[doc = " inner"]  // AttrId { is_doc_comment: true, ast_index: 1 }
+            #[doc = " outer"]  // AttrId { ast_index: 0 }
+            #[doc = " inner"]  // AttrId { ast_index: 1 }
             pub(self) mod inline {
                 pub(self) use super::*;
 

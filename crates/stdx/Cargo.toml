@@ -17,7 +17,7 @@ always-assert = { version = "0.1.2", features = ["log"] }
 
 [target.'cfg(windows)'.dependencies]
 miow = "0.4.0"
-winapi = "0.3.9"
+winapi = { version = "0.3.9", features = ["winerror"] }
 
 [features]
 # Uncomment to enable for the whole crate graph

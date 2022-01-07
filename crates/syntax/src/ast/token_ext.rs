@@ -14,6 +14,10 @@ impl ast::Comment {
         CommentKind::from_text(self.text())
     }
 
+    pub fn is_doc(&self) -> bool {
+        self.kind().doc.is_some()
+    }
+
     pub fn is_inner(&self) -> bool {
         self.kind().doc == Some(CommentPlacement::Inner)
     }

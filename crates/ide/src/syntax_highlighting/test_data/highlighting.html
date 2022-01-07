@@ -28,6 +28,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .numeric_literal    { color: #BFEBBF; }
 .bool_literal       { color: #BFE6EB; }
 .macro              { color: #94BFF3; }
+.derive             { color: #94BFF3; font-style: italic; }
 .module             { color: #AFD8AF; }
 .value_param        { color: #DCDCCC; }
 .variable           { color: #DCDCCC; }
@@ -89,7 +90,17 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword">use</span> <span class="self_keyword crate_root">self</span><span class="operator">::</span><span class="struct">FooCopy</span><span class="operator">::</span><span class="brace">{</span><span class="self_keyword">self</span> <span class="keyword">as</span> <span class="struct declaration">BarCopy</span><span class="brace">}</span><span class="semicolon">;</span>
+
 <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="attribute attribute default_library library">derive</span><span class="parenthesis attribute">(</span><span class="derive attribute default_library library">Copy</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
+<span class="comment documentation">/// This is a doc comment</span>
+<span class="comment">// This is a normal comment</span>
+<span class="comment documentation">/// This is a doc comment</span>
+<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="attribute attribute default_library library">derive</span><span class="parenthesis attribute">(</span><span class="derive attribute default_library library">Copy</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
+<span class="comment">// This is another normal comment</span>
+<span class="comment documentation">/// This is another doc comment</span>
+<span class="comment">// This is another normal comment</span>
+<span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="attribute attribute default_library library">derive</span><span class="parenthesis attribute">(</span><span class="derive attribute default_library library">Copy</span><span class="parenthesis attribute">)</span><span class="attribute_bracket attribute">]</span>
+<span class="comment">// The reason for these being here is to test AttrIds</span>
 <span class="keyword">struct</span> <span class="struct declaration">FooCopy</span> <span class="brace">{</span>
     <span class="field declaration">x</span><span class="colon">:</span> <span class="builtin_type">u32</span><span class="comma">,</span>
 <span class="brace">}</span>
