@@ -45,7 +45,7 @@ use crate::{
 // parsing the old name.
 config_data! {
     struct ConfigData {
-        /// How assists will fill missing elements in an expression.
+        /// Placeholder for missing expressions in assists.
         assist_exprFillDefault: ExprFillDefaultDef              = "\"todo\"",
         /// How imports should be grouped into use statements.
         assist_importGranularity |
@@ -1272,7 +1272,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "string",
             "enum": ["todo", "default"],
             "enumDescriptions": [
-                "Fill missing expressions with the 'todo' macro",
+                "Fill missing expressions with the `todo` macro",
                 "Fill missing expressions with reasonable defaults, `new` or `default` constructors."
             ],
         },
