@@ -931,8 +931,9 @@ fn check_impl_items_against_trait<'tcx>(
             tcx.sess.delay_span_bug(impl_item.span, "missing associated item in trait");
             continue;
         };
-        match impl_item.kind {
-            hir::AssocItemKind::Const => {
+        let impl_item_full = tcx.hir().impl_item(impl_item.id);
+        match impl_item_full.kind {
+            hir::ImplItemKind::Const(..) => {
                 // Find associated const definition.
                 compare_const_impl(
                     tcx,
@@ -942,7 +943,7 @@ fn check_impl_items_against_trait<'tcx>(
                     impl_trait_ref,
                 );
             }
-            hir::AssocItemKind::Fn { .. } => {
+            hir::ImplItemKind::Fn(..) => {
                 let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
                 compare_impl_method(
                     tcx,
@@ -953,12 +954,12 @@ fn check_impl_items_against_trait<'tcx>(
                     opt_trait_span,
                 );
             }
-            hir::AssocItemKind::Type => {
+            hir::ImplItemKind::TyAlias(impl_ty) => {
                 let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
                 compare_ty_impl(
                     tcx,
                     &ty_impl_item,
-                    impl_item.span,
+                    impl_ty.span,
                     &ty_trait_item,
                     impl_trait_ref,
                     opt_trait_span,
