@@ -294,7 +294,6 @@ crate struct ItemFragment(FragmentKind, DefId);
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 crate enum FragmentKind {
     Method,
-    TyMethod,
     AssociatedConstant,
     AssociatedType,
 
@@ -309,13 +308,7 @@ impl ItemFragment {
     fn from_assoc_item(item: &ty::AssocItem) -> Self {
         let def_id = item.def_id;
         match item.kind {
-            ty::AssocKind::Fn => {
-                if item.defaultness.has_value() {
-                    ItemFragment(FragmentKind::Method, def_id)
-                } else {
-                    ItemFragment(FragmentKind::TyMethod, def_id)
-                }
-            }
+            ty::AssocKind::Fn => ItemFragment(FragmentKind::Method, def_id),
             ty::AssocKind::Const => ItemFragment(FragmentKind::AssociatedConstant, def_id),
             ty::AssocKind::Type => ItemFragment(FragmentKind::AssociatedType, def_id),
         }
@@ -329,7 +322,6 @@ impl ItemFragment {
                 let name = tcx.item_name(def_id);
                 match kind {
                     FragmentKind::Method => write!(s, "method.{}", name),
-                    FragmentKind::TyMethod => write!(s, "tymethod.{}", name),
                     FragmentKind::AssociatedConstant => write!(s, "associatedconstant.{}", name),
                     FragmentKind::AssociatedType => write!(s, "associatedtype.{}", name),
                     FragmentKind::StructField => write!(s, "structfield.{}", name),

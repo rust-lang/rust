@@ -109,8 +109,7 @@ a.result-enum:focus { background-color: #194e9f; }
 a.result-struct:focus { background-color: #194e9f; }
 a.result-union:focus { background-color: #194e9f; }
 a.result-fn:focus,
-a.result-method:focus,
-a.result-tymethod:focus { background-color: #4950ed; }
+a.result-method:focus { background-color: #4950ed; }
 a.result-type:focus { background-color: #194e9f; }
 a.result-associatedtype:focus { background-color: #884719; }
 a.result-foreigntype:focus { background-color: #194e9f; }
@@ -144,7 +143,6 @@ a.result-keyword:focus { background-color: #884719; }
 .content span.traitalias, .content a.traitalias, .block a.current.traitalias { color: #b78cf2; }
 .content span.fn, .content a.fn, .block a.current.fn,
 .content span.method, .content a.method, .block a.current.method,
-.content span.tymethod, .content a.tymethod, .block a.current.tymethod,
 .content .fnname{ color: #2BAB63; }
 .content span.keyword, .content a.keyword, .block a.current.keyword { color: #D2991D; }
 

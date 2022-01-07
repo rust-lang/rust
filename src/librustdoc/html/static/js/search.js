@@ -15,7 +15,6 @@ var itemTypes = [
     "static",
     "trait",
     "impl",
-    "tymethod",
     "method",
     "structfield",
     "variant",
@@ -566,7 +565,7 @@ window.initSearch = function(rawSearchIndex) {
                 case "constant":
                     return name === "associatedconstant";
                 case "fn":
-                    return name === "method" || name === "tymethod";
+                    return name === "method";
                 case "type":
                     return name === "primitive" || name === "associatedtype";
                 case "trait":

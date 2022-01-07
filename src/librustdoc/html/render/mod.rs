@@ -2276,7 +2276,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
         "<h3 class=\"sidebar-title\"><a href=\"#required-methods\">\
             Required Methods</a></h3><div class=\"sidebar-links\">",
         |m| m.is_ty_method(),
-        |out, sym| write!(out, "<a href=\"#tymethod.{0}\">{0}</a>", sym),
+        |out, sym| write!(out, "<a href=\"#method.{0}\">{0}</a>", sym),
         "</div>",
     );
 
@@ -2422,8 +2422,7 @@ fn item_ty_to_strs(ty: ItemType) -> (&'static str, &'static str) {
         ItemType::Constant => ("constants", "Constants"),
         ItemType::Trait => ("traits", "Traits"),
         ItemType::Impl => ("impls", "Implementations"),
-        ItemType::TyMethod => ("tymethods", "Type Methods"),
-        ItemType::Method => ("methods", "Methods"),
+        ItemType::Method | ItemType::TyMethod => ("methods", "Methods"),
         ItemType::StructField => ("fields", "Struct Fields"),
         ItemType::Variant => ("variants", "Variants"),
         ItemType::Macro => ("macros", "Macros"),

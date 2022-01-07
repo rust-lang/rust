@@ -182,8 +182,8 @@ pre, .rustdoc.source .example-wrap {
 .content a.associatedtype,
 .block a.current.associatedtype { color: #39AFD7; }
 .content span.fn, .content a.fn, .content span.method,
-.content a.method, .content span.tymethod,
-.content a.tymethod, .content .fnname {
+.content a.method,
+.content .fnname {
 	color: #fdd687;
 }
 .content span.attr, .content a.attr, .content span.derive,
@@ -442,7 +442,7 @@ above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 pre.rust .lifetime {}
 .stab.unstable {}
 h2,
-h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {}
+h3:not(.impl):not(.method):not(.type), h4:not(.method):not(.type) {}
 .content span.enum,.content a.enum,.block a.current.enum {}
 .content span.constant,.content a.constant,.block a.current.constant,.content span.static,
 .content a.static, .block a.current.static {}
@@ -450,7 +450,7 @@ h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type)
 pre.rust .comment {}
 .content span.traitalias,.content a.traitalias,.block a.current.traitalias {}
 .content span.fn,.content a.fn,.block a.current.fn,.content span.method,.content a.method,
-.block a.current.method,.content span.tymethod,.content a.tymethod,.block a.current.tymethod,
+.block a.current.method,
 .content .fnname {}
 pre.rust .kw {}
 pre.rust .self,pre.rust .bool-val,pre.rust .prelude-val,pre.rust .attribute,
@@ -476,8 +476,7 @@ a.result-enum:focus {}
 a.result-struct:focus {}
 a.result-union:focus {}
 a.result-fn:focus,
-a.result-method:focus,
-a.result-tymethod:focus {}
+a.result-method:focus {}
 a.result-type:focus {}
 a.result-associatedtype:focus {}
 a.result-foreigntype:focus {}
