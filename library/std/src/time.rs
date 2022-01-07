@@ -49,8 +49,8 @@ pub use core::time::FromFloatSecsError;
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with [`Duration`].
 ///
-/// Instants are always guaranteed to be no less than any previously measured
-/// instant when created, and are often useful for tasks such as measuring
+/// Instants are always guaranteed, barring [platform bugs], to be no less than any previously
+/// measured instant when created, and are often useful for tasks such as measuring
 /// benchmarks or timing how long an operation takes.
 ///
 /// Note, however, that instants are **not** guaranteed to be **steady**. In other
@@ -82,6 +82,8 @@ pub use core::time::FromFloatSecsError;
 ///    println!("{}", now.elapsed().as_secs());
 /// }
 /// ```
+///
+/// [platform bugs]: Instant#monotonicity
 ///
 /// # OS-specific behaviors
 ///
