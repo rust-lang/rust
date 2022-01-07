@@ -12,7 +12,7 @@ Compiler
 --------
 
 - [Add LLVM CFI support to the Rust compiler][89652]
-- [Stabilize -Z strip as -C strip][90058]. Note that while release builds already don't add debug symbols for the code you compile, the compiled standard library that ships with Rust includes debug symbols, so you may want to use the `strip` option to remove these symbols to produce smaller release binaries.
+- [Stabilize -Z strip as -C strip][90058]. Note that while release builds already don't add debug symbols for the code you compile, the compiled standard library that ships with Rust includes debug symbols, so you may want to use the `strip` option to remove these symbols to produce smaller release binaries. Note that this release only includes support in rustc, not directly in cargo.
 - [Add support for LLVM coverage mapping format versions 5 and 6][91207]
 - [Emit LLVM optimization remarks when enabled with `-Cremark`][90833]
 - [Update the minimum external LLVM to 12][90175]
