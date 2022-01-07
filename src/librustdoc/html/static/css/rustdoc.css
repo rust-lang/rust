@@ -175,11 +175,13 @@ h3.code-header {
 h4.code-header {
 	font-size: 1rem;
 }
-h3.code-header, h4.code-header {
+.code-header {
 	font-weight: 600;
 	border-bottom-style: none;
-	padding: 0;
 	margin: 0;
+	padding: 0;
+	margin-top: 0.6em;
+	margin-bottom: 0.4em;
 }
 .impl,
 .impl-items .method,
@@ -192,8 +194,6 @@ h3.code-header, h4.code-header {
 .methods .associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
-	margin-top: 16px;
-	margin-bottom: 10px;
 	position: relative;
 }
 
@@ -744,19 +744,11 @@ nav.sub {
 
 .content .item-info {
 	position: relative;
-	margin-left: 33px;
+	margin-left: 24px;
 }
 
 .sub-variant > div > .item-info {
 	margin-top: initial;
-}
-
-.content .item-info::before {
-	content: '⬑';
-	font-size: 1.5625rem;
-	position: absolute;
-	top: -6px;
-	left: -19px;
 }
 
 .content .impl-items .docblock, .content .impl-items .item-info {
@@ -777,6 +769,7 @@ nav.sub {
 
 #main-content > .item-info {
 	margin-top: 0;
+	margin-left: 0;
 }
 
 nav.sub {
@@ -1123,13 +1116,6 @@ body.blur > :not(#help) {
 
 .rightside {
 	float: right;
-}
-
-.has-srclink {
-	font-size: 1rem;
-	margin-bottom: 12px;
-	/* Push the src link out to the right edge consistently */
-	justify-content: space-between;
 }
 
 .variants_table {
@@ -2065,6 +2051,24 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 }
 
+.method-toggle summary,
+.implementors-toggle summary {
+	margin-bottom: 0.75em;
+}
+
+.method-toggle[open] {
+	margin-bottom: 2em;
+}
+
+.implementors-toggle[open]  {
+	margin-bottom: 2em;
+}
+
+#trait-implementations-list .method-toggle,
+#synthetic-implementations-list .method-toggle,
+#blanket-implementations-list .method-toggle {
+	margin-bottom: 1em;
+}
 
 /* Begin: styles for --scrape-examples feature */
 
