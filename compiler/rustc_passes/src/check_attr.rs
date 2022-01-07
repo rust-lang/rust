@@ -114,6 +114,7 @@ impl CheckAttrVisitor<'_> {
                 }
                 sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
                 sym::must_use => self.check_must_use(hir_id, &attr, span, target),
+                sym::rustc_pass_by_value => self.check_pass_by_value(&attr, span, target),
                 sym::rustc_const_unstable
                 | sym::rustc_const_stable
                 | sym::unstable
@@ -1064,6 +1065,29 @@ impl CheckAttrVisitor<'_> {
         }
 
         is_valid
+    }
+
+    /// Warns against some misuses of `#[pass_by_value]`
+    fn check_pass_by_value(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
+        match target {
+            Target::Struct
+            | Target::Enum
+            | Target::Union
+            | Target::Trait
+            | Target::TraitAlias
+            | Target::TyAlias => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(
+                        attr.span,
+                        "`pass_by_value` attribute should be applied to a struct, enum, trait or type alias.",
+                    )
+                    .span_label(*span, "is not a struct, enum, trait or type alias")
+                    .emit();
+                false
+            }
+        }
     }
 
     /// Warns against some misuses of `#[must_use]`

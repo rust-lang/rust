@@ -1,7 +1,7 @@
 // compile-flags: -Z unstable-options
 
 #![feature(rustc_private)]
-#![deny(rustc::ty_pass_by_reference)]
+#![deny(rustc::pass_by_value)]
 #![allow(unused)]
 
 extern crate rustc_middle;

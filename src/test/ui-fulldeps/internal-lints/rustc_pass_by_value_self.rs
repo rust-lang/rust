@@ -5,10 +5,11 @@
 // Considering that all other `internal-lints` are tested here
 // this seems like the cleaner solution though.
 #![feature(rustc_attrs)]
-#![deny(rustc::ty_pass_by_reference)]
+#![deny(rustc::pass_by_value)]
 #![allow(unused)]
 
 #[rustc_diagnostic_item = "TyCtxt"]
+#[rustc_pass_by_value]
 struct TyCtxt<'tcx> {
     inner: &'tcx (),
 }
@@ -18,12 +19,12 @@ impl<'tcx> TyCtxt<'tcx> {
     fn by_ref(&self) {} //~ ERROR passing `TyCtxt<'tcx>` by reference
 }
 
-
 struct TyS<'tcx> {
     inner: &'tcx (),
 }
 
 #[rustc_diagnostic_item = "Ty"]
+#[rustc_pass_by_value]
 type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl<'tcx> TyS<'tcx> {
