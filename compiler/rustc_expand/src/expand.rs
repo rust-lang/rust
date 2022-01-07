@@ -11,9 +11,9 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AstLike, AstLikeWrapper, Block, Inline, ItemKind, MacArgs, MacCall};
-use rustc_ast::{MacCallStmt, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem};
-use rustc_ast::{NodeId, Path, StmtKind};
+use rustc_ast::{AssocItemKind, AstLike, AstLikeWrapper, AttrStyle, ExprKind, ForeignItemKind};
+use rustc_ast::{Inline, ItemKind, MacArgs, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem};
+use rustc_ast::{NodeId, PatKind, StmtKind, TyKind};
 use rustc_ast_pretty::pprust;
 use rustc_attr::is_builtin_attr;
 use rustc_data_structures::map_in_place::MapInPlace;
@@ -317,10 +317,10 @@ pub enum InvocationKind {
         pos: usize,
         item: Annotatable,
         // Required for resolving derive helper attributes.
-        derives: Vec<Path>,
+        derives: Vec<ast::Path>,
     },
     Derive {
-        path: Path,
+        path: ast::Path,
         item: Annotatable,
     },
 }
@@ -678,7 +678,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             krate,
                         ),
                         Annotatable::Item(item_inner)
-                            if matches!(attr.style, ast::AttrStyle::Inner)
+                            if matches!(attr.style, AttrStyle::Inner)
                                 && matches!(
                                     item_inner.kind,
                                     ItemKind::Mod(
@@ -746,7 +746,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     if let SyntaxExtensionKind::Derive(..) = ext {
                         self.gate_proc_macro_input(&item);
                     }
-                    let meta = ast::MetaItem { kind: ast::MetaItemKind::Word, span, path };
+                    let meta = ast::MetaItem { kind: MetaItemKind::Word, span, path };
                     let items = match expander.expand(self.cx, span, &meta, item) {
                         ExpandResult::Ready(items) => items,
                         ExpandResult::Retry(item) => {
@@ -808,7 +808,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         impl<'ast, 'a> Visitor<'ast> for GateProcMacroInput<'a> {
             fn visit_item(&mut self, item: &'ast ast::Item) {
                 match &item.kind {
-                    ast::ItemKind::Mod(_, mod_kind)
+                    ItemKind::Mod(_, mod_kind)
                         if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
                     {
                         feature_err(
@@ -836,7 +836,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         &mut self,
         toks: TokenStream,
         kind: AstFragmentKind,
-        path: &Path,
+        path: &ast::Path,
         span: Span,
     ) -> AstFragment {
         let mut parser = self.cx.new_parser_from_tts(toks);
@@ -928,7 +928,7 @@ pub fn parse_ast_fragment<'a>(
 
 pub fn ensure_complete_parse<'a>(
     this: &mut Parser<'a>,
-    macro_path: &Path,
+    macro_path: &ast::Path,
     kind_name: &str,
     span: Span,
 ) {
@@ -1053,12 +1053,12 @@ impl InvocationCollectorNode for P<ast::Item> {
         noop_flat_map_item(self, visitor)
     }
     fn is_mac_call(&self) -> bool {
-        matches!(self.kind, ast::ItemKind::MacCall(..))
+        matches!(self.kind, ItemKind::MacCall(..))
     }
     fn take_mac_call(self) -> (ast::MacCall, Self::AttrsTy, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
-            ast::ItemKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+            ItemKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1067,13 +1067,13 @@ impl InvocationCollectorNode for P<ast::Item> {
         collector: &mut InvocationCollector<'_, '_>,
         noop_flat_map: impl FnOnce(Self, &mut InvocationCollector<'_, '_>) -> Self::OutputTy,
     ) -> Result<Self::OutputTy, Self> {
-        if !matches!(node.kind, ast::ItemKind::Mod(..)) {
+        if !matches!(node.kind, ItemKind::Mod(..)) {
             return Ok(noop_flat_map(node, collector));
         }
 
         // Work around borrow checker not seeing through `P`'s deref.
         let (ident, span, mut attrs) = (node.ident, node.span, mem::take(&mut node.attrs));
-        let ast::ItemKind::Mod(_, mod_kind) = &mut node.kind else {
+        let ItemKind::Mod(_, mod_kind) = &mut node.kind else {
             unreachable!()
         };
 
@@ -1157,12 +1157,12 @@ impl InvocationCollectorNode for AstLikeWrapper<P<ast::AssocItem>, TraitItemTag>
         noop_flat_map_assoc_item(self.wrapped, visitor)
     }
     fn is_mac_call(&self) -> bool {
-        matches!(self.wrapped.kind, ast::AssocItemKind::MacCall(..))
+        matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
     fn take_mac_call(self) -> (ast::MacCall, Self::AttrsTy, AddSemicolon) {
         let item = self.wrapped.into_inner();
         match item.kind {
-            ast::AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
+            AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1185,12 +1185,12 @@ impl InvocationCollectorNode for AstLikeWrapper<P<ast::AssocItem>, ImplItemTag> 
         noop_flat_map_assoc_item(self.wrapped, visitor)
     }
     fn is_mac_call(&self) -> bool {
-        matches!(self.wrapped.kind, ast::AssocItemKind::MacCall(..))
+        matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
     fn take_mac_call(self) -> (ast::MacCall, Self::AttrsTy, AddSemicolon) {
         let item = self.wrapped.into_inner();
         match item.kind {
-            ast::AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
+            AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1211,12 +1211,12 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
         noop_flat_map_foreign_item(self, visitor)
     }
     fn is_mac_call(&self) -> bool {
-        matches!(self.kind, ast::ForeignItemKind::MacCall(..))
+        matches!(self.kind, ForeignItemKind::MacCall(..))
     }
     fn take_mac_call(self) -> (ast::MacCall, Self::AttrsTy, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
-            ast::ForeignItemKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+            ForeignItemKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1353,7 +1353,7 @@ impl InvocationCollectorNode for ast::Stmt {
         match &self.kind {
             StmtKind::MacCall(..) => true,
             StmtKind::Item(item) => matches!(item.kind, ItemKind::MacCall(..)),
-            StmtKind::Semi(expr) => matches!(expr.kind, ast::ExprKind::MacCall(..)),
+            StmtKind::Semi(expr) => matches!(expr.kind, ExprKind::MacCall(..)),
             StmtKind::Expr(..) => unreachable!(),
             StmtKind::Local(..) | StmtKind::Empty => false,
         }
@@ -1363,7 +1363,7 @@ impl InvocationCollectorNode for ast::Stmt {
         // `StmtKind`s and treat them as statement macro invocations, not as items or expressions.
         let (add_semicolon, mac, attrs) = match self.kind {
             StmtKind::MacCall(mac) => {
-                let MacCallStmt { mac, style, attrs, .. } = mac.into_inner();
+                let ast::MacCallStmt { mac, style, attrs, .. } = mac.into_inner();
                 (style == MacStmtStyle::Semicolon, mac, attrs)
             }
             StmtKind::Item(item) => match item.into_inner() {
@@ -1373,7 +1373,7 @@ impl InvocationCollectorNode for ast::Stmt {
                 _ => unreachable!(),
             },
             StmtKind::Semi(expr) => match expr.into_inner() {
-                ast::Expr { kind: ast::ExprKind::MacCall(mac), attrs, .. } => {
+                ast::Expr { kind: ExprKind::MacCall(mac), attrs, .. } => {
                     (mac.args.need_semicolon(), mac, attrs)
                 }
                 _ => unreachable!(),
@@ -1431,7 +1431,7 @@ impl InvocationCollectorNode for P<ast::Ty> {
     fn take_mac_call(self) -> (ast::MacCall, Self::AttrsTy, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
-            ast::TyKind::MacCall(mac) => (mac, Vec::new(), AddSemicolon::No),
+            TyKind::MacCall(mac) => (mac, Vec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1453,12 +1453,12 @@ impl InvocationCollectorNode for P<ast::Pat> {
         noop_visit_pat(self, visitor)
     }
     fn is_mac_call(&self) -> bool {
-        matches!(self.kind, ast::PatKind::MacCall(..))
+        matches!(self.kind, PatKind::MacCall(..))
     }
     fn take_mac_call(self) -> (ast::MacCall, Self::AttrsTy, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
-            ast::PatKind::MacCall(mac) => (mac, Vec::new(), AddSemicolon::No),
+            PatKind::MacCall(mac) => (mac, Vec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1481,12 +1481,12 @@ impl InvocationCollectorNode for P<ast::Expr> {
         noop_visit_expr(self, visitor)
     }
     fn is_mac_call(&self) -> bool {
-        matches!(self.kind, ast::ExprKind::MacCall(..))
+        matches!(self.kind, ExprKind::MacCall(..))
     }
     fn take_mac_call(self) -> (ast::MacCall, Self::AttrsTy, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
-            ast::ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+            ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1516,7 +1516,7 @@ impl InvocationCollectorNode for AstLikeWrapper<P<ast::Expr>, OptExprTag> {
     fn take_mac_call(self) -> (ast::MacCall, Self::AttrsTy, AddSemicolon) {
         let node = self.wrapped.into_inner();
         match node.kind {
-            ast::ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+            ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
     }
@@ -1560,7 +1560,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn collect_attr(
         &mut self,
-        (attr, pos, derives): (ast::Attribute, usize, Vec<Path>),
+        (attr, pos, derives): (ast::Attribute, usize, Vec<ast::Path>),
         item: Annotatable,
         kind: AstFragmentKind,
     ) -> AstFragment {
@@ -1573,7 +1573,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn take_first_attr(
         &self,
         item: &mut impl AstLike,
-    ) -> Option<(ast::Attribute, usize, Vec<Path>)> {
+    ) -> Option<(ast::Attribute, usize, Vec<ast::Path>)> {
         let mut attr = None;
 
         item.visit_attrs(|attrs| {
@@ -1609,7 +1609,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
-    fn check_attributes(&self, attrs: &[ast::Attribute], call: &MacCall) {
+    fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
         let features = self.cx.ecfg.features.unwrap();
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
@@ -1764,7 +1764,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             let mut node = configure!(self, node);
             return match &node.kind {
                 StmtKind::Expr(expr)
-                    if matches!(**expr, ast::Expr { kind: ast::ExprKind::MacCall(..), .. }) =>
+                    if matches!(**expr, ast::Expr { kind: ExprKind::MacCall(..), .. }) =>
                 {
                     self.cx.current_expansion.is_trailing_mac = true;
                     // Don't use `assign_id` for this statement - it may get removed
@@ -1801,7 +1801,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(AstLikeWrapper::new(node, OptExprTag))
     }
 
-    fn visit_block(&mut self, node: &mut P<Block>) {
+    fn visit_block(&mut self, node: &mut P<ast::Block>) {
         let orig_dir_ownership = mem::replace(
             &mut self.cx.current_expansion.dir_ownership,
             DirOwnership::UnownedViaBlock,
@@ -1810,7 +1810,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.cx.current_expansion.dir_ownership = orig_dir_ownership;
     }
 
-    fn visit_id(&mut self, id: &mut ast::NodeId) {
+    fn visit_id(&mut self, id: &mut NodeId) {
         // We may have already assigned a `NodeId`
         // by calling `assign_id`
         if self.monotonic && *id == ast::DUMMY_NODE_ID {
