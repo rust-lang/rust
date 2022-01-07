@@ -120,6 +120,7 @@ and related tools.
 [89652]: https://github.com/rust-lang/rust/pull/89652/
 [89677]: https://github.com/rust-lang/rust/pull/89677/
 [89951]: https://github.com/rust-lang/rust/pull/89951/
+[90041]: https://github.com/rust-lang/rust/pull/90041/
 [90058]: https://github.com/rust-lang/rust/pull/90058/
 [90104]: https://github.com/rust-lang/rust/pull/90104/
 [90117]: https://github.com/rust-lang/rust/pull/90117/
