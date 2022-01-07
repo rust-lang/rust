@@ -132,7 +132,7 @@ pub enum Severity {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExprFillDefaultMode {
     Todo,
-    DefaultImpl,
+    Default,
 }
 impl Default for ExprFillDefaultMode {
     fn default() -> Self {

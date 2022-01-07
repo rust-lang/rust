@@ -76,7 +76,7 @@ pub mod ext {
         expr_from_text(r#""""#)
     }
     pub fn empty_char() -> ast::Expr {
-        expr_from_text("''")
+        expr_from_text("'\x00'")
     }
     pub fn default_bool() -> ast::Expr {
         expr_from_text("false")

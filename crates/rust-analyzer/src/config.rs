@@ -698,7 +698,7 @@ impl Config {
             disabled: self.data.diagnostics_disabled.clone(),
             expr_fill_default: match self.data.assist_exprFillDefault {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
-                ExprFillDefaultDef::DefaultImpl => ExprFillDefaultMode::DefaultImpl,
+                ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
             },
         }
     }
@@ -1070,8 +1070,8 @@ enum ManifestOrProjectJson {
 pub enum ExprFillDefaultDef {
     #[serde(alias = "todo")]
     Todo,
-    #[serde(alias = "defaultImpl")]
-    DefaultImpl,
+    #[serde(alias = "default")]
+    Default,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1270,9 +1270,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         },
         "ExprFillDefaultDef" => set! {
             "type": "string",
-            "enum": ["todo", "defaultImpl"],
+            "enum": ["todo", "default"],
             "enumDescriptions": [
-                "Fill missing elements with 'todo' macro",
+                "Fill missing expressions with the 'todo' macro",
                 "Fill missing expressions with reasonable defaults, `new` or `default` constructors."
             ],
         },

@@ -73,7 +73,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
     let generate_fill_expr = |ty: &Type| match ctx.config.expr_fill_default {
         crate::ExprFillDefaultMode::Todo => Some(make::ext::expr_todo()),
-        crate::ExprFillDefaultMode::DefaultImpl => {
+        crate::ExprFillDefaultMode::Default => {
             let default_constr = get_default_constructor(ctx, d, ty);
             match default_constr {
                 Some(default_constr) => Some(default_constr),
@@ -159,7 +159,6 @@ fn get_default_constructor(
             if let AssocItem::Function(func) = assoc_item {
                 if func.name(ctx.sema.db) == known::new
                     && func.assoc_fn_params(ctx.sema.db).is_empty()
-                    && func.self_param(ctx.sema.db).is_none()
                 {
                     return Some(());
                 }

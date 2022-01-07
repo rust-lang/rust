@@ -37,7 +37,7 @@ fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
 
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
     let mut conf = DiagnosticsConfig::default();
-    conf.expr_fill_default = ExprFillDefaultMode::DefaultImpl;
+    conf.expr_fill_default = ExprFillDefaultMode::Default;
     let diagnostic =
         super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
             .pop()

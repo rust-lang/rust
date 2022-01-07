@@ -384,11 +384,11 @@
                     "type": "string",
                     "enum": [
                         "todo",
-                        "defaultImpl"
+                        "default"
                     ],
                     "enumDescriptions": [
-                        "Fill missing elements with 'todo' macro",
-                        "Fill missing elements with T::default()"
+                        "Fill missing expressions with the 'todo' macro",
+                        "Fill missing expressions with reasonable defaults, `new` or `default` constructors."
                     ]
                 },
                 "rust-analyzer.assist.importGranularity": {
