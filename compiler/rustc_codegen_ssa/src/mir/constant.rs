@@ -14,7 +14,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &self,
         bx: &mut Bx,
         constant: &mir::Constant<'tcx>,
-    ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled> {
+    ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled<'tcx>> {
         let val = self.eval_mir_constant(constant)?;
         let ty = self.monomorphize(constant.ty());
         Ok(OperandRef::from_const(bx, val, ty))
@@ -23,7 +23,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant(
         &self,
         constant: &mir::Constant<'tcx>,
-    ) -> Result<ConstValue<'tcx>, ErrorHandled> {
+    ) -> Result<ConstValue<'tcx>, ErrorHandled<'tcx>> {
         let ct = self.monomorphize(constant.literal);
         let ct = match ct {
             mir::ConstantKind::Ty(ct) => ct,
@@ -53,7 +53,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &Bx,
         span: Span,
         ty: Ty<'tcx>,
-        constant: Result<ConstValue<'tcx>, ErrorHandled>,
+        constant: Result<ConstValue<'tcx>, ErrorHandled<'tcx>>,
     ) -> (Bx::Value, Ty<'tcx>) {
         constant
             .map(|val| {

@@ -64,7 +64,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
                                 err
                             );
                         }
-                        ErrorHandled::Silent => {
+                        ErrorHandled::Silent(_) => {
                             span_bug!(
                                 constant.span,
                                 "codegen encountered silent error",

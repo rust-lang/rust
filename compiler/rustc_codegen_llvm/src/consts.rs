@@ -130,7 +130,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> 
 pub fn codegen_static_initializer<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
-) -> Result<(&'ll Value, &'tcx Allocation), ErrorHandled> {
+) -> Result<(&'ll Value, &'tcx Allocation), ErrorHandled<'tcx>> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }

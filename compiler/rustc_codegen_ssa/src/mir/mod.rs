@@ -191,7 +191,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 ErrorHandled::TooGeneric => {
                     span_bug!(const_.span, "codegen encountered polymorphic constant: {:?}", err)
                 }
-                ErrorHandled::Silent => {
+                ErrorHandled::Silent(_) => {
                     span_bug!(const_.span, "silent error during codegen")
                 }
             }
