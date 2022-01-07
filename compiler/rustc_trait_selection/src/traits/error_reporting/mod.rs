@@ -19,6 +19,9 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
+use rustc_middle::mir::interpret::{
+    ConstDedupResult, ConstErrorEmitted, ErrorHandled, SilentError,
+};
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
@@ -238,6 +241,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         error: &SelectionError<'tcx>,
         fallback_has_occurred: bool,
     ) {
+        debug!("report_selection_error(error: {:?})", error);
         let tcx = self.tcx;
         let mut span = obligation.cause.span;
 
@@ -799,7 +803,94 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 bug!(
                     "MentionsInfer should have been handled in `traits/fulfill.rs` or `traits/select/mod.rs`"
                 )
-            ConstEvalFailure(ErrorHandled::Silent) => {
+            }
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Silent(id)) => {
+                // try to report a ConstEvalErr which gives better diagnostics by providing
+                // information about why the constant couldn't be evaluated.
+                let const_dedup_map = tcx.dedup_const_map.lock();
+                debug!("const_dedup_map: {:#?}", &const_dedup_map);
+                debug!(?id);
+
+                // FIXME This only reports errors stored as `ConstDedupResult::Selection`
+                // but we should also report cached errors with other Reveal variants
+                // here. See e.g. test `ui/const-generics/generic_const_exprs/issue-62504.rs`
+                // which fails to report the `TooGeneric` error because it was stored
+                // with `Reveal::All`.
+                if !const_dedup_map.error_reported_map.borrow().contains_key(&id) {
+                    if let Some(ConstDedupResult::Selection((
+                        Err(SilentError::ConstErr(err)),
+                        sp,
+                    ))) = const_dedup_map.alloc_map.borrow().get(&id)
+                    {
+                        let def = id.instance.def.with_opt_param();
+                        let is_static = tcx.is_static(def.did);
+
+                        let err_emitted = tcx.report_const_alloc_error(
+                            &const_dedup_map,
+                            id,
+                            obligation.param_env,
+                            err,
+                            is_static,
+                            def,
+                            *sp,
+                        );
+
+                        match err_emitted {
+                            ConstErrorEmitted::NotEmitted(err) => {
+                                if let ErrorHandled::TooGeneric = err {
+                                    let selection_err = SelectionError::NotConstEvaluatable(
+                                        NotConstEvaluatable::MentionsParam,
+                                    );
+
+                                    self.report_selection_error(
+                                        obligation.clone(),
+                                        root_obligation,
+                                        &selection_err,
+                                        fallback_has_occurred,
+                                    );
+                                }
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        if let Some(ConstDedupResult::Selection((
+                            Err(SilentError::ConstErr(err)),
+                            sp,
+                        ))) = const_dedup_map.const_val_map.borrow().get(&id)
+                        {
+                            let def = id.instance.def.with_opt_param();
+                            let is_static = tcx.is_static(def.did);
+
+                            let err_emitted = tcx.report_const_alloc_error(
+                                &const_dedup_map,
+                                id,
+                                obligation.param_env,
+                                err,
+                                is_static,
+                                def,
+                                *sp,
+                            );
+
+                            match err_emitted {
+                                ConstErrorEmitted::NotEmitted(err) => {
+                                    if let ErrorHandled::TooGeneric = err {
+                                        let selection_err = SelectionError::NotConstEvaluatable(
+                                            NotConstEvaluatable::MentionsParam,
+                                        );
+
+                                        self.report_selection_error(
+                                            obligation.clone(),
+                                            root_obligation,
+                                            &selection_err,
+                                            fallback_has_occurred,
+                                        );
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
                 tcx.sess.struct_span_err(span, "failed to evaluate the given constant")
             }
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsParam) => {
