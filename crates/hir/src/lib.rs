@@ -68,7 +68,7 @@ use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
 use syntax::{
-    ast::{self, HasAttrs as _, HasName},
+    ast::{self, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxKind, SyntaxNodePtr,
 };
 use tt::{Ident, Leaf, Literal, TokenTree};
@@ -612,10 +612,13 @@ impl Module {
                         }
                         MacroCallKind::Attr { ast_id, invoc_attr_index, attr_name, .. } => {
                             let node = ast_id.to_node(db.upcast());
-                            let attr =
-                                node.attrs().nth((*invoc_attr_index) as usize).unwrap_or_else(
-                                    || panic!("cannot find attribute #{}", invoc_attr_index),
-                                );
+                            let attr = node
+                                .doc_comments_and_attrs()
+                                .nth((*invoc_attr_index) as usize)
+                                .and_then(Either::right)
+                                .unwrap_or_else(|| {
+                                    panic!("cannot find attribute #{}", invoc_attr_index)
+                                });
                             (
                                 ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
                                 Some(attr_name.clone()),

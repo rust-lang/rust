@@ -9,7 +9,7 @@ use db::TokenExpander;
 use either::Either;
 use mbe::Origin;
 use syntax::{
-    ast::{self, HasAttrs},
+    ast::{self, HasDocComments},
     AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 
@@ -187,7 +187,12 @@ fn make_hygiene_info(
     });
     let attr_input_or_mac_def = def.or_else(|| match loc.kind {
         MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
-            let tt = ast_id.to_node(db).attrs().nth(invoc_attr_index as usize)?.token_tree()?;
+            let tt = ast_id
+                .to_node(db)
+                .doc_comments_and_attrs()
+                .nth(invoc_attr_index as usize)
+                .and_then(Either::right)?
+                .token_tree()?;
             Some(InFile::new(ast_id.file_id, tt))
         }
         _ => None,
