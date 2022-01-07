@@ -9,7 +9,7 @@ use ide_db::{
 use stdx::trim_indent;
 use test_utils::{assert_eq_text, extract_annotations};
 
-use crate::{DiagnosticsConfig, Severity};
+use crate::{DiagnosticsConfig, ExprFillDefaultMode, Severity};
 
 /// Takes a multi-file input fixture with annotated cursor positions,
 /// and checks that:
@@ -36,14 +36,12 @@ fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
     let after = trim_indent(ra_fixture_after);
 
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
-    let diagnostic = super::diagnostics(
-        &db,
-        &DiagnosticsConfig::default(),
-        &AssistResolveStrategy::All,
-        file_position.file_id,
-    )
-    .pop()
-    .expect("no diagnostics");
+    let mut conf = DiagnosticsConfig::default();
+    conf.expr_fill_default = ExprFillDefaultMode::Default;
+    let diagnostic =
+        super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
+            .pop()
+            .expect("no diagnostics");
     let fix = &diagnostic.fixes.expect("diagnostic misses fixes")[nth];
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();

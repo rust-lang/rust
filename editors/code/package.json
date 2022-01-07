@@ -378,6 +378,19 @@
                     "markdownDescription": "Optional settings passed to the debug engine. Example: `{ \"lldb\": { \"terminal\":\"external\"} }`"
                 },
                 "$generated-start": {},
+                "rust-analyzer.assist.exprFillDefault": {
+                    "markdownDescription": "Placeholder for missing expressions in assists.",
+                    "default": "todo",
+                    "type": "string",
+                    "enum": [
+                        "todo",
+                        "default"
+                    ],
+                    "enumDescriptions": [
+                        "Fill missing expressions with the `todo` macro",
+                        "Fill missing expressions with reasonable defaults, `new` or `default` constructors."
+                    ]
+                },
                 "rust-analyzer.assist.importGranularity": {
                     "markdownDescription": "How imports should be grouped into use statements.",
                     "default": "crate",

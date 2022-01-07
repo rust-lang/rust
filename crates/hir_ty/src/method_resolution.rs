@@ -542,6 +542,7 @@ pub fn iterate_method_candidates_dyn(
 
             let deref_chain = autoderef_method_receiver(db, krate, ty);
             let mut deref_chains = stdx::slice_tails(&deref_chain);
+
             deref_chains.try_for_each(|deref_chain| {
                 iterate_method_candidates_with_autoref(
                     deref_chain,

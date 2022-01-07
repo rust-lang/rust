@@ -1,9 +1,16 @@
 use either::Either;
-use hir::{db::AstDatabase, InFile};
-use ide_db::{assists::Assist, source_change::SourceChange};
+use hir::{
+    db::{AstDatabase, HirDatabase},
+    known, AssocItem, HirDisplay, InFile, Type,
+};
+use ide_db::{assists::Assist, helpers::FamousDefs, source_change::SourceChange};
 use rustc_hash::FxHashMap;
 use stdx::format_to;
-use syntax::{algo, ast::make, AstNode, SyntaxNodePtr};
+use syntax::{
+    algo,
+    ast::{self, make},
+    AstNode, SyntaxNodePtr,
+};
 use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticsContext};
@@ -63,6 +70,18 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         }
     });
     let missing_fields = ctx.sema.record_literal_missing_fields(&field_list_parent);
+
+    let generate_fill_expr = |ty: &Type| match ctx.config.expr_fill_default {
+        crate::ExprFillDefaultMode::Todo => Some(make::ext::expr_todo()),
+        crate::ExprFillDefaultMode::Default => {
+            let default_constr = get_default_constructor(ctx, d, ty);
+            match default_constr {
+                Some(default_constr) => Some(default_constr),
+                _ => Some(make::ext::expr_todo()),
+            }
+        }
+    };
+
     for (f, ty) in missing_fields.iter() {
         let field_expr = if let Some(local_candidate) = locals.get(&f.name(ctx.sema.db)) {
             cov_mark::hit!(field_shorthand);
@@ -70,10 +89,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             if ty.could_unify_with(ctx.sema.db, &candidate_ty) {
                 None
             } else {
-                Some(make::ext::expr_todo())
+                generate_fill_expr(ty)
             }
         } else {
-            Some(make::ext::expr_todo())
+            generate_fill_expr(ty)
         };
         let field =
             make::record_expr_field(make::name_ref(&f.name(ctx.sema.db).to_smol_str()), field_expr)
@@ -100,6 +119,68 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         SourceChange::from_text_edit(d.file.original_file(ctx.sema.db), edit),
         ctx.sema.original_range(field_list_parent.syntax()).range,
     )])
+}
+
+fn make_ty(ty: &hir::Type, db: &dyn HirDatabase, module: hir::Module) -> ast::Type {
+    let ty_str = match ty.as_adt() {
+        Some(adt) => adt.name(db).to_string(),
+        None => ty.display_source_code(db, module.into()).ok().unwrap_or_else(|| "_".to_string()),
+    };
+
+    make::ty(&ty_str)
+}
+
+fn get_default_constructor(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::MissingFields,
+    ty: &Type,
+) -> Option<ast::Expr> {
+    if let Some(builtin_ty) = ty.as_builtin() {
+        if builtin_ty.is_int() || builtin_ty.is_uint() {
+            return Some(make::ext::zero_number());
+        }
+        if builtin_ty.is_float() {
+            return Some(make::ext::zero_float());
+        }
+        if builtin_ty.is_char() {
+            return Some(make::ext::empty_char());
+        }
+        if builtin_ty.is_str() {
+            return Some(make::ext::empty_str());
+        }
+    }
+
+    let krate = ctx.sema.to_module_def(d.file.original_file(ctx.sema.db))?.krate();
+    let module = krate.root_module(ctx.sema.db);
+
+    // Look for a ::new() associated function
+    let has_new_func = ty
+        .iterate_assoc_items(ctx.sema.db, krate, |assoc_item| {
+            if let AssocItem::Function(func) = assoc_item {
+                if func.name(ctx.sema.db) == known::new
+                    && func.assoc_fn_params(ctx.sema.db).is_empty()
+                {
+                    return Some(());
+                }
+            }
+
+            None
+        })
+        .is_some();
+
+    if has_new_func {
+        Some(make::ext::expr_ty_new(&make_ty(ty, ctx.sema.db, module)))
+    } else if !ty.is_array()
+        && ty.impls_trait(
+            ctx.sema.db,
+            FamousDefs(&ctx.sema, Some(krate)).core_default_Default()?,
+            &[],
+        )
+    {
+        Some(make::ext::expr_ty_default(&make_ty(ty, ctx.sema.db, module)))
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -182,7 +263,7 @@ fn here() {}
 macro_rules! id { ($($tt:tt)*) => { $($tt)*}; }
 
 fn main() {
-    let _x = id![Foo {a:42, b: todo!() }];
+    let _x = id![Foo {a:42, b: 0 }];
 }
 
 pub struct Foo { pub a: i32, pub b: i32 }
@@ -204,7 +285,7 @@ fn test_fn() {
 struct TestStruct { one: i32, two: i64 }
 
 fn test_fn() {
-    let s = TestStruct { one: todo!(), two: todo!() };
+    let s = TestStruct { one: 0, two: 0 };
 }
 "#,
         );
@@ -224,7 +305,7 @@ impl TestStruct {
 struct TestStruct { one: i32 }
 
 impl TestStruct {
-    fn test_fn() { let s = Self { one: todo!() }; }
+    fn test_fn() { let s = Self { one: 0 }; }
 }
 "#,
         );
@@ -272,7 +353,72 @@ fn test_fn() {
 struct TestStruct { one: i32, two: i64 }
 
 fn test_fn() {
-    let s = TestStruct{ two: 2, one: todo!() };
+    let s = TestStruct{ two: 2, one: 0 };
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_fill_struct_fields_new() {
+        check_fix(
+            r#"
+struct TestWithNew(usize);
+impl TestWithNew {
+    pub fn new() -> Self {
+        Self(0)
+    }
+}
+struct TestStruct { one: i32, two: TestWithNew }
+
+fn test_fn() {
+    let s = TestStruct{ $0 };
+}
+"#,
+            r"
+struct TestWithNew(usize);
+impl TestWithNew {
+    pub fn new() -> Self {
+        Self(0)
+    }
+}
+struct TestStruct { one: i32, two: TestWithNew }
+
+fn test_fn() {
+    let s = TestStruct{ one: 0, two: TestWithNew::new()  };
+}
+",
+        );
+    }
+
+    #[test]
+    fn test_fill_struct_fields_default() {
+        check_fix(
+            r#"
+//- minicore: default
+struct TestWithDefault(usize);
+impl Default for TestWithDefault {
+    pub fn default() -> Self {
+        Self(0)
+    }
+}
+struct TestStruct { one: i32, two: TestWithDefault }
+
+fn test_fn() {
+    let s = TestStruct{ $0 };
+}
+"#,
+            r"
+struct TestWithDefault(usize);
+impl Default for TestWithDefault {
+    pub fn default() -> Self {
+        Self(0)
+    }
+}
+struct TestStruct { one: i32, two: TestWithDefault }
+
+fn test_fn() {
+    let s = TestStruct{ one: 0, two: TestWithDefault::default()  };
 }
 ",
         );
@@ -292,7 +438,7 @@ fn test_fn() {
 struct TestStruct { r#type: u8 }
 
 fn test_fn() {
-    TestStruct { r#type: todo!()  };
+    TestStruct { r#type: 0  };
 }
 ",
         );
@@ -403,7 +549,7 @@ fn f() {
     let b = 1usize;
     S {
         a,
-        b: todo!(),
+        b: 0,
     };
 }
 "#,

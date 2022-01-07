@@ -59,6 +59,28 @@ pub mod ext {
     pub fn expr_todo() -> ast::Expr {
         expr_from_text("todo!()")
     }
+    pub fn expr_ty_default(ty: &ast::Type) -> ast::Expr {
+        expr_from_text(&format!("{}::default()", ty))
+    }
+    pub fn expr_ty_new(ty: &ast::Type) -> ast::Expr {
+        expr_from_text(&format!("{}::new()", ty))
+    }
+
+    pub fn zero_number() -> ast::Expr {
+        expr_from_text("0")
+    }
+    pub fn zero_float() -> ast::Expr {
+        expr_from_text("0.0")
+    }
+    pub fn empty_str() -> ast::Expr {
+        expr_from_text(r#""""#)
+    }
+    pub fn empty_char() -> ast::Expr {
+        expr_from_text("'\x00'")
+    }
+    pub fn default_bool() -> ast::Expr {
+        expr_from_text("false")
+    }
     pub fn empty_block_expr() -> ast::BlockExpr {
         block_expr(None, None)
     }

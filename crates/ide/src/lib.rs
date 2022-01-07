@@ -118,7 +118,7 @@ pub use ide_db::{
     symbol_index::Query,
     RootDatabase, SymbolKind,
 };
-pub use ide_diagnostics::{Diagnostic, DiagnosticsConfig, Severity};
+pub use ide_diagnostics::{Diagnostic, DiagnosticsConfig, ExprFillDefaultMode, Severity};
 pub use ide_ssr::SsrError;
 pub use syntax::{TextRange, TextSize};
 pub use text_edit::{Indel, TextEdit};

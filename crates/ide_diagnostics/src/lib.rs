@@ -129,10 +129,22 @@ pub enum Severity {
     WeakWarning,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExprFillDefaultMode {
+    Todo,
+    Default,
+}
+impl Default for ExprFillDefaultMode {
+    fn default() -> Self {
+        Self::Todo
+    }
+}
+
 #[derive(Default, Debug, Clone)]
 pub struct DiagnosticsConfig {
     pub disable_experimental: bool,
     pub disabled: FxHashSet<String>,
+    pub expr_fill_default: ExprFillDefaultMode,
 }
 
 struct DiagnosticsContext<'a> {

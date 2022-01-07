@@ -1,3 +1,8 @@
+[[rust-analyzer.assist.exprFillDefault]]rust-analyzer.assist.exprFillDefault (default: `"todo"`)::
++
+--
+Placeholder for missing expressions in assists.
+--
 [[rust-analyzer.assist.importGranularity]]rust-analyzer.assist.importGranularity (default: `"crate"`)::
 +
 --

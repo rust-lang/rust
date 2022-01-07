@@ -1689,6 +1689,26 @@ impl BuiltinType {
     pub fn name(self) -> Name {
         self.inner.as_name()
     }
+
+    pub fn is_int(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Int(_))
+    }
+
+    pub fn is_uint(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Uint(_))
+    }
+
+    pub fn is_float(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Float(_))
+    }
+
+    pub fn is_char(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Char)
+    }
+
+    pub fn is_str(&self) -> bool {
+        matches!(self.inner, hir_def::builtin_type::BuiltinType::Str)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -2615,6 +2635,10 @@ impl Type {
         matches!(&self.ty.kind(Interner), TyKind::FnDef(..) | TyKind::Function { .. })
     }
 
+    pub fn is_array(&self) -> bool {
+        matches!(&self.ty.kind(Interner), TyKind::Array(..))
+    }
+
     pub fn is_packed(&self, db: &dyn HirDatabase) -> bool {
         let adt_id = match *self.ty.kind(Interner) {
             TyKind::Adt(hir_ty::AdtId(adt_id), ..) => adt_id,
@@ -2713,7 +2737,7 @@ impl Type {
     // This would be nicer if it just returned an iterator, but that runs into
     // lifetime problems, because we need to borrow temp `CrateImplDefs`.
     pub fn iterate_assoc_items<T>(
-        self,
+        &self,
         db: &dyn HirDatabase,
         krate: Crate,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
@@ -2727,7 +2751,7 @@ impl Type {
     }
 
     fn iterate_assoc_items_dyn(
-        self,
+        &self,
         db: &dyn HirDatabase,
         krate: Crate,
         callback: &mut dyn FnMut(AssocItemId) -> bool,
@@ -2769,6 +2793,7 @@ impl Type {
     ) -> Option<T> {
         let _p = profile::span("iterate_method_candidates");
         let mut slot = None;
+
         self.iterate_method_candidates_dyn(
             db,
             krate,
