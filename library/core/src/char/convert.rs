@@ -1,5 +1,6 @@
 //! Character conversions.
 
+use crate::char::TryFromCharError;
 use crate::convert::TryFrom;
 use crate::fmt;
 use crate::mem::transmute;
@@ -163,6 +164,20 @@ impl const From<char> for u128 {
         // The char is casted to the value of the code point, then zero-extended to 128 bit.
         // See [https://doc.rust-lang.org/reference/expressions/operator-expr.html#semantics]
         c as u128
+    }
+}
+
+/// Map `char` with code point in U+0000..=U+00FF to byte in 0x00..=0xFF with same value, failing
+/// if the code point is greater than U+00FF.
+///
+/// See [`impl From<u8> for char`](char#impl-From<u8>) for details on the encoding.
+#[stable(feature = "u8_from_char", since = "1.59.0")]
+impl TryFrom<char> for u8 {
+    type Error = TryFromCharError;
+
+    #[inline]
+    fn try_from(c: char) -> Result<u8, Self::Error> {
+        u8::try_from(u32::from(c)).map_err(|_| TryFromCharError(()))
     }
 }
 
