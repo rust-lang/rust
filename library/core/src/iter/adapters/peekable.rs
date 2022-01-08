@@ -1,5 +1,5 @@
 use crate::iter::{
-    adapters::{PeekableMapWhile, SourceIter},
+    adapters::{PeekableMapWhile, PeekableTakeWhile, SourceIter},
     FusedIterator, TrustedLen,
 };
 use crate::ops::{ControlFlow, Try};
@@ -346,6 +346,45 @@ impl<I: Iterator> Peekable<I> {
         P: FnMut(&I::Item) -> Option<B>,
     {
         PeekableMapWhile::new(self, predicate)
+    }
+
+    /// Creates an iterator which yields elements based on a predicate. This differs from
+    /// [`take_while`] in that `peekable_take_while()` will not advance the iterator if the
+    /// predicate returns false. Like [`take_while`], the closure passed to `peekable_take_while()`
+    /// takes a reference, and if the iterator iterates over references, it can lead to a possibly
+    /// confusing case where the type of the closure is a double reference. More information can
+    /// be found in the documentation for [`take_while`].
+    ///
+    /// [`take_while`]: Iterator::take_while
+    ///
+    /// # Example
+    /// Takes numbers less than 15.
+    /// ```
+    /// let mut xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19].iter().peekable();
+    /// let ys = [0, 1, 2, 3, 5, 13];
+    /// let it = xs.peekable_take_while(|&x| *x < 15);
+    /// let mut i = 0;
+    /// for x in it {
+    ///     assert_eq!(*x, ys[i]);
+    ///     i += 1;
+    /// }
+    /// assert_eq!(i, ys.len());
+    /// assert_eq!(xs.next(), Some(&15));
+    /// assert_eq!(xs.next(), Some(&16));
+    /// assert_eq!(xs.next(), Some(&17));
+    /// assert_eq!(xs.next(), Some(&19));
+    /// assert_eq!(xs.next(), None);
+    /// ```
+    #[unstable(feature = "peekable_map_while", issue = "none")]
+    pub fn peekable_take_while<'iter, P>(
+        &'iter mut self,
+        predicate: P,
+    ) -> PeekableTakeWhile<'iter, I, P>
+    where
+        Self: Sized,
+        P: FnMut(&I::Item) -> bool,
+    {
+        PeekableTakeWhile::new(self, predicate)
     }
 }
 

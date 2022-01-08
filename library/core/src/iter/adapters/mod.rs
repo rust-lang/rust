@@ -16,6 +16,7 @@ mod map;
 mod map_while;
 mod peekable;
 mod peekable_map_while;
+mod peekable_take_while;
 mod rev;
 mod scan;
 mod skip;
@@ -60,6 +61,9 @@ pub use self::zip::zip;
 
 #[unstable(feature = "peekable_map_while", issue = "none")]
 pub use self::peekable_map_while::PeekableMapWhile;
+
+#[unstable(feature = "peekable_map_while", issue = "none")]
+pub use self::peekable_take_while::PeekableTakeWhile;
 
 /// This trait provides transitive access to source-stage in an iterator-adapter pipeline
 /// under the conditions that
