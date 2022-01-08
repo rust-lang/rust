@@ -243,7 +243,7 @@ fn check_other_call_arg<'tcx>(
         if if trait_predicate.def_id() == deref_trait_id {
             if let [projection_predicate] = projection_predicates[..] {
                 let normalized_ty =
-                    cx.tcx.subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.ty);
+                    cx.tcx.subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.term.ty());
                 implements_trait(cx, receiver_ty, deref_trait_id, &[])
                     && get_associated_type(cx, receiver_ty, deref_trait_id, "Target") == Some(normalized_ty)
             } else {
