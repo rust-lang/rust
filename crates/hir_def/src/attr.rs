@@ -390,7 +390,9 @@ impl AttrsWithOwner {
                         if let InFile { file_id, value: ModuleSource::SourceFile(file) } =
                             mod_data.definition_source(db)
                         {
-                            map.merge(AttrSourceMap::new(InFile::new(file_id, &file)));
+                            map.append_module_inline_attrs(AttrSourceMap::new(InFile::new(
+                                file_id, &file,
+                            )));
                         }
                         return map;
                     }
@@ -552,6 +554,11 @@ fn inner_attributes(
 pub struct AttrSourceMap {
     source: Vec<Either<ast::Attr, ast::Comment>>,
     file_id: HirFileId,
+    /// If this map is for a module, this will be the [`HirFileId`] of the module's definition site,
+    /// while `file_id` will be the one of the module declaration site.
+    /// The usize is the index into `source` from which point on the entries reside in the def site
+    /// file.
+    mod_def_site_file_id: Option<(HirFileId, usize)>,
 }
 
 impl AttrSourceMap {
@@ -559,11 +566,19 @@ impl AttrSourceMap {
         Self {
             source: collect_attrs(owner.value).map(|(_, it)| it).collect(),
             file_id: owner.file_id,
+            mod_def_site_file_id: None,
         }
     }
 
-    fn merge(&mut self, other: Self) {
+    /// Append a second source map to this one, this is required for modules, whose outline and inline
+    /// attributes can reside in different files
+    fn append_module_inline_attrs(&mut self, other: Self) {
+        assert!(self.mod_def_site_file_id.is_none() && other.mod_def_site_file_id.is_none());
+        let len = self.source.len();
         self.source.extend(other.source);
+        if other.file_id != self.file_id {
+            self.mod_def_site_file_id = Some((other.file_id, len));
+        }
     }
 
     /// Maps the lowered `Attr` back to its original syntax node.
@@ -577,9 +592,15 @@ impl AttrSourceMap {
     }
 
     fn source_of_id(&self, id: AttrId) -> InFile<&Either<ast::Attr, ast::Comment>> {
+        let ast_idx = id.ast_index as usize;
+        let file_id = match self.mod_def_site_file_id {
+            Some((file_id, def_site_cut)) if def_site_cut <= ast_idx => file_id,
+            _ => self.file_id,
+        };
+
         self.source
-            .get(id.ast_index as usize)
-            .map(|it| InFile::new(self.file_id, it))
+            .get(ast_idx)
+            .map(|it| InFile::new(file_id, it))
             .unwrap_or_else(|| panic!("cannot find attr at index {:?}", id))
     }
 }
