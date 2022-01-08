@@ -16,10 +16,10 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::{Layout, Primitive, TagEncoding, Variants};
 
 use super::{
-    collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
-    render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_stability_since_raw, write_srclink, AssocItemLink, Context,
-    ImplRenderingParameters,
+    collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_section,
+    notable_traits_decl, render_assoc_item, render_assoc_items, render_attributes_in_code,
+    render_attributes_in_pre, render_impl, render_stability_since_raw, write_srclink,
+    AssocItemLink, Context, ImplRenderingParameters,
 };
 use crate::clean;
 use crate::formats::item_type::ItemType;
@@ -288,15 +288,15 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 w.write_str(ITEM_TABLE_CLOSE);
             }
             curty = myty;
-            let (short, name) = item_ty_to_strs(myty.unwrap());
+            let sec = item_ty_to_section(myty.unwrap());
             write!(
                 w,
                 "<h2 id=\"{id}\" class=\"small-section-header\">\
                     <a href=\"#{id}\">{name}</a>\
                  </h2>\n{}",
                 ITEM_TABLE_OPEN,
-                id = cx.derive_id(short.to_owned()),
-                name = name
+                id = cx.derive_id(sec.id().to_owned()),
+                name = sec.name(),
             );
         }
 
