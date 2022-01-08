@@ -2413,22 +2413,22 @@ fn sidebar_enum(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, e: &clean:
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 enum ItemSection {
     Reexports,
+    PrimitiveTypes,
     Modules,
+    Macros,
     Structs,
-    Unions,
     Enums,
+    Constants,
+    Statics,
+    Traits,
     Functions,
     TypeDefinitions,
-    Statics,
-    Constants,
-    Traits,
+    Unions,
     Implementations,
     TypeMethods,
     Methods,
     StructFields,
     Variants,
-    Macros,
-    PrimitiveTypes,
     AssociatedTypes,
     AssociatedConstants,
     ForeignTypes,
@@ -2440,6 +2440,38 @@ enum ItemSection {
 }
 
 impl ItemSection {
+    const ALL: &'static [Self] = {
+        use ItemSection::*;
+        // NOTE: The order here affects the order in the UI.
+        &[
+            Reexports,
+            PrimitiveTypes,
+            Modules,
+            Macros,
+            Structs,
+            Enums,
+            Constants,
+            Statics,
+            Traits,
+            Functions,
+            TypeDefinitions,
+            Unions,
+            Implementations,
+            TypeMethods,
+            Methods,
+            StructFields,
+            Variants,
+            AssociatedTypes,
+            AssociatedConstants,
+            ForeignTypes,
+            Keywords,
+            OpaqueTypes,
+            AttributeMacros,
+            DeriveMacros,
+            TraitAliases,
+        ]
+    };
+
     fn id(self) -> &'static str {
         match self {
             Self::Reexports => "reexports",
@@ -2535,39 +2567,13 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
 fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
     let mut sidebar = String::new();
 
-    let mut already_emitted_sections = FxHashSet::default();
-    // ordering taken from item_module, reorder, where it prioritized elements in a certain order
-    // to print its headings
-    for &myty in &[
-        ItemType::Import,
-        ItemType::Primitive,
-        ItemType::Module,
-        ItemType::Macro,
-        ItemType::Struct,
-        ItemType::Enum,
-        ItemType::Constant,
-        ItemType::Static,
-        ItemType::Trait,
-        ItemType::Function,
-        ItemType::Typedef,
-        ItemType::Union,
-        ItemType::Impl,
-        ItemType::TyMethod,
-        ItemType::Method,
-        ItemType::StructField,
-        ItemType::Variant,
-        ItemType::AssocType,
-        ItemType::AssocConst,
-        ItemType::ForeignType,
-        ItemType::Keyword,
-    ] {
-        if items.iter().any(|it| !it.is_stripped() && it.type_() == myty && it.name.is_some()) {
-            let sec = item_ty_to_section(myty);
-            if !already_emitted_sections.insert(sec) {
-                continue;
-            }
-            sidebar.push_str(&format!("<li><a href=\"#{}\">{}</a></li>", sec.id(), sec.name()));
-        }
+    let item_sections_in_use: FxHashSet<_> = items
+        .iter()
+        .filter(|it| !it.is_stripped() && it.name.is_some())
+        .map(|it| item_ty_to_section(it.type_()))
+        .collect();
+    for &sec in ItemSection::ALL.iter().filter(|sec| item_sections_in_use.contains(sec)) {
+        sidebar.push_str(&format!("<li><a href=\"#{}\">{}</a></li>", sec.id(), sec.name()));
     }
 
     if !sidebar.is_empty() {
