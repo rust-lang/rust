@@ -188,6 +188,14 @@ pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
     ast_from_text(&format!("use {};", name_ref))
 }
 
+pub fn path_segment_ty(type_ref: ast::Type, trait_ref: Option<ast::PathType>) -> ast::PathSegment {
+    let text = match trait_ref {
+        Some(trait_ref) => format!("fn f(x: <{} as {}>) {{}}", type_ref, trait_ref),
+        None => format!("fn f(x: <{}>) {{}}", type_ref),
+    };
+    ast_from_text(&text)
+}
+
 pub fn path_segment_self() -> ast::PathSegment {
     ast_from_text("use self;")
 }
@@ -218,9 +226,9 @@ pub fn path_from_segments(
 ) -> ast::Path {
     let segments = segments.into_iter().map(|it| it.syntax().clone()).join("::");
     ast_from_text(&if is_abs {
-        format!("use ::{};", segments)
+        format!("fn f(x: ::{}) {{}}", segments)
     } else {
-        format!("use {};", segments)
+        format!("fn f(x: {}) {{}}", segments)
     })
 }
 

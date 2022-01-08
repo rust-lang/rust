@@ -118,14 +118,20 @@ struct Ctx<'a> {
 
 impl<'a> Ctx<'a> {
     fn apply(&self, item: &SyntaxNode) {
-        for event in item.preorder() {
-            let node = match event {
-                syntax::WalkEvent::Enter(_) => continue,
-                syntax::WalkEvent::Leave(it) => it,
-            };
-            if let Some(path) = ast::Path::cast(node.clone()) {
-                self.transform_path(path);
-            }
+        // `transform_path` may update a node's parent and that would break the
+        // tree traversal. Thus all paths in the tree are collected into a vec
+        // so that such operation is safe.
+        let paths = item
+            .preorder()
+            .filter_map(|event| match event {
+                syntax::WalkEvent::Enter(_) => None,
+                syntax::WalkEvent::Leave(node) => Some(node),
+            })
+            .filter_map(ast::Path::cast)
+            .collect::<Vec<_>>();
+
+        for path in paths {
+            self.transform_path(path);
         }
     }
     fn transform_path(&self, path: ast::Path) -> Option<()> {
@@ -145,10 +151,60 @@ impl<'a> Ctx<'a> {
         match resolution {
             hir::PathResolution::TypeParam(tp) => {
                 if let Some(subst) = self.substs.get(&tp) {
-                    ted::replace(path.syntax(), subst.clone_subtree().clone_for_update().syntax())
+                    let parent = path.syntax().parent()?;
+                    if let Some(parent) = ast::Path::cast(parent.clone()) {
+                        // Path inside path means that there is an associated
+                        // type/constant on the type parameter. It is necessary
+                        // to fully qualify the type with `as Trait`. Even
+                        // though it might be unnecessary if `subst` is generic
+                        // type, always fully qualifying the path is safer
+                        // because of potential clash of associated types from
+                        // multiple traits
+
+                        let trait_ref = find_trait_for_assoc_item(
+                            self.source_scope,
+                            tp,
+                            parent.segment()?.name_ref()?,
+                        )
+                        .and_then(|trait_ref| {
+                            let found_path = self.target_module.find_use_path(
+                                self.source_scope.db.upcast(),
+                                hir::ModuleDef::Trait(trait_ref),
+                            )?;
+                            match ast::make::ty_path(mod_path_to_ast(&found_path)) {
+                                ast::Type::PathType(path_ty) => Some(path_ty),
+                                _ => None,
+                            }
+                        });
+
+                        let segment = ast::make::path_segment_ty(subst.clone(), trait_ref);
+                        let qualified =
+                            ast::make::path_from_segments(std::iter::once(segment), false);
+                        ted::replace(path.syntax(), qualified.clone_for_update().syntax());
+                    } else if let Some(path_ty) = ast::PathType::cast(parent) {
+                        ted::replace(
+                            path_ty.syntax(),
+                            subst.clone_subtree().clone_for_update().syntax(),
+                        );
+                    } else {
+                        ted::replace(
+                            path.syntax(),
+                            subst.clone_subtree().clone_for_update().syntax(),
+                        );
+                    }
                 }
             }
             hir::PathResolution::Def(def) => {
+                if let hir::ModuleDef::Trait(_) = def {
+                    if matches!(path.segment()?.kind()?, ast::PathSegmentKind::Type { .. }) {
+                        // `speculative_resolve` resolves segments like `<T as
+                        // Trait>` into `Trait`, but just the trait name should
+                        // not be used as the replacement of the original
+                        // segment.
+                        return None;
+                    }
+                }
+
                 let found_path =
                     self.target_module.find_use_path(self.source_scope.db.upcast(), def)?;
                 let res = mod_path_to_ast(&found_path).clone_for_update();
@@ -194,4 +250,35 @@ fn get_type_args_from_arg_list(generic_arg_list: ast::GenericArgList) -> Option<
     }
 
     Some(result)
+}
+
+fn find_trait_for_assoc_item(
+    scope: &SemanticsScope,
+    type_param: hir::TypeParam,
+    assoc_item: ast::NameRef,
+) -> Option<hir::Trait> {
+    let db = scope.db;
+    let trait_bounds = type_param.trait_bounds(db);
+
+    let assoc_item_name = assoc_item.text();
+
+    for trait_ in trait_bounds {
+        let names = trait_.items(db).into_iter().filter_map(|item| match item {
+            hir::AssocItem::TypeAlias(ta) => Some(ta.name(db)),
+            hir::AssocItem::Const(cst) => cst.name(db),
+            _ => None,
+        });
+
+        for name in names {
+            if assoc_item_name.as_str() == name.as_text()?.as_str() {
+                // It is fine to return the first match because in case of
+                // multiple possibilities, the exact trait must be disambiguated
+                // in the definition of trait being implemented, so this search
+                // should not be needed.
+                return Some(trait_);
+            }
+        }
+    }
+
+    None
 }
