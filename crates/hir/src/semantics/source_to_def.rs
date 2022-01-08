@@ -242,7 +242,7 @@ impl SourceToDefCtx<'_, '_> {
 
     pub(super) fn item_to_macro_call(&mut self, src: InFile<ast::Item>) -> Option<MacroCallId> {
         let map = self.dyn_map(src.as_ref())?;
-        map[keys::ATTR_MACRO_CALL].get(&src).copied()
+        map[keys::ATTR_MACRO_CALL].get(&src.value).copied()
     }
 
     pub(super) fn attr_to_derive_macro_call(
@@ -251,7 +251,7 @@ impl SourceToDefCtx<'_, '_> {
         src: InFile<ast::Attr>,
     ) -> Option<(AttrId, &[Option<MacroCallId>])> {
         let map = self.dyn_map(item)?;
-        map[keys::DERIVE_MACRO_CALL].get(&src).map(|(id, ids)| (*id, &**ids))
+        map[keys::DERIVE_MACRO_CALL].get(&src.value).map(|(id, ids)| (*id, &**ids))
     }
 
     fn to_def<Ast: AstNode + 'static, ID: Copy + 'static>(
@@ -259,7 +259,7 @@ impl SourceToDefCtx<'_, '_> {
         src: InFile<Ast>,
         key: Key<Ast, ID>,
     ) -> Option<ID> {
-        self.dyn_map(src.as_ref())?[key].get(&src).copied()
+        self.dyn_map(src.as_ref())?[key].get(&src.value).copied()
     }
 
     fn dyn_map<Ast: AstNode + 'static>(&mut self, src: InFile<&Ast>) -> Option<&DynMap> {
@@ -277,7 +277,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn type_param_to_def(&mut self, src: InFile<ast::TypeParam>) -> Option<TypeParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let dyn_map = self.cache_for(container, src.file_id);
-        dyn_map[keys::TYPE_PARAM].get(&src).copied()
+        dyn_map[keys::TYPE_PARAM].get(&src.value).copied()
     }
 
     pub(super) fn lifetime_param_to_def(
@@ -286,7 +286,7 @@ impl SourceToDefCtx<'_, '_> {
     ) -> Option<LifetimeParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let dyn_map = self.cache_for(container, src.file_id);
-        dyn_map[keys::LIFETIME_PARAM].get(&src).copied()
+        dyn_map[keys::LIFETIME_PARAM].get(&src.value).copied()
     }
 
     pub(super) fn const_param_to_def(
@@ -295,7 +295,7 @@ impl SourceToDefCtx<'_, '_> {
     ) -> Option<ConstParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let dyn_map = self.cache_for(container, src.file_id);
-        dyn_map[keys::CONST_PARAM].get(&src).copied()
+        dyn_map[keys::CONST_PARAM].get(&src.value).copied()
     }
 
     pub(super) fn generic_param_to_def(
@@ -316,9 +316,9 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn macro_to_def(&mut self, src: InFile<ast::Macro>) -> Option<MacroDefId> {
-        let makro = self.dyn_map(src.as_ref()).and_then(|it| it[keys::MACRO].get(&src).copied());
-        if let res @ Some(_) = makro {
-            return res;
+        let makro = self.dyn_map(src.as_ref()).and_then(|it| it[keys::MACRO].get(&src.value));
+        if let Some(&makro) = makro {
+            return Some(makro);
         }
 
         // Not all macros are recorded in the dyn map, only the ones behaving like items, so fall back
