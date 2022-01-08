@@ -1895,6 +1895,11 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// The unnecessary calls result in useless allocations.
     ///
+    /// ### Known problems
+    /// `unnecessary_to_owned` can falsely trigger if `IntoIterator::into_iter` is applied to an
+    /// owned copy of a resource and the resource is later used mutably. See
+    /// [#8148](https://github.com/rust-lang/rust-clippy/issues/8148).
+    ///
     /// ### Example
     /// ```rust
     /// let path = std::path::Path::new("x");
