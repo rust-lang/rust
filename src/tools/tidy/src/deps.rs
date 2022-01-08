@@ -73,6 +73,7 @@ const RESTRICTED_DEPENDENCY_CRATES: &[&str] = &["rustc_driver", "rustc_codegen_l
 const PERMITTED_DEPENDENCIES: &[&str] = &[
     "addr2line",
     "adler",
+    "ahash",
     "aho-corasick",
     "annotate-snippets",
     "ansi_term",
