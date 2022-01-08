@@ -276,7 +276,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     });
 
     debug!("{:?}", indices);
-    let mut curty = None;
+    let mut last_section = None;
 
     for &idx in &indices {
         let myitem = &items[idx];
@@ -284,24 +284,20 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             continue;
         }
 
-        let myty = Some(myitem.type_());
-        if curty == Some(ItemType::ExternCrate) && myty == Some(ItemType::Import) {
-            // Put `extern crate` and `use` re-exports in the same section.
-            curty = myty;
-        } else if myty != curty {
-            if curty.is_some() {
+        let my_section = item_ty_to_section(myitem.type_());
+        if Some(my_section) != last_section {
+            if last_section.is_some() {
                 w.write_str(ITEM_TABLE_CLOSE);
             }
-            curty = myty;
-            let sec = item_ty_to_section(myty.unwrap());
+            last_section = Some(my_section);
             write!(
                 w,
                 "<h2 id=\"{id}\" class=\"small-section-header\">\
                     <a href=\"#{id}\">{name}</a>\
                  </h2>\n{}",
                 ITEM_TABLE_OPEN,
-                id = cx.derive_id(sec.id().to_owned()),
-                name = sec.name(),
+                id = cx.derive_id(my_section.id().to_owned()),
+                name = my_section.name(),
             );
         }
 
@@ -417,7 +413,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
         }
     }
 
-    if curty.is_some() {
+    if last_section.is_some() {
         w.write_str(ITEM_TABLE_CLOSE);
     }
 }

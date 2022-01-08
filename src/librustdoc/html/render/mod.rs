@@ -2535,19 +2535,11 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
 fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
     let mut sidebar = String::new();
 
-    // Re-exports are handled a bit differently because they can be extern crates or imports.
-    if items.iter().any(|it| {
-        it.name.is_some()
-            && (it.type_() == ItemType::ExternCrate
-                || (it.type_() == ItemType::Import && !it.is_stripped()))
-    }) {
-        let sec = item_ty_to_section(ItemType::Import);
-        sidebar.push_str(&format!("<li><a href=\"#{}\">{}</a></li>", sec.id(), sec.name()));
-    }
-
+    let mut already_emitted_sections = FxHashSet::default();
     // ordering taken from item_module, reorder, where it prioritized elements in a certain order
     // to print its headings
     for &myty in &[
+        ItemType::Import,
         ItemType::Primitive,
         ItemType::Module,
         ItemType::Macro,
@@ -2571,6 +2563,9 @@ fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
     ] {
         if items.iter().any(|it| !it.is_stripped() && it.type_() == myty && it.name.is_some()) {
             let sec = item_ty_to_section(myty);
+            if !already_emitted_sections.insert(sec) {
+                continue;
+            }
             sidebar.push_str(&format!("<li><a href=\"#{}\">{}</a></li>", sec.id(), sec.name()));
         }
     }
