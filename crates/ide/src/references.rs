@@ -1514,4 +1514,25 @@ fn func$0() {
             "#]],
         )
     }
+
+    #[test]
+    fn attr_assoc_item() {
+        check(
+            r#"
+//- proc_macros: identity
+
+trait Trait {
+    #[proc_macros::identity]
+    fn func() {
+        Self::func$0();
+    }
+}
+"#,
+            expect![[r#"
+                func Function FileId(0) 48..87 51..55
+
+                FileId(0) 74..78
+            "#]],
+        )
+    }
 }

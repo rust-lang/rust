@@ -30,20 +30,31 @@ pub trait ChildBySource {
 impl ChildBySource for TraitId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = db.trait_data(*self);
-        // FIXME attribute macros
-        for &(_, item) in data.items.iter() {
+
+        data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
+            |(ast_id, call_id)| {
+                let item = ast_id.with_value(ast_id.to_node(db.upcast()));
+                res[keys::ATTR_MACRO_CALL].insert(item, call_id);
+            },
+        );
+        data.items.iter().for_each(|&(_, item)| {
             child_by_source_assoc_items(db, res, file_id, item);
-        }
+        });
     }
 }
 
 impl ChildBySource for ImplId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let data = db.impl_data(*self);
-        // FIXME attribute macros
-        for &item in data.items.iter() {
+        data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
+            |(ast_id, call_id)| {
+                let item = ast_id.with_value(ast_id.to_node(db.upcast()));
+                res[keys::ATTR_MACRO_CALL].insert(item, call_id);
+            },
+        );
+        data.items.iter().for_each(|&item| {
             child_by_source_assoc_items(db, res, file_id, item);
-        }
+        });
     }
 }
 
@@ -97,7 +108,7 @@ impl ChildBySource for ItemScope {
                     // FIXME: Do we need to add proc-macros into a PROCMACRO dynmap here?
                     Either::Right(_fn) => return,
                 };
-                res[keys::MACRO_CALL].insert(src, makro);
+                res[keys::MACRO].insert(src, makro);
             }
         });
         self.unnamed_consts().for_each(|konst| {

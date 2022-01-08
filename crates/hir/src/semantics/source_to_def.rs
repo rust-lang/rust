@@ -316,8 +316,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn macro_to_def(&mut self, src: InFile<ast::Macro>) -> Option<MacroDefId> {
-        let makro =
-            self.dyn_map(src.as_ref()).and_then(|it| it[keys::MACRO_CALL].get(&src).copied());
+        let makro = self.dyn_map(src.as_ref()).and_then(|it| it[keys::MACRO].get(&src).copied());
         if let res @ Some(_) = makro {
             return res;
         }
