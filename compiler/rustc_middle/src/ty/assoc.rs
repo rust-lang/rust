@@ -40,6 +40,7 @@ impl AssocItemContainer {
     }
 }
 
+/// Information about an associated item
 #[derive(Copy, Clone, Debug, PartialEq, HashStable, Eq, Hash)]
 pub struct AssocItem {
     pub def_id: DefId,
@@ -49,6 +50,10 @@ pub struct AssocItem {
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
     pub container: AssocItemContainer,
+
+    /// If this is an item in an impl of a trait then this is the `DefId` of
+    /// the associated item on the trait that this implements.
+    pub trait_item_def_id: Option<DefId>,
 
     /// Whether this is a method with an explicit self
     /// as its first parameter, allowing method calls.

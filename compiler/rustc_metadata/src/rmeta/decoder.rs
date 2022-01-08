@@ -1008,6 +1008,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.get_impl_data(id).constness
     }
 
+    fn get_trait_item_def_id(&self, id: DefIndex) -> Option<DefId> {
+        self.root.tables.trait_item_def_id.get(self, id).map(|d| d.decode(self))
+    }
+
     fn get_coerce_unsized_info(&self, id: DefIndex) -> Option<ty::adjustment::CoerceUnsizedInfo> {
         self.get_impl_data(id).coerce_unsized_info
     }
@@ -1258,6 +1262,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
+    fn get_associated_item_def_ids(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> &'tcx [DefId] {
+        if let Some(children) = self.root.tables.children.get(self, id) {
+            tcx.arena.alloc_from_iter(
+                children.decode((self, tcx.sess)).map(|child_index| self.local_def_id(child_index)),
+            )
+        } else {
+            &[]
+        }
+    }
+
     fn get_associated_item(&self, id: DefIndex, sess: &Session) -> ty::AssocItem {
         let def_key = self.def_key(id);
         let parent = self.local_def_id(def_key.parent.unwrap());
@@ -1279,6 +1293,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             vis: self.get_visibility(id),
             defaultness: container.defaultness(),
             def_id: self.local_def_id(id),
+            trait_item_def_id: self.get_trait_item_def_id(id),
             container: container.with_def_id(parent),
             fn_has_self_parameter: has_self,
         }

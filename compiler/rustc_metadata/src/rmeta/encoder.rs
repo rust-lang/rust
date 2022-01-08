@@ -1294,6 +1294,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
         self.encode_ident_span(def_id, impl_item.ident);
         self.encode_item_type(def_id);
+        if let Some(trait_item_def_id) = impl_item.trait_item_def_id {
+            record!(self.tables.trait_item_def_id[def_id] <- trait_item_def_id);
+        }
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }

@@ -566,7 +566,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: S
 
 fn report_forbidden_specialization(
     tcx: TyCtxt<'_>,
-    impl_item: &hir::ImplItem<'_>,
+    impl_item: &hir::ImplItemRef,
     parent_impl: DefId,
 ) {
     let mut err = struct_span_err!(
@@ -598,7 +598,7 @@ fn report_forbidden_specialization(
 fn missing_items_err(
     tcx: TyCtxt<'_>,
     impl_span: Span,
-    missing_items: &[ty::AssocItem],
+    missing_items: &[&ty::AssocItem],
     full_impl_span: Span,
 ) {
     let missing_items_msg = missing_items

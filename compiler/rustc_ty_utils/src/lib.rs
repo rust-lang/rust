@@ -16,6 +16,7 @@ extern crate tracing;
 
 use rustc_middle::ty::query::Providers;
 
+mod assoc;
 mod common_traits;
 pub mod instance;
 mod needs_drop;
@@ -23,6 +24,7 @@ pub mod representability;
 mod ty;
 
 pub fn provide(providers: &mut Providers) {
+    assoc::provide(providers);
     common_traits::provide(providers);
     needs_drop::provide(providers);
     ty::provide(providers);

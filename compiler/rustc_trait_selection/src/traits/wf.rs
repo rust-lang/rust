@@ -197,14 +197,13 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     item: Option<&hir::Item<'tcx>>,
     cause: &mut traits::ObligationCause<'tcx>,
     pred: &ty::Predicate<'tcx>,
-    mut trait_assoc_items: impl Iterator<Item = &'tcx ty::AssocItem>,
 ) {
     debug!(
         "extended_cause_with_original_assoc_item_obligation {:?} {:?} {:?} {:?}",
         trait_ref, item, cause, pred
     );
-    let items = match item {
-        Some(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.items,
+    let (items, impl_def_id) = match item {
+        Some(hir::Item { kind: hir::ItemKind::Impl(impl_), def_id, .. }) => (impl_.items, *def_id),
         _ => return,
     };
     let fix_span =
@@ -222,11 +221,16 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // `src/test/ui/associated-types/point-at-type-on-obligation-failure.rs` and
             // `traits-assoc-type-in-supertrait-bad.rs`.
             if let ty::Projection(projection_ty) = proj.ty.kind() {
-                let trait_assoc_item = tcx.associated_item(projection_ty.item_def_id);
-                if let Some(impl_item_span) =
-                    items.iter().find(|item| item.ident == trait_assoc_item.ident).map(fix_span)
+                if let Some(&impl_item_id) =
+                    tcx.impl_item_implementor_ids(impl_def_id).get(&projection_ty.item_def_id)
                 {
-                    cause.span = impl_item_span;
+                    if let Some(impl_item_span) = items
+                        .iter()
+                        .find(|item| item.id.def_id.to_def_id() == impl_item_id)
+                        .map(fix_span)
+                    {
+                        cause.span = impl_item_span;
+                    }
                 }
             }
         }
@@ -235,13 +239,16 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // can be seen in `ui/associated-types/point-at-type-on-obligation-failure-2.rs`.
             debug!("extended_cause_with_original_assoc_item_obligation trait proj {:?}", pred);
             if let ty::Projection(ty::ProjectionTy { item_def_id, .. }) = *pred.self_ty().kind() {
-                if let Some(impl_item_span) = trait_assoc_items
-                    .find(|i| i.def_id == item_def_id)
-                    .and_then(|trait_assoc_item| {
-                        items.iter().find(|i| i.ident == trait_assoc_item.ident).map(fix_span)
-                    })
+                if let Some(&impl_item_id) =
+                    tcx.impl_item_implementor_ids(impl_def_id).get(&item_def_id)
                 {
-                    cause.span = impl_item_span;
+                    if let Some(impl_item_span) = items
+                        .iter()
+                        .find(|item| item.id.def_id.to_def_id() == impl_item_id)
+                        .map(fix_span)
+                    {
+                        cause.span = impl_item_span;
+                    }
                 }
             }
         }
@@ -312,7 +319,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 item,
                 &mut cause,
                 &obligation.predicate,
-                tcx.associated_items(trait_ref.def_id).in_definition_order(),
             );
             traits::Obligation::with_depth(cause, depth, param_env, obligation.predicate)
         };

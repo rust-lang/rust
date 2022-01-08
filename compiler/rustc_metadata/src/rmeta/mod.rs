@@ -302,6 +302,7 @@ define_tables! {
     ty: Table<DefIndex, Lazy!(Ty<'tcx>)>,
     fn_sig: Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>,
     impl_trait_ref: Table<DefIndex, Lazy!(ty::TraitRef<'tcx>)>,
+    trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
     variances: Table<DefIndex, Lazy<[ty::Variance]>>,
     generics: Table<DefIndex, Lazy<ty::Generics>>,

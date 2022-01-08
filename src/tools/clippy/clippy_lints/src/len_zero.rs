@@ -214,14 +214,14 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
     {
         let mut current_and_super_traits = DefIdSet::default();
         fill_trait_set(visited_trait.def_id.to_def_id(), &mut current_and_super_traits, cx);
+        let is_empty = sym!(is_empty);
 
         let is_empty_method_found = current_and_super_traits
             .iter()
-            .flat_map(|&i| cx.tcx.associated_items(i).in_definition_order())
+            .flat_map(|&i| cx.tcx.associated_items(i).filter_by_name_unhygienic(is_empty))
             .any(|i| {
                 i.kind == ty::AssocKind::Fn
                     && i.fn_has_self_parameter
-                    && i.ident.name == sym!(is_empty)
                     && cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
             });
 
@@ -458,7 +458,7 @@ fn is_empty_array(expr: &Expr<'_>) -> bool {
 fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     /// Gets an `AssocItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_>, item: &ty::AssocItem) -> bool {
-        if item.kind == ty::AssocKind::Fn && item.ident.name.as_str() == "is_empty" {
+        if item.kind == ty::AssocKind::Fn {
             let sig = cx.tcx.fn_sig(item.def_id);
             let ty = sig.skip_binder();
             ty.inputs().len() == 1
@@ -469,10 +469,11 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
     /// Checks the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext<'_>, id: DefId) -> bool {
+        let is_empty = sym!(is_empty);
         cx.tcx.inherent_impls(id).iter().any(|imp| {
             cx.tcx
                 .associated_items(*imp)
-                .in_definition_order()
+                .filter_by_name_unhygienic(is_empty)
                 .any(|item| is_is_empty(cx, item))
         })
     }
@@ -480,9 +481,10 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = &cx.typeck_results().expr_ty(expr).peel_refs();
     match ty.kind() {
         ty::Dynamic(tt, ..) => tt.principal().map_or(false, |principal| {
+            let is_empty = sym!(is_empty);
             cx.tcx
                 .associated_items(principal.def_id())
-                .in_definition_order()
+                .filter_by_name_unhygienic(is_empty)
                 .any(|item| is_is_empty(cx, item))
         }),
         ty::Projection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),

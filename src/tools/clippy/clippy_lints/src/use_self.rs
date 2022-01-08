@@ -13,7 +13,6 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
-use rustc_middle::ty::AssocKind;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -143,10 +142,10 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 // trait, not in the impl of the trait.
                 let trait_method = cx
                     .tcx
-                    .associated_items(impl_trait_ref.def_id)
-                    .find_by_name_and_kind(cx.tcx, impl_item.ident, AssocKind::Fn, impl_trait_ref.def_id)
+                    .associated_item(impl_item.def_id)
+                    .trait_item_def_id
                     .expect("impl method matches a trait method");
-                let trait_method_sig = cx.tcx.fn_sig(trait_method.def_id);
+                let trait_method_sig = cx.tcx.fn_sig(trait_method);
                 let trait_method_sig = cx.tcx.erase_late_bound_regions(trait_method_sig);
 
                 // `impl_inputs_outputs` is an iterator over the types (`hir::Ty`) declared in the
