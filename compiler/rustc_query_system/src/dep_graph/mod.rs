@@ -5,13 +5,14 @@ mod query;
 mod serialized;
 
 pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
-pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
+pub use graph::{
+    hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, TaskDepsRef, WorkProduct,
+};
 pub use query::DepGraphQuery;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sync::Lock;
 use rustc_serialize::{opaque::FileEncoder, Encodable};
 use rustc_session::Session;
 
@@ -90,12 +91,12 @@ pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder>
     fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
     /// Execute the operation with provided dependencies.
-    fn with_deps<OP, R>(deps: Option<&Lock<TaskDeps<Self>>>, op: OP) -> R
+    fn with_deps<OP, R>(deps: TaskDepsRef<'_, Self>, op: OP) -> R
     where
         OP: FnOnce() -> R;
 
     /// Access dependencies from current implicit context.
     fn read_deps<OP>(op: OP)
     where
-        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>);
+        OP: for<'a> FnOnce(TaskDepsRef<'a, Self>);
 }

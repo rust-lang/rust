@@ -1,6 +1,5 @@
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sync::Lock;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::Session;
 
@@ -17,6 +16,7 @@ crate use dep_node::{make_compile_codegen_unit, make_compile_mono_item};
 
 pub type DepGraph = rustc_query_system::dep_graph::DepGraph<DepKind>;
 pub type TaskDeps = rustc_query_system::dep_graph::TaskDeps<DepKind>;
+pub type TaskDepsRef<'a> = rustc_query_system::dep_graph::TaskDepsRef<'a, DepKind>;
 pub type DepGraphQuery = rustc_query_system::dep_graph::DepGraphQuery<DepKind>;
 pub type SerializedDepGraph = rustc_query_system::dep_graph::SerializedDepGraph<DepKind>;
 pub type EdgeFilter = rustc_query_system::dep_graph::debug::EdgeFilter<DepKind>;
@@ -45,7 +45,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
         write!(f, ")")
     }
 
-    fn with_deps<OP, R>(task_deps: Option<&Lock<TaskDeps>>, op: OP) -> R
+    fn with_deps<OP, R>(task_deps: TaskDepsRef<'_>, op: OP) -> R
     where
         OP: FnOnce() -> R,
     {
@@ -58,7 +58,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
 
     fn read_deps<OP>(op: OP)
     where
-        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps>>),
+        OP: for<'a> FnOnce(TaskDepsRef<'a>),
     {
         ty::tls::with_context_opt(|icx| {
             let icx = if let Some(icx) = icx { icx } else { return };
