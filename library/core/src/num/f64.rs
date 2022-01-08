@@ -643,6 +643,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn recip(self) -> f64 {
@@ -700,6 +701,7 @@ impl f64 {
     /// ```
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn max(self, other: f64) -> f64 {
@@ -719,6 +721,7 @@ impl f64 {
     /// ```
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn min(self, other: f64) -> f64 {
@@ -742,6 +745,7 @@ impl f64 {
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
     /// Note that this follows the semantics specified in IEEE 754-2019.
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub fn maximum(self, other: f64) -> f64 {
@@ -773,6 +777,7 @@ impl f64 {
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
     /// Note that this follows the semantics specified in IEEE 754-2019.
+    #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
     pub fn minimum(self, other: f64) -> f64 {
