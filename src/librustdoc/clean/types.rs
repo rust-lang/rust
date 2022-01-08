@@ -1082,9 +1082,6 @@ impl Attributes {
         let mut out = String::new();
         add_doc_fragment(&mut out, ori);
         for new_frag in iter {
-            if new_frag.kind != ori.kind || new_frag.parent_module != ori.parent_module {
-                break;
-            }
             add_doc_fragment(&mut out, new_frag);
         }
         out.pop();
