@@ -37,12 +37,6 @@ pub struct Bounds<'tcx> {
     /// here.
     pub projection_bounds: Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>,
 
-    /// A list of const equality bounds. So if you had `T:
-    /// Iterator<N = 4>` this would include `<T as
-    /// Iterator>::N => 4`. Note that the self-type is explicit
-    /// here.
-    pub const_bounds: Vec<(ty::Binder<'tcx, ty::ConstPredicate<'tcx>>, Span)>,
-
     /// `Some` if there is *no* `?Sized` predicate. The `span`
     /// is the location in the source of the `T` declaration which can
     /// be cited as the source of the `T: Sized` requirement.
@@ -90,24 +84,7 @@ impl<'tcx> Bounds<'tcx> {
             .projection_bounds
             .iter()
             .map(move |&(projection, span)| (projection.to_predicate(tcx), span));
-        let const_bounds = self.const_bounds.iter().map(move |&(bound, span)| {
-            // FIXME(...): what about the projection's generics?
-            // Is this the right local defid? Or should I get the self ty then
-            let pred = bound
-                .map_bound(|cp| {
-                    let got =
-                        ty::Const::from_anon_const(tcx, cp.projection.item_def_id.expect_local());
-                    ty::PredicateKind::ConstEquate(cp.c, got)
-                })
-                .to_predicate(tcx);
-            (pred, span)
-        });
 
-        sized_predicate
-            .into_iter()
-            .chain(region_preds)
-            .chain(trait_bounds)
-            .chain(projection_bounds)
-            .chain(const_bounds)
+        sized_predicate.into_iter().chain(region_preds).chain(trait_bounds).chain(projection_bounds)
     }
 }

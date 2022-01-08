@@ -67,11 +67,7 @@ fn opaque_type_bounds<'tcx>(
         let mut bounds = <dyn AstConv<'_>>::compute_bounds(&icx, item_ty, ast_bounds);
         // Opaque types are implicitly sized unless a `?Sized` bound is found
         <dyn AstConv<'_>>::add_implicitly_sized(&icx, &mut bounds, ast_bounds, None, span);
-        let preds = bounds.predicates(tcx, item_ty);
-
-        let bounds = tcx.arena.alloc_from_iter(preds);
-        debug!("opaque_type_bounds({}) = {:?}", tcx.def_path_str(opaque_def_id), bounds);
-        bounds
+        tcx.arena.alloc_from_iter(bounds.predicates(tcx, item_ty))
     })
 }
 

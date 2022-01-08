@@ -8,7 +8,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::fold::ValidateBoundVars;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::InferTy::{self, *};
-use crate::ty::{self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable};
+use crate::ty::{self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeFoldable};
 use crate::ty::{DelaySpanBugEmitted, List, ParamEnv, TyS};
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
@@ -1570,7 +1570,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
                 item_def_id: self.item_def_id,
                 substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
-            ty: self.ty,
+            term: self.ty.into(),
         }
     }
 
@@ -1580,11 +1580,16 @@ impl<'tcx> ExistentialProjection<'tcx> {
     ) -> Self {
         // Assert there is a Self.
         projection_predicate.projection_ty.substs.type_at(0);
+        let ty = if let Term::Ty(ty) = projection_predicate.term {
+            ty
+        } else {
+            todo!();
+        };
 
         Self {
             item_def_id: projection_predicate.projection_ty.item_def_id,
             substs: tcx.intern_substs(&projection_predicate.projection_ty.substs[1..]),
-            ty: projection_predicate.ty,
+            ty,
         }
     }
 }

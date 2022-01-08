@@ -964,9 +964,7 @@ impl<'a> State<'a> {
                     Term::Const(c) => self.print_expr_anon_const(c),
                 }
             }
-            ast::AssocConstraintKind::Bound { bounds } => {
-                self.print_type_bounds(":", &*bounds);
-            }
+            ast::AssocConstraintKind::Bound { bounds } => self.print_type_bounds(":", &*bounds),
         }
     }
 

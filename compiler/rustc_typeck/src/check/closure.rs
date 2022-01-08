@@ -279,7 +279,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let ret_param_ty = projection.skip_binder().ty;
+        let ret_param_ty = projection.skip_binder().term.ty();
         let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
         debug!("deduce_sig_from_projection: ret_param_ty={:?}", ret_param_ty);
 
@@ -706,7 +706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Extract the type from the projection. Note that there can
         // be no bound variables in this type because the "self type"
         // does not have any regions in it.
-        let output_ty = self.resolve_vars_if_possible(predicate.ty);
+        let output_ty = self.resolve_vars_if_possible(predicate.term.ty());
         debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
         Some(output_ty)
     }

@@ -214,7 +214,7 @@ fn project_and_unify_type<'cx, 'tcx>(
     let infcx = selcx.infcx();
     match infcx
         .at(&obligation.cause, obligation.param_env)
-        .eq(normalized_ty, obligation.predicate.ty)
+        .eq(normalized_ty, obligation.predicate.term.ty())
     {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
@@ -1615,7 +1615,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
                 substs: trait_ref.substs,
                 item_def_id: obligation.predicate.item_def_id,
             },
-            ty,
+            term: ty.into(),
         }
     });
 
@@ -1641,7 +1641,7 @@ fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
 
     let predicate = ty::ProjectionPredicate {
         projection_ty: ty::ProjectionTy { substs, item_def_id: discriminant_def_id },
-        ty: self_ty.discriminant_ty(tcx),
+        term: self_ty.discriminant_ty(tcx).into(),
     };
 
     // We get here from `poly_project_and_unify_type` which replaces bound vars
@@ -1674,7 +1674,7 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
 
     let predicate = ty::ProjectionPredicate {
         projection_ty: ty::ProjectionTy { substs, item_def_id: metadata_def_id },
-        ty: metadata_ty,
+        term: metadata_ty.into(),
     };
 
     confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
@@ -1747,7 +1747,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
             substs: trait_ref.substs,
             item_def_id: fn_once_output_def_id,
         },
-        ty: ret_type,
+        term: ret_type.into(),
     });
 
     confirm_param_env_candidate(selcx, obligation, predicate, true)
@@ -1803,7 +1803,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
             assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
-            Progress { ty: cache_entry.ty, obligations: nested_obligations }
+            Progress { ty: cache_entry.term.ty(), obligations: nested_obligations }
         }
         Err(e) => {
             let msg = format!(

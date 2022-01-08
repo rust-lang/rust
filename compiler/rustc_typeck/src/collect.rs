@@ -664,7 +664,11 @@ impl<'tcx> ItemCtxt<'tcx> {
             .params
             .iter()
             .filter_map(|param| match param.kind {
-                GenericParamKind::Type { .. } if param.hir_id == param_id => Some(&param.bounds),
+                GenericParamKind::Type { .. } | GenericParamKind::Const { .. }
+                    if param.hir_id == param_id =>
+                {
+                    Some(&param.bounds)
+                }
                 _ => None,
             })
             .flat_map(|bounds| bounds.iter())

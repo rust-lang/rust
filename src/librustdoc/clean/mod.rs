@@ -354,7 +354,8 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
 
 impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> WherePredicate {
-        let ty::ProjectionPredicate { projection_ty, ty } = self;
+        let ty::ProjectionPredicate { projection_ty, term } = self;
+        let ty = term.ty();
         WherePredicate::EqPredicate { lhs: projection_ty.clean(cx), rhs: ty.clean(cx) }
     }
 }
@@ -623,8 +624,9 @@ fn clean_ty_generics(
                             .filter(|b| !b.is_sized_bound(cx)),
                     );
 
-                    let proj = projection
-                        .map(|p| (p.skip_binder().projection_ty.clean(cx), p.skip_binder().ty));
+                    let proj = projection.map(|p| {
+                        (p.skip_binder().projection_ty.clean(cx), p.skip_binder().term.ty())
+                    });
                     if let Some(((_, trait_did, name), rhs)) =
                         proj.as_ref().and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs)))
                     {
@@ -1566,7 +1568,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                                                 .ident
                                                 .name,
                                             kind: TypeBindingKind::Equality {
-                                                ty: proj.ty.clean(cx),
+                                                ty: proj.term.ty().clean(cx),
                                             },
                                         })
                                     } else {
@@ -2114,10 +2116,10 @@ impl Clean<TypeBinding> for hir::TypeBinding<'_> {
 impl Clean<TypeBindingKind> for hir::TypeBindingKind<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> TypeBindingKind {
         match *self {
-            hir::TypeBindingKind::Equality { ref ty } => {
-                TypeBindingKind::Equality { ty: ty.clean(cx) }
-            }
-            hir::TypeBindingKind::Const { c: _ } => todo!(),
+            hir::TypeBindingKind::Equality { ref term } => match term {
+                hir::Term::Ty(ref ty) => TypeBindingKind::Equality { ty: ty.clean(cx) },
+                hir::Term::Const(ref _c) => todo!(),
+            },
             hir::TypeBindingKind::Constraint { ref bounds } => TypeBindingKind::Constraint {
                 bounds: bounds.iter().filter_map(|b| b.clean(cx)).collect(),
             },

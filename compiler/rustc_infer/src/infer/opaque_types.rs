@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, OpaqueTypeKey, Term, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::Span;
 
 use std::ops::ControlFlow;
@@ -584,9 +584,13 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             debug!(?predicate);
 
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
-                if projection.ty.references_error() {
-                    // No point on adding these obligations since there's a type error involved.
-                    return tcx.ty_error();
+                if let Term::Ty(ty) = projection.term {
+                    if ty.references_error() {
+                        // No point on adding these obligations since there's a type error involved.
+                        return tcx.ty_error();
+                    }
+                } else {
+                    todo!();
                 }
             }
 

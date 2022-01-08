@@ -1,5 +1,5 @@
 use crate::ty::subst::{GenericArg, GenericArgKind};
-use crate::ty::{self, InferConst, Ty, TypeFlags};
+use crate::ty::{self, InferConst, Term, Ty, TypeFlags};
 use std::slice;
 
 #[derive(Debug)]
@@ -241,9 +241,12 @@ impl FlagComputation {
                 self.add_ty(a);
                 self.add_ty(b);
             }
-            ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, ty }) => {
+            ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
                 self.add_projection_ty(projection_ty);
-                self.add_ty(ty);
+                match term {
+                    Term::Ty(ty) => self.add_ty(ty),
+                    Term::Const(_c) => todo!(),
+                }
             }
             ty::PredicateKind::WellFormed(arg) => {
                 self.add_substs(slice::from_ref(&arg));

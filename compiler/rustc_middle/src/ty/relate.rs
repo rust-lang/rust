@@ -7,7 +7,7 @@
 use crate::mir::interpret::{get_slice_bytes, ConstValue, GlobalAlloc, Scalar};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, Term, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
 use rustc_span::DUMMY_SP;
@@ -839,10 +839,13 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
         a: ty::ProjectionPredicate<'tcx>,
         b: ty::ProjectionPredicate<'tcx>,
     ) -> RelateResult<'tcx, ty::ProjectionPredicate<'tcx>> {
-        Ok(ty::ProjectionPredicate {
-            projection_ty: relation.relate(a.projection_ty, b.projection_ty)?,
-            ty: relation.relate(a.ty, b.ty)?,
-        })
+        match (a.term, b.term) {
+            (Term::Ty(a_ty), Term::Ty(b_ty)) => Ok(ty::ProjectionPredicate {
+                projection_ty: relation.relate(a.projection_ty, b.projection_ty)?,
+                term: relation.relate(a_ty, b_ty)?.into(),
+            }),
+            _ => todo!(),
+        }
     }
 }
 

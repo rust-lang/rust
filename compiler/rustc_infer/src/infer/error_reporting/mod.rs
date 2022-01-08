@@ -69,7 +69,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self,
     subst::{GenericArgKind, Subst, SubstsRef},
-    Region, Ty, TyCtxt, TypeFoldable,
+    Region, Term, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_span::{sym, BytePos, DesugaringKind, MultiSpan, Pos, Span};
 use rustc_target::spec::abi;
@@ -1780,7 +1780,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 {
                     if projection_predicate.projection_ty.item_def_id == item_def_id {
                         // We don't account for multiple `Future::Output = Ty` contraints.
-                        return Some(projection_predicate.ty);
+                        match projection_predicate.term {
+                            Term::Ty(ty) => return Some(ty),
+                            // Can return None, but not sure if that makes sense?
+                            Term::Const(_c) => todo!(),
+                        }
                     }
                 }
             }

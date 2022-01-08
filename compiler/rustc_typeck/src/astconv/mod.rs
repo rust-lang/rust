@@ -602,14 +602,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .iter()
             .map(|binding| {
                 let kind = match binding.kind {
-                    hir::TypeBindingKind::Equality { ty } => {
-                        ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty))
-                    }
-                    hir::TypeBindingKind::Const { ref c } => {
-                        let local_did = self.tcx().hir().local_def_id(c.hir_id);
-                        let c = Const::from_anon_const(self.tcx(), local_did);
-                        ConvertedBindingKind::Const(&c)
-                    }
+                    hir::TypeBindingKind::Equality { ref term } => match term {
+                        hir::Term::Ty(ref ty) => {
+                            ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty))
+                        }
+                        hir::Term::Const(ref c) => {
+                            let local_did = self.tcx().hir().local_def_id(c.hir_id);
+                            let c = Const::from_anon_const(self.tcx(), local_did);
+                            ConvertedBindingKind::Const(&c)
+                        }
+                    },
                     hir::TypeBindingKind::Constraint { ref bounds } => {
                         ConvertedBindingKind::Constraint(bounds)
                     }
@@ -1227,21 +1229,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 //
                 // `<T as Iterator>::Item = u32`
                 bounds.projection_bounds.push((
-                    projection_ty.map_bound(|projection_ty| {
-                        debug!(
-                            "add_predicates_for_ast_type_binding: projection_ty {:?}, substs: {:?}",
-                            projection_ty, projection_ty.substs
-                        );
-                        ty::ProjectionPredicate { projection_ty, ty }
+                    projection_ty.map_bound(|projection_ty| ty::ProjectionPredicate {
+                        projection_ty,
+                        term: ty.into(),
                     }),
                     binding.span,
                 ));
             }
             ConvertedBindingKind::Const(c) => {
-                bounds.const_bounds.push((
-                    projection_ty.map_bound(|projection_ty| ty::ConstPredicate {
-                        projection: projection_ty,
-                        c,
+                bounds.projection_bounds.push((
+                    projection_ty.map_bound(|projection_ty| ty::ProjectionPredicate {
+                        projection_ty,
+                        term: c.into(),
                     }),
                     binding.span,
                 ));
@@ -1393,7 +1392,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
                         let references_self =
-                            pred.skip_binder().ty.walk().any(|arg| arg == dummy_self.into());
+                            pred.skip_binder().term.ty().walk().any(|arg| arg == dummy_self.into());
 
                         // If the projection output contains `Self`, force the user to
                         // elaborate it explicitly to avoid a lot of complexity.

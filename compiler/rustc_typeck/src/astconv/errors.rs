@@ -151,8 +151,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .bindings
                     .iter()
                     .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
-                        (true, hir::TypeBindingKind::Equality { ty }) => {
-                            sess.source_map().span_to_snippet(ty.span).ok()
+                        (true, hir::TypeBindingKind::Equality { term }) => {
+                            let span = match term {
+                                hir::Term::Ty(ty) => ty.span,
+                                hir::Term::Const(c) => self.tcx().hir().span(c.hir_id),
+                            };
+                            sess.source_map().span_to_snippet(span).ok()
                         }
                         _ => None,
                     })

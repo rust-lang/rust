@@ -789,7 +789,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     item_def_id: projection_ty.item_def_id,
                                 };
 
-                                let ty = pred.skip_binder().ty;
+                                let ty: Ty<'_> = pred.skip_binder().term.ty();
 
                                 let obligation = format!("{} = {}", projection_ty, ty);
                                 let quiet = format!("{} = {}", quiet_projection_ty, ty);

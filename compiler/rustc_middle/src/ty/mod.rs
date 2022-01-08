@@ -484,7 +484,7 @@ crate struct PredicateInner<'tcx> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PredicateInner<'_>, 48);
+static_assert_size!(PredicateInner<'_>, 56);
 
 #[derive(Clone, Copy, Lift)]
 pub struct Predicate<'tcx> {
@@ -795,11 +795,35 @@ pub struct CoercePredicate<'tcx> {
 }
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable)]
+pub enum Term<'tcx> {
+    Ty(Ty<'tcx>),
+    Const(&'tcx Const<'tcx>),
+}
+
+impl<'tcx> From<Ty<'tcx>> for Term<'tcx> {
+    fn from(ty: Ty<'tcx>) -> Self {
+        Term::Ty(ty)
+    }
+}
+
+impl<'tcx> From<&'tcx Const<'tcx>> for Term<'tcx> {
+    fn from(c: &'tcx Const<'tcx>) -> Self {
+        Term::Const(c)
+    }
+}
+
+impl<'tcx> Term<'tcx> {
+    pub fn ty(&self) -> Ty<'tcx> {
+        if let Term::Ty(ty) = self { ty } else { panic!("Expected type") }
+    }
+}
+
 /// This kind of predicate has no *direct* correspondent in the
 /// syntax, but it roughly corresponds to the syntactic forms:
 ///
 /// 1. `T: TraitRef<..., Item = Type>`
-/// - Or `T: TraitRef<..., Item = Const>`
 /// 2. `<T as TraitRef<...>>::Item == Type` (NYI)
 ///
 /// In particular, form #1 is "desugared" to the combination of a
@@ -812,26 +836,7 @@ pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 #[derive(HashStable, TypeFoldable)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
-    pub ty: Ty<'tcx>,
-}
-
-/// This kind of predicate has no *direct* correspondent in the
-/// syntax, but it roughly corresponds to the syntactic forms:
-///
-/// 1. `T: TraitRef<..., Item = Const>`
-/// 2. `<T as TraitRef<...>>::Item == Const` (NYI)
-///
-/// In particular, form #1 is "desugared" to the combination of a
-/// normal trait predicate (`T: TraitRef<...>`) and one of these
-/// predicates. Form #2 is a broader form in that it also permits
-/// equality between arbitrary types. Processing an instance of
-/// Form #2 eventually yields one of these `ProjectionPredicate`
-/// instances to normalize the LHS.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug)]
-#[derive(HashStable, TypeFoldable)]
-pub struct ConstPredicate<'tcx> {
-    pub projection: ProjectionTy<'tcx>,
-    pub c: &'tcx Const<'tcx>,
+    pub term: Term<'tcx>,
 }
 
 pub type PolyProjectionPredicate<'tcx> = Binder<'tcx, ProjectionPredicate<'tcx>>;
@@ -857,7 +862,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     }
 
     pub fn ty(&self) -> Binder<'tcx, Ty<'tcx>> {
-        self.map_bound(|predicate| predicate.ty)
+        self.map_bound(|predicate| if let Term::Ty(ty) = predicate.term { ty } else { todo!() })
     }
 
     /// The `DefId` of the `TraitItem` for the associated type.

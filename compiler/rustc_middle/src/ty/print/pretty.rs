@@ -2499,7 +2499,14 @@ define_print_and_forward_display! {
     }
 
     ty::ProjectionPredicate<'tcx> {
-        p!(print(self.projection_ty), " == ", print(self.ty))
+        p!(print(self.projection_ty), " == ", print(self.term))
+    }
+
+    ty::Term<'tcx> {
+      match self {
+        ty::Term::Ty(ty) => p!(print(ty)),
+        ty::Term::Const(c) => p!(print(c)),
+      }
     }
 
     ty::ProjectionTy<'tcx> {

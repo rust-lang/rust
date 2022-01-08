@@ -203,7 +203,7 @@ pub fn setup_constraining_predicates<'tcx>(
                 if !relies_only_on_inputs {
                     continue;
                 }
-                input_parameters.extend(parameters_for(&projection.ty, false));
+                input_parameters.extend(parameters_for(&projection.term, false));
             } else {
                 continue;
             }

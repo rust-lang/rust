@@ -227,7 +227,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::AliasEq<RustInterner<'tcx>>>
 {
     fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::AliasEq<RustInterner<'tcx>> {
         chalk_ir::AliasEq {
-            ty: self.ty.lower_into(interner),
+            ty: self.term.ty().lower_into(interner),
             alias: self.projection_ty.lower_into(interner),
         }
     }
@@ -787,7 +787,7 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>
             trait_bound: trait_ref.lower_into(interner),
             associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.item_def_id),
             parameters: own_substs.iter().map(|arg| arg.lower_into(interner)).collect(),
-            value: self.ty.lower_into(interner),
+            value: self.term.ty().lower_into(interner),
         }
     }
 }
