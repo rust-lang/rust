@@ -222,7 +222,9 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     ) -> Ordering {
         let ty1 = i1.type_();
         let ty2 = i2.type_();
-        if ty1 != ty2 {
+        if item_ty_to_section(ty1) != item_ty_to_section(ty2)
+            || (ty1 != ty2 && (ty1 == ItemType::ExternCrate || ty2 == ItemType::ExternCrate))
+        {
             return (reorder(ty1), idx1).cmp(&(reorder(ty2), idx2));
         }
         let s1 = i1.stability(tcx).as_ref().map(|s| s.level);
