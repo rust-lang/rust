@@ -793,9 +793,11 @@ fn extract_struct_traits(ast: &mut AstSrc) {
         "Const",
         "TypeAlias",
         "Impl",
+        "ExternBlock",
+        "ExternCrate",
+        "MacroCall",
         "MacroRules",
         "MacroDef",
-        "Macro",
         "Use",
     ];
 
