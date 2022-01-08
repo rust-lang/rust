@@ -2410,33 +2410,124 @@ fn sidebar_enum(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, e: &clean:
     }
 }
 
-fn item_ty_to_strs(ty: ItemType) -> (&'static str, &'static str) {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+enum ItemSection {
+    Reexports,
+    Modules,
+    Structs,
+    Unions,
+    Enums,
+    Functions,
+    TypeDefinitions,
+    Statics,
+    Constants,
+    Traits,
+    Implementations,
+    TypeMethods,
+    Methods,
+    StructFields,
+    Variants,
+    Macros,
+    PrimitiveTypes,
+    AssociatedTypes,
+    AssociatedConstants,
+    ForeignTypes,
+    Keywords,
+    OpaqueTypes,
+    AttributeMacros,
+    DeriveMacros,
+    TraitAliases,
+}
+
+impl ItemSection {
+    fn id(self) -> &'static str {
+        match self {
+            Self::Reexports => "reexports",
+            Self::Modules => "modules",
+            Self::Structs => "structs",
+            Self::Unions => "unions",
+            Self::Enums => "enums",
+            Self::Functions => "functions",
+            Self::TypeDefinitions => "types",
+            Self::Statics => "statics",
+            Self::Constants => "constants",
+            Self::Traits => "traits",
+            Self::Implementations => "impls",
+            Self::TypeMethods => "tymethods",
+            Self::Methods => "methods",
+            Self::StructFields => "fields",
+            Self::Variants => "variants",
+            Self::Macros => "macros",
+            Self::PrimitiveTypes => "primitives",
+            Self::AssociatedTypes => "associated-types",
+            Self::AssociatedConstants => "associated-consts",
+            Self::ForeignTypes => "foreign-types",
+            Self::Keywords => "keywords",
+            Self::OpaqueTypes => "opaque-types",
+            Self::AttributeMacros => "attributes",
+            Self::DeriveMacros => "derives",
+            Self::TraitAliases => "trait-aliases",
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::Reexports => "Re-exports",
+            Self::Modules => "Modules",
+            Self::Structs => "Structs",
+            Self::Unions => "Unions",
+            Self::Enums => "Enums",
+            Self::Functions => "Functions",
+            Self::TypeDefinitions => "Type Definitions",
+            Self::Statics => "Statics",
+            Self::Constants => "Constants",
+            Self::Traits => "Traits",
+            Self::Implementations => "Implementations",
+            Self::TypeMethods => "Type Methods",
+            Self::Methods => "Methods",
+            Self::StructFields => "Struct Fields",
+            Self::Variants => "Variants",
+            Self::Macros => "Macros",
+            Self::PrimitiveTypes => "Primitive Types",
+            Self::AssociatedTypes => "Associated Types",
+            Self::AssociatedConstants => "Associated Constants",
+            Self::ForeignTypes => "Foreign Types",
+            Self::Keywords => "Keywords",
+            Self::OpaqueTypes => "Opaque Types",
+            Self::AttributeMacros => "Attribute Macros",
+            Self::DeriveMacros => "Derive Macros",
+            Self::TraitAliases => "Trait aliases",
+        }
+    }
+}
+
+fn item_ty_to_section(ty: ItemType) -> ItemSection {
     match ty {
-        ItemType::ExternCrate | ItemType::Import => ("reexports", "Re-exports"),
-        ItemType::Module => ("modules", "Modules"),
-        ItemType::Struct => ("structs", "Structs"),
-        ItemType::Union => ("unions", "Unions"),
-        ItemType::Enum => ("enums", "Enums"),
-        ItemType::Function => ("functions", "Functions"),
-        ItemType::Typedef => ("types", "Type Definitions"),
-        ItemType::Static => ("statics", "Statics"),
-        ItemType::Constant => ("constants", "Constants"),
-        ItemType::Trait => ("traits", "Traits"),
-        ItemType::Impl => ("impls", "Implementations"),
-        ItemType::TyMethod => ("tymethods", "Type Methods"),
-        ItemType::Method => ("methods", "Methods"),
-        ItemType::StructField => ("fields", "Struct Fields"),
-        ItemType::Variant => ("variants", "Variants"),
-        ItemType::Macro => ("macros", "Macros"),
-        ItemType::Primitive => ("primitives", "Primitive Types"),
-        ItemType::AssocType => ("associated-types", "Associated Types"),
-        ItemType::AssocConst => ("associated-consts", "Associated Constants"),
-        ItemType::ForeignType => ("foreign-types", "Foreign Types"),
-        ItemType::Keyword => ("keywords", "Keywords"),
-        ItemType::OpaqueTy => ("opaque-types", "Opaque Types"),
-        ItemType::ProcAttribute => ("attributes", "Attribute Macros"),
-        ItemType::ProcDerive => ("derives", "Derive Macros"),
-        ItemType::TraitAlias => ("trait-aliases", "Trait aliases"),
+        ItemType::ExternCrate | ItemType::Import => ItemSection::Reexports,
+        ItemType::Module => ItemSection::Modules,
+        ItemType::Struct => ItemSection::Structs,
+        ItemType::Union => ItemSection::Unions,
+        ItemType::Enum => ItemSection::Enums,
+        ItemType::Function => ItemSection::Functions,
+        ItemType::Typedef => ItemSection::TypeDefinitions,
+        ItemType::Static => ItemSection::Statics,
+        ItemType::Constant => ItemSection::Constants,
+        ItemType::Trait => ItemSection::Traits,
+        ItemType::Impl => ItemSection::Implementations,
+        ItemType::TyMethod => ItemSection::TypeMethods,
+        ItemType::Method => ItemSection::Methods,
+        ItemType::StructField => ItemSection::StructFields,
+        ItemType::Variant => ItemSection::Variants,
+        ItemType::Macro => ItemSection::Macros,
+        ItemType::Primitive => ItemSection::PrimitiveTypes,
+        ItemType::AssocType => ItemSection::AssociatedTypes,
+        ItemType::AssocConst => ItemSection::AssociatedConstants,
+        ItemType::ForeignType => ItemSection::ForeignTypes,
+        ItemType::Keyword => ItemSection::Keywords,
+        ItemType::OpaqueTy => ItemSection::OpaqueTypes,
+        ItemType::ProcAttribute => ItemSection::AttributeMacros,
+        ItemType::ProcDerive => ItemSection::DeriveMacros,
+        ItemType::TraitAlias => ItemSection::TraitAliases,
         ItemType::Generic => unreachable!(),
     }
 }
@@ -2450,8 +2541,8 @@ fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
             && (it.type_() == ItemType::ExternCrate
                 || (it.type_() == ItemType::Import && !it.is_stripped()))
     }) {
-        let (id, name) = item_ty_to_strs(ItemType::Import);
-        sidebar.push_str(&format!("<li><a href=\"#{}\">{}</a></li>", id, name));
+        let sec = item_ty_to_section(ItemType::Import);
+        sidebar.push_str(&format!("<li><a href=\"#{}\">{}</a></li>", sec.id(), sec.name()));
     }
 
     // ordering taken from item_module, reorder, where it prioritized elements in a certain order
@@ -2479,8 +2570,8 @@ fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
         ItemType::Keyword,
     ] {
         if items.iter().any(|it| !it.is_stripped() && it.type_() == myty && it.name.is_some()) {
-            let (id, name) = item_ty_to_strs(myty);
-            sidebar.push_str(&format!("<li><a href=\"#{}\">{}</a></li>", id, name));
+            let sec = item_ty_to_section(myty);
+            sidebar.push_str(&format!("<li><a href=\"#{}\">{}</a></li>", sec.id(), sec.name()));
         }
     }
 
