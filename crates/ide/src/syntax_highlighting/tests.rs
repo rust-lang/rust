@@ -641,10 +641,13 @@ fn main() {
 fn test_highlight_doc_comment() {
     check_highlighting(
         r#"
+//- /main.rs
 //! This is a module to test doc injection.
 //! ```
 //! fn test() {}
 //! ```
+
+mod outline_module;
 
 /// ```
 /// let _ = "early doctests should not go boom";
@@ -771,6 +774,13 @@ pub fn block_comments() {}
     [`block_comments`] tests these without indentation
 */
 pub fn block_comments2() {}
+
+//- /outline_module.rs
+//! This is an outline module whose purpose is to test that its inline attribute injection does not
+//! spill into its parent.
+//! ```
+//! fn test() {}
+//! ```
 "#
         .trim(),
         expect_file!["./test_data/highlight_doctest.html"],
