@@ -9,7 +9,10 @@ use crate::formats::item_type::ItemType;
 use crate::visit_lib::LibEmbargoVisitor;
 
 use rustc_ast as ast;
-use rustc_ast::tokenstream::TokenTree;
+use rustc_ast::token::{self, BinOpToken, DelimToken};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast_pretty::pprust::state::State as Printer;
+use rustc_ast_pretty::pprust::PrintState;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -504,10 +507,44 @@ pub(super) fn render_macro_arms<'a>(
 /// as part of an item declaration.
 pub(super) fn render_macro_matcher(tcx: TyCtxt<'_>, matcher: &TokenTree) -> String {
     if let Some(snippet) = snippet_equal_to_token(tcx, matcher) {
-        snippet
-    } else {
-        rustc_ast_pretty::pprust::tt_to_string(matcher)
+        // If the original source code is known, we display the matcher exactly
+        // as present in the source code.
+        return snippet;
     }
+
+    // If the matcher is macro-generated or some other reason the source code
+    // snippet is not available, we attempt to nicely render the token tree.
+    let mut printer = Printer::new();
+
+    // If the inner ibox fits on one line, we get:
+    //
+    //     macro_rules! macroname {
+    //         (the matcher) => {...};
+    //     }
+    //
+    // If the inner ibox gets wrapped, the cbox will break and get indented:
+    //
+    //     macro_rules! macroname {
+    //         (
+    //             the matcher ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~!
+    //         ) => {...};
+    //     }
+    printer.cbox(8);
+    printer.word("(");
+    printer.zerobreak();
+    printer.ibox(0);
+    match matcher {
+        TokenTree::Delimited(_span, _delim, tts) => print_tts(&mut printer, tts),
+        // Matcher which is not a Delimited is unexpected and should've failed
+        // to compile, but we render whatever it is wrapped in parens.
+        TokenTree::Token(_) => print_tt(&mut printer, matcher),
+    }
+    printer.end();
+    printer.break_offset_if_not_bol(0, -4);
+    printer.word(")");
+    printer.end();
+    printer.s.eof()
 }
 
 /// Find the source snippet for this token's Span, reparse it, and return the
@@ -549,6 +586,104 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
 
     // Compare against the original tree.
     if reparsed_tree.eq_unspanned(matcher) { Some(snippet) } else { None }
+}
+
+fn print_tt(printer: &mut Printer<'_>, tt: &TokenTree) {
+    match tt {
+        TokenTree::Token(token) => {
+            let token_str = printer.token_to_string(token);
+            printer.word(token_str);
+            if let token::DocComment(..) = token.kind {
+                printer.hardbreak()
+            }
+        }
+        TokenTree::Delimited(_span, delim, tts) => {
+            let open_delim = printer.token_kind_to_string(&token::OpenDelim(*delim));
+            printer.word(open_delim);
+            if !tts.is_empty() {
+                if *delim == DelimToken::Brace {
+                    printer.space();
+                }
+                print_tts(printer, tts);
+                if *delim == DelimToken::Brace {
+                    printer.space();
+                }
+            }
+            let close_delim = printer.token_kind_to_string(&token::CloseDelim(*delim));
+            printer.word(close_delim);
+        }
+    }
+}
+
+fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
+    #[derive(Copy, Clone, PartialEq)]
+    enum State {
+        Start,
+        Dollar,
+        DollarIdent,
+        DollarIdentColon,
+        DollarParen,
+        DollarParenSep,
+        Pound,
+        PoundBang,
+        Ident,
+        Other,
+    }
+
+    use State::*;
+
+    let mut state = Start;
+    for tt in tts.trees() {
+        let (needs_space, next_state) = match &tt {
+            TokenTree::Token(tt) => match (state, &tt.kind) {
+                (Dollar, token::Ident(..)) => (false, DollarIdent),
+                (DollarIdent, token::Colon) => (false, DollarIdentColon),
+                (DollarIdentColon, token::Ident(..)) => (false, Other),
+                (
+                    DollarParen,
+                    token::BinOp(BinOpToken::Plus | BinOpToken::Star) | token::Question,
+                ) => (false, Other),
+                (DollarParen, _) => (false, DollarParenSep),
+                (DollarParenSep, token::BinOp(BinOpToken::Plus | BinOpToken::Star)) => {
+                    (false, Other)
+                }
+                (Pound, token::Not) => (false, PoundBang),
+                (_, token::Ident(symbol, /* is_raw */ false))
+                    if !usually_needs_space_between_keyword_and_open_delim(*symbol) =>
+                {
+                    (true, Ident)
+                }
+                (_, token::Comma | token::Semi) => (false, Other),
+                (_, token::Dollar) => (true, Dollar),
+                (_, token::Pound) => (true, Pound),
+                (_, _) => (true, Other),
+            },
+            TokenTree::Delimited(_, delim, _) => match (state, delim) {
+                (Dollar, DelimToken::Paren) => (false, DollarParen),
+                (Pound | PoundBang, DelimToken::Bracket) => (false, Other),
+                (Ident, DelimToken::Paren | DelimToken::Bracket) => (false, Other),
+                (_, _) => (true, Other),
+            },
+        };
+        if state != Start && needs_space {
+            printer.space();
+        }
+        print_tt(printer, &tt);
+        state = next_state;
+    }
+}
+
+// This rough subset of keywords is listed here to distinguish tokens resembling
+// `f(0)` (no space between ident and paren) from tokens resembling `if let (0,
+// 0) = x` (space between ident and paren).
+fn usually_needs_space_between_keyword_and_open_delim(symbol: Symbol) -> bool {
+    match symbol.as_str() {
+        "as" | "box" | "break" | "const" | "continue" | "crate" | "else" | "enum" | "extern"
+        | "for" | "if" | "impl" | "in" | "let" | "loop" | "macro" | "match" | "mod" | "move"
+        | "mut" | "ref" | "return" | "static" | "struct" | "trait" | "type" | "unsafe" | "use"
+        | "where" | "while" | "yield" => true,
+        _ => false,
+    }
 }
 
 pub(super) fn display_macro_source(
