@@ -18,7 +18,7 @@ pub fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol
         if let Some(callee_def_id) = fn_def_id(cx, parent);
         if is_into_iter(cx, callee_def_id);
         then {
-            check_for_loop_iter(cx, parent, method_name, receiver)
+            check_for_loop_iter(cx, parent, method_name, receiver, false)
         } else {
             false
         }
@@ -34,6 +34,7 @@ pub fn check_for_loop_iter(
     expr: &'tcx Expr<'tcx>,
     method_name: Symbol,
     receiver: &'tcx Expr<'tcx>,
+    cloned_before_iter: bool,
 ) -> bool {
     if_chain! {
         if let Some(grandparent) = get_parent_expr(cx, expr).and_then(|parent| get_parent_expr(cx, parent));
@@ -70,12 +71,22 @@ pub fn check_for_loop_iter(
                 expr.span,
                 &format!("unnecessary use of `{}`", method_name),
                 |diag| {
-                    diag.span_suggestion(expr.span, "use", snippet, Applicability::MachineApplicable);
+                    // If `check_into_iter_call_arg` called `check_for_loop_iter` because a call to
+                    // a `to_owned`-like function was removed, then the next suggestion may be
+                    // incorrect. This is because the iterator that results from the call's removal
+                    // could hold a reference to a resource that is used mutably. See
+                    // https://github.com/rust-lang/rust-clippy/issues/8148.
+                    let applicability = if cloned_before_iter {
+                        Applicability::MaybeIncorrect
+                    } else {
+                        Applicability::MachineApplicable
+                    };
+                    diag.span_suggestion(expr.span, "use", snippet, applicability);
                     for addr_of_expr in addr_of_exprs {
                         match addr_of_expr.kind {
                             ExprKind::AddrOf(_, _, referent) => {
                                 let span = addr_of_expr.span.with_hi(referent.span.lo());
-                                diag.span_suggestion(span, "remove this `&`", String::new(), Applicability::MachineApplicable);
+                                diag.span_suggestion(span, "remove this `&`", String::new(), applicability);
                             }
                             _ => unreachable!(),
                         }
