@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use hir_expand::{InFile, MacroCallId, MacroDefId};
+use hir_expand::{MacroCallId, MacroDefId};
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
 
@@ -13,7 +13,7 @@ use crate::{
     StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
 };
 
-pub type Key<K, V> = crate::dyn_map::Key<InFile<K>, V, AstPtrPolicy<K, V>>;
+pub type Key<K, V> = crate::dyn_map::Key<K, V, AstPtrPolicy<K, V>>;
 
 pub const FUNCTION: Key<ast::Fn, FunctionId> = Key::new();
 pub const CONST: Key<ast::Const, ConstId> = Key::new();
@@ -47,17 +47,17 @@ pub struct AstPtrPolicy<AST, ID> {
 }
 
 impl<AST: AstNode + 'static, ID: 'static> Policy for AstPtrPolicy<AST, ID> {
-    type K = InFile<AST>;
+    type K = AST;
     type V = ID;
-    fn insert(map: &mut DynMap, key: InFile<AST>, value: ID) {
-        let key = key.as_ref().map(AstPtr::new);
+    fn insert(map: &mut DynMap, key: AST, value: ID) {
+        let key = AstPtr::new(&key);
         map.map
-            .entry::<FxHashMap<InFile<AstPtr<AST>>, ID>>()
+            .entry::<FxHashMap<AstPtr<AST>, ID>>()
             .or_insert_with(Default::default)
             .insert(key, value);
     }
-    fn get<'a>(map: &'a DynMap, key: &InFile<AST>) -> Option<&'a ID> {
-        let key = key.as_ref().map(AstPtr::new);
-        map.map.get::<FxHashMap<InFile<AstPtr<AST>>, ID>>()?.get(&key)
+    fn get<'a>(map: &'a DynMap, key: &AST) -> Option<&'a ID> {
+        let key = AstPtr::new(key);
+        map.map.get::<FxHashMap<AstPtr<AST>, ID>>()?.get(&key)
     }
 }

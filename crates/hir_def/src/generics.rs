@@ -454,13 +454,16 @@ impl HasChildSource<LocalConstParamId> for GenericDefId {
 }
 
 impl ChildBySource for GenericDefId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, _: HirFileId) {
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
+        let (gfile_id, generic_params_list) = file_id_and_params_of(*self, db);
+        if gfile_id != file_id {
+            return;
+        }
+
         let generic_params = db.generic_params(*self);
         let mut types_idx_iter = generic_params.types.iter().map(|(idx, _)| idx);
         let lts_idx_iter = generic_params.lifetimes.iter().map(|(idx, _)| idx);
         let consts_idx_iter = generic_params.consts.iter().map(|(idx, _)| idx);
-
-        let (file_id, generic_params_list) = file_id_and_params_of(*self, db);
 
         // For traits the first type index is `Self`, skip it.
         if let GenericDefId::TraitId(_) = *self {
@@ -470,15 +473,15 @@ impl ChildBySource for GenericDefId {
         if let Some(generic_params_list) = generic_params_list {
             for (local_id, ast_param) in types_idx_iter.zip(generic_params_list.type_params()) {
                 let id = TypeParamId { parent: *self, local_id };
-                res[keys::TYPE_PARAM].insert(InFile::new(file_id, ast_param), id);
+                res[keys::TYPE_PARAM].insert(ast_param, id);
             }
             for (local_id, ast_param) in lts_idx_iter.zip(generic_params_list.lifetime_params()) {
                 let id = LifetimeParamId { parent: *self, local_id };
-                res[keys::LIFETIME_PARAM].insert(InFile::new(file_id, ast_param), id);
+                res[keys::LIFETIME_PARAM].insert(ast_param, id);
             }
             for (local_id, ast_param) in consts_idx_iter.zip(generic_params_list.const_params()) {
                 let id = ConstParamId { parent: *self, local_id };
-                res[keys::CONST_PARAM].insert(InFile::new(file_id, ast_param), id);
+                res[keys::CONST_PARAM].insert(ast_param, id);
             }
         }
     }
