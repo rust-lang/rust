@@ -219,7 +219,6 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
                 Ref,
                 Deref,
                 Project,
-                Local,
             }
             // Here we are looking for a chain of access to extract a place reference for
             // a local variable.
@@ -233,7 +232,8 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
                         _,
                         hir::Path { res: hir::def::Res::Local(_), .. },
                     )) => {
-                        ops.push((nested_expr, OpTy::Local));
+                        // We have reached the end of the access path
+                        // because a local variable access is encountered
                         break;
                     }
                     hir::ExprKind::AddrOf(_, _, subexpr) => {
@@ -261,9 +261,7 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
                 }
             }
             let mut ref_level = SmallVec::<[_; 4]>::new();
-            let mut ops_iter = ops.into_iter().rev();
-            ops_iter.next().unwrap();
-            for (expr, op) in ops_iter {
+            for (expr, op) in ops.into_iter().rev() {
                 match op {
                     OpTy::Ref => {
                         ref_level.push(expr);
@@ -278,9 +276,6 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
                         // such as `&x`, `&&x` in `(&&&x).y` for the field access of `y`.
                         // These temporaries must stay alive even after the field access.
                         ref_level.clear();
-                    }
-                    OpTy::Local => {
-                        panic!("unexpected encounter of Local")
                     }
                 }
             }

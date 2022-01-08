@@ -368,7 +368,10 @@ impl ScopeTree {
     }
 
     pub fn record_local_access_scope(&mut self, var: hir::ItemLocalId, proposed_lifetime: Scope) {
-        debug!("record_local_access_scope(sub={:?}, sup={:?})", var, proposed_lifetime);
+        debug!(
+            "record_local_access_scope(var={:?}, proposed_lifetime={:?})",
+            var, proposed_lifetime
+        );
         let mut id = Scope { id: var, data: ScopeData::Node };
 
         while let Some(&(p, _)) = self.parent_map.get(&id) {
@@ -385,6 +388,7 @@ impl ScopeTree {
     }
 
     pub fn record_eager_scope(&mut self, var: hir::ItemLocalId, proposed_lifetime: Scope) {
+        debug!("record_eager_scope(var={:?}, proposed_lifetime={:?})", var, proposed_lifetime);
         if let Some(destruction) = self.temporary_scope(var) {
             if self.is_subscope_of(destruction, proposed_lifetime) {
                 // If the current temporary scope is already a subset of the proposed region,

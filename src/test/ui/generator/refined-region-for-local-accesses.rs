@@ -1,5 +1,5 @@
 // edition:2018
-// run-pass
+// build-pass
 #![feature(generators, generator_trait, negative_impls)]
 
 fn assert_send<T: Send>(_: T) {}
