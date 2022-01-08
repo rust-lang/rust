@@ -51,7 +51,7 @@ impl Abi {
                         &proc_macro::bridge::server::SameThread,
                         rustc_server::Rustc::default(),
                         parsed_body,
-                        false,
+                        true,
                     );
                     return res.map(|it| it.into_subtree()).map_err(PanicMessage::from);
                 }
@@ -62,7 +62,7 @@ impl Abi {
                         &proc_macro::bridge::server::SameThread,
                         rustc_server::Rustc::default(),
                         parsed_body,
-                        false,
+                        true,
                     );
                     return res.map(|it| it.into_subtree()).map_err(PanicMessage::from);
                 }
@@ -74,7 +74,7 @@ impl Abi {
                         rustc_server::Rustc::default(),
                         parsed_attributes,
                         parsed_body,
-                        false,
+                        true,
                     );
                     return res.map(|it| it.into_subtree()).map_err(PanicMessage::from);
                 }
