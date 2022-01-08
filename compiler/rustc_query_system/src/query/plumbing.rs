@@ -9,7 +9,6 @@ use crate::query::job::{
     report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId,
 };
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
-
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};
 #[cfg(parallel_compiler)]
@@ -515,7 +514,13 @@ where
     // Some things are never cached on disk.
     if query.cache_on_disk {
         let prof_timer = tcx.dep_context().profiler().incr_cache_loading();
-        let result = query.try_load_from_disk(tcx, prev_dep_node_index);
+
+        // The call to `with_query_deserialization` enforces that no new `DepNodes`
+        // are created during deserialization. See the docs of that method for more
+        // details.
+        let result = dep_graph
+            .with_query_deserialization(|| query.try_load_from_disk(tcx, prev_dep_node_index));
+
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         if let Some(result) = result {
