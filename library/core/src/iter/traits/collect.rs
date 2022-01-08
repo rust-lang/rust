@@ -15,8 +15,6 @@
 /// Basic usage:
 ///
 /// ```
-/// use std::iter::FromIterator;
-///
 /// let five_fives = std::iter::repeat(5).take(5);
 ///
 /// let v = Vec::from_iter(five_fives);
@@ -37,8 +35,6 @@
 /// Implementing `FromIterator` for your type:
 ///
 /// ```
-/// use std::iter::FromIterator;
-///
 /// // A sample collection, that's just a wrapper over Vec<T>
 /// #[derive(Debug)]
 /// struct MyCollection(Vec<i32>);
@@ -102,8 +98,6 @@ pub trait FromIterator<A>: Sized {
     /// Basic usage:
     ///
     /// ```
-    /// use std::iter::FromIterator;
-    ///
     /// let five_fives = std::iter::repeat(5).take(5);
     ///
     /// let v = Vec::from_iter(five_fives);

@@ -4,7 +4,7 @@ version = "0.0.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust.git"
 description = "Implementation of Rust panics via stack unwinding"
-edition = "2018"
+edition = "2021"
 
 [lib]
 test = false

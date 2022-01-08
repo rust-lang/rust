@@ -51,6 +51,7 @@ pub const fn panic(expr: &'static str) -> ! {
 #[inline]
 #[track_caller]
 #[lang = "panic_str"] // needed for `non-fmt-panics` lint
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn panic_str(expr: &str) -> ! {
     panic_display(&expr);
 }
@@ -59,6 +60,7 @@ pub const fn panic_str(expr: &str) -> ! {
 #[track_caller]
 #[lang = "panic_display"] // needed for const-evaluated panics
 #[rustc_do_not_const_check] // hooked by const-eval
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));
 }
@@ -89,6 +91,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[track_caller]
 #[lang = "panic_fmt"] // needed for const-evaluated panics
 #[rustc_do_not_const_check] // hooked by const-eval
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
@@ -109,6 +112,7 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
 
 /// This function is used instead of panic_fmt in const eval.
 #[lang = "const_panic_fmt"]
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if let Some(msg) = fmt.as_str() {
         panic_str(msg);
