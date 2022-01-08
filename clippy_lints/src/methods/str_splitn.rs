@@ -45,16 +45,16 @@ pub(super) fn check_manual_split_once(
         IterUsageKind::Next | IterUsageKind::Second => {
             let self_deref = {
                 let adjust = cx.typeck_results().expr_adjustments(self_arg);
-                if adjust.is_empty() {
+                if adjust.len() < 2 {
                     String::new()
                 } else if cx.typeck_results().expr_ty(self_arg).is_box()
                     || adjust
                         .iter()
                         .any(|a| matches!(a.kind, Adjust::Deref(Some(_))) || a.target.is_box())
                 {
-                    format!("&{}", "*".repeat(adjust.len() - 1))
+                    format!("&{}", "*".repeat(adjust.len().saturating_sub(1)))
                 } else {
-                    "*".repeat(adjust.len() - 2)
+                    "*".repeat(adjust.len().saturating_sub(2))
                 }
             };
             if matches!(usage.kind, IterUsageKind::Next) {
