@@ -1045,6 +1045,10 @@ pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// return value is unspecified. Equally, if `T` is an enum with more variants than `usize::MAX`
 /// the return value is unspecified. Uninhabited variants will be counted.
 ///
+/// Note that an enum may be expanded with additional variants in the future
+/// as a non-breaking change, for example if it is marked `#[non_exhaustive]`,
+/// which will change the result of this function.
+///
 /// # Examples
 ///
 /// ```

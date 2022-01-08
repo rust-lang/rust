@@ -136,8 +136,8 @@ impl Borrow<Fingerprint> for DefPathHash {
 /// collisions when loading crates and abort compilation in order to avoid
 /// further trouble.
 ///
-/// See the discussion in [`DefId`] for more information
-/// on the possibility of hash collisions in rustc,
+/// For more information on the possibility of hash collisions in rustc,
+/// see the discussion in [`DefId`].
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub struct StableCrateId(pub(crate) u64);
