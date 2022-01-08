@@ -1470,45 +1470,22 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
         // The method kind does not correspond to what appeared in the trait, report.
         let path = &self.current_trait_ref.as_ref().unwrap().1.path;
-        let path = &path_names_to_string(path);
-        let mut err = match kind {
-            AssocItemKind::Const(..) => {
-                rustc_errors::struct_span_err!(
-                    self.r.session,
-                    span,
-                    E0323,
-                    "item `{}` is an associated const, which doesn't match its trait `{}`",
-                    ident,
-                    path,
-                )
-            }
-            AssocItemKind::Fn(..) => {
-                rustc_errors::struct_span_err!(
-                    self.r.session,
-                    span,
-                    E0324,
-                    "item `{}` is an associated method, which doesn't match its trait `{}`",
-                    ident,
-                    path,
-                )
-            }
-            AssocItemKind::TyAlias(..) => {
-                rustc_errors::struct_span_err!(
-                    self.r.session,
-                    span,
-                    E0325,
-                    "item `{}` is an associated type, which doesn't match its trait `{}`",
-                    ident,
-                    path,
-                )
-            }
-            AssocItemKind::MacCall(..) => {
-                span_bug!(span, "macros should have been expanded")
-            }
+        let (code, kind) = match kind {
+            AssocItemKind::Const(..) => (rustc_errors::error_code!(E0323), "const"),
+            AssocItemKind::Fn(..) => (rustc_errors::error_code!(E0324), "method"),
+            AssocItemKind::TyAlias(..) => (rustc_errors::error_code!(E0325), "type"),
+            AssocItemKind::MacCall(..) => span_bug!(span, "unexpanded macro"),
         };
-        err.span_label(span, "does not match trait");
-        err.span_label(binding.span, "item in trait");
-        err.emit();
+        self.report_error(
+            span,
+            ResolutionError::TraitImplMismatch {
+                name: ident.name,
+                kind,
+                code,
+                trait_path: path_names_to_string(path),
+                trait_item_span: binding.span,
+            },
+        );
     }
 
     fn resolve_params(&mut self, params: &'ast [Param]) {
