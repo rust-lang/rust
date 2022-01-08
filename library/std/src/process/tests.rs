@@ -4,6 +4,10 @@ use super::{Command, Output, Stdio};
 use crate::io::ErrorKind;
 use crate::str;
 
+fn known_command() -> Command {
+    if cfg!(windows) { Command::new("help") } else { Command::new("echo") }
+}
+
 #[cfg(target_os = "android")]
 fn shell_cmd() -> Command {
     Command::new("/system/bin/sh")
@@ -305,7 +309,7 @@ fn test_interior_nul_in_progname_is_error() {
 
 #[test]
 fn test_interior_nul_in_arg_is_error() {
-    match Command::new("rustc").arg("has-some-\0\0s-inside").spawn() {
+    match known_command().arg("has-some-\0\0s-inside").spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
@@ -313,7 +317,7 @@ fn test_interior_nul_in_arg_is_error() {
 
 #[test]
 fn test_interior_nul_in_args_is_error() {
-    match Command::new("rustc").args(&["has-some-\0\0s-inside"]).spawn() {
+    match known_command().args(&["has-some-\0\0s-inside"]).spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
@@ -321,7 +325,7 @@ fn test_interior_nul_in_args_is_error() {
 
 #[test]
 fn test_interior_nul_in_current_dir_is_error() {
-    match Command::new("rustc").current_dir("has-some-\0\0s-inside").spawn() {
+    match known_command().current_dir("has-some-\0\0s-inside").spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
@@ -415,4 +419,23 @@ fn test_command_implements_send_sync() {
 fn env_empty() {
     let p = Command::new("cmd").args(&["/C", "exit 0"]).env_clear().spawn();
     assert!(p.is_ok());
+}
+
+// See issue #91991
+#[test]
+#[cfg(windows)]
+fn run_bat_script() {
+    let tempdir = crate::sys_common::io::test::tmpdir();
+    let script_path = tempdir.join("hello.cmd");
+
+    crate::fs::write(&script_path, "@echo Hello, %~1!").unwrap();
+    let output = Command::new(&script_path)
+        .arg("fellow Rustaceans")
+        .stdout(crate::process::Stdio::piped())
+        .spawn()
+        .unwrap()
+        .wait_with_output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "Hello, fellow Rustaceans!");
 }
