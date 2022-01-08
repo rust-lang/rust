@@ -162,6 +162,7 @@ pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for MacroCall {}
+impl ast::HasDocComments for MacroCall {}
 impl MacroCall {
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     pub fn excl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![!]) }
@@ -259,6 +260,7 @@ pub struct ExternBlock {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for ExternBlock {}
+impl ast::HasDocComments for ExternBlock {}
 impl ExternBlock {
     pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
     pub fn extern_item_list(&self) -> Option<ExternItemList> { support::child(&self.syntax) }
@@ -270,6 +272,7 @@ pub struct ExternCrate {
 }
 impl ast::HasAttrs for ExternCrate {}
 impl ast::HasVisibility for ExternCrate {}
+impl ast::HasDocComments for ExternCrate {}
 impl ExternCrate {
     pub fn extern_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![extern]) }
     pub fn crate_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![crate]) }
@@ -1543,6 +1546,7 @@ pub enum Item {
     Use(Use),
 }
 impl ast::HasAttrs for Item {}
+impl ast::HasDocComments for Item {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Stmt {
@@ -1597,6 +1601,7 @@ pub enum AssocItem {
     TypeAlias(TypeAlias),
 }
 impl ast::HasAttrs for AssocItem {}
+impl ast::HasDocComments for AssocItem {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExternItem {
@@ -1606,6 +1611,7 @@ pub enum ExternItem {
     TypeAlias(TypeAlias),
 }
 impl ast::HasAttrs for ExternItem {}
+impl ast::HasDocComments for ExternItem {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericParam {
@@ -3902,10 +3908,9 @@ impl AnyHasDocComments {
 impl AstNode for AnyHasDocComments {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            SOURCE_FILE | CONST | ENUM | FN | IMPL | MACRO_RULES | MACRO_DEF | MODULE | STATIC
-            | STRUCT | TRAIT | TYPE_ALIAS | UNION | USE | RECORD_FIELD | TUPLE_FIELD | VARIANT => {
-                true
-            }
+            MACRO_CALL | SOURCE_FILE | CONST | ENUM | EXTERN_BLOCK | EXTERN_CRATE | FN | IMPL
+            | MACRO_RULES | MACRO_DEF | MODULE | STATIC | STRUCT | TRAIT | TYPE_ALIAS | UNION
+            | USE | RECORD_FIELD | TUPLE_FIELD | VARIANT => true,
             _ => false,
         }
     }

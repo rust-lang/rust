@@ -350,6 +350,53 @@ impl MacroCallKind {
         }
     }
 
+    /// Returns the original file range that best describes the location of this macro call.
+    ///
+    /// Here we try to roughly match what rustc does to improve diagnostics: fn-like macros
+    /// get the whole `ast::MacroCall`, attribute macros get the attribute's range, and derives
+    /// get only the specific derive that is being referred to.
+    pub fn original_call_range(self, db: &dyn db::AstDatabase) -> FileRange {
+        let mut kind = self;
+        loop {
+            match kind.file_id().0 {
+                HirFileIdRepr::MacroFile(file) => {
+                    kind = db.lookup_intern_macro_call(file.macro_call_id).kind;
+                }
+                _ => break,
+            }
+        }
+
+        // `call_id` is now the outermost macro call, so its location is in a real file.
+        let file_id = match kind.file_id().0 {
+            HirFileIdRepr::FileId(it) => it,
+            HirFileIdRepr::MacroFile(_) => unreachable!("encountered unexpected macro file"),
+        };
+        let range = match kind {
+            MacroCallKind::FnLike { ast_id, .. } => ast_id.to_node(db).syntax().text_range(),
+            MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
+                // FIXME: should be the range of the macro name, not the whole derive
+                ast_id
+                    .to_node(db)
+                    .doc_comments_and_attrs()
+                    .nth(derive_attr_index as usize)
+                    .expect("missing derive")
+                    .expect_right("derive is a doc comment?")
+                    .syntax()
+                    .text_range()
+            }
+            MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => ast_id
+                .to_node(db)
+                .doc_comments_and_attrs()
+                .nth(invoc_attr_index as usize)
+                .expect("missing attribute")
+                .expect_right("attribute macro is a doc comment?")
+                .syntax()
+                .text_range(),
+        };
+
+        FileRange { range, file_id }
+    }
+
     fn arg(&self, db: &dyn db::AstDatabase) -> Option<SyntaxNode> {
         match self {
             MacroCallKind::FnLike { ast_id, .. } => {
@@ -623,15 +670,13 @@ impl<'a> InFile<&'a SyntaxNode> {
         }
 
         // Fall back to whole macro call.
-        let mut node = self.cloned();
-        while let Some(call_node) = node.file_id.call_node(db) {
-            node = call_node;
+        match self.file_id.0 {
+            HirFileIdRepr::FileId(file_id) => FileRange { file_id, range: self.value.text_range() },
+            HirFileIdRepr::MacroFile(mac_file) => {
+                let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
+                loc.kind.original_call_range(db)
+            }
         }
-
-        let orig_file = node.file_id.original_file(db);
-        assert_eq!(node.file_id, orig_file.into());
-
-        FileRange { file_id: orig_file, range: node.value.text_range() }
     }
 
     /// Attempts to map the syntax node back up its macro calls.

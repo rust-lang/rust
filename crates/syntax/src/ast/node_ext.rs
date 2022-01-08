@@ -772,7 +772,6 @@ impl ast::HasLoopBody for ast::ForExpr {
 }
 
 impl ast::HasAttrs for ast::AnyHasDocComments {}
-impl ast::HasDocComments for ast::Item {}
 
 impl From<ast::Adt> for ast::Item {
     fn from(it: ast::Adt) -> Self {
