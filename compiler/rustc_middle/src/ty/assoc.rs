@@ -139,21 +139,6 @@ impl<'tcx> AssocItems<'tcx> {
         self.items.get_by_key(name).copied()
     }
 
-    /// Returns an iterator over all associated items with the given name.
-    ///
-    /// Multiple items may have the same name if they are in different `Namespace`s. For example,
-    /// an associated type can have the same name as a method. Use one of the `find_by_name_and_*`
-    /// methods below if you know which item you are looking for.
-    pub fn filter_by_name<'a>(
-        &'a self,
-        tcx: TyCtxt<'a>,
-        ident: Ident,
-        parent_def_id: DefId,
-    ) -> impl 'a + Iterator<Item = &'a ty::AssocItem> {
-        self.filter_by_name_unhygienic(ident.name)
-            .filter(move |item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
-    }
-
     /// Returns the associated item with the given name and `AssocKind`, if one exists.
     pub fn find_by_name_and_kind(
         &self,

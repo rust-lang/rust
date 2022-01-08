@@ -1317,6 +1317,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                             // If this is a trait impl, ensure the const
                                             // exists in trait
                                             this.check_trait_item(
+                                                item.id,
                                                 item.ident,
                                                 &item.kind,
                                                 ValueNS,
@@ -1352,6 +1353,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                     // If this is a trait impl, ensure the method
                                                     // exists in trait
                                                     this.check_trait_item(
+                                                        item.id,
                                                         item.ident,
                                                         &item.kind,
                                                         ValueNS,
@@ -1379,6 +1381,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                                     // If this is a trait impl, ensure the type
                                                     // exists in trait
                                                     this.check_trait_item(
+                                                        item.id,
                                                         item.ident,
                                                         &item.kind,
                                                         TypeNS,
@@ -1409,6 +1412,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
     fn check_trait_item<F>(
         &mut self,
+        id: NodeId,
         ident: Ident,
         kind: &AssocItemKind,
         ns: Namespace,
@@ -1417,26 +1421,94 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     ) where
         F: FnOnce(Ident, &str, Option<Symbol>) -> ResolutionError<'_>,
     {
-        // If there is a TraitRef in scope for an impl, then the method must be in the
-        // trait.
-        if let Some((module, _)) = self.current_trait_ref {
-            if self
-                .r
-                .resolve_ident_in_module(
-                    ModuleOrUniformRoot::Module(module),
-                    ident,
-                    ns,
-                    &self.parent_scope,
-                    false,
-                    span,
-                )
-                .is_err()
-            {
-                let candidate = self.find_similarly_named_assoc_item(ident.name, kind);
-                let path = &self.current_trait_ref.as_ref().unwrap().1.path;
-                self.report_error(span, err(ident, &path_names_to_string(path), candidate));
-            }
+        // If there is a TraitRef in scope for an impl, then the method must be in the trait.
+        let Some((module, _)) = &self.current_trait_ref else { return; };
+        let mut binding = self.r.resolve_ident_in_module(
+            ModuleOrUniformRoot::Module(module),
+            ident,
+            ns,
+            &self.parent_scope,
+            false,
+            span,
+        );
+        if binding.is_err() {
+            // We could not find the trait item in the correct namespace.
+            // Check the other namespace to report an error.
+            let ns = match ns {
+                ValueNS => TypeNS,
+                TypeNS => ValueNS,
+                _ => ns,
+            };
+            binding = self.r.resolve_ident_in_module(
+                ModuleOrUniformRoot::Module(module),
+                ident,
+                ns,
+                &self.parent_scope,
+                false,
+                span,
+            );
         }
+        let Ok(binding) = binding else {
+            // We could not find the method: report an error.
+            let candidate = self.find_similarly_named_assoc_item(ident.name, kind);
+            let path = &self.current_trait_ref.as_ref().unwrap().1.path;
+            self.report_error(span, err(ident, &path_names_to_string(path), candidate));
+            return;
+        };
+
+        let res = binding.res();
+        let Res::Def(def_kind, _) = res else { bug!() };
+        match (def_kind, kind) {
+            (DefKind::AssocTy, AssocItemKind::TyAlias(..))
+            | (DefKind::AssocFn, AssocItemKind::Fn(..))
+            | (DefKind::AssocConst, AssocItemKind::Const(..)) => {
+                self.r.record_partial_res(id, PartialRes::new(res));
+                return;
+            }
+            _ => {}
+        }
+
+        // The method kind does not correspond to what appeared in the trait, report.
+        let path = &self.current_trait_ref.as_ref().unwrap().1.path;
+        let path = &path_names_to_string(path);
+        let mut err = match kind {
+            AssocItemKind::Const(..) => {
+                rustc_errors::struct_span_err!(
+                    self.r.session,
+                    span,
+                    E0323,
+                    "item `{}` is an associated const, which doesn't match its trait `{}`",
+                    ident,
+                    path,
+                )
+            }
+            AssocItemKind::Fn(..) => {
+                rustc_errors::struct_span_err!(
+                    self.r.session,
+                    span,
+                    E0324,
+                    "item `{}` is an associated method, which doesn't match its trait `{}`",
+                    ident,
+                    path,
+                )
+            }
+            AssocItemKind::TyAlias(..) => {
+                rustc_errors::struct_span_err!(
+                    self.r.session,
+                    span,
+                    E0325,
+                    "item `{}` is an associated type, which doesn't match its trait `{}`",
+                    ident,
+                    path,
+                )
+            }
+            AssocItemKind::MacCall(..) => {
+                span_bug!(span, "macros should have been expanded")
+            }
+        };
+        err.span_label(span, "does not match trait");
+        err.span_label(binding.span, "item in trait");
+        err.emit();
     }
 
     fn resolve_params(&mut self, params: &'ast [Param]) {

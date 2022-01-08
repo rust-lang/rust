@@ -925,6 +925,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 AssocItemKind::MacCall(..) => unimplemented!(),
             },
+            trait_item_def_id: self.resolver.get_partial_res(i.id).map(|r| r.base_res().def_id()),
         }
     }
 
