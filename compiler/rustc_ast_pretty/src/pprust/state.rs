@@ -211,7 +211,7 @@ pub fn literal_to_string(lit: token::Lit) -> String {
 }
 
 fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
-    format!("{}{}", State::new().to_string(|s| s.print_visibility(vis)), s)
+    format!("{}{}", State::to_string(|s| s.print_visibility(vis)), s)
 }
 
 impl std::ops::Deref for State<'_> {
@@ -793,55 +793,55 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn ty_to_string(&self, ty: &ast::Ty) -> String {
-        self.to_string(|s| s.print_type(ty))
+        Self::to_string(|s| s.print_type(ty))
     }
 
     fn bounds_to_string(&self, bounds: &[ast::GenericBound]) -> String {
-        self.to_string(|s| s.print_type_bounds("", bounds))
+        Self::to_string(|s| s.print_type_bounds("", bounds))
     }
 
     fn pat_to_string(&self, pat: &ast::Pat) -> String {
-        self.to_string(|s| s.print_pat(pat))
+        Self::to_string(|s| s.print_pat(pat))
     }
 
     fn expr_to_string(&self, e: &ast::Expr) -> String {
-        self.to_string(|s| s.print_expr(e))
+        Self::to_string(|s| s.print_expr(e))
     }
 
     fn tt_to_string(&self, tt: &TokenTree) -> String {
-        self.to_string(|s| s.print_tt(tt, false))
+        Self::to_string(|s| s.print_tt(tt, false))
     }
 
     fn tts_to_string(&self, tokens: &TokenStream) -> String {
-        self.to_string(|s| s.print_tts(tokens, false))
+        Self::to_string(|s| s.print_tts(tokens, false))
     }
 
     fn stmt_to_string(&self, stmt: &ast::Stmt) -> String {
-        self.to_string(|s| s.print_stmt(stmt))
+        Self::to_string(|s| s.print_stmt(stmt))
     }
 
     fn item_to_string(&self, i: &ast::Item) -> String {
-        self.to_string(|s| s.print_item(i))
+        Self::to_string(|s| s.print_item(i))
     }
 
     fn generic_params_to_string(&self, generic_params: &[ast::GenericParam]) -> String {
-        self.to_string(|s| s.print_generic_params(generic_params))
+        Self::to_string(|s| s.print_generic_params(generic_params))
     }
 
     fn path_to_string(&self, p: &ast::Path) -> String {
-        self.to_string(|s| s.print_path(p, false, 0))
+        Self::to_string(|s| s.print_path(p, false, 0))
     }
 
     fn path_segment_to_string(&self, p: &ast::PathSegment) -> String {
-        self.to_string(|s| s.print_path_segment(p, false))
+        Self::to_string(|s| s.print_path_segment(p, false))
     }
 
     fn vis_to_string(&self, v: &ast::Visibility) -> String {
-        self.to_string(|s| s.print_visibility(v))
+        Self::to_string(|s| s.print_visibility(v))
     }
 
     fn block_to_string(&self, blk: &ast::Block) -> String {
-        self.to_string(|s| {
+        Self::to_string(|s| {
             // Containing cbox, will be closed by `print_block` at `}`.
             s.cbox(INDENT_UNIT);
             // Head-ibox, will be closed by `print_block` after `{`.
@@ -851,22 +851,22 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn meta_list_item_to_string(&self, li: &ast::NestedMetaItem) -> String {
-        self.to_string(|s| s.print_meta_list_item(li))
+        Self::to_string(|s| s.print_meta_list_item(li))
     }
 
     fn attr_item_to_string(&self, ai: &ast::AttrItem) -> String {
-        self.to_string(|s| s.print_attr_item(ai, ai.path.span))
+        Self::to_string(|s| s.print_attr_item(ai, ai.path.span))
     }
 
     fn attribute_to_string(&self, attr: &ast::Attribute) -> String {
-        self.to_string(|s| s.print_attribute(attr))
+        Self::to_string(|s| s.print_attribute(attr))
     }
 
     fn param_to_string(&self, arg: &ast::Param) -> String {
-        self.to_string(|s| s.print_param(arg, false))
+        Self::to_string(|s| s.print_param(arg, false))
     }
 
-    fn to_string(&self, f: impl FnOnce(&mut State<'_>)) -> String {
+    fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
         let mut printer = State::new();
         f(&mut printer);
         printer.s.eof()
@@ -1202,7 +1202,7 @@ impl<'a> State<'a> {
                 );
             }
             ast::ItemKind::Mod(unsafety, ref mod_kind) => {
-                self.head(self.to_string(|s| {
+                self.head(Self::to_string(|s| {
                     s.print_visibility(&item.vis);
                     s.print_unsafety(unsafety);
                     s.word("mod");
@@ -1228,7 +1228,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::ForeignMod(ref nmod) => {
-                self.head(self.to_string(|s| {
+                self.head(Self::to_string(|s| {
                     s.print_unsafety(nmod.unsafety);
                     s.word("extern");
                 }));
@@ -1450,7 +1450,7 @@ impl<'a> State<'a> {
                 ast::CrateSugar::JustCrate => self.word_nbsp("crate"),
             },
             ast::VisibilityKind::Restricted { ref path, .. } => {
-                let path = self.to_string(|s| s.print_path(path, false, 0));
+                let path = Self::to_string(|s| s.print_path(path, false, 0));
                 if path == "self" || path == "super" {
                     self.word_nbsp(format!("pub({})", path))
                 } else {
