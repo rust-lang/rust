@@ -12,10 +12,11 @@ use rustc_hir::def_id::{DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items;
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
-use rustc_middle::hir::exports::Export;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir;
 use rustc_middle::thir;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, ReprOptions, Ty};
 use rustc_serialize::opaque::Encoder;
@@ -62,27 +63,14 @@ pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_V
 /// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).
 trait LazyMeta {
     type Meta: Copy + 'static;
-
-    /// Returns the minimum encoded size.
-    // FIXME(eddyb) Give better estimates for certain types.
-    fn min_size(meta: Self::Meta) -> usize;
 }
 
 impl<T> LazyMeta for T {
     type Meta = ();
-
-    fn min_size(_: ()) -> usize {
-        assert_ne!(std::mem::size_of::<T>(), 0);
-        1
-    }
 }
 
 impl<T> LazyMeta for [T] {
     type Meta = usize;
-
-    fn min_size(len: usize) -> usize {
-        len * T::min_size(())
-    }
 }
 
 /// A value of type T referred to by its absolute position
@@ -160,8 +148,7 @@ enum LazyState {
     NodeStart(NonZeroUsize),
 
     /// Inside a metadata node, with a previous `Lazy`.
-    /// The position is a conservative estimate of where that
-    /// previous `Lazy` would end (see their comments).
+    /// The position is where that previous `Lazy` would start.
     Previous(NonZeroUsize),
 }
 
@@ -261,7 +248,7 @@ crate struct CrateDep {
 #[derive(MetadataEncodable, MetadataDecodable)]
 crate struct TraitImpls {
     trait_id: (u32, DefIndex),
-    impls: Lazy<[(DefIndex, Option<ty::fast_reject::SimplifiedType>)]>,
+    impls: Lazy<[(DefIndex, Option<SimplifiedType>)]>,
 }
 
 /// Define `LazyTables` and `TableBuilders` at the same time.
@@ -301,6 +288,7 @@ define_tables! {
     ty: Table<DefIndex, Lazy!(Ty<'tcx>)>,
     fn_sig: Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>,
     impl_trait_ref: Table<DefIndex, Lazy!(ty::TraitRef<'tcx>)>,
+    trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
     variances: Table<DefIndex, Lazy<[ty::Variance]>>,
     generics: Table<DefIndex, Lazy<ty::Generics>>,
@@ -348,7 +336,7 @@ enum EntryKind {
     Union(Lazy<VariantData>, ReprOptions),
     Fn(Lazy<FnData>),
     ForeignFn(Lazy<FnData>),
-    Mod(Lazy<[Export]>),
+    Mod(Lazy<[ModChild]>),
     MacroDef(Lazy<MacroDef>),
     ProcMacro(MacroKind),
     Closure,

@@ -1,3 +1,5 @@
+#![feature(associated_type_bounds)]
+#![feature(associated_type_defaults)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![cfg_attr(bootstrap, feature(destructuring_assignment))]

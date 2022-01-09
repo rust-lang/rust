@@ -895,8 +895,11 @@ impl<'a> Resolver<'a> {
                             // a note about editions
                             let note = if let Some(did) = did {
                                 let requires_note = !did.is_local()
-                                    && this.cstore().item_attrs(did, this.session).iter().any(
-                                        |attr| {
+                                    && this
+                                        .cstore()
+                                        .item_attrs_untracked(did, this.session)
+                                        .iter()
+                                        .any(|attr| {
                                             if attr.has_name(sym::rustc_diagnostic_item) {
                                                 [sym::TryInto, sym::TryFrom, sym::FromIterator]
                                                     .map(|x| Some(x))
@@ -904,8 +907,7 @@ impl<'a> Resolver<'a> {
                                             } else {
                                                 false
                                             }
-                                        },
-                                    );
+                                        });
 
                                 requires_note.then(|| {
                                     format!(

@@ -630,6 +630,32 @@ rustc_queries! {
         desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
     }
 
+    /// Maps from associated items on a trait to the corresponding associated
+    /// item on the impl specified by `impl_id`.
+    ///
+    /// For example, with the following code
+    ///
+    /// ```
+    /// struct Type {}
+    ///                         // DefId
+    /// trait Trait {           // trait_id
+    ///     fn f();             // trait_f
+    ///     fn g() {}           // trait_g
+    /// }
+    ///
+    /// impl Trait for Type {   // impl_id
+    ///     fn f() {}           // impl_f
+    ///     fn g() {}           // impl_g
+    /// }
+    /// ```
+    ///
+    /// The map returned for `tcx.impl_item_implementor_ids(impl_id)` would be
+    ///`{ trait_f: impl_f, trait_g: impl_g }`
+    query impl_item_implementor_ids(impl_id: DefId) -> FxHashMap<DefId, DefId> {
+        desc { |tcx| "comparing impl items against trait for {}", tcx.def_path_str(impl_id) }
+        storage(ArenaCacheSelector<'tcx>)
+    }
+
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
     query impl_trait_ref(impl_id: DefId) -> Option<ty::TraitRef<'tcx>> {
@@ -1274,8 +1300,8 @@ rustc_queries! {
         desc { "traits in scope at a block" }
     }
 
-    query module_exports(def_id: LocalDefId) -> Option<&'tcx [Export]> {
-        desc { |tcx| "looking up items exported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
+    query module_reexports(def_id: LocalDefId) -> Option<&'tcx [ModChild]> {
+        desc { |tcx| "looking up reexports of module `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
     query impl_defaultness(def_id: DefId) -> hir::Defaultness {
@@ -1411,17 +1437,8 @@ rustc_queries! {
 
     /// Given a crate and a trait, look up all impls of that trait in the crate.
     /// Return `(impl_id, self_ty)`.
-    query implementations_of_trait(_: (CrateNum, DefId))
-        -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
+    query implementations_of_trait(_: (CrateNum, DefId)) -> &'tcx [(DefId, Option<SimplifiedType>)] {
         desc { "looking up implementations of a trait in a crate" }
-        separate_provide_extern
-    }
-
-    /// Given a crate, look up all trait impls in that crate.
-    /// Return `(impl_id, self_ty)`.
-    query all_trait_implementations(_: CrateNum)
-        -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
-        desc { "looking up all (?) trait implementations" }
         separate_provide_extern
     }
 
@@ -1504,8 +1521,8 @@ rustc_queries! {
         desc { "fetching what a crate is named" }
         separate_provide_extern
     }
-    query item_children(def_id: DefId) -> &'tcx [Export] {
-        desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
+    query module_children(def_id: DefId) -> &'tcx [ModChild] {
+        desc { |tcx| "collecting child items of module `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {

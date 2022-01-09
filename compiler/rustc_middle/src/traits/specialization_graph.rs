@@ -4,7 +4,6 @@ use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::{DefId, DefIdMap};
-use rustc_span::symbol::Ident;
 
 /// A per-trait graph of impls in specialization order. At the moment, this
 /// graph forms a tree rooted with the trait itself, with all other nodes
@@ -75,34 +74,28 @@ pub enum Node {
     Trait(DefId),
 }
 
-impl<'tcx> Node {
+impl Node {
     pub fn is_from_trait(&self) -> bool {
         matches!(self, Node::Trait(..))
     }
 
-    /// Iterate over the items defined directly by the given (impl or trait) node.
-    pub fn items(&self, tcx: TyCtxt<'tcx>) -> impl 'tcx + Iterator<Item = &'tcx ty::AssocItem> {
-        tcx.associated_items(self.def_id()).in_definition_order()
-    }
-
-    /// Finds an associated item defined in this node.
+    /// Trys to find the associated item that implements `trait_item_def_id`
+    /// defined in this node.
     ///
     /// If this returns `None`, the item can potentially still be found in
     /// parents of this node.
-    pub fn item(
+    pub fn item<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        trait_item_name: Ident,
-        trait_item_kind: ty::AssocKind,
-        trait_def_id: DefId,
-    ) -> Option<ty::AssocItem> {
-        tcx.associated_items(self.def_id())
-            .filter_by_name_unhygienic(trait_item_name.name)
-            .find(move |impl_item| {
-                trait_item_kind == impl_item.kind
-                    && tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id)
-            })
-            .copied()
+        trait_item_def_id: DefId,
+    ) -> Option<&'tcx ty::AssocItem> {
+        match *self {
+            Node::Trait(_) => Some(tcx.associated_item(trait_item_def_id)),
+            Node::Impl(impl_def_id) => {
+                let id = tcx.impl_item_implementor_ids(impl_def_id).get(&trait_item_def_id)?;
+                Some(tcx.associated_item(*id))
+            }
+        }
     }
 
     pub fn def_id(&self) -> DefId {
@@ -181,17 +174,11 @@ impl LeafDef {
 impl<'tcx> Ancestors<'tcx> {
     /// Finds the bottom-most (ie. most specialized) definition of an associated
     /// item.
-    pub fn leaf_def(
-        mut self,
-        tcx: TyCtxt<'tcx>,
-        trait_item_name: Ident,
-        trait_item_kind: ty::AssocKind,
-    ) -> Option<LeafDef> {
-        let trait_def_id = self.trait_def_id;
+    pub fn leaf_def(mut self, tcx: TyCtxt<'tcx>, trait_item_def_id: DefId) -> Option<LeafDef> {
         let mut finalizing_node = None;
 
         self.find_map(|node| {
-            if let Some(item) = node.item(tcx, trait_item_name, trait_item_kind, trait_def_id) {
+            if let Some(item) = node.item(tcx, trait_item_def_id) {
                 if finalizing_node.is_none() {
                     let is_specializable = item.defaultness.is_default()
                         || tcx.impl_defaultness(node.def_id()).is_default();
@@ -201,7 +188,7 @@ impl<'tcx> Ancestors<'tcx> {
                     }
                 }
 
-                Some(LeafDef { item, defining_node: node, finalizing_node })
+                Some(LeafDef { item: *item, defining_node: node, finalizing_node })
             } else {
                 // Item not mentioned. This "finalizes" any defaulted item provided by an ancestor.
                 finalizing_node = Some(node);

@@ -520,7 +520,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             let vis = self.tcx.visibility(item_id.def_id);
             self.update_macro_reachable_def(item_id.def_id, def_kind, vis, defining_mod);
         }
-        if let Some(exports) = self.tcx.module_exports(module_def_id) {
+        if let Some(exports) = self.tcx.module_reexports(module_def_id) {
             for export in exports {
                 if export.vis.is_accessible_from(defining_mod.to_def_id(), self.tcx) {
                     if let Res::Def(def_kind, def_id) = export.res {
@@ -926,7 +926,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
         // crate module gets processed as well.
         if self.prev_level.is_some() {
             let def_id = self.tcx.hir().local_def_id(id);
-            if let Some(exports) = self.tcx.module_exports(def_id) {
+            if let Some(exports) = self.tcx.module_reexports(def_id) {
                 for export in exports.iter() {
                     if export.vis.is_public() {
                         if let Some(def_id) = export.res.opt_def_id() {

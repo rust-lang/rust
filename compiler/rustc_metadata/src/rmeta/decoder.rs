@@ -21,12 +21,13 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::hir::exports::Export;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
 use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::cstore::{
@@ -92,8 +93,7 @@ crate struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    trait_impls:
-        FxHashMap<(u32, DefIndex), Lazy<[(DefIndex, Option<ty::fast_reject::SimplifiedType>)]>>,
+    trait_impls: FxHashMap<(u32, DefIndex), Lazy<[(DefIndex, Option<SimplifiedType>)]>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
@@ -304,18 +304,17 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         &mut self,
         meta: T::Meta,
     ) -> Result<Lazy<T>, <Self as Decoder>::Error> {
-        let min_size = T::min_size(meta);
         let distance = self.read_usize()?;
         let position = match self.lazy_state {
             LazyState::NoNode => bug!("read_lazy_with_meta: outside of a metadata node"),
             LazyState::NodeStart(start) => {
                 let start = start.get();
-                assert!(distance + min_size <= start);
-                start - distance - min_size
+                assert!(distance <= start);
+                start - distance
             }
-            LazyState::Previous(last_min_end) => last_min_end.get() + distance,
+            LazyState::Previous(last_pos) => last_pos.get() + distance,
         };
-        self.lazy_state = LazyState::Previous(NonZeroUsize::new(position + min_size).unwrap());
+        self.lazy_state = LazyState::Previous(NonZeroUsize::new(position).unwrap());
         Ok(Lazy::from_position_and_meta(NonZeroUsize::new(position).unwrap(), meta))
     }
 
@@ -722,25 +721,24 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self.raw_proc_macros.unwrap()[pos]
     }
 
-    fn try_item_ident(&self, item_index: DefIndex, sess: &Session) -> Result<Ident, String> {
-        let name = self
-            .def_key(item_index)
-            .disambiguated_data
-            .data
-            .get_opt_name()
-            .ok_or_else(|| format!("Missing opt name for {:?}", item_index))?;
-        let span = self
-            .root
-            .tables
-            .ident_span
-            .get(self, item_index)
-            .ok_or_else(|| format!("Missing ident span for {:?} ({:?})", name, item_index))?
-            .decode((self, sess));
-        Ok(Ident::new(name, span))
+    fn opt_item_ident(&self, item_index: DefIndex, sess: &Session) -> Option<Ident> {
+        let name = self.def_key(item_index).disambiguated_data.data.get_opt_name()?;
+        let span = match self.root.tables.ident_span.get(self, item_index) {
+            Some(lazy_span) => lazy_span.decode((self, sess)),
+            None => {
+                // FIXME: this weird case of a name with no span is specific to `extern crate`
+                // items, which are supposed to be treated like `use` items and only be encoded
+                // to metadata as `Export`s, return `None` because that's what all the callers
+                // expect in this case.
+                assert_eq!(self.def_kind(item_index), DefKind::ExternCrate);
+                return None;
+            }
+        };
+        Some(Ident::new(name, span))
     }
 
     fn item_ident(&self, item_index: DefIndex, sess: &Session) -> Ident {
-        self.try_item_ident(item_index, sess).unwrap()
+        self.opt_item_ident(item_index, sess).expect("no encoded ident for item")
     }
 
     fn maybe_kind(&self, item_id: DefIndex) -> Option<EntryKind> {
@@ -1009,6 +1007,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.get_impl_data(id).constness
     }
 
+    fn get_trait_item_def_id(&self, id: DefIndex) -> Option<DefId> {
+        self.root.tables.trait_item_def_id.get(self, id).map(|d| d.decode(self))
+    }
+
     fn get_coerce_unsized_info(&self, id: DefIndex) -> Option<ty::adjustment::CoerceUnsizedInfo> {
         self.get_impl_data(id).coerce_unsized_info
     }
@@ -1072,57 +1074,54 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    /// Iterates over each child of the given item.
-    fn each_child_of_item(&self, id: DefIndex, mut callback: impl FnMut(Export), sess: &Session) {
+    /// Iterates over all named children of the given module,
+    /// including both proper items and reexports.
+    /// Module here is understood in name resolution sense - it can be a `mod` item,
+    /// or a crate root, or an enum, or a trait.
+    fn for_each_module_child(
+        &self,
+        id: DefIndex,
+        mut callback: impl FnMut(ModChild),
+        sess: &Session,
+    ) {
         if let Some(data) = &self.root.proc_macro_data {
-            /* If we are loading as a proc macro, we want to return the view of this crate
-             * as a proc macro crate.
-             */
+            // If we are loading as a proc macro, we want to return
+            // the view of this crate as a proc macro crate.
             if id == CRATE_DEF_INDEX {
-                let macros = data.macros.decode(self);
-                for def_index in macros {
+                for def_index in data.macros.decode(self) {
                     let raw_macro = self.raw_proc_macro(def_index);
                     let res = Res::Def(
                         DefKind::Macro(macro_kind(raw_macro)),
                         self.local_def_id(def_index),
                     );
                     let ident = self.item_ident(def_index, sess);
-                    callback(Export { ident, res, vis: ty::Visibility::Public, span: ident.span });
+                    callback(ModChild {
+                        ident,
+                        res,
+                        vis: ty::Visibility::Public,
+                        span: ident.span,
+                    });
                 }
             }
             return;
         }
 
-        // Find the item.
-        let kind = match self.maybe_kind(id) {
-            None => return,
-            Some(kind) => kind,
-        };
-
         // Iterate over all children.
         if let Some(children) = self.root.tables.children.get(self, id) {
             for child_index in children.decode((self, sess)) {
-                // FIXME: Merge with the logic below.
-                if let None | Some(EntryKind::ForeignMod | EntryKind::Impl(_)) =
-                    self.maybe_kind(child_index)
-                {
-                    continue;
-                }
-
-                let def_key = self.def_key(child_index);
-                if def_key.disambiguated_data.data.get_opt_name().is_some() {
-                    let span = self.get_span(child_index, sess);
+                if let Some(ident) = self.opt_item_ident(child_index, sess) {
                     let kind = self.def_kind(child_index);
-                    let ident = self.item_ident(child_index, sess);
-                    let vis = self.get_visibility(child_index);
+                    if matches!(kind, DefKind::Macro(..)) {
+                        // FIXME: Macros are currently encoded twice, once as items and once as
+                        // reexports. We ignore the items here and only use the reexports.
+                        continue;
+                    }
                     let def_id = self.local_def_id(child_index);
                     let res = Res::Def(kind, def_id);
+                    let vis = self.get_visibility(child_index);
+                    let span = self.get_span(child_index, sess);
 
-                    // FIXME: Macros are currently encoded twice, once as items and once as
-                    // reexports. We ignore the items here and only use the reexports.
-                    if !matches!(kind, DefKind::Macro(..)) {
-                        callback(Export { res, ident, vis, span });
-                    }
+                    callback(ModChild { ident, res, vis, span });
 
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
@@ -1134,7 +1133,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 let ctor_res =
                                     Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                                 let vis = self.get_visibility(ctor_def_id.index);
-                                callback(Export { res: ctor_res, vis, ident, span });
+                                callback(ModChild { ident, res: ctor_res, vis, span });
                             }
                         }
                         DefKind::Variant => {
@@ -1159,7 +1158,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
                             }
-                            callback(Export { res: ctor_res, ident, vis, span });
+                            callback(ModChild { ident, res: ctor_res, vis, span });
                         }
                         _ => {}
                     }
@@ -1167,10 +1166,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         }
 
-        if let EntryKind::Mod(exports) = kind {
-            for exp in exports.decode((self, sess)) {
-                callback(exp);
+        match self.kind(id) {
+            EntryKind::Mod(exports) => {
+                for exp in exports.decode((self, sess)) {
+                    callback(exp);
+                }
             }
+            EntryKind::Enum(..) | EntryKind::Trait(..) => {}
+            _ => bug!("`for_each_module_child` is called on a non-module: {:?}", self.def_kind(id)),
         }
     }
 
@@ -1267,6 +1270,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
+    fn get_associated_item_def_ids(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> &'tcx [DefId] {
+        if let Some(children) = self.root.tables.children.get(self, id) {
+            tcx.arena.alloc_from_iter(
+                children.decode((self, tcx.sess)).map(|child_index| self.local_def_id(child_index)),
+            )
+        } else {
+            &[]
+        }
+    }
+
     fn get_associated_item(&self, id: DefIndex, sess: &Session) -> ty::AssocItem {
         let def_key = self.def_key(id);
         let parent = self.local_def_id(def_key.parent.unwrap());
@@ -1288,6 +1301,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             vis: self.get_visibility(id),
             defaultness: container.defaultness(),
             def_id: self.local_def_id(id),
+            trait_item_def_id: self.get_trait_item_def_id(id),
             container: container.with_def_id(parent),
             fn_has_self_parameter: has_self,
         }
@@ -1309,24 +1323,26 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_item_attrs(
         &'a self,
-        node_id: DefIndex,
+        id: DefIndex,
         sess: &'a Session,
     ) -> impl Iterator<Item = ast::Attribute> + 'a {
-        // The attributes for a tuple struct/variant are attached to the definition, not the ctor;
-        // we assume that someone passing in a tuple struct ctor is actually wanting to
-        // look at the definition
-        let def_key = self.def_key(node_id);
-        let item_id = if def_key.disambiguated_data.data == DefPathData::Ctor {
-            def_key.parent.unwrap()
-        } else {
-            node_id
-        };
-
         self.root
             .tables
             .attributes
-            .get(self, item_id)
-            .unwrap_or_else(Lazy::empty)
+            .get(self, id)
+            .unwrap_or_else(|| {
+                // Structure and variant constructors don't have any attributes encoded for them,
+                // but we assume that someone passing a constructor ID actually wants to look at
+                // the attributes on the corresponding struct or variant.
+                let def_key = self.def_key(id);
+                assert_eq!(def_key.disambiguated_data.data, DefPathData::Ctor);
+                let parent_id = def_key.parent.expect("no parent for a constructor");
+                self.root
+                    .tables
+                    .attributes
+                    .get(self, parent_id)
+                    .expect("no encoded attributes for a structure or variant")
+            })
             .decode((self, sess))
     }
 
@@ -1372,39 +1388,39 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.traits.decode(self).map(|index| self.local_def_id(index))
     }
 
-    fn get_implementations_for_trait(
+    fn get_trait_impls(&'a self) -> impl Iterator<Item = (DefId, Option<SimplifiedType>)> + 'a {
+        self.trait_impls.values().flat_map(move |impls| {
+            impls
+                .decode(self)
+                .map(|(idx, simplified_self_ty)| (self.local_def_id(idx), simplified_self_ty))
+        })
+    }
+
+    fn get_implementations_of_trait(
         &self,
         tcx: TyCtxt<'tcx>,
-        filter: Option<DefId>,
-    ) -> &'tcx [(DefId, Option<ty::fast_reject::SimplifiedType>)] {
+        trait_def_id: DefId,
+    ) -> &'tcx [(DefId, Option<SimplifiedType>)] {
         if self.root.is_proc_macro_crate() {
             // proc-macro crates export no trait impls.
             return &[];
         }
 
-        if let Some(def_id) = filter {
-            // Do a reverse lookup beforehand to avoid touching the crate_num
-            // hash map in the loop below.
-            let filter = match self.reverse_translate_def_id(def_id) {
-                Some(def_id) => (def_id.krate.as_u32(), def_id.index),
-                None => return &[],
-            };
+        // Do a reverse lookup beforehand to avoid touching the crate_num
+        // hash map in the loop below.
+        let key = match self.reverse_translate_def_id(trait_def_id) {
+            Some(def_id) => (def_id.krate.as_u32(), def_id.index),
+            None => return &[],
+        };
 
-            if let Some(impls) = self.trait_impls.get(&filter) {
-                tcx.arena.alloc_from_iter(
-                    impls.decode(self).map(|(idx, simplified_self_ty)| {
-                        (self.local_def_id(idx), simplified_self_ty)
-                    }),
-                )
-            } else {
-                &[]
-            }
-        } else {
-            tcx.arena.alloc_from_iter(self.trait_impls.values().flat_map(|impls| {
+        if let Some(impls) = self.trait_impls.get(&key) {
+            tcx.arena.alloc_from_iter(
                 impls
                     .decode(self)
-                    .map(|(idx, simplified_self_ty)| (self.local_def_id(idx), simplified_self_ty))
-            }))
+                    .map(|(idx, simplified_self_ty)| (self.local_def_id(idx), simplified_self_ty)),
+            )
+        } else {
+            &[]
         }
     }
 

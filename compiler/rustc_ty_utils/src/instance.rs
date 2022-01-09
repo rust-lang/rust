@@ -152,8 +152,7 @@ fn inner_resolve_instance<'tcx>(
 
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def.did) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
-        let item = tcx.associated_item(def.did);
-        resolve_associated_item(tcx, &item, param_env, trait_def_id, substs)
+        resolve_associated_item(tcx, def.did, param_env, trait_def_id, substs)
     } else {
         let ty = tcx.type_of(def.def_id_for_type_of());
         let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, ty);
@@ -204,19 +203,12 @@ fn inner_resolve_instance<'tcx>(
 
 fn resolve_associated_item<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_item: &ty::AssocItem,
+    trait_item_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
     trait_id: DefId,
     rcvr_substs: SubstsRef<'tcx>,
 ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
-    let def_id = trait_item.def_id;
-    debug!(
-        "resolve_associated_item(trait_item={:?}, \
-            param_env={:?}, \
-            trait_id={:?}, \
-            rcvr_substs={:?})",
-        def_id, param_env, trait_id, rcvr_substs
-    );
+    debug!(?trait_item_id, ?param_env, ?trait_id, ?rcvr_substs, "resolve_associated_item");
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
 
@@ -232,7 +224,7 @@ fn resolve_associated_item<'tcx>(
         traits::ImplSource::UserDefined(impl_data) => {
             debug!(
                 "resolving ImplSource::UserDefined: {:?}, {:?}, {:?}, {:?}",
-                param_env, trait_item, rcvr_substs, impl_data
+                param_env, trait_item_id, rcvr_substs, impl_data
             );
             assert!(!rcvr_substs.needs_infer());
             assert!(!trait_ref.needs_infer());
@@ -241,9 +233,9 @@ fn resolve_associated_item<'tcx>(
             let trait_def = tcx.trait_def(trait_def_id);
             let leaf_def = trait_def
                 .ancestors(tcx, impl_data.impl_def_id)?
-                .leaf_def(tcx, trait_item.ident, trait_item.kind)
+                .leaf_def(tcx, trait_item_id)
                 .unwrap_or_else(|| {
-                    bug!("{:?} not found in {:?}", trait_item, impl_data.impl_def_id);
+                    bug!("{:?} not found in {:?}", trait_item_id, impl_data.impl_def_id);
                 });
 
             let substs = tcx.infer_ctxt().enter(|infcx| {
@@ -297,22 +289,22 @@ fn resolve_associated_item<'tcx>(
             // performs (i.e. that the definition's type in the `impl` matches
             // the declaration in the `trait`), so that we can cheaply check
             // here if it failed, instead of approximating it.
-            if trait_item.kind == ty::AssocKind::Const
-                && trait_item.def_id != leaf_def.item.def_id
+            if leaf_def.item.kind == ty::AssocKind::Const
+                && trait_item_id != leaf_def.item.def_id
                 && leaf_def.item.def_id.is_local()
             {
                 let normalized_type_of = |def_id, substs| {
                     tcx.subst_and_normalize_erasing_regions(substs, param_env, tcx.type_of(def_id))
                 };
 
-                let original_ty = normalized_type_of(trait_item.def_id, rcvr_substs);
+                let original_ty = normalized_type_of(trait_item_id, rcvr_substs);
                 let resolved_ty = normalized_type_of(leaf_def.item.def_id, substs);
 
                 if original_ty != resolved_ty {
                     let msg = format!(
                         "Instance::resolve: inconsistent associated `const` type: \
                          was `{}: {}` but resolved to `{}: {}`",
-                        tcx.def_path_str_with_substs(trait_item.def_id, rcvr_substs),
+                        tcx.def_path_str_with_substs(trait_item_id, rcvr_substs),
                         original_ty,
                         tcx.def_path_str_with_substs(leaf_def.item.def_id, substs),
                         resolved_ty,
@@ -343,19 +335,22 @@ fn resolve_associated_item<'tcx>(
         }
         traits::ImplSource::FnPointer(ref data) => match data.fn_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
-                def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
+                def: ty::InstanceDef::FnPtrShim(trait_item_id, data.fn_ty),
                 substs: rcvr_substs,
             }),
             _ => None,
         },
         traits::ImplSource::Object(ref data) => {
-            let index = traits::get_vtable_index_of_object_method(tcx, data, def_id);
-            Some(Instance { def: ty::InstanceDef::Virtual(def_id, index), substs: rcvr_substs })
+            let index = traits::get_vtable_index_of_object_method(tcx, data, trait_item_id);
+            Some(Instance {
+                def: ty::InstanceDef::Virtual(trait_item_id, index),
+                substs: rcvr_substs,
+            })
         }
         traits::ImplSource::Builtin(..) => {
             if Some(trait_ref.def_id) == tcx.lang_items().clone_trait() {
                 // FIXME(eddyb) use lang items for methods instead of names.
-                let name = tcx.item_name(def_id);
+                let name = tcx.item_name(trait_item_id);
                 if name == sym::clone {
                     let self_ty = trait_ref.self_ty();
 
@@ -367,7 +362,7 @@ fn resolve_associated_item<'tcx>(
                     };
 
                     Some(Instance {
-                        def: ty::InstanceDef::CloneShim(def_id, self_ty),
+                        def: ty::InstanceDef::CloneShim(trait_item_id, self_ty),
                         substs: rcvr_substs,
                     })
                 } else {
@@ -375,7 +370,7 @@ fn resolve_associated_item<'tcx>(
 
                     // Use the default `fn clone_from` from `trait Clone`.
                     let substs = tcx.erase_regions(rcvr_substs);
-                    Some(ty::Instance::new(def_id, substs))
+                    Some(ty::Instance::new(trait_item_id, substs))
                 }
             } else {
                 None

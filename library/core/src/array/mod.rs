@@ -66,8 +66,6 @@ where
 ///
 /// ```rust
 /// #![feature(array_from_fn)]
-/// # // Apparently these doc tests are still on edition2018
-/// # use std::convert::TryInto;
 ///
 /// let array: Result<[u8; 5], _> = std::array::try_from_fn(|i| i.try_into());
 /// assert_eq!(array, Ok([0, 1, 2, 3, 4]));

@@ -1040,7 +1040,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     let wall = matches.opt_strs("W");
     if wall.iter().any(|x| *x == "all") {
         print_wall_help();
-        return None;
+        rustc_errors::FatalError.raise();
     }
 
     // Don't handle -W help here, because we might first load plugins.

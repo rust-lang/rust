@@ -545,6 +545,10 @@ nav.sub {
 	position: relative;
 }
 
+.search-loading {
+	text-align: center;
+}
+
 #results > table {
 	width: 100%;
 	table-layout: fixed;
@@ -862,18 +866,24 @@ h2.small-section-header > .anchor {
 	display: inline-flex;
 	width: calc(100% - 63px);
 }
+.search-results-title {
+	display: inline;
+}
+#search-settings {
+	font-size: 1.5rem;
+	font-weight: 500;
+	margin-bottom: 20px;
+}
 #crate-search {
 	min-width: 115px;
 	margin-top: 5px;
-	padding: 6px;
-	padding-right: 19px;
-	flex: none;
+	margin-left: 0.2em;
+	padding-left: 0.3em;
+	padding-right: 23px;
 	border: 0;
-	border-right: 0;
-	border-radius: 4px 0 0 4px;
+	border-radius: 4px;
 	outline: none;
 	cursor: pointer;
-	border-right: 1px solid;
 	-moz-appearance: none;
 	-webkit-appearance: none;
 	/* Removes default arrow from firefox */

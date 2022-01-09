@@ -1321,7 +1321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if Some(*parent_did) != self.tcx.parent(*trait_did)
                     && self
                         .tcx
-                        .item_children(*parent_did)
+                        .module_children(*parent_did)
                         .iter()
                         .filter(|child| child.res.opt_def_id() == Some(*trait_did))
                         .all(|child| child.ident.name == kw::Underscore)

@@ -312,14 +312,6 @@ impl AllTypes {
         f.write_str(
             "<h1 class=\"fqn\">\
                  <span class=\"in-band\">List of all items</span>\
-                 <span class=\"out-of-band\">\
-                     <span id=\"render-detail\">\
-                         <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
-                            title=\"collapse all docs\">\
-                             [<span class=\"inner\">&#x2212;</span>]\
-                         </a>\
-                     </span>
-                 </span>
              </h1>",
         );
         // Note: print_entries does not escape the title, because we know the current set of titles

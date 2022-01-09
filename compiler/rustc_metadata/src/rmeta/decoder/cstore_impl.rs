@@ -4,12 +4,13 @@ use crate::native_libs;
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_map::FxHashMap;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
-use rustc_middle::hir::exports::Export;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::cstore::{CrateSource, CrateStore, ForeignModule};
@@ -103,12 +104,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         tcx.calculate_dtor(def_id, |_,_| Ok(()))
     }
     variances_of => { tcx.arena.alloc_from_iter(cdata.get_item_variances(def_id.index)) }
-    associated_item_def_ids => {
-        let mut result = SmallVec::<[_; 8]>::new();
-        cdata.each_child_of_item(def_id.index,
-          |child| result.push(child.res.def_id()), tcx.sess);
-        tcx.arena.alloc_slice(&result)
-    }
+    associated_item_def_ids => { cdata.get_associated_item_def_ids(tcx, def_id.index) }
     associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
     impl_polarity => { cdata.get_impl_polarity(def_id.index) }
@@ -133,9 +129,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     generator_kind => { cdata.generator_kind(def_id.index) }
     opt_def_kind => { Some(cdata.def_kind(def_id.index)) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
-    def_ident_span => {
-        cdata.try_item_ident(def_id.index, &tcx.sess).ok().map(|ident| ident.span)
-    }
+    def_ident_span => { cdata.opt_item_ident(def_id.index, &tcx.sess).map(|ident| ident.span) }
     lookup_stability => {
         cdata.get_stability(def_id.index).map(|s| tcx.intern_stability(s))
     }
@@ -145,9 +139,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     lookup_deprecation_entry => {
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }
-    item_attrs => { tcx.arena.alloc_from_iter(
-        cdata.get_item_attrs(def_id.index, tcx.sess)
-    ) }
+    item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     fn_arg_names => { cdata.get_fn_param_names(tcx, def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
@@ -196,23 +188,16 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     extra_filename => { cdata.root.extra_filename.clone() }
 
     traits_in_crate => { tcx.arena.alloc_from_iter(cdata.get_traits()) }
-
-    implementations_of_trait => {
-        cdata.get_implementations_for_trait(tcx, Some(other))
-    }
-
-    all_trait_implementations => {
-        cdata.get_implementations_for_trait(tcx, None)
-    }
+    implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
 
     visibility => { cdata.get_visibility(def_id.index) }
     dep_kind => {
         let r = *cdata.dep_kind.lock();
         r
     }
-    item_children => {
+    module_children => {
         let mut result = SmallVec::<[_; 8]>::new();
-        cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
+        cdata.for_each_module_child(def_id.index, |child| result.push(child), tcx.sess);
         tcx.arena.alloc_slice(&result)
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
@@ -323,35 +308,40 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 bfs_queue.push_back(DefId { krate: cnum, index: CRATE_DEF_INDEX });
             }
 
-            let mut add_child = |bfs_queue: &mut VecDeque<_>, export: &Export, parent: DefId| {
-                if !export.vis.is_public() {
+            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &ModChild, parent: DefId| {
+                if !child.vis.is_public() {
                     return;
                 }
 
-                if let Some(child) = export.res.opt_def_id() {
-                    if export.ident.name == kw::Underscore {
-                        fallback_map.insert(child, parent);
+                if let Some(def_id) = child.res.opt_def_id() {
+                    if child.ident.name == kw::Underscore {
+                        fallback_map.insert(def_id, parent);
                         return;
                     }
 
-                    match visible_parent_map.entry(child) {
+                    match visible_parent_map.entry(def_id) {
                         Entry::Occupied(mut entry) => {
                             // If `child` is defined in crate `cnum`, ensure
                             // that it is mapped to a parent in `cnum`.
-                            if child.is_local() && entry.get().is_local() {
+                            if def_id.is_local() && entry.get().is_local() {
                                 entry.insert(parent);
                             }
                         }
                         Entry::Vacant(entry) => {
                             entry.insert(parent);
-                            bfs_queue.push_back(child);
+                            if matches!(
+                                child.res,
+                                Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, _)
+                            ) {
+                                bfs_queue.push_back(def_id);
+                            }
                         }
                     }
                 }
             };
 
             while let Some(def) = bfs_queue.pop_front() {
-                for child in tcx.item_children(def).iter() {
+                for child in tcx.module_children(def).iter() {
                     add_child(bfs_queue, child, def);
                 }
             }
@@ -397,9 +387,9 @@ impl CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    pub fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<Export> {
+    pub fn module_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<ModChild> {
         let mut result = vec![];
-        self.get_crate_data(def_id.krate).each_child_of_item(
+        self.get_crate_data(def_id.krate).for_each_module_child(
             def_id.index,
             |child| result.push(child),
             sess,
@@ -470,7 +460,7 @@ impl CStore {
         self.get_crate_data(cnum).num_def_ids()
     }
 
-    pub fn item_attrs(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
+    pub fn item_attrs_untracked(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
         self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess).collect()
     }
 
@@ -481,6 +471,17 @@ impl CStore {
         sess: &Session,
     ) -> Span {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
+    }
+
+    pub fn traits_in_crate_untracked(&self, cnum: CrateNum) -> Vec<DefId> {
+        self.get_crate_data(cnum).get_traits().collect()
+    }
+
+    pub fn trait_impls_in_crate_untracked(
+        &self,
+        cnum: CrateNum,
+    ) -> Vec<(DefId, Option<SimplifiedType>)> {
+        self.get_crate_data(cnum).get_trait_impls().collect()
     }
 }
 

@@ -295,7 +295,9 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         if let hir::ExprKind::Closure(..) = expr.kind {
             let def_id = self.tcx.hir().local_def_id(expr.hir_id);
             self.tcx.ensure().generics_of(def_id);
-            self.tcx.ensure().type_of(def_id);
+            // We do not call `type_of` for closures here as that
+            // depends on typecheck and would therefore hide
+            // any further errors in case one typeck fails.
         }
         intravisit::walk_expr(self, expr);
     }
@@ -3148,21 +3150,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
 /// applied to the method prototype.
 fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     if let Some(impl_item) = tcx.opt_associated_item(def_id) {
-        if let ty::AssocItemContainer::ImplContainer(impl_def_id) = impl_item.container {
-            if let Some(trait_def_id) = tcx.trait_id_of_impl(impl_def_id) {
-                if let Some(trait_item) = tcx
-                    .associated_items(trait_def_id)
-                    .filter_by_name_unhygienic(impl_item.ident.name)
-                    .find(move |trait_item| {
-                        trait_item.kind == ty::AssocKind::Fn
-                            && tcx.hygienic_eq(impl_item.ident, trait_item.ident, trait_def_id)
-                    })
-                {
-                    return tcx
-                        .codegen_fn_attrs(trait_item.def_id)
-                        .flags
-                        .intersects(CodegenFnAttrFlags::TRACK_CALLER);
-                }
+        if let ty::AssocItemContainer::ImplContainer(_) = impl_item.container {
+            if let Some(trait_item) = impl_item.trait_item_def_id {
+                return tcx
+                    .codegen_fn_attrs(trait_item)
+                    .flags
+                    .intersects(CodegenFnAttrFlags::TRACK_CALLER);
             }
         }
     }

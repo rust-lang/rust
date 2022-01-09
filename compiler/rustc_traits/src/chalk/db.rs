@@ -436,23 +436,13 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Arc<chalk_solve::rust_ir::AssociatedTyValue<RustInterner<'tcx>>> {
         let def_id = associated_ty_id.0;
         let assoc_item = self.interner.tcx.associated_item(def_id);
-        let (impl_id, trait_id) = match assoc_item.container {
-            AssocItemContainer::TraitContainer(def_id) => (def_id, def_id),
-            AssocItemContainer::ImplContainer(def_id) => {
-                (def_id, self.interner.tcx.impl_trait_ref(def_id).unwrap().def_id)
-            }
-        };
+        let impl_id = assoc_item.container.id();
         match assoc_item.kind {
             AssocKind::Type => {}
             _ => unimplemented!("Not possible??"),
         }
 
-        let trait_item = self
-            .interner
-            .tcx
-            .associated_items(trait_id)
-            .find_by_name_and_kind(self.interner.tcx, assoc_item.ident, assoc_item.kind, trait_id)
-            .unwrap();
+        let trait_item_id = assoc_item.trait_item_def_id.expect("assoc_ty with no trait version");
         let bound_vars = bound_vars_for_item(self.interner.tcx, def_id);
         let binders = binders_for(self.interner, bound_vars);
         let ty = self
@@ -464,7 +454,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         Arc::new(chalk_solve::rust_ir::AssociatedTyValue {
             impl_id: chalk_ir::ImplId(impl_id),
-            associated_ty_id: chalk_ir::AssocTypeId(trait_item.def_id),
+            associated_ty_id: chalk_ir::AssocTypeId(trait_item_id),
             value: chalk_ir::Binders::new(
                 binders,
                 chalk_solve::rust_ir::AssociatedTyValueBound { ty },

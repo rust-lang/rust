@@ -19,7 +19,7 @@ pub use assoc::*;
 pub use generics::*;
 pub use vtable::*;
 
-use crate::hir::exports::ExportMap;
+use crate::metadata::ModChild;
 use crate::mir::{Body, GeneratorLayout};
 use crate::traits::{self, Reveal};
 use crate::ty;
@@ -126,7 +126,7 @@ pub struct ResolverOutputs {
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
-    pub export_map: ExportMap,
+    pub reexport_map: FxHashMap<LocalDefId, Vec<ModChild>>,
     pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.

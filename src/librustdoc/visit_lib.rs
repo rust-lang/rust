@@ -53,7 +53,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
             return;
         }
 
-        for item in self.tcx.item_children(def_id).iter() {
+        for item in self.tcx.module_children(def_id).iter() {
             if let Some(def_id) = item.res.opt_def_id() {
                 if self.tcx.def_key(def_id).parent.map_or(false, |d| d == def_id.index)
                     || item.vis.is_public()
