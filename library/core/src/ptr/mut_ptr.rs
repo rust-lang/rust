@@ -47,6 +47,20 @@ impl<T: ?Sized> *mut T {
         self as _
     }
 
+    /// Changes constness without changing the type.
+    ///
+    /// This is a bit safer than `as` because it wouldn't silently change the type if the code is
+    /// refactored.
+    ///
+    /// While not strictly required (`*mut T` coerces to `*const T`), this is provided for symmetry
+    /// with `as_mut()` on `*const T` and may have documentation value if used instead of implicit
+    /// coercion.
+    #[unstable(feature = "ptr_const_cast", issue = "92675")]
+    #[rustc_const_unstable(feature = "ptr_const_cast", issue = "92675")]
+    pub const fn as_const(self) -> *const T {
+        self as _
+    }
+
     /// Casts a pointer to its raw bits.
     ///
     /// This is equivalent to `as usize`, but is more specific to enhance readability.
