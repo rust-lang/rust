@@ -41,7 +41,7 @@ pub mod tokenstream;
 pub mod visit;
 
 pub use self::ast::*;
-pub use self::ast_like::AstLike;
+pub use self::ast_like::{AstLike, AstLikeWrapper};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
