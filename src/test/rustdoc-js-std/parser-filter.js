@@ -35,18 +35,12 @@ const PARSED = [
     },
     {
         args: [],
-        elems: [{
-            name: "foo",
-            fullPath: ["foo"],
-            pathWithoutLast: [],
-            pathLast: "foo",
-            generics: [],
-        }],
-        foundElems: 1,
+        elems: [],
+        foundElems: 0,
         original: "macro<f>:foo",
         returned: [],
-        typeFilter: 14,
+        typeFilter: -1,
         userQuery: "macro<f>:foo",
-        error: null,
+        error: "Unexpected `:`",
     },
 ];

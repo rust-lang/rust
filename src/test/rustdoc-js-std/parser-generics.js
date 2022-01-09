@@ -1,4 +1,4 @@
-const QUERY = ['<P>', 'A<B<C<D>, E>', 'p<> u8'];
+const QUERY = ['<P>', 'A<B<C<D>,  E>', 'p<> u8'];
 
 const PARSED = [
     {
@@ -66,10 +66,10 @@ const PARSED = [
             ],
         }],
         foundElems: 1,
-        original: 'A<B<C<D>, E>',
+        original: 'A<B<C<D>,  E>',
         returned: [],
         typeFilter: -1,
-        userQuery: 'a<b<c<d>, e>',
+        userQuery: 'a<b<c<d>,  e>',
         error: null,
     },
     {

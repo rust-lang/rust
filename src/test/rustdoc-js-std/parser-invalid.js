@@ -1,83 +1,57 @@
 // This test is mostly to check that the parser still kinda outputs something
 // (and doesn't enter an infinite loop!) even though the query is completely
 // invalid.
-const QUERY = ['-> <P> (p2)', '(p -> p2', 'a b', 'a,b(c)'];
+const QUERY = ['a b', 'a   b', 'a,b(c)'];
 
 const PARSED = [
     {
         args: [],
-        elems: [],
-        foundElems: 2,
-        original: "-> <P> (p2)",
-        returned: [
+        elems: [
             {
-                name: "",
-                fullPath: [""],
+                name: "a",
+                fullPath: ["a"],
                 pathWithoutLast: [],
-                pathLast: "",
-                generics: [
-                    {
-                        name: "p",
-                        fullPath: ["p"],
-                        pathWithoutLast: [],
-                        pathLast: "p",
-                        generics: [],
-                    },
-                ],
+                pathLast: "a",
+                generics: [],
             },
             {
-                name: "p2",
-                fullPath: ["p2"],
+                name: "b",
+                fullPath: ["b"],
                 pathWithoutLast: [],
-                pathLast: "p2",
+                pathLast: "b",
                 generics: [],
             },
         ],
-        typeFilter: -1,
-        userQuery: "-> <p> (p2)",
-        error: null,
-    },
-    {
-        args: [
-            {
-                name: "p",
-                fullPath: ["p"],
-                pathWithoutLast: [],
-                pathLast: "p",
-                generics: [],
-            },
-            {
-                name: "p2",
-                fullPath: ["p2"],
-                pathWithoutLast: [],
-                pathLast: "p2",
-                generics: [],
-            },
-        ],
-        elems: [],
         foundElems: 2,
-        original: "(p -> p2",
+        original: "a b",
         returned: [],
         typeFilter: -1,
-        userQuery: "(p -> p2",
+        userQuery: "a b",
         error: null,
     },
     {
         args: [],
         elems: [
             {
-                name: "a b",
-                fullPath: ["a b"],
+                name: "a",
+                fullPath: ["a"],
                 pathWithoutLast: [],
-                pathLast: "a b",
+                pathLast: "a",
+                generics: [],
+            },
+            {
+                name: "b",
+                fullPath: ["b"],
+                pathWithoutLast: [],
+                pathLast: "b",
                 generics: [],
             },
         ],
-        foundElems: 1,
-        original: "a b",
+        foundElems: 2,
+        original: "a   b",
         returned: [],
         typeFilter: -1,
-        userQuery: "a b",
+        userQuery: "a   b",
         error: null,
     },
     {

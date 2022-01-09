@@ -132,17 +132,12 @@ window.initSearch = function(rawSearchIndex) {
         return "(<\"".indexOf(c) !== -1;
     }
 
-    function isStopCharacter(c) {
-        return isWhitespace(c) || "),>-=".indexOf(c) !== -1;
+    function isEndCharacter(c) {
+        return "),>-".indexOf(c) !== -1;
     }
 
-    function removeEmptyStringsFromArray(arr) {
-        for (var i = 0, len = arr.length; i < len; ++i) {
-            if (arr[i] === "") {
-                arr.splice(i, 1);
-                i -= 1;
-            }
-        }
+    function isStopCharacter(c) {
+        return isWhitespace(c) || isEndCharacter(c);
     }
 
     function itemTypeFromName(typename) {
@@ -151,7 +146,8 @@ window.initSearch = function(rawSearchIndex) {
                 return i;
             }
         }
-        return NO_TYPE_FILTER;
+
+        throw new Error("Unknown type filter `" + typename + "`");
     }
 
     /**
@@ -190,22 +186,6 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     /**
-     * Increase the parser position as long as the character is a whitespace. This check is
-     * performed with the `isWhitespace` function.
-     *
-     * @param {ParserState} parserState
-     */
-    function skipWhitespaces(parserState) {
-        while (parserState.pos < parserState.length) {
-            var c = parserState.userQuery[parserState.pos];
-            if (!isWhitespace(c)) {
-                break;
-            }
-            parserState.pos += 1;
-        }
-    }
-
-    /**
      * Returns `true` if the current parser position is starting with "::".
      *
      * @param {ParserState} parserState
@@ -233,7 +213,6 @@ window.initSearch = function(rawSearchIndex) {
      * @param {Array<QueryElement>} generics - List of generics of this query element.
      */
     function createQueryElement(query, parserState, elems, name, generics) {
-        removeEmptyStringsFromArray(generics);
         if (name === '*' || (name.length === 0 && generics.length === 0)) {
             return;
         }
@@ -241,7 +220,20 @@ window.initSearch = function(rawSearchIndex) {
             throw new Error("You cannot have more than one element if you use quotes");
         }
         var pathSegments = name.split("::");
-        removeEmptyStringsFromArray(pathSegments);
+        if (pathSegments.length > 1) {
+            for (var i = 0, len = pathSegments.length; i < len; ++i) {
+                var pathSegment = pathSegments[i];
+
+                if (pathSegment.length === 0) {
+                    if (i === 0) {
+                        throw new Error("Paths cannot start with `::`");
+                    } else if (i + 1 === len) {
+                        throw new Error("Paths cannot end with `::`");
+                    }
+                    throw new Error("Unexpected `::::`");
+                }
+            }
+        }
         // In case we only have something like `<p>`, there is no name but it remains valid.
         if (pathSegments.length === 0) {
             pathSegments = [""];
@@ -272,7 +264,6 @@ window.initSearch = function(rawSearchIndex) {
             start += 1;
             getStringElem(query, parserState, isInGenerics);
             end = parserState.pos - 1;
-            skipWhitespaces(parserState);
         } else {
             while (parserState.pos < parserState.length) {
                 var c = parserState.userQuery[parserState.pos];
@@ -289,7 +280,6 @@ window.initSearch = function(rawSearchIndex) {
                 }
                 parserState.pos += 1;
                 end = parserState.pos;
-                skipWhitespaces(parserState);
             }
         }
         if (parserState.pos < parserState.length &&
@@ -317,22 +307,36 @@ window.initSearch = function(rawSearchIndex) {
      *                                      character.
      */
     function getItemsBefore(query, parserState, elems, limit) {
+        var turns = 0;
         while (parserState.pos < parserState.length) {
             var c = parserState.userQuery[parserState.pos];
             if (c === limit) {
                 break;
-            } else if (c === '(' || c === ":") {
-                // Something weird is going on in here. Ignoring it!
+            } else if (c === "," && limit !== "" && turns > 0) {
                 parserState.pos += 1;
                 continue;
+            } else if (c === ":" && isPathStart(parserState)) {
+                throw new Error("Unexpected `::`: paths cannot start with `::`");
+            } else if (c === "(" || c === ":" || isEndCharacter(c)) {
+                var extra = "";
+                if (limit === ">") {
+                    extra = "`<`";
+                } else if (limit === ")") {
+                    extra = "`(`";
+                } else if (limit === "") {
+                    extra = "`->`";
+                }
+                throw new Error("Unexpected `" + c + "` after " + extra);
             }
             var posBefore = parserState.pos;
             getNextElem(query, parserState, elems, limit === ">");
+            turns += 1;
             if (posBefore === parserState.pos) {
                 parserState.pos += 1;
             }
         }
-        // We skip the "limit".
+        // We are either at the end of the string or on the "limit" character, let's move forward
+        // in any case.
         parserState.pos += 1;
     }
 
@@ -356,9 +360,13 @@ window.initSearch = function(rawSearchIndex) {
                 break;
             } else if (c === ":" &&
                 parserState.typeFilter === null &&
-                !isPathStart(parserState) &&
-                query.elems.length === 1)
+                !isPathStart(parserState))
             {
+                if (query.elems.length === 0) {
+                    throw new Error("Expected type filter before `:`");
+                } else if (query.elems.length !== 1 || parserState.totalElems !== 1) {
+                    throw new Error("Unexpected `:`");
+                }
                 if (query.literalSearch) {
                     throw new Error("You cannot use quotes on type filter");
                 }
@@ -531,6 +539,10 @@ window.initSearch = function(rawSearchIndex) {
 
         try {
             parseInput(query, parserState);
+            if (parserState.typeFilter !== null) {
+                var typeFilter = parserState.typeFilter.replace(/^const$/, "constant");
+                query.typeFilter = itemTypeFromName(typeFilter);
+            }
         } catch (err) {
             query = newParsedQuery(userQuery);
             query.error = err.message;
@@ -547,10 +559,6 @@ window.initSearch = function(rawSearchIndex) {
             // In this case, we'll simply keep whatever was entered by the user...
             createQueryElement(query, parserState, query.elems, userQuery, []);
             query.foundElems += 1;
-        }
-        if (parserState.typeFilter !== null) {
-            var typeFilter = parserState.typeFilter.replace(/^const$/, "constant");
-            query.typeFilter = itemTypeFromName(typeFilter);
         }
         return query;
     }
@@ -582,9 +590,6 @@ window.initSearch = function(rawSearchIndex) {
      * @return {ResultsTable}
      */
     function execQuery(parsedQuery, searchWords, filterCrates) {
-        if (parsedQuery.error !== null) {
-            createQueryResults([], [], [], parsedQuery);
-        }
         var results_others = {}, results_in_args = {}, results_returned = {};
 
         function transformResults(results) {
@@ -1267,7 +1272,10 @@ window.initSearch = function(rawSearchIndex) {
                 }
             }
         }
-        innerRunQuery();
+
+        if (parsedQuery.error === null) {
+            innerRunQuery();
+        }
 
         var ret = createQueryResults(
             sortResults(results_in_args, true),
@@ -1275,6 +1283,10 @@ window.initSearch = function(rawSearchIndex) {
             sortResults(results_others, false),
             parsedQuery);
         handleAliases(ret, parsedQuery.original.replace(/"/g, ""), filterCrates);
+        if (parsedQuery.error !== null && ret.others.length !== 0) {
+            // It means some doc aliases were found so let's "remove" the error!
+            ret.query.error = null;
+        }
         return ret;
     }
 
@@ -1413,7 +1425,7 @@ window.initSearch = function(rawSearchIndex) {
 
         var output = document.createElement("div");
         var length = 0;
-        if (array.length > 0 && query.error === null) {
+        if (array.length > 0) {
             output.className = "search-results " + extraClass;
 
             array.forEach(function(item) {
@@ -1466,10 +1478,7 @@ window.initSearch = function(rawSearchIndex) {
                 link.appendChild(wrapper);
                 output.appendChild(link);
             });
-        } else if (query.error !== null) {
-            output.className = "search-failed" + extraClass;
-            output.innerHTML = "Syntax error: " + query.error;
-        } else {
+        } else if (query.error === null) {
             output.className = "search-failed" + extraClass;
             output.innerHTML = "No results :(<br/>" +
                 "Try on <a href=\"https://duckduckgo.com/?q=" +
@@ -1552,15 +1561,19 @@ window.initSearch = function(rawSearchIndex) {
             }
             crates += `</select>`;
         }
+
         var typeFilter = "";
         if (results.query.typeFilter !== NO_TYPE_FILTER) {
-            typeFilter = " (type: " + escape(results.query.typeFilter) + ")";
+            typeFilter = " (type: " + escape(itemTypes[results.query.typeFilter]) + ")";
         }
 
         var output = `<div id="search-settings">` +
             `<h1 class="search-results-title">Results for ${escape(results.query.userQuery)}` +
-            `${typeFilter}</h1> in ${crates} </div>` +
-            `<div id="titles">` +
+            `${typeFilter}</h1> in ${crates} </div>`;
+        if (results.query.error !== null) {
+            output += `<h3>Query parser error: "${results.query.error}".</h3>`;
+        }
+        output += `<div id="titles">` +
             makeTabHeader(0, "In Names", ret_others[1]) +
             makeTabHeader(1, "In Parameters", ret_in_args[1]) +
             makeTabHeader(2, "In Return Types", ret_returned[1]) +

@@ -272,10 +272,9 @@ function loadSearchJsAndIndex(searchJs, searchIndex, storageJs, crate) {
     var functionsToLoad = ["buildHrefAndPath", "pathSplitter", "levenshtein", "validateResult",
                            "buildIndex", "execQuery", "parseQuery", "createQueryResults",
                            "isWhitespace", "isSpecialStartCharacter", "isStopCharacter",
-                           "removeEmptyStringsFromArray", "parseInput", "getItemsBefore",
-                           "getNextElem", "createQueryElement", "isReturnArrow", "isPathStart",
-                           "skipWhitespaces", "getStringElem", "itemTypeFromName",
-                           "newParsedQuery"];
+                           "parseInput", "getItemsBefore", "getNextElem", "createQueryElement",
+                           "isReturnArrow", "isPathStart", "getStringElem", "newParsedQuery",
+                           "itemTypeFromName", "isEndCharacter"];
 
     const functions = ["hasOwnPropertyRustdoc", "onEach"];
     ALIASES = {};
