@@ -31,7 +31,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 // An empty map is represented either by the absence of a root node or by a
 // root node that is an empty leaf.
 
-/// A map based on a [B-Tree].
+/// An ordered map based on a [B-Tree].
 ///
 /// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
 /// the amount of work performed in a search. In theory, a binary search tree (BST) is the optimal
@@ -64,6 +64,9 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// The behavior resulting from such a logic error is not specified (it could include panics,
 /// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
 /// behavior.
+///
+/// Entries in a `BTreeMap` are stored in ascending order according to the [`Ord`] implementation on the key.
+/// Thus, iteration methods are guaranteed to produce iterators that yield items in that order.
 ///
 /// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
 /// [`Cell`]: core::cell::Cell
