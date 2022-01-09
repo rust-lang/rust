@@ -88,13 +88,13 @@ macro call_intrinsic_match {
                         $ret.write_cvalue($fx, res);
 
                         return true;
-                    } else {
-                        bug!("wrong number of args for intrinsic {:?}", $intrinsic);
                     }
                 }
             )*
-            _ => false,
+            _ => return false,
         }
+
+        bug!("wrong number of args for intrinsic {:?}", $intrinsic);
     }
 }
 
