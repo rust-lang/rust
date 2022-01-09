@@ -108,12 +108,7 @@ fn simd_for_each_lane<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
-    f: &dyn Fn(
-        &mut FunctionCx<'_, '_, 'tcx>,
-        TyAndLayout<'tcx>,
-        TyAndLayout<'tcx>,
-        Value,
-    ) -> Value,
+    f: &dyn Fn(&mut FunctionCx<'_, '_, 'tcx>, Ty<'tcx>, Ty<'tcx>, Value) -> Value,
 ) {
     let layout = val.layout();
 
@@ -126,7 +121,7 @@ fn simd_for_each_lane<'tcx>(
     for lane_idx in 0..lane_count {
         let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
 
-        let res_lane = f(fx, lane_layout, ret_lane_layout, lane);
+        let res_lane = f(fx, lane_layout.ty, ret_lane_layout.ty, lane);
         let res_lane = CValue::by_val(res_lane, ret_lane_layout);
 
         ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
@@ -138,13 +133,7 @@ fn simd_pair_for_each_lane<'tcx>(
     x: CValue<'tcx>,
     y: CValue<'tcx>,
     ret: CPlace<'tcx>,
-    f: &dyn Fn(
-        &mut FunctionCx<'_, '_, 'tcx>,
-        TyAndLayout<'tcx>,
-        TyAndLayout<'tcx>,
-        Value,
-        Value,
-    ) -> Value,
+    f: &dyn Fn(&mut FunctionCx<'_, '_, 'tcx>, Ty<'tcx>, Ty<'tcx>, Value, Value) -> Value,
 ) {
     assert_eq!(x.layout(), y.layout());
     let layout = x.layout();
@@ -159,7 +148,7 @@ fn simd_pair_for_each_lane<'tcx>(
         let x_lane = x.value_lane(fx, lane_idx).load_scalar(fx);
         let y_lane = y.value_lane(fx, lane_idx).load_scalar(fx);
 
-        let res_lane = f(fx, lane_layout, ret_lane_layout, x_lane, y_lane);
+        let res_lane = f(fx, lane_layout.ty, ret_lane_layout.ty, x_lane, y_lane);
         let res_lane = CValue::by_val(res_lane, ret_lane_layout);
 
         ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
@@ -171,7 +160,7 @@ fn simd_reduce<'tcx>(
     val: CValue<'tcx>,
     acc: Option<Value>,
     ret: CPlace<'tcx>,
-    f: &dyn Fn(&mut FunctionCx<'_, '_, 'tcx>, TyAndLayout<'tcx>, Value, Value) -> Value,
+    f: &dyn Fn(&mut FunctionCx<'_, '_, 'tcx>, Ty<'tcx>, Value, Value) -> Value,
 ) {
     let (lane_count, lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
     let lane_layout = fx.layout_of(lane_ty);
@@ -181,7 +170,7 @@ fn simd_reduce<'tcx>(
         if let Some(acc) = acc { (acc, 0) } else { (val.value_lane(fx, 0).load_scalar(fx), 1) };
     for lane_idx in start_lane..lane_count {
         let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
-        res_val = f(fx, lane_layout, res_val, lane);
+        res_val = f(fx, lane_layout.ty, res_val, lane);
     }
     let res = CValue::by_val(res_val, lane_layout);
     ret.write_cvalue(fx, res);
@@ -215,10 +204,10 @@ fn simd_reduce_bool<'tcx>(
 
 fn bool_to_zero_or_max_uint<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    layout: TyAndLayout<'tcx>,
+    ty: Ty<'tcx>,
     val: Value,
 ) -> Value {
-    let ty = fx.clif_type(layout.ty).unwrap();
+    let ty = fx.clif_type(ty).unwrap();
 
     let int_ty = match ty {
         types::F32 => types::I32,
