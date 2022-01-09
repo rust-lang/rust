@@ -351,6 +351,7 @@ mod self_named_constructors;
 mod semicolon_if_nothing_returned;
 mod serde_api;
 mod shadow;
+mod single_char_lifetime_names;
 mod single_component_path_imports;
 mod size_of_in_element_count;
 mod slow_vector_initialization;
@@ -858,6 +859,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(needless_late_init::NeedlessLateInit));
     store.register_late_pass(|| Box::new(return_self_not_must_use::ReturnSelfNotMustUse));
     store.register_late_pass(|| Box::new(init_numbered_fields::NumberedFields));
+    store.register_early_pass(|| Box::new(single_char_lifetime_names::SingleCharLifetimeNames));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
