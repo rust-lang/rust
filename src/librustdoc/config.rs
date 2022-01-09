@@ -413,6 +413,7 @@ impl Options {
             }
             return Err(0);
         }
+        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
         if matches.free.is_empty() {
             diag.struct_err("missing file operand").emit();
@@ -670,8 +671,6 @@ impl Options {
         let scrape_examples_options = ScrapeExamplesOptions::new(&matches, &diag)?;
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
-
-        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
         Ok(Options {
             input,
