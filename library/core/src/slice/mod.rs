@@ -7,6 +7,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering::{self, Greater, Less};
+use crate::intrinsics::{assert_unsafe_precondition, exact_div};
 use crate::marker::Copy;
 use crate::mem;
 use crate::num::NonZeroUsize;
@@ -637,15 +638,10 @@ impl<T> [T] {
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
     #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
-        #[cfg(debug_assertions)]
-        {
-            let _ = &self[a];
-            let _ = &self[b];
-        }
-
         let ptr = self.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
+            assert_unsafe_precondition!(a < self.len() && b < self.len());
             ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
@@ -950,11 +946,11 @@ impl<T> [T] {
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     pub unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
-        debug_assert_ne!(N, 0);
-        debug_assert_eq!(self.len() % N, 0);
-        let new_len =
-            // SAFETY: Our precondition is exactly what's needed to call this
-            unsafe { crate::intrinsics::exact_div(self.len(), N) };
+        // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
+        let new_len = unsafe {
+            assert_unsafe_precondition!(N != 0 && self.len() % N == 0);
+            exact_div(self.len(), N)
+        };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
         unsafe { from_raw_parts(self.as_ptr().cast(), new_len) }
@@ -1086,11 +1082,11 @@ impl<T> [T] {
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     pub unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
-        debug_assert_ne!(N, 0);
-        debug_assert_eq!(self.len() % N, 0);
-        let new_len =
-            // SAFETY: Our precondition is exactly what's needed to call this
-            unsafe { crate::intrinsics::exact_div(self.len(), N) };
+        // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
+        let new_len = unsafe {
+            assert_unsafe_precondition!(N != 0 && self.len() % N == 0);
+            exact_div(self.len(), N)
+        };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
         unsafe { from_raw_parts_mut(self.as_mut_ptr().cast(), new_len) }
@@ -1646,7 +1642,10 @@ impl<T> [T] {
         //
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
-        unsafe { (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid)) }
+        unsafe {
+            assert_unsafe_precondition!(mid <= len);
+            (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
+        }
     }
 
     /// Divides one slice into an array and a remainder slice at an index.

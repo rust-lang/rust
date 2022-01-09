@@ -75,7 +75,10 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
-use crate::intrinsics::{self, abort, is_aligned_and_not_null};
+use crate::intrinsics::{
+    self, assert_unsafe_precondition, is_aligned_and_not_null, is_nonoverlapping,
+};
+
 use crate::mem::{self, MaybeUninit};
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -438,6 +441,16 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         };
     }
 
+    // SAFETY: the caller must guarantee that `x` and `y` are
+    // valid for writes and properly aligned.
+    unsafe {
+        assert_unsafe_precondition!(
+            is_aligned_and_not_null(x)
+                && is_aligned_and_not_null(y)
+                && is_nonoverlapping(x, y, count)
+        );
+    }
+
     // NOTE(scottmcm) MIRI is disabled here as reading in smaller units is a
     // pessimization for it.  Also, if the type contains any unaligned pointers,
     // copying those over multiple reads is difficult to support.
@@ -528,6 +541,7 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
     // and cannot overlap `src` since `dst` must point to a distinct
     // allocated object.
     unsafe {
+        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
         mem::swap(&mut *dst, &mut src); // cannot overlap
     }
     src
@@ -1007,12 +1021,11 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
-    if cfg!(debug_assertions) && !is_aligned_and_not_null(src) {
-        // Not panicking to keep codegen impact smaller.
-        abort();
-    }
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
-    unsafe { intrinsics::volatile_load(src) }
+    unsafe {
+        assert_unsafe_precondition!(is_aligned_and_not_null(src));
+        intrinsics::volatile_load(src)
+    }
 }
 
 /// Performs a volatile write of a memory location with the given value without
@@ -1078,12 +1091,9 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
-    if cfg!(debug_assertions) && !is_aligned_and_not_null(dst) {
-        // Not panicking to keep codegen impact smaller.
-        abort();
-    }
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
+        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
         intrinsics::volatile_store(dst, src);
     }
 }
