@@ -516,7 +516,7 @@ pub type mask16x8 = Mask<i16, 8>;
 pub type mask16x16 = Mask<i16, 16>;
 
 /// Vector of 32 16-bit masks
-pub type mask16x32 = Mask<i32, 32>;
+pub type mask16x32 = Mask<i16, 32>;
 
 /// Vector of two 32-bit masks
 pub type mask32x2 = Mask<i32, 2>;
