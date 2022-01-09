@@ -393,7 +393,16 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         let ret_block = fx.get_block(destination.expect("Float intrinsics don't diverge").1);
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
-        codegen_regular_intrinsic_call(fx, instance, intrinsic, substs, args, ret, span, destination);
+        codegen_regular_intrinsic_call(
+            fx,
+            instance,
+            intrinsic,
+            substs,
+            args,
+            ret,
+            span,
+            destination,
+        );
     }
 }
 
@@ -407,24 +416,27 @@ fn codegen_float_intrinsic_call<'tcx>(
         ($fx:expr, $intrinsic:expr, $ret:expr, $args:expr, $(
             $name:ident($($arg:ident),*) -> $ty:ident => $func:ident,
         )*) => {
-            match $intrinsic {
+            let res = match $intrinsic {
                 $(
                     sym::$name => {
                         if let [$(ref $arg),*] = *$args {
-                            let ($($arg,)*) = (
-                                $(codegen_operand($fx, $arg),)*
-                            );
-                            let res = $fx.easy_call(stringify!($func), &[$($arg),*], $fx.tcx.types.$ty);
-                            $ret.write_cvalue($fx, res);
-
-                            return true;
+                            let args = [$(codegen_operand($fx, $arg),)*];
+                            Some($fx.easy_call(stringify!($func), &args, $fx.tcx.types.$ty))
+                        } else {
+                            None
                         }
                     }
                 )*
                 _ => return false,
+            };
+
+            if let Some(res) = res {
+                $ret.write_cvalue($fx, res);
+            } else {
+                bug!("wrong number of args for intrinsic {:?}", $intrinsic);
             }
 
-            bug!("wrong number of args for intrinsic {:?}", $intrinsic);
+            true
         }
     }
 
