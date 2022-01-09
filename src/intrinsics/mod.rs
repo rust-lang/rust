@@ -412,87 +412,69 @@ fn codegen_float_intrinsic_call<'tcx>(
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
 ) -> bool {
-    macro call_intrinsic_match {
-        ($fx:expr, $intrinsic:expr, $ret:expr, $args:expr, $(
-            $name:ident($arg_count:literal) -> $ty:ident => $func:ident,
-        )*) => {
-            let (name, arg_count, ty) = match $intrinsic {
-                $(
-                    sym::$name => (stringify!($func), $arg_count, $fx.tcx.types.$ty),
-                )*
-                _ => return false,
-            };
+    let (name, arg_count, ty) = match intrinsic {
+        sym::expf32 => ("expf", 1, fx.tcx.types.f32),
+        sym::expf64 => ("exp", 1, fx.tcx.types.f64),
+        sym::exp2f32 => ("exp2f", 1, fx.tcx.types.f32),
+        sym::exp2f64 => ("exp2", 1, fx.tcx.types.f64),
+        sym::sqrtf32 => ("sqrtf", 1, fx.tcx.types.f32),
+        sym::sqrtf64 => ("sqrt", 1, fx.tcx.types.f64),
+        sym::powif32 => ("__powisf2", 2, fx.tcx.types.f32), // compiler-builtins
+        sym::powif64 => ("__powidf2", 2, fx.tcx.types.f64), // compiler-builtins
+        sym::powf32 => ("powf", 2, fx.tcx.types.f32),
+        sym::powf64 => ("pow", 2, fx.tcx.types.f64),
+        sym::logf32 => ("logf", 1, fx.tcx.types.f32),
+        sym::logf64 => ("log", 1, fx.tcx.types.f64),
+        sym::log2f32 => ("log2f", 1, fx.tcx.types.f32),
+        sym::log2f64 => ("log2", 1, fx.tcx.types.f64),
+        sym::log10f32 => ("log10f", 1, fx.tcx.types.f32),
+        sym::log10f64 => ("log10", 1, fx.tcx.types.f64),
+        sym::fabsf32 => ("fabsf", 1, fx.tcx.types.f32),
+        sym::fabsf64 => ("fabs", 1, fx.tcx.types.f64),
+        sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32),
+        sym::fmaf64 => ("fma", 3, fx.tcx.types.f64),
+        sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32),
+        sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64),
+        sym::floorf32 => ("floorf", 1, fx.tcx.types.f32),
+        sym::floorf64 => ("floor", 1, fx.tcx.types.f64),
+        sym::ceilf32 => ("ceilf", 1, fx.tcx.types.f32),
+        sym::ceilf64 => ("ceil", 1, fx.tcx.types.f64),
+        sym::truncf32 => ("truncf", 1, fx.tcx.types.f32),
+        sym::truncf64 => ("trunc", 1, fx.tcx.types.f64),
+        sym::roundf32 => ("roundf", 1, fx.tcx.types.f32),
+        sym::roundf64 => ("round", 1, fx.tcx.types.f64),
+        sym::sinf32 => ("sinf", 1, fx.tcx.types.f32),
+        sym::sinf64 => ("sin", 1, fx.tcx.types.f64),
+        sym::cosf32 => ("cosf", 1, fx.tcx.types.f32),
+        sym::cosf64 => ("cos", 1, fx.tcx.types.f64),
+        _ => return false,
+    };
 
-            if $args.len() != arg_count {
-                bug!("wrong number of args for intrinsic {:?}", $intrinsic);
-            }
+    if args.len() != arg_count {
+        bug!("wrong number of args for intrinsic {:?}", intrinsic);
+    }
 
-            let (a, b, c);
-            let args = match $args {
-                [x] => {
-                    a = [codegen_operand($fx, x)];
-                    &a as &[_]
-                }
-                [x, y] => {
-                    b = [codegen_operand($fx, x), codegen_operand($fx, y)];
-                    &b
-                }
-                [x, y, z] => {
-                    c = [codegen_operand($fx, x), codegen_operand($fx, y), codegen_operand($fx, z)];
-                    &c
-                }
-                _ => unreachable!(),
-            };
-
-            let res = $fx.easy_call(name, &args, ty);
-            $ret.write_cvalue($fx, res);
-
-            true
+    let (a, b, c);
+    let args = match args {
+        [x] => {
+            a = [codegen_operand(fx, x)];
+            &a as &[_]
         }
-    }
+        [x, y] => {
+            b = [codegen_operand(fx, x), codegen_operand(fx, y)];
+            &b
+        }
+        [x, y, z] => {
+            c = [codegen_operand(fx, x), codegen_operand(fx, y), codegen_operand(fx, z)];
+            &c
+        }
+        _ => unreachable!(),
+    };
 
-    call_intrinsic_match! {
-        fx, intrinsic, ret, args,
-        expf32(1) -> f32 => expf,
-        expf64(1) -> f64 => exp,
-        exp2f32(1) -> f32 => exp2f,
-        exp2f64(1) -> f64 => exp2,
-        sqrtf32(1) -> f32 => sqrtf,
-        sqrtf64(1) -> f64 => sqrt,
-        powif32(2) -> f32 => __powisf2, // compiler-builtins
-        powif64(2) -> f64 => __powidf2, // compiler-builtins
-        powf32(2) -> f32 => powf,
-        powf64(2) -> f64 => pow,
-        logf32(1) -> f32 => logf,
-        logf64(1) -> f64 => log,
-        log2f32(1) -> f32 => log2f,
-        log2f64(1) -> f64 => log2,
-        log10f32(1) -> f32 => log10f,
-        log10f64(1) -> f64 => log10,
-        fabsf32(1) -> f32 => fabsf,
-        fabsf64(1) -> f64 => fabs,
-        fmaf32(3) -> f32 => fmaf,
-        fmaf64(3) -> f64 => fma,
-        copysignf32(2) -> f32 => copysignf,
-        copysignf64(2) -> f64 => copysign,
+    let res = fx.easy_call(name, &args, ty);
+    ret.write_cvalue(fx, res);
 
-        // rounding variants
-        // FIXME use clif insts
-        floorf32(1) -> f32 => floorf,
-        floorf64(1) -> f64 => floor,
-        ceilf32(1) -> f32 => ceilf,
-        ceilf64(1) -> f64 => ceil,
-        truncf32(1) -> f32 => truncf,
-        truncf64(1) -> f64 => trunc,
-        roundf32(1) -> f32 => roundf,
-        roundf64(1) -> f64 => round,
-
-        // trigonometry
-        sinf32(1) -> f32 => sinf,
-        sinf64(1) -> f64 => sin,
-        cosf32(1) -> f32 => cosf,
-        cosf64(1) -> f64 => cos,
-    }
+    true
 }
 
 fn codegen_regular_intrinsic_call<'tcx>(
