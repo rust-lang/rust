@@ -279,10 +279,15 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
         ))] {
             #[cfg(any(target_os = "android", target_os = "linux"))]
             {
+                let quota = cgroup2_quota().unwrap_or(usize::MAX).max(1);
                 let mut set: libc::cpu_set_t = unsafe { mem::zeroed() };
-                if unsafe { libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) } == 0 {
-                    let count = unsafe { libc::CPU_COUNT(&set) };
-                    return Ok(unsafe { NonZeroUsize::new_unchecked(count as usize) });
+                unsafe {
+                    if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) == 0 {
+                        let count = libc::CPU_COUNT(&set) as usize;
+                        let count = count.min(quota);
+                        // SAFETY: affinity mask can't be empty and the quota gets clamped to a minimum of 1
+                        return Ok(NonZeroUsize::new_unchecked(count));
+                    }
                 }
             }
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
@@ -366,6 +371,66 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
             Err(io::const_io_error!(io::ErrorKind::Unsupported, "Getting the number of hardware threads is not supported on the target platform"))
         }
     }
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+fn cgroup2_quota() -> Option<usize> {
+    use crate::ffi::OsString;
+    use crate::fs::{read, read_to_string, File};
+    use crate::io::{BufRead, BufReader};
+    use crate::os::unix::ffi::OsStringExt;
+    use crate::path::PathBuf;
+
+    // find cgroup2 fs
+    let cgroups_mount = BufReader::new(File::open("/proc/self/mountinfo").ok()?)
+        .split(b'\n')
+        .map_while(Result::ok)
+        .filter_map(|line| {
+            let fields: Vec<_> = line.split(|&c| c == b' ').collect();
+            let suffix_at = fields.iter().position(|f| f == b"-")?;
+            let fs_type = fields[suffix_at + 1];
+            if fs_type == b"cgroup2" { Some(fields[4].to_owned()) } else { None }
+        })
+        .next()?;
+
+    let cgroups_mount = PathBuf::from(OsString::from_vec(cgroups_mount));
+
+    // find our place in the hierarchy
+    let cgroup_path = read("/proc/self/cgroup")
+        .ok()?
+        .split(|&c| c == b'\n')
+        .filter_map(|line| {
+            let mut fields = line.splitn(3, |&c| c == b':');
+            // expect cgroupv2 which has an empty 2nd field
+            if fields.nth(1) != Some(b"") {
+                return None;
+            }
+            let path = fields.last()?;
+            // skip leading slash
+            Some(path[1..].to_owned())
+        })
+        .next()?;
+    let cgroup_path = PathBuf::from(OsString::from_vec(cgroup_path));
+
+    // walk hierarchy and take the minimum quota
+    cgroup_path
+        .ancestors()
+        .filter_map(|level| {
+            let cgroup_path = cgroups_mount.join(level);
+            let quota = match read_to_string(cgroup_path.join("cpu.max")) {
+                Ok(quota) => quota,
+                _ => return None,
+            };
+            let quota = quota.lines().next()?;
+            let mut quota = quota.split(' ');
+            let limit = quota.next()?;
+            let period = quota.next()?;
+            match (limit.parse::<usize>(), period.parse::<usize>()) {
+                (Ok(limit), Ok(period)) => Some(limit / period),
+                _ => None,
+            }
+        })
+        .min()
 }
 
 #[cfg(all(
