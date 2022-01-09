@@ -438,6 +438,13 @@ pub enum SubregionOrigin<'tcx> {
     /// Comparing the signature and requirements of an impl associated type
     /// against the containing trait
     CompareImplTypeObligation { span: Span, impl_item_def_id: DefId, trait_item_def_id: DefId },
+
+    /// Checking that the bounds of a trait's associated type hold for a given impl
+    CheckAssociatedTypeBounds {
+        parent: Box<SubregionOrigin<'tcx>>,
+        impl_item_def_id: DefId,
+        trait_item_def_id: DefId,
+    },
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -1832,6 +1839,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             ReferenceOutlivesReferent(_, a) => a,
             CompareImplMethodObligation { span, .. } => span,
             CompareImplTypeObligation { span, .. } => span,
+            CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
         }
     }
 
@@ -1860,6 +1868,15 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 span: cause.span,
                 impl_item_def_id,
                 trait_item_def_id,
+            },
+
+            traits::ObligationCauseCode::CheckAssociatedTypeBounds {
+                impl_item_def_id,
+                trait_item_def_id,
+            } => SubregionOrigin::CheckAssociatedTypeBounds {
+                impl_item_def_id,
+                trait_item_def_id,
+                parent: Box::new(default()),
             },
 
             _ => default(),

@@ -1378,7 +1378,14 @@ pub fn check_type_bounds<'tcx>(
         let mut selcx = traits::SelectionContext::new(&infcx);
 
         let impl_ty_hir_id = tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local());
-        let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
+        let normalize_cause = ObligationCause::new(
+            impl_ty_span,
+            impl_ty_hir_id,
+            ObligationCauseCode::CheckAssociatedTypeBounds {
+                impl_item_def_id: impl_ty.def_id,
+                trait_item_def_id: trait_ty.def_id,
+            },
+        );
         let mk_cause = |span: Span| {
             let code = if span.is_dummy() {
                 traits::MiscObligation
