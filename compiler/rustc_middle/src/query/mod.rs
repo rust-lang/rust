@@ -1442,13 +1442,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Given a crate, look up all trait impls in that crate.
-    /// Return `(impl_id, self_ty)`.
-    query all_trait_implementations(_: CrateNum) -> &'tcx [(DefId, Option<SimplifiedType>)] {
-        desc { "looking up all (?) trait implementations" }
-        separate_provide_extern
-    }
-
     query is_dllimport_foreign_item(def_id: DefId) -> bool {
         desc { |tcx| "is_dllimport_foreign_item({})", tcx.def_path_str(def_id) }
     }
