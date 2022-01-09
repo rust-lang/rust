@@ -17,37 +17,21 @@ fn validate_simd_type(fx: &mut FunctionCx<'_, '_, '_>, intrinsic: Symbol, span: 
 
 macro simd_cmp {
     ($fx:expr, $cc:ident|$cc_f:ident($x:ident, $y:ident) -> $ret:ident) => {
-        let vector_ty = clif_vector_type($fx.tcx, $x.layout());
-
-        if let Some(vector_ty) = vector_ty {
-            let x = $x.load_scalar($fx);
-            let y = $y.load_scalar($fx);
-            let val = if vector_ty.lane_type().is_float() {
-                $fx.bcx.ins().fcmp(FloatCC::$cc_f, x, y)
-            } else {
-                $fx.bcx.ins().icmp(IntCC::$cc, x, y)
-            };
-
-            // HACK This depends on the fact that icmp for vectors represents bools as 0 and !0, not 0 and 1.
-            let val = $fx.bcx.ins().raw_bitcast(vector_ty, val);
-
-            $ret.write_cvalue($fx, CValue::by_val(val, $ret.layout()));
-        } else {
-            simd_pair_for_each_lane(
-                $fx,
-                $x,
-                $y,
-                $ret,
-                |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
-                    let res_lane = match lane_layout.ty.kind() {
-                        ty::Uint(_) | ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane),
-                        ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
-                        _ => unreachable!("{:?}", lane_layout.ty),
-                    };
-                    bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
-                },
-            );
-        }
+        // FIXME use vector icmp when possible
+        simd_pair_for_each_lane(
+            $fx,
+            $x,
+            $y,
+            $ret,
+            |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
+                let res_lane = match lane_layout.ty.kind() {
+                    ty::Uint(_) | ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane),
+                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
+            },
+        );
     },
     ($fx:expr, $cc_u:ident|$cc_s:ident|$cc_f:ident($x:ident, $y:ident) -> $ret:ident) => {
         // FIXME use vector icmp when possible
