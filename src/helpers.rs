@@ -27,7 +27,7 @@ fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId
     tcx.crates(()).iter().find(|&&krate| tcx.crate_name(krate).as_str() == path[0]).and_then(
         |krate| {
             let krate = DefId { krate: *krate, index: CRATE_DEF_INDEX };
-            let mut items = tcx.item_children(krate);
+            let mut items = tcx.module_children(krate);
             let mut path_it = path.iter().skip(1).peekable();
 
             while let Some(segment) = path_it.next() {
@@ -37,7 +37,7 @@ fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId
                             return Some(item.res.def_id());
                         }
 
-                        items = tcx.item_children(item.res.def_id());
+                        items = tcx.module_children(item.res.def_id());
                         break;
                     }
                 }
