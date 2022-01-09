@@ -49,7 +49,7 @@ use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
-use rustc_middle::hir::exports::ExportMap;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, ResolverOutputs};
@@ -927,7 +927,7 @@ pub struct Resolver<'a> {
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
-    export_map: ExportMap,
+    reexport_map: FxHashMap<LocalDefId, Vec<ModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
@@ -1333,7 +1333,7 @@ impl<'a> Resolver<'a> {
             import_res_map: Default::default(),
             label_res_map: Default::default(),
             extern_crate_map: Default::default(),
-            export_map: FxHashMap::default(),
+            reexport_map: FxHashMap::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
             empty_module,
@@ -1446,7 +1446,7 @@ impl<'a> Resolver<'a> {
         let definitions = self.definitions;
         let visibilities = self.visibilities;
         let extern_crate_map = self.extern_crate_map;
-        let export_map = self.export_map;
+        let reexport_map = self.reexport_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
         let glob_map = self.glob_map;
@@ -1457,7 +1457,7 @@ impl<'a> Resolver<'a> {
             cstore: Box::new(self.crate_loader.into_cstore()),
             visibilities,
             extern_crate_map,
-            export_map,
+            reexport_map,
             glob_map,
             maybe_unused_trait_imports,
             maybe_unused_extern_crates,
@@ -1480,7 +1480,7 @@ impl<'a> Resolver<'a> {
             cstore: Box::new(self.cstore().clone()),
             visibilities: self.visibilities.clone(),
             extern_crate_map: self.extern_crate_map.clone(),
-            export_map: self.export_map.clone(),
+            reexport_map: self.reexport_map.clone(),
             glob_map: self.glob_map.clone(),
             maybe_unused_trait_imports: self.maybe_unused_trait_imports.clone(),
             maybe_unused_extern_crates: self.maybe_unused_extern_crates.clone(),

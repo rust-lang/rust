@@ -1300,8 +1300,8 @@ rustc_queries! {
         desc { "traits in scope at a block" }
     }
 
-    query module_exports(def_id: LocalDefId) -> Option<&'tcx [Export]> {
-        desc { |tcx| "looking up items exported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
+    query module_reexports(def_id: LocalDefId) -> Option<&'tcx [ModChild]> {
+        desc { |tcx| "looking up reexports of module `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
     query impl_defaultness(def_id: DefId) -> hir::Defaultness {
@@ -1528,8 +1528,8 @@ rustc_queries! {
         desc { "fetching what a crate is named" }
         separate_provide_extern
     }
-    query item_children(def_id: DefId) -> &'tcx [Export] {
-        desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
+    query module_children(def_id: DefId) -> &'tcx [ModChild] {
+        desc { |tcx| "collecting child items of module `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {

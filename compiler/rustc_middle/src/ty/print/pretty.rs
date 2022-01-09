@@ -458,7 +458,7 @@ pub trait PrettyPrinter<'tcx>:
                 // that's public and whose identifier isn't `_`.
                 let reexport = self
                     .tcx()
-                    .item_children(visible_parent)
+                    .module_children(visible_parent)
                     .iter()
                     .filter(|child| child.res.opt_def_id() == Some(def_id))
                     .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
@@ -2602,7 +2602,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 
     // Iterate external crate defs but be mindful about visibility
     while let Some(def) = queue.pop() {
-        for child in tcx.item_children(def).iter() {
+        for child in tcx.module_children(def).iter() {
             if !child.vis.is_public() {
                 continue;
             }
@@ -2615,7 +2615,9 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
                         collect_fn(&child.ident, ns, def_id);
                     }
 
-                    if seen_defs.insert(def_id) {
+                    if matches!(defkind, DefKind::Mod | DefKind::Enum | DefKind::Trait)
+                        && seen_defs.insert(def_id)
+                    {
                         queue.push(def_id);
                     }
                 }

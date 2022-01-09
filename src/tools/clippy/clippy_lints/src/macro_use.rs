@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             if let Res::Def(DefKind::Mod, id) = path.res;
             if !id.is_local();
             then {
-                for kid in cx.tcx.item_children(id).iter() {
+                for kid in cx.tcx.module_children(id).iter() {
                     if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
                         let span = mac_attr.span;
                         let def_path = cx.tcx.def_path_str(mac_id);

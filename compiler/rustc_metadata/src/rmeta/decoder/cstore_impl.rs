@@ -4,10 +4,10 @@ use crate::native_libs;
 
 use rustc_ast as ast;
 use rustc_data_structures::stable_map::FxHashMap;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
-use rustc_middle::hir::exports::Export;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::query::{ExternProviders, Providers};
@@ -196,9 +196,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let r = *cdata.dep_kind.lock();
         r
     }
-    item_children => {
+    module_children => {
         let mut result = SmallVec::<[_; 8]>::new();
-        cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
+        cdata.for_each_module_child(def_id.index, |child| result.push(child), tcx.sess);
         tcx.arena.alloc_slice(&result)
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
@@ -309,35 +309,40 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 bfs_queue.push_back(DefId { krate: cnum, index: CRATE_DEF_INDEX });
             }
 
-            let mut add_child = |bfs_queue: &mut VecDeque<_>, export: &Export, parent: DefId| {
-                if !export.vis.is_public() {
+            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: &ModChild, parent: DefId| {
+                if !child.vis.is_public() {
                     return;
                 }
 
-                if let Some(child) = export.res.opt_def_id() {
-                    if export.ident.name == kw::Underscore {
-                        fallback_map.insert(child, parent);
+                if let Some(def_id) = child.res.opt_def_id() {
+                    if child.ident.name == kw::Underscore {
+                        fallback_map.insert(def_id, parent);
                         return;
                     }
 
-                    match visible_parent_map.entry(child) {
+                    match visible_parent_map.entry(def_id) {
                         Entry::Occupied(mut entry) => {
                             // If `child` is defined in crate `cnum`, ensure
                             // that it is mapped to a parent in `cnum`.
-                            if child.is_local() && entry.get().is_local() {
+                            if def_id.is_local() && entry.get().is_local() {
                                 entry.insert(parent);
                             }
                         }
                         Entry::Vacant(entry) => {
                             entry.insert(parent);
-                            bfs_queue.push_back(child);
+                            if matches!(
+                                child.res,
+                                Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, _)
+                            ) {
+                                bfs_queue.push_back(def_id);
+                            }
                         }
                     }
                 }
             };
 
             while let Some(def) = bfs_queue.pop_front() {
-                for child in tcx.item_children(def).iter() {
+                for child in tcx.module_children(def).iter() {
                     add_child(bfs_queue, child, def);
                 }
             }
@@ -383,9 +388,9 @@ impl CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    pub fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<Export> {
+    pub fn module_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<ModChild> {
         let mut result = vec![];
-        self.get_crate_data(def_id.krate).each_child_of_item(
+        self.get_crate_data(def_id.krate).for_each_module_child(
             def_id.index,
             |child| result.push(child),
             sess,

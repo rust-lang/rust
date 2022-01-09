@@ -84,6 +84,7 @@ pub mod dep_graph;
 pub mod hir;
 pub mod infer;
 pub mod lint;
+pub mod metadata;
 pub mod middle;
 pub mod mir;
 pub mod thir;

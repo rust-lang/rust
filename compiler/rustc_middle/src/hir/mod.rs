@@ -2,7 +2,6 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
-pub mod exports;
 pub mod map;
 pub mod place;
 

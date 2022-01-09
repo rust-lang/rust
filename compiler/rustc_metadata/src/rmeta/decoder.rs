@@ -21,7 +21,7 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::hir::exports::Export;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
@@ -1074,32 +1074,37 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    /// Iterates over each child of the given item.
-    fn each_child_of_item(&self, id: DefIndex, mut callback: impl FnMut(Export), sess: &Session) {
+    /// Iterates over all named children of the given module,
+    /// including both proper items and reexports.
+    /// Module here is understood in name resolution sense - it can be a `mod` item,
+    /// or a crate root, or an enum, or a trait.
+    fn for_each_module_child(
+        &self,
+        id: DefIndex,
+        mut callback: impl FnMut(ModChild),
+        sess: &Session,
+    ) {
         if let Some(data) = &self.root.proc_macro_data {
-            /* If we are loading as a proc macro, we want to return the view of this crate
-             * as a proc macro crate.
-             */
+            // If we are loading as a proc macro, we want to return
+            // the view of this crate as a proc macro crate.
             if id == CRATE_DEF_INDEX {
-                let macros = data.macros.decode(self);
-                for def_index in macros {
+                for def_index in data.macros.decode(self) {
                     let raw_macro = self.raw_proc_macro(def_index);
                     let res = Res::Def(
                         DefKind::Macro(macro_kind(raw_macro)),
                         self.local_def_id(def_index),
                     );
                     let ident = self.item_ident(def_index, sess);
-                    callback(Export { ident, res, vis: ty::Visibility::Public, span: ident.span });
+                    callback(ModChild {
+                        ident,
+                        res,
+                        vis: ty::Visibility::Public,
+                        span: ident.span,
+                    });
                 }
             }
             return;
         }
-
-        // Find the item.
-        let kind = match self.maybe_kind(id) {
-            None => return,
-            Some(kind) => kind,
-        };
 
         // Iterate over all children.
         if let Some(children) = self.root.tables.children.get(self, id) {
@@ -1116,7 +1121,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     let vis = self.get_visibility(child_index);
                     let span = self.get_span(child_index, sess);
 
-                    callback(Export { ident, res, vis, span });
+                    callback(ModChild { ident, res, vis, span });
 
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
@@ -1128,7 +1133,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 let ctor_res =
                                     Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                                 let vis = self.get_visibility(ctor_def_id.index);
-                                callback(Export { res: ctor_res, vis, ident, span });
+                                callback(ModChild { ident, res: ctor_res, vis, span });
                             }
                         }
                         DefKind::Variant => {
@@ -1153,7 +1158,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
                             }
-                            callback(Export { res: ctor_res, ident, vis, span });
+                            callback(ModChild { ident, res: ctor_res, vis, span });
                         }
                         _ => {}
                     }
@@ -1161,10 +1166,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
         }
 
-        if let EntryKind::Mod(exports) = kind {
-            for exp in exports.decode((self, sess)) {
-                callback(exp);
+        match self.kind(id) {
+            EntryKind::Mod(exports) => {
+                for exp in exports.decode((self, sess)) {
+                    callback(exp);
+                }
             }
+            EntryKind::Enum(..) | EntryKind::Trait(..) => {}
+            _ => bug!("`for_each_module_child` is called on a non-module: {:?}", self.def_kind(id)),
         }
     }
 

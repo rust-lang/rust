@@ -15,7 +15,7 @@ use rustc_data_structures::ptr_key::PtrKey;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir::def::{self, PartialRes};
 use rustc_hir::def_id::DefId;
-use rustc_middle::hir::exports::Export;
+use rustc_middle::metadata::ModChild;
 use rustc_middle::span_bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
@@ -1409,7 +1409,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             if is_good_import || binding.is_macro_def() {
                 let res = binding.res().expect_non_local();
                 if res != def::Res::Err {
-                    reexports.push(Export { ident, res, span: binding.span, vis: binding.vis });
+                    reexports.push(ModChild { ident, res, vis: binding.vis, span: binding.span });
                 }
             }
         });
@@ -1418,7 +1418,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             if let Some(def_id) = module.opt_def_id() {
                 // Call to `expect_local` should be fine because current
                 // code is only called for local modules.
-                self.r.export_map.insert(def_id.expect_local(), reexports);
+                self.r.reexport_map.insert(def_id.expect_local(), reexports);
             }
         }
     }
