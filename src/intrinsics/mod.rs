@@ -414,27 +414,38 @@ fn codegen_float_intrinsic_call<'tcx>(
 ) -> bool {
     macro call_intrinsic_match {
         ($fx:expr, $intrinsic:expr, $ret:expr, $args:expr, $(
-            $name:ident($($arg:ident),*) -> $ty:ident => $func:ident,
+            $name:ident($arg_count:literal) -> $ty:ident => $func:ident,
         )*) => {
-            let res = match $intrinsic {
+            let (name, arg_count, ty) = match $intrinsic {
                 $(
-                    sym::$name => {
-                        if let [$(ref $arg),*] = *$args {
-                            let args = [$(codegen_operand($fx, $arg),)*];
-                            Some($fx.easy_call(stringify!($func), &args, $fx.tcx.types.$ty))
-                        } else {
-                            None
-                        }
-                    }
+                    sym::$name => (stringify!($func), $arg_count, $fx.tcx.types.$ty),
                 )*
                 _ => return false,
             };
 
-            if let Some(res) = res {
-                $ret.write_cvalue($fx, res);
-            } else {
+            if $args.len() != arg_count {
                 bug!("wrong number of args for intrinsic {:?}", $intrinsic);
             }
+
+            let (a, b, c);
+            let args = match $args {
+                [x] => {
+                    a = [codegen_operand($fx, x)];
+                    &a as &[_]
+                }
+                [x, y] => {
+                    b = [codegen_operand($fx, x), codegen_operand($fx, y)];
+                    &b
+                }
+                [x, y, z] => {
+                    c = [codegen_operand($fx, x), codegen_operand($fx, y), codegen_operand($fx, z)];
+                    &c
+                }
+                _ => unreachable!(),
+            };
+
+            let res = $fx.easy_call(name, &args, ty);
+            $ret.write_cvalue($fx, res);
 
             true
         }
@@ -442,45 +453,45 @@ fn codegen_float_intrinsic_call<'tcx>(
 
     call_intrinsic_match! {
         fx, intrinsic, ret, args,
-        expf32(flt) -> f32 => expf,
-        expf64(flt) -> f64 => exp,
-        exp2f32(flt) -> f32 => exp2f,
-        exp2f64(flt) -> f64 => exp2,
-        sqrtf32(flt) -> f32 => sqrtf,
-        sqrtf64(flt) -> f64 => sqrt,
-        powif32(a, x) -> f32 => __powisf2, // compiler-builtins
-        powif64(a, x) -> f64 => __powidf2, // compiler-builtins
-        powf32(a, x) -> f32 => powf,
-        powf64(a, x) -> f64 => pow,
-        logf32(flt) -> f32 => logf,
-        logf64(flt) -> f64 => log,
-        log2f32(flt) -> f32 => log2f,
-        log2f64(flt) -> f64 => log2,
-        log10f32(flt) -> f32 => log10f,
-        log10f64(flt) -> f64 => log10,
-        fabsf32(flt) -> f32 => fabsf,
-        fabsf64(flt) -> f64 => fabs,
-        fmaf32(x, y, z) -> f32 => fmaf,
-        fmaf64(x, y, z) -> f64 => fma,
-        copysignf32(x, y) -> f32 => copysignf,
-        copysignf64(x, y) -> f64 => copysign,
+        expf32(1) -> f32 => expf,
+        expf64(1) -> f64 => exp,
+        exp2f32(1) -> f32 => exp2f,
+        exp2f64(1) -> f64 => exp2,
+        sqrtf32(1) -> f32 => sqrtf,
+        sqrtf64(1) -> f64 => sqrt,
+        powif32(2) -> f32 => __powisf2, // compiler-builtins
+        powif64(2) -> f64 => __powidf2, // compiler-builtins
+        powf32(2) -> f32 => powf,
+        powf64(2) -> f64 => pow,
+        logf32(1) -> f32 => logf,
+        logf64(1) -> f64 => log,
+        log2f32(1) -> f32 => log2f,
+        log2f64(1) -> f64 => log2,
+        log10f32(1) -> f32 => log10f,
+        log10f64(1) -> f64 => log10,
+        fabsf32(1) -> f32 => fabsf,
+        fabsf64(1) -> f64 => fabs,
+        fmaf32(3) -> f32 => fmaf,
+        fmaf64(3) -> f64 => fma,
+        copysignf32(2) -> f32 => copysignf,
+        copysignf64(2) -> f64 => copysign,
 
         // rounding variants
         // FIXME use clif insts
-        floorf32(flt) -> f32 => floorf,
-        floorf64(flt) -> f64 => floor,
-        ceilf32(flt) -> f32 => ceilf,
-        ceilf64(flt) -> f64 => ceil,
-        truncf32(flt) -> f32 => truncf,
-        truncf64(flt) -> f64 => trunc,
-        roundf32(flt) -> f32 => roundf,
-        roundf64(flt) -> f64 => round,
+        floorf32(1) -> f32 => floorf,
+        floorf64(1) -> f64 => floor,
+        ceilf32(1) -> f32 => ceilf,
+        ceilf64(1) -> f64 => ceil,
+        truncf32(1) -> f32 => truncf,
+        truncf64(1) -> f64 => trunc,
+        roundf32(1) -> f32 => roundf,
+        roundf64(1) -> f64 => round,
 
         // trigonometry
-        sinf32(flt) -> f32 => sinf,
-        sinf64(flt) -> f64 => sin,
-        cosf32(flt) -> f32 => cosf,
-        cosf64(flt) -> f64 => cos,
+        sinf32(1) -> f32 => sinf,
+        sinf64(1) -> f64 => sin,
+        cosf32(1) -> f32 => cosf,
+        cosf64(1) -> f64 => cos,
     }
 }
 
