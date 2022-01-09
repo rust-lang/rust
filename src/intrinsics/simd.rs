@@ -29,7 +29,13 @@ macro simd_cmp($fx:expr, $cc_u:ident|$cc_s:ident|$cc_f:ident($x:ident, $y:ident)
                 ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
                 _ => unreachable!("{:?}", lane_layout.ty),
             };
-            bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
+
+            let ty = fx.clif_type(res_lane_layout.ty).unwrap();
+
+            let res_lane = fx.bcx.ins().bint(ty, res_lane);
+            let res_lane = fx.bcx.ins().ineg(res_lane);
+
+            CValue::by_val(res_lane, res_lane_layout)
         },
     );
 }
