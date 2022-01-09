@@ -9,7 +9,11 @@ use std::num::NonZeroU64;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::Mutability;
 use rustc_middle::mir::RetagKind;
-use rustc_middle::ty::{self, layout::LayoutOf};
+use rustc_middle::ty::{
+    self,
+    layout::{HasParamEnv, LayoutOf},
+};
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::Size;
 
 use crate::*;
@@ -657,8 +661,16 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Make sure that raw pointers and mutable shared references are reborrowed "weak":
         // There could be existing unique pointers reborrowed from them that should remain valid!
         let perm = match kind {
-            RefKind::Unique { two_phase: false } => Permission::Unique,
-            RefKind::Unique { two_phase: true } => Permission::SharedReadWrite,
+            RefKind::Unique { two_phase: false }
+                if place.layout.ty.is_unpin(this.tcx.at(DUMMY_SP), this.param_env()) =>
+            {
+                // Only if the type is unpin do we actually enforce uniqueness
+                Permission::Unique
+            }
+            RefKind::Unique { .. } => {
+                // Two-phase references and !Unpin references are treated as SharedReadWrite
+                Permission::SharedReadWrite
+            }
             RefKind::Raw { mutable: true } => Permission::SharedReadWrite,
             RefKind::Shared | RefKind::Raw { mutable: false } => {
                 // Shared references and *const are a whole different kind of game, the
