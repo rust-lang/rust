@@ -73,7 +73,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
                 kind => unreachable!("kind {:?}", kind),
             };
 
-            simd_pair_for_each_lane(fx, x, y, ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
+            simd_pair_for_each_lane(fx, x, y, ret, &|fx, lane_layout, res_lane_layout, x_lane, y_lane| {
                 let res_lane = match lane_layout.ty.kind() {
                     ty::Float(_) => fx.bcx.ins().fcmp(flt_cc, x_lane, y_lane),
                     _ => unreachable!("{:?}", lane_layout.ty),
@@ -83,7 +83,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
         };
         "llvm.x86.sse2.psrli.d", (c a, o imm8) {
             let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8).expect("llvm.x86.sse2.psrli.d imm8 not const");
-            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, _res_lane_layout, lane| {
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_layout, _res_lane_layout, lane| {
                 match imm8.try_to_bits(Size::from_bytes(4)).unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8)) {
                     imm8 if imm8 < 32 => fx.bcx.ins().ushr_imm(lane, i64::from(imm8 as u8)),
                     _ => fx.bcx.ins().iconst(types::I32, 0),
@@ -92,7 +92,7 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
         };
         "llvm.x86.sse2.pslli.d", (c a, o imm8) {
             let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8).expect("llvm.x86.sse2.psrli.d imm8 not const");
-            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, _res_lane_layout, lane| {
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_layout, _res_lane_layout, lane| {
                 match imm8.try_to_bits(Size::from_bytes(4)).unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8)) {
                     imm8 if imm8 < 32 => fx.bcx.ins().ishl_imm(lane, i64::from(imm8 as u8)),
                     _ => fx.bcx.ins().iconst(types::I32, 0),

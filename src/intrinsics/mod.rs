@@ -108,7 +108,7 @@ fn simd_for_each_lane<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
-    f: impl Fn(
+    f: &dyn Fn(
         &mut FunctionCx<'_, '_, 'tcx>,
         TyAndLayout<'tcx>,
         TyAndLayout<'tcx>,
@@ -138,7 +138,7 @@ fn simd_pair_for_each_lane<'tcx>(
     x: CValue<'tcx>,
     y: CValue<'tcx>,
     ret: CPlace<'tcx>,
-    f: impl Fn(
+    f: &dyn Fn(
         &mut FunctionCx<'_, '_, 'tcx>,
         TyAndLayout<'tcx>,
         TyAndLayout<'tcx>,
@@ -171,7 +171,7 @@ fn simd_reduce<'tcx>(
     val: CValue<'tcx>,
     acc: Option<Value>,
     ret: CPlace<'tcx>,
-    f: impl Fn(&mut FunctionCx<'_, '_, 'tcx>, TyAndLayout<'tcx>, Value, Value) -> Value,
+    f: &dyn Fn(&mut FunctionCx<'_, '_, 'tcx>, TyAndLayout<'tcx>, Value, Value) -> Value,
 ) {
     let (lane_count, lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
     let lane_layout = fx.layout_of(lane_ty);
@@ -192,7 +192,7 @@ fn simd_reduce_bool<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     val: CValue<'tcx>,
     ret: CPlace<'tcx>,
-    f: impl Fn(&mut FunctionCx<'_, '_, 'tcx>, Value, Value) -> Value,
+    f: &dyn Fn(&mut FunctionCx<'_, '_, 'tcx>, Value, Value) -> Value,
 ) {
     let (lane_count, _lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
     assert!(ret.layout().ty.is_bool());
