@@ -73,7 +73,7 @@ macro intrinsic_match {
 }
 
 macro call_intrinsic_match {
-    ($fx:expr, $intrinsic:expr, $substs:expr, $ret:expr, $destination:expr, $args:expr, $(
+    ($fx:expr, $intrinsic:expr, $substs:expr, $ret:expr, $args:expr, $(
         $name:ident($($arg:ident),*) -> $ty:ident => $func:ident,
     )*) => {
         match $intrinsic {
@@ -87,19 +87,13 @@ macro call_intrinsic_match {
                         let res = $fx.easy_call(stringify!($func), &[$($arg),*], $fx.tcx.types.$ty);
                         $ret.write_cvalue($fx, res);
 
-                        if let Some((_, dest)) = $destination {
-                            let ret_block = $fx.get_block(dest);
-                            $fx.bcx.ins().jump(ret_block, &[]);
-                            return;
-                        } else {
-                            unreachable!();
-                        }
+                        return true;
                     } else {
                         bug!("wrong number of args for intrinsic {:?}", $intrinsic);
                     }
                 }
             )*
-            _ => {}
+            _ => false,
         }
     }
 }
@@ -397,7 +391,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     span: Span,
 ) {
     let intrinsic = fx.tcx.item_name(instance.def_id());
-    let substs = instance.substs;
 
     let ret = match destination {
         Some((place, _)) => place,
@@ -420,13 +413,27 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         self::simd::codegen_simd_intrinsic_call(fx, instance, args, ret, span);
         let ret_block = fx.get_block(destination.expect("SIMD intrinsics don't diverge").1);
         fx.bcx.ins().jump(ret_block, &[]);
-        return;
+    } else if codegen_float_intrinsic_call(fx, instance, args, ret) {
+        let ret_block = fx.get_block(destination.expect("Float intrinsics don't diverge").1);
+        fx.bcx.ins().jump(ret_block, &[]);
+    } else {
+        codegen_regular_intrinsic_call(fx, instance, args, ret, span, destination);
     }
+}
 
-    let usize_layout = fx.layout_of(fx.tcx.types.usize);
+fn codegen_float_intrinsic_call<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    instance: Instance<'tcx>,
+    args: &[mir::Operand<'tcx>],
+    ret: CPlace<'tcx>,
+) -> bool {
+    let def_id = instance.def_id();
+    let substs = instance.substs;
+
+    let intrinsic = fx.tcx.item_name(def_id);
 
     call_intrinsic_match! {
-        fx, intrinsic, substs, ret, destination, args,
+        fx, intrinsic, substs, ret, args,
         expf32(flt) -> f32 => expf,
         expf64(flt) -> f64 => exp,
         exp2f32(flt) -> f32 => exp2f,
@@ -467,6 +474,22 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         cosf32(flt) -> f32 => cosf,
         cosf64(flt) -> f64 => cos,
     }
+}
+
+fn codegen_regular_intrinsic_call<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    instance: Instance<'tcx>,
+    args: &[mir::Operand<'tcx>],
+    ret: CPlace<'tcx>,
+    span: Span,
+    destination: Option<(CPlace<'tcx>, BasicBlock)>,
+) {
+    let def_id = instance.def_id();
+    let substs = instance.substs;
+
+    let intrinsic = fx.tcx.item_name(def_id);
+
+    let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
     intrinsic_match! {
         fx, intrinsic, substs, args,
