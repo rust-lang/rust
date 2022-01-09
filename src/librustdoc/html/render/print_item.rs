@@ -1557,7 +1557,7 @@ fn render_union(
     }
 
     if it.has_stripped_fields().unwrap() {
-        write!(w, "    // some fields omitted\n{}", tab);
+        write!(w, "    /* private fields */\n{}", tab);
     }
     if toggle {
         toggle_close(w);
@@ -1613,13 +1613,11 @@ fn render_struct(
 
             if has_visible_fields {
                 if it.has_stripped_fields().unwrap() {
-                    write!(w, "\n{}    // some fields omitted", tab);
+                    write!(w, "\n{}    /* private fields */", tab);
                 }
                 write!(w, "\n{}", tab);
             } else if it.has_stripped_fields().unwrap() {
-                // If there are no visible fields we can just display
-                // `{ /* fields omitted */ }` to save space.
-                write!(w, " /* fields omitted */ ");
+                write!(w, " /* private fields */ ");
             }
             if toggle {
                 toggle_close(w);
