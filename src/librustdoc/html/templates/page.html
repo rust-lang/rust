@@ -105,11 +105,7 @@
                     </div> {#- -#}
                     <form class="search-form"> {#- -#}
                         <div class="search-container"> {#- -#}
-                            <div>{%- if layout.generate_search_filter -%}
-                                <select id="crate-search"> {#- -#}
-                                    <option value="All crates">All crates</option> {#- -#}
-                                </select> {#- -#}
-                                {%- endif -%}
+                            <div>
                                 <input {# -#}
                                     class="search-input" {# -#}
                                     name="search" {# -#}
