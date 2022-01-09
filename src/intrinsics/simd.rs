@@ -1,20 +1,19 @@
 //! Codegen `extern "platform-intrinsic"` intrinsics.
 
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_span::Symbol;
+
 use super::*;
 use crate::prelude::*;
 
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    instance: Instance<'tcx>,
+    intrinsic: Symbol,
+    substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
     span: Span,
 ) {
-    let def_id = instance.def_id();
-    let substs = instance.substs;
-
-    let intrinsic = fx.tcx.item_name(def_id);
-
     intrinsic_match! {
         fx, intrinsic, substs, args,
         _ => {

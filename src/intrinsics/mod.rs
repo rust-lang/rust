@@ -9,7 +9,8 @@ pub(crate) use cpuid::codegen_cpuid_call;
 pub(crate) use llvm::codegen_llvm_intrinsic_call;
 
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_span::symbol::{kw, sym};
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_span::symbol::{kw, sym, Symbol};
 
 use crate::prelude::*;
 use cranelift_codegen::ir::AtomicRmwOp;
@@ -391,6 +392,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     span: Span,
 ) {
     let intrinsic = fx.tcx.item_name(instance.def_id());
+    let substs = instance.substs;
 
     let ret = match destination {
         Some((place, _)) => place,
@@ -410,28 +412,24 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     };
 
     if intrinsic.as_str().starts_with("simd_") {
-        self::simd::codegen_simd_intrinsic_call(fx, instance, args, ret, span);
+        self::simd::codegen_simd_intrinsic_call(fx, intrinsic, substs, args, ret, span);
         let ret_block = fx.get_block(destination.expect("SIMD intrinsics don't diverge").1);
         fx.bcx.ins().jump(ret_block, &[]);
-    } else if codegen_float_intrinsic_call(fx, instance, args, ret) {
+    } else if codegen_float_intrinsic_call(fx, intrinsic, substs, args, ret) {
         let ret_block = fx.get_block(destination.expect("Float intrinsics don't diverge").1);
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
-        codegen_regular_intrinsic_call(fx, instance, args, ret, span, destination);
+        codegen_regular_intrinsic_call(fx, instance, intrinsic, substs, args, ret, span, destination);
     }
 }
 
 fn codegen_float_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    instance: Instance<'tcx>,
+    intrinsic: Symbol,
+    substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
 ) -> bool {
-    let def_id = instance.def_id();
-    let substs = instance.substs;
-
-    let intrinsic = fx.tcx.item_name(def_id);
-
     call_intrinsic_match! {
         fx, intrinsic, substs, ret, args,
         expf32(flt) -> f32 => expf,
@@ -479,16 +477,13 @@ fn codegen_float_intrinsic_call<'tcx>(
 fn codegen_regular_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
+    intrinsic: Symbol,
+    substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
     span: Span,
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) {
-    let def_id = instance.def_id();
-    let substs = instance.substs;
-
-    let intrinsic = fx.tcx.item_name(def_id);
-
     let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
     intrinsic_match! {
