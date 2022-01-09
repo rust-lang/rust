@@ -15,90 +15,64 @@ fn validate_simd_type(fx: &mut FunctionCx<'_, '_, '_>, intrinsic: Symbol, span: 
     }
 }
 
-macro simd_cmp {
-    ($fx:expr, $cc:ident|$cc_f:ident($x:ident, $y:ident) -> $ret:ident) => {
-        // FIXME use vector icmp when possible
-        simd_pair_for_each_lane(
-            $fx,
-            $x,
-            $y,
-            $ret,
-            |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind() {
-                    ty::Uint(_) | ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane),
-                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
-                    _ => unreachable!("{:?}", lane_layout.ty),
-                };
-                bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
-            },
-        );
-    },
-    ($fx:expr, $cc_u:ident|$cc_s:ident|$cc_f:ident($x:ident, $y:ident) -> $ret:ident) => {
-        // FIXME use vector icmp when possible
-        simd_pair_for_each_lane(
-            $fx,
-            $x,
-            $y,
-            $ret,
-            |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind() {
-                    ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
-                    ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
-                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
-                    _ => unreachable!("{:?}", lane_layout.ty),
-                };
-                bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
-            },
-        );
-    },
+macro simd_cmp($fx:expr, $cc_u:ident|$cc_s:ident|$cc_f:ident($x:ident, $y:ident) -> $ret:ident) {
+    // FIXME use vector instructions when possible
+    simd_pair_for_each_lane(
+        $fx,
+        $x,
+        $y,
+        $ret,
+        |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.kind() {
+                ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
+                ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
+                ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
+        },
+    );
 }
 
-macro simd_int_binop {
-    ($fx:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_int_binop!($fx, $op|$op($x, $y) -> $ret);
-    },
-    ($fx:expr, $op_u:ident|$op_s:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_pair_for_each_lane(
-            $fx,
-            $x,
-            $y,
-            $ret,
-            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind() {
-                    ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
-                    ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
-                    _ => unreachable!("{:?}", lane_layout.ty),
-                };
-                CValue::by_val(res_lane, ret_lane_layout)
-            },
-        );
-    },
+macro simd_int_binop($fx:expr, $op_u:ident|$op_s:ident($x:ident, $y:ident) -> $ret:ident) {
+    // FIXME use vector instructions when possible
+    simd_pair_for_each_lane(
+        $fx,
+        $x,
+        $y,
+        $ret,
+        |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.kind() {
+                ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
+                ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            CValue::by_val(res_lane, ret_lane_layout)
+        },
+    );
 }
 
-macro simd_int_flt_binop {
-    ($fx:expr, $op:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_int_flt_binop!($fx, $op|$op|$op_f($x, $y) -> $ret);
-    },
-    ($fx:expr, $op_u:ident|$op_s:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_pair_for_each_lane(
-            $fx,
-            $x,
-            $y,
-            $ret,
-            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind() {
-                    ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
-                    ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
-                    ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
-                    _ => unreachable!("{:?}", lane_layout.ty),
-                };
-                CValue::by_val(res_lane, ret_lane_layout)
-            },
-        );
-    },
+macro simd_int_flt_binop($fx:expr, $op_u:ident|$op_s:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) {
+    // FIXME use vector instructions when possible
+    simd_pair_for_each_lane(
+        $fx,
+        $x,
+        $y,
+        $ret,
+        |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+            let res_lane = match lane_layout.ty.kind() {
+                ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
+                ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
+                ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
+                _ => unreachable!("{:?}", lane_layout.ty),
+            };
+            CValue::by_val(res_lane, ret_lane_layout)
+        },
+    );
 }
 
 macro simd_flt_binop($fx:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
+    // FIXME use vector instructions when possible
     simd_pair_for_each_lane(
         $fx,
         $x,
@@ -143,11 +117,11 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
         simd_eq, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, Equal|Equal(x, y) -> ret);
+            simd_cmp!(fx, Equal|Equal|Equal(x, y) -> ret);
         };
         simd_ne, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
-            simd_cmp!(fx, NotEqual|NotEqual(x, y) -> ret);
+            simd_cmp!(fx, NotEqual|NotEqual|NotEqual(x, y) -> ret);
         };
         simd_lt, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
@@ -331,15 +305,15 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
         simd_add, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
-            simd_int_flt_binop!(fx, iadd|fadd(x, y) -> ret);
+            simd_int_flt_binop!(fx, iadd|iadd|fadd(x, y) -> ret);
         };
         simd_sub, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
-            simd_int_flt_binop!(fx, isub|fsub(x, y) -> ret);
+            simd_int_flt_binop!(fx, isub|isub|fsub(x, y) -> ret);
         };
         simd_mul, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
-            simd_int_flt_binop!(fx, imul|fmul(x, y) -> ret);
+            simd_int_flt_binop!(fx, imul|imul|fmul(x, y) -> ret);
         };
         simd_div, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
@@ -370,7 +344,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
         simd_shl, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
-            simd_int_binop!(fx, ishl(x, y) -> ret);
+            simd_int_binop!(fx, ishl|ishl(x, y) -> ret);
         };
         simd_shr, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
@@ -378,15 +352,15 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
         simd_and, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
-            simd_int_binop!(fx, band(x, y) -> ret);
+            simd_int_binop!(fx, band|band(x, y) -> ret);
         };
         simd_or, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
-            simd_int_binop!(fx, bor(x, y) -> ret);
+            simd_int_binop!(fx, bor|bor(x, y) -> ret);
         };
         simd_xor, (c x, c y) {
             validate_simd_type(fx, intrinsic, span, x.layout().ty);
-            simd_int_binop!(fx, bxor(x, y) -> ret);
+            simd_int_binop!(fx, bxor|bxor(x, y) -> ret);
         };
 
         simd_fma, (c a, c b, c c) {
