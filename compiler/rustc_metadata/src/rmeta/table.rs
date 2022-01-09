@@ -183,10 +183,6 @@ where
     Option<T>: FixedSizeEncoding,
 {
     type Meta = usize;
-
-    fn min_size(len: usize) -> usize {
-        len
-    }
 }
 
 impl<I: Idx, T> Lazy<Table<I, T>>
