@@ -74,13 +74,12 @@ macro intrinsic_match {
 }
 
 macro call_intrinsic_match {
-    ($fx:expr, $intrinsic:expr, $substs:expr, $ret:expr, $args:expr, $(
+    ($fx:expr, $intrinsic:expr, $ret:expr, $args:expr, $(
         $name:ident($($arg:ident),*) -> $ty:ident => $func:ident,
     )*) => {
         match $intrinsic {
             $(
                 sym::$name => {
-                    assert!($substs.is_noop());
                     if let [$(ref $arg),*] = *$args {
                         let ($($arg,)*) = (
                             $(codegen_operand($fx, $arg),)*
@@ -415,7 +414,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         self::simd::codegen_simd_intrinsic_call(fx, intrinsic, substs, args, ret, span);
         let ret_block = fx.get_block(destination.expect("SIMD intrinsics don't diverge").1);
         fx.bcx.ins().jump(ret_block, &[]);
-    } else if codegen_float_intrinsic_call(fx, intrinsic, substs, args, ret) {
+    } else if codegen_float_intrinsic_call(fx, intrinsic, args, ret) {
         let ret_block = fx.get_block(destination.expect("Float intrinsics don't diverge").1);
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
@@ -426,12 +425,11 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
 fn codegen_float_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: Symbol,
-    substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
 ) -> bool {
     call_intrinsic_match! {
-        fx, intrinsic, substs, ret, args,
+        fx, intrinsic, ret, args,
         expf32(flt) -> f32 => expf,
         expf64(flt) -> f64 => exp,
         exp2f32(flt) -> f32 => exp2f,
