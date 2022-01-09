@@ -17,12 +17,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config \
   mingw-w64
 
-RUN curl -sL https://nodejs.org/dist/v14.4.0/node-v14.4.0-linux-x64.tar.xz | tar -xJ
-ENV PATH="/node-v14.4.0-linux-x64/bin:${PATH}"
+RUN curl -sL https://nodejs.org/dist/v16.9.0/node-v16.9.0-linux-x64.tar.xz | tar -xJ
+ENV PATH="/node-v16.9.0-linux-x64/bin:${PATH}"
 # Install es-check
 # Pin its version to prevent unrelated CI failures due to future es-check versions.
-RUN npm install es-check@5.2.3 -g
-RUN npm install eslint@7.20.0 -g
+RUN npm install es-check@6.1.1 -g
+RUN npm install eslint@8.6.0 -g
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -40,5 +40,5 @@ ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
            /scripts/validate-toolstate.sh && \
            /scripts/validate-error-codes.sh && \
            # Runs checks to ensure that there are no ES5 issues in our JS code.
-           es-check es5 ../src/librustdoc/html/static/js/*.js && \
+           es-check es6 ../src/librustdoc/html/static/js/*.js && \
            eslint ../src/librustdoc/html/static/js/*.js

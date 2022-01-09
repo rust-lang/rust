@@ -38,7 +38,7 @@ use crate::passes::Pass;
 use crate::visit::DocVisitor;
 
 mod early;
-crate use early::load_intra_link_crates;
+crate use early::early_resolve_intra_doc_links;
 
 crate const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
     name: "collect-intra-doc-links",

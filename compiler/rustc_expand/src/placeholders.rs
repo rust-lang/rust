@@ -123,7 +123,7 @@ pub fn placeholder(
             span,
             is_placeholder: true,
         }]),
-        AstFragmentKind::Fields => AstFragment::Fields(smallvec![ast::ExprField {
+        AstFragmentKind::ExprFields => AstFragment::ExprFields(smallvec![ast::ExprField {
             attrs: Default::default(),
             expr: expr_placeholder(),
             id,
@@ -132,7 +132,7 @@ pub fn placeholder(
             span,
             is_placeholder: true,
         }]),
-        AstFragmentKind::FieldPats => AstFragment::FieldPats(smallvec![ast::PatField {
+        AstFragmentKind::PatFields => AstFragment::PatFields(smallvec![ast::PatField {
             attrs: Default::default(),
             id,
             ident,
@@ -159,7 +159,7 @@ pub fn placeholder(
             ty: ty(),
             is_placeholder: true,
         }]),
-        AstFragmentKind::StructFields => AstFragment::StructFields(smallvec![ast::FieldDef {
+        AstFragmentKind::FieldDefs => AstFragment::FieldDefs(smallvec![ast::FieldDef {
             attrs: Default::default(),
             id,
             ident: None,

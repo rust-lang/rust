@@ -6,12 +6,13 @@ use super::{AssocItem, Expr, ForeignItem, Item, Local, MacCallStmt};
 use super::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};
 use super::{AttrVec, Attribute, Stmt, StmtKind};
 
-use std::fmt::Debug;
+use std::fmt;
+use std::marker::PhantomData;
 
 /// An `AstLike` represents an AST node (or some wrapper around
 /// and AST node) which stores some combination of attributes
 /// and tokens.
-pub trait AstLike: Sized + Debug {
+pub trait AstLike: Sized + fmt::Debug {
     /// This is `true` if this `AstLike` might support 'custom' (proc-macro) inner
     /// attributes. Attributes like `#![cfg]` and `#![cfg_attr]` are not
     /// considered 'custom' attributes
@@ -284,4 +285,38 @@ derive_has_attrs_no_tokens! {
 // they need to store tokens.
 derive_has_tokens_no_attrs! {
     Ty, Block, AttrItem, Pat, Path, Visibility
+}
+
+/// A newtype around an `AstLike` node that implements `AstLike` itself.
+pub struct AstLikeWrapper<Wrapped, Tag> {
+    pub wrapped: Wrapped,
+    pub tag: PhantomData<Tag>,
+}
+
+impl<Wrapped, Tag> AstLikeWrapper<Wrapped, Tag> {
+    pub fn new(wrapped: Wrapped, _tag: Tag) -> AstLikeWrapper<Wrapped, Tag> {
+        AstLikeWrapper { wrapped, tag: Default::default() }
+    }
+}
+
+impl<Wrapped: fmt::Debug, Tag> fmt::Debug for AstLikeWrapper<Wrapped, Tag> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AstLikeWrapper")
+            .field("wrapped", &self.wrapped)
+            .field("tag", &self.tag)
+            .finish()
+    }
+}
+
+impl<Wrapped: AstLike, Tag> AstLike for AstLikeWrapper<Wrapped, Tag> {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = Wrapped::SUPPORTS_CUSTOM_INNER_ATTRS;
+    fn attrs(&self) -> &[Attribute] {
+        self.wrapped.attrs()
+    }
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
+        self.wrapped.visit_attrs(f)
+    }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
+        self.wrapped.tokens_mut()
+    }
 }
