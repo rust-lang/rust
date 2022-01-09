@@ -91,15 +91,6 @@ macro validate_atomic_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
     }
 }
 
-fn validate_simd_type(fx: &mut FunctionCx<'_, '_, '_>, intrinsic: Symbol, span: Span, ty: Ty<'_>) {
-    if !ty.is_simd() {
-        fx.tcx.sess.span_err(span, &format!("invalid monomorphization of `{}` intrinsic: expected SIMD input type, found non-SIMD `{}`", intrinsic, ty));
-        // Prevent verifier error
-        crate::trap::trap_unreachable(fx, "compilation should not have succeeded");
-        return;
-    }
-}
-
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
     let (element, count) = match layout.abi {
         Abi::Vector { element, count } => (element, count),
