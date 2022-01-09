@@ -73,31 +73,6 @@ macro intrinsic_match {
     }
 }
 
-macro call_intrinsic_match {
-    ($fx:expr, $intrinsic:expr, $ret:expr, $args:expr, $(
-        $name:ident($($arg:ident),*) -> $ty:ident => $func:ident,
-    )*) => {
-        match $intrinsic {
-            $(
-                sym::$name => {
-                    if let [$(ref $arg),*] = *$args {
-                        let ($($arg,)*) = (
-                            $(codegen_operand($fx, $arg),)*
-                        );
-                        let res = $fx.easy_call(stringify!($func), &[$($arg),*], $fx.tcx.types.$ty);
-                        $ret.write_cvalue($fx, res);
-
-                        return true;
-                    }
-                }
-            )*
-            _ => return false,
-        }
-
-        bug!("wrong number of args for intrinsic {:?}", $intrinsic);
-    }
-}
-
 macro validate_atomic_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
     match $ty.kind() {
         ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
@@ -428,6 +403,31 @@ fn codegen_float_intrinsic_call<'tcx>(
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
 ) -> bool {
+    macro call_intrinsic_match {
+        ($fx:expr, $intrinsic:expr, $ret:expr, $args:expr, $(
+            $name:ident($($arg:ident),*) -> $ty:ident => $func:ident,
+        )*) => {
+            match $intrinsic {
+                $(
+                    sym::$name => {
+                        if let [$(ref $arg),*] = *$args {
+                            let ($($arg,)*) = (
+                                $(codegen_operand($fx, $arg),)*
+                            );
+                            let res = $fx.easy_call(stringify!($func), &[$($arg),*], $fx.tcx.types.$ty);
+                            $ret.write_cvalue($fx, res);
+
+                            return true;
+                        }
+                    }
+                )*
+                _ => return false,
+            }
+
+            bug!("wrong number of args for intrinsic {:?}", $intrinsic);
+        }
+    }
+
     call_intrinsic_match! {
         fx, intrinsic, ret, args,
         expf32(flt) -> f32 => expf,
