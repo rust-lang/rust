@@ -113,7 +113,7 @@ fn simd_for_each_lane<'tcx>(
         TyAndLayout<'tcx>,
         TyAndLayout<'tcx>,
         Value,
-    ) -> CValue<'tcx>,
+    ) -> Value,
 ) {
     let layout = val.layout();
 
@@ -127,6 +127,7 @@ fn simd_for_each_lane<'tcx>(
         let lane = val.value_lane(fx, lane_idx).load_scalar(fx);
 
         let res_lane = f(fx, lane_layout, ret_lane_layout, lane);
+        let res_lane = CValue::by_val(res_lane, ret_lane_layout);
 
         ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
     }
@@ -143,7 +144,7 @@ fn simd_pair_for_each_lane<'tcx>(
         TyAndLayout<'tcx>,
         Value,
         Value,
-    ) -> CValue<'tcx>,
+    ) -> Value,
 ) {
     assert_eq!(x.layout(), y.layout());
     let layout = x.layout();
@@ -159,6 +160,7 @@ fn simd_pair_for_each_lane<'tcx>(
         let y_lane = y.value_lane(fx, lane_idx).load_scalar(fx);
 
         let res_lane = f(fx, lane_layout, ret_lane_layout, x_lane, y_lane);
+        let res_lane = CValue::by_val(res_lane, ret_lane_layout);
 
         ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
     }
@@ -215,7 +217,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     layout: TyAndLayout<'tcx>,
     val: Value,
-) -> CValue<'tcx> {
+) -> Value {
     let ty = fx.clif_type(layout.ty).unwrap();
 
     let int_ty = match ty {
@@ -231,7 +233,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
         res = fx.bcx.ins().bitcast(ty, res);
     }
 
-    CValue::by_val(res, layout)
+    res
 }
 
 pub(crate) fn codegen_intrinsic_call<'tcx>(
