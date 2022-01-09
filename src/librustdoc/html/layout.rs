@@ -19,9 +19,6 @@ crate struct Layout {
     /// The given user css file which allow to customize the generated
     /// documentation theme.
     crate css_file_extension: Option<PathBuf>,
-    /// If false, the `select` element to have search filtering by crates on rendered docs
-    /// won't be generated.
-    crate generate_search_filter: bool,
     /// If true, then scrape-examples.js will be included in the output HTML file
     crate scrape_examples_extension: bool,
 }

@@ -387,7 +387,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             extension_css,
             resource_suffix,
             static_root_path,
-            generate_search_filter,
             unstable_features,
             generate_redirect_map,
             show_type_layout,
@@ -417,7 +416,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             default_settings,
             krate: krate.name(tcx).to_string(),
             css_file_extension: extension_css,
-            generate_search_filter,
             scrape_examples_extension: !call_locations.is_empty(),
         };
         let mut issue_tracker_base_url = None;
