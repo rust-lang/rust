@@ -611,16 +611,22 @@ mod must_use {
 }
 
 #[windows_subsystem = "windows"]
+//~^ WARN crate-level attribute should be an inner attribute
 mod windows_subsystem {
     mod inner { #![windows_subsystem="windows"] }
+    //~^ WARN crate-level attribute should be in the root module
 
     #[windows_subsystem = "windows"] fn f() { }
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[windows_subsystem = "windows"] struct S;
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[windows_subsystem = "windows"] type T = S;
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[windows_subsystem = "windows"] impl S { }
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 // BROKEN USES OF CRATE-LEVEL BUILT-IN ATTRIBUTES
@@ -703,16 +709,22 @@ mod no_main_1 {
 }
 
 #[no_builtins]
+//~^ WARN crate-level attribute should be an inner attribute
 mod no_builtins {
     mod inner { #![no_builtins] }
+    //~^ WARN crate-level attribute should be in the root module
 
     #[no_builtins] fn f() { }
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_builtins] struct S;
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_builtins] type T = S;
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_builtins] impl S { }
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 #[recursion_limit="0200"]
