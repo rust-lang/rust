@@ -41,6 +41,8 @@ trait U: Default {
 }
 
 trait ZZ: Default {
+    fn g();
+    fn h();
     fn f()
     where
         Self: Default + Clone;
@@ -50,6 +52,12 @@ trait BadTrait: Default + Clone {
     fn f()
     where
         Self: Default + Clone;
+    fn g()
+    where
+        Self: Default;
+    fn h()
+    where
+        Self: Copy;
 }
 
 #[derive(Default, Clone)]

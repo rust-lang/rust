@@ -121,7 +121,14 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                         .filter_map(get_trait_res_span_from_bound)
                         .for_each(|(trait_item_res, span)| {
                             if self_bounds_set.get(&trait_item_res).is_some() {
-                                emit_lint(cx, span);
+                                span_lint_and_help(
+                                    cx,
+                                    TRAIT_DUPLICATION_IN_BOUNDS,
+                                    span,
+                                    "this trait bound is already specified in trait declaration",
+                                    None,
+                                    "consider removing this trait bound",
+                                );
                             }
                         });
                 }
@@ -242,21 +249,17 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
                     if let Some((_, span_direct)) = trait_resolutions_direct
                                                 .iter()
                                                 .find(|(res_direct, _)| *res_direct == res_where) {
-                        emit_lint(cx, *span_direct);
+                        span_lint_and_help(
+                            cx,
+                            TRAIT_DUPLICATION_IN_BOUNDS,
+                            *span_direct,
+                            "this trait bound is already specified in the where clause",
+                            None,
+                            "consider removing this trait bound",
+                        );
                     }
                 }
             }
         }
     }
-}
-
-fn emit_lint(cx: &LateContext<'_>, span: Span) {
-    span_lint_and_help(
-        cx,
-        TRAIT_DUPLICATION_IN_BOUNDS,
-        span,
-        "this trait bound is already specified in the where clause",
-        None,
-        "consider removing this trait bound",
-    );
 }
