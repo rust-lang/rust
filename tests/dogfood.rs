@@ -3,8 +3,6 @@
 //!
 //! See [Eating your own dog food](https://en.wikipedia.org/wiki/Eating_your_own_dog_food) for context
 
-// Dogfood cannot run on Windows
-#![cfg(not(windows))]
 #![feature(once_cell)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
