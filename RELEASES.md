@@ -1,3 +1,289 @@
+Version 1.58.0 (2022-01-13)
+==========================
+
+Language
+--------
+
+- [Format strings can now capture arguments simply by writing `{ident}` in the string.][90473] This works in all macros accepting format strings. Support for this in `panic!` (`panic!("{ident}")`) requires the 2021 edition; panic invocations in previous editions that appear to be trying to use this will result in a warning lint about not having the intended effect.
+- [`*const T` pointers can now be dereferenced in const contexts.][89551]
+- [The rules for when a generic struct implements `Unsize` have been relaxed.][90417]
+
+Compiler
+--------
+
+- [Add LLVM CFI support to the Rust compiler][89652]
+- [Stabilize -Z strip as -C strip][90058]. Note that while release builds already don't add debug symbols for the code you compile, the compiled standard library that ships with Rust includes debug symbols, so you may want to use the `strip` option to remove these symbols to produce smaller release binaries. Note that this release only includes support in rustc, not directly in cargo.
+- [Add support for LLVM coverage mapping format versions 5 and 6][91207]
+- [Emit LLVM optimization remarks when enabled with `-Cremark`][90833]
+- [Update the minimum external LLVM to 12][90175]
+- [Add `x86_64-unknown-none` at Tier 3*][89062]
+- [Build musl dist artifacts with debuginfo enabled][90733]. When building release binaries using musl, you may want to use the newly stabilized strip option to remove these debug symbols, reducing the size of your binaries.
+- [Don't abort compilation after giving a lint error][87337]
+- [Error messages point at the source of trait bound obligations in more places][89580]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [All remaining functions in the standard library have `#[must_use]` annotations where appropriate][89692], producing a warning when ignoring their return value. This helps catch mistakes such as expecting a function to mutate a value in place rather than return a new value.
+- [Paths are automatically canonicalized on Windows for operations that support it][89174]
+- [Re-enable debug checks for `copy` and `copy_nonoverlapping`][90041]
+- [Implement `RefUnwindSafe` for `Rc<T>`][87467]
+- [Make RSplit<T, P>: Clone not require T: Clone][90117]
+- [Implement `Termination` for `Result<Infallible, E>`][88601]. This allows writing `fn main() -> Result<Infallible, ErrorType>`, for a program whose successful exits never involve returning from `main` (for instance, a program that calls `exit`, or that uses `exec` to run another program).
+
+Stabilized APIs
+---------------
+
+- [`Metadata::is_symlink`]
+- [`Path::is_symlink`]
+- [`{integer}::saturating_div`]
+- [`Option::unwrap_unchecked`]
+- [`Result::unwrap_unchecked`]
+- [`Result::unwrap_err_unchecked`]
+- [`NonZero{unsigned}::is_power_of_two`]
+- [`File::options`]
+
+These APIs are now usable in const contexts:
+
+- [`Duration::new`]
+- [`Duration::checked_add`]
+- [`Duration::saturating_add`]
+- [`Duration::checked_sub`]
+- [`Duration::saturating_sub`]
+- [`Duration::checked_mul`]
+- [`Duration::saturating_mul`]
+- [`Duration::checked_div`]
+- [`MaybeUninit::as_ptr`]
+- [`MaybeUninit::as_mut_ptr`]
+- [`MaybeUninit::assume_init`]
+- [`MaybeUninit::assume_init_ref`]
+
+Cargo
+-----
+
+- [Add --message-format for install command][cargo/10107]
+- [Warn when alias shadows external subcommand][cargo/10082]
+
+Rustdoc
+-------
+
+- [Show all Deref implementations recursively in rustdoc][90183]
+- [Use computed visibility in rustdoc][88447]
+
+Compatibility Notes
+-------------------
+
+- [Try all stable method candidates first before trying unstable ones][90329]. This change ensures that adding new nightly-only methods to the Rust standard library will not break code invoking methods of the same name from traits outside the standard library.
+- Windows: [`std::process::Command` will no longer search the current directory for executables.][87704]
+- [All proc-macro backward-compatibility lints are now deny-by-default.][88041]
+- [proc_macro: Append .0 to unsuffixed float if it would otherwise become int token][90297]
+- [Refactor weak symbols in std::sys::unix][90846]. This optimizes accesses to glibc functions, by avoiding the use of dlopen. This does not increase the [minimum expected version of glibc](https://doc.rust-lang.org/nightly/rustc/platform-support.html). However, software distributions that use symbol versions to detect library dependencies, and which take weak symbols into account in that analysis, may detect rust binaries as requiring newer versions of glibc.
+- [rustdoc now rejects some unexpected semicolons in doctests][91026]
+
+Internal Changes
+----------------
+
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+- [Implement coherence checks for negative trait impls][90104]
+- [Add rustc lint, warning when iterating over hashmaps][89558]
+- [Optimize live point computation][90491]
+- [Enable verification for 1/32nd of queries loaded from disk][90361]
+- [Implement version of normalize_erasing_regions that allows for normalization failure][91255]
+
+[87337]: https://github.com/rust-lang/rust/pull/87337/
+[87467]: https://github.com/rust-lang/rust/pull/87467/
+[87704]: https://github.com/rust-lang/rust/pull/87704/
+[88041]: https://github.com/rust-lang/rust/pull/88041/
+[88300]: https://github.com/rust-lang/rust/pull/88300/
+[88447]: https://github.com/rust-lang/rust/pull/88447/
+[88601]: https://github.com/rust-lang/rust/pull/88601/
+[88624]: https://github.com/rust-lang/rust/pull/88624/
+[89062]: https://github.com/rust-lang/rust/pull/89062/
+[89174]: https://github.com/rust-lang/rust/pull/89174/
+[89542]: https://github.com/rust-lang/rust/pull/89542/
+[89551]: https://github.com/rust-lang/rust/pull/89551/
+[89558]: https://github.com/rust-lang/rust/pull/89558/
+[89580]: https://github.com/rust-lang/rust/pull/89580/
+[89652]: https://github.com/rust-lang/rust/pull/89652/
+[89677]: https://github.com/rust-lang/rust/pull/89677/
+[89951]: https://github.com/rust-lang/rust/pull/89951/
+[90041]: https://github.com/rust-lang/rust/pull/90041/
+[90058]: https://github.com/rust-lang/rust/pull/90058/
+[90104]: https://github.com/rust-lang/rust/pull/90104/
+[90117]: https://github.com/rust-lang/rust/pull/90117/
+[90175]: https://github.com/rust-lang/rust/pull/90175/
+[90183]: https://github.com/rust-lang/rust/pull/90183/
+[90297]: https://github.com/rust-lang/rust/pull/90297/
+[90329]: https://github.com/rust-lang/rust/pull/90329/
+[90361]: https://github.com/rust-lang/rust/pull/90361/
+[90417]: https://github.com/rust-lang/rust/pull/90417/
+[90473]: https://github.com/rust-lang/rust/pull/90473/
+[90491]: https://github.com/rust-lang/rust/pull/90491/
+[90733]: https://github.com/rust-lang/rust/pull/90733/
+[90833]: https://github.com/rust-lang/rust/pull/90833/
+[90846]: https://github.com/rust-lang/rust/pull/90846/
+[90896]: https://github.com/rust-lang/rust/pull/90896/
+[91026]: https://github.com/rust-lang/rust/pull/91026/
+[91207]: https://github.com/rust-lang/rust/pull/91207/
+[91255]: https://github.com/rust-lang/rust/pull/91255/
+[91301]: https://github.com/rust-lang/rust/pull/91301/
+[cargo/10082]: https://github.com/rust-lang/cargo/pull/10082/
+[cargo/10107]: https://github.com/rust-lang/cargo/pull/10107/
+[`Metadata::is_symlink`]: https://doc.rust-lang.org/stable/std/fs/struct.Metadata.html#method.is_symlink
+[`Path::is_symlink`]: https://doc.rust-lang.org/stable/std/path/struct.Path.html#method.is_symlink
+[`{integer}::saturating_div`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.saturating_div
+[`Option::unwrap_unchecked`]: https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.unwrap_unchecked
+[`Result::unwrap_unchecked`]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.unwrap_unchecked
+[`Result::unwrap_err_unchecked`]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.unwrap_err_unchecked
+[`NonZero{unsigned}::is_power_of_two`]: https://doc.rust-lang.org/stable/std/num/struct.NonZeroU8.html#method.is_power_of_two
+[`File::options`]: https://doc.rust-lang.org/stable/std/fs/struct.File.html#method.options
+[`unix::process::ExitStatusExt::core_dumped`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.core_dumped
+[`unix::process::ExitStatusExt::stopped_signal`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.stopped_signal
+[`unix::process::ExitStatusExt::continued`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.continued
+[`unix::process::ExitStatusExt::into_raw`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.into_raw
+[`Duration::new`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.new
+[`Duration::checked_add`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.checked_add
+[`Duration::saturating_add`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.saturating_add
+[`Duration::checked_sub`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.checked_sub
+[`Duration::saturating_sub`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.saturating_sub
+[`Duration::checked_mul`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.checked_mul
+[`Duration::saturating_mul`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.saturating_mul
+[`Duration::checked_div`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.checked_div
+[`Duration::as_secs_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.as_secs_f64
+[`Duration::as_secs_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.as_secs_f32
+[`Duration::from_secs_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.from_secs_f64
+[`Duration::from_secs_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.from_secs_f32
+[`Duration::mul_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.mul_f64
+[`Duration::mul_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.mul_f32
+[`Duration::div_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_f64
+[`Duration::div_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_f32
+[`Duration::div_duration_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_duration_f64
+[`Duration::div_duration_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_duration_f32
+[`MaybeUninit::as_ptr`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.as_ptr
+[`MaybeUninit::as_mut_ptr`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.as_mut_ptr
+[`MaybeUninit::assume_init`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init
+[`MaybeUninit::assume_init_ref`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_ref
+
+Version 1.57.0 (2021-12-02)
+==========================
+
+Language
+--------
+
+- [Macro attributes may follow `#[derive]` and will see the original (pre-`cfg`) input.][87220]
+- [Accept curly-brace macros in expressions, like `m!{ .. }.method()` and `m!{ .. }?`.][88690]
+- [Allow panicking in constant evaluation.][89508]
+
+Compiler
+--------
+
+- [Create more accurate debuginfo for vtables.][89597]
+- [Add `armv6k-nintendo-3ds` at Tier 3\*.][88529]
+- [Add `armv7-unknown-linux-uclibceabihf` at Tier 3\*.][88952]
+- [Add `m68k-unknown-linux-gnu` at Tier 3\*.][88321]
+- [Add SOLID targets at Tier 3\*:][86191] `aarch64-kmc-solid_asp3`, `armv7a-kmc-solid_asp3-eabi`, `armv7a-kmc-solid_asp3-eabihf`
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
+
+Libraries
+---------
+
+- [Avoid allocations and copying in `Vec::leak`][89337]
+- [Add `#[repr(i8)]` to `Ordering`][89507]
+- [Optimize `File::read_to_end` and `read_to_string`][89582]
+- [Update to Unicode 14.0][89614]
+- [Many more functions are marked `#[must_use]`][89692], producing a warning
+  when ignoring their return value. This helps catch mistakes such as expecting
+  a function to mutate a value in place rather than return a new value.
+
+Stabilised APIs
+---------------
+
+- [`[T; N]::as_mut_slice`][`array::as_mut_slice`]
+- [`[T; N]::as_slice`][`array::as_slice`]
+- [`collections::TryReserveError`]
+- [`HashMap::try_reserve`]
+- [`HashSet::try_reserve`]
+- [`String::try_reserve`]
+- [`String::try_reserve_exact`]
+- [`Vec::try_reserve`]
+- [`Vec::try_reserve_exact`]
+- [`VecDeque::try_reserve`]
+- [`VecDeque::try_reserve_exact`]
+- [`Iterator::map_while`]
+- [`iter::MapWhile`]
+- [`proc_macro::is_available`]
+- [`Command::get_program`]
+- [`Command::get_args`]
+- [`Command::get_envs`]
+- [`Command::get_current_dir`]
+- [`CommandArgs`]
+- [`CommandEnvs`]
+
+These APIs are now usable in const contexts:
+
+- [`hint::unreachable_unchecked`]
+
+Cargo
+-----
+
+- [Stabilize custom profiles][cargo/9943]
+
+Compatibility notes
+-------------------
+
+Internal changes
+----------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+- [Added an experimental backend for codegen with `libgccjit`.][87260]
+
+[86191]: https://github.com/rust-lang/rust/pull/86191/
+[87220]: https://github.com/rust-lang/rust/pull/87220/
+[87260]: https://github.com/rust-lang/rust/pull/87260/
+[88243]: https://github.com/rust-lang/rust/pull/88243/
+[88321]: https://github.com/rust-lang/rust/pull/88321/
+[88529]: https://github.com/rust-lang/rust/pull/88529/
+[88690]: https://github.com/rust-lang/rust/pull/88690/
+[88952]: https://github.com/rust-lang/rust/pull/88952/
+[89337]: https://github.com/rust-lang/rust/pull/89337/
+[89507]: https://github.com/rust-lang/rust/pull/89507/
+[89508]: https://github.com/rust-lang/rust/pull/89508/
+[89582]: https://github.com/rust-lang/rust/pull/89582/
+[89597]: https://github.com/rust-lang/rust/pull/89597/
+[89614]: https://github.com/rust-lang/rust/pull/89614/
+[89692]: https://github.com/rust-lang/rust/issues/89692/
+[cargo/9943]: https://github.com/rust-lang/cargo/pull/9943/
+[`array::as_mut_slice`]: https://doc.rust-lang.org/std/primitive.array.html#method.as_mut_slice
+[`array::as_slice`]: https://doc.rust-lang.org/std/primitive.array.html#method.as_slice
+[`collections::TryReserveError`]: https://doc.rust-lang.org/std/collections/struct.TryReserveError.html
+[`HashMap::try_reserve`]: https://doc.rust-lang.org/std/collections/hash_map/struct.HashMap.html#method.try_reserve
+[`HashSet::try_reserve`]: https://doc.rust-lang.org/std/collections/hash_set/struct.HashSet.html#method.try_reserve
+[`String::try_reserve`]: https://doc.rust-lang.org/alloc/string/struct.String.html#method.try_reserve
+[`String::try_reserve_exact`]: https://doc.rust-lang.org/alloc/string/struct.String.html#method.try_reserve_exact
+[`Vec::try_reserve`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.try_reserve
+[`Vec::try_reserve_exact`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.try_reserve_exact
+[`VecDeque::try_reserve`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.try_reserve
+[`VecDeque::try_reserve_exact`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.try_reserve_exact
+[`Iterator::map_while`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.map_while
+[`iter::MapWhile`]: https://doc.rust-lang.org/std/iter/struct.MapWhile.html
+[`proc_macro::is_available`]: https://doc.rust-lang.org/proc_macro/fn.is_available.html
+[`Command::get_program`]: https://doc.rust-lang.org/std/process/struct.Command.html#method.get_program
+[`Command::get_args`]: https://doc.rust-lang.org/std/process/struct.Command.html#method.get_args
+[`Command::get_envs`]: https://doc.rust-lang.org/std/process/struct.Command.html#method.get_envs
+[`Command::get_current_dir`]: https://doc.rust-lang.org/std/process/struct.Command.html#method.get_current_dir
+[`CommandArgs`]: https://doc.rust-lang.org/std/process/struct.CommandArgs.html
+[`CommandEnvs`]: https://doc.rust-lang.org/std/process/struct.CommandEnvs.html
+
 Version 1.56.1 (2021-11-01)
 ===========================
 
@@ -274,6 +560,10 @@ Compatibility Notes
   `Command` would cause them to be ASCII-uppercased.
 - [Rustdoc will now warn on using rustdoc lints that aren't prefixed
   with `rustdoc::`][86849]
+- `RUSTFLAGS` is no longer set for build scripts. Build scripts
+  should use `CARGO_ENCODED_RUSTFLAGS` instead. See the
+  [documentation](https://doc.rust-lang.org/nightly/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts)
+  for more details.
 
 [86849]: https://github.com/rust-lang/rust/pull/86849
 [86513]: https://github.com/rust-lang/rust/pull/86513
