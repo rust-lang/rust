@@ -1,4 +1,3 @@
-use hir::TypeInfo;
 use itertools::Itertools;
 use std::iter::successors;
 use syntax::{
@@ -53,18 +52,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
                     return false;
                 }
 
-                let arm_types = get_arm_types(&ctx, &arm);
-                for i in 0..arm_types.len() {
-                    let other_arm_type = &arm_types[i].as_ref();
-                    let current_arm_type = current_arm_types[i].as_ref();
-                    if let (Some(other_arm_type), Some(current_arm_type)) =
-                        (other_arm_type, current_arm_type)
-                    {
-                        return &other_arm_type.original == &current_arm_type.original;
-                    }
-                }
-
-                true
+                return are_same_types(&current_arm_types, arm, ctx);
             }
             _ => false,
         })
@@ -106,7 +94,24 @@ fn contains_placeholder(a: &ast::MatchArm) -> bool {
     matches!(a.pat(), Some(ast::Pat::WildcardPat(..)))
 }
 
-fn get_arm_types(ctx: &AssistContext, arm: &ast::MatchArm) -> Vec<Option<TypeInfo>> {
+fn are_same_types(
+    current_arm_types: &Vec<Option<hir::TypeInfo>>,
+    arm: &ast::MatchArm,
+    ctx: &AssistContext,
+) -> bool {
+    let arm_types = get_arm_types(&ctx, &arm);
+    for i in 0..arm_types.len() {
+        let other_arm_type = &arm_types[i].as_ref();
+        let current_arm_type = current_arm_types[i].as_ref();
+        if let (Some(other_arm_type), Some(current_arm_type)) = (other_arm_type, current_arm_type) {
+            return &other_arm_type.original == &current_arm_type.original;
+        }
+    }
+
+    return true;
+}
+
+fn get_arm_types(ctx: &AssistContext, arm: &ast::MatchArm) -> Vec<Option<hir::TypeInfo>> {
     match arm.pat() {
         Some(ast::Pat::TupleStructPat(tp)) => tp
             .fields()
