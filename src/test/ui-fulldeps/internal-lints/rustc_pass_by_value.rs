@@ -62,7 +62,6 @@ impl Foo {
     //~^^ ERROR passing `TyCtxt<'_>` by reference
 }
 
-#[rustc_diagnostic_item = "CustomEnum"]
 #[rustc_pass_by_value]
 enum CustomEnum {
     A,
@@ -77,13 +76,11 @@ impl CustomEnum {
     }
 }
 
-#[rustc_diagnostic_item = "CustomStruct"]
 #[rustc_pass_by_value]
 struct CustomStruct {
     s: u8,
 }
 
-#[rustc_diagnostic_item = "CustomAlias"]
 #[rustc_pass_by_value]
 type CustomAlias<'a> = &'a CustomStruct; //~ ERROR passing `CustomStruct` by reference
 

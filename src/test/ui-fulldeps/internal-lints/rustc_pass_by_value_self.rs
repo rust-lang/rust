@@ -8,7 +8,6 @@
 #![deny(rustc::pass_by_value)]
 #![allow(unused)]
 
-#[rustc_diagnostic_item = "TyCtxt"]
 #[rustc_pass_by_value]
 struct TyCtxt<'tcx> {
     inner: &'tcx (),
@@ -23,7 +22,6 @@ struct TyS<'tcx> {
     inner: &'tcx (),
 }
 
-#[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
 type Ty<'tcx> = &'tcx TyS<'tcx>;
 

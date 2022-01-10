@@ -77,25 +77,25 @@ LL |     fn ty_multi_ref_assoc(ty_multi: &&Ty<'_>, ty_ctxt_multi: &&&&TyCtxt<'_>
    |                                                                 ^^^^^^^^^^^ help: try passing by value: `TyCtxt<'_>`
 
 error: passing `CustomEnum` by reference
-  --> $DIR/rustc_pass_by_value.rs:75:20
+  --> $DIR/rustc_pass_by_value.rs:74:20
    |
 LL |         reference: &CustomEnum,
    |                    ^^^^^^^^^^^ help: try passing by value: `CustomEnum`
 
 error: passing `CustomStruct` by reference
-  --> $DIR/rustc_pass_by_value.rs:88:24
+  --> $DIR/rustc_pass_by_value.rs:85:24
    |
 LL | type CustomAlias<'a> = &'a CustomStruct;
    |                        ^^^^^^^^^^^^^^^^ help: try passing by value: `CustomStruct`
 
 error: passing `CustomStruct` by reference
-  --> $DIR/rustc_pass_by_value.rs:93:20
+  --> $DIR/rustc_pass_by_value.rs:90:20
    |
 LL |         reference: &CustomStruct,
    |                    ^^^^^^^^^^^^^ help: try passing by value: `CustomStruct`
 
 error: passing `CustomAlias<>` by reference
-  --> $DIR/rustc_pass_by_value.rs:99:20
+  --> $DIR/rustc_pass_by_value.rs:96:20
    |
 LL |         reference: &CustomAlias,
    |                    ^^^^^^^^^^^^ help: try passing by value: `CustomAlias<>`
