@@ -23,9 +23,9 @@ assert-css: (
     ALL,
 )
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl-Foo
 assert-css: (
-    "#impl",
+    "#impl-Foo",
     {"color": "rgb(197, 197, 197)", "background-color": "rgba(255, 236, 164, 0.06)"},
 )
 
@@ -62,9 +62,9 @@ assert-css: (
     ALL,
 )
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl-Foo
 assert-css: (
-    "#impl",
+    "#impl-Foo",
     {"color": "rgb(221, 221, 221)", "background-color": "rgb(73, 74, 61)"},
 )
 
@@ -99,8 +99,8 @@ assert-css: (
     ALL,
 )
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl
-assert-css: ("#impl", {"color": "rgb(0, 0, 0)", "background-color": "rgb(253, 255, 211)"})
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html#impl-Foo
+assert-css: ("#impl-Foo", {"color": "rgb(0, 0, 0)", "background-color": "rgb(253, 255, 211)"})
 
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html#method.must_use
 assert-css: (
