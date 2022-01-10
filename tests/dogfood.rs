@@ -9,54 +9,19 @@
 
 use std::path::PathBuf;
 use std::process::Command;
-use test_utils::{CARGO_CLIPPY_PATH, IS_RUSTC_TEST_SUITE};
+use test_utils::IS_RUSTC_TEST_SUITE;
 
 mod test_utils;
 
 #[test]
 fn dogfood_clippy() {
-    // run clippy on itself and fail the test if lint warnings are reported
-    if IS_RUSTC_TEST_SUITE {
-        return;
-    }
-    let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-
-    let mut command = Command::new(&*CARGO_CLIPPY_PATH);
-    command
-        .current_dir(root_dir)
-        .env("CARGO_INCREMENTAL", "0")
-        .arg("clippy")
-        .arg("--all-targets")
-        .arg("--all-features")
-        .arg("--")
-        .args(&["-D", "clippy::all"])
-        .args(&["-D", "clippy::pedantic"])
-        .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
-
-    // internal lints only exist if we build with the internal feature
-    if cfg!(feature = "internal") {
-        command.args(&["-D", "clippy::internal"]);
-    }
-
-    let output = command.output().unwrap();
-
-    println!("status: {}", output.status);
-    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
-
-    assert!(output.status.success());
-}
-
-#[test]
-fn dogfood_subprojects() {
-    // run clippy on remaining subprojects and fail the test if lint warnings are reported
     if IS_RUSTC_TEST_SUITE {
         return;
     }
 
-    // NOTE: `path_dep` crate is omitted on purpose here
-    for project in &["clippy_dev", "clippy_lints", "clippy_utils", "rustc_tools_util"] {
-        run_clippy_for_project(project);
+    // "" is the root package
+    for package in &["", "clippy_dev", "clippy_lints", "clippy_utils", "rustc_tools_util"] {
+        run_clippy_for_package(package);
     }
 }
 
@@ -73,7 +38,7 @@ fn run_metadata_collection_lint() {
 
     // Run collection as is
     std::env::set_var("ENABLE_METADATA_COLLECTION", "1");
-    run_clippy_for_project("clippy_lints");
+    run_clippy_for_package("clippy_lints");
 
     // Check if cargo caching got in the way
     if let Ok(file) = File::open(metadata_output_path) {
@@ -96,10 +61,10 @@ fn run_metadata_collection_lint() {
     .unwrap();
 
     // Running the collection again
-    run_clippy_for_project("clippy_lints");
+    run_clippy_for_package("clippy_lints");
 }
 
-fn run_clippy_for_project(project: &str) {
+fn run_clippy_for_package(project: &str) {
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
     let mut command = Command::new(&*test_utils::CARGO_CLIPPY_PATH);
