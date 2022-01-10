@@ -113,14 +113,9 @@ fn are_same_types(
 
 fn get_arm_types(ctx: &AssistContext, arm: &ast::MatchArm) -> Vec<Option<hir::TypeInfo>> {
     match arm.pat() {
-        Some(ast::Pat::TupleStructPat(tp)) => tp
-            .fields()
-            .into_iter()
-            .map(|field| {
-                let pat_type = ctx.sema.type_of_pat(&field);
-                pat_type
-            })
-            .collect_vec(),
+        Some(ast::Pat::TupleStructPat(tp)) => {
+            tp.fields().into_iter().map(|field| ctx.sema.type_of_pat(&field)).collect_vec()
+        }
         _ => Vec::new(),
     }
 }
