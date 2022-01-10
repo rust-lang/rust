@@ -58,13 +58,16 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
                 for i in 0..arm_types.len() {
                     let other_arm_type = &arm_types[i].as_ref();
                     let current_arm_type = current_arm_types[i].as_ref();
-                    if other_arm_type.is_some() && current_arm_type.is_some() {
-                        let other_arm_type = other_arm_type.unwrap().original.clone().as_adt();
-                        let current_arm_type = current_arm_type.unwrap().original.clone().as_adt();
+                    if let (Some(other_arm_type), Some(current_arm_type)) = (other_arm_type, current_arm_type) {
+                        let other_arm_type = &other_arm_type.original;
+                        let current_arm_type = &current_arm_type.original;
+
                         println!("Same types!");
                         println!("{:?}", other_arm_type);
                         println!("{:?}", current_arm_type);
                         return other_arm_type == current_arm_type;
+
+                        
                     }
                 }
 
@@ -285,7 +288,7 @@ fn main() {
     fn merge_match_arms_different_type() {
         check_assist_not_applicable(
             merge_match_arms,
-            r#"
+            r#"//- minicore: result
 fn func() {
     match Result::<i32, f32>::Ok(0) {
         Ok(x) => $0x.to_string(),
