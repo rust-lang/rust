@@ -151,6 +151,12 @@ impl<'a> HirFormatter<'a> {
                 write!(self, "{}", sep)?;
             }
             first = false;
+
+            // Abbreviate multiple omitted types with a single ellipsis.
+            if self.should_truncate() {
+                return write!(self, "{}", TYPE_HINT_TRUNCATION);
+            }
+
             e.hir_fmt(self)?;
         }
         Ok(())
