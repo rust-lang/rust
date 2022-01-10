@@ -328,4 +328,62 @@ fn func() {
 "#,
         );
     }
+
+    #[test]
+    fn merge_match_arms_same_type_subsequent_arm_with_different_type_in_other() {
+        check_assist(
+            merge_match_arms,
+            r#"
+enum MyEnum {
+    OptionA(f32),
+    OptionB(f32),
+    OptionC(f64)
+}
+
+fn func(e: MyEnum) {
+    match e {
+        MyEnum::OptionA(x) => $0x.classify(),
+        MyEnum::OptionB(x) => x.classify(),
+        MyEnum::OptionC(x) => x.classify(),
+    };
+}
+"#,
+            r#"
+enum MyEnum {
+    OptionA(f32),
+    OptionB(f32),
+    OptionC(f64)
+}
+
+fn func(e: MyEnum) {
+    match e {
+        MyEnum::OptionA(x) | MyEnum::OptionB(x) => x.classify(),
+        MyEnum::OptionC(x) => x.classify(),
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn merge_match_arms_same_type_skip_arm_with_different_type_in_between() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+enum MyEnum {
+    OptionA(f32),
+    OptionB(f64),
+    OptionC(f32)
+}
+
+fn func(e: MyEnum) {
+    match e {
+        MyEnum::OptionA(x) => $0x.classify(),
+        MyEnum::OptionB(x) => x.classify(),
+        MyEnum::OptionC(x) => x.classify(),
+    };
+}
+"#,
+        );
+    }
 }
