@@ -393,7 +393,7 @@ fn func(e: MyEnum) {
             merge_match_arms,
             r#"//- minicore: result
 fn func() {
-    match Result::<(f64, f64), (f64)>::Ok((0f64, 0f64)) {
+    match Result::<(f64, f64, f64), (f64, f64)>::Ok((0f64, 0f64, 0f64)) {
         Ok(x) => $0x.1.classify(),
         Err(x) => x.1.classify()
     };
