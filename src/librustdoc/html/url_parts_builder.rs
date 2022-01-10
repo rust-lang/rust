@@ -105,10 +105,17 @@ impl UrlPartsBuilder {
 
 /// This is just a guess at the average length of a URL part,
 /// used for [`String::with_capacity`] calls in the [`FromIterator`]
-/// and [`Extend`] impls.
+/// and [`Extend`] impls, and for [estimating item path lengths].
 ///
-/// This is intentionally on the lower end to avoid overallocating.
-const AVG_PART_LENGTH: usize = 5;
+/// The value `8` was chosen for two main reasons:
+///
+/// * It seems like a good guess for the average part length.
+/// * jemalloc's size classes are all multiples of eight,
+///   which means that the amount of memory it allocates will often match
+///   the amount requested, avoiding wasted bytes.
+///
+/// [estimating item path lengths]: estimate_item_path_byte_length
+const AVG_PART_LENGTH: usize = 8;
 
 /// Estimate the number of bytes in an item's path, based on how many segments it has.
 ///
