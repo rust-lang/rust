@@ -141,8 +141,11 @@ fn exec(
         println!("{}", format_command(&program, &dir, args));
     }
 
-    let child = Command::new(&program).current_dir(&dir).args(args.iter()).spawn()?;
-    let output = child.wait_with_output()?;
+    let output = Command::new(&program)
+        .current_dir(&dir)
+        .args(args.iter())
+        .output()
+        .unwrap();
     let success = output.status.success();
 
     if !context.check && !success {
