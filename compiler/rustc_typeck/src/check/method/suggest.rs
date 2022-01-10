@@ -15,7 +15,7 @@ use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_span::lev_distance;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{source_map, FileName, MultiSpan, Span, Symbol};
+use rustc_span::{source_map, FileName, MultiSpan, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     FulfillmentError, Obligation, ObligationCause, ObligationCauseCode,
@@ -1524,8 +1524,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // Explicitly ignore the `Pin::as_ref()` method as `Pin` does not
                             // implement the `AsRef` trait.
                             let skip = skippable.contains(&did)
-                                || (("Pin::new" == *pre)
-                                    && (Symbol::intern("as_ref") == item_name.name));
+                                || (("Pin::new" == *pre) && (sym::as_ref == item_name.name));
                             // Make sure the method is defined for the *actual* receiver: we don't
                             // want to treat `Box<Self>` as a receiver if it only works because of
                             // an autoderef to `&self`
