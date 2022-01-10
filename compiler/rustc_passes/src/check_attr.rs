@@ -1070,20 +1070,15 @@ impl CheckAttrVisitor<'_> {
     /// Warns against some misuses of `#[pass_by_value]`
     fn check_pass_by_value(&self, attr: &Attribute, span: &Span, target: Target) -> bool {
         match target {
-            Target::Struct
-            | Target::Enum
-            | Target::Union
-            | Target::Trait
-            | Target::TraitAlias
-            | Target::TyAlias => true,
+            Target::Struct | Target::Enum | Target::TyAlias => true,
             _ => {
                 self.tcx
                     .sess
                     .struct_span_err(
                         attr.span,
-                        "`pass_by_value` attribute should be applied to a struct, enum, trait or type alias.",
+                        "`pass_by_value` attribute should be applied to a struct, enum or type alias.",
                     )
-                    .span_label(*span, "is not a struct, enum, trait or type alias")
+                    .span_label(*span, "is not a struct, enum or type alias")
                     .emit();
                 false
             }
