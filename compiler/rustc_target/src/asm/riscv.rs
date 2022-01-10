@@ -1,5 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::Target;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::{sym, Symbol};
 use std::fmt;
@@ -53,10 +54,10 @@ impl RiscVInlineAsmRegClass {
 
 fn not_e(
     _arch: InlineAsmArch,
-    mut has_feature: impl FnMut(Symbol) -> bool,
+    target_features: &FxHashSet<Symbol>,
     _target: &Target,
 ) -> Result<(), &'static str> {
-    if has_feature(sym::e) {
+    if target_features.contains(&sym::e) {
         Err("register can't be used with the `e` target feature")
     } else {
         Ok(())

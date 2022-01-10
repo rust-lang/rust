@@ -1,5 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::Target;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
@@ -74,7 +75,7 @@ impl AArch64InlineAsmRegClass {
 
 pub fn reserved_x18(
     _arch: InlineAsmArch,
-    _has_feature: impl FnMut(Symbol) -> bool,
+    _target_features: &FxHashSet<Symbol>,
     target: &Target,
 ) -> Result<(), &'static str> {
     if target.os == "android"

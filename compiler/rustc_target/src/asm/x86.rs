@@ -1,5 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::Target;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
 use std::fmt;
@@ -138,7 +139,7 @@ impl X86InlineAsmRegClass {
 
 fn x86_64_only(
     arch: InlineAsmArch,
-    _has_feature: impl FnMut(Symbol) -> bool,
+    _target_features: &FxHashSet<Symbol>,
     _target: &Target,
 ) -> Result<(), &'static str> {
     match arch {
@@ -150,7 +151,7 @@ fn x86_64_only(
 
 fn high_byte(
     arch: InlineAsmArch,
-    _has_feature: impl FnMut(Symbol) -> bool,
+    _target_features: &FxHashSet<Symbol>,
     _target: &Target,
 ) -> Result<(), &'static str> {
     match arch {
@@ -161,7 +162,7 @@ fn high_byte(
 
 fn rbx_reserved(
     arch: InlineAsmArch,
-    _has_feature: impl FnMut(Symbol) -> bool,
+    _target_features: &FxHashSet<Symbol>,
     _target: &Target,
 ) -> Result<(), &'static str> {
     match arch {
@@ -175,7 +176,7 @@ fn rbx_reserved(
 
 fn esi_reserved(
     arch: InlineAsmArch,
-    _has_feature: impl FnMut(Symbol) -> bool,
+    _target_features: &FxHashSet<Symbol>,
     _target: &Target,
 ) -> Result<(), &'static str> {
     match arch {

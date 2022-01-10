@@ -1,4 +1,5 @@
 use super::{InlineAsmArch, InlineAsmType, Target};
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::{sym, Symbol};
 use std::fmt;
@@ -44,10 +45,10 @@ impl BpfInlineAsmRegClass {
 
 fn only_alu32(
     _arch: InlineAsmArch,
-    mut has_feature: impl FnMut(Symbol) -> bool,
+    target_features: &FxHashSet<Symbol>,
     _target: &Target,
 ) -> Result<(), &'static str> {
-    if !has_feature(sym::alu32) {
+    if !target_features.contains(&sym::alu32) {
         Err("register can't be used without the `alu32` target feature")
     } else {
         Ok(())
