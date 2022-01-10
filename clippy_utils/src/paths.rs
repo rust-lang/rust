@@ -5,16 +5,16 @@
 //! See <https://github.com/rust-lang/rust-clippy/issues/5393> for more information.
 
 pub const ANY_TRAIT: [&str; 3] = ["core", "any", "Any"];
-#[cfg(feature = "metadata-collector-lint")]
+#[cfg(feature = "internal")]
 pub const APPLICABILITY: [&str; 2] = ["rustc_lint_defs", "Applicability"];
-#[cfg(feature = "metadata-collector-lint")]
+#[cfg(feature = "internal")]
 pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
     ["rustc_lint_defs", "Applicability", "Unspecified"],
     ["rustc_lint_defs", "Applicability", "HasPlaceholders"],
     ["rustc_lint_defs", "Applicability", "MaybeIncorrect"],
     ["rustc_lint_defs", "Applicability", "MachineApplicable"],
 ];
-#[cfg(feature = "metadata-collector-lint")]
+#[cfg(feature = "internal")]
 pub const DIAGNOSTIC_BUILDER: [&str; 3] = ["rustc_errors", "diagnostic_builder", "DiagnosticBuilder"];
 pub const ARC_PTR_EQ: [&str; 4] = ["alloc", "sync", "Arc", "ptr_eq"];
 #[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
@@ -45,7 +45,7 @@ pub const DISPLAY_TRAIT: [&str; 3] = ["core", "fmt", "Display"];
 pub const DOUBLE_ENDED_ITERATOR: [&str; 4] = ["core", "iter", "traits", "DoubleEndedIterator"];
 pub const DROP: [&str; 3] = ["core", "mem", "drop"];
 pub const DURATION: [&str; 3] = ["core", "time", "Duration"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
 #[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
 pub const EPRINT_MACRO: [&str; 3] = ["std", "macros", "eprint"];
@@ -71,9 +71,9 @@ pub const HASH: [&str; 3] = ["core", "hash", "Hash"];
 pub const HASHMAP_CONTAINS_KEY: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "contains_key"];
 pub const HASHMAP_ENTRY: [&str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHMAP_INSERT: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "insert"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const IDENT: [&str; 3] = ["rustc_span", "symbol", "Ident"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
 pub const INDEX: [&str; 3] = ["core", "ops", "Index"];
 pub const INDEX_MUT: [&str; 3] = ["core", "ops", "IndexMut"];
@@ -85,11 +85,11 @@ pub const IPADDR_V6: [&str; 5] = ["std", "net", "ip", "IpAddr", "V6"];
 pub const ITER_REPEAT: [&str; 5] = ["core", "iter", "sources", "repeat", "repeat"];
 #[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
-#[cfg(any(feature = "internal-lints", feature = "metadata-collector-lint"))]
+#[cfg(feature = "internal")]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
 pub const MEM_DISCRIMINANT: [&str; 3] = ["core", "mem", "discriminant"];
 pub const MEM_FORGET: [&str; 3] = ["core", "mem", "forget"];
@@ -179,17 +179,17 @@ pub const STR_ENDS_WITH: [&str; 4] = ["core", "str", "<impl str>", "ends_with"];
 pub const STR_FROM_UTF8: [&str; 4] = ["core", "str", "converts", "from_utf8"];
 pub const STR_LEN: [&str; 4] = ["core", "str", "<impl str>", "len"];
 pub const STR_STARTS_WITH: [&str; 4] = ["core", "str", "<impl str>", "starts_with"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const SYMBOL: [&str; 3] = ["rustc_span", "symbol", "Symbol"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const SYMBOL_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Symbol", "as_str"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const SYMBOL_INTERN: [&str; 4] = ["rustc_span", "symbol", "Symbol", "intern"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const SYMBOL_TO_IDENT_STRING: [&str; 4] = ["rustc_span", "symbol", "Symbol", "to_ident_string"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
-#[cfg(feature = "internal-lints")]
+#[cfg(feature = "internal")]
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
 pub const TO_OWNED_METHOD: [&str; 4] = ["alloc", "borrow", "ToOwned", "to_owned"];
 pub const TO_STRING_METHOD: [&str; 4] = ["alloc", "string", "ToString", "to_string"];

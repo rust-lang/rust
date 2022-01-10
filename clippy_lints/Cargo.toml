@@ -30,8 +30,8 @@ url = { version = "2.2", features = ["serde"] }
 [features]
 deny-warnings = ["clippy_utils/deny-warnings"]
 # build clippy with internal lints enabled, off by default
-internal-lints = ["clippy_utils/internal-lints"]
-metadata-collector-lint = ["serde_json", "clippy_utils/metadata-collector-lint"]
+internal-lints = ["clippy_utils/internal"]
+metadata-collector-lint = ["serde_json", "clippy_utils/internal"]
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]
