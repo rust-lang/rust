@@ -1,6 +1,6 @@
-use std::iter::successors;
 use hir::TypeInfo;
 use itertools::Itertools;
+use std::iter::successors;
 use syntax::{
     algo::neighbor,
     ast::{self, AstNode},
@@ -57,7 +57,9 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
                 for i in 0..arm_types.len() {
                     let other_arm_type = &arm_types[i].as_ref();
                     let current_arm_type = current_arm_types[i].as_ref();
-                    if let (Some(other_arm_type), Some(current_arm_type)) = (other_arm_type, current_arm_type) {
+                    if let (Some(other_arm_type), Some(current_arm_type)) =
+                        (other_arm_type, current_arm_type)
+                    {
                         return &other_arm_type.original == &current_arm_type.original;
                     }
                 }
@@ -289,11 +291,41 @@ fn func() {
 "#,
         );
     }
-}
 
-// fn func() {
-//     match Result::<f64, f32>::Ok(0f64) {
-//         Ok(x) => x.classify(),
-//         Err(x) => x.classify()
-//     };
-// }
+    #[test]
+    fn merge_match_arms_different_type_multiple_fields() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"//- minicore: result
+fn func() {
+    match Result::<(f64, f64), (f32, f32)>::Ok((0f64, 0f64)) {
+        Ok(x) => $0x.1.classify(),
+        Err(x) => x.1.classify()
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn merge_match_arms_same_type_multiple_fields() {
+        check_assist(
+            merge_match_arms,
+            r#"//- minicore: result
+fn func() {
+    match Result::<(f64, f64), (f64, f64)>::Ok((0f64, 0f64)) {
+        Ok(x) => $0x.1.classify(),
+        Err(x) => x.1.classify()
+    };
+}
+"#,
+            r#"
+fn func() {
+    match Result::<(f64, f64), (f64, f64)>::Ok((0f64, 0f64)) {
+        Ok(x) | Err(x) => x.1.classify(),
+    };
+}
+"#,
+        );
+    }
+}
