@@ -6,7 +6,7 @@ use std::fmt::Write;
 
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir::InlineAsmOperand;
-use rustc_span::Symbol;
+use rustc_span::sym;
 use rustc_target::asm::*;
 
 pub(crate) fn codegen_inline_asm<'tcx>(
@@ -184,7 +184,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let sess = self.tcx.sess;
         let map = allocatable_registers(
             self.arch,
-            |feature| sess.target_features.contains(&Symbol::intern(feature)),
+            |feature| sess.target_features.contains(&feature),
             &sess.target,
         );
         let mut allocated = FxHashMap::<_, (bool, bool)>::default();
@@ -319,9 +319,9 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         // Allocate stack slots for saving clobbered registers
         let abi_clobber = InlineAsmClobberAbi::parse(
             self.arch,
-            |feature| self.tcx.sess.target_features.contains(&Symbol::intern(feature)),
+            |feature| self.tcx.sess.target_features.contains(&feature),
             &self.tcx.sess.target,
-            Symbol::intern("C"),
+            sym::C,
         )
         .unwrap()
         .clobbered_regs();
