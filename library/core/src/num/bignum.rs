@@ -162,20 +162,13 @@ macro_rules! define_bignum {
                 let digits = self.digits();
                 let zeros = digits.iter().rev().take_while(|&&x| x == 0).count();
                 let end = digits.len() - zeros;
-                let nonzero = &digits[..end];
-
-                if nonzero.is_empty() {
+                if end == 0 {
                     // There are no non-zero digits, i.e., the number is zero.
                     return 0;
                 }
-                // This could be optimized with leading_zeros() and bit shifts, but that's
-                // probably not worth the hassle.
                 let digitbits = <$ty>::BITS as usize;
-                let mut i = nonzero.len() * digitbits - 1;
-                while self.get_bit(i) == 0 {
-                    i -= 1;
-                }
-                i + 1
+                let end_leading_zeros = digits[end - 1].leading_zeros() as usize;
+                end * digitbits - end_leading_zeros
             }
 
             /// Adds `other` to itself and returns its own mutable reference.
