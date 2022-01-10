@@ -335,7 +335,8 @@ panic during execution. If the code doesn't panic, the test will fail.
 The `no_run` attribute will compile your code but not run it. This is
 important for examples such as "Here's how to retrieve a web page,"
 which you would want to ensure compiles, but might be run in a test
-environment that has no network access.
+environment that has no network access. This attribute can also be
+used to demonstrate code snippets that can cause Undefined Behavior.
 
 ```rust
 /// ```no_run
