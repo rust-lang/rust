@@ -1,4 +1,5 @@
 #![feature(test)] // compiletest_rs requires this attribute
+#![feature(once_cell)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -11,8 +12,9 @@ use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use test_utils::IS_RUSTC_TEST_SUITE;
 
-mod cargo;
+mod test_utils;
 
 // whether to run internal tests or not
 const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal");
@@ -304,7 +306,7 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
         Ok(result)
     }
 
-    if cargo::is_rustc_test_suite() {
+    if IS_RUSTC_TEST_SUITE {
         return;
     }
 

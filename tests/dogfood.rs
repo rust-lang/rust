@@ -7,28 +7,21 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use std::lazy::SyncLazy;
 use std::path::PathBuf;
 use std::process::Command;
+use test_utils::{CARGO_CLIPPY_PATH, IS_RUSTC_TEST_SUITE};
 
-mod cargo;
-
-static CLIPPY_PATH: SyncLazy<PathBuf> = SyncLazy::new(|| {
-    let mut path = std::env::current_exe().unwrap();
-    assert!(path.pop()); // deps
-    path.set_file_name("cargo-clippy");
-    path
-});
+mod test_utils;
 
 #[test]
 fn dogfood_clippy() {
     // run clippy on itself and fail the test if lint warnings are reported
-    if cargo::is_rustc_test_suite() {
+    if IS_RUSTC_TEST_SUITE {
         return;
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-    let mut command = Command::new(&*CLIPPY_PATH);
+    let mut command = Command::new(&*CARGO_CLIPPY_PATH);
     command
         .current_dir(root_dir)
         .env("CARGO_INCREMENTAL", "0")
@@ -55,7 +48,7 @@ fn dogfood_clippy() {
 }
 
 fn test_no_deps_ignores_path_deps_in_workspaces() {
-    if cargo::is_rustc_test_suite() {
+    if IS_RUSTC_TEST_SUITE {
         return;
     }
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -74,7 +67,7 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
 
     // `path_dep` is a path dependency of `subcrate` that would trigger a denied lint.
     // Make sure that with the `--no-deps` argument Clippy does not run on `path_dep`.
-    let output = Command::new(&*CLIPPY_PATH)
+    let output = Command::new(&*CARGO_CLIPPY_PATH)
         .current_dir(&cwd)
         .env("CARGO_INCREMENTAL", "0")
         .arg("clippy")
@@ -93,7 +86,7 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
 
     let lint_path_dep = || {
         // Test that without the `--no-deps` argument, `path_dep` is linted.
-        let output = Command::new(&*CLIPPY_PATH)
+        let output = Command::new(&*CARGO_CLIPPY_PATH)
             .current_dir(&cwd)
             .env("CARGO_INCREMENTAL", "0")
             .arg("clippy")
@@ -119,7 +112,7 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
     lint_path_dep();
 
     let successful_build = || {
-        let output = Command::new(&*CLIPPY_PATH)
+        let output = Command::new(&*CARGO_CLIPPY_PATH)
             .current_dir(&cwd)
             .env("CARGO_INCREMENTAL", "0")
             .arg("clippy")
@@ -153,7 +146,7 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
 #[test]
 fn dogfood_subprojects() {
     // run clippy on remaining subprojects and fail the test if lint warnings are reported
-    if cargo::is_rustc_test_suite() {
+    if IS_RUSTC_TEST_SUITE {
         return;
     }
 
@@ -218,7 +211,7 @@ fn run_metadata_collection_lint() {
 fn run_clippy_for_project(project: &str) {
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-    let mut command = Command::new(&*CLIPPY_PATH);
+    let mut command = Command::new(&*test_utils::CARGO_CLIPPY_PATH);
 
     command
         .current_dir(root_dir.join(project))
