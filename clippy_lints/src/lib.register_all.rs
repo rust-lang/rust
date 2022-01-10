@@ -37,6 +37,8 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(derivable_impls::DERIVABLE_IMPLS),
     LintId::of(derive::DERIVE_HASH_XOR_EQ),
     LintId::of(derive::DERIVE_ORD_XOR_PARTIAL_ORD),
+    LintId::of(disallowed_methods::DISALLOWED_METHODS),
+    LintId::of(disallowed_types::DISALLOWED_TYPES),
     LintId::of(doc::MISSING_SAFETY_DOC),
     LintId::of(doc::NEEDLESS_DOCTEST_MAIN),
     LintId::of(double_comparison::DOUBLE_COMPARISONS),

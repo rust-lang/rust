@@ -11,6 +11,9 @@ declare_clippy_lint! {
     /// ### What it does
     /// Denies the configured methods and functions in clippy.toml
     ///
+    /// Note: Even though this lint is warn-by-default, it will only trigger if
+    /// methods are defined in the clippy.toml file.
+    ///
     /// ### Why is this bad?
     /// Some methods are undesirable in certain contexts, and it's beneficial to
     /// lint for them as needed.
@@ -49,7 +52,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.49.0"]
     pub DISALLOWED_METHODS,
-    nursery,
+    style,
     "use of a disallowed method call"
 }
 
