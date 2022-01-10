@@ -1,5 +1,6 @@
 #![warn(clippy::all)]
 #![warn(clippy::mutex_integer)]
+#![warn(clippy::mutex_atomic)]
 
 fn main() {
     use std::sync::Mutex;
