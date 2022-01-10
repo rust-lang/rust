@@ -137,16 +137,24 @@ h1, h2, h3, h4 {
 	margin: 15px 0 5px 0;
 }
 h1.fqn {
+	margin: 0;
+	padding: 0;
+}
+.main-heading {
 	display: flex;
-	border-bottom: 1px dashed;
-	margin-top: 0;
+	border-bottom: 1px dashed #DDDDDD;
+	padding-bottom: 6px;
+	margin-bottom: 15px;
 
 	/* workaround to keep flex from breaking below 700 px width due to the float: right on the nav
 	   above the h1 */
 	padding-left: 1px;
 }
-h1.fqn > .in-band > a:hover {
+.main-heading a:hover {
 	text-decoration: underline;
+}
+#toggle-all-docs {
+	text-decoration: none;
 }
 /* The only headings that get underlines are:
 	 Markdown-generated headings within the top-doc
@@ -195,11 +203,13 @@ h1, h2, h3, h4, h5, h6,
 .sidebar, a.source, .search-input, .search-results .result-name,
 .content table td:first-child > a,
 .item-left > a,
-div.item-list .out-of-band, span.since,
+.out-of-band,
+span.since,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
 div.impl-items > div:not(.docblock):not(.item-info),
-.content ul.crate a.crate, a.srclink,
+.content ul.crate a.crate,
+a.srclink,
 /* This selector is for the items listed in the "all items" page. */
 #main-content > ul.docblock > li > a {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
@@ -609,10 +619,12 @@ nav.sub {
 .content .out-of-band {
 	flex-grow: 0;
 	text-align: right;
-	font-size: 1.4375rem;
-	margin: 0px;
+	margin-left: auto;
+	margin-right: 0;
+	font-size: 1.15rem;
 	padding: 0 0 0 12px;
 	font-weight: normal;
+	float: right;
 }
 
 .method > .code-header, .trait-impl > .code-header, .invisible > .code-header {
@@ -1082,7 +1094,7 @@ body.blur > :not(#help) {
 	font-size: initial;
 }
 
-.impl-items .since, .impl .since, .methods .since {
+.rightside {
 	padding-left: 12px;
 	padding-right: 2px;
 	position: initial;
@@ -1158,10 +1170,6 @@ a.test-arrow:hover{
 
 .code-attribute {
 	font-weight: 300;
-}
-
-.since + .srclink {
-	padding-left: 10px;
 }
 
 .item-spacer {
