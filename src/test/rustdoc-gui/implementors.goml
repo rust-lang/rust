@@ -6,8 +6,8 @@ assert: "#implementors-list"
 assert-count: ("#implementors-list .impl", 2)
 // Now we check that both implementors have an anchor, an ID and a similar DOM.
 assert: ("#implementors-list .impl:nth-child(1) > a.anchor")
-assert-attribute: ("#implementors-list .impl:nth-child(1)", {"id": "impl-Whatever"})
-assert-attribute: ("#implementors-list .impl:nth-child(1) > a.anchor", {"href": "#impl-Whatever"})
+assert-attribute: ("#implementors-list .impl:nth-child(1)", {"id": "impl-Whatever-for-Struct"})
+assert-attribute: ("#implementors-list .impl:nth-child(1) > a.anchor", {"href": "#impl-Whatever-for-Struct"})
 assert: "#implementors-list .impl:nth-child(1) > .code-header.in-band"
 
 assert: ("#implementors-list .impl:nth-child(2) > a.anchor")

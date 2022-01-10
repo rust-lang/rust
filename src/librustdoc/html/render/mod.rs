@@ -719,7 +719,6 @@ fn render_impls(cx: &Context<'_>, w: &mut Buffer, impls: &[&&Impl], containing_i
                 &[],
                 ImplRenderingParameters {
                     show_def_docs: true,
-                    is_on_foreign_type: false,
                     show_default_items: true,
                     show_non_assoc_items: true,
                     toggle_open_by_default: true,
@@ -1104,7 +1103,6 @@ fn render_assoc_items_inner(
                 &[],
                 ImplRenderingParameters {
                     show_def_docs: true,
-                    is_on_foreign_type: false,
                     show_default_items: true,
                     show_non_assoc_items: true,
                     toggle_open_by_default: true,
@@ -1308,7 +1306,6 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
 #[derive(Clone, Copy, Debug)]
 struct ImplRenderingParameters {
     show_def_docs: bool,
-    is_on_foreign_type: bool,
     show_default_items: bool,
     /// Whether or not to show methods.
     show_non_assoc_items: bool,
@@ -1616,7 +1613,6 @@ fn render_impl(
             parent,
             rendering_params.show_def_docs,
             use_absolute,
-            rendering_params.is_on_foreign_type,
             aliases,
         );
         if toggled {
@@ -1693,21 +1689,12 @@ pub(crate) fn render_impl_summary(
     containing_item: &clean::Item,
     show_def_docs: bool,
     use_absolute: Option<bool>,
-    is_on_foreign_type: bool,
     // This argument is used to reference same type with different paths to avoid duplication
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
 ) {
-    let id = cx.derive_id(match i.inner_impl().trait_ {
-        Some(ref t) => {
-            if is_on_foreign_type {
-                get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t, cx)
-            } else {
-                format!("impl-{}", small_url_encode(format!("{:#}", t.print(cx))))
-            }
-        }
-        None => "impl".to_string(),
-    });
+    let id =
+        cx.derive_id(get_id_for_impl(&i.inner_impl().for_, i.inner_impl().trait_.as_ref(), cx));
     let aliases = if aliases.is_empty() {
         String::new()
     } else {
@@ -2198,12 +2185,11 @@ fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clea
     }
 }
 
-fn get_id_for_impl_on_foreign_type(
-    for_: &clean::Type,
-    trait_: &clean::Path,
-    cx: &Context<'_>,
-) -> String {
-    small_url_encode(format!("impl-{:#}-for-{:#}", trait_.print(cx), for_.print(cx)))
+fn get_id_for_impl(for_: &clean::Type, trait_: Option<&clean::Path>, cx: &Context<'_>) -> String {
+    match trait_ {
+        Some(t) => small_url_encode(format!("impl-{:#}-for-{:#}", t.print(cx), for_.print(cx))),
+        None => small_url_encode(format!("impl-{:#}", for_.print(cx))),
+    }
 }
 
 fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String, String)> {
@@ -2212,10 +2198,7 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
             i.trait_.as_ref().map(|trait_| {
                 // Alternative format produces no URLs,
                 // so this parameter does nothing.
-                (
-                    format!("{:#}", i.for_.print(cx)),
-                    get_id_for_impl_on_foreign_type(&i.for_, trait_, cx),
-                )
+                (format!("{:#}", i.for_.print(cx)), get_id_for_impl(&i.for_, Some(trait_), cx))
             })
         }
         _ => None,

@@ -28,8 +28,8 @@ move-cursor-to: "h2#implementations"
 assert-css: ("h2#implementations a.anchor", {"color": "rgb(0, 0, 0)"})
 
 // Same thing with the impl block title.
-move-cursor-to: "#impl"
-assert-css: ("#impl a.anchor", {"color": "rgb(0, 0, 0)"})
+move-cursor-to: "#impl-HeavilyDocumentedStruct"
+assert-css: ("#impl-HeavilyDocumentedStruct a.anchor", {"color": "rgb(0, 0, 0)"})
 
 // Now we check the positions: only the first heading of the top doc comment should
 // have a different position.
