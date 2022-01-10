@@ -25,7 +25,7 @@ use crate::html::render::IndexItem;
 /// to be a fairly large and expensive structure to clone. Instead this adheres
 /// to `Send` so it may be stored in an `Arc` instance and shared among the various
 /// rendering threads.
-#[derive(Default)]
+#[derive(Default, Debug)]
 crate struct Cache {
     /// Maps a type ID to all known implementations for that type. This is only
     /// recognized for intra-crate [`clean::Type::Path`]s, and is used to print

@@ -5,6 +5,7 @@ use std::mem;
 
 use crate::clean::{self, Item, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
+use crate::formats::cache::Cache;
 
 crate struct Stripper<'a> {
     crate retained: &'a mut ItemIdSet,

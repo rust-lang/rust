@@ -248,12 +248,14 @@ fn add_generics_and_bounds_as_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     recurse: usize,
     res: &mut Vec<TypeWithKind>,
+    cache: &Cache,
 ) {
     fn insert_ty(
         res: &mut Vec<TypeWithKind>,
         tcx: TyCtxt<'_>,
         ty: Type,
         mut generics: Vec<TypeWithKind>,
+        cache: &Cache,
     ) {
         let is_full_generic = ty.is_full_generic();
 
@@ -347,6 +349,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
                                     tcx,
                                     recurse + 1,
                                     &mut ty_generics,
+                                    cache,
                                 )
                             }
                             _ => {}
@@ -354,7 +357,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
                     }
                 }
             }
-            insert_ty(res, tcx, arg.clone(), ty_generics);
+            insert_ty(res, tcx, arg.clone(), ty_generics, cache);
         }
         // Otherwise we check if the trait bounds are "inlined" like `T: Option<u32>`...
         if let Some(bound) = generics.params.iter().find(|g| g.is_type() && g.name == arg_s) {
@@ -368,10 +371,11 @@ fn add_generics_and_bounds_as_types<'tcx>(
                         tcx,
                         recurse + 1,
                         &mut ty_generics,
+                        cache,
                     );
                 }
             }
-            insert_ty(res, tcx, arg.clone(), ty_generics);
+            insert_ty(res, tcx, arg.clone(), ty_generics, cache);
         }
     } else {
         // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
@@ -382,10 +386,17 @@ fn add_generics_and_bounds_as_types<'tcx>(
         let mut ty_generics = Vec::new();
         if let Some(arg_generics) = arg.generics() {
             for gen in arg_generics.iter() {
-                add_generics_and_bounds_as_types(generics, gen, tcx, recurse + 1, &mut ty_generics);
+                add_generics_and_bounds_as_types(
+                    generics,
+                    gen,
+                    tcx,
+                    recurse + 1,
+                    &mut ty_generics,
+                    cache,
+                );
             }
         }
-        insert_ty(res, tcx, arg.clone(), ty_generics);
+        insert_ty(res, tcx, arg.clone(), ty_generics, cache);
     }
 }
 
@@ -407,7 +418,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
             continue;
         }
         let mut args = Vec::new();
-        add_generics_and_bounds_as_types(generics, &arg.type_, tcx, 0, &mut args);
+        add_generics_and_bounds_as_types(generics, &arg.type_, tcx, 0, &mut args, cache);
         if !args.is_empty() {
             all_types.extend(args);
         } else {
@@ -420,7 +431,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
     let mut ret_types = Vec::new();
     match decl.output {
         FnRetTy::Return(ref return_type) => {
-            add_generics_and_bounds_as_types(generics, return_type, tcx, 0, &mut ret_types);
+            add_generics_and_bounds_as_types(generics, return_type, tcx, 0, &mut ret_types, cache);
             if ret_types.is_empty() {
                 if let Some(kind) = return_type.def_id(cache).map(|did| tcx.def_kind(did).into()) {
                     ret_types.push(TypeWithKind::from((get_index_type(return_type, vec![]), kind)));

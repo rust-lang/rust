@@ -4,6 +4,7 @@
 use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
+use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -57,14 +58,14 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
         }
     });
 
-    let mut cleaner = BadImplStripper { prims, items: crate_items };
+    let mut cleaner = BadImplStripper { prims, items: crate_items, cache: &cx.cache };
     let mut type_did_to_deref_target: FxHashMap<DefId, &Type> = FxHashMap::default();
 
     // Follow all `Deref` targets of included items and recursively add them as valid
     fn add_deref_target(
         cx: &DocContext<'_>,
         map: &FxHashMap<DefId, &Type>,
-        cleaner: &mut BadImplStripper,
+        cleaner: &mut BadImplStripper<'_>,
         type_did: DefId,
     ) {
         if let Some(target) = map.get(&type_did) {
@@ -204,19 +205,20 @@ impl DocVisitor for ItemCollector {
     }
 }
 
-struct BadImplStripper {
+struct BadImplStripper<'a> {
     prims: FxHashSet<PrimitiveType>,
     items: FxHashSet<ItemId>,
+    crate cache: &'a Cache,
 }
 
-impl BadImplStripper {
+impl<'a> BadImplStripper<'a> {
     fn keep_impl(&self, ty: &Type, is_deref: bool) -> bool {
         if let Generic(_) = ty {
             // keep impls made on generics
             true
         } else if let Some(prim) = ty.primitive_type() {
             self.prims.contains(&prim)
-        } else if let Some(did) = ty.def_id(&cx.cache) {
+        } else if let Some(did) = ty.def_id(self.cache) {
             is_deref || self.keep_impl_with_def_id(did.into())
         } else {
             false

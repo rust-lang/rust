@@ -338,6 +338,7 @@ impl ExternalCrate {
 }
 
 /// Indicates where an external crate can be found.
+#[derive(Debug)]
 crate enum ExternalLocation {
     /// Remote URL root of the external crate
     Remote(String),
