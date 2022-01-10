@@ -41,6 +41,8 @@ Stabilized APIs
 - [`Path::is_symlink`]
 - [`{integer}::saturating_div`]
 - [`Option::unwrap_unchecked`]
+- [`Result::unwrap_unchecked`]
+- [`Result::unwrap_err_unchecked`]
 - [`NonZero{unsigned}::is_power_of_two`]
 
 These APIs are now usable in const contexts:
@@ -136,6 +138,8 @@ and related tools.
 [`Path::is_symlink`]: https://doc.rust-lang.org/stable/std/path/struct.Path.html#method.is_symlink
 [`{integer}::saturating_div`]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.saturating_div
 [`Option::unwrap_unchecked`]: https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.unwrap_unchecked
+[`Result::unwrap_unchecked`]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.unwrap_unchecked
+[`Result::unwrap_err_unchecked`]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.unwrap_err_unchecked
 [`NonZero{unsigned}::is_power_of_two`]: https://doc.rust-lang.org/stable/std/num/struct.NonZeroU8.html#method.is_power_of_two
 [`unix::process::ExitStatusExt::core_dumped`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.core_dumped
 [`unix::process::ExitStatusExt::stopped_signal`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.stopped_signal

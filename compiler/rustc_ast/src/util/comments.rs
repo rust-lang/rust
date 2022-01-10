@@ -34,15 +34,8 @@ pub fn beautify_doc_string(data: Symbol) -> Symbol {
             i += 1;
         }
 
-        while i < j && lines[i].trim().is_empty() {
-            i += 1;
-        }
         // like the first, a last line of all stars should be omitted
         if j > i && !lines[j - 1].is_empty() && lines[j - 1].chars().all(|c| c == '*') {
-            j -= 1;
-        }
-
-        while j > i && lines[j - 1].trim().is_empty() {
             j -= 1;
         }
 

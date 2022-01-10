@@ -177,7 +177,7 @@ nav.main .separator {
 a {
 	color: #3873AD;
 }
-a.srclink,
+
 a#toggle-all-docs,
 a.anchor,
 .small-section-header a,
@@ -241,10 +241,6 @@ details.undocumented > summary::before {
 
 #help span.bottom, #help span.top {
 	border-color: #bfbfbf;
-}
-
-.since {
-	color: grey;
 }
 
 .result-name .primitive > i, .result-name .keyword > i {

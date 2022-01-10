@@ -21,7 +21,6 @@ use crate::constrained_generic_params as cgp;
 use crate::errors;
 use crate::middle::resolve_lifetime as rl;
 use rustc_ast as ast;
-use rustc_ast::Attribute;
 use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
@@ -3120,8 +3119,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     if tcx.is_weak_lang_item(id) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
     }
-    let check_name = |attr: &Attribute, sym| attr.has_name(sym);
-    if let Some(name) = weak_lang_items::link_name(check_name, attrs) {
+    if let Some(name) = weak_lang_items::link_name(attrs) {
         codegen_fn_attrs.export_name = Some(name);
         codegen_fn_attrs.link_name = Some(name);
     }

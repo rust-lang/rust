@@ -35,8 +35,8 @@
 //! development you may want to press the `[-]` button near the top of the
 //! page to collapse it into a more skimmable view.
 //!
-//! While you are looking at that `[-]` button also notice the `[src]`
-//! button. Rust's API documentation comes with the source code and you are
+//! While you are looking at that `[-]` button also notice the `source`
+//! link. Rust's API documentation comes with the source code and you are
 //! encouraged to read it. The standard library source is generally high
 //! quality and a peek behind the curtains is often enlightening.
 //!

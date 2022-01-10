@@ -726,9 +726,13 @@ fn sanitize_witness<'tcx>(
     saved_locals: &GeneratorSavedLocals,
 ) {
     let did = body.source.def_id();
-    let allowed_upvars = tcx.erase_regions(upvars);
+    let param_env = tcx.param_env(did);
+
+    let allowed_upvars = tcx.normalize_erasing_regions(param_env, upvars);
     let allowed = match witness.kind() {
-        &ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(s),
+        &ty::GeneratorWitness(interior_tys) => {
+            tcx.normalize_erasing_late_bound_regions(param_env, interior_tys)
+        }
         _ => {
             tcx.sess.delay_span_bug(
                 body.span,
@@ -737,8 +741,6 @@ fn sanitize_witness<'tcx>(
             return;
         }
     };
-
-    let param_env = tcx.param_env(did);
 
     for (local, decl) in body.local_decls.iter_enumerated() {
         // Ignore locals which are internal or not saved between yields.

@@ -16,3 +16,10 @@ pub struct S1;
 #[doc = "Goodbye!"]
 /// Hello again!
 pub struct S2;
+
+// @has 'foo/struct.S3.html'
+// @snapshot S3_top-doc - '//details[@class="rustdoc-toggle top-doc"]/div[@class="docblock"]'
+/** Par 1
+*/ ///
+/// Par 2
+pub struct S3;

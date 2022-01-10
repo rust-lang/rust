@@ -65,7 +65,7 @@ crate struct Context<'tcx> {
     ///
     /// [#82381]: https://github.com/rust-lang/rust/issues/82381
     crate shared: Rc<SharedContext<'tcx>>,
-    /// This flag indicates whether `[src]` links should be generated or not. If
+    /// This flag indicates whether source links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
     crate include_sources: bool,
