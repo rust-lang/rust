@@ -10,7 +10,6 @@
 use crate::check_attr::target_from_impl_item;
 use crate::weak_lang_items;
 
-use rustc_ast::Attribute;
 use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -57,8 +56,7 @@ impl<'tcx> LanguageItemCollector<'tcx> {
 
     fn check_for_lang(&mut self, actual_target: Target, hir_id: HirId) {
         let attrs = self.tcx.hir().attrs(hir_id);
-        let check_name = |attr: &Attribute, sym| attr.has_name(sym);
-        if let Some((value, span)) = extract(check_name, &attrs) {
+        if let Some((value, span)) = extract(&attrs) {
             match ITEM_REFS.get(&value).cloned() {
                 // Known lang item with attribute on correct target.
                 Some((item_index, expected_target)) if actual_target == expected_target => {
