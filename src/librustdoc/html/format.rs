@@ -30,6 +30,7 @@ use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::render::Context;
 
+use super::url_parts_builder::estimate_item_path_byte_length;
 use super::url_parts_builder::UrlPartsBuilder;
 
 crate trait Print {
@@ -505,8 +506,7 @@ crate enum HrefError {
 
 // Panics if `syms` is empty.
 crate fn join_with_double_colon(syms: &[Symbol]) -> String {
-    // 64 bytes covers 99.9%+ of cases.
-    let mut s = String::with_capacity(64);
+    let mut s = String::with_capacity(estimate_item_path_byte_length(syms.len()));
     s.push_str(&syms[0].as_str());
     for sym in &syms[1..] {
         s.push_str("::");

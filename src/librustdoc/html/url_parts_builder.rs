@@ -110,6 +110,14 @@ impl UrlPartsBuilder {
 /// This is intentionally on the lower end to avoid overallocating.
 const AVG_PART_LENGTH: usize = 5;
 
+/// Estimate the number of bytes in an item's path, based on how many segments it has.
+///
+/// **Note:** This is only to be used with, e.g., [`String::with_capacity()`];
+/// the return value is just a rough estimate.
+crate const fn estimate_item_path_byte_length(segment_count: usize) -> usize {
+    AVG_PART_LENGTH * segment_count
+}
+
 impl<'a> FromIterator<&'a str> for UrlPartsBuilder {
     fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
         let iter = iter.into_iter();
