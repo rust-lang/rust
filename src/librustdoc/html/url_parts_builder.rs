@@ -67,6 +67,19 @@ impl UrlPartsBuilder {
         self.buf.push_str(part);
     }
 
+    /// Push a component onto the buffer, using [`format!`]'s formatting syntax.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage (equivalent to the example for [`UrlPartsBuilder::push`]):
+    ///
+    /// ```ignore (private-type)
+    /// let mut builder = UrlPartsBuilder::new();
+    /// builder.push("core");
+    /// builder.push("str");
+    /// builder.push_fmt(format_args!("{}.{}.html", "struct", "Bytes"));
+    /// assert_eq!(builder.finish(), "core/str/struct.Bytes.html");
+    /// ```
     crate fn push_fmt(&mut self, args: fmt::Arguments<'_>) {
         if !self.buf.is_empty() {
             self.buf.push('/');

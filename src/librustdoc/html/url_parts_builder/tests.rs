@@ -41,6 +41,16 @@ fn push_front_non_empty() {
 }
 
 #[test]
+fn push_fmt() {
+    let mut builder = UrlPartsBuilder::new();
+    builder.push_fmt(format_args!("{}", "core"));
+    builder.push("str");
+    builder.push_front("nightly");
+    builder.push_fmt(format_args!("{}.{}.html", "struct", "Bytes"));
+    t(builder, "nightly/core/str/struct.Bytes.html");
+}
+
+#[test]
 fn collect() {
     t(["core", "str"].into_iter().collect(), "core/str");
     t(["core", "str", "struct.Bytes.html"].into_iter().collect(), "core/str/struct.Bytes.html");
