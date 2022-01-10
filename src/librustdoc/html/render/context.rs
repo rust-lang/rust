@@ -665,7 +665,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 _ => unreachable!(),
             };
             let items = self.build_sidebar_items(module);
-            let js_dst = self.dst.join("sidebar-items.js");
+            let js_dst = self.dst.join(&format!("sidebar-items{}.js", self.shared.resource_suffix));
             let v = format!("initSidebarItems({});", serde_json::to_string(&items).unwrap());
             scx.fs.write(js_dst, v)?;
         }
