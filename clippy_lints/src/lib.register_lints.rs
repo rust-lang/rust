@@ -3,33 +3,33 @@
 // Manual edits will be overwritten.
 
 store.register_lints(&[
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::CLIPPY_LINTS_INTERNAL,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::COMPILER_LINT_FUNCTIONS,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::DEFAULT_LINT,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::IF_CHAIN_STYLE,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::INTERNING_DEFINED_SYMBOL,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::INVALID_CLIPPY_VERSION_ATTRIBUTE,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::INVALID_PATHS,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::LINT_WITHOUT_LINT_PASS,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::MISSING_CLIPPY_VERSION_ATTRIBUTE,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::OUTER_EXPN_EXPN_DATA,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::PRODUCE_ICE,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::UNNECESSARY_SYMBOL_STR,
     absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS,
     approx_const::APPROX_CONSTANT,

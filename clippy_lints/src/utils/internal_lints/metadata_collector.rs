@@ -1,8 +1,7 @@
 //! This lint is used to collect metadata about clippy lints. This metadata is exported as a json
 //! file and then used to generate the [clippy lint list](https://rust-lang.github.io/rust-clippy/master/index.html)
 //!
-//! This module and therefor the entire lint is guarded by a feature flag called
-//! `metadata-collector-lint`
+//! This module and therefore the entire lint is guarded by a feature flag called `internal`
 //!
 //! The module transforms all lint names to ascii lowercase to ensure that we don't have mismatches
 //! during any comparison or mapping. (Please take care of this, it's not fun to spend time on such

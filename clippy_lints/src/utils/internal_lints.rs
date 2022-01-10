@@ -35,7 +35,7 @@ use rustc_typeck::hir_ty_to_ty;
 
 use std::borrow::{Borrow, Cow};
 
-#[cfg(feature = "metadata-collector-lint")]
+#[cfg(feature = "internal")]
 pub mod metadata_collector;
 
 declare_clippy_lint! {
