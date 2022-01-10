@@ -993,10 +993,16 @@ fn check_impl_items_against_trait<'tcx>(
             }
 
             if let Some(required_items) = &must_implement_one_of {
-                let trait_item = tcx.associated_item(trait_item_id);
+                // true if this item is specifically implemented in this impl
+                let is_implemented_here = ancestors
+                    .leaf_def(tcx, trait_item_id)
+                    .map_or(false, |node_item| !node_item.defining_node.is_from_trait());
 
-                if is_implemented && required_items.contains(&trait_item.ident) {
-                    must_implement_one_of = None;
+                if is_implemented_here {
+                    let trait_item = tcx.associated_item(trait_item_id);
+                    if required_items.contains(&trait_item.ident) {
+                        must_implement_one_of = None;
+                    }
                 }
             }
         }
