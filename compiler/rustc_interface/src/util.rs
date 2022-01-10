@@ -742,6 +742,8 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                                         ast::AssocConstraintKind::Equality { ref term } => {
                                             match term {
                                                 Term::Ty(ty) => involves_impl_trait(ty),
+                                                // FIXME(...): This should check if the constant
+                                                // involves a trait impl, but for now ignore.
                                                 Term::Const(_) => false,
                                             }
                                         }

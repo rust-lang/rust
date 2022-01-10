@@ -245,7 +245,7 @@ impl FlagComputation {
                 self.add_projection_ty(projection_ty);
                 match term {
                     Term::Ty(ty) => self.add_ty(ty),
-                    Term::Const(_c) => todo!(),
+                    Term::Const(c) => self.add_const(c),
                 }
             }
             ty::PredicateKind::WellFormed(arg) => {

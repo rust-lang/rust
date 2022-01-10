@@ -694,7 +694,10 @@ fn bounds_from_generic_predicates<'tcx>(
         where_clauses.push(format!(
             "{} = {}",
             tcx.def_path_str(p.projection_ty.item_def_id),
-            p.term.ty()
+            match p.term {
+                ty::Term::Ty(ty) => format!("{}", ty),
+                ty::Term::Const(c) => format!("{}", c),
+            }
         ));
     }
     let where_clauses = if where_clauses.is_empty() {

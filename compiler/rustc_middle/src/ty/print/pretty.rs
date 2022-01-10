@@ -1,6 +1,6 @@
 use crate::mir::interpret::{AllocRange, ConstValue, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
-use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sso::SsoHashSet;
@@ -799,7 +799,7 @@ pub trait PrettyPrinter<'tcx>:
                     let trait_ref = proj_ref.required_poly_trait_ref(self.tcx());
 
                     // Projection type entry -- the def-id for naming, and the ty.
-                    let proj_ty = (proj_ref.projection_def_id(), proj_ref.ty());
+                    let proj_ty = (proj_ref.projection_def_id(), proj_ref.term());
 
                     self.insert_trait_and_projection(
                         trait_ref,
@@ -850,8 +850,10 @@ pub trait PrettyPrinter<'tcx>:
                     }
 
                     p!(")");
-                    if !return_ty.skip_binder().is_unit() {
-                        p!("-> ", print(return_ty));
+                    if let Term::Ty(ty) = return_ty.skip_binder() {
+                        if !ty.is_unit() {
+                            p!("-> ", print(return_ty));
+                        }
                     }
                     p!(write("{}", if paren_needed { ")" } else { "" }));
 
@@ -902,14 +904,15 @@ pub trait PrettyPrinter<'tcx>:
                     first = false;
                 }
 
-                for (assoc_item_def_id, ty) in assoc_items {
+                for (assoc_item_def_id, term) in assoc_items {
+                    let ty = if let Term::Ty(ty) = term.skip_binder() { ty } else { continue };
                     if !first {
                         p!(", ");
                     }
                     p!(write("{} = ", self.tcx().associated_item(assoc_item_def_id).ident));
 
                     // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks
-                    match ty.skip_binder().kind() {
+                    match ty.kind() {
                         ty::Projection(ty::ProjectionTy { item_def_id, .. })
                             if Some(*item_def_id) == self.tcx().lang_items().generator_return() =>
                         {
@@ -943,8 +946,11 @@ pub trait PrettyPrinter<'tcx>:
     fn insert_trait_and_projection(
         &mut self,
         trait_ref: ty::PolyTraitRef<'tcx>,
-        proj_ty: Option<(DefId, ty::Binder<'tcx, Ty<'tcx>>)>,
-        traits: &mut BTreeMap<ty::PolyTraitRef<'tcx>, BTreeMap<DefId, ty::Binder<'tcx, Ty<'tcx>>>>,
+        proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
+        traits: &mut BTreeMap<
+            ty::PolyTraitRef<'tcx>,
+            BTreeMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
+        >,
         fn_traits: &mut BTreeMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
     ) {
         let trait_def_id = trait_ref.def_id();
@@ -2716,5 +2722,5 @@ pub struct OpaqueFnEntry<'tcx> {
     has_fn_once: bool,
     fn_mut_trait_ref: Option<ty::PolyTraitRef<'tcx>>,
     fn_trait_ref: Option<ty::PolyTraitRef<'tcx>>,
-    return_ty: Option<ty::Binder<'tcx, Ty<'tcx>>>,
+    return_ty: Option<ty::Binder<'tcx, Term<'tcx>>>,
 }

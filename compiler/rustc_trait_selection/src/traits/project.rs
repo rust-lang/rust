@@ -212,10 +212,9 @@ fn project_and_unify_type<'cx, 'tcx>(
     debug!(?normalized_ty, ?obligations, "project_and_unify_type result");
 
     let infcx = selcx.infcx();
-    match infcx
-        .at(&obligation.cause, obligation.param_env)
-        .eq(normalized_ty, obligation.predicate.term.ty())
-    {
+    // FIXME(...): Handle consts here as well as types.
+    let obligation_pred_ty = obligation.predicate.term.ty().unwrap();
+    match infcx.at(&obligation.cause, obligation.param_env).eq(normalized_ty, obligation_pred_ty) {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
             Ok(Ok(Some(obligations)))
@@ -1803,7 +1802,9 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
             assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
-            Progress { ty: cache_entry.term.ty(), obligations: nested_obligations }
+            // FIXME(...): Handle consts here as well? Maybe this progress type should just take
+            // a term instead.
+            Progress { ty: cache_entry.term.ty().unwrap(), obligations: nested_obligations }
         }
         Err(e) => {
             let msg = format!(

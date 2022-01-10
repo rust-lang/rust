@@ -123,8 +123,7 @@ struct ConvertedBinding<'a, 'tcx> {
 
 #[derive(Debug)]
 enum ConvertedBindingKind<'a, 'tcx> {
-    Equality(Ty<'tcx>),
-    Const(&'tcx Const<'tcx>),
+    Equality(ty::Term<'tcx>),
     Constraint(&'a [hir::GenericBound<'a>]),
 }
 
@@ -604,12 +603,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let kind = match binding.kind {
                     hir::TypeBindingKind::Equality { ref term } => match term {
                         hir::Term::Ty(ref ty) => {
-                            ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty))
+                            ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty).into())
                         }
                         hir::Term::Const(ref c) => {
                             let local_did = self.tcx().hir().local_def_id(c.hir_id);
                             let c = Const::from_anon_const(self.tcx(), local_did);
-                            ConvertedBindingKind::Const(&c)
+                            ConvertedBindingKind::Equality(c.into())
                         }
                     },
                     hir::TypeBindingKind::Constraint { ref bounds } => {
@@ -873,6 +872,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self.tcx()
             .associated_items(trait_def_id)
             .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, trait_def_id)
+            .is_some()
+    }
+    fn trait_defines_associated_named(&self, trait_def_id: DefId, assoc_name: Ident) -> bool {
+        self.tcx()
+            .associated_items(trait_def_id)
+            .find_by_name_and_kinds(
+                self.tcx(),
+                assoc_name,
+                &[ty::AssocKind::Type, ty::AssocKind::Const],
+                trait_def_id,
+            )
             .is_some()
     }
 
@@ -1223,7 +1233,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         match binding.kind {
-            ConvertedBindingKind::Equality(ty) => {
+            ConvertedBindingKind::Equality(term) => {
                 // "Desugar" a constraint like `T: Iterator<Item = u32>` this to
                 // the "projection predicate" for:
                 //
@@ -1231,16 +1241,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 bounds.projection_bounds.push((
                     projection_ty.map_bound(|projection_ty| ty::ProjectionPredicate {
                         projection_ty,
-                        term: ty.into(),
-                    }),
-                    binding.span,
-                ));
-            }
-            ConvertedBindingKind::Const(c) => {
-                bounds.projection_bounds.push((
-                    projection_ty.map_bound(|projection_ty| ty::ProjectionPredicate {
-                        projection_ty,
-                        term: c.into(),
+                        term: term,
                     }),
                     binding.span,
                 ));
@@ -1391,8 +1392,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
-                        let references_self =
-                            pred.skip_binder().term.ty().walk().any(|arg| arg == dummy_self.into());
+                        let references_self = match pred.skip_binder().term {
+                            ty::Term::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
+                            ty::Term::Const(c) => {
+                                c.ty.walk().any(|arg| arg == dummy_self.into())
+                            }
+                        };
 
                         // If the projection output contains `Self`, force the user to
                         // elaborate it explicitly to avoid a lot of complexity.
@@ -1615,7 +1620,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
         let mut matching_candidates = all_candidates()
-            .filter(|r| self.trait_defines_associated_type_named(r.def_id(), assoc_name));
+            .filter(|r| self.trait_defines_associated_named(r.def_id(), assoc_name));
 
         let bound = match matching_candidates.next() {
             Some(bound) => bound,

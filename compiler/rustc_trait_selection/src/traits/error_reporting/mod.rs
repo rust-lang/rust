@@ -1304,8 +1304,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
                 debug!(
                     "report_projection_error normalized_ty={:?} data.ty={:?}",
-                    normalized_ty,
-                    data.term.ty()
+                    normalized_ty, data.term,
                 );
 
                 let is_normalized_ty_expected = !matches!(
@@ -1315,16 +1314,17 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         | ObligationCauseCode::ObjectCastObligation(_)
                         | ObligationCauseCode::OpaqueType
                 );
-
+                // FIXME(...): Handle Consts here
+                let data_ty = data.term.ty().unwrap();
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
                     is_normalized_ty_expected,
                     normalized_ty,
-                    data.term.ty(),
+                    data_ty,
                 ) {
                     values = Some(infer::ValuePairs::Types(ExpectedFound::new(
                         is_normalized_ty_expected,
                         normalized_ty,
-                        data.term.ty(),
+                        data_ty,
                     )));
 
                     err_buf = error;

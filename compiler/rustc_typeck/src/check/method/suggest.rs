@@ -789,10 +789,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     item_def_id: projection_ty.item_def_id,
                                 };
 
-                                let ty: Ty<'_> = pred.skip_binder().term.ty();
+                                let fmt = match pred.skip_binder().term {
+                                    ty::Term::Ty(ty) => format!("{}", ty),
+                                    ty::Term::Const(c) => format!("{}", c),
+                                };
 
-                                let obligation = format!("{} = {}", projection_ty, ty);
-                                let quiet = format!("{} = {}", quiet_projection_ty, ty);
+                                let obligation = format!("{} = {}", projection_ty, fmt);
+                                let quiet = format!("{} = {}", quiet_projection_ty, fmt);
 
                                 bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
                                 Some((obligation, projection_ty.self_ty()))

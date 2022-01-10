@@ -152,6 +152,19 @@ impl<'tcx> AssocItems<'tcx> {
             .find(|item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
     }
 
+    /// Returns the associated item with the given name and any of `AssocKind`, if one exists.
+    pub fn find_by_name_and_kinds(
+        &self,
+        tcx: TyCtxt<'_>,
+        ident: Ident,
+        kinds: &[AssocKind],
+        parent_def_id: DefId,
+    ) -> Option<&ty::AssocItem> {
+        self.filter_by_name_unhygienic(ident.name)
+            .filter(|item| kinds.contains(&item.kind))
+            .find(|item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
+    }
+
     /// Returns the associated item with the given name in the given `Namespace`, if one exists.
     pub fn find_by_name_and_namespace(
         &self,

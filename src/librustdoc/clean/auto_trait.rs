@@ -553,8 +553,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             if self.is_fn_trait(trait_) && left_name == sym::Output {
                                 ty_to_fn
                                     .entry(*ty.clone())
-                                    .and_modify(|e| *e = (e.0.clone(), Some(rhs.clone())))
-                                    .or_insert((None, Some(rhs)));
+                                    .and_modify(|e| {
+                                        *e = (e.0.clone(), Some(rhs.ty().unwrap().clone()))
+                                    })
+                                    .or_insert((None, Some(rhs.ty().unwrap().clone())));
                                 continue;
                             }
 
@@ -570,7 +572,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 GenericArgs::AngleBracketed { ref mut bindings, .. } => {
                                     bindings.push(TypeBinding {
                                         name: left_name,
-                                        kind: TypeBindingKind::Equality { ty: rhs },
+                                        kind: TypeBindingKind::Equality { term: rhs },
                                     });
                                 }
                                 GenericArgs::Parenthesized { .. } => {

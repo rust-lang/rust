@@ -279,7 +279,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let ret_param_ty = projection.skip_binder().term.ty();
+        // Since this is a return parameter type it is safe to unwrap.
+        let ret_param_ty = projection.skip_binder().term.ty().unwrap();
         let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
         debug!("deduce_sig_from_projection: ret_param_ty={:?}", ret_param_ty);
 
@@ -706,9 +707,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Extract the type from the projection. Note that there can
         // be no bound variables in this type because the "self type"
         // does not have any regions in it.
-        let output_ty = self.resolve_vars_if_possible(predicate.term.ty());
+        let output_ty = self.resolve_vars_if_possible(predicate.term);
         debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
-        Some(output_ty)
+        // FIXME(...): How to handle consts here? Will this always be a const?
+        Some(output_ty.ty().unwrap())
     }
 
     /// Converts the types that the user supplied, in case that doing

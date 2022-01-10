@@ -833,19 +833,30 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for ty::Term<'tcx> {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: Self,
+        b: Self,
+    ) -> RelateResult<'tcx, Self> {
+        Ok(match (a, b) {
+            (Term::Ty(a), Term::Ty(b)) => relation.relate(a, b)?.into(),
+            (Term::Const(a), Term::Const(b)) => relation.relate(a, b)?.into(),
+            _ => return Err(TypeError::Mismatch),
+        })
+    }
+}
+
 impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: ty::ProjectionPredicate<'tcx>,
         b: ty::ProjectionPredicate<'tcx>,
     ) -> RelateResult<'tcx, ty::ProjectionPredicate<'tcx>> {
-        match (a.term, b.term) {
-            (Term::Ty(a_ty), Term::Ty(b_ty)) => Ok(ty::ProjectionPredicate {
-                projection_ty: relation.relate(a.projection_ty, b.projection_ty)?,
-                term: relation.relate(a_ty, b_ty)?.into(),
-            }),
-            _ => todo!(),
-        }
+        Ok(ty::ProjectionPredicate {
+            projection_ty: relation.relate(a.projection_ty, b.projection_ty)?,
+            term: relation.relate(a.term, b.term)?.into(),
+        })
     }
 }
 

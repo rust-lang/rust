@@ -1583,7 +1583,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
         let ty = if let Term::Ty(ty) = projection_predicate.term {
             ty
         } else {
-            todo!();
+            panic!("Only types are permitted here");
         };
 
         Self {

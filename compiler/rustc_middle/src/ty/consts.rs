@@ -86,10 +86,14 @@ impl<'tcx> Const<'tcx> {
         if let Some(lit_input) = lit_input {
             // If an error occurred, ignore that it's a literal and leave reporting the error up to
             // mir.
-            if let Ok(c) = tcx.at(expr.span).lit_to_const(lit_input) {
-                return Some(c);
-            } else {
-                tcx.sess.delay_span_bug(expr.span, "Const::from_anon_const: couldn't lit_to_const");
+            match tcx.at(expr.span).lit_to_const(lit_input) {
+                Ok(c) => return Some(c),
+                Err(e) => {
+                    tcx.sess.delay_span_bug(
+                        expr.span,
+                        &format!("Const::from_anon_const: couldn't lit_to_const {:?}", e),
+                    );
+                }
             }
         }
 

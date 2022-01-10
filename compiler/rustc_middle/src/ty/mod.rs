@@ -815,8 +815,8 @@ impl<'tcx> From<&'tcx Const<'tcx>> for Term<'tcx> {
 }
 
 impl<'tcx> Term<'tcx> {
-    pub fn ty(&self) -> Ty<'tcx> {
-        if let Term::Ty(ty) = self { ty } else { panic!("Expected type") }
+    pub fn ty(&self) -> Option<Ty<'tcx>> {
+        if let Term::Ty(ty) = self { Some(ty) } else { None }
     }
 }
 
@@ -861,8 +861,8 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         self.map_bound(|predicate| predicate.projection_ty.trait_ref(tcx))
     }
 
-    pub fn ty(&self) -> Binder<'tcx, Ty<'tcx>> {
-        self.map_bound(|predicate| if let Term::Ty(ty) = predicate.term { ty } else { todo!() })
+    pub fn term(&self) -> Binder<'tcx, Term<'tcx>> {
+        self.map_bound(|predicate| predicate.term)
     }
 
     /// The `DefId` of the `TraitItem` for the associated type.
