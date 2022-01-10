@@ -101,8 +101,8 @@ fn are_same_types(
 ) -> bool {
     let arm_types = get_arm_types(&ctx, &arm);
     for i in 0..arm_types.len() {
-        let other_arm_type = &arm_types[i].as_ref();
-        let current_arm_type = current_arm_types[i].as_ref();
+        let other_arm_type = &arm_types[i];
+        let current_arm_type = &current_arm_types[i];
         if let (Some(other_arm_type), Some(current_arm_type)) = (other_arm_type, current_arm_type) {
             return &other_arm_type.original == &current_arm_type.original;
         }
