@@ -118,6 +118,7 @@ impl<'a> DocFolder for Stripper<'a> {
 /// This stripper discards all impls which reference stripped items
 crate struct ImplStripper<'a> {
     crate retained: &'a ItemIdSet,
+    crate cache: &'a Cache,
 }
 
 impl<'a> DocFolder for ImplStripper<'a> {
@@ -127,7 +128,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
             if imp.trait_.is_none() && imp.items.is_empty() {
                 return None;
             }
-            if let Some(did) = imp.for_.def_id_no_primitives() {
+            if let Some(did) = imp.for_.def_id(self.cache) {
                 if did.is_local() && !imp.for_.is_assoc_ty() && !self.retained.contains(&did.into())
                 {
                     debug!("ImplStripper: impl item for stripped type; removing");

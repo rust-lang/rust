@@ -33,7 +33,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 desc,
                 parent: Some(did),
                 parent_idx: None,
-                search_type: get_function_type_for_search(item, tcx),
+                search_type: get_function_type_for_search(item, tcx, &cache),
                 aliases: item.attrs.get_doc_aliases(),
             });
         }
@@ -188,11 +188,12 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
 crate fn get_function_type_for_search<'tcx>(
     item: &clean::Item,
     tcx: TyCtxt<'tcx>,
+    cache: &Cache,
 ) -> Option<IndexItemFunctionType> {
     let (mut inputs, mut output) = match *item.kind {
-        clean::FunctionItem(ref f) => get_fn_inputs_and_outputs(f, tcx),
-        clean::MethodItem(ref m, _) => get_fn_inputs_and_outputs(m, tcx),
-        clean::TyMethodItem(ref m) => get_fn_inputs_and_outputs(m, tcx),
+        clean::FunctionItem(ref f) => get_fn_inputs_and_outputs(f, tcx, cache),
+        clean::MethodItem(ref m, _) => get_fn_inputs_and_outputs(m, tcx, cache),
+        clean::TyMethodItem(ref m) => get_fn_inputs_and_outputs(m, tcx, cache),
         _ => return None,
     };
 
@@ -311,7 +312,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
             // We remove the name of the full generic because we have no use for it.
             index_ty.name = Some(String::new());
             res.push(TypeWithKind::from((index_ty, ItemType::Generic)));
-        } else if let Some(kind) = ty.def_id_no_primitives().map(|did| tcx.def_kind(did).into()) {
+        } else if let Some(kind) = ty.def_id(cache).map(|did| tcx.def_kind(did).into()) {
             res.push(TypeWithKind::from((index_ty, kind)));
         } else if ty.is_primitive() {
             // This is a primitive, let's store it as such.
@@ -330,9 +331,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
     if let Type::Generic(arg_s) = *arg {
         // First we check if the bounds are in a `where` predicate...
         if let Some(where_pred) = generics.where_predicates.iter().find(|g| match g {
-            WherePredicate::BoundPredicate { ty, .. } => {
-                ty.def_id_no_primitives() == arg.def_id_no_primitives()
-            }
+            WherePredicate::BoundPredicate { ty, .. } => ty.def_id(cache) == arg.def_id(cache),
             _ => false,
         }) {
             let mut ty_generics = Vec::new();
@@ -397,6 +396,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
 fn get_fn_inputs_and_outputs<'tcx>(
     func: &Function,
     tcx: TyCtxt<'tcx>,
+    cache: &Cache,
 ) -> (Vec<TypeWithKind>, Vec<TypeWithKind>) {
     let decl = &func.decl;
     let generics = &func.generics;
@@ -411,8 +411,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
         if !args.is_empty() {
             all_types.extend(args);
         } else {
-            if let Some(kind) = arg.type_.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
-            {
+            if let Some(kind) = arg.type_.def_id(cache).map(|did| tcx.def_kind(did).into()) {
                 all_types.push(TypeWithKind::from((get_index_type(&arg.type_, vec![]), kind)));
             }
         }
@@ -423,9 +422,7 @@ fn get_fn_inputs_and_outputs<'tcx>(
         FnRetTy::Return(ref return_type) => {
             add_generics_and_bounds_as_types(generics, return_type, tcx, 0, &mut ret_types);
             if ret_types.is_empty() {
-                if let Some(kind) =
-                    return_type.def_id_no_primitives().map(|did| tcx.def_kind(did).into())
-                {
+                if let Some(kind) = return_type.def_id(cache).map(|did| tcx.def_kind(did).into()) {
                     ret_types.push(TypeWithKind::from((get_index_type(return_type, vec![]), kind)));
                 }
             }
