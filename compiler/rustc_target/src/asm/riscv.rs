@@ -1,6 +1,7 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::Target;
 use rustc_macros::HashStable_Generic;
+use rustc_span::{sym, Symbol};
 use std::fmt;
 
 def_reg_class! {
@@ -35,7 +36,7 @@ impl RiscVInlineAsmRegClass {
     pub fn supported_types(
         self,
         arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg => {
                 if arch == InlineAsmArch::RiscV64 {
@@ -44,7 +45,7 @@ impl RiscVInlineAsmRegClass {
                     types! { _: I8, I16, I32, F32; }
                 }
             }
-            Self::freg => types! { "f": F32; "d": F64; },
+            Self::freg => types! { f: F32; d: F64; },
             Self::vreg => &[],
         }
     }
@@ -52,10 +53,10 @@ impl RiscVInlineAsmRegClass {
 
 fn not_e(
     _arch: InlineAsmArch,
-    mut has_feature: impl FnMut(&str) -> bool,
+    mut has_feature: impl FnMut(Symbol) -> bool,
     _target: &Target,
 ) -> Result<(), &'static str> {
-    if has_feature("e") {
+    if has_feature(sym::e) {
         Err("register can't be used with the `e` target feature")
     } else {
         Ok(())

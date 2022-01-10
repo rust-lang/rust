@@ -1,6 +1,7 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::Target;
 use rustc_macros::HashStable_Generic;
+use rustc_span::Symbol;
 use std::fmt;
 
 def_reg_class! {
@@ -58,11 +59,11 @@ impl AArch64InlineAsmRegClass {
     pub fn supported_types(
         self,
         _arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg => types! { _: I8, I16, I32, I64, F32, F64; },
             Self::vreg | Self::vreg_low16 => types! {
-                "fp": I8, I16, I32, I64, F32, F64,
+                fp: I8, I16, I32, I64, F32, F64,
                     VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2), VecF64(1),
                     VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
             },
@@ -73,7 +74,7 @@ impl AArch64InlineAsmRegClass {
 
 pub fn reserved_x18(
     _arch: InlineAsmArch,
-    _has_feature: impl FnMut(&str) -> bool,
+    _has_feature: impl FnMut(Symbol) -> bool,
     target: &Target,
 ) -> Result<(), &'static str> {
     if target.os == "android"

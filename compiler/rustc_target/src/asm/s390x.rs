@@ -1,5 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use rustc_macros::HashStable_Generic;
+use rustc_span::Symbol;
 use std::fmt;
 
 def_reg_class! {
@@ -33,7 +34,7 @@ impl S390xInlineAsmRegClass {
     pub fn supported_types(
         self,
         arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match (self, arch) {
             (Self::reg, _) => types! { _: I8, I16, I32, I64; },
             (Self::freg, _) => types! { _: F32, F64; },

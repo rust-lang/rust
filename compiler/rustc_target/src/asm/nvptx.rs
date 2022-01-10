@@ -1,5 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use rustc_macros::HashStable_Generic;
+use rustc_span::Symbol;
 
 def_reg_class! {
     Nvptx NvptxInlineAsmRegClass {
@@ -33,7 +34,7 @@ impl NvptxInlineAsmRegClass {
     pub fn supported_types(
         self,
         _arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg16 => types! { _: I8, I16; },
             Self::reg32 => types! { _: I8, I16, I32, F32; },

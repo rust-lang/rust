@@ -81,7 +81,7 @@ macro_rules! def_regs {
 
             pub fn parse(
                 _arch: super::InlineAsmArch,
-                mut _has_feature: impl FnMut(&str) -> bool,
+                mut _has_feature: impl FnMut(rustc_span::Symbol) -> bool,
                 _target: &crate::spec::Target,
                 name: &str,
             ) -> Result<Self, &'static str> {
@@ -102,7 +102,7 @@ macro_rules! def_regs {
 
         pub(super) fn fill_reg_map(
             _arch: super::InlineAsmArch,
-            mut _has_feature: impl FnMut(&str) -> bool,
+            mut _has_feature: impl FnMut(rustc_span::Symbol) -> bool,
             _target: &crate::spec::Target,
             _map: &mut rustc_data_structures::fx::FxHashMap<
                 super::InlineAsmRegClass,
@@ -130,7 +130,7 @@ macro_rules! def_regs {
 macro_rules! types {
     (
         $(_ : $($ty:expr),+;)?
-        $($feature:literal: $($ty2:expr),+;)*
+        $($feature:ident: $($ty2:expr),+;)*
     ) => {
         {
             use super::InlineAsmType::*;
@@ -139,7 +139,7 @@ macro_rules! types {
                     ($ty, None),
                 )*)?
                 $($(
-                    ($ty2, Some($feature)),
+                    ($ty2, Some(rustc_span::sym::$feature)),
                 )*)*
             ]
         }
@@ -289,7 +289,7 @@ impl InlineAsmReg {
 
     pub fn parse(
         arch: InlineAsmArch,
-        has_feature: impl FnMut(&str) -> bool,
+        has_feature: impl FnMut(Symbol) -> bool,
         target: &Target,
         name: Symbol,
     ) -> Result<Self, &'static str> {
@@ -510,7 +510,7 @@ impl InlineAsmRegClass {
     pub fn supported_types(
         self,
         arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::X86(r) => r.supported_types(arch),
             Self::Arm(r) => r.supported_types(arch),
@@ -695,7 +695,7 @@ impl fmt::Display for InlineAsmType {
 // falling back to an external assembler.
 pub fn allocatable_registers(
     arch: InlineAsmArch,
-    has_feature: impl FnMut(&str) -> bool,
+    has_feature: impl FnMut(Symbol) -> bool,
     target: &crate::spec::Target,
 ) -> FxHashMap<InlineAsmRegClass, FxHashSet<InlineAsmReg>> {
     match arch {
@@ -794,7 +794,7 @@ impl InlineAsmClobberAbi {
     /// clobber ABIs for the target.
     pub fn parse(
         arch: InlineAsmArch,
-        has_feature: impl FnMut(&str) -> bool,
+        has_feature: impl FnMut(Symbol) -> bool,
         target: &Target,
         name: Symbol,
     ) -> Result<Self, &'static [&'static str]> {

@@ -1,5 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use rustc_macros::HashStable_Generic;
+use rustc_span::Symbol;
 use std::fmt;
 
 def_reg_class! {
@@ -33,7 +34,7 @@ impl MipsInlineAsmRegClass {
     pub fn supported_types(
         self,
         arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match (self, arch) {
             (Self::reg, InlineAsmArch::Mips64) => types! { _: I8, I16, I32, I64, F32, F64; },
             (Self::reg, _) => types! { _: I8, I16, I32, F32; },
