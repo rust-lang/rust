@@ -48,7 +48,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
     // compare to the previous match arm as well.
     let arms_to_merge = successors(Some(current_arm), |it| neighbor(it, Direction::Next))
         .take_while(|arm| match arm.expr() {
-            Some(expr) if arm.guard().is_none() && arm.pat().is_some() => {
+            Some(expr) if arm.guard().is_none() => {
                 let same_text = expr.syntax().text() == current_expr.syntax().text();
                 if !same_text {
                     return false;
@@ -59,15 +59,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
                     let other_arm_type = &arm_types[i].as_ref();
                     let current_arm_type = current_arm_types[i].as_ref();
                     if let (Some(other_arm_type), Some(current_arm_type)) = (other_arm_type, current_arm_type) {
-                        let other_arm_type = &other_arm_type.original;
-                        let current_arm_type = &current_arm_type.original;
-
-                        println!("Same types!");
-                        println!("{:?}", other_arm_type);
-                        println!("{:?}", current_arm_type);
-                        return other_arm_type == current_arm_type;
-
-                        
+                        return &other_arm_type.original == &current_arm_type.original;
                     }
                 }
 
