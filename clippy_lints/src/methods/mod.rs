@@ -2141,12 +2141,16 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 // one of the associated types must be Self
                 for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
                     if let ty::PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
+                        let assoc_ty = match projection_predicate.term {
+                          ty::Term::Ty(ty) => ty,
+                          ty::Term::Const(c) => c.ty,
+                        };
                         // walk the associated type and check for Self
                         if let Some(self_adt) = self_ty.ty_adt_def() {
-                            if contains_adt_constructor(projection_predicate.term.ty(), self_adt) {
+                            if contains_adt_constructor(assoc_ty, self_adt) {
                                 return;
                             }
-                        } else if contains_ty(projection_predicate.term.ty(), self_ty) {
+                        } else if contains_ty(assoc_ty, self_ty) {
                             return;
                         }
                     }
