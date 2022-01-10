@@ -4,11 +4,7 @@ error[E0277]: the trait bound `<Col as Expression>::SqlType: NotNull` is not sat
 LL | #[derive(Debug, Copy, Clone)]
    |                 ^^^^ the trait `NotNull` is not implemented for `<Col as Expression>::SqlType`
    |
-note: required because of the requirements on the impl of `IntoNullable` for `<Col as Expression>::SqlType`
-  --> $DIR/issue-38821.rs:9:18
-   |
-LL | impl<T: NotNull> IntoNullable for T {
-   |                  ^^^^^^^^^^^^     ^
+   = note: required because of the requirements on the impl of `IntoNullable` for `<Col as Expression>::SqlType`
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider further restricting the associated type
    |
