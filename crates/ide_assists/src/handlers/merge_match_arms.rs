@@ -1,6 +1,5 @@
 use std::iter::successors;
-
-use hir::{TypeInfo, HirDisplay};
+use hir::TypeInfo;
 use itertools::Itertools;
 use syntax::{
     algo::neighbor,
@@ -282,9 +281,9 @@ fn main() {
             merge_match_arms,
             r#"//- minicore: result
 fn func() {
-    match Result::<i32, f32>::Ok(0) {
-        Ok(x) => $0x.to_string(),
-        Err(x) => x.to_string()
+    match Result::<f64, f32>::Ok(0f64) {
+        Ok(x) => $0x.classify(),
+        Err(x) => x.classify()
     };
 }
 "#,
@@ -293,8 +292,8 @@ fn func() {
 }
 
 // fn func() {
-//     match Result::<i32, f32>::Ok(0) {
-//         Ok(x) => x.to_string(),
-//         Err(x) => x.to_string()
+//     match Result::<f64, f32>::Ok(0f64) {
+//         Ok(x) => x.classify(),
+//         Err(x) => x.classify()
 //     };
 // }
