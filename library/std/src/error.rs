@@ -606,21 +606,21 @@ impl Error for time::FromSecsError {}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {
-    /// Returns `true` if the boxed type is the same as `T`
+    /// Returns `true` if the inner type is the same as `T`.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {
         // Get `TypeId` of the type this function is instantiated with.
         let t = TypeId::of::<T>();
 
-        // Get `TypeId` of the type in the trait object.
-        let boxed = self.type_id(private::Internal);
+        // Get `TypeId` of the type in the trait object (`self`).
+        let concrete = self.type_id(private::Internal);
 
         // Compare both `TypeId`s on equality.
-        t == boxed
+        t == concrete
     }
 
-    /// Returns some reference to the boxed value if it is of type `T`, or
+    /// Returns some reference to the inner value if it is of type `T`, or
     /// `None` if it isn't.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
@@ -632,7 +632,7 @@ impl dyn Error + 'static {
         }
     }
 
-    /// Returns some mutable reference to the boxed value if it is of type `T`, or
+    /// Returns some mutable reference to the inner value if it is of type `T`, or
     /// `None` if it isn't.
     #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
