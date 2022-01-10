@@ -503,28 +503,6 @@ crate enum HrefError {
     NotInExternalCache,
 }
 
-// This mostly works with sequences of symbols, but sometimes the first item
-// comes from a string, and in that case we want to trim any trailing `/`.
-// `syms` can be empty.
-crate fn join_with_slash(first: Option<&str>, syms: &[Symbol]) -> String {
-    // 64 bytes covers 99.9%+ of cases.
-    let mut s = String::with_capacity(64);
-    if let Some(first) = first {
-        s.push_str(first.trim_end_matches('/'));
-        if !syms.is_empty() {
-            s.push('/');
-        }
-    }
-    if !syms.is_empty() {
-        s.push_str(&syms[0].as_str());
-        for sym in &syms[1..] {
-            s.push('/');
-            s.push_str(&sym.as_str());
-        }
-    }
-    s
-}
-
 // Panics if `syms` is empty.
 crate fn join_with_double_colon(syms: &[Symbol]) -> String {
     // 64 bytes covers 99.9%+ of cases.

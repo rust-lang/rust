@@ -26,12 +26,13 @@ use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
-    join_with_double_colon, join_with_slash, print_abi_with_space, print_constness_with_space,
-    print_where_clause, Buffer, PrintWithSpace,
+    join_with_double_colon, print_abi_with_space, print_constness_with_space, print_where_clause,
+    Buffer, PrintWithSpace,
 };
 use crate::html::highlight;
 use crate::html::layout::Page;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
+use crate::html::url_parts_builder::UrlPartsBuilder;
 
 use askama::Template;
 
@@ -854,20 +855,21 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         }
     }
 
+    let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
+        .take(cx.current.len())
+        .chain(std::iter::once("implementors"))
+        .collect();
+    if it.def_id.is_local() {
+        js_src_path.extend(cx.current.iter().copied());
+    } else {
+        let (ref path, _) = cache.external_paths[&it.def_id.expect_def_id()];
+        js_src_path.extend(path[..path.len() - 1].iter().copied());
+    }
+    js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), it.name.unwrap()));
     write!(
         w,
-        "<script type=\"text/javascript\" \
-                 src=\"{root_path}/implementors/{path}/{ty}.{name}.js\" async>\
-         </script>",
-        root_path = vec![".."; cx.current.len()].join("/"),
-        path = if it.def_id.is_local() {
-            join_with_slash(None, &cx.current)
-        } else {
-            let (ref path, _) = cache.external_paths[&it.def_id.expect_def_id()];
-            join_with_slash(None, &path[..path.len() - 1])
-        },
-        ty = it.type_(),
-        name = it.name.unwrap()
+        "<script type=\"text/javascript\" src=\"{src}\" async></script>",
+        src = js_src_path.finish(),
     );
 }
 
