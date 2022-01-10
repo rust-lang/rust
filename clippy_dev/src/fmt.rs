@@ -3,7 +3,7 @@ use itertools::Itertools;
 use shell_escape::escape;
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
-use std::process::{self, Command};
+use std::process::{self, Command, Stdio};
 use std::{fs, io};
 use walkdir::WalkDir;
 
@@ -31,6 +31,7 @@ impl From<walkdir::Error> for CliError {
 struct FmtContext {
     check: bool,
     verbose: bool,
+    rustfmt_path: String,
 }
 
 // the "main" function of cargo dev fmt
@@ -102,7 +103,23 @@ Please revert the changes to Cargo.tomls first."
         }
     }
 
-    let context = FmtContext { check, verbose };
+    let output = Command::new("rustup")
+        .args(["which", "rustfmt"])
+        .stderr(Stdio::inherit())
+        .output()
+        .expect("error running `rustup which rustfmt`");
+    if !output.status.success() {
+        eprintln!("`rustup which rustfmt` did not execute successfully");
+        process::exit(1);
+    }
+    let mut rustfmt_path = String::from_utf8(output.stdout).expect("invalid rustfmt path");
+    rustfmt_path.truncate(rustfmt_path.trim_end().len());
+
+    let context = FmtContext {
+        check,
+        verbose,
+        rustfmt_path,
+    };
     let result = try_run(&context);
     let code = match result {
         Ok(true) => 0,
@@ -142,6 +159,7 @@ fn exec(
     }
 
     let output = Command::new(&program)
+        .env("RUSTFMT", &context.rustfmt_path)
         .current_dir(&dir)
         .args(args.iter())
         .output()
@@ -162,7 +180,6 @@ fn exec(
 fn cargo_fmt(context: &FmtContext, path: &Path) -> Result<bool, CliError> {
     let mut args = vec!["fmt", "--all"];
     if context.check {
-        args.push("--");
         args.push("--check");
     }
     let success = exec(context, "cargo", path, &args)?;
@@ -203,7 +220,7 @@ fn rustfmt(context: &FmtContext, paths: impl Iterator<Item = OsString>) -> Resul
     }
     args.extend(paths);
 
-    let success = exec(context, "rustfmt", std::env::current_dir()?, &args)?;
+    let success = exec(context, &context.rustfmt_path, std::env::current_dir()?, &args)?;
 
     Ok(success)
 }
