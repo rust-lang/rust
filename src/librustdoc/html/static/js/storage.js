@@ -15,7 +15,7 @@ var settingsDataset = (function () {
 })();
 
 function getSettingValue(settingName) {
-    var current = getCurrentValue('rustdoc-' + settingName);
+    var current = getCurrentValue(settingName);
     if (current !== null) {
         return current;
     }
@@ -106,7 +106,7 @@ function hasOwnPropertyRustdoc(obj, property) {
 
 function updateLocalStorage(name, value) {
     try {
-        window.localStorage.setItem(name, value);
+        window.localStorage.setItem("rustdoc-" + name, value);
     } catch(e) {
         // localStorage is not accessible, do nothing
     }
@@ -114,7 +114,7 @@ function updateLocalStorage(name, value) {
 
 function getCurrentValue(name) {
     try {
-        return window.localStorage.getItem(name);
+        return window.localStorage.getItem("rustdoc-" + name);
     } catch(e) {
         return null;
     }
@@ -127,7 +127,7 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     // If this new value comes from a system setting or from the previously
     // saved theme, no need to save it.
     if (saveTheme) {
-        updateLocalStorage("rustdoc-theme", newTheme);
+        updateLocalStorage("theme", newTheme);
     }
 
     if (styleElem.href === newHref) {
@@ -158,7 +158,7 @@ function useSystemTheme(value) {
         value = true;
     }
 
-    updateLocalStorage("rustdoc-use-system-theme", value);
+    updateLocalStorage("use-system-theme", value);
 
     // update the toggle if we're on the settings page
     var toggle = document.getElementById("use-system-theme");
@@ -231,7 +231,7 @@ if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
     if (getSettingValue("use-system-theme") === null
         && getSettingValue("preferred-dark-theme") === null
         && darkThemes.indexOf(localStoredTheme) >= 0) {
-        updateLocalStorage("rustdoc-preferred-dark-theme", localStoredTheme);
+        updateLocalStorage("preferred-dark-theme", localStoredTheme);
     }
 
     // call the function to initialize the theme at least once!
