@@ -112,17 +112,17 @@ jobs:
         echo "$SYSROOT/bin" >> $GITHUB_PATH
 
     - name: Build
-      run: cargo build --features deny-warnings,internal-lints,metadata-collector-lint
+      run: cargo build --features deny-warnings,internal
 
     - name: Test
-      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
+      run: cargo test --features deny-warnings,internal
 
     - name: Test clippy_lints
-      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
+      run: cargo test --features deny-warnings,internal
       working-directory: clippy_lints
 
     - name: Test clippy_utils
-      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
+      run: cargo test --features deny-warnings,internal
       working-directory: clippy_utils
 
     - name: Test rustc_tools_util

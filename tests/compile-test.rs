@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 mod cargo;
 
 // whether to run internal tests or not
-const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal-lints");
+const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal");
 
 /// All crates used in UI tests are listed here
 static TEST_DEPENDENCIES: &[&str] = &[

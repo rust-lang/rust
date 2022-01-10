@@ -113,7 +113,7 @@ macro_rules! define_Conf {
             }
         }
 
-        #[cfg(feature = "metadata-collector-lint")]
+        #[cfg(feature = "internal")]
         pub mod metadata {
             use crate::utils::internal_lints::metadata_collector::ClippyConfiguration;
 

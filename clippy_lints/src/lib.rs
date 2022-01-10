@@ -153,12 +153,9 @@ macro_rules! declare_clippy_lint {
     };
 }
 
-#[cfg(feature = "metadata-collector-lint")]
+#[cfg(feature = "internal")]
 mod deprecated_lints;
-#[cfg_attr(
-    any(feature = "internal-lints", feature = "metadata-collector-lint"),
-    allow(clippy::missing_clippy_version_attribute)
-)]
+#[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
@@ -472,7 +469,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     include!("lib.register_restriction.rs");
     include!("lib.register_pedantic.rs");
 
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     include!("lib.register_internal.rs");
 
     include!("lib.register_all.rs");
@@ -484,7 +481,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     include!("lib.register_cargo.rs");
     include!("lib.register_nursery.rs");
 
-    #[cfg(feature = "metadata-collector-lint")]
+    #[cfg(feature = "internal")]
     {
         if std::env::var("ENABLE_METADATA_COLLECTION").eq(&Ok("1".to_string())) {
             store.register_late_pass(|| Box::new(utils::internal_lints::metadata_collector::MetadataCollector::new()));
@@ -493,7 +490,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     }
 
     // all the internal lints
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     {
         store.register_early_pass(|| Box::new(utils::internal_lints::ClippyLintsInternal));
         store.register_early_pass(|| Box::new(utils::internal_lints::ProduceIce));

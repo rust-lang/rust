@@ -42,8 +42,8 @@ fn dogfood_clippy() {
         .args(&["-D", "clippy::pedantic"])
         .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
 
-    // internal lints only exist if we build with the internal-lints feature
-    if cfg!(feature = "internal-lints") {
+    // internal lints only exist if we build with the internal feature
+    if cfg!(feature = "internal") {
         command.args(&["-D", "clippy::internal"]);
     }
 
@@ -180,7 +180,7 @@ fn dogfood_subprojects() {
 
 #[test]
 #[ignore]
-#[cfg(feature = "metadata-collector-lint")]
+#[cfg(feature = "internal")]
 fn run_metadata_collection_lint() {
     use std::fs::File;
     use std::time::SystemTime;
@@ -233,8 +233,8 @@ fn run_clippy_for_project(project: &str) {
         .args(&["-D", "clippy::pedantic"])
         .arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
 
-    // internal lints only exist if we build with the internal-lints feature
-    if cfg!(feature = "internal-lints") {
+    // internal lints only exist if we build with the internal feature
+    if cfg!(feature = "internal") {
         command.args(&["-D", "clippy::internal"]);
     }
 
