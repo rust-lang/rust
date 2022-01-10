@@ -386,4 +386,19 @@ fn func(e: MyEnum) {
 "#,
         );
     }
+
+    #[test]
+    fn merge_match_arms_same_type_different_number_of_fields() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"//- minicore: result
+fn func() {
+    match Result::<(f64, f64), (f64)>::Ok((0f64, 0f64)) {
+        Ok(x) => $0x.1.classify(),
+        Err(x) => x.1.classify()
+    };
+}
+"#,
+        );
+    }
 }
