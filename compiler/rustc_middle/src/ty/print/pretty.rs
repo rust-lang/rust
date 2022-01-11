@@ -905,7 +905,13 @@ pub trait PrettyPrinter<'tcx>:
                 }
 
                 for (assoc_item_def_id, term) in assoc_items {
-                    let ty = if let Term::Ty(ty) = term.skip_binder() { ty } else { continue };
+                    let ty = match term.skip_binder() {
+                        Term::Ty(ty) => ty,
+                        Term::Const(c) => {
+                            p!(print(c));
+                            continue;
+                        }
+                    };
                     if !first {
                         p!(", ");
                     }

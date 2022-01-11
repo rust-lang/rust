@@ -779,8 +779,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             // However, we should always make progress (either by generating
                             // subobligations or getting an error) when we started off with
                             // inference variables
-                            if p.term().skip_binder().ty().map_or(false, |ty| ty.has_infer_types())
-                            {
+                            if p.term().skip_binder().ty().has_infer_types() {
                                 panic!("Unexpected result when selecting {:?} {:?}", ty, obligation)
                             }
                         }

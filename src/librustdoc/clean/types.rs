@@ -1309,10 +1309,7 @@ impl FnDecl {
                 GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
                     let bindings = trait_.bindings().unwrap();
                     let ret_ty = bindings[0].term();
-                    let ty = match ret_ty {
-                        Term::Type(ty) => ty,
-                        Term::Constant(_c) => unreachable!(),
-                    };
+                    let ty = ret_ty.ty().expect("Unexpected constant return term");
                     FnRetTy::Return(ty.clone())
                 }
                 _ => panic!("unexpected desugaring of async function"),

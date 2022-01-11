@@ -709,7 +709,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // does not have any regions in it.
         let output_ty = self.resolve_vars_if_possible(predicate.term);
         debug!("deduce_future_output_from_projection: output_ty={:?}", output_ty);
-        // FIXME(...): How to handle consts here? Will this always be a const?
+        // This is a projection on a Fn trait so will always be a type.
         Some(output_ty.ty().unwrap())
     }
 

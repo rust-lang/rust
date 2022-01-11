@@ -2143,7 +2143,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     if let ty::PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
                         let assoc_ty = match projection_predicate.term {
                           ty::Term::Ty(ty) => ty,
-                          ty::Term::Const(c) => c.ty,
+                          ty::Term::Const(_c) => continue,
                         };
                         // walk the associated type and check for Self
                         if let Some(self_adt) = self_ty.ty_adt_def() {

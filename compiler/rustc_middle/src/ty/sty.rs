@@ -1580,10 +1580,9 @@ impl<'tcx> ExistentialProjection<'tcx> {
     ) -> Self {
         // Assert there is a Self.
         projection_predicate.projection_ty.substs.type_at(0);
-        let ty = if let Term::Ty(ty) = projection_predicate.term {
-            ty
-        } else {
-            panic!("Only types are permitted here");
+        let ty = match projection_predicate.term {
+            Term::Ty(ty) => ty,
+            Term::Const(_c) => unimplemented!(),
         };
 
         Self {

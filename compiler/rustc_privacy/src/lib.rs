@@ -128,10 +128,7 @@ where
                 polarity: _,
             }) => self.visit_trait(trait_ref),
             ty::PredicateKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
-                match term {
-                    ty::Term::Ty(ty) => ty.visit_with(self)?,
-                    ty::Term::Const(ct) => ct.visit_with(self)?,
-                }
+                term.visit_with(self)?;
                 self.visit_projection_ty(projection_ty)
             }
             ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => {
@@ -1189,10 +1186,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
             for (poly_predicate, _) in bounds.projection_bounds {
                 let pred = poly_predicate.skip_binder();
-                let poly_pred_term = match pred.term {
-                    ty::Term::Ty(ty) => self.visit(ty),
-                    ty::Term::Const(ct) => self.visit(ct),
-                };
+                let poly_pred_term = self.visit(pred.term);
                 if poly_pred_term.is_break()
                     || self.visit_projection_ty(pred.projection_ty).is_break()
                 {
