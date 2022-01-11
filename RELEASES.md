@@ -44,6 +44,7 @@ Stabilized APIs
 - [`Result::unwrap_unchecked`]
 - [`Result::unwrap_err_unchecked`]
 - [`NonZero{unsigned}::is_power_of_two`]
+- [`File::options`]
 
 These APIs are now usable in const contexts:
 
@@ -141,6 +142,7 @@ and related tools.
 [`Result::unwrap_unchecked`]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.unwrap_unchecked
 [`Result::unwrap_err_unchecked`]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.unwrap_err_unchecked
 [`NonZero{unsigned}::is_power_of_two`]: https://doc.rust-lang.org/stable/std/num/struct.NonZeroU8.html#method.is_power_of_two
+[`File::options`]: https://doc.rust-lang.org/stable/std/fs/struct.File.html#method.options
 [`unix::process::ExitStatusExt::core_dumped`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.core_dumped
 [`unix::process::ExitStatusExt::stopped_signal`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.stopped_signal
 [`unix::process::ExitStatusExt::continued`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.continued
