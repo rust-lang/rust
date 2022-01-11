@@ -101,11 +101,11 @@ fn are_same_types(
 ) -> bool {
     let arm_types = get_arm_types(&ctx, &arm);
     for (other_arm_type_name, other_arm_type) in arm_types {
-        if let Some((_, Some(current_arm_type))) = current_arm_types.get_key_value(&other_arm_type_name) {
-            if let Some(other_arm_type) = other_arm_type {
-                if other_arm_type.original != current_arm_type.original {
-                    return false;
-                }
+        if let (Some(Some(current_arm_type)), Some(other_arm_type)) =
+            (current_arm_types.get(&other_arm_type_name), other_arm_type)
+        {
+            if other_arm_type.original != current_arm_type.original {
+                return false;
             }
         } else {
             // No corresponding field found
