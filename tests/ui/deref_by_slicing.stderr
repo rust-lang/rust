@@ -1,0 +1,34 @@
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:7:13
+   |
+LL |     let _ = &vec[..];
+   |             ^^^^^^^^ help: dereference the original value instead: `&*vec`
+   |
+   = note: `-D clippy::deref-by-slicing` implied by `-D warnings`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:8:13
+   |
+LL |     let _ = &mut vec[..];
+   |             ^^^^^^^^^^^^ help: dereference the original value instead: `&mut *vec`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:11:13
+   |
+LL |     let _ = &ref_vec[..];
+   |             ^^^^^^^^^^^^ help: dereference the original value instead: `&**ref_vec`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:12:13
+   |
+LL |     let _ = &mut ref_vec[..];
+   |             ^^^^^^^^^^^^^^^^ help: dereference the original value instead: `&mut **ref_vec`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:15:13
+   |
+LL |     let _ = &s[..];
+   |             ^^^^^^ help: dereference the original value instead: `&*s`
+
+error: aborting due to 5 previous errors
+

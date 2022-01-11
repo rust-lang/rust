@@ -42,7 +42,31 @@ declare_clippy_lint! {
     "redundant slicing of the whole range of a type"
 }
 
-declare_lint_pass!(RedundantSlicing => [REDUNDANT_SLICING]);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for slicing expression which are equivalent to dereferencing the
+    /// value.
+    ///
+    /// ### Why is this bad?
+    /// Some people may prefer to dereference rather than slice.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let vec = vec![1, 2, 3];
+    /// let slice = &vec[..];
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let vec = vec![1, 2, 3];
+    /// let slice = &*vec;
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub DEREF_BY_SLICING,
+    restriction,
+    "slicing instead of dereferencing"
+}
+
+declare_lint_pass!(RedundantSlicing => [REDUNDANT_SLICING, DEREF_BY_SLICING]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -65,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                 });
                 let mut app = Applicability::MachineApplicable;
 
-                let (help, sugg) = if expr_ty == indexed_ty {
+                let (lint, msg, help, sugg) = if expr_ty == indexed_ty {
                     if expr_ref_count > indexed_ref_count {
                         // Indexing takes self by reference and can't return a reference to that
                         // reference as it's a local variable. The only way this could happen is if
@@ -103,7 +127,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                         format!("{}{}{}", reborrow_str, "*".repeat(deref_count), snip)
                     };
 
-                    (help_str, sugg)
+                    (REDUNDANT_SLICING, "redundant slicing of the whole range", help_str, sugg)
                 } else if let Some(target_id) = cx.tcx.lang_items().deref_target() {
                     if let Ok(deref_ty) = cx.tcx.try_normalize_erasing_regions(
                         cx.param_env,
@@ -116,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                             } else {
                                 format!("&{}{}*{}", mutability.prefix_str(), "*".repeat(indexed_ref_count), snip)
                             };
-                            ("dereference the original value instead", sugg)
+                            (DEREF_BY_SLICING, "slicing when dereferencing would work", "dereference the original value instead", sugg)
                         } else {
                             return;
                         }
@@ -129,9 +153,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
 
                 span_lint_and_sugg(
                     cx,
-                    REDUNDANT_SLICING,
+                    lint,
                     expr.span,
-                    "redundant slicing of the whole range",
+                    msg,
                     help,
                     sugg,
                     app,
