@@ -59,6 +59,7 @@ store.register_lints(&[
     bool_assert_comparison::BOOL_ASSERT_COMPARISON,
     booleans::LOGIC_BUG,
     booleans::NONMINIMAL_BOOL,
+    borrow_as_ptr::BORROW_AS_PTR,
     bytecount::NAIVE_BYTECOUNT,
     cargo_common_metadata::CARGO_COMMON_METADATA,
     case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,

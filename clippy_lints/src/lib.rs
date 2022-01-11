@@ -174,6 +174,7 @@ mod blacklisted_name;
 mod blocks_in_if_conditions;
 mod bool_assert_comparison;
 mod booleans;
+mod borrow_as_ptr;
 mod bytecount;
 mod cargo_common_metadata;
 mod case_sensitive_file_extension_comparisons;
@@ -857,6 +858,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(return_self_not_must_use::ReturnSelfNotMustUse));
     store.register_late_pass(|| Box::new(init_numbered_fields::NumberedFields));
     store.register_early_pass(|| Box::new(single_char_lifetime_names::SingleCharLifetimeNames));
+    store.register_late_pass(move || Box::new(borrow_as_ptr::BorrowAsPtr::new(msrv)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
