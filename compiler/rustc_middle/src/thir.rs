@@ -726,7 +726,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 };
 
                 if let Some(variant) = variant {
-                    write!(f, "{}", variant.ident)?;
+                    write!(f, "{}", variant.name)?;
 
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
@@ -738,7 +738,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                             if let PatKind::Wild = *p.pattern.kind {
                                 continue;
                             }
-                            let name = variant.fields[p.field.index()].ident;
+                            let name = variant.fields[p.field.index()].name;
                             write!(f, "{}{}: {}", start_or_comma(), name, p.pattern)?;
                             printed += 1;
                         }

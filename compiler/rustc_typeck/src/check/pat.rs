@@ -1029,7 +1029,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let field_def_spans = if fields.is_empty() {
             vec![res_span]
         } else {
-            fields.iter().map(|f| f.ident.span).collect()
+            fields.iter().map(|f| f.ident(self.tcx).span).collect()
         };
         let last_field_def_span = *field_def_spans.last().unwrap();
 
@@ -1231,7 +1231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .fields
             .iter()
             .enumerate()
-            .map(|(i, field)| (field.ident.normalize_to_macros_2_0(), (i, field)))
+            .map(|(i, field)| (field.ident(self.tcx).normalize_to_macros_2_0(), (i, field)))
             .collect::<FxHashMap<_, _>>();
 
         // Keep track of which fields have already appeared in the pattern.
@@ -1272,7 +1272,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut unmentioned_fields = variant
             .fields
             .iter()
-            .map(|field| (field, field.ident.normalize_to_macros_2_0()))
+            .map(|field| (field, field.ident(self.tcx).normalize_to_macros_2_0()))
             .filter(|(_, ident)| !used_fields.contains_key(ident))
             .collect::<Vec<_>>();
 
@@ -1579,7 +1579,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &[hir::PatField<'_>],
         variant: &VariantDef,
     ) -> String {
-        let variant_field_idents = variant.fields.iter().map(|f| f.ident).collect::<Vec<Ident>>();
+        let variant_field_idents =
+            variant.fields.iter().map(|f| f.ident(self.tcx)).collect::<Vec<Ident>>();
         fields
             .iter()
             .map(|field| {

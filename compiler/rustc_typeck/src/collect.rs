@@ -994,7 +994,7 @@ fn convert_variant(
                 seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
 
-            ty::FieldDef { did: fid.to_def_id(), ident: f.ident, vis: tcx.visibility(fid) }
+            ty::FieldDef { did: fid.to_def_id(), name: f.ident.name, vis: tcx.visibility(fid) }
         })
         .collect();
     let recovered = match def {
@@ -1002,7 +1002,7 @@ fn convert_variant(
         _ => false,
     };
     ty::VariantDef::new(
-        ident,
+        ident.name,
         variant_did.map(LocalDefId::to_def_id),
         ctor_did.map(LocalDefId::to_def_id),
         discr,

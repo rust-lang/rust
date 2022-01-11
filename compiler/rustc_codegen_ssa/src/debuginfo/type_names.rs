@@ -409,14 +409,14 @@ fn push_debuginfo_type_name<'tcx>(
             let max = dataful_discriminant_range.end;
             let max = tag.value.size(&tcx).truncate(max);
 
-            let dataful_variant_name = def.variants[*dataful_variant].ident.as_str();
+            let dataful_variant_name = def.variants[*dataful_variant].name.as_str();
 
             output.push_str(&format!(", {}, {}, {}", min, max, dataful_variant_name));
         } else if let Variants::Single { index: variant_idx } = &layout.variants {
             // Uninhabited enums can't be constructed and should never need to be visualized so
             // skip this step for them.
             if def.variants.len() != 0 {
-                let variant = def.variants[*variant_idx].ident.as_str();
+                let variant = def.variants[*variant_idx].name.as_str();
 
                 output.push_str(&format!(", {}", variant));
             }

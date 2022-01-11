@@ -1376,7 +1376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .fields
             .iter()
             .enumerate()
-            .map(|(i, field)| (field.ident.normalize_to_macros_2_0(), (i, field)))
+            .map(|(i, field)| (field.ident(tcx).normalize_to_macros_2_0(), (i, field)))
             .collect::<FxHashMap<_, _>>();
 
         let mut seen_fields = FxHashMap::default();
@@ -1457,7 +1457,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             expr_span,
                                             self.field_ty(base_expr.span, f, base_subs),
                                         );
-                                        let ident = self.tcx.adjust_ident(f.ident, variant.def_id);
+                                        let ident = self
+                                            .tcx
+                                            .adjust_ident(f.ident(self.tcx), variant.def_id);
                                         if let Some(_) = remaining_fields.remove(&ident) {
                                             let target_ty =
                                                 self.field_ty(base_expr.span, f, substs);
@@ -1475,10 +1477,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                         &cause,
                                                         target_ty,
                                                         fru_ty,
-                                                        FieldMisMatch(
-                                                            variant.ident.name,
-                                                            ident.name,
-                                                        ),
+                                                        FieldMisMatch(variant.name, ident.name),
                                                     )
                                                     .emit(),
                                             }
@@ -1665,7 +1664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "{} `{}::{}` has no field named `{}`",
                     kind_name,
                     actual,
-                    variant.ident,
+                    variant.name,
                     field.ident
                 ),
                 _ => struct_span_err!(
@@ -1680,15 +1679,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
             ty,
         );
+
+        let variant_ident_span = self.tcx.def_ident_span(variant.def_id).unwrap();
         match variant.ctor_kind {
             CtorKind::Fn => match ty.kind() {
                 ty::Adt(adt, ..) if adt.is_enum() => {
                     err.span_label(
-                        variant.ident.span,
+                        variant_ident_span,
                         format!(
                             "`{adt}::{variant}` defined here",
                             adt = ty,
-                            variant = variant.ident,
+                            variant = variant.name,
                         ),
                     );
                     err.span_label(field.ident.span, "field does not exist");
@@ -1697,18 +1698,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &format!(
                             "`{adt}::{variant}` is a tuple {kind_name}, use the appropriate syntax",
                             adt = ty,
-                            variant = variant.ident,
+                            variant = variant.name,
                         ),
                         format!(
                             "{adt}::{variant}(/* fields */)",
                             adt = ty,
-                            variant = variant.ident,
+                            variant = variant.name,
                         ),
                         Applicability::HasPlaceholders,
                     );
                 }
                 _ => {
-                    err.span_label(variant.ident.span, format!("`{adt}` defined here", adt = ty));
+                    err.span_label(variant_ident_span, format!("`{adt}` defined here", adt = ty));
                     err.span_label(field.ident.span, "field does not exist");
                     err.span_suggestion_verbose(
                         expr_span,
@@ -1740,7 +1741,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if adt.is_enum() {
                                 err.span_label(
                                     field.ident.span,
-                                    format!("`{}::{}` does not have this field", ty, variant.ident),
+                                    format!("`{}::{}` does not have this field", ty, variant.name),
                                 );
                             } else {
                                 err.span_label(
@@ -1775,12 +1776,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .iter()
             .filter_map(|field| {
                 // ignore already set fields and private fields from non-local crates
-                if skip.iter().any(|&x| x == field.ident.name)
+                if skip.iter().any(|&x| x == field.name)
                     || (!variant.def_id.is_local() && !field.vis.is_public())
                 {
                     None
                 } else {
-                    Some(field.ident.name)
+                    Some(field.name)
                 }
             })
             .collect::<Vec<Symbol>>();
@@ -1795,11 +1796,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(|field| {
                 let def_scope = self
                     .tcx
-                    .adjust_ident_and_get_scope(field.ident, variant.def_id, self.body_id)
+                    .adjust_ident_and_get_scope(field.ident(self.tcx), variant.def_id, self.body_id)
                     .1;
                 field.vis.is_accessible_from(def_scope, self.tcx)
             })
-            .map(|field| field.ident.name)
+            .map(|field| field.name)
             .collect()
     }
 
@@ -1834,8 +1835,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, base_def.did, self.body_id);
                     let fields = &base_def.non_enum_variant().fields;
-                    if let Some(index) =
-                        fields.iter().position(|f| f.ident.normalize_to_macros_2_0() == ident)
+                    if let Some(index) = fields
+                        .iter()
+                        .position(|f| f.ident(self.tcx).normalize_to_macros_2_0() == ident)
                     {
                         let field = &fields[index];
                         let field_ty = self.field_ty(expr.span, field, substs);
@@ -1916,7 +1918,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let ty::Adt(def, _) = output_ty.kind() {
             // no field access on enum type
             if !def.is_enum() {
-                if def.non_enum_variant().fields.iter().any(|field| field.ident == field_ident) {
+                if def
+                    .non_enum_variant()
+                    .fields
+                    .iter()
+                    .any(|field| field.ident(self.tcx) == field_ident)
+                {
                     add_label = false;
                     err.span_label(
                         field_ident.span,
@@ -2075,7 +2082,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .unwrap()
                             .fields
                             .iter()
-                            .any(|f| f.ident == field)
+                            .any(|f| f.ident(self.tcx) == field)
                     {
                         if let Some(dot_loc) = expr_snippet.rfind('.') {
                             found = true;
@@ -2262,7 +2269,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span, candidate_field, field_path
         );
 
-        if candidate_field.ident == target_field {
+        if candidate_field.ident(self.tcx) == target_field {
             Some(field_path)
         } else if field_path.len() > 3 {
             // For compile-time reasons and to avoid infinite recursion we only check for fields
@@ -2271,11 +2278,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             // recursively search fields of `candidate_field` if it's a ty::Adt
 
-            field_path.push(candidate_field.ident.normalize_to_macros_2_0());
+            field_path.push(candidate_field.ident(self.tcx).normalize_to_macros_2_0());
             let field_ty = candidate_field.ty(self.tcx, subst);
             if let Some((nested_fields, subst)) = self.get_field_candidates(span, &field_ty) {
                 for field in nested_fields.iter() {
-                    let ident = field.ident.normalize_to_macros_2_0();
+                    let ident = field.ident(self.tcx).normalize_to_macros_2_0();
                     if ident == target_field {
                         return Some(field_path);
                     } else {

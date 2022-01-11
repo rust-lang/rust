@@ -2439,7 +2439,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                                 CtorKind::Fictive => {
                                     let mut struct_fmt = fmt.debug_struct(&name);
                                     for (field, place) in iter::zip(&variant_def.fields, places) {
-                                        struct_fmt.field(field.ident.as_str(), place);
+                                        struct_fmt.field(field.name.as_str(), place);
                                     }
                                     struct_fmt.finish()
                                 }
@@ -2785,7 +2785,7 @@ impl UserTypeProjection {
         field: Field,
     ) -> Self {
         self.projs.push(ProjectionElem::Downcast(
-            Some(adt_def.variants[variant_index].ident.name),
+            Some(adt_def.variants[variant_index].name),
             variant_index,
         ));
         self.projs.push(ProjectionElem::Field(field, ()));

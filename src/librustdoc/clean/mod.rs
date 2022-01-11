@@ -1618,7 +1618,7 @@ impl Clean<Item> for hir::FieldDef<'_> {
 
 impl Clean<Item> for ty::FieldDef {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
-        clean_field(self.did, self.ident.name, cx.tcx.type_of(self.did).clean(cx), cx)
+        clean_field(self.did, self.name, cx.tcx.type_of(self.did).clean(cx), cx)
     }
 }
 
@@ -1689,7 +1689,7 @@ impl Clean<Item> for ty::VariantDef {
             }),
         };
         let what_rustc_thinks =
-            Item::from_def_id_and_parts(self.def_id, Some(self.ident.name), VariantItem(kind), cx);
+            Item::from_def_id_and_parts(self.def_id, Some(self.name), VariantItem(kind), cx);
         // don't show `pub` for variants, which always inherit visibility
         Item { visibility: Inherited, ..what_rustc_thinks }
     }

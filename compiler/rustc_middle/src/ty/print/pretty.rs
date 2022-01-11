@@ -1475,7 +1475,7 @@ pub trait PrettyPrinter<'tcx>:
                                     if !first {
                                         p!(", ");
                                     }
-                                    p!(write("{}: ", field_def.ident), print(field));
+                                    p!(write("{}: ", field_def.name), print(field));
                                     first = false;
                                 }
                                 p!(" }}");
