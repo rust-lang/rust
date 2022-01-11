@@ -330,7 +330,7 @@ impl<T> MaybeUninit<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(maybe_uninit_uninit_array, maybe_uninit_extra, maybe_uninit_slice)]
+    /// #![feature(maybe_uninit_uninit_array, maybe_uninit_slice)]
     ///
     /// use std::mem::MaybeUninit;
     ///
@@ -662,7 +662,6 @@ impl<T> MaybeUninit<T> {
     /// Correct usage of this method:
     ///
     /// ```rust
-    /// #![feature(maybe_uninit_extra)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<u32>::uninit();
@@ -683,7 +682,6 @@ impl<T> MaybeUninit<T> {
     /// *Incorrect* usage of this method:
     ///
     /// ```rust,no_run
-    /// #![feature(maybe_uninit_extra)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut x = MaybeUninit::<Option<Vec<u32>>>::uninit();
@@ -693,8 +691,8 @@ impl<T> MaybeUninit<T> {
     /// // We now created two copies of the same vector, leading to a double-free ⚠️ when
     /// // they both get dropped!
     /// ```
-    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
-    #[rustc_const_unstable(feature = "maybe_uninit_extra", issue = "63567")]
+    #[stable(feature = "maybe_uninit_extra", since = "1.60.0")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init_read", issue = "63567")]
     #[inline(always)]
     #[track_caller]
     pub const unsafe fn assume_init_read(&self) -> T {
@@ -728,7 +726,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
     /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
-    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
+    #[stable(feature = "maybe_uninit_extra", since = "1.60.0")]
     pub unsafe fn assume_init_drop(&mut self) {
         // SAFETY: the caller must guarantee that `self` is initialized and
         // satisfies all invariants of `T`.
