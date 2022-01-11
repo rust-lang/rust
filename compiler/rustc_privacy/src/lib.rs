@@ -652,12 +652,73 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             _ => self.get(item.def_id),
         };
 
+        // Update levels of nested things.
+        match item.kind {
+            hir::ItemKind::Enum(ref def, _) => {
+                for variant in def.variants {
+                    let variant_level = self.update_with_hir_id(variant.id, item_level);
+                    if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
+                        self.update_with_hir_id(ctor_hir_id, item_level);
+                    }
+                    for field in variant.data.fields() {
+                        self.update_with_hir_id(field.hir_id, variant_level);
+                    }
+                }
+            }
+            hir::ItemKind::Impl(ref impl_) => {
+                for impl_item_ref in impl_.items {
+                    if impl_.of_trait.is_some()
+                        || self.tcx.visibility(impl_item_ref.id.def_id) == ty::Visibility::Public
+                    {
+                        self.update(impl_item_ref.id.def_id, item_level);
+                    }
+                }
+            }
+            hir::ItemKind::Trait(.., trait_item_refs) => {
+                for trait_item_ref in trait_item_refs {
+                    self.update(trait_item_ref.id.def_id, item_level);
+                }
+            }
+            hir::ItemKind::Struct(ref def, _) | hir::ItemKind::Union(ref def, _) => {
+                if let Some(ctor_hir_id) = def.ctor_hir_id() {
+                    self.update_with_hir_id(ctor_hir_id, item_level);
+                }
+                for field in def.fields() {
+                    if field.vis.node.is_pub() {
+                        self.update_with_hir_id(field.hir_id, item_level);
+                    }
+                }
+            }
+            hir::ItemKind::Macro(ref macro_def) => {
+                self.update_reachability_from_macro(item.def_id, macro_def);
+            }
+            hir::ItemKind::ForeignMod { items, .. } => {
+                for foreign_item in items {
+                    if self.tcx.visibility(foreign_item.id.def_id) == ty::Visibility::Public {
+                        self.update(foreign_item.id.def_id, item_level);
+                    }
+                }
+            }
+
+            hir::ItemKind::OpaqueTy(..)
+            | hir::ItemKind::Use(..)
+            | hir::ItemKind::Static(..)
+            | hir::ItemKind::Const(..)
+            | hir::ItemKind::GlobalAsm(..)
+            | hir::ItemKind::TyAlias(..)
+            | hir::ItemKind::Mod(..)
+            | hir::ItemKind::TraitAlias(..)
+            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::ExternCrate(..) => {}
+        }
+
         // Mark all items in interfaces of reachable items as reachable.
         match item.kind {
             // The interface is empty.
-            hir::ItemKind::ExternCrate(..) => {}
+            hir::ItemKind::Macro(..) | hir::ItemKind::ExternCrate(..) => {}
             // All nested items are checked by `visit_item`.
             hir::ItemKind::Mod(..) => {}
+            // Handled in the access level of in rustc_resolve
             hir::ItemKind::Use(..) => {}
             // The interface is empty.
             hir::ItemKind::GlobalAsm(..) => {}
@@ -709,14 +770,6 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             // Visit everything except for private impl items.
             hir::ItemKind::Impl(ref impl_) => {
-                for impl_item_ref in impl_.items {
-                    if impl_.of_trait.is_some()
-                        || self.tcx.visibility(impl_item_ref.id.def_id) == ty::Visibility::Public
-                    {
-                        self.update(impl_item_ref.id.def_id, item_level);
-                    }
-                }
-
                 if item_level.is_some() {
                     self.reach(item.def_id, item_level).generics().predicates().ty().trait_ref();
 
@@ -731,21 +784,15 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     }
                 }
             }
+
             // Visit everything, but enum variants have their own levels.
             hir::ItemKind::Enum(ref def, _) => {
                 if item_level.is_some() {
                     self.reach(item.def_id, item_level).generics().predicates();
                 }
-
-                let enum_level = self.get(item.def_id);
                 for variant in def.variants {
-                    let variant_level = self.update_with_hir_id(variant.id, enum_level);
-
+                    let variant_level = self.get(self.tcx.hir().local_def_id(variant.id));
                     if variant_level.is_some() {
-                        if let Some(ctor_id) = variant.data.ctor_hir_id() {
-                            self.update_with_hir_id(ctor_id, variant_level);
-                        }
-
                         for field in variant.data.fields() {
                             self.reach(self.tcx.hir().local_def_id(field.hir_id), variant_level)
                                 .ty();
@@ -755,9 +802,6 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                         self.update(item.def_id, variant_level);
                     }
                 }
-            }
-            hir::ItemKind::Macro(ref macro_def) => {
-                self.update_reachability_from_macro(item.def_id, macro_def);
             }
             // Visit everything, but foreign items have their own levels.
             hir::ItemKind::ForeignMod { items, .. } => {
