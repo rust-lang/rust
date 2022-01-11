@@ -3,7 +3,7 @@
 use std::iter;
 
 use base_db::SourceDatabaseExt;
-use hir::{Local, Name, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo};
+use hir::{HasAttrs, Local, Name, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo};
 use ide_db::{
     active_parameter::ActiveParameter,
     base_db::{FilePosition, SourceDatabase},
@@ -85,6 +85,7 @@ pub(crate) enum ParamKind {
     Function,
     Closure,
 }
+
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
@@ -120,6 +121,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) lifetime_ctx: Option<LifetimeContext>,
     pub(super) pattern_ctx: Option<PatternContext>,
     pub(super) path_context: Option<PathCompletionContext>,
+
     pub(super) locals: Vec<(Name, Local)>,
 
     no_completion_required: bool,
@@ -308,6 +310,14 @@ impl<'a> CompletionContext<'a> {
         self.token.kind() == BANG && self.token.parent().map_or(false, |it| it.kind() == MACRO_CALL)
     }
 
+    /// Whether the given trait is an operator trait or not.
+    pub(crate) fn is_ops_trait(&self, trait_: hir::Trait) -> bool {
+        match trait_.attrs(self.db).lang() {
+            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang.as_str()),
+            None => false,
+        }
+    }
+
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items.
     pub(crate) fn process_all_names(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
         let _p = profile::span("CompletionContext::process_all_names");
@@ -388,6 +398,7 @@ impl<'a> CompletionContext<'a> {
                 locals.push((name, local));
             }
         });
+
         let mut ctx = CompletionContext {
             sema,
             scope,
@@ -889,6 +900,7 @@ fn pattern_context_for(pat: ast::Pat) -> PatternContext {
         });
     PatternContext { refutability, is_param, has_type_ascription }
 }
+
 fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
     syntax.covering_element(range).ancestors().find_map(N::cast)
 }
@@ -915,6 +927,37 @@ fn has_ref(token: &SyntaxToken) -> bool {
     token.kind() == T![&]
 }
 
+const OP_TRAIT_LANG_NAMES: &[&str] = &[
+    "add_assign",
+    "add",
+    "bitand_assign",
+    "bitand",
+    "bitor_assign",
+    "bitor",
+    "bitxor_assign",
+    "bitxor",
+    "deref_mut",
+    "deref",
+    "div_assign",
+    "div",
+    "fn_mut",
+    "fn_once",
+    "fn",
+    "index_mut",
+    "index",
+    "mul_assign",
+    "mul",
+    "neg",
+    "not",
+    "rem_assign",
+    "rem",
+    "shl_assign",
+    "shl",
+    "shr_assign",
+    "shr",
+    "sub",
+    "sub",
+];
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};

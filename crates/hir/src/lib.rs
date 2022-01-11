@@ -1610,6 +1610,12 @@ pub struct Trait {
 }
 
 impl Trait {
+    pub fn lang(db: &dyn HirDatabase, krate: Crate, name: &Name) -> Option<Trait> {
+        db.lang_item(krate.into(), name.to_smol_str())
+            .and_then(LangItemTarget::as_trait)
+            .map(Into::into)
+    }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         Module { id: self.id.lookup(db.upcast()).container }
     }

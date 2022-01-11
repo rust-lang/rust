@@ -255,6 +255,10 @@ impl Attrs {
         }
     }
 
+    pub fn lang(&self) -> Option<&SmolStr> {
+        self.by_key("lang").string_value()
+    }
+
     pub fn docs(&self) -> Option<Documentation> {
         let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_deref()? {
             AttrInput::Literal(s) => Some(s),
@@ -775,20 +779,20 @@ impl Attr {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct AttrQuery<'a> {
-    attrs: &'a Attrs,
+pub struct AttrQuery<'attr> {
+    attrs: &'attr Attrs,
     key: &'static str,
 }
 
-impl<'a> AttrQuery<'a> {
-    pub fn tt_values(self) -> impl Iterator<Item = &'a Subtree> {
+impl<'attr> AttrQuery<'attr> {
+    pub fn tt_values(self) -> impl Iterator<Item = &'attr Subtree> {
         self.attrs().filter_map(|attr| match attr.input.as_deref()? {
             AttrInput::TokenTree(it, _) => Some(it),
             _ => None,
         })
     }
 
-    pub fn string_value(self) -> Option<&'a SmolStr> {
+    pub fn string_value(self) -> Option<&'attr SmolStr> {
         self.attrs().find_map(|attr| match attr.input.as_deref()? {
             AttrInput::Literal(it) => Some(it),
             _ => None,
@@ -799,7 +803,7 @@ impl<'a> AttrQuery<'a> {
         self.attrs().next().is_some()
     }
 
-    pub fn attrs(self) -> impl Iterator<Item = &'a Attr> + Clone {
+    pub fn attrs(self) -> impl Iterator<Item = &'attr Attr> + Clone {
         let key = self.key;
         self.attrs
             .iter()
