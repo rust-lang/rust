@@ -73,19 +73,15 @@ fn gen_args(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> String {
         let params = args
             .args
             .iter()
-            .filter_map(|arg| match arg {
-                GenericArg::Lifetime(lt) => Some(lt.name.ident().to_string()),
+            .map(|arg| match arg {
+                GenericArg::Lifetime(lt) => lt.name.ident().to_string(),
                 GenericArg::Type(ty) => {
-                    let snippet =
-                        cx.tcx.sess.source_map().span_to_snippet(ty.span).unwrap_or_default();
-                    Some(snippet)
+                    cx.tcx.sess.source_map().span_to_snippet(ty.span).unwrap_or_default()
                 }
                 GenericArg::Const(c) => {
-                    let snippet =
-                        cx.tcx.sess.source_map().span_to_snippet(c.span).unwrap_or_default();
-                    Some(snippet)
+                    cx.tcx.sess.source_map().span_to_snippet(c.span).unwrap_or_default()
                 }
-                _ => None,
+                GenericArg::Infer(_) => String::from("_"),
             })
             .collect::<Vec<_>>();
 

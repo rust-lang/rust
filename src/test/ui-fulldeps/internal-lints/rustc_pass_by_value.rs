@@ -105,11 +105,13 @@ struct WithParameters<T, const N: usize, M = u32> {
 }
 
 impl<T> WithParameters<T, 1> {
-    fn test(
+    fn test<'a>(
         value: WithParameters<T, 1>,
-        reference: &WithParameters<T, 1>, //~ ERROR passing `WithParameters<T, 1>` by reference
+        reference: &'a WithParameters<T, 1>, //~ ERROR passing `WithParameters<T, 1>` by reference
         reference_with_m: &WithParameters<T, 1, u32>, //~ ERROR passing `WithParameters<T, 1, u32>` by reference
-    ) {
+    ) -> &'a WithParameters<T, 1> {
+        //~^ ERROR passing `WithParameters<T, 1>` by reference
+        reference as &WithParameters<_, 1> //~ ERROR passing `WithParameters<_, 1>` by reference
     }
 }
 

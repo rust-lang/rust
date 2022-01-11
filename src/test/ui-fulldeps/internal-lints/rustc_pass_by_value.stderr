@@ -103,8 +103,8 @@ LL |         reference: &CustomAlias,
 error: passing `WithParameters<T, 1>` by reference
   --> $DIR/rustc_pass_by_value.rs:110:20
    |
-LL |         reference: &WithParameters<T, 1>,
-   |                    ^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<T, 1>`
+LL |         reference: &'a WithParameters<T, 1>,
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<T, 1>`
 
 error: passing `WithParameters<T, 1, u32>` by reference
   --> $DIR/rustc_pass_by_value.rs:111:27
@@ -112,5 +112,17 @@ error: passing `WithParameters<T, 1, u32>` by reference
 LL |         reference_with_m: &WithParameters<T, 1, u32>,
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<T, 1, u32>`
 
-error: aborting due to 18 previous errors
+error: passing `WithParameters<T, 1>` by reference
+  --> $DIR/rustc_pass_by_value.rs:112:10
+   |
+LL |     ) -> &'a WithParameters<T, 1> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<T, 1>`
+
+error: passing `WithParameters<_, 1>` by reference
+  --> $DIR/rustc_pass_by_value.rs:114:22
+   |
+LL |         reference as &WithParameters<_, 1>
+   |                      ^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<_, 1>`
+
+error: aborting due to 20 previous errors
 
