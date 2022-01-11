@@ -148,9 +148,6 @@ a.result-keyword:focus { background-color: #afc6e4; }
 .content .fnname { color: #AD7C37; }
 .content span.keyword, .content a.keyword, .block a.current.keyword { color: #3873AD; }
 
-nav:not(.sidebar) {
-	border-bottom-color: #e0e0e0;
-}
 nav.main .current {
 	border-top-color: #000;
 	border-bottom-color: #000;
