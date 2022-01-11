@@ -16,13 +16,13 @@ use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 
 pub struct AsmArgs {
-    templates: Vec<P<ast::Expr>>,
-    operands: Vec<(ast::InlineAsmOperand, Span)>,
+    pub templates: Vec<P<ast::Expr>>,
+    pub operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxHashMap<Symbol, usize>,
     reg_args: FxHashSet<usize>,
-    clobber_abis: Vec<(Symbol, Span)>,
+    pub clobber_abis: Vec<(Symbol, Span)>,
     options: ast::InlineAsmOptions,
-    options_spans: Vec<Span>,
+    pub options_spans: Vec<Span>,
 }
 
 fn parse_args<'a>(
