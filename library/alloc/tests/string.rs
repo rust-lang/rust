@@ -489,7 +489,7 @@ fn test_from_iterator() {
     b.extend(u.chars());
     assert_eq!(s, b);
 
-    let c: String = vec![t, u].into_iter().collect();
+    let c: String = [t, u].into_iter().collect();
     assert_eq!(s, c);
 
     let mut d = t.to_string();

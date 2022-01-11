@@ -590,7 +590,7 @@ pub trait Iterator {
     /// #[derive(PartialEq, Debug)]
     /// struct NotClone(usize);
     ///
-    /// let v = vec![NotClone(0), NotClone(1), NotClone(2)];
+    /// let v = [NotClone(0), NotClone(1), NotClone(2)];
     /// let mut it = v.into_iter().intersperse_with(|| NotClone(99));
     ///
     /// assert_eq!(it.next(), Some(NotClone(0)));  // The first element from `v`.
@@ -1270,7 +1270,7 @@ pub trait Iterator {
     /// `take` will limit itself to the size of the underlying iterator:
     ///
     /// ```
-    /// let v = vec![1, 2];
+    /// let v = [1, 2];
     /// let mut iter = v.into_iter().take(5);
     /// assert_eq!(iter.next(), Some(1));
     /// assert_eq!(iter.next(), Some(2));
@@ -1604,7 +1604,7 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// let mut words = vec!["hello", "world", "of", "Rust"].into_iter();
+    /// let mut words = ["hello", "world", "of", "Rust"].into_iter();
     ///
     /// // Take the first two words.
     /// let hello_world: Vec<_> = words.by_ref().take(2).collect();
@@ -2700,7 +2700,7 @@ pub trait Iterator {
     /// incomparable. You can work around this by using [`Iterator::reduce`]:
     /// ```
     /// assert_eq!(
-    ///     vec![2.4, f32::NAN, 1.3]
+    ///     [2.4, f32::NAN, 1.3]
     ///         .into_iter()
     ///         .reduce(f32::max)
     ///         .unwrap(),
@@ -2738,7 +2738,7 @@ pub trait Iterator {
     /// incomparable. You can work around this by using [`Iterator::reduce`]:
     /// ```
     /// assert_eq!(
-    ///     vec![2.4, f32::NAN, 1.3]
+    ///     [2.4, f32::NAN, 1.3]
     ///         .into_iter()
     ///         .reduce(f32::min)
     ///         .unwrap(),

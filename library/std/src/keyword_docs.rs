@@ -2172,7 +2172,7 @@ mod use_keyword {}
 ///     i.next().unwrap_or_else(I::Item::default)
 /// }
 ///
-/// assert_eq!(first_or_default(vec![1, 2, 3].into_iter()), 1);
+/// assert_eq!(first_or_default([1, 2, 3].into_iter()), 1);
 /// assert_eq!(first_or_default(Vec::<i32>::new().into_iter()), 0);
 /// ```
 ///

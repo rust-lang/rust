@@ -449,10 +449,10 @@ fn zero_sized_values() {
 
 #[test]
 fn test_partition() {
-    assert_eq!(vec![].into_iter().partition(|x: &i32| *x < 3), (vec![], vec![]));
-    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 4), (vec![1, 2, 3], vec![]));
-    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 2), (vec![1], vec![2, 3]));
-    assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 0), (vec![], vec![1, 2, 3]));
+    assert_eq!([].into_iter().partition(|x: &i32| *x < 3), (vec![], vec![]));
+    assert_eq!([1, 2, 3].into_iter().partition(|x| *x < 4), (vec![1, 2, 3], vec![]));
+    assert_eq!([1, 2, 3].into_iter().partition(|x| *x < 2), (vec![1], vec![2, 3]));
+    assert_eq!([1, 2, 3].into_iter().partition(|x| *x < 0), (vec![], vec![1, 2, 3]));
 }
 
 #[test]
@@ -924,7 +924,7 @@ fn test_into_iter_debug() {
 
 #[test]
 fn test_into_iter_count() {
-    assert_eq!(vec![1, 2, 3].into_iter().count(), 3);
+    assert_eq!([1, 2, 3].into_iter().count(), 3);
 }
 
 #[test]
@@ -933,7 +933,7 @@ fn test_into_iter_clone() {
         let v: Vec<i32> = it.collect();
         assert_eq!(&v[..], slice);
     }
-    let mut it = vec![1, 2, 3].into_iter();
+    let mut it = [1, 2, 3].into_iter();
     iter_equal(it.clone(), &[1, 2, 3]);
     assert_eq!(it.next(), Some(1));
     let mut it = it.rev();
@@ -972,7 +972,7 @@ fn test_into_iter_leak() {
 
 #[test]
 fn test_into_iter_advance_by() {
-    let mut i = vec![1, 2, 3, 4, 5].into_iter();
+    let mut i = [1, 2, 3, 4, 5].into_iter();
     i.advance_by(0).unwrap();
     i.advance_back_by(0).unwrap();
     assert_eq!(i.as_slice(), [1, 2, 3, 4, 5]);
@@ -1799,7 +1799,7 @@ fn test_stable_pointers() {
     assert_eq!(*v0, 13);
     next_then_drop(v.splice(5..8, vec![1])); // replacement is smaller than original range
     assert_eq!(*v0, 13);
-    next_then_drop(v.splice(5..6, vec![1; 10].into_iter().filter(|_| true))); // lower bound not exact
+    next_then_drop(v.splice(5..6, [1; 10].into_iter().filter(|_| true))); // lower bound not exact
     assert_eq!(*v0, 13);
 
     // spare_capacity_mut

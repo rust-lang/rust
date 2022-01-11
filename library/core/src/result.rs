@@ -436,7 +436,7 @@
 //! # use std::str::FromStr;
 //! let mut results = vec![];
 //! let mut errs = vec![];
-//! let nums: Vec<_> = vec!["17", "not a number", "99", "-27", "768"]
+//! let nums: Vec<_> = ["17", "not a number", "99", "-27", "768"]
 //!    .into_iter()
 //!    .map(u8::from_str)
 //!    // Save clones of the raw `Result` values to inspect
@@ -462,10 +462,10 @@
 //! [impl-FromIterator]: Result#impl-FromIterator%3CResult%3CA%2C%20E%3E%3E
 //!
 //! ```
-//! let v = vec![Ok(2), Ok(4), Err("err!"), Ok(8)];
+//! let v = [Ok(2), Ok(4), Err("err!"), Ok(8)];
 //! let res: Result<Vec<_>, &str> = v.into_iter().collect();
 //! assert_eq!(res, Err("err!"));
-//! let v = vec![Ok(2), Ok(4), Ok(8)];
+//! let v = [Ok(2), Ok(4), Ok(8)];
 //! let res: Result<Vec<_>, &str> = v.into_iter().collect();
 //! assert_eq!(res, Ok(vec![2, 4, 8]));
 //! ```
@@ -479,10 +479,10 @@
 //! [impl-Sum]: Result#impl-Sum%3CResult%3CU%2C%20E%3E%3E
 //!
 //! ```
-//! let v = vec![Err("error!"), Ok(1), Ok(2), Ok(3), Err("foo")];
+//! let v = [Err("error!"), Ok(1), Ok(2), Ok(3), Err("foo")];
 //! let res: Result<i32, &str> = v.into_iter().sum();
 //! assert_eq!(res, Err("error!"));
-//! let v: Vec<Result<i32, &str>> = vec![Ok(1), Ok(2), Ok(21)];
+//! let v = [Ok(1), Ok(2), Ok(21)];
 //! let res: Result<i32, &str> = v.into_iter().product();
 //! assert_eq!(res, Ok(42));
 //! ```

@@ -728,7 +728,7 @@ fn test_range_large() {
 #[test]
 fn test_range_inclusive_max_value() {
     let max = usize::MAX;
-    let map: BTreeMap<_, _> = vec![(max, 0)].into_iter().collect();
+    let map: BTreeMap<_, _> = [(max, 0)].into_iter().collect();
 
     assert_eq!(map.range(max..=max).collect::<Vec<_>>(), &[(&max, &0)]);
 }
@@ -2128,7 +2128,7 @@ fn test_into_iter_drop_leak_height_1() {
 
 #[test]
 fn test_into_keys() {
-    let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
+    let vec = [(1, 'a'), (2, 'b'), (3, 'c')];
     let map: BTreeMap<_, _> = vec.into_iter().collect();
     let keys: Vec<_> = map.into_keys().collect();
 

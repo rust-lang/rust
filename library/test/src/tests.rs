@@ -493,7 +493,7 @@ pub fn exclude_should_panic_option() {
 #[test]
 pub fn exact_filter_match() {
     fn tests() -> Vec<TestDescAndFn> {
-        vec!["base", "base::test", "base::test1", "base::test2"]
+        ["base", "base::test", "base::test1", "base::test2"]
             .into_iter()
             .map(|name| TestDescAndFn {
                 desc: TestDesc {

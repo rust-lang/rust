@@ -550,8 +550,8 @@ impl<'a> Parser<'a> {
     /// a diagnostic to suggest removing them.
     ///
     /// ```ignore (diagnostic)
-    /// let _ = vec![1, 2, 3].into_iter().collect::<Vec<usize>>>>();
-    ///                                                        ^^ help: remove extra angle brackets
+    /// let _ = [1, 2, 3].into_iter().collect::<Vec<usize>>>>();
+    ///                                                    ^^ help: remove extra angle brackets
     /// ```
     ///
     /// If `true` is returned, then trailing brackets were recovered, tokens were consumed

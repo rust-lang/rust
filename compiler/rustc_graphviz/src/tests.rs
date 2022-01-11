@@ -56,7 +56,7 @@ impl NodeLabels<&'static str> {
         match self {
             UnlabelledNodes(len) => vec![None; len],
             AllNodesLabelled(lbls) => lbls.into_iter().map(Some).collect(),
-            SomeNodesLabelled(lbls) => lbls.into_iter().collect(),
+            SomeNodesLabelled(lbls) => lbls,
         }
     }
 

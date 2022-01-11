@@ -158,7 +158,7 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_, '_>)>
                 for ch in data.as_str().chars() {
                     escaped.extend(ch.escape_debug());
                 }
-                let stream = vec![
+                let stream = [
                     Ident(sym::doc, false),
                     Eq,
                     TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
@@ -221,7 +221,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
                 let a = tokenstream::TokenTree::token(minus, span);
                 let b = tokenstream::TokenTree::token(integer, span);
-                return vec![a, b].into_iter().collect();
+                return [a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal {
                 lit: token::Lit { kind: token::Float, symbol, suffix },
@@ -232,7 +232,7 @@ impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
                 let float = TokenKind::lit(token::Float, symbol, suffix);
                 let a = tokenstream::TokenTree::token(minus, span);
                 let b = tokenstream::TokenTree::token(float, span);
-                return vec![a, b].into_iter().collect();
+                return [a, b].into_iter().collect();
             }
             TokenTree::Literal(self::Literal { lit, span }) => {
                 return tokenstream::TokenTree::token(Literal(lit), span).into();
