@@ -185,11 +185,12 @@ use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, BinOpKind, EnumDef, Expr, Generics, PatKind};
 use rustc_ast::{GenericArg, GenericParamKind, VariantData};
 use rustc_attr as attr;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 
 use ty::{Bounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -668,20 +669,23 @@ impl<'a> TraitDef<'a> {
 
         if ty_params.peek().is_some() {
             let ty_param_names: Vec<Symbol> =
-                ty_params.map(|ty_param| ty_param.ident.name).collect();
+                ty_params.clone().map(|ty_param| ty_param.ident.name).collect();
+
+            let mut seen_simple_field_ty_params: FxHashSet<_> =
+                ty_params.map(|ty_param| smallvec![ty_param.ident]).collect();
 
             for field_ty in field_tys {
                 let field_ty_params = find_type_parameters(&field_ty, &ty_param_names, cx);
 
                 for field_ty_param in field_ty_params {
                     // if we have already handled this type, skip it
-                    if let ast::TyKind::Path(_, ref p) = field_ty_param.ty.kind {
-                        if p.segments.len() == 1
-                            && ty_param_names.contains(&p.segments[0].ident.name)
-                        {
+                    if let Some(field_ty_param_path) = field_ty_param.to_simple_path() {
+                        let changed = seen_simple_field_ty_params.insert(field_ty_param_path);
+                        if !changed {
                             continue;
-                        };
+                        }
                     }
+
                     let mut bounds: Vec<_> = self
                         .additional_bounds
                         .iter()
