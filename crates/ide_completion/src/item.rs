@@ -177,6 +177,7 @@ pub enum CompletionRelevanceTypeMatch {
 }
 
 impl CompletionRelevance {
+    const BASE_LINE: u32 = 1;
     /// Provides a relevance score. Higher values are more relevant.
     ///
     /// The absolute value of the relevance score is not meaningful, for
@@ -187,7 +188,7 @@ impl CompletionRelevance {
     /// See is_relevant if you need to make some judgement about score
     /// in an absolute sense.
     pub fn score(&self) -> u32 {
-        let mut score = 0;
+        let mut score = Self::BASE_LINE;
 
         if self.exact_name_match {
             score += 1;
@@ -213,7 +214,7 @@ impl CompletionRelevance {
     /// some threshold such that we think it is especially likely
     /// to be relevant.
     pub fn is_relevant(&self) -> bool {
-        self.score() > 0
+        self.score() > (Self::BASE_LINE + 1)
     }
 }
 
@@ -563,6 +564,7 @@ mod tests {
         // This test asserts that the relevance score for these items is ascending, and
         // that any items in the same vec have the same score.
         let expected_relevance_order = vec![
+            vec![CompletionRelevance { is_op_method: true, ..CompletionRelevance::default() }],
             vec![CompletionRelevance::default()],
             vec![
                 CompletionRelevance { exact_name_match: true, ..CompletionRelevance::default() },

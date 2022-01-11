@@ -400,6 +400,7 @@ mod tests {
                 (relevance.exact_name_match, "name"),
                 (relevance.is_local, "local"),
                 (relevance.exact_postfix_snippet_match, "snippet"),
+                (relevance.is_op_method, "op_method"),
             ]
             .into_iter()
             .filter_map(|(cond, desc)| if cond { Some(desc) } else { None })
@@ -1348,6 +1349,23 @@ fn main() {
                 fn foo(…) []
                 md core []
                 tt Sized []
+            "#]],
+        )
+    }
+
+    #[test]
+    fn op_method_relevances() {
+        check_relevance(
+            r#"
+#[lang = "sub"]
+trait Sub {
+    fn sub(self, other: Self) -> Self { self }
+}
+impl Sub for u32 {}
+fn foo(a: u32) { a.$0 }
+"#,
+            expect![[r#"
+                me sub(…) (as Sub) [op_method]
             "#]],
         )
     }

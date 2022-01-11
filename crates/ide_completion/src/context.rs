@@ -3,14 +3,13 @@
 use std::iter;
 
 use base_db::SourceDatabaseExt;
-use hir::{known, Local, Name, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo};
+use hir::{HasAttrs, Local, Name, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo};
 use ide_db::{
     active_parameter::ActiveParameter,
     base_db::{FilePosition, SourceDatabase},
     helpers::FamousDefs,
     RootDatabase,
 };
-use rustc_hash::FxHashSet;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, HasName, NameOrNameRef},
@@ -124,8 +123,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) path_context: Option<PathCompletionContext>,
 
     pub(super) locals: Vec<(Name, Local)>,
-    /// Operator traits defined in the project
-    pub(super) ops_traits: FxHashSet<hir::Trait>,
 
     no_completion_required: bool,
 }
@@ -315,7 +312,10 @@ impl<'a> CompletionContext<'a> {
 
     /// Whether the given trait is an operator trait or not.
     pub(crate) fn is_ops_trait(&self, trait_: hir::Trait) -> bool {
-        self.ops_traits.contains(&trait_)
+        match trait_.attrs(self.db).lang() {
+            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang.as_str()),
+            None => false,
+        }
     }
 
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items.
@@ -398,16 +398,6 @@ impl<'a> CompletionContext<'a> {
                 locals.push((name, local));
             }
         });
-        let mut ops_traits =
-            FxHashSet::with_capacity_and_hasher(OP_TRAIT_LANG_NAMES.len(), Default::default());
-        if let Some(krate) = krate {
-            let _p = profile::span("CompletionContext::new ops");
-            for trait_ in
-                OP_TRAIT_LANG_NAMES.iter().filter_map(|item| hir::Trait::lang(db, krate, item))
-            {
-                ops_traits.insert(trait_);
-            }
-        }
 
         let mut ctx = CompletionContext {
             sema,
@@ -434,7 +424,6 @@ impl<'a> CompletionContext<'a> {
             locals,
             incomplete_let: false,
             no_completion_required: false,
-            ops_traits,
         };
         ctx.expand_and_fill(
             original_file.syntax().clone(),
@@ -938,36 +927,36 @@ fn has_ref(token: &SyntaxToken) -> bool {
     token.kind() == T![&]
 }
 
-const OP_TRAIT_LANG_NAMES: &[hir::Name] = &[
-    known::add_assign,
-    known::add,
-    known::bitand_assign,
-    known::bitand,
-    known::bitor_assign,
-    known::bitor,
-    known::bitxor_assign,
-    known::bitxor,
-    known::deref_mut,
-    known::deref,
-    known::div_assign,
-    known::div,
-    known::fn_mut,
-    known::fn_once,
-    known::r#fn,
-    known::index_mut,
-    known::index,
-    known::mul_assign,
-    known::mul,
-    known::neg,
-    known::not,
-    known::rem_assign,
-    known::rem,
-    known::shl_assign,
-    known::shl,
-    known::shr_assign,
-    known::shr,
-    known::sub,
-    known::sub,
+const OP_TRAIT_LANG_NAMES: &[&str] = &[
+    "add_assign",
+    "add",
+    "bitand_assign",
+    "bitand",
+    "bitor_assign",
+    "bitor",
+    "bitxor_assign",
+    "bitxor",
+    "deref_mut",
+    "deref",
+    "div_assign",
+    "div",
+    "fn_mut",
+    "fn_once",
+    "fn",
+    "index_mut",
+    "index",
+    "mul_assign",
+    "mul",
+    "neg",
+    "not",
+    "rem_assign",
+    "rem",
+    "shl_assign",
+    "shl",
+    "shr_assign",
+    "shr",
+    "sub",
+    "sub",
 ];
 #[cfg(test)]
 mod tests {
