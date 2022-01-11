@@ -16,5 +16,11 @@ error: passing `Ty<'tcx>` by reference
 LL |     fn by_ref(self: &Ty<'tcx>) {}
    |                     ^^^^^^^^^ help: try passing by value: `Ty<'tcx>`
 
-error: aborting due to 2 previous errors
+error: passing `Foo` by reference
+  --> $DIR/rustc_pass_by_value_self.rs:37:17
+   |
+LL |     fn with_ref(&self) {}
+   |                 ^^^^^ help: try passing by value: `Foo`
+
+error: aborting due to 3 previous errors
 

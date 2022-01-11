@@ -30,4 +30,11 @@ impl<'tcx> TyS<'tcx> {
     fn by_ref(self: &Ty<'tcx>) {} //~ ERROR passing `Ty<'tcx>` by reference
 }
 
+#[rustc_pass_by_value]
+struct Foo;
+
+impl Foo {
+    fn with_ref(&self) {} //~ ERROR passing `Foo` by reference
+}
+
 fn main() {}

@@ -2,7 +2,6 @@ use crate::{LateContext, LateLintPass, LintContext};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::DefId;
 use rustc_hir::{GenericArg, PathSegment, QPath, TyKind};
 use rustc_middle::ty;
 use rustc_span::symbol::sym;
@@ -50,15 +49,17 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
 fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<String> {
     if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
         match path.res {
-            Res::Def(_, def_id) if has_pass_by_value_attr(cx, def_id) => {
+            Res::Def(_, def_id) if cx.tcx.has_attr(def_id, sym::rustc_pass_by_value) => {
                 let name = cx.tcx.item_name(def_id).to_ident_string();
                 return Some(format!("{}{}", name, gen_args(path.segments.last().unwrap())));
             }
             Res::SelfTy(None, Some((did, _))) => {
                 if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
-                    if has_pass_by_value_attr(cx, adt.did) {
+                    if cx.tcx.has_attr(adt.did, sym::rustc_pass_by_value) {
                         let name = cx.tcx.item_name(adt.did).to_ident_string();
-                        return Some(format!("{}<{}>", name, substs[0]));
+                        let param =
+                            substs.first().map(|s| format!("<{}>", s)).unwrap_or("".to_string());
+                        return Some(format!("{}{}", name, param));
                     }
                 }
             }
@@ -67,15 +68,6 @@ fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<Stri
     }
 
     None
-}
-
-fn has_pass_by_value_attr(cx: &LateContext<'_>, def_id: DefId) -> bool {
-    for attr in cx.tcx.get_attrs(def_id).iter() {
-        if attr.has_name(sym::rustc_pass_by_value) {
-            return true;
-        }
-    }
-    false
 }
 
 fn gen_args(segment: &PathSegment<'_>) -> String {
