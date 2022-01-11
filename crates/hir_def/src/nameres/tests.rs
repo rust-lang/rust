@@ -890,3 +890,38 @@ pub struct Struct;
         "#]],
     );
 }
+
+#[test]
+fn braced_supers_in_use_tree() {
+    cov_mark::check!(concat_super_mod_paths);
+    check(
+        r#"
+mod some_module {
+    pub fn unknown_func() {}
+}
+
+mod other_module {
+    mod some_submodule {
+        use { super::{ super::unknown_func, }, };
+    }
+}
+
+use some_module::unknown_func;
+        "#,
+        expect![[r#"
+            crate
+            other_module: t
+            some_module: t
+            unknown_func: v
+
+            crate::some_module
+            unknown_func: v
+
+            crate::other_module
+            some_submodule: t
+
+            crate::other_module::some_submodule
+            unknown_func: v
+        "#]],
+    )
+}
