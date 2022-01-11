@@ -52,7 +52,6 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
                     return false;
                 }
 
-                println!("Checking types");
                 return are_same_types(&current_arm_types, arm, ctx);
             }
             _ => false,
@@ -104,7 +103,6 @@ fn are_same_types(
     for other_arm_type_entry in arm_types {
         let current_arm_type = current_arm_types.get_key_value(&other_arm_type_entry.0);
         if current_arm_type.is_none() {
-            println!("No corresponding type found for {:?}", {other_arm_type_entry});
             return false;
         }
 
@@ -112,7 +110,6 @@ fn are_same_types(
         
         if let (Some(other_arm_type), Some(current_arm_type)) = (other_arm_type_entry.1, unwrapped_current_arm_type) {
             if other_arm_type.original != current_arm_type.original {
-                println!("Type {:?} is different from {:?}", &other_arm_type.original, &current_arm_type.original);
                 return false;
             }
         }
@@ -126,7 +123,6 @@ fn get_arm_types(context: &AssistContext, arm: &MatchArm) -> HashMap<String, Opt
     
     fn recurse(pat: &Option<Pat>, map: &mut HashMap<String, Option<TypeInfo>>, ctx: &AssistContext) {
         if let Some(local_pat) = pat {
-            println!("{:?}", pat);
             match pat {
                 Some(ast::Pat::TupleStructPat(tuple)) => {
                     for field in tuple.fields() {
@@ -142,7 +138,6 @@ fn get_arm_types(context: &AssistContext, arm: &MatchArm) -> HashMap<String, Opt
                 },
                 Some(ast::Pat::IdentPat(ident_pat)) => {
                     if let Some(name) = ident_pat.name() {
-                        println!("Found name: {:?}", name.text().to_string());
                         let pat_type = ctx.sema.type_of_pat(local_pat);
                         map.insert(name.text().to_string(), pat_type);
                     }
