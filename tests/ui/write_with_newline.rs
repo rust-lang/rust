@@ -10,50 +10,50 @@ fn main() {
     let mut v = Vec::new();
 
     // These should fail
-    write!(&mut v, "Hello\n");
-    write!(&mut v, "Hello {}\n", "world");
-    write!(&mut v, "Hello {} {}\n", "world", "#2");
-    write!(&mut v, "{}\n", 1265);
-    write!(&mut v, "\n");
+    write!(v, "Hello\n");
+    write!(v, "Hello {}\n", "world");
+    write!(v, "Hello {} {}\n", "world", "#2");
+    write!(v, "{}\n", 1265);
+    write!(v, "\n");
 
     // These should be fine
-    write!(&mut v, "");
-    write!(&mut v, "Hello");
-    writeln!(&mut v, "Hello");
-    writeln!(&mut v, "Hello\n");
-    writeln!(&mut v, "Hello {}\n", "world");
-    write!(&mut v, "Issue\n{}", 1265);
-    write!(&mut v, "{}", 1265);
-    write!(&mut v, "\n{}", 1275);
-    write!(&mut v, "\n\n");
-    write!(&mut v, "like eof\n\n");
-    write!(&mut v, "Hello {} {}\n\n", "world", "#2");
-    writeln!(&mut v, "\ndon't\nwarn\nfor\nmultiple\nnewlines\n"); // #3126
-    writeln!(&mut v, "\nbla\n\n"); // #3126
+    write!(v, "");
+    write!(v, "Hello");
+    writeln!(v, "Hello");
+    writeln!(v, "Hello\n");
+    writeln!(v, "Hello {}\n", "world");
+    write!(v, "Issue\n{}", 1265);
+    write!(v, "{}", 1265);
+    write!(v, "\n{}", 1275);
+    write!(v, "\n\n");
+    write!(v, "like eof\n\n");
+    write!(v, "Hello {} {}\n\n", "world", "#2");
+    writeln!(v, "\ndon't\nwarn\nfor\nmultiple\nnewlines\n"); // #3126
+    writeln!(v, "\nbla\n\n"); // #3126
 
     // Escaping
-    write!(&mut v, "\\n"); // #3514
-    write!(&mut v, "\\\n"); // should fail
-    write!(&mut v, "\\\\n");
+    write!(v, "\\n"); // #3514
+    write!(v, "\\\n"); // should fail
+    write!(v, "\\\\n");
 
     // Raw strings
-    write!(&mut v, r"\n"); // #3778
+    write!(v, r"\n"); // #3778
 
     // Literal newlines should also fail
     write!(
-        &mut v,
+        v,
         "
 "
     );
     write!(
-        &mut v,
+        v,
         r"
 "
     );
 
     // Don't warn on CRLF (#4208)
-    write!(&mut v, "\r\n");
-    write!(&mut v, "foo\r\n");
-    write!(&mut v, "\\r\n"); //~ ERROR
-    write!(&mut v, "foo\rbar\n");
+    write!(v, "\r\n");
+    write!(v, "foo\r\n");
+    write!(v, "\\r\n"); //~ ERROR
+    write!(v, "foo\rbar\n");
 }

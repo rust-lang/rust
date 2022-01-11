@@ -981,7 +981,7 @@ Released 2021-03-25
   [#6532](https://github.com/rust-lang/rust-clippy/pull/6532)
 * [`single_match`] Suggest `if` over `if let` when possible
   [#6574](https://github.com/rust-lang/rust-clippy/pull/6574)
-* [`ref_in_deref`] Use parentheses correctly in suggestion
+* `ref_in_deref` Use parentheses correctly in suggestion
   [#6609](https://github.com/rust-lang/rust-clippy/pull/6609)
 * [`stable_sort_primitive`] Clarify error message
   [#6611](https://github.com/rust-lang/rust-clippy/pull/6611)
