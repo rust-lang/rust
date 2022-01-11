@@ -189,6 +189,7 @@ use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
+use smallvec::SmallVec;
 
 use ty::{Bounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -335,6 +336,26 @@ pub fn combine_substructure(
 struct TypeParameter {
     bound_generic_params: Vec<ast::GenericParam>,
     ty: P<ast::Ty>,
+}
+
+impl TypeParameter {
+    /// Returns the `Ident`s that comprise the `Path` for this type parameter if it is unqualified
+    /// and has no bound generic params or segments with generic arguments.
+    fn to_simple_path(&self) -> Option<SmallVec<[Ident; 4]>> {
+        let TypeParameter { bound_generic_params, ty } = self;
+        if !bound_generic_params.is_empty() {
+            return None;
+        }
+
+        let ast::TyKind::Path(None, path) = &ty.kind else { return None };
+
+        if path.segments.iter().any(|seg| seg.args.is_some()) {
+            return None;
+        }
+
+        let path = path.segments.iter().map(|seg| seg.ident).collect();
+        Some(path)
+    }
 }
 
 /// This method helps to extract all the type parameters referenced from a
