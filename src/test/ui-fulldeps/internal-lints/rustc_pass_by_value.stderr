@@ -100,5 +100,17 @@ error: passing `CustomAlias<>` by reference
 LL |         reference: &CustomAlias,
    |                    ^^^^^^^^^^^^ help: try passing by value: `CustomAlias<>`
 
-error: aborting due to 16 previous errors
+error: passing `WithParameters<T, 1>` by reference
+  --> $DIR/rustc_pass_by_value.rs:110:20
+   |
+LL |         reference: &WithParameters<T, 1>,
+   |                    ^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<T, 1>`
+
+error: passing `WithParameters<T, 1, u32>` by reference
+  --> $DIR/rustc_pass_by_value.rs:111:27
+   |
+LL |         reference_with_m: &WithParameters<T, 1, u32>,
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try passing by value: `WithParameters<T, 1, u32>`
+
+error: aborting due to 18 previous errors
 

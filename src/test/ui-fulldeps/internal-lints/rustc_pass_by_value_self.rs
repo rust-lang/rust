@@ -37,4 +37,18 @@ impl Foo {
     fn with_ref(&self) {} //~ ERROR passing `Foo` by reference
 }
 
+#[rustc_pass_by_value]
+struct WithParameters<T, const N: usize, M = u32> {
+    slice: [T; N],
+    m: M,
+}
+
+impl<T> WithParameters<T, 1> {
+    fn with_ref(&self) {} //~ ERROR passing `WithParameters<T, 1_usize>` by reference
+}
+
+impl<T> WithParameters<T, 1, u8> {
+    fn with_ref(&self) {} //~ ERROR passing `WithParameters<T, 1_usize, u8>` by reference
+}
+
 fn main() {}

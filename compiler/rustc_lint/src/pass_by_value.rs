@@ -51,15 +51,13 @@ fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<Stri
         match path.res {
             Res::Def(_, def_id) if cx.tcx.has_attr(def_id, sym::rustc_pass_by_value) => {
                 let name = cx.tcx.item_name(def_id).to_ident_string();
-                return Some(format!("{}{}", name, gen_args(path.segments.last().unwrap())));
+                let path_segment = path.segments.last().unwrap();
+                return Some(format!("{}{}", name, gen_args(cx, path_segment)));
             }
             Res::SelfTy(None, Some((did, _))) => {
                 if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
                     if cx.tcx.has_attr(adt.did, sym::rustc_pass_by_value) {
-                        let name = cx.tcx.item_name(adt.did).to_ident_string();
-                        let param =
-                            substs.first().map(|s| format!("<{}>", s)).unwrap_or("".to_string());
-                        return Some(format!("{}{}", name, param));
+                        return Some(cx.tcx.def_path_str_with_substs(adt.did, substs));
                     }
                 }
             }
@@ -70,22 +68,29 @@ fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<Stri
     None
 }
 
-fn gen_args(segment: &PathSegment<'_>) -> String {
+fn gen_args(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> String {
     if let Some(args) = &segment.args {
-        let lifetimes = args
+        let params = args
             .args
             .iter()
-            .filter_map(|arg| {
-                if let GenericArg::Lifetime(lt) = arg {
-                    Some(lt.name.ident().to_string())
-                } else {
-                    None
+            .filter_map(|arg| match arg {
+                GenericArg::Lifetime(lt) => Some(lt.name.ident().to_string()),
+                GenericArg::Type(ty) => {
+                    let snippet =
+                        cx.tcx.sess.source_map().span_to_snippet(ty.span).unwrap_or_default();
+                    Some(snippet)
                 }
+                GenericArg::Const(c) => {
+                    let snippet =
+                        cx.tcx.sess.source_map().span_to_snippet(c.span).unwrap_or_default();
+                    Some(snippet)
+                }
+                _ => None,
             })
             .collect::<Vec<_>>();
 
-        if !lifetimes.is_empty() {
-            return format!("<{}>", lifetimes.join(", "));
+        if !params.is_empty() {
+            return format!("<{}>", params.join(", "));
         }
     }
 

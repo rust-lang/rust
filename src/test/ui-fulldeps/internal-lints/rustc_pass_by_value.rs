@@ -98,4 +98,19 @@ impl CustomStruct {
     }
 }
 
+#[rustc_pass_by_value]
+struct WithParameters<T, const N: usize, M = u32> {
+    slice: [T; N],
+    m: M,
+}
+
+impl<T> WithParameters<T, 1> {
+    fn test(
+        value: WithParameters<T, 1>,
+        reference: &WithParameters<T, 1>, //~ ERROR passing `WithParameters<T, 1>` by reference
+        reference_with_m: &WithParameters<T, 1, u32>, //~ ERROR passing `WithParameters<T, 1, u32>` by reference
+    ) {
+    }
+}
+
 fn main() {}
