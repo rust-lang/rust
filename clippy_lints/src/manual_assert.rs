@@ -35,7 +35,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ManualAssert => [MANUAL_ASSERT]);
 
-impl LateLintPass<'_> for ManualAssert {
+impl<'tcx> LateLintPass<'tcx> for ManualAssert {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if_chain! {
             if let ExprKind::If(cond, then, None) = expr.kind;

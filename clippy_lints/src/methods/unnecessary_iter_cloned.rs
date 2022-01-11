@@ -12,7 +12,7 @@ use rustc_span::{sym, Symbol};
 
 use super::UNNECESSARY_TO_OWNED;
 
-pub fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol, receiver: &'tcx Expr<'tcx>) -> bool {
+pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, receiver: &Expr<'_>) -> bool {
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
         if let Some(callee_def_id) = fn_def_id(cx, parent);
@@ -30,10 +30,10 @@ pub fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol
 /// include this code directly is so that it can be called from
 /// `unnecessary_into_owned::check_into_iter_call_arg`.
 pub fn check_for_loop_iter(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'tcx>,
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
     method_name: Symbol,
-    receiver: &'tcx Expr<'tcx>,
+    receiver: &Expr<'_>,
     cloned_before_iter: bool,
 ) -> bool {
     if_chain! {
@@ -101,7 +101,7 @@ pub fn check_for_loop_iter(
 
 /// The core logic of `check_for_loop_iter` above, this function wraps a use of
 /// `CloneOrCopyVisitor`.
-fn clone_or_copy_needed(
+fn clone_or_copy_needed<'tcx>(
     cx: &LateContext<'tcx>,
     pat: &Pat<'tcx>,
     body: &'tcx Expr<'tcx>,

@@ -13,7 +13,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::{symbol::sym, Symbol};
 
-pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     let (scrutinee_expr, iter_expr_struct, iter_expr, some_pat, loop_expr) = if_chain! {
         if let Some(higher::WhileLet { if_then, let_pat, let_expr }) = higher::WhileLet::hir(expr);
         // check for `Some(..)` pattern
@@ -191,7 +191,7 @@ fn is_expr_same_child_or_parent_field(cx: &LateContext<'_>, expr: &Expr<'_>, fie
 
 /// Strips off all field and path expressions. This will return true if a field or path has been
 /// skipped. Used to skip them after failing to check for equality.
-fn skip_fields_and_path(expr: &'tcx Expr<'_>) -> (Option<&'tcx Expr<'tcx>>, bool) {
+fn skip_fields_and_path<'tcx>(expr: &'tcx Expr<'_>) -> (Option<&'tcx Expr<'tcx>>, bool) {
     let mut e = expr;
     let e = loop {
         match e.kind {
@@ -204,13 +204,13 @@ fn skip_fields_and_path(expr: &'tcx Expr<'_>) -> (Option<&'tcx Expr<'tcx>>, bool
 }
 
 /// Checks if the given expression uses the iterator.
-fn uses_iter(cx: &LateContext<'tcx>, iter_expr: &IterExpr, container: &'tcx Expr<'_>) -> bool {
+fn uses_iter<'tcx>(cx: &LateContext<'tcx>, iter_expr: &IterExpr, container: &'tcx Expr<'_>) -> bool {
     struct V<'a, 'b, 'tcx> {
         cx: &'a LateContext<'tcx>,
         iter_expr: &'b IterExpr,
         uses_iter: bool,
     }
-    impl Visitor<'tcx> for V<'_, '_, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for V<'_, '_, 'tcx> {
         type Map = ErasedMap<'tcx>;
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
@@ -245,7 +245,7 @@ fn uses_iter(cx: &LateContext<'tcx>, iter_expr: &IterExpr, container: &'tcx Expr
 }
 
 #[allow(clippy::too_many_lines)]
-fn needs_mutable_borrow(cx: &LateContext<'tcx>, iter_expr: &IterExpr, loop_expr: &'tcx Expr<'_>) -> bool {
+fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &Expr<'_>) -> bool {
     struct AfterLoopVisitor<'a, 'b, 'tcx> {
         cx: &'a LateContext<'tcx>,
         iter_expr: &'b IterExpr,
@@ -253,7 +253,7 @@ fn needs_mutable_borrow(cx: &LateContext<'tcx>, iter_expr: &IterExpr, loop_expr:
         after_loop: bool,
         used_iter: bool,
     }
-    impl Visitor<'tcx> for AfterLoopVisitor<'_, '_, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for AfterLoopVisitor<'_, '_, 'tcx> {
         type Map = ErasedMap<'tcx>;
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
@@ -292,7 +292,7 @@ fn needs_mutable_borrow(cx: &LateContext<'tcx>, iter_expr: &IterExpr, loop_expr:
         found_local: bool,
         used_after: bool,
     }
-    impl Visitor<'tcx> for NestedLoopVisitor<'a, 'b, 'tcx> {
+    impl<'a, 'b, 'tcx> Visitor<'tcx> for NestedLoopVisitor<'a, 'b, 'tcx> {
         type Map = ErasedMap<'tcx>;
 
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

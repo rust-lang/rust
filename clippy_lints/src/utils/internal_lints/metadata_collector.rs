@@ -577,7 +577,7 @@ fn get_lint_version(cx: &LateContext<'_>, item: &Item<'_>) -> String {
 fn get_lint_group_and_level_or_lint(
     cx: &LateContext<'_>,
     lint_name: &str,
-    item: &'hir Item<'_>,
+    item: &Item<'_>,
 ) -> Option<(String, &'static str)> {
     let result = cx
         .lint_store
@@ -696,20 +696,20 @@ fn extract_emission_info<'hir>(
 }
 
 /// Resolves the possible lints that this expression could reference
-fn resolve_lints(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Vec<String> {
+fn resolve_lints<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Vec<String> {
     let mut resolver = LintResolver::new(cx);
     resolver.visit_expr(expr);
     resolver.lints
 }
 
 /// This function tries to resolve the linked applicability to the given expression.
-fn resolve_applicability(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<usize> {
+fn resolve_applicability<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<usize> {
     let mut resolver = ApplicabilityResolver::new(cx);
     resolver.visit_expr(expr);
     resolver.complete()
 }
 
-fn check_is_multi_part(cx: &LateContext<'hir>, closure_expr: &'hir hir::Expr<'hir>) -> bool {
+fn check_is_multi_part<'hir>(cx: &LateContext<'hir>, closure_expr: &'hir hir::Expr<'hir>) -> bool {
     if let ExprKind::Closure(_, _, body_id, _, _) = closure_expr.kind {
         let mut scanner = IsMultiSpanScanner::new(cx);
         intravisit::walk_body(&mut scanner, cx.tcx.hir().body(body_id));
@@ -824,7 +824,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for ApplicabilityResolver<'a, 'hir> {
 }
 
 /// This returns the parent local node if the expression is a reference one
-fn get_parent_local(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<&'hir hir::Local<'hir>> {
+fn get_parent_local<'hir>(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Option<&'hir hir::Local<'hir>> {
     if let ExprKind::Path(QPath::Resolved(_, path)) = expr.kind {
         if let hir::def::Res::Local(local_hir) = path.res {
             return get_parent_local_hir_id(cx, local_hir);
@@ -834,7 +834,7 @@ fn get_parent_local(cx: &LateContext<'hir>, expr: &'hir hir::Expr<'hir>) -> Opti
     None
 }
 
-fn get_parent_local_hir_id(cx: &LateContext<'hir>, hir_id: hir::HirId) -> Option<&'hir hir::Local<'hir>> {
+fn get_parent_local_hir_id<'hir>(cx: &LateContext<'hir>, hir_id: hir::HirId) -> Option<&'hir hir::Local<'hir>> {
     let map = cx.tcx.hir();
 
     match map.find(map.get_parent_node(hir_id)) {

@@ -46,7 +46,7 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(UnitHash => [UNIT_HASH]);
 
-impl LateLintPass<'tcx> for UnitHash {
+impl<'tcx> LateLintPass<'tcx> for UnitHash {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
             if let ExprKind::MethodCall(name_ident, _, args, _) = &expr.kind;

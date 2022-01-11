@@ -54,7 +54,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DefaultNumericFallback => [DEFAULT_NUMERIC_FALLBACK]);
 
-impl LateLintPass<'_> for DefaultNumericFallback {
+impl<'tcx> LateLintPass<'tcx> for DefaultNumericFallback {
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
         let mut visitor = NumericFallbackVisitor::new(cx);
         visitor.visit_body(body);

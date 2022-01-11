@@ -999,7 +999,7 @@ enum CommonPrefixSearcher<'a> {
     Path(&'a [PathSegment<'a>]),
     Mixed,
 }
-impl CommonPrefixSearcher<'a> {
+impl<'a> CommonPrefixSearcher<'a> {
     fn with_path(&mut self, path: &'a [PathSegment<'a>]) {
         match path {
             [path @ .., _] => self.with_prefix(path),
@@ -1804,11 +1804,15 @@ mod redundant_pattern_match {
     /// Checks if the drop order for a type matters. Some std types implement drop solely to
     /// deallocate memory. For these types, and composites containing them, changing the drop order
     /// won't result in any observable side effects.
-    fn type_needs_ordered_drop(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    fn type_needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         type_needs_ordered_drop_inner(cx, ty, &mut FxHashSet::default())
     }
 
-    fn type_needs_ordered_drop_inner(cx: &LateContext<'tcx>, ty: Ty<'tcx>, seen: &mut FxHashSet<Ty<'tcx>>) -> bool {
+    fn type_needs_ordered_drop_inner<'tcx>(
+        cx: &LateContext<'tcx>,
+        ty: Ty<'tcx>,
+        seen: &mut FxHashSet<Ty<'tcx>>,
+    ) -> bool {
         if !seen.insert(ty) {
             return false;
         }
@@ -1870,7 +1874,7 @@ mod redundant_pattern_match {
 
     // Checks if there are any temporaries created in the given expression for which drop order
     // matters.
-    fn temporaries_need_ordered_drop(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    fn temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
         struct V<'a, 'tcx> {
             cx: &'a LateContext<'tcx>,
             res: bool,

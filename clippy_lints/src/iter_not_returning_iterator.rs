@@ -39,7 +39,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(IterNotReturningIterator => [ITER_NOT_RETURNING_ITERATOR]);
 
-impl LateLintPass<'_> for IterNotReturningIterator {
+impl<'tcx> LateLintPass<'tcx> for IterNotReturningIterator {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         let name = item.ident.name.as_str();
         if matches!(name, "iter" | "iter_mut") {

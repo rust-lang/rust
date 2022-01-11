@@ -1,6 +1,5 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
-#![feature(in_band_lifetimes)]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
@@ -128,7 +127,7 @@ macro_rules! extract_msrv_attr {
         extract_msrv_attr!(@EarlyContext);
     };
     (@$context:ident$(, $call:tt)?) => {
-        fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'tcx>, attrs: &'tcx [rustc_ast::ast::Attribute]) {
+        fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
             use $crate::get_unique_inner_attr;
             match get_unique_inner_attr(cx.sess$($call)?, attrs, "msrv") {
                 Some(msrv_attr) => {
@@ -277,7 +276,11 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
 }
 
 /// Checks if the first type parameter is a lang item.
-pub fn is_ty_param_lang_item(cx: &LateContext<'_>, qpath: &QPath<'tcx>, item: LangItem) -> Option<&'tcx hir::Ty<'tcx>> {
+pub fn is_ty_param_lang_item<'tcx>(
+    cx: &LateContext<'_>,
+    qpath: &QPath<'tcx>,
+    item: LangItem,
+) -> Option<&'tcx hir::Ty<'tcx>> {
     let ty = get_qpath_generic_tys(qpath).next()?;
 
     if let TyKind::Path(qpath) = &ty.kind {
@@ -293,7 +296,7 @@ pub fn is_ty_param_lang_item(cx: &LateContext<'_>, qpath: &QPath<'tcx>, item: La
 }
 
 /// Checks if the first type parameter is a diagnostic item.
-pub fn is_ty_param_diagnostic_item(
+pub fn is_ty_param_diagnostic_item<'tcx>(
     cx: &LateContext<'_>,
     qpath: &QPath<'tcx>,
     item: Symbol,
@@ -370,7 +373,7 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
     }
 }
 
-pub fn get_qpath_generics(path: &QPath<'tcx>) -> Option<&'tcx GenericArgs<'tcx>> {
+pub fn get_qpath_generics<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx GenericArgs<'tcx>> {
     match path {
         QPath::Resolved(_, p) => p.segments.last().and_then(|s| s.args),
         QPath::TypeRelative(_, s) => s.args,
@@ -378,7 +381,7 @@ pub fn get_qpath_generics(path: &QPath<'tcx>) -> Option<&'tcx GenericArgs<'tcx>>
     }
 }
 
-pub fn get_qpath_generic_tys(path: &QPath<'tcx>) -> impl Iterator<Item = &'tcx hir::Ty<'tcx>> {
+pub fn get_qpath_generic_tys<'tcx>(path: &QPath<'tcx>) -> impl Iterator<Item = &'tcx hir::Ty<'tcx>> {
     get_qpath_generics(path)
         .map_or([].as_ref(), |a| a.args)
         .iter()
@@ -767,7 +770,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 ///
 /// Note that this check is not recursive, so passing the `if` expression will always return true
 /// even though sub-expressions might return false.
-pub fn can_move_expr_to_closure_no_visit(
+pub fn can_move_expr_to_closure_no_visit<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
     loop_ids: &[HirId],
@@ -842,7 +845,7 @@ impl std::ops::BitOrAssign for CaptureKind {
 /// Note as this will walk up to parent expressions until the capture can be determined it should
 /// only be used while making a closure somewhere a value is consumed. e.g. a block, match arm, or
 /// function argument (other than a receiver).
-pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind {
+pub fn capture_local_usage<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind {
     fn pat_capture_kind(cx: &LateContext<'_>, pat: &Pat<'_>) -> CaptureKind {
         let mut capture = CaptureKind::Ref(Mutability::Not);
         pat.each_binding_or_first(&mut |_, id, span, _| match cx
@@ -942,7 +945,7 @@ pub fn capture_local_usage(cx: &LateContext<'tcx>, e: &Expr<'_>) -> CaptureKind 
 
 /// Checks if the expression can be moved into a closure as is. This will return a list of captures
 /// if so, otherwise, `None`.
-pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<HirIdMap<CaptureKind>> {
+pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<HirIdMap<CaptureKind>> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
         // Stack of potential break targets contained in the expression.
@@ -955,7 +958,7 @@ pub fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) ->
         /// mutable reference.
         captures: HirIdMap<CaptureKind>,
     }
-    impl Visitor<'tcx> for V<'_, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         type Map = ErasedMap<'tcx>;
         fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
             NestedVisitorMap::None
@@ -1212,7 +1215,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
 }
 
 /// Gets the loop or closure enclosing the given expression, if any.
-pub fn get_enclosing_loop_or_closure(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+pub fn get_enclosing_loop_or_closure<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
         match node {
             Node::Expr(
@@ -1720,7 +1723,7 @@ pub fn is_async_fn(kind: FnKind<'_>) -> bool {
 }
 
 /// Peels away all the compiler generated code surrounding the body of an async function,
-pub fn get_async_fn_body(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
+pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Call(
         _,
         &[
@@ -1824,7 +1827,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
 }
 
 /// Gets the node where an expression is either used, or it's type is unified with another branch.
-pub fn get_expr_use_or_unification_node(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<Node<'tcx>> {
+pub fn get_expr_use_or_unification_node<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<Node<'tcx>> {
     let mut child_id = expr.hir_id;
     let mut iter = tcx.hir().parent_iter(child_id);
     loop {
@@ -2030,8 +2033,8 @@ where
 
 /// Peels off all references on the pattern. Returns the underlying pattern and the number of
 /// references removed.
-pub fn peel_hir_pat_refs(pat: &'a Pat<'a>) -> (&'a Pat<'a>, usize) {
-    fn peel(pat: &'a Pat<'a>, count: usize) -> (&'a Pat<'a>, usize) {
+pub fn peel_hir_pat_refs<'a>(pat: &'a Pat<'a>) -> (&'a Pat<'a>, usize) {
+    fn peel<'a>(pat: &'a Pat<'a>, count: usize) -> (&'a Pat<'a>, usize) {
         if let PatKind::Ref(pat, _) = pat.kind {
             peel(pat, count + 1)
         } else {
@@ -2054,7 +2057,7 @@ pub fn peel_hir_expr_while<'tcx>(
 
 /// Peels off up to the given number of references on the expression. Returns the underlying
 /// expression and the number of references removed.
-pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
+pub fn peel_n_hir_expr_refs<'a>(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, usize) {
     let mut remaining = count;
     let e = peel_hir_expr_while(expr, |e| match e.kind {
         ExprKind::AddrOf(ast::BorrowKind::Ref, _, e) if remaining != 0 => {
@@ -2068,7 +2071,7 @@ pub fn peel_n_hir_expr_refs(expr: &'a Expr<'a>, count: usize) -> (&'a Expr<'a>, 
 
 /// Peels off all references on the expression. Returns the underlying expression and the number of
 /// references removed.
-pub fn peel_hir_expr_refs(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
+pub fn peel_hir_expr_refs<'a>(expr: &'a Expr<'a>) -> (&'a Expr<'a>, usize) {
     let mut count = 0;
     let e = peel_hir_expr_while(expr, |e| match e.kind {
         ExprKind::AddrOf(ast::BorrowKind::Ref, _, e) => {
@@ -2151,7 +2154,7 @@ impl<'hir> ItemLikeVisitor<'hir> for TestItemNamesVisitor<'hir> {
 
 static TEST_ITEM_NAMES_CACHE: SyncOnceCell<Mutex<FxHashMap<LocalDefId, Vec<Symbol>>>> = SyncOnceCell::new();
 
-fn with_test_item_names(tcx: TyCtxt<'tcx>, module: LocalDefId, f: impl Fn(&[Symbol]) -> bool) -> bool {
+fn with_test_item_names<'tcx>(tcx: TyCtxt<'tcx>, module: LocalDefId, f: impl Fn(&[Symbol]) -> bool) -> bool {
     let cache = TEST_ITEM_NAMES_CACHE.get_or_init(|| Mutex::new(FxHashMap::default()));
     let mut map: MutexGuard<'_, FxHashMap<LocalDefId, Vec<Symbol>>> = cache.lock().unwrap();
     match map.entry(module) {

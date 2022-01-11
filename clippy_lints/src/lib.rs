@@ -4,7 +4,6 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
-#![feature(in_band_lifetimes)]
 #![feature(iter_intersperse)]
 #![feature(let_else)]
 #![feature(once_cell)]

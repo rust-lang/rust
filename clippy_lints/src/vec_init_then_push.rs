@@ -77,7 +77,7 @@ impl VecPushSearcher {
     }
 }
 
-impl LateLintPass<'_> for VecInitThenPush {
+impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
     fn check_block(&mut self, _: &LateContext<'tcx>, _: &'tcx Block<'tcx>) {
         self.searcher = None;
     }

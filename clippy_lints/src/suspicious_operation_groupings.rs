@@ -355,7 +355,7 @@ struct BinaryOp<'exprs> {
     right: &'exprs Expr,
 }
 
-impl BinaryOp<'exprs> {
+impl<'exprs> BinaryOp<'exprs> {
     fn new(op: BinOpKind, span: Span, (left, right): (&'exprs Expr, &'exprs Expr)) -> Self {
         Self { op, span, left, right }
     }
@@ -419,7 +419,7 @@ fn chained_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
     }
 }
 
-fn chained_binops_helper(left_outer: &'expr Expr, right_outer: &'expr Expr) -> Option<Vec<BinaryOp<'expr>>> {
+fn chained_binops_helper<'expr>(left_outer: &'expr Expr, right_outer: &'expr Expr) -> Option<Vec<BinaryOp<'expr>>> {
     match (&left_outer.kind, &right_outer.kind) {
         (
             ExprKind::Paren(ref left_e) | ExprKind::Unary(_, ref left_e),

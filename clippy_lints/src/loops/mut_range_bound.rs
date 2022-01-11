@@ -147,7 +147,7 @@ impl BreakAfterExprVisitor {
     }
 }
 
-impl intravisit::Visitor<'tcx> for BreakAfterExprVisitor {
+impl<'tcx> intravisit::Visitor<'tcx> for BreakAfterExprVisitor {
     type Map = Map<'tcx>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

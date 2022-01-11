@@ -717,7 +717,7 @@ fn check_cast(cx: &LateContext<'_>, span: Span, e: &Expr<'_>, ty: &hir::Ty<'_>) 
     }
 }
 
-fn check_binary(
+fn check_binary<'a>(
     cx: &LateContext<'a>,
     expr: &Expr<'_>,
     cmp: &rustc_span::source_map::Spanned<rustc_hir::BinOpKind>,

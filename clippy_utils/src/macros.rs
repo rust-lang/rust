@@ -283,7 +283,7 @@ fn find_assert_within_debug_assert<'a>(
     found
 }
 
-fn is_assert_arg(cx: &LateContext<'_>, expr: &'a Expr<'a>, assert_expn: ExpnId) -> bool {
+fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> bool {
     if !expr.span.from_expansion() {
         return true;
     }
@@ -322,7 +322,7 @@ pub struct FormatArgsExpn<'tcx> {
     pub specs: Vec<&'tcx Expr<'tcx>>,
 }
 
-impl FormatArgsExpn<'tcx> {
+impl<'tcx> FormatArgsExpn<'tcx> {
     /// Parses an expanded `format_args!` or `format_args_nl!` invocation
     pub fn parse(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<Self> {
         macro_backtrace(expr.span).find(|macro_call| {

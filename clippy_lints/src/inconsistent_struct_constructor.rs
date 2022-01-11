@@ -63,7 +63,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(InconsistentStructConstructor => [INCONSISTENT_STRUCT_CONSTRUCTOR]);
 
-impl LateLintPass<'_> for InconsistentStructConstructor {
+impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();

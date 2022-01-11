@@ -37,7 +37,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
     }
 }
 
-fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -> String {
+fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'_>) -> String {
     fn strip_angle_brackets(s: &str) -> Option<&str> {
         s.strip_prefix('<')?.strip_suffix('>')
     }

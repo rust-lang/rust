@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, UintTy};
 
 use super::CHAR_LIT_AS_U8;
 
-pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Cast(e, _) = &expr.kind;
         if let ExprKind::Lit(l) = &e.kind;

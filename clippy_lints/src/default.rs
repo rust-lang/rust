@@ -77,7 +77,7 @@ pub struct Default {
 
 impl_lint_pass!(Default => [DEFAULT_TRAIT_ACCESS, FIELD_REASSIGN_WITH_DEFAULT]);
 
-impl LateLintPass<'_> for Default {
+impl<'tcx> LateLintPass<'tcx> for Default {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();
@@ -110,7 +110,7 @@ impl LateLintPass<'_> for Default {
     }
 
     #[allow(clippy::too_many_lines)]
-    fn check_block<'tcx>(&mut self, cx: &LateContext<'tcx>, block: &Block<'tcx>) {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &Block<'tcx>) {
         // start from the `let mut _ = _::default();` and look at all the following
         // statements, see if they re-assign the fields of the binding
         let stmts_head = match block.stmts {
