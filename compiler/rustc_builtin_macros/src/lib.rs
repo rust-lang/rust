@@ -6,6 +6,7 @@
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
+#![feature(let_else)]
 #![feature(nll)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
