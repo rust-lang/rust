@@ -34,6 +34,15 @@ use libc::c_char;
 use libc::dirfd;
 #[cfg(any(target_os = "linux", target_os = "emscripten"))]
 use libc::fstatat64;
+#[cfg(any(
+    target_os = "solaris",
+    target_os = "fuchsia",
+    target_os = "redox",
+    target_os = "illumos"
+))]
+use libc::readdir as readdir64;
+#[cfg(target_os = "linux")]
+use libc::readdir64;
 #[cfg(not(any(
     target_os = "linux",
     target_os = "emscripten",
@@ -60,9 +69,7 @@ use libc::{
     lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
 };
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "l4re"))]
-use libc::{
-    dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, readdir64_r, stat64,
-};
+use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
 pub use crate::sys_common::fs::{remove_dir_all, try_exists};
 
@@ -202,6 +209,7 @@ struct InnerReadDir {
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
     #[cfg(not(any(
+        target_os = "linux",
         target_os = "solaris",
         target_os = "illumos",
         target_os = "fuchsia",
@@ -223,6 +231,7 @@ pub struct DirEntry {
     // array to store the name, b) its lifetime between readdir
     // calls is not guaranteed.
     #[cfg(any(
+        target_os = "linux",
         target_os = "solaris",
         target_os = "illumos",
         target_os = "fuchsia",
@@ -449,6 +458,7 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     #[cfg(any(
+        target_os = "linux",
         target_os = "solaris",
         target_os = "fuchsia",
         target_os = "redox",
@@ -464,7 +474,7 @@ impl Iterator for ReadDir {
                 // is safe to use in threaded applications and it is generally preferred
                 // over the readdir_r(3C) function.
                 super::os::set_errno(0);
-                let entry_ptr = libc::readdir(self.inner.dirp.0);
+                let entry_ptr = readdir64(self.inner.dirp.0);
                 if entry_ptr.is_null() {
                     // null can mean either the end is reached or an error occurred.
                     // So we had to clear errno beforehand to check for an error now.
@@ -492,6 +502,7 @@ impl Iterator for ReadDir {
     }
 
     #[cfg(not(any(
+        target_os = "linux",
         target_os = "solaris",
         target_os = "fuchsia",
         target_os = "redox",
@@ -647,7 +658,6 @@ impl DirEntry {
     }
     #[cfg(any(
         target_os = "android",
-        target_os = "linux",
         target_os = "emscripten",
         target_os = "l4re",
         target_os = "haiku",
@@ -658,6 +668,7 @@ impl DirEntry {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes() }
     }
     #[cfg(any(
+        target_os = "linux",
         target_os = "solaris",
         target_os = "illumos",
         target_os = "fuchsia",
@@ -1068,6 +1079,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
             Ok(ReadDir {
                 inner: Arc::new(inner),
                 #[cfg(not(any(
+                    target_os = "linux",
                     target_os = "solaris",
                     target_os = "illumos",
                     target_os = "fuchsia",
