@@ -636,6 +636,10 @@ impl<'a> TraitDef<'a> {
             }
         }));
 
+        // If this type declaration has type parameters, look for any mention of types *derived* from
+        // those parameters in the declaration (e.g. `T::Item`). Those derived types need bounds as
+        // well.
+
         let mut ty_params = params
             .iter()
             .filter(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
