@@ -101,19 +101,18 @@ fn are_same_types(
 ) -> bool {
     let arm_types = get_arm_types(&ctx, &arm);
     for other_arm_type_entry in arm_types {
-        let current_arm_type = current_arm_types.get_key_value(&other_arm_type_entry.0);
-        if current_arm_type.is_none() {
-            return false;
-        }
-
-        let unwrapped_current_arm_type = current_arm_type.unwrap().1;
-
-        if let (Some(other_arm_type), Some(current_arm_type)) =
-            (other_arm_type_entry.1, unwrapped_current_arm_type)
-        {
-            if other_arm_type.original != current_arm_type.original {
-                return false;
+        let current_arm_type_kv = current_arm_types.get_key_value(&other_arm_type_entry.0);
+        if let Some(current_arm_type) = current_arm_type_kv {
+            if let (Some(other_arm_type), Some(current_arm_type)) =
+                (other_arm_type_entry.1, current_arm_type.1)
+            {
+                if other_arm_type.original != current_arm_type.original {
+                    return false;
+                }
             }
+        } else {
+            // No corresponding field found
+            return false;
         }
     }
 
