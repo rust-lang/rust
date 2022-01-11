@@ -401,4 +401,251 @@ fn func() {
 "#,
         );
     }
+
+    #[test]
+    fn merge_match_same_destructuring_different_types() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn func() {
+    let p = Point { x: 0, y: 7 };
+
+    match p {
+        Point { x, y: 0 } => $0"",
+        Point { x: 0, y } => "",
+        Point { x, y } => "",
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn merge_match_arms_range() {
+        check_assist(
+            merge_match_arms,
+            r#"
+let x = 'c';
+
+    match x {
+        'a'..='j' => $0"",
+        'c'..='z' => "",
+        _ => "other",
+    };
+"#,
+            r#"
+let x = 'c';
+
+    match x {
+        'a'..='j' | 'c'..='z' => "",
+        _ => "other",
+    };
+"#,
+        );
+    }
+
+    #[test]
+    fn merge_match_arms_enum_without_field() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+enum MyEnum {
+    NoField,
+    AField(u8)
+}
+
+fn func(x: MyEnum) {
+    match x {
+        MyEnum::NoField => $0"",
+        MyEnum::AField(x) => ""
+    };
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn merge_match_arms_enum_destructuring_different_types() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+enum MyEnum {
+    Move { x: i32, y: i32 },
+    Write(String),
+}
+
+fn func(x: MyEnum) {
+    match x {
+        MyEnum::Move { x, y } => $0"",
+        MyEnum::Write(text) => "",
+    };
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn merge_match_arms_enum_destructuring_same_types() {
+        check_assist(
+            merge_match_arms,
+            r#"
+enum MyEnum {
+    Move { x: i32, y: i32 },
+    Crawl { x: i32, y: i32 }
+}
+
+fn func(x: MyEnum) {
+    match x {
+        MyEnum::Move { x, y } => $0"",
+        MyEnum::Crawl { x, y } => "",
+    };
+}
+        "#,
+            r#"
+enum MyEnum {
+    Move { x: i32, y: i32 },
+    Crawl { x: i32, y: i32 }
+}
+
+fn func(x: MyEnum) {
+    match x {
+        MyEnum::Move { x, y } | MyEnum::Crawl { x, y } => "",
+    };
+}
+        "#,        
+        )
+    }
+
+    #[test]
+    fn merge_match_arms_enum_destructuring_same_types_different_name() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+enum MyEnum {
+    Move { x: i32, y: i32 },
+    Crawl { a: i32, b: i32 }
+}
+
+fn func(x: MyEnum) {
+    match x {
+        MyEnum::Move { x, y } => $0"",
+        MyEnum::Crawl { a, b } => "",
+    };
+}
+        "#       
+        )
+    }
+
+    #[test]
+    fn merge_match_arms_enum_nested_pattern_different_names() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+enum Color {
+    Rgb(i32, i32, i32),
+    Hsv(i32, i32, i32),
+}
+
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(Color),
+}
+
+fn main(msg: Message) {
+    match msg {
+        Message::ChangeColor(Color::Rgb(r, g, b)) => $0"",
+        Message::ChangeColor(Color::Hsv(h, s, v)) => "",
+        _ => "other"
+    };
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn merge_match_arms_enum_nested_pattern_same_names() {
+        check_assist(
+            merge_match_arms,
+            r#"
+enum Color {
+    Rgb(i32, i32, i32),
+    Hsv(i32, i32, i32),
+}
+
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(Color),
+}
+
+fn main(msg: Message) {
+    match msg {
+        Message::ChangeColor(Color::Rgb(a, b, c)) => $0"",
+        Message::ChangeColor(Color::Hsv(a, b, c)) => "",
+        _ => "other"
+    };
+}
+        "#,
+        r#"
+enum Color {
+    Rgb(i32, i32, i32),
+    Hsv(i32, i32, i32),
+}
+
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(Color),
+}
+
+fn main(msg: Message) {
+    match msg {
+        Message::ChangeColor(Color::Rgb(a, b, c)) | Message::ChangeColor(Color::Hsv(a, b, c)) => "",
+        _ => "other"
+    };
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn merge_match_arms_enum_destructuring_with_ignore() {
+        check_assist(
+            merge_match_arms,
+            r#"
+enum MyEnum {
+    Move { x: i32, a: i32 },
+    Crawl { x: i32, b: i32 }
+}
+
+fn func(x: MyEnum) {
+    match x {
+        MyEnum::Move { x, .. } => $0"",
+        MyEnum::Crawl { x, .. } => "",
+    };
+}
+        "#,
+            r#"
+enum MyEnum {
+    Move { x: i32, a: i32 },
+    Crawl { x: i32, b: i32 }
+}
+
+fn func(x: MyEnum) {
+    match x {
+        MyEnum::Move { x, .. } | MyEnum::Crawl { x, .. } => "",
+    };
+}
+        "#,        
+        )
+    }
 }
