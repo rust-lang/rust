@@ -411,7 +411,9 @@ You'll need to close and reopen all .rs and Cargo files, or to restart the IDE, 
 === Kate Text Editor
 
 Support for the language server protocol is built into Kate through the LSP plugin, which is included by default.
-It is preconfigured to use Rls for rust sources, but allows you to use rust-analyzer through a simple settings change.
+It is preconfigured to use rust-analyzer for Rust sources since Kate 21.12.
+
+Earlier versions allow you to use rust-analyzer through a simple settings change.
 In the LSP Client settings of Kate, copy the content of the third tab "default parameters" to the second tab "server configuration".
 Then in the configuration replace:
 [source,json]
