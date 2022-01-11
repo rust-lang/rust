@@ -9,6 +9,11 @@ note: the lint level is defined here
    |
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
+note: `Enum` has a derived impl for the trait `Clone`, but this is ignored during dead code analysis
+  --> $DIR/unused-variant.rs:4:6
+   |
+LL | enum Enum {
+   |      ^^^^
 
 error: aborting due to previous error
 

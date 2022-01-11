@@ -5,6 +5,11 @@ LL |     Void(Void),
    |     ^^^^^^^^^^
    |
    = note: `-W dead-code` implied by `-W unused`
+note: `Foo` has a derived impl for the trait `Debug`, but this is ignored during dead code analysis
+  --> $DIR/derive-uninhabited-enum-38885.rs:11:6
+   |
+LL | enum Foo {
+   |      ^^^
 
 warning: 1 warning emitted
 
