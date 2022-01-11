@@ -1364,7 +1364,23 @@ fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
         .map(|(field, _ty, doc, default)| {
             let name = format!("rust-analyzer.{}", field.replace("_", "."));
             let doc = doc_comment_to_string(*doc);
-            format!("[[{}]]{} (default: `{}`)::\n+\n--\n{}--\n", name, name, default, doc)
+            if default.contains('\n') {
+                format!(
+                    r#"[[{}]]{}::
++
+--
+Default:
+----
+{}
+----
+{}
+--
+"#,
+                    name, name, default, doc
+                )
+            } else {
+                format!("[[{}]]{} (default: `{}`)::\n+\n--\n{}--\n", name, name, default, doc)
+            }
         })
         .collect::<String>()
 }

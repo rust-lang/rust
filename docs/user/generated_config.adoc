@@ -146,7 +146,12 @@ Only applies when `#rust-analyzer.completion.addCallParenthesis#` is set.
 --
 Whether to add parenthesis when completing functions.
 --
-[[rust-analyzer.completion.snippets]]rust-analyzer.completion.snippets (default: `{
+[[rust-analyzer.completion.snippets]]rust-analyzer.completion.snippets::
++
+--
+Default:
+----
+{
             "Arc::new": {
                 "postfix": "arc",
                 "body": "Arc::new(${receiver})",
@@ -186,10 +191,10 @@ Whether to add parenthesis when completing functions.
                 "description": "Wrap the expression in an `Option::Some`",
                 "scope": "expr"
             }
-        }`)::
-+
---
+        }
+----
 Custom completion snippets.
+
 --
 [[rust-analyzer.completion.postfix.enable]]rust-analyzer.completion.postfix.enable (default: `true`)::
 +
