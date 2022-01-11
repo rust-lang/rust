@@ -7,6 +7,10 @@ fn assert_send<T: Send>(_: T) {}
 struct Client;
 
 impl Client {
+    fn zero(&self) -> usize {
+        0
+    }
+
     fn status(&self) -> i16 {
         200
     }
@@ -25,6 +29,10 @@ fn main() {
             _ => yield,
         }
         match (&*&x).status() {
+            _ => yield,
+        }
+        let a = [0];
+        match a[Client.zero()] {
             _ => yield,
         }
     };

@@ -244,14 +244,9 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
                         ops.push((nested_expr, OpTy::Deref));
                         nested_expr = subexpr;
                     }
-                    hir::ExprKind::Field(subexpr, _) => {
+                    hir::ExprKind::Field(subexpr, _) | hir::ExprKind::Index(subexpr, _) => {
                         ops.push((nested_expr, OpTy::Project));
                         nested_expr = subexpr;
-                    }
-                    hir::ExprKind::Index(subexpr, idxexpr) => {
-                        ops.push((nested_expr, OpTy::Project));
-                        nested_expr = subexpr;
-                        intravisit::walk_expr(self, idxexpr);
                     }
                     _ => {
                         drop(ops);
@@ -296,7 +291,9 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
                 | hir::ExprKind::Path(..) => self.probe(expr),
 
                 // We do not probe into other function bodies or blocks.
-                hir::ExprKind::Block(..)
+                hir::ExprKind::If(..)
+                | hir::ExprKind::Match(..)
+                | hir::ExprKind::Block(..)
                 | hir::ExprKind::Closure(..)
                 | hir::ExprKind::ConstBlock(..) => {}
                 _ => intravisit::walk_expr(self, expr),
