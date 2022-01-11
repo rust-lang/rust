@@ -206,7 +206,6 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(mut_key::MUTABLE_KEY_TYPE),
     LintId::of(mut_mutex_lock::MUT_MUTEX_LOCK),
     LintId::of(mut_reference::UNNECESSARY_MUT_PASSED),
-    LintId::of(mutex_atomic::MUTEX_ATOMIC),
     LintId::of(needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE),
     LintId::of(needless_bool::BOOL_COMPARISON),
     LintId::of(needless_bool::NEEDLESS_BOOL),
