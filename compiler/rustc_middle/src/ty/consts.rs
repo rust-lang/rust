@@ -36,6 +36,7 @@ impl<'tcx> Const<'tcx> {
         Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id))
     }
 
+    #[instrument(skip(tcx), level = "debug")]
     pub fn from_opt_const_arg_anon_const(
         tcx: TyCtxt<'tcx>,
         def: ty::WithOptConstParam<LocalDefId>,
@@ -53,6 +54,7 @@ impl<'tcx> Const<'tcx> {
         };
 
         let expr = &tcx.hir().body(body_id).value;
+        debug!(?expr);
 
         let ty = tcx.type_of(def.def_id_for_type_of());
 
@@ -69,11 +71,21 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
+    #[instrument(skip(tcx), level = "debug")]
     fn try_eval_lit_or_param(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Option<&'tcx Self> {
+        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+        let expr = match &expr.kind {
+            hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
+                block.expr.as_ref().unwrap()
+            }
+            _ => expr,
+        };
+
         let lit_input = match expr.kind {
             hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
             hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
@@ -94,15 +106,6 @@ impl<'tcx> Const<'tcx> {
                 tcx.sess.delay_span_bug(expr.span, "Const::from_anon_const: couldn't lit_to_const");
             }
         }
-
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        let expr = match &expr.kind {
-            hir::ExprKind::Block(block, _) if block.stmts.is_empty() && block.expr.is_some() => {
-                block.expr.as_ref().unwrap()
-            }
-            _ => expr,
-        };
 
         use hir::{def::DefKind::ConstParam, def::Res, ExprKind, Path, QPath};
         match expr.kind {
