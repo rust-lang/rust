@@ -41,6 +41,19 @@ struct Foo;
 }
 
 #[test]
+fn proc_macros_on_comment() {
+    check(
+        r#"
+//- proc_macros: identity
+/// $0
+#[proc_macros::identity]
+struct Foo;
+"#,
+        expect![[r#""#]],
+    )
+}
+
+#[test]
 fn proc_macros_qualified() {
     check(
         r#"

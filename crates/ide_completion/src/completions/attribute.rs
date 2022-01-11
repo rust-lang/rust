@@ -56,6 +56,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             _ => (),
         },
         (_, Some(_)) => (),
+        (_, None) if attribute.expr().is_some() => (),
         (_, None) => complete_new_attribute(acc, ctx, attribute),
     }
     Some(())
