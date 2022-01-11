@@ -648,4 +648,32 @@ fn func(x: MyEnum) {
         "#,        
         )
     }
+
+    #[test]
+    fn merge_match_arms_nested_with_conflicting_identifier() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+enum Color {
+    Rgb(i32, i32, i32),
+    Hsv(i32, i32, i32),
 }
+
+enum Message {
+    Move { x: i32, y: i32 },
+    ChangeColor(u8, Color),
+}
+
+fn main(msg: Message) {
+    match msg {
+        Message::ChangeColor(x, Color::Rgb(y, b, c)) => $0"",
+        Message::ChangeColor(y, Color::Hsv(x, b, c)) => "",
+        _ => "other"
+    };
+}
+        "#,        
+        )
+    }
+}
+
+
