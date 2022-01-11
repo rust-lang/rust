@@ -610,3 +610,7 @@ mod sealed {
     #[unstable(feature = "sealed", issue = "none")]
     pub trait Sealed {}
 }
+
+#[unstable(feature = "thread_local_const_init", issue = "91543")]
+#[allow(unused)]
+fn workaround_for_91543_as_racer_needs_this_feature_gate() {}
