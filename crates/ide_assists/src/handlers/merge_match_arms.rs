@@ -100,12 +100,9 @@ fn are_same_types(
     ctx: &AssistContext,
 ) -> bool {
     let arm_types = get_arm_types(&ctx, &arm);
-    for other_arm_type_entry in arm_types {
-        let current_arm_type_kv = current_arm_types.get_key_value(&other_arm_type_entry.0);
-        if let Some(current_arm_type) = current_arm_type_kv {
-            if let (Some(other_arm_type), Some(current_arm_type)) =
-                (other_arm_type_entry.1, current_arm_type.1)
-            {
+    for (other_arm_type_name, other_arm_type) in arm_types {
+        if let Some((_, Some(current_arm_type))) = current_arm_types.get_key_value(&other_arm_type_name) {
+            if let Some(other_arm_type) = other_arm_type {
                 if other_arm_type.original != current_arm_type.original {
                     return false;
                 }
