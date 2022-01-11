@@ -48,7 +48,9 @@ cd musl-cross-make
 git checkout a54eb56f33f255dfca60be045f12a5cfaf5a72a9
 
 # Fix the cfi detection script in musl's configure so cfi is generated
-# when debug info is asked for.
+# when debug info is asked for. This patch is derived from
+# https://git.musl-libc.org/cgit/musl/commit/?id=c4d4028dde90562f631edf559fbc42d8ec1b29de.
+# When we upgrade to a version that includes this commit, we can remove the patch.
 mkdir patches/musl-1.1.24
 cp ../musl-patch-configure.diff patches/musl-1.1.24/0001-fix-cfi-detection.diff
 
