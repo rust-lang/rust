@@ -10,5 +10,29 @@ error: higher-ranked subtype error
 LL |         |x| x
    |         ^^^^^
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/issue-57611-trait-alias.rs:17:16
+   |
+LL |     type Bar = impl Baz<Self, Self>;
+   |                ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected type `for<'r> Fn<(&'r X,)>`
+              found type `Fn<(&'static X,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-57611-trait-alias.rs:21:9
+   |
+LL |         |x| x
+   |         ^^^^^
 
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-57611-trait-alias.rs:17:16
+   |
+LL |     type Bar = impl Baz<Self, Self>;
+   |                ^^^^^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'static X) -> &'static X` must implement `FnOnce<(&'0 X,)>`, for any lifetime `'0`...
+   = note: ...but it actually implements `FnOnce<(&'static X,)>`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
