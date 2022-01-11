@@ -55,7 +55,7 @@ pub union Union {
 
 // @has 'toggle_item_contents/struct.PrivStruct.html'
 // @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 0
-// @has - '//div[@class="docblock item-decl"]' 'fields omitted'
+// @has - '//div[@class="docblock item-decl"]' '/* private fields */'
 pub struct PrivStruct {
     a: usize,
     b: usize,
