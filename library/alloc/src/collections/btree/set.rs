@@ -27,8 +27,8 @@ use super::Recover;
 /// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
 /// behavior.
 ///
-/// Entries in a `BTreeSet` are stored in ascending order according to the [`Ord`] implementation on the key.
-/// Thus, iteration methods are guaranteed to produce iterators that yield items in that order.
+/// Iterators returned by [`BTreeSet::iter`] yield their items in order,
+/// and take worst-case logarithmic and amortized constant time per item yielded.
 ///
 /// [`Ord`]: core::cmp::Ord
 /// [`Cell`]: core::cell::Cell

@@ -65,8 +65,8 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
 /// behavior.
 ///
-/// Entries in a `BTreeMap` are stored in ascending order according to the [`Ord`] implementation on the key.
-/// Thus, iteration methods are guaranteed to produce iterators that yield items in that order.
+/// Iterators yielded by functions such as [`BTreeMap::iter`], [`BTreeMap::values`], or [`BTreeMap::keys`]
+/// yield their items in order by key, and take worst-case logarithmic and amortized constant time per item yielded.
 ///
 /// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
 /// [`Cell`]: core::cell::Cell
