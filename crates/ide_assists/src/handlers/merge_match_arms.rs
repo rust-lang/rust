@@ -1,8 +1,8 @@
 use hir::TypeInfo;
-use std::{iter::successors, collections::HashMap};
+use std::{collections::HashMap, iter::successors};
 use syntax::{
     algo::neighbor,
-    ast::{self, AstNode, Pat, MatchArm, HasName},
+    ast::{self, AstNode, HasName, MatchArm, Pat},
     Direction,
 };
 
@@ -107,8 +107,10 @@ fn are_same_types(
         }
 
         let unwrapped_current_arm_type = current_arm_type.unwrap().1;
-        
-        if let (Some(other_arm_type), Some(current_arm_type)) = (other_arm_type_entry.1, unwrapped_current_arm_type) {
+
+        if let (Some(other_arm_type), Some(current_arm_type)) =
+            (other_arm_type_entry.1, unwrapped_current_arm_type)
+        {
             if other_arm_type.original != current_arm_type.original {
                 return false;
             }
@@ -120,28 +122,32 @@ fn are_same_types(
 
 fn get_arm_types(context: &AssistContext, arm: &MatchArm) -> HashMap<String, Option<TypeInfo>> {
     let mut mapping: HashMap<String, Option<TypeInfo>> = HashMap::new();
-    
-    fn recurse(pat: &Option<Pat>, map: &mut HashMap<String, Option<TypeInfo>>, ctx: &AssistContext) {
+
+    fn recurse(
+        pat: &Option<Pat>,
+        map: &mut HashMap<String, Option<TypeInfo>>,
+        ctx: &AssistContext,
+    ) {
         if let Some(local_pat) = pat {
             match pat {
                 Some(ast::Pat::TupleStructPat(tuple)) => {
                     for field in tuple.fields() {
                         recurse(&Some(field), map, ctx);
                     }
-                },
+                }
                 Some(ast::Pat::RecordPat(record)) => {
                     if let Some(field_list) = record.record_pat_field_list() {
                         for field in field_list.fields() {
                             recurse(&field.pat(), map, ctx);
                         }
                     }
-                },
+                }
                 Some(ast::Pat::IdentPat(ident_pat)) => {
                     if let Some(name) = ident_pat.name() {
                         let pat_type = ctx.sema.type_of_pat(local_pat);
                         map.insert(name.text().to_string(), pat_type);
                     }
-                },
+                }
                 _ => (),
             }
         }
@@ -552,7 +558,7 @@ fn func(x: MyEnum) {
         MyEnum::Move { x, y } | MyEnum::Crawl { x, y } => "",
     };
 }
-        "#,        
+        "#,
         )
     }
 
@@ -572,7 +578,7 @@ fn func(x: MyEnum) {
         MyEnum::Crawl { a, b } => "",
     };
 }
-        "#       
+        "#,
         )
     }
 
@@ -629,7 +635,7 @@ fn main(msg: Message) {
     };
 }
         "#,
-        r#"
+            r#"
 enum Color {
     Rgb(i32, i32, i32),
     Hsv(i32, i32, i32),
@@ -680,7 +686,7 @@ fn func(x: MyEnum) {
         MyEnum::Move { x, .. } | MyEnum::Crawl { x, .. } => "",
     };
 }
-        "#,        
+        "#,
         )
     }
 
@@ -706,7 +712,7 @@ fn main(msg: Message) {
         _ => "other"
     };
 }
-        "#,        
+        "#,
         )
     }
 }
