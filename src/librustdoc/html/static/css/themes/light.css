@@ -43,7 +43,7 @@ pre, .rustdoc.source .example-wrap {
 	scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
 }
 
-.rust-logo > img {
+.rust-logo {
 	/* No need for a border in here! */
 }
 
