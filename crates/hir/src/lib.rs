@@ -41,7 +41,7 @@ use hir_def::{
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     lang_item::LangItemTarget,
-    nameres,
+    nameres::{self, diagnostics::DefDiagnostic},
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     AttrDefId, ConstId, ConstParamId, EnumId, FunctionId, GenericDefId, HasModule, LifetimeParamId,
@@ -523,191 +523,7 @@ impl Module {
                 // FIXME: This is accidentally quadratic.
                 continue;
             }
-            match &diag.kind {
-                DefDiagnosticKind::UnresolvedModule { ast: declaration, candidate } => {
-                    let decl = declaration.to_node(db.upcast());
-                    acc.push(
-                        UnresolvedModule {
-                            decl: InFile::new(declaration.file_id, AstPtr::new(&decl)),
-                            candidate: candidate.clone(),
-                        }
-                        .into(),
-                    )
-                }
-                DefDiagnosticKind::UnresolvedExternCrate { ast } => {
-                    let item = ast.to_node(db.upcast());
-                    acc.push(
-                        UnresolvedExternCrate {
-                            decl: InFile::new(ast.file_id, AstPtr::new(&item)),
-                        }
-                        .into(),
-                    );
-                }
-
-                DefDiagnosticKind::UnresolvedImport { id, index } => {
-                    let file_id = id.file_id();
-                    let item_tree = id.item_tree(db.upcast());
-                    let import = &item_tree[id.value];
-
-                    let use_tree = import.use_tree_to_ast(db.upcast(), file_id, *index);
-                    acc.push(
-                        UnresolvedImport { decl: InFile::new(file_id, AstPtr::new(&use_tree)) }
-                            .into(),
-                    );
-                }
-
-                DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
-                    let item = ast.to_node(db.upcast());
-                    acc.push(
-                        InactiveCode {
-                            node: ast.with_value(AstPtr::new(&item).into()),
-                            cfg: cfg.clone(),
-                            opts: opts.clone(),
-                        }
-                        .into(),
-                    );
-                }
-
-                DefDiagnosticKind::UnresolvedProcMacro { ast } => {
-                    let mut precise_location = None;
-                    let (node, name) = match ast {
-                        MacroCallKind::FnLike { ast_id, .. } => {
-                            let node = ast_id.to_node(db.upcast());
-                            (ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))), None)
-                        }
-                        MacroCallKind::Derive { ast_id, derive_name, .. } => {
-                            let node = ast_id.to_node(db.upcast());
-
-                            // Compute the precise location of the macro name's token in the derive
-                            // list.
-                            // FIXME: This does not handle paths to the macro, but neither does the
-                            // rest of r-a.
-                            let derive_attrs =
-                                node.attrs().filter_map(|attr| match attr.as_simple_call() {
-                                    Some((name, args)) if name == "derive" => Some(args),
-                                    _ => None,
-                                });
-                            'outer: for attr in derive_attrs {
-                                let tokens =
-                                    attr.syntax().children_with_tokens().filter_map(|elem| {
-                                        match elem {
-                                            syntax::NodeOrToken::Node(_) => None,
-                                            syntax::NodeOrToken::Token(tok) => Some(tok),
-                                        }
-                                    });
-                                for token in tokens {
-                                    if token.kind() == SyntaxKind::IDENT
-                                        && token.text() == &**derive_name
-                                    {
-                                        precise_location = Some(token.text_range());
-                                        break 'outer;
-                                    }
-                                }
-                            }
-
-                            (
-                                ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
-                                Some(derive_name.clone()),
-                            )
-                        }
-                        MacroCallKind::Attr { ast_id, invoc_attr_index, attr_name, .. } => {
-                            let node = ast_id.to_node(db.upcast());
-                            let attr = node
-                                .doc_comments_and_attrs()
-                                .nth((*invoc_attr_index) as usize)
-                                .and_then(Either::right)
-                                .unwrap_or_else(|| {
-                                    panic!("cannot find attribute #{}", invoc_attr_index)
-                                });
-                            (
-                                ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
-                                Some(attr_name.clone()),
-                            )
-                        }
-                    };
-                    acc.push(
-                        UnresolvedProcMacro {
-                            node,
-                            precise_location,
-                            macro_name: name.map(Into::into),
-                        }
-                        .into(),
-                    );
-                }
-
-                DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
-                    let node = ast.to_node(db.upcast());
-                    acc.push(
-                        UnresolvedMacroCall {
-                            macro_call: InFile::new(ast.file_id, AstPtr::new(&node)),
-                            path: path.clone(),
-                        }
-                        .into(),
-                    );
-                }
-
-                DefDiagnosticKind::MacroError { ast, message } => {
-                    let node = match ast {
-                        MacroCallKind::FnLike { ast_id, .. } => {
-                            let node = ast_id.to_node(db.upcast());
-                            ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))
-                        }
-                        MacroCallKind::Derive { ast_id, .. } => {
-                            // FIXME: point to the attribute instead, this creates very large diagnostics
-                            let node = ast_id.to_node(db.upcast());
-                            ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))
-                        }
-                        MacroCallKind::Attr { ast_id, .. } => {
-                            // FIXME: point to the attribute instead, this creates very large diagnostics
-                            let node = ast_id.to_node(db.upcast());
-                            ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))
-                        }
-                    };
-                    acc.push(MacroError { node, message: message.clone() }.into());
-                }
-
-                DefDiagnosticKind::UnimplementedBuiltinMacro { ast } => {
-                    let node = ast.to_node(db.upcast());
-                    // Must have a name, otherwise we wouldn't emit it.
-                    let name = node.name().expect("unimplemented builtin macro with no name");
-                    acc.push(
-                        UnimplementedBuiltinMacro {
-                            node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&name))),
-                        }
-                        .into(),
-                    );
-                }
-                DefDiagnosticKind::InvalidDeriveTarget { ast, id } => {
-                    let node = ast.to_node(db.upcast());
-                    let derive = node.attrs().nth(*id as usize);
-                    match derive {
-                        Some(derive) => {
-                            acc.push(
-                                InvalidDeriveTarget {
-                                    node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&derive))),
-                                }
-                                .into(),
-                            );
-                        }
-                        None => stdx::never!("derive diagnostic on item without derive attribute"),
-                    }
-                }
-                DefDiagnosticKind::MalformedDerive { ast, id } => {
-                    let node = ast.to_node(db.upcast());
-                    let derive = node.attrs().nth(*id as usize);
-                    match derive {
-                        Some(derive) => {
-                            acc.push(
-                                MalformedDerive {
-                                    node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&derive))),
-                                }
-                                .into(),
-                            );
-                        }
-                        None => stdx::never!("derive diagnostic on item without derive attribute"),
-                    }
-                }
-            }
+            emit_def_diagnostic(db, acc, diag);
         }
         for decl in self.declarations(db) {
             match decl {
@@ -764,6 +580,180 @@ impl Module {
         prefix_kind: PrefixKind,
     ) -> Option<ModPath> {
         hir_def::find_path::find_path_prefixed(db, item.into().into(), self.into(), prefix_kind)
+    }
+}
+
+fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag: &DefDiagnostic) {
+    match &diag.kind {
+        DefDiagnosticKind::UnresolvedModule { ast: declaration, candidate } => {
+            let decl = declaration.to_node(db.upcast());
+            acc.push(
+                UnresolvedModule {
+                    decl: InFile::new(declaration.file_id, AstPtr::new(&decl)),
+                    candidate: candidate.clone(),
+                }
+                .into(),
+            )
+        }
+        DefDiagnosticKind::UnresolvedExternCrate { ast } => {
+            let item = ast.to_node(db.upcast());
+            acc.push(
+                UnresolvedExternCrate { decl: InFile::new(ast.file_id, AstPtr::new(&item)) }.into(),
+            );
+        }
+
+        DefDiagnosticKind::UnresolvedImport { id, index } => {
+            let file_id = id.file_id();
+            let item_tree = id.item_tree(db.upcast());
+            let import = &item_tree[id.value];
+
+            let use_tree = import.use_tree_to_ast(db.upcast(), file_id, *index);
+            acc.push(
+                UnresolvedImport { decl: InFile::new(file_id, AstPtr::new(&use_tree)) }.into(),
+            );
+        }
+
+        DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
+            let item = ast.to_node(db.upcast());
+            acc.push(
+                InactiveCode {
+                    node: ast.with_value(AstPtr::new(&item).into()),
+                    cfg: cfg.clone(),
+                    opts: opts.clone(),
+                }
+                .into(),
+            );
+        }
+
+        DefDiagnosticKind::UnresolvedProcMacro { ast } => {
+            let mut precise_location = None;
+            let (node, name) = match ast {
+                MacroCallKind::FnLike { ast_id, .. } => {
+                    let node = ast_id.to_node(db.upcast());
+                    (ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))), None)
+                }
+                MacroCallKind::Derive { ast_id, derive_name, .. } => {
+                    let node = ast_id.to_node(db.upcast());
+
+                    // Compute the precise location of the macro name's token in the derive
+                    // list.
+                    // FIXME: This does not handle paths to the macro, but neither does the
+                    // rest of r-a.
+                    let derive_attrs =
+                        node.attrs().filter_map(|attr| match attr.as_simple_call() {
+                            Some((name, args)) if name == "derive" => Some(args),
+                            _ => None,
+                        });
+                    'outer: for attr in derive_attrs {
+                        let tokens =
+                            attr.syntax().children_with_tokens().filter_map(|elem| match elem {
+                                syntax::NodeOrToken::Node(_) => None,
+                                syntax::NodeOrToken::Token(tok) => Some(tok),
+                            });
+                        for token in tokens {
+                            if token.kind() == SyntaxKind::IDENT && token.text() == &**derive_name {
+                                precise_location = Some(token.text_range());
+                                break 'outer;
+                            }
+                        }
+                    }
+
+                    (
+                        ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
+                        Some(derive_name.clone()),
+                    )
+                }
+                MacroCallKind::Attr { ast_id, invoc_attr_index, attr_name, .. } => {
+                    let node = ast_id.to_node(db.upcast());
+                    let attr = node
+                        .doc_comments_and_attrs()
+                        .nth((*invoc_attr_index) as usize)
+                        .and_then(Either::right)
+                        .unwrap_or_else(|| panic!("cannot find attribute #{}", invoc_attr_index));
+                    (
+                        ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
+                        Some(attr_name.clone()),
+                    )
+                }
+            };
+            acc.push(
+                UnresolvedProcMacro { node, precise_location, macro_name: name.map(Into::into) }
+                    .into(),
+            );
+        }
+
+        DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
+            let node = ast.to_node(db.upcast());
+            acc.push(
+                UnresolvedMacroCall {
+                    macro_call: InFile::new(ast.file_id, AstPtr::new(&node)),
+                    path: path.clone(),
+                }
+                .into(),
+            );
+        }
+
+        DefDiagnosticKind::MacroError { ast, message } => {
+            let node = match ast {
+                MacroCallKind::FnLike { ast_id, .. } => {
+                    let node = ast_id.to_node(db.upcast());
+                    ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))
+                }
+                MacroCallKind::Derive { ast_id, .. } => {
+                    // FIXME: point to the attribute instead, this creates very large diagnostics
+                    let node = ast_id.to_node(db.upcast());
+                    ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))
+                }
+                MacroCallKind::Attr { ast_id, .. } => {
+                    // FIXME: point to the attribute instead, this creates very large diagnostics
+                    let node = ast_id.to_node(db.upcast());
+                    ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node)))
+                }
+            };
+            acc.push(MacroError { node, message: message.clone() }.into());
+        }
+
+        DefDiagnosticKind::UnimplementedBuiltinMacro { ast } => {
+            let node = ast.to_node(db.upcast());
+            // Must have a name, otherwise we wouldn't emit it.
+            let name = node.name().expect("unimplemented builtin macro with no name");
+            acc.push(
+                UnimplementedBuiltinMacro {
+                    node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&name))),
+                }
+                .into(),
+            );
+        }
+        DefDiagnosticKind::InvalidDeriveTarget { ast, id } => {
+            let node = ast.to_node(db.upcast());
+            let derive = node.attrs().nth(*id as usize);
+            match derive {
+                Some(derive) => {
+                    acc.push(
+                        InvalidDeriveTarget {
+                            node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&derive))),
+                        }
+                        .into(),
+                    );
+                }
+                None => stdx::never!("derive diagnostic on item without derive attribute"),
+            }
+        }
+        DefDiagnosticKind::MalformedDerive { ast, id } => {
+            let node = ast.to_node(db.upcast());
+            let derive = node.attrs().nth(*id as usize);
+            match derive {
+                Some(derive) => {
+                    acc.push(
+                        MalformedDerive {
+                            node: ast.with_value(SyntaxNodePtr::from(AstPtr::new(&derive))),
+                        }
+                        .into(),
+                    );
+                }
+                None => stdx::never!("derive diagnostic on item without derive attribute"),
+            }
+        }
     }
 }
 
@@ -1107,7 +1097,14 @@ impl DefWithBody {
     pub fn diagnostics(self, db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>) {
         let krate = self.module(db).id.krate();
 
-        let source_map = db.body_with_source_map(self.into()).1;
+        let (body, source_map) = db.body_with_source_map(self.into());
+
+        for (_, def_map) in body.blocks(db.upcast()) {
+            for diag in def_map.diagnostics() {
+                emit_def_diagnostic(db, acc, diag);
+            }
+        }
+
         for diag in source_map.diagnostics() {
             match diag {
                 BodyDiagnostic::InactiveCode { node, cfg, opts } => acc.push(
