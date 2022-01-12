@@ -111,6 +111,12 @@ body {
 	font: 1rem/1.4 "Source Serif 4", NanumBarunGothic, serif;
 	margin: 0;
 	position: relative;
+	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
+	   `anywhere`: https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap */
+	overflow-wrap: break-word;
+	/* Then override it with `anywhere`, which is required to make non-Safari browsers break
+	   more aggressively when we want them to. */
+	overflow-wrap: anywhere;
 
 	-webkit-font-feature-settings: "kern", "liga";
 	-moz-font-feature-settings: "kern", "liga";
@@ -446,6 +452,7 @@ nav.sub {
 	text-align: center;
 	border-bottom: 1px solid;
 	overflow-wrap: break-word;
+	overflow-wrap: anywhere;
 	word-wrap: break-word; /* deprecated */
 	word-break: break-word; /* Chrome, non-standard */
 }
@@ -576,6 +583,7 @@ nav.sub {
 }
 
 .docblock-short {
+	overflow-wrap: break-word;
 	overflow-wrap: anywhere;
 }
 .docblock-short p {
@@ -641,6 +649,7 @@ nav.sub {
 	flex-grow: 1;
 	margin: 0px;
 	padding: 0px;
+	overflow-wrap: break-word;
 	overflow-wrap: anywhere;
 }
 
@@ -669,6 +678,7 @@ nav.sub {
 	margin: .5em 0;
 	width: calc(100% - 2px);
 	overflow-x: auto;
+	overflow-wrap: normal;
 	display: block;
 }
 
@@ -1495,6 +1505,7 @@ pre.rust {
 	padding: 4px 8px;
 	text-align: center;
 	background: rgba(0,0,0,0);
+	overflow-wrap: normal;
 }
 
 #theme-choices > button:not(:first-child) {
@@ -2099,7 +2110,12 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 
 	.docblock code {
+		overflow-wrap: break-word;
 		overflow-wrap: anywhere;
+	}
+
+	.docblock table code {
+		overflow-wrap: normal;
 	}
 
 	.sub-container {
