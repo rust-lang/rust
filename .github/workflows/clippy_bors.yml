@@ -115,7 +115,12 @@ jobs:
       run: cargo build --features deny-warnings,internal
 
     - name: Test
+      if: runner.os == 'Linux'
       run: cargo test --features deny-warnings,internal
+
+    - name: Test
+      if: runner.os != 'Linux'
+      run: cargo test --features deny-warnings,internal -- --skip dogfood
 
     - name: Test clippy_lints
       run: cargo test --features deny-warnings,internal
