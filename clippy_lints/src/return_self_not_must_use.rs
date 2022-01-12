@@ -66,7 +66,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ReturnSelfNotMustUse => [RETURN_SELF_NOT_MUST_USE]);
 
-fn check_method(cx: &LateContext<'tcx>, decl: &'tcx FnDecl<'tcx>, fn_def: LocalDefId, span: Span, hir_id: HirId) {
+fn check_method(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_def: LocalDefId, span: Span, hir_id: HirId) {
     if_chain! {
         // If it comes from an external macro, better ignore it.
         if !in_external_macro(cx.sess(), span);

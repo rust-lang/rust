@@ -50,13 +50,19 @@ impl<'tcx> LateLintPass<'tcx> for ErasingOp {
     }
 }
 
-fn different_types(tck: &TypeckResults<'tcx>, input: &'tcx Expr<'_>, output: &'tcx Expr<'_>) -> bool {
+fn different_types(tck: &TypeckResults<'_>, input: &Expr<'_>, output: &Expr<'_>) -> bool {
     let input_ty = tck.expr_ty(input).peel_refs();
     let output_ty = tck.expr_ty(output).peel_refs();
     !same_type_and_consts(input_ty, output_ty)
 }
 
-fn check(cx: &LateContext<'cx>, tck: &TypeckResults<'cx>, op: &Expr<'cx>, other: &Expr<'cx>, parent: &Expr<'cx>) {
+fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    tck: &TypeckResults<'tcx>,
+    op: &Expr<'tcx>,
+    other: &Expr<'tcx>,
+    parent: &Expr<'tcx>,
+) {
     if constant_simple(cx, tck, op) == Some(Constant::Int(0)) {
         if different_types(tck, other, parent) {
             return;

@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for TrailingEmptyArray {
     }
 }
 
-fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
+fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if_chain! {
         // First check if last field is an array
         if let ItemKind::Struct(data, _) = &item.kind;

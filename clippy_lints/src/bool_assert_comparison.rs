@@ -42,7 +42,7 @@ fn is_bool_lit(e: &Expr<'_>) -> bool {
     ) && !e.span.from_expansion()
 }
 
-fn is_impl_not_trait_with_bool_out(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
+fn is_impl_not_trait_with_bool_out(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(e);
 
     cx.tcx

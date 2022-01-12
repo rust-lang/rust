@@ -14,7 +14,7 @@ use super::EXPECT_FUN_CALL;
 
 /// Checks for the `EXPECT_FUN_CALL` lint.
 #[allow(clippy::too_many_lines)]
-pub(super) fn check(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &hir::Expr<'_>,
     method_span: Span,

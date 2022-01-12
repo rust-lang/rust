@@ -42,7 +42,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(RedundantSlicing => [REDUNDANT_SLICING]);
 
-impl LateLintPass<'_> for RedundantSlicing {
+impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;

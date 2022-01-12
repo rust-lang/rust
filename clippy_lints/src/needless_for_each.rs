@@ -48,7 +48,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessForEach => [NEEDLESS_FOR_EACH]);
 
-impl LateLintPass<'_> for NeedlessForEach {
+impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         let expr = match stmt.kind {
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr,
