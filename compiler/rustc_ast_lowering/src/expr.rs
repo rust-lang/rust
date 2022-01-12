@@ -1,3 +1,5 @@
+use crate::{FnDeclKind, ImplTraitPosition};
+
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
 use rustc_ast::attr;
@@ -53,7 +55,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ParamMode::Optional,
                         0,
                         ParenthesizedGenericArgs::Err,
-                        ImplTraitContext::disallowed(),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     ));
                     let args = self.lower_exprs(args);
                     hir::ExprKind::MethodCall(hir_seg, args, self.lower_span(span))
@@ -74,12 +76,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ExprKind::Cast(ref expr, ref ty) => {
                     let expr = self.lower_expr(expr);
-                    let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
+                    let ty =
+                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
                     hir::ExprKind::Cast(expr, ty)
                 }
                 ExprKind::Type(ref expr, ref ty) => {
                     let expr = self.lower_expr(expr);
-                    let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
+                    let ty =
+                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Type));
                     hir::ExprKind::Type(expr, ty)
                 }
                 ExprKind::AddrOf(k, m, ref ohs) => {
@@ -203,7 +207,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        ImplTraitContext::disallowed(),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     );
                     hir::ExprKind::Path(qpath)
                 }
@@ -239,7 +243,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             &se.qself,
                             &se.path,
                             ParamMode::Optional,
-                            ImplTraitContext::disallowed(),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         )),
                         self.arena
                             .alloc_from_iter(se.fields.iter().map(|x| self.lower_expr_field(x))),
@@ -538,7 +542,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
         let output = match ret_ty {
-            Some(ty) => hir::FnRetTy::Return(self.lower_ty(&ty, ImplTraitContext::disallowed())),
+            Some(ty) => hir::FnRetTy::Return(
+                self.lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::AsyncBlock)),
+            ),
             None => hir::FnRetTy::DefaultReturn(self.lower_span(span)),
         };
 
@@ -827,7 +833,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         // Lower outside new scope to preserve `is_in_loop_condition`.
-        let fn_decl = self.lower_fn_decl(decl, None, false, None);
+        let fn_decl = self.lower_fn_decl(decl, None, FnDeclKind::Closure, None);
 
         hir::ExprKind::Closure(
             capture_clause,
@@ -919,7 +925,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // We need to lower the declaration outside the new scope, because we
         // have to conserve the state of being inside a loop condition for the
         // closure argument types.
-        let fn_decl = self.lower_fn_decl(&outer_decl, None, false, None);
+        let fn_decl = self.lower_fn_decl(&outer_decl, None, FnDeclKind::Closure, None);
 
         hir::ExprKind::Closure(
             capture_clause,
@@ -1064,7 +1070,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         qself,
                         path,
                         ParamMode::Optional,
-                        ImplTraitContext::disallowed(),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     );
                     // Destructure like a tuple struct.
                     let tuple_struct_pat =
@@ -1089,7 +1095,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &se.qself,
                     &se.path,
                     ParamMode::Optional,
-                    ImplTraitContext::disallowed(),
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 );
                 let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {

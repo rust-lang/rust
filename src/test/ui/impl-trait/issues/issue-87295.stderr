@@ -1,8 +1,10 @@
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/issue-87295.rs:16:31
    |
 LL |     let _do_not_waste: Struct<impl Trait<Output = i32>> = Struct::new(());
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: found `impl Trait` in variable
 
 error: aborting due to previous error
 

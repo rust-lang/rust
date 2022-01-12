@@ -1,8 +1,10 @@
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/type-alias-impl-trait-fn-type.rs:6:20
    |
 LL | type Foo = fn() -> impl Send;
    |                    ^^^^^^^^^
+   |
+   = note: found `impl Trait` in `fn` pointer return
 
 error: aborting due to previous error
 

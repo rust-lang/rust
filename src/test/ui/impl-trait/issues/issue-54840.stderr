@@ -1,8 +1,10 @@
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/issue-54840.rs:5:13
    |
 LL |     let j: &impl Add = &i;
    |             ^^^^^^^^
+   |
+   = note: found `impl Trait` in variable
 
 error: aborting due to previous error
 

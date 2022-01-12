@@ -34,17 +34,21 @@ LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
    |                                  |         nested `impl Trait` here
    |                                  outer `impl Trait`
 
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/nested_impl_trait.rs:8:32
    |
 LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: found `impl Trait` in `fn` pointer return
 
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
   --> $DIR/nested_impl_trait.rs:25:42
    |
 LL | fn allowed_in_ret_type() -> impl Fn() -> impl Into<u32> {
    |                                          ^^^^^^^^^^^^^^
+   |
+   = note: found `impl Trait` in `Fn` trait return
 
 error: aborting due to 6 previous errors
 

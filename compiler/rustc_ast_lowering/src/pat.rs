@@ -1,3 +1,5 @@
+use crate::ImplTraitPosition;
+
 use super::{ImplTraitContext, LoweringContext, ParamMode};
 
 use rustc_ast::ptr::P;
@@ -33,7 +35,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
-                            ImplTraitContext::disallowed(),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         );
                         let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
                         break hir::PatKind::TupleStruct(qpath, pats, ddpos);
@@ -49,7 +51,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
-                            ImplTraitContext::disallowed(),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         );
                         break hir::PatKind::Path(qpath);
                     }
@@ -59,7 +61,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             qself,
                             path,
                             ParamMode::Optional,
-                            ImplTraitContext::disallowed(),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                         );
 
                         let fs = self.arena.alloc_from_iter(fields.iter().map(|f| hir::PatField {
