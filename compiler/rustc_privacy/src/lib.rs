@@ -135,11 +135,11 @@ where
                 ty.visit_with(self)
             }
             ty::PredicateKind::RegionOutlives(..) => ControlFlow::CONTINUE,
-            ty::PredicateKind::ConstEvaluatable(defs, substs)
+            ty::PredicateKind::ConstEvaluatable(uv)
                 if self.def_id_visitor.tcx().features().generic_const_exprs =>
             {
                 let tcx = self.def_id_visitor.tcx();
-                if let Ok(Some(ct)) = AbstractConst::new(tcx, defs, substs) {
+                if let Ok(Some(ct)) = AbstractConst::new(tcx, uv) {
                     self.visit_abstract_const_expr(tcx, ct)?;
                 }
                 ControlFlow::CONTINUE

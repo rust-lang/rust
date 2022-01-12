@@ -34,6 +34,12 @@ impl FlagComputation {
         result.flags
     }
 
+    pub fn for_unevaluated_const(uv: ty::Unevaluated<'_>) -> TypeFlags {
+        let mut result = FlagComputation::new();
+        result.add_unevaluated_const(uv);
+        result.flags
+    }
+
     fn add_flags(&mut self, flags: TypeFlags) {
         self.flags = self.flags | flags;
     }
@@ -246,8 +252,8 @@ impl FlagComputation {
             ty::PredicateKind::ClosureKind(_def_id, substs, _kind) => {
                 self.add_substs(substs);
             }
-            ty::PredicateKind::ConstEvaluatable(_def_id, substs) => {
-                self.add_substs(substs);
+            ty::PredicateKind::ConstEvaluatable(uv) => {
+                self.add_unevaluated_const(uv);
             }
             ty::PredicateKind::ConstEquate(expected, found) => {
                 self.add_const(expected);
@@ -304,7 +310,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_unevaluated_const(&mut self, ct: ty::Unevaluated<'_>) {
+    fn add_unevaluated_const<P>(&mut self, ct: ty::Unevaluated<'_, P>) {
         self.add_substs(ct.substs);
         self.add_flags(TypeFlags::HAS_CT_PROJECTION);
     }

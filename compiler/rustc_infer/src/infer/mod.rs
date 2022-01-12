@@ -668,13 +668,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// canonicalizing the consts.
     pub fn try_unify_abstract_consts(
         &self,
-        a: ty::Unevaluated<'tcx>,
-        b: ty::Unevaluated<'tcx>,
+        a: ty::Unevaluated<'tcx, ()>,
+        b: ty::Unevaluated<'tcx, ()>,
     ) -> bool {
-        let canonical = self.canonicalize_query(
-            ((a.def, a.substs), (b.def, b.substs)),
-            &mut OriginalQueryValues::default(),
-        );
+        let canonical = self.canonicalize_query((a, b), &mut OriginalQueryValues::default());
         debug!("canonical consts: {:?}", &canonical.value);
 
         self.tcx.try_unify_abstract_consts(canonical.value)

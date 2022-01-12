@@ -314,12 +314,11 @@ rustc_queries! {
     }
 
     query try_unify_abstract_consts(key: (
-        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
-        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)
+        ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>
     )) -> bool {
         desc {
             |tcx| "trying to unify the generic constants {} and {}",
-            tcx.def_path_str(key.0.0.did), tcx.def_path_str(key.1.0.did)
+            tcx.def_path_str(key.0.def.did), tcx.def_path_str(key.1.def.did)
         }
     }
 

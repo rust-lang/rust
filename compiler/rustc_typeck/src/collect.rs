@@ -2313,7 +2313,7 @@ fn const_evaluatable_predicates_of<'tcx>(
                 assert_eq!(uv.promoted, None);
                 let span = self.tcx.hir().span(c.hir_id);
                 self.preds.insert((
-                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv.def, uv.substs))
+                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv.shrink()))
                         .to_predicate(self.tcx),
                     span,
                 ));

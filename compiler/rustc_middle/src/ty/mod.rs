@@ -598,7 +598,7 @@ pub enum PredicateKind<'tcx> {
     Coerce(CoercePredicate<'tcx>),
 
     /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+    ConstEvaluatable(ty::Unevaluated<'tcx, ()>),
 
     /// Constants must be equal. The first component is the const that is expected.
     ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
