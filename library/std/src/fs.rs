@@ -356,9 +356,10 @@ impl File {
     /// open or create a file with specific options if `open()` or `create()`
     /// are not appropriate.
     ///
-    /// It is equivalent to `OpenOptions::new()` but allows you to write more
-    /// readable code. Instead of `OpenOptions::new().read(true).open("foo.txt")`
-    /// you can write `File::options().read(true).open("foo.txt")`. This
+    /// It is equivalent to `OpenOptions::new()`, but allows you to write more
+    /// readable code. Instead of
+    /// `OpenOptions::new().append(true).open("example.log")`,
+    /// you can write `File::options().append(true).open("example.log")`. This
     /// also avoids the need to import `OpenOptions`.
     ///
     /// See the [`OpenOptions::new`] function for more details.
@@ -369,7 +370,7 @@ impl File {
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let mut f = File::options().read(true).open("foo.txt")?;
+    ///     let mut f = File::options().append(true).open("example.log")?;
     ///     Ok(())
     /// }
     /// ```

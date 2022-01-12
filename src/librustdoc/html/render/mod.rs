@@ -1827,7 +1827,11 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
         ty = it.type_(),
         path = relpath
     );
-    write!(buffer, "<script defer src=\"{}sidebar-items.js\"></script>", relpath);
+    write!(
+        buffer,
+        "<script defer src=\"{}sidebar-items{}.js\"></script>",
+        relpath, cx.shared.resource_suffix
+    );
     // Closes sidebar-elems div.
     buffer.write_str("</div>");
 }
