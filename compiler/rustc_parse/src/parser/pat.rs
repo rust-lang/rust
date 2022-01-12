@@ -33,6 +33,13 @@ pub enum RecoverColon {
     No,
 }
 
+/// Whether or not to recover a `a, b` when parsing patterns as `(a, b)` or that *and* `a | b`.
+#[derive(PartialEq, Copy, Clone)]
+pub enum CommaRecoveryMode {
+    LikelyTuple,
+    EitherTupleOrPipe,
+}
+
 /// The result of `eat_or_separator`. We want to distinguish which case we are in to avoid
 /// emitting duplicate diagnostics.
 #[derive(Debug, Clone, Copy)]
@@ -68,8 +75,9 @@ impl<'a> Parser<'a> {
         expected: Expected,
         rc: RecoverComma,
         ra: RecoverColon,
+        rt: CommaRecoveryMode,
     ) -> PResult<'a, P<Pat>> {
-        self.parse_pat_allow_top_alt_inner(expected, rc, ra).map(|(pat, _)| pat)
+        self.parse_pat_allow_top_alt_inner(expected, rc, ra, rt).map(|(pat, _)| pat)
     }
 
     /// Returns the pattern and a bool indicating whether we recovered from a trailing vert (true =
@@ -79,6 +87,7 @@ impl<'a> Parser<'a> {
         expected: Expected,
         rc: RecoverComma,
         ra: RecoverColon,
+        rt: CommaRecoveryMode,
     ) -> PResult<'a, (P<Pat>, bool)> {
         // Keep track of whether we recovered from a trailing vert so that we can avoid duplicated
         // suggestions (which bothers rustfix).
@@ -92,7 +101,7 @@ impl<'a> Parser<'a> {
 
         // Parse the first pattern (`p_0`).
         let first_pat = self.parse_pat_no_top_alt(expected)?;
-        self.maybe_recover_unexpected_comma(first_pat.span, rc)?;
+        self.maybe_recover_unexpected_comma(first_pat.span, rc, rt)?;
 
         // If the next token is not a `|`,
         // this is not an or-pattern and we should exit here.
@@ -130,7 +139,7 @@ impl<'a> Parser<'a> {
                 err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
-            self.maybe_recover_unexpected_comma(pat.span, rc)?;
+            self.maybe_recover_unexpected_comma(pat.span, rc, rt)?;
             pats.push(pat);
         }
         let or_pattern_span = lo.to(self.prev_token.span);
@@ -155,8 +164,12 @@ impl<'a> Parser<'a> {
         // We use `parse_pat_allow_top_alt` regardless of whether we actually want top-level
         // or-patterns so that we can detect when a user tries to use it. This allows us to print a
         // better error message.
-        let (pat, trailing_vert) =
-            self.parse_pat_allow_top_alt_inner(expected, rc, RecoverColon::No)?;
+        let (pat, trailing_vert) = self.parse_pat_allow_top_alt_inner(
+            expected,
+            rc,
+            RecoverColon::No,
+            CommaRecoveryMode::LikelyTuple,
+        )?;
         let colon = self.eat(&token::Colon);
 
         if let PatKind::Or(pats) = &pat.kind {
@@ -315,7 +328,12 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::OpenDelim(token::Bracket)) {
             // Parse `[pat, pat,...]` as a slice pattern.
             let (pats, _) = self.parse_delim_comma_seq(token::Bracket, |p| {
-                p.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No)
+                p.parse_pat_allow_top_alt(
+                    None,
+                    RecoverComma::No,
+                    RecoverColon::No,
+                    CommaRecoveryMode::EitherTupleOrPipe,
+                )
             })?;
             PatKind::Slice(pats)
         } else if self.check(&token::DotDot) && !self.is_pat_range_end_start(1) {
@@ -529,7 +547,12 @@ impl<'a> Parser<'a> {
     /// Parse a tuple or parenthesis pattern.
     fn parse_pat_tuple_or_parens(&mut self) -> PResult<'a, PatKind> {
         let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| {
-            p.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No)
+            p.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::No,
+                RecoverColon::No,
+                CommaRecoveryMode::LikelyTuple,
+            )
         })?;
 
         // Here, `(pat,)` is a tuple pattern.
@@ -873,7 +896,12 @@ impl<'a> Parser<'a> {
     /// Parse tuple struct or tuple variant pattern (e.g. `Foo(...)` or `Foo::Bar(...)`).
     fn parse_pat_tuple_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
         let (fields, _) = self.parse_paren_comma_seq(|p| {
-            p.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No)
+            p.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::No,
+                RecoverColon::No,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            )
         })?;
         if qself.is_some() {
             self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
@@ -1033,7 +1061,12 @@ impl<'a> Parser<'a> {
             // Parsing a pattern of the form `fieldname: pat`.
             let fieldname = self.parse_field_name()?;
             self.bump();
-            let pat = self.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No)?;
+            let pat = self.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::No,
+                RecoverColon::No,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            )?;
             hi = pat.span;
             (pat, fieldname, false)
         } else {

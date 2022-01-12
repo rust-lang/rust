@@ -4,7 +4,7 @@ error: expected one of `.`, `?`, `{`, or an operator, found `;`
 LL |         match
    |         -----
    |         |
-   |         while parsing this match expression
+   |         while parsing this `match` expression
    |         help: try removing this `match`
 LL |         Some(4).unwrap_or(5)
    |                             - expected one of `.`, `?`, `{`, or an operator

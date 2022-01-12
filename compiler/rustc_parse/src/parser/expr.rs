@@ -1,4 +1,4 @@
-use super::pat::{RecoverColon, RecoverComma, PARAM_EXPECTED};
+use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions, TokenType,
@@ -1286,18 +1286,27 @@ impl<'a> Parser<'a> {
         } else if let Some(label) = self.eat_label() {
             self.parse_labeled_expr(label, attrs, true)
         } else if self.eat_keyword(kw::Loop) {
-            self.parse_loop_expr(None, self.prev_token.span, attrs)
+            let sp = self.prev_token.span;
+            self.parse_loop_expr(None, self.prev_token.span, attrs).map_err(|mut err| {
+                err.span_label(sp, "while parsing this `loop` expression");
+                err
+            })
         } else if self.eat_keyword(kw::Continue) {
             let kind = ExprKind::Continue(self.eat_label());
             Ok(self.mk_expr(lo.to(self.prev_token.span), kind, attrs))
         } else if self.eat_keyword(kw::Match) {
             let match_sp = self.prev_token.span;
             self.parse_match_expr(attrs).map_err(|mut err| {
-                err.span_label(match_sp, "while parsing this match expression");
+                err.span_label(match_sp, "while parsing this `match` expression");
                 err
             })
         } else if self.eat_keyword(kw::Unsafe) {
+            let sp = self.prev_token.span;
             self.parse_block_expr(None, lo, BlockCheckMode::Unsafe(ast::UserProvided), attrs)
+                .map_err(|mut err| {
+                    err.span_label(sp, "while parsing this `unsafe` expression");
+                    err
+                })
         } else if self.check_inline_const(0) {
             self.parse_const_block(lo.to(self.token.span), false)
         } else if self.is_do_catch_block() {
@@ -2160,7 +2169,12 @@ impl<'a> Parser<'a> {
     /// The `let` token has already been eaten.
     fn parse_let_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_token.span;
-        let pat = self.parse_pat_allow_top_alt(None, RecoverComma::Yes, RecoverColon::Yes)?;
+        let pat = self.parse_pat_allow_top_alt(
+            None,
+            RecoverComma::Yes,
+            RecoverColon::Yes,
+            CommaRecoveryMode::LikelyTuple,
+        )?;
         self.expect(&token::Eq)?;
         let expr = self.with_res(self.restrictions | Restrictions::NO_STRUCT_LITERAL, |this| {
             this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
@@ -2223,7 +2237,12 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        let pat = self.parse_pat_allow_top_alt(None, RecoverComma::Yes, RecoverColon::Yes)?;
+        let pat = self.parse_pat_allow_top_alt(
+            None,
+            RecoverComma::Yes,
+            RecoverColon::Yes,
+            CommaRecoveryMode::LikelyTuple,
+        )?;
         if !self.eat_keyword(kw::In) {
             self.error_missing_in_for_loop();
         }
@@ -2266,8 +2285,15 @@ impl<'a> Parser<'a> {
         lo: Span,
         mut attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
-        let cond = self.parse_cond_expr()?;
-        let (iattrs, body) = self.parse_inner_attrs_and_block()?;
+        let cond = self.parse_cond_expr().map_err(|mut err| {
+            err.span_label(lo, "while parsing the condition of this `while` expression");
+            err
+        })?;
+        let (iattrs, body) = self.parse_inner_attrs_and_block().map_err(|mut err| {
+            err.span_label(lo, "while parsing the body of this `while` expression");
+            err.span_label(cond.span, "this `while` condition successfully parsed");
+            err
+        })?;
         attrs.extend(iattrs);
         Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::While(cond, body, opt_label), attrs))
     }
@@ -2284,7 +2310,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::Loop(body, opt_label), attrs))
     }
 
-    fn eat_label(&mut self) -> Option<Label> {
+    crate fn eat_label(&mut self) -> Option<Label> {
         self.token.lifetime().map(|ident| {
             self.bump();
             Label { ident }
@@ -2305,7 +2331,12 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect, // speculative
                 );
             }
-            return Err(e);
+            if self.maybe_recover_unexpected_block_label() {
+                e.cancel();
+                self.bump();
+            } else {
+                return Err(e);
+            }
         }
         attrs.extend(self.parse_inner_attributes()?);
 
@@ -2441,7 +2472,12 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
-            let pat = this.parse_pat_allow_top_alt(None, RecoverComma::Yes, RecoverColon::Yes)?;
+            let pat = this.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            )?;
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
                 let cond = this.parse_expr()?;
