@@ -1197,9 +1197,11 @@ fn super_predicates_that_define_assoc_type(
 fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
     let item = tcx.hir().expect_item(def_id.expect_local());
 
-    let (is_auto, unsafety) = match item.kind {
-        hir::ItemKind::Trait(is_auto, unsafety, ..) => (is_auto == hir::IsAuto::Yes, unsafety),
-        hir::ItemKind::TraitAlias(..) => (false, hir::Unsafety::Normal),
+    let (is_auto, unsafety, items) = match item.kind {
+        hir::ItemKind::Trait(is_auto, unsafety, .., items) => {
+            (is_auto == hir::IsAuto::Yes, unsafety, items)
+        }
+        hir::ItemKind::TraitAlias(..) => (false, hir::Unsafety::Normal, &[][..]),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -1226,6 +1228,82 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
         ty::trait_def::TraitSpecializationKind::None
     };
     let def_path_hash = tcx.def_path_hash(def_id);
+
+    let must_implement_one_of = tcx
+        .get_attrs(def_id)
+        .iter()
+        .find(|attr| attr.has_name(sym::rustc_must_implement_one_of))
+        // Check that there are at least 2 arguments of `#[rustc_must_implement_one_of]`
+        // and that they are all identifiers
+        .and_then(|attr| match attr.meta_item_list() {
+            Some(items) if items.len() < 2 => {
+                tcx.sess
+                    .struct_span_err(
+                        attr.span,
+                        "the `#[rustc_must_implement_one_of]` attribute must be \
+                        used with at least 2 args",
+                    )
+                    .emit();
+
+                None
+            }
+            Some(items) => items
+                .into_iter()
+                .map(|item| item.ident().ok_or(item.span()))
+                .collect::<Result<Box<[_]>, _>>()
+                .map_err(|span| {
+                    tcx.sess
+                        .struct_span_err(span, "must be a name of an associated function")
+                        .emit();
+                })
+                .ok()
+                .zip(Some(attr.span)),
+            // Error is reported by `rustc_attr!`
+            None => None,
+        })
+        // Check that all arguments of `#[rustc_must_implement_one_of]` reference
+        // functions in the trait with default implementations
+        .and_then(|(list, attr_span)| {
+            let errors = list.iter().filter_map(|ident| {
+                let item = items.iter().find(|item| item.ident == *ident);
+
+                match item {
+                    Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
+                        if !item.defaultness.has_value() {
+                            tcx.sess
+                                .struct_span_err(
+                                    item.span,
+                                    "This function doesn't have a default implementation",
+                                )
+                                .span_note(attr_span, "required by this annotation")
+                                .emit();
+
+                            return Some(());
+                        }
+
+                        return None;
+                    }
+                    Some(item) => tcx
+                        .sess
+                        .struct_span_err(item.span, "Not a function")
+                        .span_note(attr_span, "required by this annotation")
+                        .note(
+                            "All `#[rustc_must_implement_one_of]` arguments \
+                            must be associated function names",
+                        )
+                        .emit(),
+                    None => tcx
+                        .sess
+                        .struct_span_err(ident.span, "Function not found in this trait")
+                        .emit(),
+                }
+
+                Some(())
+            });
+
+            (errors.count() == 0).then_some(list)
+        });
+
     ty::TraitDef::new(
         def_id,
         unsafety,
@@ -1235,6 +1313,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
         skip_array_during_method_dispatch,
         spec_kind,
         def_path_hash,
+        must_implement_one_of,
     )
 }
 

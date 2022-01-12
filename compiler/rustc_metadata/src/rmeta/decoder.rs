@@ -820,6 +820,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     data.skip_array_during_method_dispatch,
                     data.specialization_kind,
                     self.def_path_hash(item_id),
+                    data.must_implement_one_of,
                 )
             }
             EntryKind::TraitAlias => ty::TraitDef::new(
@@ -831,6 +832,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 false,
                 ty::trait_def::TraitSpecializationKind::None,
                 self.def_path_hash(item_id),
+                None,
             ),
             _ => bug!("def-index does not refer to trait or trait alias"),
         }

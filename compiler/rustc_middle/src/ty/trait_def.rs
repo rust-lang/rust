@@ -1,7 +1,7 @@
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, SimplifyParams, StripReferences};
 use crate::ty::fold::TypeFoldable;
-use crate::ty::{Ty, TyCtxt};
+use crate::ty::{Ident, Ty, TyCtxt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
@@ -44,6 +44,10 @@ pub struct TraitDef {
     /// The ICH of this trait's DefPath, cached here so it doesn't have to be
     /// recomputed all the time.
     pub def_path_hash: DefPathHash,
+
+    /// List of functions from `#[rustc_must_implement_one_of]` attribute one of which
+    /// must be implemented.
+    pub must_implement_one_of: Option<Box<[Ident]>>,
 }
 
 /// Whether this trait is treated specially by the standard library
@@ -87,6 +91,7 @@ impl<'tcx> TraitDef {
         skip_array_during_method_dispatch: bool,
         specialization_kind: TraitSpecializationKind,
         def_path_hash: DefPathHash,
+        must_implement_one_of: Option<Box<[Ident]>>,
     ) -> TraitDef {
         TraitDef {
             def_id,
@@ -97,6 +102,7 @@ impl<'tcx> TraitDef {
             skip_array_during_method_dispatch,
             specialization_kind,
             def_path_hash,
+            must_implement_one_of,
         }
     }
 
