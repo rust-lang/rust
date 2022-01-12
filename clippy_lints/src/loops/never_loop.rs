@@ -181,7 +181,6 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
         ExprKind::Struct(_, _, None)
         | ExprKind::Yield(_, _)
         | ExprKind::Closure(_, _, _, _, _)
-        | ExprKind::LlvmInlineAsm(_)
         | ExprKind::Path(_)
         | ExprKind::ConstBlock(_)
         | ExprKind::Lit(_)
