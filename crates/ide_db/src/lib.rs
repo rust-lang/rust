@@ -26,7 +26,10 @@ use base_db::{
     salsa::{self, Durability},
     AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
-use hir::db::{AstDatabase, DefDatabase, HirDatabase};
+use hir::{
+    db::{AstDatabase, DefDatabase, HirDatabase},
+    symbols::FileSymbolKind,
+};
 use rustc_hash::FxHashSet;
 
 use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
@@ -179,6 +182,23 @@ impl From<hir::MacroKind> for SymbolKind {
             }
             hir::MacroKind::Derive => SymbolKind::Derive,
             hir::MacroKind::Attr => SymbolKind::Attribute,
+        }
+    }
+}
+
+impl From<FileSymbolKind> for SymbolKind {
+    fn from(it: FileSymbolKind) -> Self {
+        match it {
+            FileSymbolKind::Const => SymbolKind::Const,
+            FileSymbolKind::Enum => SymbolKind::Enum,
+            FileSymbolKind::Function => SymbolKind::Function,
+            FileSymbolKind::Macro => SymbolKind::Macro,
+            FileSymbolKind::Module => SymbolKind::Module,
+            FileSymbolKind::Static => SymbolKind::Static,
+            FileSymbolKind::Struct => SymbolKind::Struct,
+            FileSymbolKind::Trait => SymbolKind::Trait,
+            FileSymbolKind::TypeAlias => SymbolKind::TypeAlias,
+            FileSymbolKind::Union => SymbolKind::Union,
         }
     }
 }

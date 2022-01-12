@@ -28,6 +28,7 @@ mod has_source;
 
 pub mod diagnostics;
 pub mod db;
+pub mod symbols;
 
 mod display;
 
@@ -40,12 +41,16 @@ use hir_def::{
     adt::{ReprKind, VariantData},
     body::{BodyDiagnostic, SyntheticSyntax},
     expr::{BindingAnnotation, LabelId, Pat, PatId},
+    item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
     nameres::{self, diagnostics::DefDiagnostic},
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
-    AttrDefId, ConstId, ConstParamId, EnumId, FunctionId, GenericDefId, HasModule, LifetimeParamId,
-    LocalEnumVariantId, LocalFieldId, StaticId, StructId, TypeAliasId, TypeParamId, UnionId,
+    src::HasSource as _,
+    AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
+    FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
+    LocalEnumVariantId, LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId,
+    TypeParamId, UnionId,
 };
 use hir_expand::{name::name, MacroCallKind, MacroDefKind};
 use hir_ty::{
@@ -106,24 +111,11 @@ pub use {
         builtin_attr::AttributeTemplate,
         find_path::PrefixKind,
         import_map,
-        item_scope::ItemScope,
-        item_tree::ItemTreeNode,
-        nameres::{DefMap, ModuleData, ModuleOrigin, ModuleSource},
+        nameres::ModuleSource,
         path::{ModPath, PathKind},
-        src::HasSource as DefHasSource, // xx: I don't like this shadowing of HasSource... :(
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
-        AdtId,
-        AssocItemId,
-        AssocItemLoc,
-        DefWithBodyId,
-        ImplId,
-        ItemContainerId,
-        ItemLoc,
-        Lookup,
-        ModuleDefId,
         ModuleId,
-        TraitId,
     },
     hir_expand::{
         name::{known, Name},

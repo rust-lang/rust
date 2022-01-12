@@ -4,8 +4,8 @@ use std::fmt;
 
 use either::Either;
 use hir::{
-    AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay, InFile, ModuleSource,
-    Semantics,
+    symbols::FileSymbol, AssocItem, Documentation, FieldSource, HasAttrs, HasSource, HirDisplay,
+    InFile, ModuleSource, Semantics,
 };
 use ide_db::{
     base_db::{FileId, FileRange},
@@ -16,8 +16,6 @@ use syntax::{
     ast::{self, HasName},
     match_ast, AstNode, SmolStr, TextRange,
 };
-
-use crate::FileSymbol;
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.
