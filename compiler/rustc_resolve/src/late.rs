@@ -1240,15 +1240,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             );
             let res = res.base_res();
             if res != Res::Err {
-                new_id = Some(res.def_id());
-                let span = trait_ref.path.span;
                 if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = self.resolve_path(
                     &path,
                     Some(TypeNS),
-                    false,
-                    span,
+                    true,
+                    trait_ref.path.span,
                     CrateLint::SimplePath(trait_ref.ref_id),
                 ) {
+                    new_id = Some(res.def_id());
                     new_val = Some((module, trait_ref.clone()));
                 }
             }
@@ -1413,7 +1412,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn check_trait_item<F>(
         &mut self,
         id: NodeId,
-        ident: Ident,
+        mut ident: Ident,
         kind: &AssocItemKind,
         ns: Namespace,
         span: Span,
@@ -1423,15 +1422,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         let Some((module, _)) = &self.current_trait_ref else { return; };
-        let mut binding = self.r.resolve_ident_in_module(
-            ModuleOrUniformRoot::Module(module),
-            ident,
-            ns,
-            &self.parent_scope,
-            false,
-            span,
-        );
-        if binding.is_err() {
+        ident.span.normalize_to_macros_2_0_and_adjust(module.expansion);
+        let key = self.r.new_key(ident, ns);
+        let mut binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
+        debug!(?binding);
+        if binding.is_none() {
             // We could not find the trait item in the correct namespace.
             // Check the other namespace to report an error.
             let ns = match ns {
@@ -1439,16 +1434,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 TypeNS => ValueNS,
                 _ => ns,
             };
-            binding = self.r.resolve_ident_in_module(
-                ModuleOrUniformRoot::Module(module),
-                ident,
-                ns,
-                &self.parent_scope,
-                false,
-                span,
-            );
+            let key = self.r.new_key(ident, ns);
+            binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
+            debug!(?binding);
         }
-        let Ok(binding) = binding else {
+        let Some(binding) = binding else {
             // We could not find the method: report an error.
             let candidate = self.find_similarly_named_assoc_item(ident.name, kind);
             let path = &self.current_trait_ref.as_ref().unwrap().1.path;
