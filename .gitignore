@@ -19,7 +19,6 @@ out
 /target
 /clippy_lints/target
 /clippy_utils/target
-/clippy_workspace_tests/target
 /clippy_dev/target
 /lintcheck/target
 /rustc_tools_util/target
