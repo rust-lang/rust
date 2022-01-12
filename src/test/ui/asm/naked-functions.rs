@@ -3,12 +3,10 @@
 // ignore-spirv
 // ignore-wasm32
 
-#![feature(llvm_asm)]
 #![feature(naked_functions)]
 #![feature(or_patterns)]
 #![feature(asm_const, asm_sym)]
 #![crate_type = "lib"]
-#![allow(deprecated)] // llvm_asm!
 
 use std::arch::asm;
 
@@ -112,16 +110,6 @@ pub fn outer(x: u32) -> extern "C" fn(usize) -> usize {
         //~^ ERROR referencing function parameters is not allowed in naked functions
     }
     inner
-}
-
-#[naked]
-unsafe extern "C" fn llvm() -> ! {
-    //~^ WARN naked functions must contain a single asm block
-    //~| WARN this was previously accepted
-    llvm_asm!("");
-    //~^ WARN LLVM-style inline assembly is unsupported in naked functions
-    //~| WARN this was previously accepted
-    core::hint::unreachable_unchecked();
 }
 
 #[naked]

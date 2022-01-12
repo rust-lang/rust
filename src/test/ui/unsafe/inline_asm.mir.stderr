@@ -1,20 +1,11 @@
 error[E0133]: use of inline assembly is unsafe and requires unsafe function or block
-  --> $DIR/inline_asm.rs:11:5
+  --> $DIR/inline_asm.rs:8:5
    |
 LL |     asm!("nop");
    |     ^^^^^^^^^^^ use of inline assembly
    |
    = note: inline assembly is entirely unchecked and can cause undefined behavior
 
-error[E0133]: use of inline assembly is unsafe and requires unsafe function or block
-  --> $DIR/inline_asm.rs:12:5
-   |
-LL |     llvm_asm!("nop");
-   |     ^^^^^^^^^^^^^^^^ use of inline assembly
-   |
-   = note: inline assembly is entirely unchecked and can cause undefined behavior
-   = note: this error originates in the macro `llvm_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0133`.

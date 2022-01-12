@@ -3,11 +3,9 @@
 // test that errors in a (selection) of macros don't kill compilation
 // immediately, so that we get more errors listed at a time.
 
-#![feature(llvm_asm)]
 #![feature(trace_macros, concat_idents)]
 #![feature(stmt_expr_attributes, arbitrary_enum_discriminant)]
 #![feature(derive_default_enum)]
-#![allow(deprecated)] // llvm_asm!
 
 use std::arch::asm;
 

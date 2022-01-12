@@ -1,13 +1,5 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/inline_asm.rs:13:14
-   |
-LL |     unsafe { llvm_asm!("xor %eax, %eax" ::: "eax"); }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inline assembly is not supported
-   |
-   = note: this error originates in the macro `llvm_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0080]: could not evaluate static initializer
-  --> $DIR/inline_asm.rs:22:14
+  --> $DIR/inline_asm.rs:11:14
    |
 LL |     unsafe { asm!("nop"); }
    |              ^^^^^^^^^^^ inline assembly is not supported
@@ -15,17 +7,11 @@ LL |     unsafe { asm!("nop"); }
 warning: skipping const checks
    |
 help: skipping check that does not even have a feature gate
-  --> $DIR/inline_asm.rs:13:14
-   |
-LL |     unsafe { llvm_asm!("xor %eax, %eax" ::: "eax"); }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: skipping check that does not even have a feature gate
-  --> $DIR/inline_asm.rs:22:14
+  --> $DIR/inline_asm.rs:11:14
    |
 LL |     unsafe { asm!("nop"); }
    |              ^^^^^^^^^^^
-   = note: this warning originates in the macro `llvm_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

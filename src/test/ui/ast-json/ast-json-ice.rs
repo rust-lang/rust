@@ -8,9 +8,6 @@
 // check-pass
 // dont-check-compiler-stdout - don't check for any AST change.
 
-#![feature(llvm_asm)]
-#![allow(deprecated)] // llvm_asm!
-
 enum V {
     A(i32),
     B { f: [i64; 3 + 4] }
@@ -27,12 +24,6 @@ macro_rules! call_println {
 }
 
 fn main() {
-    #[cfg(any(target_arch = "x86",
-        target_arch = "x86_64",
-        target_arch = "arm",
-        target_arch = "aarch64"))]
-    unsafe { llvm_asm!(""::::); }
-
     let x: (i32) = 35;
     let y = x as i64<> + 5;
 
