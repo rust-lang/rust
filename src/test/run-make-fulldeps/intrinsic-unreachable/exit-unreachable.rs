@@ -1,5 +1,6 @@
-#![feature(llvm_asm, core_intrinsics)]
+#![feature(core_intrinsics)]
 #![crate_type="lib"]
+use std::arch::asm;
 
 use std::intrinsics;
 
@@ -7,7 +8,7 @@ use std::intrinsics;
 pub fn exit(n: usize) -> i32 {
     unsafe {
         // Pretend this asm is an exit() syscall.
-        llvm_asm!("" :: "r"(n) :: "volatile");
+        asm!("/*{0}*/", in(reg) n);
         intrinsics::unreachable()
     }
     // This return value is just here to generate some extra code for a return
