@@ -368,3 +368,17 @@ fn foo() {
         "#]],
     )
 }
+
+#[test]
+fn completes_fully_equal() {
+    check_empty(
+        r#"
+fn foo(bar: u32) {}
+fn bar(bar$0) {}
+"#,
+        expect![[r#"
+            bn bar: u32
+            kw mut
+        "#]],
+    )
+}

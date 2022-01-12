@@ -83,9 +83,15 @@ fn remove_duplicated(
         let whole_param = param.syntax().text().to_string();
         file_params.remove(&whole_param);
 
-        if let Some(pattern) = param.pat() {
-            let binding = pattern.syntax().text().to_string();
-            file_params.retain(|_, v| v != &binding);
+        match param.pat() {
+            // remove suggestions for patterns that already exist
+            // if the type is missing we are checking the current param to be completed
+            // in which case this would find itself removing the suggestions due to itself
+            Some(pattern) if param.ty().is_some() => {
+                let binding = pattern.syntax().text().to_string();
+                file_params.retain(|_, v| v != &binding);
+            }
+            _ => (),
         }
     })
 }
