@@ -132,7 +132,7 @@ error: expected one of `.`, `?`, `{`, or an operator, found `}`
 LL |     match await { await => () }
    |     -----                      - expected one of `.`, `?`, `{`, or an operator
    |     |
-   |     while parsing this match expression
+   |     while parsing this `match` expression
 ...
 LL | }
    | ^ unexpected token

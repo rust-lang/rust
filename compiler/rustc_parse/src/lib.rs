@@ -3,6 +3,7 @@
 #![feature(array_windows)]
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
+#![feature(let_else)]
 #![feature(box_patterns)]
 #![recursion_limit = "256"]
 
