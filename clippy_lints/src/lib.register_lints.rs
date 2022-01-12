@@ -423,7 +423,6 @@ store.register_lints(&[
     redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
     ref_option_ref::REF_OPTION_REF,
     reference::DEREF_ADDROF,
-    reference::REF_IN_DEREF,
     regex::INVALID_REGEX,
     regex::TRIVIAL_REGEX,
     repeat_once::REPEAT_ONCE,

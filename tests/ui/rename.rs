@@ -54,6 +54,7 @@
 #![warn(clippy::if_let_some_result)]
 #![warn(clippy::disallowed_type)]
 #![warn(clippy::disallowed_method)]
+#![warn(clippy::ref_in_deref)]
 // uplifted lints
 #![warn(clippy::invalid_ref)]
 #![warn(clippy::into_iter_on_array)]

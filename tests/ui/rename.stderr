@@ -138,59 +138,65 @@ error: lint `clippy::disallowed_method` has been renamed to `clippy::disallowed_
 LL | #![warn(clippy::disallowed_method)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::disallowed_methods`
 
+error: lint `clippy::ref_in_deref` has been renamed to `clippy::needless_borrow`
+  --> $DIR/rename.rs:57:9
+   |
+LL | #![warn(clippy::ref_in_deref)]
+   |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::needless_borrow`
+
 error: lint `clippy::invalid_ref` has been renamed to `invalid_value`
-  --> $DIR/rename.rs:58:9
+  --> $DIR/rename.rs:59:9
    |
 LL | #![warn(clippy::invalid_ref)]
    |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_value`
 
 error: lint `clippy::into_iter_on_array` has been renamed to `array_into_iter`
-  --> $DIR/rename.rs:59:9
+  --> $DIR/rename.rs:60:9
    |
 LL | #![warn(clippy::into_iter_on_array)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `array_into_iter`
 
 error: lint `clippy::unused_label` has been renamed to `unused_labels`
-  --> $DIR/rename.rs:60:9
+  --> $DIR/rename.rs:61:9
    |
 LL | #![warn(clippy::unused_label)]
    |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unused_labels`
 
 error: lint `clippy::drop_bounds` has been renamed to `drop_bounds`
-  --> $DIR/rename.rs:61:9
+  --> $DIR/rename.rs:62:9
    |
 LL | #![warn(clippy::drop_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `drop_bounds`
 
 error: lint `clippy::temporary_cstring_as_ptr` has been renamed to `temporary_cstring_as_ptr`
-  --> $DIR/rename.rs:62:9
+  --> $DIR/rename.rs:63:9
    |
 LL | #![warn(clippy::temporary_cstring_as_ptr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `temporary_cstring_as_ptr`
 
 error: lint `clippy::panic_params` has been renamed to `non_fmt_panics`
-  --> $DIR/rename.rs:63:9
+  --> $DIR/rename.rs:64:9
    |
 LL | #![warn(clippy::panic_params)]
    |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `non_fmt_panics`
 
 error: lint `clippy::unknown_clippy_lints` has been renamed to `unknown_lints`
-  --> $DIR/rename.rs:64:9
+  --> $DIR/rename.rs:65:9
    |
 LL | #![warn(clippy::unknown_clippy_lints)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unknown_lints`
 
 error: lint `clippy::invalid_atomic_ordering` has been renamed to `invalid_atomic_ordering`
-  --> $DIR/rename.rs:65:9
+  --> $DIR/rename.rs:66:9
    |
 LL | #![warn(clippy::invalid_atomic_ordering)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_atomic_ordering`
 
 error: lint `clippy::mem_discriminant_non_enum` has been renamed to `enum_intrinsics_non_enums`
-  --> $DIR/rename.rs:66:9
+  --> $DIR/rename.rs:67:9
    |
 LL | #![warn(clippy::mem_discriminant_non_enum)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `enum_intrinsics_non_enums`
 
-error: aborting due to 32 previous errors
+error: aborting due to 33 previous errors
 

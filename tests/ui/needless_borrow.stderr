@@ -1,17 +1,3 @@
-error: creating a reference that is immediately dereferenced
-  --> $DIR/needless_borrow.rs:72:13
-   |
-LL |     let _ = (&x).0;
-   |             ^^^^ help: try this: `x`
-   |
-   = note: `-D clippy::ref-in-deref` implied by `-D warnings`
-
-error: creating a reference that is immediately dereferenced
-  --> $DIR/needless_borrow.rs:74:22
-   |
-LL |     let _ = unsafe { (&*x).0 };
-   |                      ^^^^^ help: try this: `(*x)`
-
 error: this expression creates a reference which is immediately dereferenced by the compiler
   --> $DIR/needless_borrow.rs:9:15
    |
@@ -128,5 +114,5 @@ error: this expression borrows a value the compiler would automatically borrow
 LL |     let _ = unsafe { (&*x).0 };
    |                      ^^^^^ help: change this to: `(*x)`
 
-error: aborting due to 21 previous errors
+error: aborting due to 19 previous errors
 
