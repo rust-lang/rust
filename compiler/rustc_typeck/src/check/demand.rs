@@ -338,31 +338,68 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
                 .collect();
 
-            if let [variant] = &compatible_variants[..] {
-                // Just a single matching variant.
-                err.multipart_suggestion(
-                    &format!("try wrapping the expression in `{}`", variant),
-                    vec![
-                        (expr.span.shrink_to_lo(), format!("{}(", variant)),
-                        (expr.span.shrink_to_hi(), ")".to_string()),
-                    ],
-                    Applicability::MaybeIncorrect,
-                );
-            } else if compatible_variants.len() > 1 {
-                // More than one matching variant.
-                err.multipart_suggestions(
-                    &format!(
-                        "try wrapping the expression in a variant of `{}`",
-                        self.tcx.def_path_str(expected_adt.did)
-                    ),
-                    compatible_variants.into_iter().map(|variant| {
-                        vec![
-                            (expr.span.shrink_to_lo(), format!("{}(", variant)),
-                            (expr.span.shrink_to_hi(), ")".to_string()),
-                        ]
-                    }),
-                    Applicability::MaybeIncorrect,
-                );
+            if self.is_hir_id_from_struct_pattern_shorthand_field(expr.hir_id, expr.span) {
+                if let Ok(code) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
+                    match &compatible_variants[..] {
+                        [] => { /* No variants to format */ }
+                        [variant] => {
+                            // Just a single matching variant.
+                            err.span_suggestion_verbose(
+                                expr.span,
+                                &format!("try wrapping the expression in `{}`", variant),
+                                format!("{}: {}({})", code, variant, code),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        _ => {
+                            // More than one matching variant.
+                            err.span_suggestions(
+                                expr.span,
+                                &format!(
+                                    "try wrapping the expression in a variant of `{}`",
+                                    self.tcx.def_path_str(expected_adt.did)
+                                ),
+                                compatible_variants
+                                    .into_iter()
+                                    .map(|variant| format!("{}: {}({})", code, variant, code)),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                } else {
+                    /* Can't format this without a snippet */
+                }
+            } else {
+                match &compatible_variants[..] {
+                    [] => { /* No variants to format */ }
+                    [variant] => {
+                        // Just a single matching variant.
+                        err.multipart_suggestion_verbose(
+                            &format!("try wrapping the expression in `{}`", variant),
+                            vec![
+                                (expr.span.shrink_to_lo(), format!("{}(", variant)),
+                                (expr.span.shrink_to_hi(), ")".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    _ => {
+                        // More than one matching variant.
+                        err.multipart_suggestions(
+                            &format!(
+                                "try wrapping the expression in a variant of `{}`",
+                                self.tcx.def_path_str(expected_adt.did)
+                            ),
+                            compatible_variants.into_iter().map(|variant| {
+                                vec![
+                                    (expr.span.shrink_to_lo(), format!("{}(", variant)),
+                                    (expr.span.shrink_to_hi(), ")".to_string()),
+                                ]
+                            }),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
             }
         }
     }

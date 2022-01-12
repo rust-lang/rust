@@ -3,6 +3,10 @@ enum Hey<A, B> {
     B(B),
 }
 
+struct Foo {
+    bar: Option<i32>,
+}
+
 fn f() {}
 
 fn a() -> Option<()> {
@@ -38,6 +42,10 @@ fn main() {
     //~^ ERROR mismatched types
     //~| HELP try wrapping
     let _: Hey<i32, bool> = false;
+    //~^ ERROR mismatched types
+    //~| HELP try wrapping
+    let bar = 1i32;
+    let _ = Foo { bar };
     //~^ ERROR mismatched types
     //~| HELP try wrapping
 }
