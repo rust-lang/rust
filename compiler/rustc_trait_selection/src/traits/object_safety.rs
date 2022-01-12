@@ -813,9 +813,10 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             }
         }
 
-        fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            self.visit_ty(ct.ty)?;
-
+        fn visit_unevaluated_const(
+            &mut self,
+            uv: ty::Unevaluated<'tcx>,
+        ) -> ControlFlow<Self::BreakTy> {
             // Constants can only influence object safety if they reference `Self`.
             // This is only possible for unevaluated constants, so we walk these here.
             //
@@ -829,7 +830,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             // This shouldn't really matter though as we can't really use any
             // constants which are not considered const evaluatable.
             use rustc_middle::thir::abstract_const::Node;
-            if let Ok(Some(ct)) = AbstractConst::from_const(self.tcx, ct) {
+            if let Ok(Some(ct)) = AbstractConst::new(self.tcx, uv.shrink()) {
                 const_evaluatable::walk_abstract_const(self.tcx, ct, |node| {
                     match node.root(self.tcx) {
                         Node::Leaf(leaf) => self.visit_const(leaf),
@@ -841,30 +842,6 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
                 })
             } else {
                 ControlFlow::CONTINUE
-            }
-        }
-
-        fn visit_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::PredicateKind::ConstEvaluatable(uv) = pred.kind().skip_binder() {
-                // FIXME(generic_const_exprs): We should probably deduplicate the logic for
-                // `AbstractConst`s here, it might make sense to change `ConstEvaluatable` to
-                // take a `ty::Const` instead.
-                use rustc_middle::thir::abstract_const::Node;
-                if let Ok(Some(ct)) = AbstractConst::new(self.tcx, uv) {
-                    const_evaluatable::walk_abstract_const(self.tcx, ct, |node| {
-                        match node.root(self.tcx) {
-                            Node::Leaf(leaf) => self.visit_const(leaf),
-                            Node::Cast(_, _, ty) => self.visit_ty(ty),
-                            Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
-                                ControlFlow::CONTINUE
-                            }
-                        }
-                    })
-                } else {
-                    ControlFlow::CONTINUE
-                }
-            } else {
-                pred.super_visit_with(self)
             }
         }
     }
