@@ -176,9 +176,9 @@ impl StableCrateId {
         // and no -Cmetadata, symbols from the same crate compiled with different versions of
         // rustc are named the same.
         //
-        // RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER is used to inject rustc version information
+        // RUSTC_FORCE_RUSTC_VERSION is used to inject rustc version information
         // during testing.
-        if let Some(val) = std::env::var_os("RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER") {
+        if let Some(val) = std::env::var_os("RUSTC_FORCE_RUSTC_VERSION") {
             hasher.write(val.to_string_lossy().into_owned().as_bytes())
         } else {
             hasher.write(option_env!("CFG_VERSION").unwrap_or("unknown version").as_bytes());
