@@ -66,8 +66,7 @@ use ide_db::{
         salsa::{self, ParallelDatabase},
         Env, FileLoader, FileSet, SourceDatabase, VfsPath,
     },
-    symbol_index::{self, FileSymbol},
-    LineIndexDatabase,
+    symbol_index, LineIndexDatabase,
 };
 use syntax::SourceFile;
 

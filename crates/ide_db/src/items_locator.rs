@@ -5,6 +5,7 @@
 use either::Either;
 use hir::{
     import_map::{self, ImportKind},
+    symbols::FileSymbol,
     AsAssocItem, Crate, ItemInNs, Semantics,
 };
 use limit::Limit;
@@ -13,8 +14,7 @@ use syntax::{ast, AstNode, SyntaxKind::NAME};
 use crate::{
     defs::{Definition, NameClass},
     helpers::import_assets::NameToImport,
-    symbol_index::{self, FileSymbol},
-    RootDatabase,
+    symbol_index, RootDatabase,
 };
 
 /// A value to use, when uncertain which limit to pick.
