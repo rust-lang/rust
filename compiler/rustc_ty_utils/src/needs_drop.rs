@@ -78,7 +78,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
 
 impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
 where
-    F: Fn(&ty::AdtDef, SubstsRef<'tcx>) -> NeedsDropResult<I>,
+    F: Fn(&ty::AdtDef, SubstsRef<'tcx>, &FxHashSet<Ty<'tcx>>) -> NeedsDropResult<I>,
     I: Iterator<Item = Ty<'tcx>>,
 {
     type Item = NeedsDropResult<Ty<'tcx>>;
@@ -142,7 +142,7 @@ where
                     // `ManuallyDrop`. If it's a struct or enum without a `Drop`
                     // impl then check whether the field types need `Drop`.
                     ty::Adt(adt_def, substs) => {
-                        let tys = match (self.adt_components)(adt_def, substs) {
+                        let tys = match (self.adt_components)(adt_def, substs, &self.seen_tys) {
                             Err(e) => return Some(Err(e)),
                             Ok(tys) => tys,
                         };
@@ -200,62 +200,67 @@ fn drop_tys_helper<'tcx>(
         tcx: TyCtxt<'tcx>,
         iter: impl IntoIterator<Item = Ty<'tcx>>,
         only_significant: bool,
+        seen_tys: &FxHashSet<Ty<'tcx>>,
     ) -> NeedsDropResult<Vec<Ty<'tcx>>> {
         iter.into_iter().try_fold(Vec::new(), |mut vec, subty| {
-            match subty.kind() {
-                ty::Adt(adt_id, subst) => {
-                    for subty in if only_significant {
-                        tcx.adt_significant_drop_tys(adt_id.did)?
-                    } else {
-                        tcx.adt_drop_tys(adt_id.did)?
-                    } {
-                        vec.push(subty.subst(tcx, subst));
+            if !seen_tys.contains(subty) {
+                match subty.kind() {
+                    ty::Adt(adt_id, subst) => {
+                        for subty in if only_significant {
+                            tcx.adt_significant_drop_tys(adt_id.did)?
+                        } else {
+                            tcx.adt_drop_tys(adt_id.did)?
+                        } {
+                            vec.push(subty.subst(tcx, subst));
+                        }
                     }
-                }
-                _ => vec.push(subty),
-            };
+                    _ => vec.push(subty),
+                };
+            }
             Ok(vec)
         })
     }
 
-    let adt_components = move |adt_def: &ty::AdtDef, substs: SubstsRef<'tcx>| {
-        if adt_def.is_manually_drop() {
-            debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
-            Ok(Vec::new())
-        } else if let Some(dtor_info) = adt_has_dtor(adt_def) {
-            match dtor_info {
-                DtorType::Significant => {
-                    debug!("drop_tys_helper: `{:?}` implements `Drop`", adt_def);
-                    Err(AlwaysRequiresDrop)
-                }
-                DtorType::Insignificant => {
-                    debug!("drop_tys_helper: `{:?}` drop is insignificant", adt_def);
+    let adt_components =
+        move |adt_def: &ty::AdtDef, substs: SubstsRef<'tcx>, seen_tys: &FxHashSet<Ty<'tcx>>| {
+            if adt_def.is_manually_drop() {
+                debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
+                Ok(Vec::new())
+            } else if let Some(dtor_info) = adt_has_dtor(adt_def) {
+                match dtor_info {
+                    DtorType::Significant => {
+                        debug!("drop_tys_helper: `{:?}` implements `Drop`", adt_def);
+                        Err(AlwaysRequiresDrop)
+                    }
+                    DtorType::Insignificant => {
+                        debug!("drop_tys_helper: `{:?}` drop is insignificant", adt_def);
 
-                    // Since the destructor is insignificant, we just want to make sure all of
-                    // the passed in type parameters are also insignificant.
-                    // Eg: Vec<T> dtor is insignificant when T=i32 but significant when T=Mutex.
-                    with_query_cache(tcx, substs.types(), only_significant)
+                        // Since the destructor is insignificant, we just want to make sure all of
+                        // the passed in type parameters are also insignificant.
+                        // Eg: Vec<T> dtor is insignificant when T=i32 but significant when T=Mutex.
+                        with_query_cache(tcx, substs.types(), only_significant, seen_tys)
+                    }
                 }
+            } else if adt_def.is_union() {
+                debug!("drop_tys_helper: `{:?}` is a union", adt_def);
+                Ok(Vec::new())
+            } else {
+                with_query_cache(
+                    tcx,
+                    adt_def.all_fields().map(|field| {
+                        let r = tcx.type_of(field.did).subst(tcx, substs);
+                        debug!(
+                            "drop_tys_helper: Subst into {:?} with {:?} gettng {:?}",
+                            field, substs, r
+                        );
+                        r
+                    }),
+                    only_significant,
+                    seen_tys,
+                )
             }
-        } else if adt_def.is_union() {
-            debug!("drop_tys_helper: `{:?}` is a union", adt_def);
-            Ok(Vec::new())
-        } else {
-            with_query_cache(
-                tcx,
-                adt_def.all_fields().map(|field| {
-                    let r = tcx.type_of(field.did).subst(tcx, substs);
-                    debug!(
-                        "drop_tys_helper: Subst into {:?} with {:?} gettng {:?}",
-                        field, substs, r
-                    );
-                    r
-                }),
-                only_significant,
-            )
-        }
-        .map(|v| v.into_iter())
-    };
+            .map(|v| v.into_iter())
+        };
 
     NeedsDropTypes::new(tcx, param_env, ty, adt_components)
 }
