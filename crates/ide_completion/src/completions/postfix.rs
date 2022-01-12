@@ -225,6 +225,10 @@ fn build_postfix_snippet_builder<'ctx>(
 ) -> Option<impl Fn(&str, &str, &str) -> Builder + 'ctx> {
     let receiver_syntax = receiver.syntax();
     let receiver_range = ctx.sema.original_range_opt(receiver_syntax)?.range;
+    if ctx.source_range().end() < receiver_range.start() {
+        // This shouldn't happen, yet it does. I assume this might be due to an incorrect token mapping.
+        return None;
+    }
     let delete_range = TextRange::new(receiver_range.start(), ctx.source_range().end());
 
     // Wrapping impl Fn in an option ruins lifetime inference for the parameters in a way that
