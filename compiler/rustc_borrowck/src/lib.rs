@@ -54,7 +54,6 @@ use rustc_mir_dataflow::MoveDataParamEnv;
 use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
-use self::MutateMode::JustWrite;
 use facts::AllFacts;
 
 use self::path_utils::*;
@@ -629,7 +628,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             StatementKind::Assign(box (lhs, ref rhs)) => {
                 self.consume_rvalue(location, (rhs, span), flow_state);
 
-                self.mutate_place(location, (*lhs, span), Shallow(None), JustWrite, flow_state);
+                self.mutate_place(location, (*lhs, span), Shallow(None), flow_state);
             }
             StatementKind::FakeRead(box (_, ref place)) => {
                 // Read for match doesn't access any memory and is used to
@@ -650,7 +649,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 );
             }
             StatementKind::SetDiscriminant { place, variant_index: _ } => {
-                self.mutate_place(location, (**place, span), Shallow(None), JustWrite, flow_state);
+                self.mutate_place(location, (**place, span), Shallow(None), flow_state);
             }
             StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
                 ..
@@ -716,7 +715,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                 target: _,
                 unwind: _,
             } => {
-                self.mutate_place(loc, (drop_place, span), Deep, JustWrite, flow_state);
+                self.mutate_place(loc, (drop_place, span), Deep, flow_state);
                 self.consume_operand(loc, (new_value, span), flow_state);
             }
             TerminatorKind::Call {
@@ -732,7 +731,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     self.consume_operand(loc, (arg, span), flow_state);
                 }
                 if let Some((dest, _ /*bb*/)) = *destination {
-                    self.mutate_place(loc, (dest, span), Deep, JustWrite, flow_state);
+                    self.mutate_place(loc, (dest, span), Deep, flow_state);
                 }
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
@@ -746,7 +745,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
 
             TerminatorKind::Yield { ref value, resume: _, resume_arg, drop: _ } => {
                 self.consume_operand(loc, (value, span), flow_state);
-                self.mutate_place(loc, (resume_arg, span), Deep, JustWrite, flow_state);
+                self.mutate_place(loc, (resume_arg, span), Deep, flow_state);
             }
 
             TerminatorKind::InlineAsm {
@@ -764,13 +763,7 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
                             if let Some(place) = place {
-                                self.mutate_place(
-                                    loc,
-                                    (place, span),
-                                    Shallow(None),
-                                    JustWrite,
-                                    flow_state,
-                                );
+                                self.mutate_place(loc, (place, span), Shallow(None), flow_state);
                             }
                         }
                         InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
@@ -780,7 +773,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                                     loc,
                                     (out_place, span),
                                     Shallow(None),
-                                    JustWrite,
                                     flow_state,
                                 );
                             }
@@ -850,12 +842,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             | TerminatorKind::InlineAsm { .. } => {}
         }
     }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum MutateMode {
-    JustWrite,
-    WriteAndRead,
 }
 
 use self::AccessDepth::{Deep, Shallow};
@@ -943,7 +929,6 @@ enum LocalMutationIsAllowed {
 
 #[derive(Copy, Clone, Debug)]
 enum InitializationRequiringAction {
-    Update,
     Borrow,
     MatchOn,
     Use,
@@ -960,7 +945,6 @@ struct RootPlace<'tcx> {
 impl InitializationRequiringAction {
     fn as_noun(self) -> &'static str {
         match self {
-            InitializationRequiringAction::Update => "update",
             InitializationRequiringAction::Borrow => "borrow",
             InitializationRequiringAction::MatchOn => "use", // no good noun
             InitializationRequiringAction::Use => "use",
@@ -971,7 +955,6 @@ impl InitializationRequiringAction {
 
     fn as_verb_in_past_tense(self) -> &'static str {
         match self {
-            InitializationRequiringAction::Update => "updated",
             InitializationRequiringAction::Borrow => "borrowed",
             InitializationRequiringAction::MatchOn => "matched on",
             InitializationRequiringAction::Use => "used",
@@ -1208,23 +1191,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         place_span: (Place<'tcx>, Span),
         kind: AccessDepth,
-        mode: MutateMode,
         flow_state: &Flows<'cx, 'tcx>,
     ) {
-        // Write of P[i] or *P, or WriteAndRead of any P, requires P init'd.
-        match mode {
-            MutateMode::WriteAndRead => {
-                self.check_if_path_or_subpath_is_moved(
-                    location,
-                    InitializationRequiringAction::Update,
-                    (place_span.0.as_ref(), place_span.1),
-                    flow_state,
-                );
-            }
-            MutateMode::JustWrite => {
-                self.check_if_assigned_path_is_moved(location, place_span, flow_state);
-            }
-        }
+        // Write of P[i] or *P requires P init'd.
+        self.check_if_assigned_path_is_moved(location, place_span, flow_state);
 
         // Special case: you can assign an immutable local variable
         // (e.g., `x = ...`) so long as it has never been initialized

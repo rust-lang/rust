@@ -8,8 +8,8 @@ use rustc_middle::ty::TyCtxt;
 
 use crate::{
     borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, path_utils::*, AccessDepth,
-    Activation, ArtificialField, BorrowIndex, Deep, JustWrite, LocalMutationIsAllowed, MutateMode,
-    Read, ReadKind, ReadOrWrite, Reservation, Shallow, Write, WriteKind,
+    Activation, ArtificialField, BorrowIndex, Deep, LocalMutationIsAllowed, Read, ReadKind,
+    ReadOrWrite, Reservation, Shallow, Write, WriteKind,
 };
 
 pub(super) fn generate_invalidates<'tcx>(
@@ -58,13 +58,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             StatementKind::Assign(box (lhs, rhs)) => {
                 self.consume_rvalue(location, rhs);
 
-                self.mutate_place(location, *lhs, Shallow(None), JustWrite);
+                self.mutate_place(location, *lhs, Shallow(None));
             }
             StatementKind::FakeRead(box (_, _)) => {
                 // Only relevant for initialized/liveness/safety checks.
             }
             StatementKind::SetDiscriminant { place, variant_index: _ } => {
-                self.mutate_place(location, **place, Shallow(None), JustWrite);
+                self.mutate_place(location, **place, Shallow(None));
             }
             StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
                 ref src,
@@ -117,7 +117,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 target: _,
                 unwind: _,
             } => {
-                self.mutate_place(location, *drop_place, Deep, JustWrite);
+                self.mutate_place(location, *drop_place, Deep);
                 self.consume_operand(location, new_value);
             }
             TerminatorKind::Call {
@@ -133,7 +133,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     self.consume_operand(location, arg);
                 }
                 if let Some((dest, _ /*bb*/)) = destination {
-                    self.mutate_place(location, *dest, Deep, JustWrite);
+                    self.mutate_place(location, *dest, Deep);
                 }
             }
             TerminatorKind::Assert { ref cond, expected: _, ref msg, target: _, cleanup: _ } => {
@@ -156,7 +156,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     }
                 }
 
-                self.mutate_place(location, *resume_arg, Deep, JustWrite);
+                self.mutate_place(location, *resume_arg, Deep);
             }
             TerminatorKind::Resume | TerminatorKind::Return | TerminatorKind::GeneratorDrop => {
                 // Invalidate all borrows of local places
@@ -183,13 +183,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
                             if let Some(place) = place {
-                                self.mutate_place(location, place, Shallow(None), JustWrite);
+                                self.mutate_place(location, place, Shallow(None));
                             }
                         }
                         InlineAsmOperand::InOut { reg: _, late: _, ref in_value, out_place } => {
                             self.consume_operand(location, in_value);
                             if let Some(out_place) = out_place {
-                                self.mutate_place(location, out_place, Shallow(None), JustWrite);
+                                self.mutate_place(location, out_place, Shallow(None));
                             }
                         }
                         InlineAsmOperand::Const { value: _ }
@@ -213,13 +213,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
 
 impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     /// Simulates mutation of a place.
-    fn mutate_place(
-        &mut self,
-        location: Location,
-        place: Place<'tcx>,
-        kind: AccessDepth,
-        _mode: MutateMode,
-    ) {
+    fn mutate_place(&mut self, location: Location, place: Place<'tcx>, kind: AccessDepth) {
         self.access_place(
             location,
             place,
