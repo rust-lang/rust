@@ -102,14 +102,14 @@ pub struct SymbolCollector<'a> {
 /// Given a [`ModuleId`] and a [`HirDatabase`], use the DefMap for the module's crate to collect
 /// all symbols that should be indexed for the given module.
 impl<'a> SymbolCollector<'a> {
-    pub fn collect(db: &dyn HirDatabase, module_id: ModuleId) -> Vec<FileSymbol> {
+    pub fn collect(db: &dyn HirDatabase, module: Module) -> Vec<FileSymbol> {
         let mut symbol_collector = SymbolCollector {
             db,
             symbols: Default::default(),
             current_container_name: None,
             // The initial work is the root module we're collecting, additional work will
             // be populated as we traverse the module's definitions.
-            work: vec![SymbolCollectorWork { module_id, parent: None }],
+            work: vec![SymbolCollectorWork { module_id: module.into(), parent: None }],
         };
 
         while let Some(work) = symbol_collector.work.pop() {
