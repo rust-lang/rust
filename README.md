@@ -37,8 +37,8 @@ Table of contents:
 
 ## Usage
 
-Below are instructions on how to use Clippy as a subcommand, compiled from source
-or in Travis CI.
+Below are instructions on how to use Clippy as a cargo subcommand,
+in projects that do not use cargo, or in Travis CI.
 
 ### As a cargo subcommand (`cargo clippy`)
 
@@ -98,22 +98,18 @@ If you want to run Clippy **only** on the given crate, use the `--no-deps` optio
 cargo clippy -p example -- --no-deps
 ```
 
-### As a rustc replacement (`clippy-driver`)
+### Using `clippy-driver`
 
-Clippy can also be used in projects that do not use cargo. To do so, you will need to replace
-your `rustc` compilation commands with `clippy-driver`. For example, if your project runs:
-
-```terminal
-rustc --edition 2018 -Cpanic=abort foo.rs
-```
-
-Then, to enable Clippy, you will need to call:
+Clippy can also be used in projects that do not use cargo. To do so, run `clippy-driver`
+with the same arguments you use for `rustc`. For example:
 
 ```terminal
 clippy-driver --edition 2018 -Cpanic=abort foo.rs
 ```
 
-Note that `rustc` will still run, i.e. it will still emit the output files it normally does.
+Note that `clippy-driver` is designed for running Clippy only and should not be used as a general
+replacement for `rustc`. `clippy-driver` may produce artifacts that are not optimized as expected,
+for example.
 
 ### Travis CI
 
