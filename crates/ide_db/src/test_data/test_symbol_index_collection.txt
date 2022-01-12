@@ -1,11 +1,13 @@
 [
     (
-        ModuleId {
-            krate: CrateId(
-                0,
-            ),
-            block: None,
-            local_id: Idx::<ModuleData>(0),
+        Module {
+            id: ModuleId {
+                krate: CrateId(
+                    0,
+                ),
+                block: None,
+                local_id: Idx::<ModuleData>(0),
+            },
         },
         [
             FileSymbol {
@@ -459,12 +461,14 @@
         ],
     ),
     (
-        ModuleId {
-            krate: CrateId(
-                0,
-            ),
-            block: None,
-            local_id: Idx::<ModuleData>(1),
+        Module {
+            id: ModuleId {
+                krate: CrateId(
+                    0,
+                ),
+                block: None,
+                local_id: Idx::<ModuleData>(1),
+            },
         },
         [
             FileSymbol {
@@ -492,12 +496,14 @@
         ],
     ),
     (
-        ModuleId {
-            krate: CrateId(
-                0,
-            ),
-            block: None,
-            local_id: Idx::<ModuleData>(2),
+        Module {
+            id: ModuleId {
+                krate: CrateId(
+                    0,
+                ),
+                block: None,
+                local_id: Idx::<ModuleData>(2),
+            },
         },
         [
             FileSymbol {

@@ -49,7 +49,7 @@ use hir_def::{
     src::HasSource as _,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
     FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalEnumVariantId, LocalFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId,
+    LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
     TypeParamId, UnionId,
 };
 use hir_expand::{name::name, MacroCallKind, MacroDefKind};
@@ -115,7 +115,6 @@ pub use {
         path::{ModPath, PathKind},
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
-        ModuleId,
     },
     hir_expand::{
         name::{known, Name},
@@ -181,6 +180,11 @@ impl Crate {
     pub fn root_module(self, db: &dyn HirDatabase) -> Module {
         let def_map = db.crate_def_map(self.id);
         Module { id: def_map.module_id(def_map.root()) }
+    }
+
+    pub fn modules(self, db: &dyn HirDatabase) -> Vec<Module> {
+        let def_map = db.crate_def_map(self.id);
+        def_map.modules().map(|(id, _)| def_map.module_id(id).into()).collect()
     }
 
     pub fn root_file(self, db: &dyn HirDatabase) -> FileId {

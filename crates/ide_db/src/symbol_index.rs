@@ -30,13 +30,13 @@ use std::{
 
 use base_db::{
     salsa::{self, ParallelDatabase},
-    CrateId, SourceDatabaseExt, SourceRootId, Upcast,
+    SourceDatabaseExt, SourceRootId, Upcast,
 };
 use fst::{self, Streamer};
 use hir::{
-    db::{DefDatabase, HirDatabase},
+    db::HirDatabase,
     symbols::{FileSymbol, SymbolCollector},
-    ModuleId,
+    Crate, Module,
 };
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
@@ -93,7 +93,7 @@ impl Query {
 pub trait SymbolsDatabase: HirDatabase + SourceDatabaseExt + Upcast<dyn HirDatabase> {
     /// The symbol index for a given module. These modules should only be in source roots that
     /// are inside local_roots.
-    fn module_symbols(&self, module_id: ModuleId) -> Arc<SymbolIndex>;
+    fn module_symbols(&self, module: Module) -> Arc<SymbolIndex>;
 
     /// The symbol index for a given source root within library_roots.
     fn library_symbols(&self, source_root_id: SourceRootId) -> Arc<SymbolIndex>;
@@ -116,20 +116,20 @@ fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Ar
     let symbols = db
         .source_root_crates(source_root_id)
         .iter()
-        .flat_map(|&krate| module_ids_for_crate(db.upcast(), krate))
+        .flat_map(|&krate| Crate::from(krate).modules(db.upcast()))
         // we specifically avoid calling SymbolsDatabase::module_symbols here, even they do the same thing,
         // as the index for a library is not going to really ever change, and we do not want to store each
         // module's index in salsa.
-        .map(|module_id| SymbolCollector::collect(db.upcast(), module_id))
+        .map(|module| SymbolCollector::collect(db.upcast(), module))
         .flatten()
         .collect();
 
     Arc::new(SymbolIndex::new(symbols))
 }
 
-fn module_symbols(db: &dyn SymbolsDatabase, module_id: ModuleId) -> Arc<SymbolIndex> {
+fn module_symbols(db: &dyn SymbolsDatabase, module: Module) -> Arc<SymbolIndex> {
     let _p = profile::span("module_symbols");
-    let symbols = SymbolCollector::collect(db.upcast(), module_id);
+    let symbols = SymbolCollector::collect(db.upcast(), module);
     Arc::new(SymbolIndex::new(symbols))
 }
 
@@ -188,39 +188,34 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
             .map_with(Snap::new(db), |snap, &root| snap.library_symbols(root))
             .collect()
     } else {
-        let mut module_ids = Vec::new();
+        let mut modules = Vec::new();
 
         for &root in db.local_roots().iter() {
             let crates = db.source_root_crates(root);
             for &krate in crates.iter() {
-                module_ids.extend(module_ids_for_crate(db, krate));
+                modules.extend(Crate::from(krate).modules(db));
             }
         }
 
-        module_ids
+        modules
             .par_iter()
-            .map_with(Snap::new(db), |snap, &module_id| snap.module_symbols(module_id))
+            .map_with(Snap::new(db), |snap, &module| snap.module_symbols(module))
             .collect()
     };
 
     query.search(&indices)
 }
 
-pub fn crate_symbols(db: &RootDatabase, krate: CrateId, query: Query) -> Vec<FileSymbol> {
+pub fn crate_symbols(db: &RootDatabase, krate: Crate, query: Query) -> Vec<FileSymbol> {
     let _p = profile::span("crate_symbols").detail(|| format!("{:?}", query));
 
-    let module_ids = module_ids_for_crate(db, krate);
-    let indices: Vec<_> = module_ids
+    let modules = krate.modules(db);
+    let indices: Vec<_> = modules
         .par_iter()
-        .map_with(Snap::new(db), |snap, &module_id| snap.module_symbols(module_id))
+        .map_with(Snap::new(db), |snap, &module| snap.module_symbols(module))
         .collect();
 
     query.search(&indices)
-}
-
-fn module_ids_for_crate(db: &dyn DefDatabase, krate: CrateId) -> Vec<ModuleId> {
-    let def_map = db.crate_def_map(krate);
-    def_map.modules().map(|(id, _)| def_map.module_id(id)).collect()
 }
 
 pub fn index_resolve(db: &RootDatabase, name: &str) -> Vec<FileSymbol> {
@@ -427,7 +422,8 @@ struct StructInModB;
         "#,
         );
 
-        let symbols: Vec<_> = module_ids_for_crate(db.upcast(), db.test_crate())
+        let symbols: Vec<_> = Crate::from(db.test_crate())
+            .modules(&db)
             .into_iter()
             .map(|module_id| (module_id, SymbolCollector::collect(&db, module_id)))
             .collect();
