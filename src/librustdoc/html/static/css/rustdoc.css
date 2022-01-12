@@ -934,11 +934,6 @@ h2.small-section-header > .anchor {
 	width: 100%;
 }
 
-#crate-search + .search-input {
-	border-radius: 0 1px 1px 0;
-	width: calc(100% - 32px);
-}
-
 .search-input:focus {
 	border-radius: 2px;
 	border: 0;
@@ -2070,14 +2065,8 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 
 	#crate-search {
-		width: 100%;
 		border-radius: 4px;
 		border: 0;
-	}
-
-	#crate-search + .search-input {
-		width: calc(100% + 71px);
-		margin-left: -36px;
 	}
 
 	#theme-picker, #settings-menu {

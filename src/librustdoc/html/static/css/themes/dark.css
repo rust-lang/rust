@@ -256,7 +256,8 @@ details.undocumented > summary::before {
 	background: rgba(0,0,0,0);
 }
 
-.since {
+.rightside,
+.out-of-band {
 	color: grey;
 }
 
