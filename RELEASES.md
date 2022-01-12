@@ -2588,6 +2588,11 @@ Language
 - [Visibility modifiers (e.g. `pub`) are now syntactically allowed on trait items and
   enum variants.][66183] These are still rejected semantically, but
   can be seen and parsed by procedural macros and conditional compilation.
+- [You can now define a Rust `extern "C"` function with `Box<T>` and use `T*` as the corresponding
+  type on the C side.][62514] Please see [the documentation][box-memory-layout] for more information,
+  including the important caveat about preferring to avoid `Box<T>` in Rust signatures for functions defined in C.
+
+[box-memory-layout]: https://doc.rust-lang.org/std/boxed/index.html#memory-layout
 
 Compiler
 --------
@@ -2662,6 +2667,7 @@ Compatibility Notes
 
 [54733]: https://github.com/rust-lang/rust/pull/54733/
 [61351]: https://github.com/rust-lang/rust/pull/61351/
+[62514]: https://github.com/rust-lang/rust/pull/62514/
 [67255]: https://github.com/rust-lang/rust/pull/67255/
 [66661]: https://github.com/rust-lang/rust/pull/66661/
 [66771]: https://github.com/rust-lang/rust/pull/66771/
