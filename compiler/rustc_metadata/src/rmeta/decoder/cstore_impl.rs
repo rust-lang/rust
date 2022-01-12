@@ -352,7 +352,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 visible_parent_map.entry(child).or_insert(parent);
             }
 
-            visible_parent_map
+            Lrc::new(visible_parent_map)
         },
 
         dependency_formats: |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
