@@ -247,6 +247,9 @@ pub struct CodegenUnit<'tcx> {
     items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
     size_estimate: Option<usize>,
     primary: bool,
+    /// True if this is CGU is used to hold code coverage information for dead code,
+    /// false otherwise.
+    is_code_coverage_dead_code_cgu: bool,
 }
 
 /// Specifies the linkage type for a `MonoItem`.
@@ -277,7 +280,13 @@ pub enum Visibility {
 impl<'tcx> CodegenUnit<'tcx> {
     #[inline]
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
-        CodegenUnit { name, items: Default::default(), size_estimate: None, primary: false }
+        CodegenUnit {
+            name,
+            items: Default::default(),
+            size_estimate: None,
+            primary: false,
+            is_code_coverage_dead_code_cgu: false,
+        }
     }
 
     pub fn name(&self) -> Symbol {
@@ -302,6 +311,15 @@ impl<'tcx> CodegenUnit<'tcx> {
 
     pub fn items_mut(&mut self) -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &mut self.items
+    }
+
+    pub fn is_code_coverage_dead_code_cgu(&self) -> bool {
+        self.is_code_coverage_dead_code_cgu
+    }
+
+    /// Marks this CGU as the one used to contain code coverage information for dead code.
+    pub fn make_code_coverage_dead_code_cgu(&mut self) {
+        self.is_code_coverage_dead_code_cgu = true;
     }
 
     pub fn mangle_name(human_readable_name: &str) -> String {
@@ -404,9 +422,11 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
             // The size estimate is not relevant to the hash
             size_estimate: _,
             primary: _,
+            is_code_coverage_dead_code_cgu,
         } = *self;
 
         name.hash_stable(hcx, hasher);
+        is_code_coverage_dead_code_cgu.hash_stable(hcx, hasher);
 
         let mut items: Vec<(Fingerprint, _)> = items
             .iter()

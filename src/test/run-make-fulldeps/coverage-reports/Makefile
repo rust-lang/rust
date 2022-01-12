@@ -64,7 +64,7 @@ endif
 # if and when we allow `llvm-cov` to produce results for multiple files. Note, the path separators
 # appear to be normalized to `/` in those files, thankfully.)
 LLVM_COV_IGNORE_FILES=\
-	--ignore-filename-regex='(uses_crate.rs|uses_inline_crate.rs)'
+	--ignore-filename-regex='(uses_crate.rs|uses_inline_crate.rs|unused_mod.rs)'
 
 all: $(patsubst $(SOURCEDIR)/lib/%.rs,%,$(wildcard $(SOURCEDIR)/lib/*.rs)) $(patsubst $(SOURCEDIR)/%.rs,%,$(wildcard $(SOURCEDIR)/*.rs))
 
