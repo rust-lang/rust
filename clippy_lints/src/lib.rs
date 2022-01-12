@@ -261,6 +261,7 @@ mod macro_use;
 mod main_recursion;
 mod manual_assert;
 mod manual_async_fn;
+mod manual_bits;
 mod manual_map;
 mod manual_non_exhaustive;
 mod manual_ok_or;
@@ -858,6 +859,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(init_numbered_fields::NumberedFields));
     store.register_early_pass(|| Box::new(single_char_lifetime_names::SingleCharLifetimeNames));
     store.register_late_pass(move || Box::new(borrow_as_ptr::BorrowAsPtr::new(msrv)));
+    store.register_late_pass(move || Box::new(manual_bits::ManualBits::new(msrv)));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

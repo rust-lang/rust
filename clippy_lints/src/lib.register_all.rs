@@ -115,6 +115,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(loops::WHILE_LET_ON_ITERATOR),
     LintId::of(main_recursion::MAIN_RECURSION),
     LintId::of(manual_async_fn::MANUAL_ASYNC_FN),
+    LintId::of(manual_bits::MANUAL_BITS),
     LintId::of(manual_map::MANUAL_MAP),
     LintId::of(manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE),
     LintId::of(manual_strip::MANUAL_STRIP),
