@@ -124,7 +124,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             if let Some(init) = local.init;
             then {
                 let init_ty = cx.typeck_results().expr_ty(init);
-                let contains_sync_guard = init_ty.walk(cx.tcx).any(|inner| match inner.unpack() {
+                let contains_sync_guard = init_ty.walk().any(|inner| match inner.unpack() {
                     GenericArgKind::Type(inner_ty) => {
                         SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path))
                     },

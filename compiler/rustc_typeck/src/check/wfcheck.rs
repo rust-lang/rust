@@ -311,7 +311,7 @@ fn check_gat_where_clauses(
         // of  the function signature. In our example, the GAT in the return
         // type is `<Self as LendingIterator>::Item<'a>`, so 'a and Self are arguments.
         let (regions, types) =
-            GATSubstCollector::visit(tcx, trait_item.def_id.to_def_id(), sig.output());
+            GATSubstCollector::visit(trait_item.def_id.to_def_id(), sig.output());
 
         // If both regions and types are empty, then this GAT isn't in the
         // return type, and we shouldn't try to do clause analysis
@@ -600,7 +600,6 @@ fn region_known_to_outlive<'tcx>(
 /// the two vectors, `regions` and `types` (depending on their kind). For each
 /// parameter `Pi` also track the index `i`.
 struct GATSubstCollector<'tcx> {
-    tcx: TyCtxt<'tcx>,
     gat: DefId,
     // Which region appears and which parameter index its subsituted for
     regions: FxHashSet<(ty::Region<'tcx>, usize)>,
@@ -610,16 +609,11 @@ struct GATSubstCollector<'tcx> {
 
 impl<'tcx> GATSubstCollector<'tcx> {
     fn visit<T: TypeFoldable<'tcx>>(
-        tcx: TyCtxt<'tcx>,
         gat: DefId,
         t: T,
     ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
-        let mut visitor = GATSubstCollector {
-            tcx,
-            gat,
-            regions: FxHashSet::default(),
-            types: FxHashSet::default(),
-        };
+        let mut visitor =
+            GATSubstCollector { gat, regions: FxHashSet::default(), types: FxHashSet::default() };
         t.visit_with(&mut visitor);
         (visitor.regions, visitor.types)
     }
@@ -646,10 +640,6 @@ impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
             _ => {}
         }
         t.super_visit_with(self)
-    }
-
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        Some(self.tcx)
     }
 }
 
@@ -982,10 +972,10 @@ fn check_type_defn<'tcx, F>(
                 fcx.register_predicate(traits::Obligation::new(
                     cause,
                     fcx.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ty::Unevaluated::new(
+                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(
                         ty::WithOptConstParam::unknown(discr_def_id.to_def_id()),
                         discr_substs,
-                    )))
+                    ))
                     .to_predicate(tcx),
                 ));
             }
@@ -1197,7 +1187,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                     // Ignore dependent defaults -- that is, where the default of one type
                     // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
                     // be sure if it will error or not as user might always specify the other.
-                    if !ty.definitely_needs_subst(tcx) {
+                    if !ty.needs_subst() {
                         fcx.register_wf_obligation(
                             ty.into(),
                             tcx.def_span(param.def_id),
@@ -1213,7 +1203,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                     // for `struct Foo<const N: usize, const M: usize = { 1 - 2 }>`
                     // we should eagerly error.
                     let default_ct = tcx.const_param_default(param.def_id);
-                    if !default_ct.definitely_needs_subst(tcx) {
+                    if !default_ct.needs_subst() {
                         fcx.register_wf_obligation(
                             default_ct.into(),
                             tcx.def_span(param.def_id),
@@ -1247,7 +1237,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                 if is_our_default(param) {
                     let default_ty = tcx.type_of(param.def_id);
                     // ... and it's not a dependent default, ...
-                    if !default_ty.definitely_needs_subst(tcx) {
+                    if !default_ty.needs_subst() {
                         // ... then substitute it with the default.
                         return default_ty.into();
                     }
@@ -1260,7 +1250,7 @@ fn check_where_clauses<'tcx, 'fcx>(
                 if is_our_default(param) {
                     let default_ct = tcx.const_param_default(param.def_id);
                     // ... and it's not a dependent default, ...
-                    if !default_ct.definitely_needs_subst(tcx) {
+                    if !default_ct.needs_subst() {
                         // ... then substitute it with the default.
                         return default_ct.into();
                     }
@@ -1276,15 +1266,12 @@ fn check_where_clauses<'tcx, 'fcx>(
         .predicates
         .iter()
         .flat_map(|&(pred, sp)| {
-            struct CountParams<'tcx> {
-                tcx: TyCtxt<'tcx>,
+            #[derive(Default)]
+            struct CountParams {
                 params: FxHashSet<u32>,
             }
-            impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams<'tcx> {
+            impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
                 type BreakTy = ();
-                fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-                    Some(self.tcx)
-                }
 
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                     if let ty::Param(param) = t.kind() {
@@ -1304,12 +1291,12 @@ fn check_where_clauses<'tcx, 'fcx>(
                     c.super_visit_with(self)
                 }
             }
-            let mut param_count = CountParams { tcx: fcx.tcx, params: FxHashSet::default() };
+            let mut param_count = CountParams::default();
             let has_region = pred.visit_with(&mut param_count).is_break();
             let substituted_pred = pred.subst(tcx, substs);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
-            if substituted_pred.definitely_has_param_types_or_consts(tcx)
+            if substituted_pred.has_param_types_or_consts()
                 || param_count.params.len() > 1
                 || has_region
             {
@@ -1697,7 +1684,7 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
     for obligation in implied_obligations {
         let pred = obligation.predicate;
         // Match the existing behavior.
-        if pred.is_global(fcx.tcx) && !pred.has_late_bound_regions() {
+        if pred.is_global() && !pred.has_late_bound_regions() {
             let pred = fcx.normalize_associated_types_in(span, pred);
             let hir_node = fcx.tcx.hir().find(id);
 

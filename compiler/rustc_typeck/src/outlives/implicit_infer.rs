@@ -114,18 +114,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) {
-    // We must not look into the default substs of consts
-    // as computing those depends on the results of `predicates_of`.
-    //
-    // Luckily the only types contained in default substs are type
-    // parameters which don't matter here.
-    //
-    // FIXME(adt_const_params): Once complex const parameter types
-    // are allowed, this might be incorrect. I think that we will still be
-    // fine, as all outlives relations of the const param types should also
-    // be part of the adt containing it, but we should still both update the
-    // documentation and add some tests for this.
-    for arg in field_ty.walk_ignoring_default_const_substs() {
+    for arg in field_ty.walk() {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
 
@@ -317,7 +306,7 @@ pub fn check_explicit_predicates<'tcx>(
         // 'b`.
         if let Some(self_ty) = ignored_self_ty {
             if let GenericArgKind::Type(ty) = outlives_predicate.0.unpack() {
-                if ty.walk(tcx).any(|arg| arg == self_ty.into()) {
+                if ty.walk().any(|arg| arg == self_ty.into()) {
                     debug!("skipping self ty = {:?}", &ty);
                     continue;
                 }

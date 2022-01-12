@@ -237,9 +237,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                     relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
                 }
                 (
-                    ty::PredicateKind::ConstEvaluatable(a),
-                    ty::PredicateKind::ConstEvaluatable(b),
-                ) => tcx.try_unify_abstract_consts((a, b)),
+                    ty::PredicateKind::ConstEvaluatable(a_def, a_substs),
+                    ty::PredicateKind::ConstEvaluatable(b_def, b_substs),
+                ) => tcx.try_unify_abstract_consts(((a_def, a_substs), (b_def, b_substs))),
                 (
                     ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_a, lt_a)),
                     ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_b, lt_b)),

@@ -61,7 +61,7 @@ impl<'tcx> Const<'tcx> {
             None => tcx.mk_const(ty::Const {
                 val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: def.to_global(),
-                    substs_: None,
+                    substs: InternalSubsts::identity_for_item(tcx, def.did.to_def_id()),
                     promoted: None,
                 }),
                 ty,
@@ -153,14 +153,14 @@ impl<'tcx> Const<'tcx> {
                 tcx.mk_const(ty::Const {
                     val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                         def: ty::WithOptConstParam::unknown(def_id).to_global(),
-                        substs_: Some(substs),
+                        substs,
                         promoted: None,
                     }),
                     ty,
                 })
             }
         };
-        debug_assert!(!ret.has_free_regions(tcx));
+        debug_assert!(!ret.has_free_regions());
         ret
     }
 

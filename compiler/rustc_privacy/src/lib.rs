@@ -135,11 +135,11 @@ where
                 ty.visit_with(self)
             }
             ty::PredicateKind::RegionOutlives(..) => ControlFlow::CONTINUE,
-            ty::PredicateKind::ConstEvaluatable(uv)
+            ty::PredicateKind::ConstEvaluatable(defs, substs)
                 if self.def_id_visitor.tcx().features().generic_const_exprs =>
             {
                 let tcx = self.def_id_visitor.tcx();
-                if let Ok(Some(ct)) = AbstractConst::new(tcx, uv) {
+                if let Ok(Some(ct)) = AbstractConst::new(tcx, defs, substs) {
                     self.visit_abstract_const_expr(tcx, ct)?;
                 }
                 ControlFlow::CONTINUE
@@ -176,10 +176,6 @@ where
     V: DefIdVisitor<'tcx> + ?Sized,
 {
     type BreakTy = V::BreakTy;
-
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        Some(self.def_id_visitor.tcx())
-    }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();

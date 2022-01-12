@@ -19,7 +19,7 @@ use rustc_middle::thir::abstract_const::{self, Node, NodeId, NotConstEvaluatable
 use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_session::lint;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
 use std::cmp;
@@ -29,20 +29,26 @@ use std::ops::ControlFlow;
 /// Check if a given constant can be evaluated.
 pub fn is_const_evaluatable<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    uv: ty::Unevaluated<'tcx, ()>,
+    def: ty::WithOptConstParam<DefId>,
+    substs: SubstsRef<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
-    debug!("is_const_evaluatable({:?})", uv);
+    debug!("is_const_evaluatable({:?}, {:?})", def, substs);
     if infcx.tcx.features().generic_const_exprs {
         let tcx = infcx.tcx;
-        match AbstractConst::new(tcx, uv)? {
+        match AbstractConst::new(tcx, def, substs)? {
             // We are looking at a generic abstract constant.
             Some(ct) => {
                 for pred in param_env.caller_bounds() {
                     match pred.kind().skip_binder() {
-                        ty::PredicateKind::ConstEvaluatable(uv) => {
-                            if let Some(b_ct) = AbstractConst::new(tcx, uv)? {
+                        ty::PredicateKind::ConstEvaluatable(b_def, b_substs) => {
+                            if b_def == def && b_substs == substs {
+                                debug!("is_const_evaluatable: caller_bound ~~> ok");
+                                return Ok(());
+                            }
+
+                            if let Some(b_ct) = AbstractConst::new(tcx, b_def, b_substs)? {
                                 // Try to unify with each subtree in the AbstractConst to allow for
                                 // `N + 1` being const evaluatable even if theres only a `ConstEvaluatable`
                                 // predicate for `(N + 1) * 2`
@@ -84,7 +90,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                     Node::Leaf(leaf) => {
                         if leaf.has_infer_types_or_consts() {
                             failure_kind = FailureKind::MentionsInfer;
-                        } else if leaf.definitely_has_param_types_or_consts(tcx) {
+                        } else if leaf.has_param_types_or_consts() {
                             failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                         }
 
@@ -93,7 +99,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                     Node::Cast(_, _, ty) => {
                         if ty.has_infer_types_or_consts() {
                             failure_kind = FailureKind::MentionsInfer;
-                        } else if ty.definitely_has_param_types_or_consts(tcx) {
+                        } else if ty.has_param_types_or_consts() {
                             failure_kind = cmp::min(failure_kind, FailureKind::MentionsParam);
                         }
 
@@ -126,7 +132,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     }
 
     let future_compat_lint = || {
-        if let Some(local_def_id) = uv.def.did.as_local() {
+        if let Some(local_def_id) = def.did.as_local() {
             infcx.tcx.struct_span_lint_hir(
                 lint::builtin::CONST_EVALUATABLE_UNCHECKED,
                 infcx.tcx.hir().local_def_id_to_hir_id(local_def_id),
@@ -147,12 +153,16 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     // and hopefully soon change this to an error.
     //
     // See #74595 for more details about this.
-    let concrete = infcx.const_eval_resolve(param_env, uv.expand(), Some(span));
+    let concrete = infcx.const_eval_resolve(
+        param_env,
+        ty::Unevaluated { def, substs, promoted: None },
+        Some(span),
+    );
 
-    if concrete.is_ok() && uv.substs(infcx.tcx).definitely_has_param_types_or_consts(infcx.tcx) {
-        match infcx.tcx.def_kind(uv.def.did) {
+    if concrete.is_ok() && substs.has_param_types_or_consts() {
+        match infcx.tcx.def_kind(def.did) {
             DefKind::AnonConst | DefKind::InlineConst => {
-                let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(uv.def);
+                let mir_body = infcx.tcx.mir_for_ctfe_opt_const_arg(def);
 
                 if mir_body.is_polymorphic {
                     future_compat_lint();
@@ -164,7 +174,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 
     debug!(?concrete, "is_const_evaluatable");
     match concrete {
-        Err(ErrorHandled::TooGeneric) => Err(match uv.has_infer_types_or_consts() {
+        Err(ErrorHandled::TooGeneric) => Err(match substs.has_infer_types_or_consts() {
             true => NotConstEvaluatable::MentionsInfer,
             false => NotConstEvaluatable::MentionsParam,
         }),
@@ -192,11 +202,12 @@ pub struct AbstractConst<'tcx> {
 impl<'tcx> AbstractConst<'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
-        uv: ty::Unevaluated<'tcx, ()>,
+        def: ty::WithOptConstParam<DefId>,
+        substs: SubstsRef<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
-        let inner = tcx.thir_abstract_const_opt_const_arg(uv.def)?;
-        debug!("AbstractConst::new({:?}) = {:?}", uv, inner);
-        Ok(inner.map(|inner| AbstractConst { inner, substs: uv.substs(tcx) }))
+        let inner = tcx.thir_abstract_const_opt_const_arg(def)?;
+        debug!("AbstractConst::new({:?}, {:?}) = {:?}", def, substs, inner);
+        Ok(inner.map(|inner| AbstractConst { inner, substs }))
     }
 
     pub fn from_const(
@@ -204,7 +215,9 @@ impl<'tcx> AbstractConst<'tcx> {
         ct: &ty::Const<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
         match ct.val {
-            ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv.shrink()),
+            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted: _ }) => {
+                AbstractConst::new(tcx, def, substs)
+            }
             ty::ConstKind::Error(_) => Err(ErrorReported),
             _ => Ok(None),
         }
@@ -271,7 +284,6 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         struct IsThirPolymorphic<'a, 'tcx> {
             is_poly: bool,
             thir: &'a thir::Thir<'tcx>,
-            tcx: TyCtxt<'tcx>,
         }
 
         use thir::visit;
@@ -281,25 +293,25 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             }
 
             fn visit_expr(&mut self, expr: &thir::Expr<'tcx>) {
-                self.is_poly |= expr.ty.definitely_has_param_types_or_consts(self.tcx);
+                self.is_poly |= expr.ty.has_param_types_or_consts();
                 if !self.is_poly {
                     visit::walk_expr(self, expr)
                 }
             }
 
             fn visit_pat(&mut self, pat: &thir::Pat<'tcx>) {
-                self.is_poly |= pat.ty.definitely_has_param_types_or_consts(self.tcx);
+                self.is_poly |= pat.ty.has_param_types_or_consts();
                 if !self.is_poly {
                     visit::walk_pat(self, pat);
                 }
             }
 
             fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) {
-                self.is_poly |= ct.definitely_has_param_types_or_consts(self.tcx);
+                self.is_poly |= ct.has_param_types_or_consts();
             }
         }
 
-        let mut is_poly_vis = IsThirPolymorphic { is_poly: false, thir: body, tcx };
+        let mut is_poly_vis = IsThirPolymorphic { is_poly: false, thir: body };
         visit::walk_expr(&mut is_poly_vis, &body[body_id]);
         debug!("AbstractConstBuilder: is_poly={}", is_poly_vis.is_poly);
         if !is_poly_vis.is_poly {
@@ -527,11 +539,14 @@ pub(super) fn thir_abstract_const<'tcx>(
 
 pub(super) fn try_unify_abstract_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
-    (a, b): (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>),
+    ((a, a_substs), (b, b_substs)): (
+        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+    ),
 ) -> bool {
     (|| {
-        if let Some(a) = AbstractConst::new(tcx, a)? {
-            if let Some(b) = AbstractConst::new(tcx, b)? {
+        if let Some(a) = AbstractConst::new(tcx, a, a_substs)? {
+            if let Some(b) = AbstractConst::new(tcx, b, b_substs)? {
                 return Ok(try_unify(tcx, a, b));
             }
         }

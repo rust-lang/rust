@@ -505,7 +505,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.potentially_needs_subst() {
+        if !t.needs_subst() {
             return t;
         }
 

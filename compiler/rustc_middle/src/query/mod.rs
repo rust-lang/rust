@@ -110,10 +110,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query default_anon_const_substs(key: DefId) -> SubstsRef<'tcx> {
-        desc { |tcx| "computing the default generic arguments for `{}`", tcx.def_path_str(key) }
-    }
-
     /// Records the type of every item.
     query type_of(key: DefId) -> Ty<'tcx> {
         desc { |tcx|
@@ -318,11 +314,12 @@ rustc_queries! {
     }
 
     query try_unify_abstract_consts(key: (
-        ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>
+        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>),
+        (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)
     )) -> bool {
         desc {
             |tcx| "trying to unify the generic constants {} and {}",
-            tcx.def_path_str(key.0.def.did), tcx.def_path_str(key.1.def.did)
+            tcx.def_path_str(key.0.0.did), tcx.def_path_str(key.1.0.did)
         }
     }
 

@@ -52,7 +52,7 @@ impl<'a, 'tcx> FindHirNodeVisitor<'a, 'tcx> {
 
     fn node_ty_contains_target(&self, hir_id: HirId) -> Option<Ty<'tcx>> {
         self.node_type_opt(hir_id).map(|ty| self.infcx.resolve_vars_if_possible(ty)).filter(|ty| {
-            ty.walk(self.infcx.tcx).any(|inner| {
+            ty.walk().any(|inner| {
                 inner == self.target
                     || match (inner.unpack(), self.target.unpack()) {
                         (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
@@ -445,9 +445,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             parent: None,
                         }
                     }
-                    ty::ConstKind::Unevaluated(ty::Unevaluated {
-                        substs_: Some(substs), ..
-                    }) => {
+                    ty::ConstKind::Unevaluated(ty::Unevaluated { substs, .. }) => {
                         assert!(substs.has_infer_types_or_consts());
 
                         // FIXME: We only use the first inference variable we encounter in

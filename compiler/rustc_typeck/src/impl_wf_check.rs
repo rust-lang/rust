@@ -117,7 +117,7 @@ fn enforce_impl_params_are_constrained(
     let impl_predicates = tcx.predicates_of(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
 
-    let mut input_parameters = cgp::parameters_for_impl(tcx, impl_self_ty, impl_trait_ref);
+    let mut input_parameters = cgp::parameters_for_impl(impl_self_ty, impl_trait_ref);
     cgp::identify_constrained_generic_params(
         tcx,
         impl_predicates,
@@ -134,7 +134,7 @@ fn enforce_impl_params_are_constrained(
             match item.kind {
                 ty::AssocKind::Type => {
                     if item.defaultness.has_value() {
-                        cgp::parameters_for(tcx, &tcx.type_of(def_id), true)
+                        cgp::parameters_for(&tcx.type_of(def_id), true)
                     } else {
                         Vec::new()
                     }

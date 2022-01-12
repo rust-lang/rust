@@ -668,10 +668,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// canonicalizing the consts.
     pub fn try_unify_abstract_consts(
         &self,
-        a: ty::Unevaluated<'tcx, ()>,
-        b: ty::Unevaluated<'tcx, ()>,
+        a: ty::Unevaluated<'tcx>,
+        b: ty::Unevaluated<'tcx>,
     ) -> bool {
-        let canonical = self.canonicalize_query((a, b), &mut OriginalQueryValues::default());
+        let canonical = self.canonicalize_query(
+            ((a.def, a.substs), (b.def, b.substs)),
+            &mut OriginalQueryValues::default(),
+        );
         debug!("canonical consts: {:?}", &canonical.value);
 
         self.tcx.try_unify_abstract_consts(canonical.value)
@@ -1585,8 +1588,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
-        let mut substs = unevaluated.substs(self.tcx);
-        substs = self.resolve_vars_if_possible(substs);
+        let substs = self.resolve_vars_if_possible(unevaluated.substs);
 
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
@@ -1599,7 +1601,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let unevaluated = ty::Unevaluated {
             def: unevaluated.def,
-            substs_: Some(substs_erased),
+            substs: substs_erased,
             promoted: unevaluated.promoted,
         };
 

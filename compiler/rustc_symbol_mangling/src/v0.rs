@@ -317,9 +317,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
         // Encode impl generic params if the substitutions contain parameters (implying
         // polymorphization is enabled) and this isn't an inherent impl.
-        if impl_trait_ref.is_some()
-            && substs.iter().any(|a| a.definitely_has_param_types_or_consts(self.tcx))
-        {
+        if impl_trait_ref.is_some() && substs.iter().any(|a| a.has_param_types_or_consts()) {
             self = self.path_generic_args(
                 |this| {
                     this.path_append_ns(

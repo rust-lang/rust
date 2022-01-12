@@ -348,7 +348,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     fn check_local_or_return_ty(&mut self, ty: Ty<'tcx>, local: Local) {
         let kind = self.body.local_kind(local);
 
-        for ty in ty.walk(self.tcx) {
+        for ty in ty.walk() {
             let ty = match ty.unpack() {
                 GenericArgKind::Type(ty) => ty,
 

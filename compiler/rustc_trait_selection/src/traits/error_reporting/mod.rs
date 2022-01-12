@@ -819,10 +819,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
 
                 match obligation.predicate.kind().skip_binder() {
-                    ty::PredicateKind::ConstEvaluatable(uv) => {
+                    ty::PredicateKind::ConstEvaluatable(def, _) => {
                         let mut err =
                             self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
-                        let const_span = self.tcx.def_span(uv.def.did);
+                        let const_span = self.tcx.def_span(def.did);
                         match self.tcx.sess.source_map().span_to_snippet(const_span) {
                             Ok(snippet) => err.help(&format!(
                                 "try adding a `where` bound using this expression: `where [(); {}]:`",

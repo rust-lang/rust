@@ -405,8 +405,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         match &val.val {
             ty::ConstKind::Unevaluated(uv) => {
-                let substs = uv.substs(self.tcx());
-                self.add_constraints_from_invariant_substs(current, substs, variance);
+                self.add_constraints_from_invariant_substs(current, uv.substs, variance);
             }
             _ => {}
         }
