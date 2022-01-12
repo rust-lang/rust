@@ -669,6 +669,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise()),
             self_ty,
             trait_ref.path.segments.last().unwrap(),
+            true,
         )
     }
 
@@ -765,7 +766,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let infer_args = trait_segment.infer_args;
 
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
-        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment);
+        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, false);
 
         self.instantiate_poly_trait_ref_inner(
             hir_id,
@@ -822,9 +823,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         trait_segment: &hir::PathSegment<'_>,
+        is_impl: bool,
     ) -> ty::TraitRef<'tcx> {
-        let (substs, _) =
-            self.create_substs_for_ast_trait_ref(span, trait_def_id, self_ty, trait_segment);
+        let (substs, _) = self.create_substs_for_ast_trait_ref(
+            span,
+            trait_def_id,
+            self_ty,
+            trait_segment,
+            is_impl,
+        );
         let assoc_bindings = self.create_assoc_bindings_for_generic_args(trait_segment.args());
         if let Some(b) = assoc_bindings.first() {
             Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
@@ -839,8 +846,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
         trait_segment: &'a hir::PathSegment<'a>,
+        is_impl: bool,
     ) -> (SubstsRef<'tcx>, GenericArgCountResult) {
-        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment);
+        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
 
         self.create_substs_for_ast_path(
             span,
@@ -1932,7 +1940,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("qpath_to_ty: self_type={:?}", self_ty);
 
-        let trait_ref = self.ast_path_to_mono_trait_ref(span, trait_def_id, self_ty, trait_segment);
+        let trait_ref =
+            self.ast_path_to_mono_trait_ref(span, trait_def_id, self_ty, trait_segment, false);
 
         let item_substs = self.create_substs_for_associated_item(
             tcx,

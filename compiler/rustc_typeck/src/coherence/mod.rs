@@ -121,28 +121,6 @@ fn enforce_trait_manually_implementable(
             return;
         }
     }
-
-    let trait_name = if did == li.fn_trait() {
-        "Fn"
-    } else if did == li.fn_mut_trait() {
-        "FnMut"
-    } else if did == li.fn_once_trait() {
-        "FnOnce"
-    } else {
-        return; // everything OK
-    };
-
-    let span = impl_header_span(tcx, impl_def_id);
-    struct_span_err!(
-        tcx.sess,
-        span,
-        E0183,
-        "manual implementations of `{}` are experimental",
-        trait_name
-    )
-    .span_label(span, format!("manual implementations of `{}` are experimental", trait_name))
-    .help("add `#![feature(unboxed_closures)]` to the crate attributes to enable")
-    .emit();
 }
 
 /// We allow impls of marker traits to overlap, so they can't override impls
