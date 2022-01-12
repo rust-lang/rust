@@ -20,8 +20,7 @@ Then, you can generate the manifest and all the packages from `path/to/dist` to
 `path/to/output` with:
 
 ```
-$ cargo +nightly run path/to/dist path/to/output 1970-01-01 http://example.com \
-    CHANNEL VERSION
+$ cargo +nightly run path/to/dist path/to/output 1970-01-01 http://example.com CHANNEL
 ```
 
 Remember to replace `CHANNEL` with the channel you produced dist artifacts of
