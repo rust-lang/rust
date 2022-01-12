@@ -9,7 +9,3 @@
 pub mod bit_set;
 pub mod interval;
 pub mod vec;
-
-// FIXME(#56935): Work around ICEs during cross-compilation.
-#[allow(unused)]
-extern crate rustc_macros;
