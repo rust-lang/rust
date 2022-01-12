@@ -50,15 +50,6 @@ pub fn parse_asm_args<'a>(
         return Err(diag.struct_span_err(sp, "requires at least a template string argument"));
     }
 
-    // Detect use of the legacy llvm_asm! syntax (which used to be called asm!)
-    if !is_global_asm && p.look_ahead(1, |t| *t == token::Colon || *t == token::ModSep) {
-        let mut err =
-            diag.struct_span_err(sp, "the legacy LLVM-style asm! syntax is no longer supported");
-        err.note("consider migrating to the new asm! syntax specified in RFC 2873");
-        err.note("alternatively, switch to llvm_asm! to keep your code working as it is");
-        return Err(err);
-    }
-
     let first_template = p.parse_expr()?;
     let mut args = AsmArgs {
         templates: vec![first_template],

@@ -145,14 +145,6 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
             }
         }
         ThreadLocalRef(_) => {}
-        LlvmInlineAsm { ref outputs, ref inputs, asm: _ } => {
-            for &out_expr in &**outputs {
-                visitor.visit_expr(&visitor.thir()[out_expr]);
-            }
-            for &in_expr in &**inputs {
-                visitor.visit_expr(&visitor.thir()[in_expr]);
-            }
-        }
         Yield { value } => visitor.visit_expr(&visitor.thir()[value]),
     }
 }

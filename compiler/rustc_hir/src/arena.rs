@@ -30,7 +30,6 @@ macro_rules! arena_types {
             [] impl_item_ref: rustc_hir::ImplItemRef,
             [] item: rustc_hir::Item<'tcx>,
             [] inline_asm: rustc_hir::InlineAsm<'tcx>,
-            [] llvm_inline_asm: rustc_hir::LlvmInlineAsm<'tcx>,
             [] local: rustc_hir::Local<'tcx>,
             [] mod_: rustc_hir::Mod<'tcx>,
             [] owner_info: rustc_hir::OwnerInfo<'tcx>,

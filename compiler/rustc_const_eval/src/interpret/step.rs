@@ -140,8 +140,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
             Nop => {}
-
-            LlvmInlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
         }
 
         self.stack_mut()[frame_idx].loc.as_mut().unwrap().statement_index += 1;

@@ -352,7 +352,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             StatementKind::SetDiscriminant { .. }
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
-            | StatementKind::LlvmInlineAsm(..)
             | StatementKind::Retag(_, _)
             | StatementKind::Coverage(_)
             | StatementKind::Nop => {}

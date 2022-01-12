@@ -2168,62 +2168,6 @@ impl<'a> State<'a> {
                 self.word("asm!");
                 self.print_inline_asm(a);
             }
-            ast::ExprKind::LlvmInlineAsm(ref a) => {
-                self.word("llvm_asm!");
-                self.popen();
-                self.print_symbol(a.asm, a.asm_str_style);
-                self.word_space(":");
-
-                self.commasep(Inconsistent, &a.outputs, |s, out| {
-                    let constraint = out.constraint.as_str();
-                    let mut ch = constraint.chars();
-                    match ch.next() {
-                        Some('=') if out.is_rw => {
-                            s.print_string(&format!("+{}", ch.as_str()), ast::StrStyle::Cooked)
-                        }
-                        _ => s.print_string(&constraint, ast::StrStyle::Cooked),
-                    }
-                    s.popen();
-                    s.print_expr(&out.expr);
-                    s.pclose();
-                });
-                self.space();
-                self.word_space(":");
-
-                self.commasep(Inconsistent, &a.inputs, |s, &(co, ref o)| {
-                    s.print_symbol(co, ast::StrStyle::Cooked);
-                    s.popen();
-                    s.print_expr(o);
-                    s.pclose();
-                });
-                self.space();
-                self.word_space(":");
-
-                self.commasep(Inconsistent, &a.clobbers, |s, &co| {
-                    s.print_symbol(co, ast::StrStyle::Cooked);
-                });
-
-                let mut options = vec![];
-                if a.volatile {
-                    options.push("volatile");
-                }
-                if a.alignstack {
-                    options.push("alignstack");
-                }
-                if a.dialect == ast::LlvmAsmDialect::Intel {
-                    options.push("intel");
-                }
-
-                if !options.is_empty() {
-                    self.space();
-                    self.word_space(":");
-                    self.commasep(Inconsistent, &options, |s, &co| {
-                        s.print_string(co, ast::StrStyle::Cooked);
-                    });
-                }
-
-                self.pclose();
-            }
             ast::ExprKind::MacCall(ref m) => self.print_mac(m),
             ast::ExprKind::Paren(ref e) => {
                 self.popen();

@@ -5,12 +5,11 @@ use rustc_middle::mir::{BorrowKind, Mutability, Operand};
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::mir::{Statement, StatementKind};
 use rustc_middle::ty::TyCtxt;
-use std::iter;
 
 use crate::{
     borrow_set::BorrowSet, facts::AllFacts, location::LocationTable, path_utils::*, AccessDepth,
     Activation, ArtificialField, BorrowIndex, Deep, JustWrite, LocalMutationIsAllowed, MutateMode,
-    Read, ReadKind, ReadOrWrite, Reservation, Shallow, Write, WriteAndRead, WriteKind,
+    Read, ReadKind, ReadOrWrite, Reservation, Shallow, Write, WriteKind,
 };
 
 pub(super) fn generate_invalidates<'tcx>(
@@ -66,30 +65,6 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
             StatementKind::SetDiscriminant { place, variant_index: _ } => {
                 self.mutate_place(location, **place, Shallow(None), JustWrite);
-            }
-            StatementKind::LlvmInlineAsm(asm) => {
-                for (o, output) in iter::zip(&asm.asm.outputs, &*asm.outputs) {
-                    if o.is_indirect {
-                        // FIXME(eddyb) indirect inline asm outputs should
-                        // be encoded through MIR place derefs instead.
-                        self.access_place(
-                            location,
-                            *output,
-                            (Deep, Read(ReadKind::Copy)),
-                            LocalMutationIsAllowed::No,
-                        );
-                    } else {
-                        self.mutate_place(
-                            location,
-                            *output,
-                            if o.is_rw { Deep } else { Shallow(None) },
-                            if o.is_rw { WriteAndRead } else { JustWrite },
-                        );
-                    }
-                }
-                for (_, input) in asm.inputs.iter() {
-                    self.consume_operand(location, input);
-                }
             }
             StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
                 ref src,

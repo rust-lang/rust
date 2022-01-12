@@ -8,7 +8,6 @@ use rustc_mir_dataflow::ResultsVisitable;
 use rustc_mir_dataflow::{self, fmt::DebugWithContext, CallReturnPlaces, GenKill};
 use rustc_mir_dataflow::{Analysis, Direction, Results};
 use std::fmt;
-use std::iter;
 
 use crate::{
     places_conflict, BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, ToRegionVid,
@@ -383,14 +382,6 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
                 self.kill_borrows_on_place(trans, Place::from(local));
-            }
-
-            mir::StatementKind::LlvmInlineAsm(ref asm) => {
-                for (output, kind) in iter::zip(&*asm.outputs, &asm.asm.outputs) {
-                    if !kind.is_indirect && !kind.is_rw {
-                        self.kill_borrows_on_place(trans, *output);
-                    }
-                }
             }
 
             mir::StatementKind::FakeRead(..)

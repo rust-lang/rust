@@ -23,23 +23,14 @@ impl MirPass<'_> for UnreachablePropagation {
 
         for (bb, bb_data) in traversal::postorder(body) {
             let terminator = bb_data.terminator();
-            // HACK: If the block contains any asm statement it is not regarded as unreachable.
-            // This is a temporary solution that handles possibly diverging asm statements.
-            // Accompanying testcases: mir-opt/unreachable_asm.rs and mir-opt/unreachable_asm_2.rs
-            let asm_stmt_in_block = || {
-                bb_data.statements.iter().any(|stmt: &Statement<'_>| {
-                    matches!(stmt.kind, StatementKind::LlvmInlineAsm(..))
-                })
-            };
-
-            if terminator.kind == TerminatorKind::Unreachable && !asm_stmt_in_block() {
+            if terminator.kind == TerminatorKind::Unreachable {
                 unreachable_blocks.insert(bb);
             } else {
                 let is_unreachable = |succ: BasicBlock| unreachable_blocks.contains(&succ);
                 let terminator_kind_opt = remove_successors(&terminator.kind, is_unreachable);
 
                 if let Some(terminator_kind) = terminator_kind_opt {
-                    if terminator_kind == TerminatorKind::Unreachable && !asm_stmt_in_block() {
+                    if terminator_kind == TerminatorKind::Unreachable {
                         unreachable_blocks.insert(bb);
                     }
                     replacements.insert(bb, terminator_kind);

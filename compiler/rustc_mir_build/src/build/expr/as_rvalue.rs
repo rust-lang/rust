@@ -350,7 +350,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Continue { .. }
             | ExprKind::Return { .. }
             | ExprKind::InlineAsm { .. }
-            | ExprKind::LlvmInlineAsm { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => {
                 // these do not have corresponding `Rvalue` variants,

@@ -749,18 +749,6 @@ fn codegen_stmt<'tcx>(
         | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..) => {}
 
-        StatementKind::LlvmInlineAsm(asm) => {
-            match asm.asm.asm.as_str().trim() {
-                "" => {
-                    // Black box
-                }
-                _ => fx.tcx.sess.span_fatal(
-                    stmt.source_info.span,
-                    "Legacy `llvm_asm!` inline assembly is not supported. \
-                    Try using the new `asm!` instead.",
-                ),
-            }
-        }
         StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),
         StatementKind::CopyNonOverlapping(inner) => {
             let dst = codegen_operand(fx, &inner.dst);

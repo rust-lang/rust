@@ -7,13 +7,10 @@ use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 
-use rustc_ast::LlvmAsmDialect;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
-use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug, ty::Instance};
 use rustc_span::{Pos, Span, Symbol};
@@ -24,100 +21,6 @@ use libc::{c_char, c_uint};
 use tracing::debug;
 
 impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
-    fn codegen_llvm_inline_asm(
-        &mut self,
-        ia: &hir::LlvmInlineAsmInner,
-        outputs: Vec<PlaceRef<'tcx, &'ll Value>>,
-        mut inputs: Vec<&'ll Value>,
-        span: Span,
-    ) -> bool {
-        let mut ext_constraints = vec![];
-        let mut output_types = vec![];
-
-        // Prepare the output operands
-        let mut indirect_outputs = vec![];
-        for (i, (out, &place)) in ia.outputs.iter().zip(&outputs).enumerate() {
-            if out.is_rw {
-                let operand = self.load_operand(place);
-                if let OperandValue::Immediate(_) = operand.val {
-                    inputs.push(operand.immediate());
-                }
-                ext_constraints.push(i.to_string());
-            }
-            if out.is_indirect {
-                let operand = self.load_operand(place);
-                if let OperandValue::Immediate(_) = operand.val {
-                    indirect_outputs.push(operand.immediate());
-                }
-            } else {
-                output_types.push(place.layout.llvm_type(self.cx));
-            }
-        }
-        if !indirect_outputs.is_empty() {
-            indirect_outputs.extend_from_slice(&inputs);
-            inputs = indirect_outputs;
-        }
-
-        let clobbers = ia.clobbers.iter().map(|s| format!("~{{{}}}", &s));
-
-        // Default per-arch clobbers
-        // Basically what clang does
-        let arch_clobbers = match &self.sess().target.arch[..] {
-            "x86" | "x86_64" => &["~{dirflag}", "~{fpsr}", "~{flags}"][..],
-            "mips" | "mips64" => &["~{$1}"],
-            _ => &[],
-        };
-
-        let all_constraints = ia
-            .outputs
-            .iter()
-            .map(|out| out.constraint.to_string())
-            .chain(ia.inputs.iter().map(|s| s.to_string()))
-            .chain(ext_constraints)
-            .chain(clobbers)
-            .chain(arch_clobbers.iter().map(|s| (*s).to_string()))
-            .collect::<Vec<String>>()
-            .join(",");
-
-        debug!("Asm Constraints: {}", &all_constraints);
-
-        // Depending on how many outputs we have, the return type is different
-        let num_outputs = output_types.len();
-        let output_type = match num_outputs {
-            0 => self.type_void(),
-            1 => output_types[0],
-            _ => self.type_struct(&output_types, false),
-        };
-
-        let asm = ia.asm.as_str();
-        let r = inline_asm_call(
-            self,
-            &asm,
-            &all_constraints,
-            &inputs,
-            output_type,
-            ia.volatile,
-            ia.alignstack,
-            ia.dialect,
-            &[span],
-            false,
-            None,
-        );
-        if r.is_none() {
-            return false;
-        }
-        let r = r.unwrap();
-
-        // Again, based on how many outputs we have
-        let outputs = ia.outputs.iter().zip(&outputs).filter(|&(o, _)| !o.is_indirect);
-        for (i, (_, &place)) in outputs.enumerate() {
-            let v = if num_outputs == 1 { r } else { self.extract_value(r, i as u64) };
-            OperandValue::Immediate(v).store(self, place);
-        }
-
-        true
-    }
-
     fn codegen_inline_asm(
         &mut self,
         template: &[InlineAsmTemplatePiece],
@@ -349,9 +252,9 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             InlineAsmArch::X86 | InlineAsmArch::X86_64
                 if !options.contains(InlineAsmOptions::ATT_SYNTAX) =>
             {
-                LlvmAsmDialect::Intel
+                llvm::AsmDialect::Intel
             }
-            _ => LlvmAsmDialect::Att,
+            _ => llvm::AsmDialect::Att,
         };
         let result = inline_asm_call(
             self,
@@ -455,7 +358,7 @@ pub(crate) fn inline_asm_call<'ll>(
     output: &'ll llvm::Type,
     volatile: bool,
     alignstack: bool,
-    dia: LlvmAsmDialect,
+    dia: llvm::AsmDialect,
     line_spans: &[Span],
     unwind: bool,
     dest_catch_funclet: Option<(
@@ -498,7 +401,7 @@ pub(crate) fn inline_asm_call<'ll>(
                 cons.len(),
                 volatile,
                 alignstack,
-                llvm::AsmDialect::from_generic(dia),
+                dia,
                 can_throw,
             );
 
@@ -522,7 +425,7 @@ pub(crate) fn inline_asm_call<'ll>(
             // we just encode the start position of each line.
             // FIXME: Figure out a way to pass the entire line spans.
             let mut srcloc = vec![];
-            if dia == LlvmAsmDialect::Intel && line_spans.len() > 1 {
+            if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
                 // LLVM inserts an extra line to add the ".intel_syntax", so add
                 // a dummy srcloc entry for it.
                 //

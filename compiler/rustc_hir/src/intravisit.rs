@@ -1251,10 +1251,6 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::InlineAsm(ref asm) => {
             walk_inline_asm(visitor, asm);
         }
-        ExprKind::LlvmInlineAsm(ref asm) => {
-            walk_list!(visitor, visit_expr, asm.outputs_exprs);
-            walk_list!(visitor, visit_expr, asm.inputs_exprs);
-        }
         ExprKind::Yield(ref subexpression, _) => {
             visitor.visit_expr(subexpression);
         }

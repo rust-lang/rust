@@ -477,9 +477,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             // These cases don't actually need a destination
-            ExprKind::Assign { .. }
-            | ExprKind::AssignOp { .. }
-            | ExprKind::LlvmInlineAsm { .. } => {
+            ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
                 unpack!(block = this.stmt_expr(block, expr, None));
                 this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
                 block.unit()

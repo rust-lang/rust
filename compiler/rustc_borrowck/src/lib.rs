@@ -40,7 +40,6 @@ use either::Either;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::iter;
 use std::mem;
 use std::rc::Rc;
 
@@ -55,7 +54,7 @@ use rustc_mir_dataflow::MoveDataParamEnv;
 use self::diagnostics::{AccessKind, RegionName};
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
-use self::MutateMode::{JustWrite, WriteAndRead};
+use self::MutateMode::JustWrite;
 use facts::AllFacts;
 
 use self::path_utils::*;
@@ -653,39 +652,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             StatementKind::SetDiscriminant { place, variant_index: _ } => {
                 self.mutate_place(location, (**place, span), Shallow(None), JustWrite, flow_state);
             }
-            StatementKind::LlvmInlineAsm(ref asm) => {
-                for (o, output) in iter::zip(&asm.asm.outputs, &*asm.outputs) {
-                    if o.is_indirect {
-                        // FIXME(eddyb) indirect inline asm outputs should
-                        // be encoded through MIR place derefs instead.
-                        self.access_place(
-                            location,
-                            (*output, o.span),
-                            (Deep, Read(ReadKind::Copy)),
-                            LocalMutationIsAllowed::No,
-                            flow_state,
-                        );
-                        self.check_if_path_or_subpath_is_moved(
-                            location,
-                            InitializationRequiringAction::Use,
-                            (output.as_ref(), o.span),
-                            flow_state,
-                        );
-                    } else {
-                        self.mutate_place(
-                            location,
-                            (*output, o.span),
-                            if o.is_rw { Deep } else { Shallow(None) },
-                            if o.is_rw { WriteAndRead } else { JustWrite },
-                            flow_state,
-                        );
-                    }
-                }
-                for (_, input) in asm.inputs.iter() {
-                    self.consume_operand(location, (input, span), flow_state);
-                }
-            }
-
             StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
                 ..
             }) => {

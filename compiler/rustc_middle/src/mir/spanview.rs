@@ -245,7 +245,6 @@ pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
         SetDiscriminant { .. } => "SetDiscriminant",
         StorageLive(..) => "StorageLive",
         StorageDead(..) => "StorageDead",
-        LlvmInlineAsm(..) => "LlvmInlineAsm",
         Retag(..) => "Retag",
         AscribeUserType(..) => "AscribeUserType",
         Coverage(..) => "Coverage",
