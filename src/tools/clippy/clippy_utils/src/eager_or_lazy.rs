@@ -175,7 +175,6 @@ fn expr_eagerness(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessSuggest
                 | ExprKind::Continue(_)
                 | ExprKind::Ret(_)
                 | ExprKind::InlineAsm(_)
-                | ExprKind::LlvmInlineAsm(_)
                 | ExprKind::Yield(..)
                 | ExprKind::Err => {
                     self.eagerness = ForceNoChange;
