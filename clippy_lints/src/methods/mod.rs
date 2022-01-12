@@ -80,7 +80,6 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty, TyS};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::symbol::Symbol;
 use rustc_span::{sym, Span};
 use rustc_typeck::hir_ty_to_ty;
 
@@ -2002,22 +2001,14 @@ impl_lint_pass!(Methods => [
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
-fn method_call<'tcx>(recv: &'tcx hir::Expr<'tcx>) -> Option<(Symbol, &'tcx [hir::Expr<'tcx>], Span)> {
+fn method_call<'tcx>(recv: &'tcx hir::Expr<'tcx>) -> Option<(&'tcx str, &'tcx [hir::Expr<'tcx>], Span)> {
     if let ExprKind::MethodCall(path, span, args, _) = recv.kind {
         if !args.iter().any(|e| e.span.from_expansion()) {
-            return Some((path.ident.name, args, span));
+            let name = path.ident.name.as_str();
+            return Some((name, args, span));
         }
     }
     None
-}
-
-/// Same as `method_call` but the `Symbol` is dereferenced into a temporary `&str`
-macro_rules! method_call {
-    ($expr:expr) => {
-        method_call($expr)
-            .as_ref()
-            .map(|&(ref name, args, span)| (name.as_str(), args, span))
-    };
 }
 
 impl<'tcx> LateLintPass<'tcx> for Methods {
@@ -2222,7 +2213,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
 #[allow(clippy::too_many_lines)]
 fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Option<&RustcVersion>) {
-    if let Some((name, [recv, args @ ..], span)) = method_call!(expr) {
+    if let Some((name, [recv, args @ ..], span)) = method_call(expr) {
         match (name, args) {
             ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [_arg]) => {
                 zst_offset::check(cx, expr, recv);
@@ -2238,7 +2229,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
             ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
             ("cloned", []) => cloned_instead_of_copied::check(cx, expr, recv, span, msrv),
-            ("collect", []) => match method_call!(recv) {
+            ("collect", []) => match method_call(recv) {
                 Some((name @ ("cloned" | "copied"), [recv2], _)) => {
                     iter_cloned_collect::check(cx, name, expr, recv2);
                 },
@@ -2252,14 +2243,14 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 },
                 _ => {},
             },
-            ("count", []) => match method_call!(recv) {
+            ("count", []) => match method_call(recv) {
                 Some((name @ ("into_iter" | "iter" | "iter_mut"), [recv2], _)) => {
                     iter_count::check(cx, expr, recv2, name);
                 },
                 Some(("map", [_, arg], _)) => suspicious_map::check(cx, expr, recv, arg),
                 _ => {},
             },
-            ("expect", [_]) => match method_call!(recv) {
+            ("expect", [_]) => match method_call(recv) {
                 Some(("ok", [recv], _)) => ok_expect::check(cx, expr, recv),
                 _ => expect_used::check(cx, expr, recv),
             },
@@ -2276,13 +2267,13 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 flat_map_option::check(cx, expr, arg, span);
             },
             ("flatten", []) => {
-                if let Some(("map", [recv, map_arg], _)) = method_call!(recv) {
+                if let Some(("map", [recv, map_arg], _)) = method_call(recv) {
                     map_flatten::check(cx, expr, recv, map_arg);
                 }
             },
             ("fold", [init, acc]) => unnecessary_fold::check(cx, expr, init, acc, span),
             ("for_each", [_]) => {
-                if let Some(("inspect", [_, _], span2)) = method_call!(recv) {
+                if let Some(("inspect", [_, _], span2)) = method_call(recv) {
                     inspect_for_each::check(cx, expr, span2);
                 }
             },
@@ -2291,7 +2282,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
             ("is_some", []) => check_is_some_is_none(cx, expr, recv, true),
             ("map", [m_arg]) => {
-                if let Some((name, [recv2, args @ ..], span2)) = method_call!(recv) {
+                if let Some((name, [recv2, args @ ..], span2)) = method_call(recv) {
                     match (name, args) {
                         ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, msrv),
                         ("as_ref", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, false, msrv),
@@ -2306,7 +2297,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             },
             ("map_or", [def, map]) => option_map_or_none::check(cx, expr, recv, def, map),
             ("next", []) => {
-                if let Some((name, [recv, args @ ..], _)) = method_call!(recv) {
+                if let Some((name, [recv, args @ ..], _)) = method_call(recv) {
                     match (name, args) {
                         ("filter", [arg]) => filter_next::check(cx, expr, recv, arg),
                         ("filter_map", [arg]) => filter_map_next::check(cx, expr, recv, arg, msrv),
@@ -2317,7 +2308,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     }
                 }
             },
-            ("nth", [n_arg]) => match method_call!(recv) {
+            ("nth", [n_arg]) => match method_call(recv) {
                 Some(("bytes", [recv2], _)) => bytes_nth::check(cx, expr, recv2, n_arg),
                 Some(("iter", [recv2], _)) => iter_nth::check(cx, expr, recv2, recv, n_arg, false),
                 Some(("iter_mut", [recv2], _)) => iter_nth::check(cx, expr, recv2, recv, n_arg, true),
@@ -2349,12 +2340,12 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
                 implicit_clone::check(cx, name, expr, recv, span);
             },
-            ("unwrap", []) => match method_call!(recv) {
+            ("unwrap", []) => match method_call(recv) {
                 Some(("get", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, false),
                 Some(("get_mut", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, true),
                 _ => unwrap_used::check(cx, expr, recv),
             },
-            ("unwrap_or", [u_arg]) => match method_call!(recv) {
+            ("unwrap_or", [u_arg]) => match method_call(recv) {
                 Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), [lhs, rhs], _)) => {
                     manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
                 },
@@ -2363,7 +2354,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 },
                 _ => {},
             },
-            ("unwrap_or_else", [u_arg]) => match method_call!(recv) {
+            ("unwrap_or_else", [u_arg]) => match method_call(recv) {
                 Some(("map", [recv, map_arg], _)) if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, msrv) => {},
                 _ => {
                     unwrap_or_else_default::check(cx, expr, recv, u_arg);
@@ -2376,7 +2367,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
 }
 
 fn check_is_some_is_none(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, is_some: bool) {
-    if let Some((name @ ("find" | "position" | "rposition"), [f_recv, arg], span)) = method_call!(recv) {
+    if let Some((name @ ("find" | "position" | "rposition"), [f_recv, arg], span)) = method_call(recv) {
         search_is_some::check(cx, expr, name, is_some, f_recv, arg, recv, span);
     }
 }
