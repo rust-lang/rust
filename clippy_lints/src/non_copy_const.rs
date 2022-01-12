@@ -188,7 +188,11 @@ fn is_value_unfrozen_expr<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId, def_id: D
 
     let result = cx.tcx.const_eval_resolve(
         cx.param_env,
-        ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs),
+        ty::Unevaluated {
+            def: ty::WithOptConstParam::unknown(def_id),
+            substs,
+            promoted: None,
+        },
         None,
     );
     is_value_unfrozen_raw(cx, result, ty)
