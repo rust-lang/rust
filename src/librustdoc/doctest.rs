@@ -395,7 +395,7 @@ fn run_test(
             eprint!("{}", self.0);
         }
     }
-    let mut out_lines = str::from_utf8(&output.stderr)
+    let mut out = str::from_utf8(&output.stderr)
         .unwrap()
         .lines()
         .filter(|l| {
@@ -406,15 +406,15 @@ fn run_test(
                 true
             }
         })
-        .collect::<Vec<_>>();
+        .intersperse_with(|| "\n")
+        .collect::<String>();
 
     // Add a \n to the end to properly terminate the last line,
     // but only if there was output to be printed
-    if !out_lines.is_empty() {
-        out_lines.push("");
+    if !out.is_empty() {
+        out.push('\n');
     }
 
-    let out = out_lines.join("\n");
     let _bomb = Bomb(&out);
     match (output.status.success(), lang_string.compile_fail) {
         (true, true) => {
