@@ -31,8 +31,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: TypeError<'tcx>,
     ) {
         self.annotate_expected_due_to_let_ty(err, expr, error);
-        self.suggest_compatible_variants(err, expr, expected, expr_ty);
         self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr);
+        self.suggest_compatible_variants(err, expr, expected, expr_ty);
         if self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty) {
             return;
         }
