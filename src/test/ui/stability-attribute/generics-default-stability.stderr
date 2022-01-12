@@ -1,29 +1,5 @@
-error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:16:13
-   |
-LL | impl Trait1<usize> for S {
-   |             ^^^^^
-   |
-   = help: add `#![feature(unstable_default)]` to the crate attributes to enable
-
-error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:20:13
-   |
-LL | impl Trait1<isize> for S {
-   |             ^^^^^
-   |
-   = help: add `#![feature(unstable_default)]` to the crate attributes to enable
-
-error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:24:13
-   |
-LL | impl Trait2<usize> for S {
-   |             ^^^^^
-   |
-   = help: add `#![feature(unstable_default)]` to the crate attributes to enable
-
 warning: use of deprecated struct `unstable_generic_param::Struct4`: test
-  --> $DIR/generics-default-stability.rs:83:29
+  --> $DIR/generics-default-stability.rs:71:29
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 1 };
    |                             ^^^^^^^
@@ -31,217 +7,217 @@ LL |     let _: Struct4<isize> = Struct4 { field: 1 };
    = note: `#[warn(deprecated)]` on by default
 
 warning: use of deprecated struct `unstable_generic_param::Struct4`: test
-  --> $DIR/generics-default-stability.rs:83:12
+  --> $DIR/generics-default-stability.rs:71:12
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 1 };
    |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct4`: test
-  --> $DIR/generics-default-stability.rs:88:12
+  --> $DIR/generics-default-stability.rs:76:12
    |
 LL |     let _: Struct4 = STRUCT4;
    |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct4`: test
-  --> $DIR/generics-default-stability.rs:89:12
+  --> $DIR/generics-default-stability.rs:77:12
    |
 LL |     let _: Struct4<usize> = STRUCT4;
    |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct4`: test
-  --> $DIR/generics-default-stability.rs:90:29
+  --> $DIR/generics-default-stability.rs:78:29
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 0 };
    |                             ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct4`: test
-  --> $DIR/generics-default-stability.rs:90:12
+  --> $DIR/generics-default-stability.rs:78:12
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 0 };
    |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct5`: test
-  --> $DIR/generics-default-stability.rs:96:29
+  --> $DIR/generics-default-stability.rs:84:29
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |                             ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct5`: test
-  --> $DIR/generics-default-stability.rs:96:12
+  --> $DIR/generics-default-stability.rs:84:12
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct5`: test
-  --> $DIR/generics-default-stability.rs:101:12
+  --> $DIR/generics-default-stability.rs:89:12
    |
 LL |     let _: Struct5 = STRUCT5;
    |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct5`: test
-  --> $DIR/generics-default-stability.rs:102:12
+  --> $DIR/generics-default-stability.rs:90:12
    |
 LL |     let _: Struct5<usize> = STRUCT5;
    |            ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct5`: test
-  --> $DIR/generics-default-stability.rs:104:29
+  --> $DIR/generics-default-stability.rs:92:29
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    |                             ^^^^^^^
 
 warning: use of deprecated struct `unstable_generic_param::Struct5`: test
-  --> $DIR/generics-default-stability.rs:104:12
+  --> $DIR/generics-default-stability.rs:92:12
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    |            ^^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
-  --> $DIR/generics-default-stability.rs:159:28
+  --> $DIR/generics-default-stability.rs:147:28
    |
 LL |     let _: Alias4<isize> = Alias4::Some(1);
    |                            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
-  --> $DIR/generics-default-stability.rs:159:12
+  --> $DIR/generics-default-stability.rs:147:12
    |
 LL |     let _: Alias4<isize> = Alias4::Some(1);
    |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
-  --> $DIR/generics-default-stability.rs:163:12
+  --> $DIR/generics-default-stability.rs:151:12
    |
 LL |     let _: Alias4 = ALIAS4;
    |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
-  --> $DIR/generics-default-stability.rs:164:12
+  --> $DIR/generics-default-stability.rs:152:12
    |
 LL |     let _: Alias4<usize> = ALIAS4;
    |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
-  --> $DIR/generics-default-stability.rs:165:28
+  --> $DIR/generics-default-stability.rs:153:28
    |
 LL |     let _: Alias4<isize> = Alias4::Some(0);
    |                            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias4`: test
-  --> $DIR/generics-default-stability.rs:165:12
+  --> $DIR/generics-default-stability.rs:153:12
    |
 LL |     let _: Alias4<isize> = Alias4::Some(0);
    |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
-  --> $DIR/generics-default-stability.rs:170:28
+  --> $DIR/generics-default-stability.rs:158:28
    |
 LL |     let _: Alias5<isize> = Alias5::Some(1);
    |                            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
-  --> $DIR/generics-default-stability.rs:170:12
+  --> $DIR/generics-default-stability.rs:158:12
    |
 LL |     let _: Alias5<isize> = Alias5::Some(1);
    |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
-  --> $DIR/generics-default-stability.rs:174:12
+  --> $DIR/generics-default-stability.rs:162:12
    |
 LL |     let _: Alias5 = ALIAS5;
    |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
-  --> $DIR/generics-default-stability.rs:175:12
+  --> $DIR/generics-default-stability.rs:163:12
    |
 LL |     let _: Alias5<usize> = ALIAS5;
    |            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
-  --> $DIR/generics-default-stability.rs:177:28
+  --> $DIR/generics-default-stability.rs:165:28
    |
 LL |     let _: Alias5<isize> = Alias5::Some(0);
    |                            ^^^^^^
 
 warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
-  --> $DIR/generics-default-stability.rs:177:12
+  --> $DIR/generics-default-stability.rs:165:12
    |
 LL |     let _: Alias5<isize> = Alias5::Some(0);
    |            ^^^^^^
 
 warning: use of deprecated variant `unstable_generic_param::Enum4::Some`: test
-  --> $DIR/generics-default-stability.rs:231:34
+  --> $DIR/generics-default-stability.rs:219:34
    |
 LL |     let _: Enum4<isize> = Enum4::Some(1);
    |                                  ^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum4`: test
-  --> $DIR/generics-default-stability.rs:231:12
+  --> $DIR/generics-default-stability.rs:219:12
    |
 LL |     let _: Enum4<isize> = Enum4::Some(1);
    |            ^^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum4`: test
-  --> $DIR/generics-default-stability.rs:235:12
+  --> $DIR/generics-default-stability.rs:223:12
    |
 LL |     let _: Enum4 = ENUM4;
    |            ^^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum4`: test
-  --> $DIR/generics-default-stability.rs:236:12
+  --> $DIR/generics-default-stability.rs:224:12
    |
 LL |     let _: Enum4<usize> = ENUM4;
    |            ^^^^^
 
 warning: use of deprecated variant `unstable_generic_param::Enum4::Some`: test
-  --> $DIR/generics-default-stability.rs:237:34
+  --> $DIR/generics-default-stability.rs:225:34
    |
 LL |     let _: Enum4<isize> = Enum4::Some(0);
    |                                  ^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum4`: test
-  --> $DIR/generics-default-stability.rs:237:12
+  --> $DIR/generics-default-stability.rs:225:12
    |
 LL |     let _: Enum4<isize> = Enum4::Some(0);
    |            ^^^^^
 
 warning: use of deprecated variant `unstable_generic_param::Enum5::Some`: test
-  --> $DIR/generics-default-stability.rs:242:34
+  --> $DIR/generics-default-stability.rs:230:34
    |
 LL |     let _: Enum5<isize> = Enum5::Some(1);
    |                                  ^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum5`: test
-  --> $DIR/generics-default-stability.rs:242:12
+  --> $DIR/generics-default-stability.rs:230:12
    |
 LL |     let _: Enum5<isize> = Enum5::Some(1);
    |            ^^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum5`: test
-  --> $DIR/generics-default-stability.rs:246:12
+  --> $DIR/generics-default-stability.rs:234:12
    |
 LL |     let _: Enum5 = ENUM5;
    |            ^^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum5`: test
-  --> $DIR/generics-default-stability.rs:247:12
+  --> $DIR/generics-default-stability.rs:235:12
    |
 LL |     let _: Enum5<usize> = ENUM5;
    |            ^^^^^
 
 warning: use of deprecated variant `unstable_generic_param::Enum5::Some`: test
-  --> $DIR/generics-default-stability.rs:249:34
+  --> $DIR/generics-default-stability.rs:237:34
    |
 LL |     let _: Enum5<isize> = Enum5::Some(0);
    |                                  ^^^^
 
 warning: use of deprecated enum `unstable_generic_param::Enum5`: test
-  --> $DIR/generics-default-stability.rs:249:12
+  --> $DIR/generics-default-stability.rs:237:12
    |
 LL |     let _: Enum5<isize> = Enum5::Some(0);
    |            ^^^^^
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:35:20
+  --> $DIR/generics-default-stability.rs:23:20
    |
 LL |     let _: Struct1<isize> = Struct1 { field: 1 };
    |                    ^^^^^
@@ -249,7 +225,7 @@ LL |     let _: Struct1<isize> = Struct1 { field: 1 };
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:39:20
+  --> $DIR/generics-default-stability.rs:27:20
    |
 LL |     let _: Struct1<usize> = STRUCT1;
    |                    ^^^^^
@@ -257,7 +233,7 @@ LL |     let _: Struct1<usize> = STRUCT1;
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:40:20
+  --> $DIR/generics-default-stability.rs:28:20
    |
 LL |     let _: Struct1<isize> = Struct1 { field: 0 };
    |                    ^^^^^
@@ -265,7 +241,7 @@ LL |     let _: Struct1<isize> = Struct1 { field: 0 };
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:69:27
+  --> $DIR/generics-default-stability.rs:57:27
    |
 LL |     let _: Struct3<isize, usize> = STRUCT3;
    |                           ^^^^^
@@ -273,7 +249,7 @@ LL |     let _: Struct3<isize, usize> = STRUCT3;
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:71:27
+  --> $DIR/generics-default-stability.rs:59:27
    |
 LL |     let _: Struct3<isize, isize> = Struct3 { field1: 0, field2: 0 };
    |                           ^^^^^
@@ -281,7 +257,7 @@ LL |     let _: Struct3<isize, isize> = Struct3 { field1: 0, field2: 0 };
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:72:27
+  --> $DIR/generics-default-stability.rs:60:27
    |
 LL |     let _: Struct3<usize, usize> = Struct3 { field1: 0, field2: 0 };
    |                           ^^^^^
@@ -289,7 +265,7 @@ LL |     let _: Struct3<usize, usize> = Struct3 { field1: 0, field2: 0 };
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:96:20
+  --> $DIR/generics-default-stability.rs:84:20
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |                    ^^^^^
@@ -297,7 +273,7 @@ LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:102:20
+  --> $DIR/generics-default-stability.rs:90:20
    |
 LL |     let _: Struct5<usize> = STRUCT5;
    |                    ^^^^^
@@ -305,7 +281,7 @@ LL |     let _: Struct5<usize> = STRUCT5;
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:104:20
+  --> $DIR/generics-default-stability.rs:92:20
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    |                    ^^^^^
@@ -313,7 +289,7 @@ LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:112:19
+  --> $DIR/generics-default-stability.rs:100:19
    |
 LL |     let _: Alias1<isize> = Alias1::Some(1);
    |                   ^^^^^
@@ -321,7 +297,7 @@ LL |     let _: Alias1<isize> = Alias1::Some(1);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:116:19
+  --> $DIR/generics-default-stability.rs:104:19
    |
 LL |     let _: Alias1<usize> = ALIAS1;
    |                   ^^^^^
@@ -329,7 +305,7 @@ LL |     let _: Alias1<usize> = ALIAS1;
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:117:19
+  --> $DIR/generics-default-stability.rs:105:19
    |
 LL |     let _: Alias1<isize> = Alias1::Some(0);
    |                   ^^^^^
@@ -337,7 +313,7 @@ LL |     let _: Alias1<isize> = Alias1::Some(0);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:145:26
+  --> $DIR/generics-default-stability.rs:133:26
    |
 LL |     let _: Alias3<isize, usize> = ALIAS3;
    |                          ^^^^^
@@ -345,7 +321,7 @@ LL |     let _: Alias3<isize, usize> = ALIAS3;
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:147:26
+  --> $DIR/generics-default-stability.rs:135:26
    |
 LL |     let _: Alias3<isize, isize> = Alias3::Ok(0);
    |                          ^^^^^
@@ -353,7 +329,7 @@ LL |     let _: Alias3<isize, isize> = Alias3::Ok(0);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:148:26
+  --> $DIR/generics-default-stability.rs:136:26
    |
 LL |     let _: Alias3<usize, usize> = Alias3::Ok(0);
    |                          ^^^^^
@@ -361,7 +337,7 @@ LL |     let _: Alias3<usize, usize> = Alias3::Ok(0);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:170:19
+  --> $DIR/generics-default-stability.rs:158:19
    |
 LL |     let _: Alias5<isize> = Alias5::Some(1);
    |                   ^^^^^
@@ -369,7 +345,7 @@ LL |     let _: Alias5<isize> = Alias5::Some(1);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:175:19
+  --> $DIR/generics-default-stability.rs:163:19
    |
 LL |     let _: Alias5<usize> = ALIAS5;
    |                   ^^^^^
@@ -377,7 +353,7 @@ LL |     let _: Alias5<usize> = ALIAS5;
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:177:19
+  --> $DIR/generics-default-stability.rs:165:19
    |
 LL |     let _: Alias5<isize> = Alias5::Some(0);
    |                   ^^^^^
@@ -385,7 +361,7 @@ LL |     let _: Alias5<isize> = Alias5::Some(0);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:184:18
+  --> $DIR/generics-default-stability.rs:172:18
    |
 LL |     let _: Enum1<isize> = Enum1::Some(1);
    |                  ^^^^^
@@ -393,7 +369,7 @@ LL |     let _: Enum1<isize> = Enum1::Some(1);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:188:18
+  --> $DIR/generics-default-stability.rs:176:18
    |
 LL |     let _: Enum1<usize> = ENUM1;
    |                  ^^^^^
@@ -401,7 +377,7 @@ LL |     let _: Enum1<usize> = ENUM1;
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:189:18
+  --> $DIR/generics-default-stability.rs:177:18
    |
 LL |     let _: Enum1<isize> = Enum1::Some(0);
    |                  ^^^^^
@@ -409,7 +385,7 @@ LL |     let _: Enum1<isize> = Enum1::Some(0);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:217:25
+  --> $DIR/generics-default-stability.rs:205:25
    |
 LL |     let _: Enum3<isize, usize> = ENUM3;
    |                         ^^^^^
@@ -417,7 +393,7 @@ LL |     let _: Enum3<isize, usize> = ENUM3;
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:219:25
+  --> $DIR/generics-default-stability.rs:207:25
    |
 LL |     let _: Enum3<isize, isize> = Enum3::Ok(0);
    |                         ^^^^^
@@ -425,7 +401,7 @@ LL |     let _: Enum3<isize, isize> = Enum3::Ok(0);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:220:25
+  --> $DIR/generics-default-stability.rs:208:25
    |
 LL |     let _: Enum3<usize, usize> = Enum3::Ok(0);
    |                         ^^^^^
@@ -433,7 +409,7 @@ LL |     let _: Enum3<usize, usize> = Enum3::Ok(0);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:242:18
+  --> $DIR/generics-default-stability.rs:230:18
    |
 LL |     let _: Enum5<isize> = Enum5::Some(1);
    |                  ^^^^^
@@ -441,7 +417,7 @@ LL |     let _: Enum5<isize> = Enum5::Some(1);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:247:18
+  --> $DIR/generics-default-stability.rs:235:18
    |
 LL |     let _: Enum5<usize> = ENUM5;
    |                  ^^^^^
@@ -449,7 +425,7 @@ LL |     let _: Enum5<usize> = ENUM5;
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_default'
-  --> $DIR/generics-default-stability.rs:249:18
+  --> $DIR/generics-default-stability.rs:237:18
    |
 LL |     let _: Enum5<isize> = Enum5::Some(0);
    |                  ^^^^^
@@ -457,7 +433,7 @@ LL |     let _: Enum5<isize> = Enum5::Some(0);
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'box_alloc_param'
-  --> $DIR/generics-default-stability.rs:256:24
+  --> $DIR/generics-default-stability.rs:244:24
    |
 LL |     let _: Box1<isize, System> = Box1::new(1);
    |                        ^^^^^^
@@ -465,29 +441,29 @@ LL |     let _: Box1<isize, System> = Box1::new(1);
    = help: add `#![feature(box_alloc_param)]` to the crate attributes to enable
 
 warning: use of deprecated field `unstable_generic_param::Struct4::field`: test
-  --> $DIR/generics-default-stability.rs:83:39
+  --> $DIR/generics-default-stability.rs:71:39
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 1 };
    |                                       ^^^^^^^^
 
 warning: use of deprecated field `unstable_generic_param::Struct4::field`: test
-  --> $DIR/generics-default-stability.rs:90:39
+  --> $DIR/generics-default-stability.rs:78:39
    |
 LL |     let _: Struct4<isize> = Struct4 { field: 0 };
    |                                       ^^^^^^^^
 
 warning: use of deprecated field `unstable_generic_param::Struct5::field`: test
-  --> $DIR/generics-default-stability.rs:96:39
+  --> $DIR/generics-default-stability.rs:84:39
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |                                       ^^^^^^^^
 
 warning: use of deprecated field `unstable_generic_param::Struct5::field`: test
-  --> $DIR/generics-default-stability.rs:104:39
+  --> $DIR/generics-default-stability.rs:92:39
    |
 LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    |                                       ^^^^^^^^
 
-error: aborting due to 31 previous errors; 40 warnings emitted
+error: aborting due to 28 previous errors; 40 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,27 @@
+error[E0658]: use of unstable library feature 'unstable_default'
+  --> $DIR/generics-default-stability-trait.rs:16:13
+   |
+LL | impl Trait1<usize> for S {
+   |             ^^^^^
+   |
+   = help: add `#![feature(unstable_default)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_default'
+  --> $DIR/generics-default-stability-trait.rs:20:13
+   |
+LL | impl Trait1<isize> for S {
+   |             ^^^^^
+   |
+   = help: add `#![feature(unstable_default)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_default'
+  --> $DIR/generics-default-stability-trait.rs:24:13
+   |
+LL | impl Trait2<usize> for S {
+   |             ^^^^^
+   |
+   = help: add `#![feature(unstable_default)]` to the crate attributes to enable
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
