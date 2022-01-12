@@ -32,7 +32,7 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #505050;
 }
 
-.rust-logo > img {
+.rust-logo {
 	filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)

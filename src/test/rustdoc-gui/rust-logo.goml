@@ -1,0 +1,78 @@
+// This test ensures that the correct style is applied to the rust logo in the sidebar.
+goto: file://|DOC_PATH|/test_docs/index.html
+
+// First we start with the dark theme.
+local-storage: {
+    "rustdoc-theme": "dark",
+    "rustdoc-preferred-dark-theme": "dark",
+    "rustdoc-use-system-theme": "false",
+}
+reload:
+
+assert-css: (
+    ".rust-logo",
+    {"filter": "drop-shadow(rgb(255, 255, 255) 1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px 1px 0px) drop-shadow(rgb(255, 255, 255) -1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px -1px 0px)"},
+)
+
+// In the source view page now.
+goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+
+local-storage: {
+    "rustdoc-theme": "dark",
+    "rustdoc-preferred-dark-theme": "dark",
+    "rustdoc-use-system-theme": "false",
+}
+reload:
+
+assert-css: (
+    ".rust-logo",
+    {"filter": "drop-shadow(rgb(255, 255, 255) 1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px 1px 0px) drop-shadow(rgb(255, 255, 255) -1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px -1px 0px)"},
+)
+
+// Then with the ayu theme.
+local-storage: {
+    "rustdoc-theme": "ayu",
+    "rustdoc-preferred-dark-theme": "ayu",
+    "rustdoc-use-system-theme": "false",
+}
+reload:
+
+assert-css: (
+    ".rust-logo",
+    {"filter": "drop-shadow(rgb(255, 255, 255) 1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px 1px 0px) drop-shadow(rgb(255, 255, 255) -1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px -1px 0px)"},
+)
+
+// In the source view page now.
+goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+
+local-storage: {
+    "rustdoc-theme": "ayu",
+    "rustdoc-preferred-dark-theme": "ayu",
+    "rustdoc-use-system-theme": "false",
+}
+reload:
+
+assert-css: (
+    ".rust-logo",
+    {"filter": "drop-shadow(rgb(255, 255, 255) 1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px 1px 0px) drop-shadow(rgb(255, 255, 255) -1px 0px 0px) drop-shadow(rgb(255, 255, 255) 0px -1px 0px)"},
+)
+
+// And finally with the light theme.
+local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+reload:
+
+assert-css: (
+    ".rust-logo",
+    {"filter": "none"},
+)
+
+// In the source view page now.
+goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+
+local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+reload:
+
+assert-css: (
+    ".rust-logo",
+    {"filter": "none"},
+)
