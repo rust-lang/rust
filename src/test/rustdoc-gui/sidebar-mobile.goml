@@ -18,3 +18,11 @@ assert-css: (".sidebar-elems", {"display": "block", "left": "0px"})
 // When we tab out of the sidebar, close it.
 focus: ".search-input"
 assert-css: (".sidebar-elems", {"display": "block", "left": "-246px"})
+
+// Open the sidebar menu.
+click: ".sidebar-menu"
+assert-css: (".sidebar-elems", {"left": "0px"})
+
+// Click elsewhere.
+click: "body"
+assert-css: (".sidebar-elems", {"left": "-246px"})
