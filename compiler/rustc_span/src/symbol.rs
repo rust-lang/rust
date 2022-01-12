@@ -983,6 +983,7 @@ symbols! {
         panic_implementation,
         panic_info,
         panic_location,
+        panic_no_unwind,
         panic_runtime,
         panic_str,
         panic_unwind,
