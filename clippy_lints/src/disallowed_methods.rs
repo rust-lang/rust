@@ -59,7 +59,7 @@ declare_clippy_lint! {
 #[derive(Clone, Debug)]
 pub struct DisallowedMethods {
     conf_disallowed: Vec<conf::DisallowedMethod>,
-    disallowed: DefIdMap<Option<String>>,
+    disallowed: DefIdMap<usize>,
 }
 
 impl DisallowedMethods {
@@ -75,17 +75,10 @@ impl_lint_pass!(DisallowedMethods => [DISALLOWED_METHODS]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
-        for conf in &self.conf_disallowed {
-            let (path, reason) = match conf {
-                conf::DisallowedMethod::Simple(path) => (path, None),
-                conf::DisallowedMethod::WithReason { path, reason } => (
-                    path,
-                    reason.as_ref().map(|reason| format!("{} (from clippy.toml)", reason)),
-                ),
-            };
-            let segs: Vec<_> = path.split("::").collect();
+        for (index, conf) in self.conf_disallowed.iter().enumerate() {
+            let segs: Vec<_> = conf.path().split("::").collect();
             if let Res::Def(_, id) = clippy_utils::path_to_res(cx, &segs) {
-                self.disallowed.insert(id, reason);
+                self.disallowed.insert(id, index);
             }
         }
     }
@@ -95,15 +88,17 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
             Some(def_id) => def_id,
             None => return,
         };
-        let reason = match self.disallowed.get(&def_id) {
-            Some(reason) => reason,
+        let conf = match self.disallowed.get(&def_id) {
+            Some(&index) => &self.conf_disallowed[index],
             None => return,
         };
-        let func_path = cx.tcx.def_path_str(def_id);
-        let msg = format!("use of a disallowed method `{}`", func_path);
+        let msg = format!("use of a disallowed method `{}`", conf.path());
         span_lint_and_then(cx, DISALLOWED_METHODS, expr.span, &msg, |diag| {
-            if let Some(reason) = reason {
-                diag.note(reason);
+            if let conf::DisallowedMethod::WithReason {
+                reason: Some(reason), ..
+            } = conf
+            {
+                diag.note(&format!("{} (from clippy.toml)", reason));
             }
         });
     }
