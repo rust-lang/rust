@@ -8,6 +8,7 @@ use crate::io;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::mem::forget;
+use crate::sys;
 use crate::sys::c;
 use crate::sys::cvt;
 
@@ -80,7 +81,7 @@ impl OwnedSocket {
         let result = unsafe {
             c::WSADuplicateSocketW(self.as_raw_socket(), c::GetCurrentProcessId(), &mut info)
         };
-        cvt(result)?;
+        sys::net::cvt(result)?;
         let socket = unsafe {
             c::WSASocketW(
                 info.iAddressFamily,
