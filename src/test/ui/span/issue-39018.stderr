@@ -7,7 +7,8 @@ LL |     let x = "Hello " + "World!";
    |             |        `+` cannot be used to concatenate two `&str` strings
    |             &str
    |
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+   = note: String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left.
+help: use `to_owned()` to create an owned `String` from a string reference
    |
 LL |     let x = "Hello ".to_owned() + "World!";
    |                     +++++++++++
@@ -46,7 +47,7 @@ LL |     let x = "Hello " + "World!".to_owned();
    |             |        `+` cannot be used to concatenate a `&str` with a `String`
    |             &str
    |
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+help: call `.to_owned()` on the left and add a borrow on the right
    |
 LL |     let x = "Hello ".to_owned() + &"World!".to_owned();
    |                     +++++++++++   +
@@ -59,12 +60,9 @@ LL |     let _ = &a + &b;
    |             |  |
    |             |  `+` cannot be used to concatenate two `&str` strings
    |             &String
+   |             help: remove the borrow to obtain an owned `String`
    |
-help: String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
-   |
-LL -     let _ = &a + &b;
-LL +     let _ = a + &b;
-   | 
+   = note: String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left.
 
 error[E0369]: cannot add `String` to `&String`
   --> $DIR/issue-39018.rs:27:16
@@ -75,7 +73,7 @@ LL |     let _ = &a + b;
    |             |  `+` cannot be used to concatenate a `&str` with a `String`
    |             &String
    |
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+help: remove the borrow on the left and add one on the right
    |
 LL -     let _ = &a + b;
 LL +     let _ = a + &b;
@@ -99,7 +97,7 @@ LL |     let _ = e + b;
    |             | `+` cannot be used to concatenate a `&str` with a `String`
    |             &String
    |
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+help: call `.to_owned()` on the left and add a borrow on the right
    |
 LL |     let _ = e.to_owned() + &b;
    |              +++++++++++   +
@@ -113,7 +111,8 @@ LL |     let _ = e + &b;
    |             | `+` cannot be used to concatenate two `&str` strings
    |             &String
    |
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+   = note: String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left.
+help: use `to_owned()` to create an owned `String` from a string reference
    |
 LL |     let _ = e.to_owned() + &b;
    |              +++++++++++
@@ -127,7 +126,8 @@ LL |     let _ = e + d;
    |             | `+` cannot be used to concatenate two `&str` strings
    |             &String
    |
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+   = note: String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left.
+help: use `to_owned()` to create an owned `String` from a string reference
    |
 LL |     let _ = e.to_owned() + d;
    |              +++++++++++
@@ -141,7 +141,8 @@ LL |     let _ = e + &d;
    |             | `+` cannot be used to concatenate two `&str` strings
    |             &String
    |
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+   = note: String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left.
+help: use `to_owned()` to create an owned `String` from a string reference
    |
 LL |     let _ = e.to_owned() + &d;
    |              +++++++++++
@@ -171,7 +172,8 @@ LL |     let _ = c + &d;
    |             | `+` cannot be used to concatenate two `&str` strings
    |             &str
    |
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+   = note: String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left.
+help: use `to_owned()` to create an owned `String` from a string reference
    |
 LL |     let _ = c.to_owned() + &d;
    |              +++++++++++
@@ -185,7 +187,8 @@ LL |     let _ = c + d;
    |             | `+` cannot be used to concatenate two `&str` strings
    |             &str
    |
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+   = note: String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left.
+help: use `to_owned()` to create an owned `String` from a string reference
    |
 LL |     let _ = c.to_owned() + d;
    |              +++++++++++

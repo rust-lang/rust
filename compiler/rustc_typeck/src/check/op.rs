@@ -549,15 +549,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {
-        let remove_borrow_msg = "String concatenation appends the string on the right to the \
-                                 string on the left and may require reallocation. This \
-                                 requires ownership of the string on the left";
-
-        let msg = "`to_owned()` can be used to create an owned `String` \
-                   from a string reference. String concatenation \
-                   appends the string on the right to the string \
-                   on the left and may require reallocation. This \
-                   requires ownership of the string on the left";
+        let str_concat_note = "String concatenation appends the string on the right to the \
+                                    string on the left and may require reallocation. This \
+                                    requires ownership of the string on the left.";
+        let rm_borrow_msg = "remove the borrow to obtain an owned `String`";
+        let to_owned_msg = "use `to_owned()` to create an owned `String` from a string reference";
 
         let string_type = self.tcx.get_diagnostic_item(sym::String);
         let is_std_string = |ty: Ty<'tcx>| match ty.ty_adt_def() {
@@ -574,17 +570,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
                     err.span_label(op.span, "`+` cannot be used to concatenate two `&str` strings");
+                    err.note(str_concat_note);
                     if let hir::ExprKind::AddrOf(_,_,lhs_inner_expr) = lhs_expr.kind {
                         err.span_suggestion(
                             lhs_expr.span.until(lhs_inner_expr.span),
-                            remove_borrow_msg,
+                            rm_borrow_msg,
                             "".to_owned(),
                             Applicability::MachineApplicable
                         );
                     } else {
                         err.span_suggestion(
                             lhs_expr.span.shrink_to_hi(),
-                            msg,
+                            to_owned_msg,
                             ".to_owned()".to_owned(),
                             Applicability::MachineApplicable
                         );
@@ -601,18 +598,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 match is_assign {
                     IsAssign::No => {
+                        let sugg_msg;
+                        let lhs_sugg = if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
+                            sugg_msg = "remove the borrow on the left and add one on the right";
+                            (lhs_expr.span.until(lhs_inner_expr.span), "".to_owned())
+                        } else {
+                            sugg_msg = "call `.to_owned()` on the left and add a borrow on the right";
+                            (lhs_expr.span.shrink_to_hi(), ".to_owned()".to_owned())
+                        };
                         let suggestions = vec![
-                            if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
-                                (lhs_expr.span.until(lhs_inner_expr.span), "".to_owned())
-                            } else {
-                                (lhs_expr.span.shrink_to_hi(), ".to_owned()".to_owned())
-                            },
+                            lhs_sugg,
                             (rhs_expr.span.shrink_to_lo(), "&".to_owned()),
                         ];
-                        err.multipart_suggestion(msg, suggestions, Applicability::MachineApplicable);
+                        err.multipart_suggestion(sugg_msg, suggestions, Applicability::MachineApplicable);
                     }
                     IsAssign::Yes => {
-                        err.help(msg);
+                        err.note(str_concat_note);
                     }
                 }
                 true
