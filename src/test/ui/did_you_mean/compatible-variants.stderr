@@ -143,7 +143,7 @@ LL |     let _ = Foo { bar };
 help: try wrapping the expression in `Some`
    |
 LL |     let _ = Foo { bar: Some(bar) };
-   |                   ~~~~~~~~~~~~~~
+   |                   ++++++++++   +
 
 error: aborting due to 9 previous errors
 
