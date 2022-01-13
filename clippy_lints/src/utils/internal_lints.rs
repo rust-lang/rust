@@ -929,9 +929,20 @@ pub fn check_path(cx: &LateContext<'_>, path: &[&str]) -> bool {
         let lang_item_path = cx.get_def_path(*item_def_id);
         if path_syms.starts_with(&lang_item_path) {
             if let [item] = &path_syms[lang_item_path.len()..] {
-                for child in cx.tcx.item_children(*item_def_id) {
-                    if child.ident.name == *item {
-                        return true;
+                if matches!(
+                    cx.tcx.def_kind(*item_def_id),
+                    DefKind::Mod | DefKind::Enum | DefKind::Trait
+                ) {
+                    for child in cx.tcx.module_children(*item_def_id) {
+                        if child.ident.name == *item {
+                            return true;
+                        }
+                    }
+                } else {
+                    for child in cx.tcx.associated_item_def_ids(*item_def_id) {
+                        if cx.tcx.item_name(*child) == *item {
+                            return true;
+                        }
                     }
                 }
             }
@@ -989,7 +1000,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
 
         for &module in &[&paths::KW_MODULE, &paths::SYM_MODULE] {
             if let Some(def_id) = path_to_res(cx, module).opt_def_id() {
-                for item in cx.tcx.item_children(def_id).iter() {
+                for item in cx.tcx.module_children(def_id).iter() {
                     if_chain! {
                         if let Res::Def(DefKind::Const, item_def_id) = item.res;
                         let ty = cx.tcx.type_of(item_def_id);

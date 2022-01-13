@@ -40,7 +40,7 @@ mod a {
     }
 }
 
-// issue #7015, ICE due to calling `item_children` with local `DefId`
+// issue #7015, ICE due to calling `module_children` with local `DefId`
 #[macro_use]
 use a as b;
 

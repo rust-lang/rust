@@ -543,16 +543,16 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
             },
             Start(Link(_, url, _)) => in_link = Some(url),
             End(Link(..)) => in_link = None,
-            Start(Heading(_) | Paragraph | Item) => {
-                if let Start(Heading(_)) = event {
+            Start(Heading(_, _, _) | Paragraph | Item) => {
+                if let Start(Heading(_, _, _)) = event {
                     in_heading = true;
                 }
                 ticks_unbalanced = false;
                 let (_, span) = get_current_span(spans, range.start);
                 paragraph_span = first_line_of_span(cx, span);
             },
-            End(Heading(_) | Paragraph | Item) => {
-                if let End(Heading(_)) = event {
+            End(Heading(_, _, _) | Paragraph | Item) => {
+                if let End(Heading(_, _, _)) = event {
                     in_heading = false;
                 }
                 if ticks_unbalanced {

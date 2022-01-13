@@ -8,7 +8,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::hygiene::ExpnKind;
 use rustc_span::{edition::Edition, sym, Span};
 
 declare_clippy_lint! {
@@ -97,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             if let Res::Def(DefKind::Mod, id) = path.res;
             if !id.is_local();
             then {
-                for kid in cx.tcx.item_children(id).iter() {
+                for kid in cx.tcx.module_children(id).iter() {
                     if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
                         let span = mac_attr.span;
                         let def_path = cx.tcx.def_path_str(mac_id);
@@ -105,34 +104,34 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
                     }
                 }
             } else {
-                if in_macro(item.span) {
+                if item.span.from_expansion() {
                     self.push_unique_macro_pat_ty(cx, item.span);
                 }
             }
         }
     }
     fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
-        if in_macro(attr.span) {
+        if attr.span.from_expansion() {
             self.push_unique_macro(cx, attr.span);
         }
     }
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        if in_macro(expr.span) {
+        if expr.span.from_expansion() {
             self.push_unique_macro(cx, expr.span);
         }
     }
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
-        if in_macro(stmt.span) {
+        if stmt.span.from_expansion() {
             self.push_unique_macro(cx, stmt.span);
         }
     }
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &hir::Pat<'_>) {
-        if in_macro(pat.span) {
+        if pat.span.from_expansion() {
             self.push_unique_macro_pat_ty(cx, pat.span);
         }
     }
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_>) {
-        if in_macro(ty.span) {
+        if ty.span.from_expansion() {
             self.push_unique_macro_pat_ty(cx, ty.span);
         }
     }
@@ -213,8 +212,4 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             }
         }
     }
-}
-
-fn in_macro(span: Span) -> bool {
-    span.from_expansion() && !matches!(span.ctxt().outer_expn_data().kind, ExpnKind::Desugaring(..))
 }

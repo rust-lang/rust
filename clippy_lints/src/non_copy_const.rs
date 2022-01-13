@@ -12,11 +12,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
-use rustc_infer::traits::specialization_graph;
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_middle::ty::{self, AssocKind, Const, Ty};
+use rustc_middle::ty::{self, Const, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{InnerSpan, Span, DUMMY_SP};
 use rustc_typeck::hir_ty_to_ty;
@@ -293,8 +292,10 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                         // Lint a trait impl item only when the definition is a generic type,
                         // assuming an assoc const is not meant to be an interior mutable type.
                         if let Some(of_trait_def_id) = of_trait_ref.trait_def_id();
-                        if let Some(of_assoc_item) = specialization_graph::Node::Trait(of_trait_def_id)
-                            .item(cx.tcx, impl_item.ident, AssocKind::Const, of_trait_def_id);
+                        if let Some(of_assoc_item) = cx
+                            .tcx
+                            .associated_item(impl_item.def_id)
+                            .trait_item_def_id;
                         if cx
                             .tcx
                             .layout_of(cx.tcx.param_env(of_trait_def_id).and(
@@ -303,7 +304,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                                 // and, in that case, the definition is *not* generic.
                                 cx.tcx.normalize_erasing_regions(
                                     cx.tcx.param_env(of_trait_def_id),
-                                    cx.tcx.type_of(of_assoc_item.def_id),
+                                    cx.tcx.type_of(of_assoc_item),
                                 ),
                             ))
                             .is_err();

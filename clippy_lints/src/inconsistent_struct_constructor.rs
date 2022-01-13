@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
             then {
                 let mut def_order_map = FxHashMap::default();
                 for (idx, field) in variant.fields.iter().enumerate() {
-                    def_order_map.insert(field.ident.name, idx);
+                    def_order_map.insert(field.name, idx);
                 }
 
                 if is_consistent_order(fields, &def_order_map) {

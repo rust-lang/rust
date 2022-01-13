@@ -76,13 +76,12 @@ use rustc_hir::intravisit::{walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visi
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, lang_items, Arm, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind,
-    FnDecl, ForeignItem, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local,
-    MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Target,
-    TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
+    def, lang_items, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr,
+    ExprKind, FnDecl, ForeignItem, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem,
+    Local, MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
+    Target, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
-use rustc_middle::hir::exports::Export;
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::ty as rustc_ty;
@@ -520,10 +519,21 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
             }
         };
     }
-    fn item_child_by_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, name: &str) -> Option<&'tcx Export> {
-        tcx.item_children(def_id)
-            .iter()
-            .find(|item| item.ident.name.as_str() == name)
+    fn item_child_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Option<Res> {
+        match tcx.def_kind(def_id) {
+            DefKind::Mod | DefKind::Enum | DefKind::Trait => tcx
+                .module_children(def_id)
+                .iter()
+                .find(|item| item.ident.name.as_str() == name)
+                .map(|child| child.res.expect_non_local()),
+            DefKind::Impl => tcx
+                .associated_item_def_ids(def_id)
+                .iter()
+                .copied()
+                .find(|assoc_def_id| tcx.item_name(*assoc_def_id).as_str() == name)
+                .map(|assoc_def_id| Res::Def(tcx.def_kind(assoc_def_id), assoc_def_id)),
+            _ => None,
+        }
     }
     fn find_primitive(tcx: TyCtxt<'_>, name: &str) -> Option<DefId> {
         if let Some(&(index, Target::Impl)) = lang_items::ITEM_REFS.get(&Symbol::intern(name)) {
@@ -556,15 +566,12 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
     let last = path
         .iter()
         .copied()
-        // `get_def_path` seems to generate these empty segments for extern blocks.
-        // We can just ignore them.
-        .filter(|segment| !segment.is_empty())
         // for each segment, find the child item
-        .try_fold(first, |item, segment| {
-            let def_id = item.res.def_id();
+        .try_fold(first, |res, segment| {
+            let def_id = res.def_id();
             if let Some(item) = item_child_by_name(tcx, def_id, segment) {
                 Some(item)
-            } else if matches!(item.res, Res::Def(DefKind::Enum | DefKind::Struct, _)) {
+            } else if matches!(res, Res::Def(DefKind::Enum | DefKind::Struct, _)) {
                 // it is not a child item so check inherent impl items
                 tcx.inherent_impls(def_id)
                     .iter()
@@ -573,7 +580,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
                 None
             }
         });
-    try_res!(last).res.expect_non_local()
+    try_res!(last).expect_non_local()
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
@@ -737,8 +744,8 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             _ => false,
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
-        ExprKind::Repeat(x, y) => if_chain! {
-            if let ExprKind::Lit(ref const_lit) = cx.tcx.hir().body(y.body).value.kind;
+        ExprKind::Repeat(x, ArrayLen::Body(len)) => if_chain! {
+            if let ExprKind::Lit(ref const_lit) = cx.tcx.hir().body(len.body).value.kind;
             if let LitKind::Int(v, _) = const_lit.node;
             if v <= 32 && is_default_equivalent(cx, x);
             then {
