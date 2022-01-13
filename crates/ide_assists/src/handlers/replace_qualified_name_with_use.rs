@@ -216,7 +216,7 @@ fs::Path
     ",
         );
     }
-    #[test]
+
     #[test]
     fn dont_import_trivial_paths() {
         cov_mark::check!(dont_import_trivial_paths);
