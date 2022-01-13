@@ -127,12 +127,12 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
     };
 
     let item_vars = ItemVars {
-        page: page,
+        page,
         static_root_path: page.get_static_root_path(),
-        typ: typ,
+        typ,
         name: item.name.as_ref().unwrap().as_str(),
         item_type: &item.type_().to_string(),
-        path_components: path_components,
+        path_components,
         stability_since_raw: &stability_since_raw,
         src_href: src_href.as_deref(),
     };
