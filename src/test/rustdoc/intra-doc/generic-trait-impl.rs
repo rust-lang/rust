@@ -1,6 +1,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 
 // Test intra-doc links on trait implementations with generics
+// regression test for issue #92662
 
 use std::marker::PhantomData;
 
