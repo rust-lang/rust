@@ -148,11 +148,11 @@ h1.fqn {
 }
 .main-heading {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	border-bottom: 1px dashed #DDDDDD;
+	padding-bottom: 6px;
 	margin-bottom: 15px;
-
-	/* workaround to keep flex from breaking below 700 px width due to the float: right on the nav
-	   above the h1 */
-	padding-left: 1px;
 }
 .main-heading a:hover {
 	text-decoration: underline;
@@ -623,11 +623,7 @@ nav.sub {
 
 .content .out-of-band {
 	flex-grow: 0;
-	text-align: right;
-	margin-left: auto;
-	margin-right: 0;
 	font-size: 1.15rem;
-	padding: 0 0 0 12px;
 	font-weight: normal;
 	float: right;
 }
@@ -1748,8 +1744,23 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		padding-top: 0px;
 	}
 
-	.rustdoc {
+	.rustdoc,
+	.main-heading {
 		flex-direction: column;
+	}
+
+	.content .out-of-band {
+		text-align: left;
+		margin-left: initial;
+		padding: initial;
+	}
+
+	.content .out-of-band .since::before {
+		content: "Since ";
+	}
+
+	#copy-path {
+		display: none;
 	}
 
 	/* Hide the logo and item name from the sidebar. Those are displayed
