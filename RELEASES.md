@@ -5765,7 +5765,6 @@ Misc
 ----
 
 - [rustdoc can now use pulldown-cmark with the `--enable-commonmark` flag][40338]
-- [Added rust-windbg script for better debugging on Windows][39983]
 - [Rust now uses the official cross compiler for NetBSD][40612]
 - [rustdoc now accepts `#` at the start of files][40828]
 - [Fixed jemalloc support for musl][41168]
@@ -5800,7 +5799,6 @@ Compatibility Notes
 [38165]: https://github.com/rust-lang/rust/pull/38165
 [39799]: https://github.com/rust-lang/rust/pull/39799
 [39891]: https://github.com/rust-lang/rust/pull/39891
-[39983]: https://github.com/rust-lang/rust/pull/39983
 [40043]: https://github.com/rust-lang/rust/pull/40043
 [40241]: https://github.com/rust-lang/rust/pull/40241
 [40338]: https://github.com/rust-lang/rust/pull/40338
