@@ -189,4 +189,17 @@ trait Trait: 'static {
     fn make_assoc(_: &u32) -> Self::Assoc<'_>;
 }
 
+// We ignore `'static` lifetimes for any lints
+trait StaticReturn<'a> {
+    type Y<'b>;
+    fn foo(&self) -> Self::Y<'static>;
+}
+
+// Same as above, but with extra method that takes GAT - just make sure this works
+trait StaticReturnAndTakes<'a> {
+    type Y<'b>;
+    fn foo(&self) -> Self::Y<'static>;
+    fn bar<'b>(&self, arg: Self::Y<'b>);
+}
+
 fn main() {}
