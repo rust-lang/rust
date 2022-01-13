@@ -25,8 +25,10 @@ pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::parser::AddrParseError;
+#[unstable(feature = "tcplistener_into_incoming", issue = "88339")]
+pub use self::tcp::IntoIncoming;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::tcp::{Incoming, IntoIncoming, TcpListener, TcpStream};
+pub use self::tcp::{Incoming, TcpListener, TcpStream};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::udp::UdpSocket;
 
