@@ -405,7 +405,7 @@ trait TraitAddUnsafeModifier {
 trait TraitAddUnsafeModifier {
     #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail5")]
+    #[rustc_clean(except="hir_owner,fn_sig,associated_item", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     unsafe fn method();
 }
@@ -430,7 +430,7 @@ trait TraitAddExternModifier {
 trait TraitAddExternModifier {
     #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail5")]
+    #[rustc_clean(except="hir_owner,fn_sig,associated_item", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     extern "C" fn method();
 }
@@ -850,7 +850,7 @@ trait TraitAddInitializerToAssociatedConstant {
 
     #[rustc_clean(cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
+    #[rustc_clean(except="associated_item", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     fn method();
 }

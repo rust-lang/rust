@@ -210,7 +210,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
+    #[rustc_clean(cfg="cfail5", except="associated_item")]
     #[rustc_clean(cfg="cfail6")]
     pub fn add_method_to_impl1(&self) { }
 
@@ -704,7 +704,7 @@ impl<T> Bar<T> {
     #[rustc_clean(cfg="cfail3")]
     #[rustc_clean(
         cfg="cfail5",
-        except="generics_of,fn_sig,typeck,type_of,optimized_mir"
+        except="generics_of,fn_sig,typeck,type_of,optimized_mir,associated_item"
     )]
     #[rustc_clean(cfg="cfail6")]
     pub fn add_type_parameter_to_impl(&self) { }
@@ -726,7 +726,7 @@ impl Bar<u32> {
 impl Bar<u64> {
     #[rustc_clean(cfg="cfail2", except="fn_sig,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="fn_sig,optimized_mir,typeck")]
+    #[rustc_clean(cfg="cfail5", except="fn_sig,optimized_mir,typeck,associated_item")]
     #[rustc_clean(cfg="cfail6")]
     pub fn change_impl_self_type(&self) { }
 }
@@ -747,7 +747,7 @@ impl<T> Bar<T> {
 impl<T: 'static> Bar<T> {
     #[rustc_clean(cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
+    #[rustc_clean(cfg="cfail5", except="associated_item")]
     #[rustc_clean(cfg="cfail6")]
     pub fn add_lifetime_bound_to_impl_parameter(&self) { }
 }
@@ -768,7 +768,7 @@ impl<T> Bar<T> {
 impl<T: Clone> Bar<T> {
     #[rustc_clean(cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5")]
+    #[rustc_clean(cfg="cfail5", except="associated_item")]
     #[rustc_clean(cfg="cfail6")]
     pub fn add_trait_bound_to_impl_parameter(&self) { }
 }
