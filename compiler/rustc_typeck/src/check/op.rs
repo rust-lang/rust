@@ -571,7 +571,7 @@ This requires ownership of the string on the left.";
                 if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
                     err.span_label(op.span, "`+` cannot be used to concatenate two `&str` strings");
                     err.note(str_concat_note);
-                    if let hir::ExprKind::AddrOf(_,_,lhs_inner_expr) = lhs_expr.kind {
+                    if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
                         err.span_suggestion(
                             lhs_expr.span.until(lhs_inner_expr.span),
                             rm_borrow_msg,
