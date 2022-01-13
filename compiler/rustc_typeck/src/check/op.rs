@@ -549,9 +549,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {
-        let str_concat_note = "String concatenation appends the string on the right to the \
-                                    string on the left and may require reallocation. This \
-                                    requires ownership of the string on the left.";
+        let str_concat_note = "String concatenation appends the string on the right to the
+string on the left and may require reallocation.
+This requires ownership of the string on the left.";
         let rm_borrow_msg = "remove the borrow to obtain an owned `String`";
         let to_owned_msg = "use `to_owned()` to create an owned `String` from a string reference";
 
