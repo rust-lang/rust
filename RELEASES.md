@@ -43,7 +43,6 @@ Stabilized APIs
 - [`Option::unwrap_unchecked`]
 - [`Result::unwrap_unchecked`]
 - [`Result::unwrap_err_unchecked`]
-- [`NonZero{unsigned}::is_power_of_two`]
 - [`File::options`]
 
 These APIs are now usable in const contexts:
@@ -56,10 +55,6 @@ These APIs are now usable in const contexts:
 - [`Duration::checked_mul`]
 - [`Duration::saturating_mul`]
 - [`Duration::checked_div`]
-- [`MaybeUninit::as_ptr`]
-- [`MaybeUninit::as_mut_ptr`]
-- [`MaybeUninit::assume_init`]
-- [`MaybeUninit::assume_init_ref`]
 
 Cargo
 -----
@@ -141,7 +136,6 @@ and related tools.
 [`Option::unwrap_unchecked`]: https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.unwrap_unchecked
 [`Result::unwrap_unchecked`]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.unwrap_unchecked
 [`Result::unwrap_err_unchecked`]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.unwrap_err_unchecked
-[`NonZero{unsigned}::is_power_of_two`]: https://doc.rust-lang.org/stable/std/num/struct.NonZeroU8.html#method.is_power_of_two
 [`File::options`]: https://doc.rust-lang.org/stable/std/fs/struct.File.html#method.options
 [`unix::process::ExitStatusExt::core_dumped`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.core_dumped
 [`unix::process::ExitStatusExt::stopped_signal`]: https://doc.rust-lang.org/stable/std/os/unix/process/trait.ExitStatusExt.html#tymethod.stopped_signal
@@ -165,10 +159,6 @@ and related tools.
 [`Duration::div_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_f32
 [`Duration::div_duration_f64`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_duration_f64
 [`Duration::div_duration_f32`]: https://doc.rust-lang.org/stable/std/time/struct.Duration.html#method.div_duration_f32
-[`MaybeUninit::as_ptr`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.as_ptr
-[`MaybeUninit::as_mut_ptr`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.as_mut_ptr
-[`MaybeUninit::assume_init`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init
-[`MaybeUninit::assume_init_ref`]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_ref
 
 Version 1.57.0 (2021-12-02)
 ==========================
