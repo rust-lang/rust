@@ -7910,7 +7910,7 @@ Cargo
   targets can be specified together. [RFC 1361].
 * [The environment variables `CARGO_TARGET_ROOT`, `RUSTC`, and
   `RUSTDOC` take precedence over the `build.target-dir`,
-  `build.rustc`, and `build.rustdoc` configuration values][1.8cv].
+  `build.rustc`, and `build.rustdoc` configuration values][1.8cfv].
 * [The child process tree is killed on Windows when Cargo is
   killed][1.8ck].
 * [The `build.target` configuration value sets the target platform,
@@ -7960,7 +7960,7 @@ Compatibility Notes
 [1.8ck]: https://github.com/rust-lang/cargo/pull/2370
 [1.8ct]: https://github.com/rust-lang/cargo/pull/2335
 [1.8cu]: https://github.com/rust-lang/rust/pull/31390
-[1.8cv]: https://github.com/rust-lang/cargo/issues/2365
+[1.8cfv]: https://github.com/rust-lang/cargo/issues/2365
 [1.8cv]: https://github.com/rust-lang/rust/pull/30998
 [1.8h]: https://github.com/rust-lang/rust/pull/31460
 [1.8l]: https://github.com/rust-lang/rust/pull/31668
