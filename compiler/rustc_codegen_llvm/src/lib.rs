@@ -10,6 +10,7 @@
 #![feature(let_else)]
 #![feature(extern_types)]
 #![feature(nll)]
+#![feature(let_else)]
 #![recursion_limit = "256"]
 
 use back::write::{create_informational_target_machine, create_target_machine};
