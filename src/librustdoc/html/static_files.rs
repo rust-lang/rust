@@ -67,8 +67,9 @@ crate static LICENSE_APACHE: &[u8] = include_bytes!("static/LICENSE-APACHE.txt")
 /// The contents of `LICENSE-MIT.txt`, the text of the MIT License.
 crate static LICENSE_MIT: &[u8] = include_bytes!("static/LICENSE-MIT.txt");
 
-/// The contents of `rust-logo.png`, the default icon of the documentation.
-crate static RUST_LOGO: &[u8] = include_bytes!("static/images/rust-logo.png");
+/// The contents of `rust-logo.svg`, the default icon of the documentation.
+crate static RUST_LOGO_SVG: &[u8] = include_bytes!("static/images/rust-logo.svg");
+
 /// The default documentation favicons (SVG and PNG fallbacks)
 crate static RUST_FAVICON_SVG: &[u8] = include_bytes!("static/images/favicon.svg");
 crate static RUST_FAVICON_PNG_16: &[u8] = include_bytes!("static/images/favicon-16x16.png");
