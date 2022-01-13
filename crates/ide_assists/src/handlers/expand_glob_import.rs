@@ -226,9 +226,7 @@ fn find_imported_defs(ctx: &AssistContext, star: SyntaxToken) -> Option<Vec<Defi
             .flat_map(|n| n.descendants().filter_map(ast::NameRef::cast))
             .filter_map(|r| match NameRefClass::classify(&ctx.sema, &r)? {
                 NameRefClass::Definition(
-                    def
-                    @
-                    (Definition::Macro(_)
+                    def @ (Definition::Macro(_)
                     | Definition::Module(_)
                     | Definition::Function(_)
                     | Definition::Adt(_)
