@@ -516,6 +516,9 @@ impl<T: Error> Error for Box<T> {
     }
 }
 
+#[stable(feature = "box_error", since = "1.8.0")]
+impl !Error for Box<dyn Error + Send + Sync + 'static> {}
+
 #[stable(feature = "error_by_ref", since = "1.51.0")]
 impl<'a, T: Error + ?Sized> Error for &'a T {
     #[allow(deprecated, deprecated_in_future)]
