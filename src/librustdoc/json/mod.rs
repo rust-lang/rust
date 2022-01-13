@@ -171,8 +171,10 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     /// the hashmap because certain items (traits and types) need to have their mappings for trait
     /// implementations filled out before they're inserted.
     fn item(&mut self, item: clean::Item) -> Result<(), Error> {
-        // We skip children of local blanket implementations, as we'll have already seen the actual
-        // generic impl, and the generated ones don't need documenting.
+        // FIXME(CraftSpider): We skip children of local blanket implementations, as we'll have
+        //     already seen the actual generic impl, and the generated ones don't need documenting.
+        //     This is necessary due to the visibility, return type, and self arg of the generated
+        //     impls not quite matching, and will no longer be necessary when the mismatch is fixed.
         let local_blanket_impl = match item.def_id {
             clean::ItemId::Blanket { impl_id, .. } => impl_id.is_local(),
             clean::ItemId::Auto { .. }
