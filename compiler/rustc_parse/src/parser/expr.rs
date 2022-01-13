@@ -1443,7 +1443,7 @@ impl<'a> Parser<'a> {
         &mut self,
         label: Label,
         attrs: AttrVec,
-        consume_colon: bool,
+        mut consume_colon: bool,
     ) -> PResult<'a, P<Expr>> {
         let lo = label.ident.span;
         let label = Some(label);
@@ -1456,6 +1456,12 @@ impl<'a> Parser<'a> {
             self.parse_loop_expr(label, lo, attrs)
         } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
             self.parse_block_expr(label, lo, BlockCheckMode::Default, attrs)
+        } else if !ate_colon && (self.check(&TokenKind::Comma) || self.check(&TokenKind::Gt)) {
+            // We're probably inside of a `Path<'a>` that needs a turbofish, so suppress the
+            // "must be followed by a colon" error.
+            self.diagnostic().delay_span_bug(lo, "this label wasn't parsed correctly");
+            consume_colon = false;
+            Ok(self.mk_expr_err(lo))
         } else {
             let msg = "expected `while`, `for`, `loop` or `{` after a label";
             self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
