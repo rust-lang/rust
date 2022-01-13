@@ -211,7 +211,7 @@ impl Rewrite for ast::AssocConstraintKind {
         match self {
             ast::AssocConstraintKind::Equality { term } => match term {
                 Term::Ty(ty) => ty.rewrite(context, shape),
-                Term::Const(c) => c.rewrite(context,shape),
+                Term::Const(c) => c.rewrite(context, shape),
             },
             ast::AssocConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
         }
