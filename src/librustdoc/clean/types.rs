@@ -76,6 +76,14 @@ impl ItemId {
     }
 
     #[inline]
+    crate fn is_local_impl(self) -> bool {
+        match self {
+            ItemId::Blanket { impl_id, .. } => impl_id.is_local(),
+            ItemId::Auto { .. } | ItemId::DefId(_) | ItemId::Primitive(_, _) => false,
+        }
+    }
+
+    #[inline]
     #[track_caller]
     crate fn expect_def_id(self) -> DefId {
         self.as_def_id()

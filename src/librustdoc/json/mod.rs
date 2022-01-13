@@ -172,7 +172,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     /// implementations filled out before they're inserted.
     fn item(&mut self, item: clean::Item) -> Result<(), Error> {
         // Flatten items that recursively store other items
-        item.kind.inner_items().for_each(|i| self.item(i.clone()).unwrap());
+        // We skip local blanket implementations, as we'll have already seen the actual generic
+        // impl, and the generated ones don't need documenting.
+        if !item.def_id.is_local_impl() {
+            item.kind.inner_items().for_each(|i| self.item(i.clone()).unwrap());
+        }
 
         let id = item.def_id;
         if let Some(mut new_item) = self.convert_item(item) {
