@@ -45,7 +45,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ManualMap => [MANUAL_MAP]);
 
-impl LateLintPass<'_> for ManualMap {
+impl<'tcx> LateLintPass<'tcx> for ManualMap {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let (scrutinee, then_pat, then_body, else_pat, else_body) = match IfLetOrMatch::parse(cx, expr) {
@@ -219,7 +219,7 @@ impl LateLintPass<'_> for ManualMap {
 
 // Checks whether the expression could be passed as a function, or whether a closure is needed.
 // Returns the function to be passed to `map` if it exists.
-fn can_pass_as_func(cx: &LateContext<'tcx>, binding: HirId, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+fn can_pass_as_func<'tcx>(cx: &LateContext<'tcx>, binding: HirId, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     match expr.kind {
         ExprKind::Call(func, [arg])
             if path_to_local_id(arg, binding)
@@ -251,8 +251,13 @@ struct SomeExpr<'tcx> {
 
 // Try to parse into a recognized `Option` pattern.
 // i.e. `_`, `None`, `Some(..)`, or a reference to any of those.
-fn try_parse_pattern(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, ctxt: SyntaxContext) -> Option<OptionPat<'tcx>> {
-    fn f(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, ref_count: usize, ctxt: SyntaxContext) -> Option<OptionPat<'tcx>> {
+fn try_parse_pattern<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, ctxt: SyntaxContext) -> Option<OptionPat<'tcx>> {
+    fn f<'tcx>(
+        cx: &LateContext<'tcx>,
+        pat: &'tcx Pat<'_>,
+        ref_count: usize,
+        ctxt: SyntaxContext,
+    ) -> Option<OptionPat<'tcx>> {
         match pat.kind {
             PatKind::Wild => Some(OptionPat::Wild),
             PatKind::Ref(pat, _) => f(cx, pat, ref_count + 1, ctxt),
@@ -269,7 +274,7 @@ fn try_parse_pattern(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, ctxt: SyntaxCon
 }
 
 // Checks for an expression wrapped by the `Some` constructor. Returns the contained expression.
-fn get_some_expr(
+fn get_some_expr<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
     needs_unsafe_block: bool,
@@ -306,6 +311,6 @@ fn get_some_expr(
 }
 
 // Checks for the `None` value.
-fn is_none_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     matches!(peel_blocks(expr).kind, ExprKind::Path(ref qpath) if is_lang_ctor(cx, qpath, OptionNone))
 }

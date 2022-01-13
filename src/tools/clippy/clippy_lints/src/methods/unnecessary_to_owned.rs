@@ -16,7 +16,7 @@ use std::cmp::max;
 
 use super::UNNECESSARY_TO_OWNED;
 
-pub fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol, args: &'tcx [Expr<'tcx>]) {
+pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol, args: &'tcx [Expr<'tcx>]) {
     if_chain! {
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let [receiver] = args;
@@ -44,11 +44,11 @@ pub fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method_name: Symbol
 /// call of a `to_owned`-like function is unnecessary.
 #[allow(clippy::too_many_lines)]
 fn check_addr_of_expr(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'tcx>,
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
     method_name: Symbol,
     method_def_id: DefId,
-    receiver: &'tcx Expr<'tcx>,
+    receiver: &Expr<'_>,
 ) -> bool {
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
@@ -171,12 +171,7 @@ fn check_addr_of_expr(
 
 /// Checks whether `expr` is an argument in an `into_iter` call and, if so, determines whether its
 /// call of a `to_owned`-like function is unnecessary.
-fn check_into_iter_call_arg(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'tcx>,
-    method_name: Symbol,
-    receiver: &'tcx Expr<'tcx>,
-) -> bool {
+fn check_into_iter_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, receiver: &Expr<'_>) -> bool {
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
         if let Some(callee_def_id) = fn_def_id(cx, parent);
@@ -187,7 +182,13 @@ fn check_into_iter_call_arg(
         if let Some(item_ty) = get_iterator_item_ty(cx, parent_ty);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
-            if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver) {
+            if unnecessary_iter_cloned::check_for_loop_iter(
+                cx,
+                parent,
+                method_name,
+                receiver,
+                true,
+            ) {
                 return true;
             }
             let cloned_or_copied = if is_copy(cx, item_ty) {
@@ -195,6 +196,9 @@ fn check_into_iter_call_arg(
             } else {
                 "cloned"
             };
+            // The next suggestion may be incorrect because the removal of the `to_owned`-like
+            // function could cause the iterator to hold a reference to a resource that is used
+            // mutably. See https://github.com/rust-lang/rust-clippy/issues/8148.
             span_lint_and_sugg(
                 cx,
                 UNNECESSARY_TO_OWNED,
@@ -202,7 +206,7 @@ fn check_into_iter_call_arg(
                 &format!("unnecessary use of `{}`", method_name),
                 "use",
                 format!("{}.iter().{}()", receiver_snippet, cloned_or_copied),
-                Applicability::MachineApplicable,
+                Applicability::MaybeIncorrect,
             );
             return true;
         }
@@ -212,7 +216,7 @@ fn check_into_iter_call_arg(
 
 /// Checks whether `expr` is an argument in a function call and, if so, determines whether its call
 /// of a `to_owned`-like function is unnecessary.
-fn check_other_call_arg(
+fn check_other_call_arg<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
     method_name: Symbol,
@@ -278,7 +282,7 @@ fn check_other_call_arg(
 
 /// Walks an expression's ancestors until it finds a non-`AddrOf` expression. Returns the first such
 /// expression found (if any) along with the immediately prior expression.
-fn skip_addr_of_ancestors(
+fn skip_addr_of_ancestors<'tcx>(
     cx: &LateContext<'tcx>,
     mut expr: &'tcx Expr<'tcx>,
 ) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>)> {
@@ -294,7 +298,7 @@ fn skip_addr_of_ancestors(
 
 /// Checks whether an expression is a function or method call and, if so, returns its `DefId`,
 /// `Substs`, and arguments.
-fn get_callee_substs_and_args(
+fn get_callee_substs_and_args<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
 ) -> Option<(DefId, SubstsRef<'tcx>, &'tcx [Expr<'tcx>])> {
@@ -319,7 +323,7 @@ fn get_callee_substs_and_args(
 }
 
 /// Returns the `TraitPredicate`s and `ProjectionPredicate`s for a function's input type.
-fn get_input_traits_and_projections(
+fn get_input_traits_and_projections<'tcx>(
     cx: &LateContext<'tcx>,
     callee_def_id: DefId,
     input: Ty<'tcx>,
@@ -359,7 +363,11 @@ fn get_input_traits_and_projections(
 }
 
 /// Composes two substitutions by applying the latter to the types of the former.
-fn compose_substs(cx: &LateContext<'tcx>, left: &[GenericArg<'tcx>], right: SubstsRef<'tcx>) -> Vec<GenericArg<'tcx>> {
+fn compose_substs<'tcx>(
+    cx: &LateContext<'tcx>,
+    left: &[GenericArg<'tcx>],
+    right: SubstsRef<'tcx>,
+) -> Vec<GenericArg<'tcx>> {
     left.iter()
         .map(|arg| {
             if let GenericArgKind::Type(arg_ty) = arg.unpack() {

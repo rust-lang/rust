@@ -50,7 +50,7 @@ declare_clippy_lint! {
 declare_lint_pass!(OctalEscapes => [OCTAL_ESCAPES]);
 
 impl EarlyLintPass for OctalEscapes {
-    fn check_expr(&mut self, cx: &EarlyContext<'tcx>, expr: &Expr) {
+    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if in_external_macro(cx.sess, expr.span) {
             return;
         }
@@ -65,7 +65,7 @@ impl EarlyLintPass for OctalEscapes {
     }
 }
 
-fn check_lit(cx: &EarlyContext<'tcx>, lit: &Lit, span: Span, is_string: bool) {
+fn check_lit(cx: &EarlyContext<'_>, lit: &Lit, span: Span, is_string: bool) {
     let contents = lit.symbol.as_str();
     let mut iter = contents.char_indices().peekable();
     let mut found = vec![];

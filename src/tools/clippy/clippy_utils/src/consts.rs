@@ -223,7 +223,7 @@ pub fn constant_simple<'tcx>(
     constant(lcx, typeck_results, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
 
-pub fn constant_full_int(
+pub fn constant_full_int<'tcx>(
     lcx: &LateContext<'tcx>,
     typeck_results: &ty::TypeckResults<'tcx>,
     e: &Expr<'_>,

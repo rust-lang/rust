@@ -124,7 +124,7 @@ struct IterUsage {
 }
 
 #[allow(clippy::too_many_lines)]
-fn parse_iter_usage(
+fn parse_iter_usage<'tcx>(
     cx: &LateContext<'tcx>,
     ctxt: SyntaxContext,
     mut iter: impl Iterator<Item = (HirId, Node<'tcx>)>,
@@ -281,7 +281,7 @@ pub(super) fn check_needless_splitn(
     }
 }
 
-fn check_iter(
+fn check_iter<'tcx>(
     cx: &LateContext<'tcx>,
     ctxt: SyntaxContext,
     mut iter: impl Iterator<Item = (HirId, Node<'tcx>)>,

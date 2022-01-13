@@ -2,16 +2,17 @@ use clippy_utils::consts::{constant, constant_full_int, miri_to_const, FullInt};
 use clippy_utils::diagnostics::{
     multispan_sugg, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
 };
-use clippy_utils::higher;
+use clippy_utils::macros::{is_panic, root_macro_call};
 use clippy_utils::source::{expr_block, indent_of, snippet, snippet_block, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
-    get_parent_expr, is_expn_of, is_lang_ctor, is_lint_allowed, is_refutable, is_unit_expr, is_wild, meets_msrv, msrvs,
+    get_parent_expr, is_lang_ctor, is_lint_allowed, is_refutable, is_unit_expr, is_wild, meets_msrv, msrvs,
     path_to_local, path_to_local_id, peel_blocks, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns,
     strip_pat_refs,
 };
+use clippy_utils::{higher, peel_blocks_with_stmt};
 use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use core::iter::{once, ExactSizeIterator};
 use if_chain::if_chain;
@@ -974,7 +975,8 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
                     }
                     if_chain! {
                         if matching_wild;
-                        if is_panic_call(arm.body);
+                        if let Some(macro_call) = root_macro_call(peel_blocks_with_stmt(arm.body).span);
+                        if is_panic(cx, macro_call.def_id);
                         then {
                             // `Err(_)` or `Err(_e)` arm with `panic!` found
                             span_lint_and_note(cx,
@@ -997,7 +999,7 @@ enum CommonPrefixSearcher<'a> {
     Path(&'a [PathSegment<'a>]),
     Mixed,
 }
-impl CommonPrefixSearcher<'a> {
+impl<'a> CommonPrefixSearcher<'a> {
     fn with_path(&mut self, path: &'a [PathSegment<'a>]) {
         match path {
             [path @ .., _] => self.with_prefix(path),
@@ -1177,22 +1179,6 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
             );
         },
     };
-}
-
-// If the block contains only a `panic!` macro (as expression or statement)
-fn is_panic_call(expr: &Expr<'_>) -> bool {
-    // Unwrap any wrapping blocks
-    let span = if let ExprKind::Block(block, _) = expr.kind {
-        match (&block.expr, block.stmts.len(), block.stmts.first()) {
-            (&Some(exp), 0, _) => exp.span,
-            (&None, 1, Some(stmt)) => stmt.span,
-            _ => return false,
-        }
-    } else {
-        expr.span
-    };
-
-    is_expn_of(span, "panic").is_some() && is_expn_of(span, "unreachable").is_none()
 }
 
 fn check_match_ref_pats<'a, 'b, I>(cx: &LateContext<'_>, ex: &Expr<'_>, pats: I, expr: &Expr<'_>)
@@ -1818,11 +1804,15 @@ mod redundant_pattern_match {
     /// Checks if the drop order for a type matters. Some std types implement drop solely to
     /// deallocate memory. For these types, and composites containing them, changing the drop order
     /// won't result in any observable side effects.
-    fn type_needs_ordered_drop(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    fn type_needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         type_needs_ordered_drop_inner(cx, ty, &mut FxHashSet::default())
     }
 
-    fn type_needs_ordered_drop_inner(cx: &LateContext<'tcx>, ty: Ty<'tcx>, seen: &mut FxHashSet<Ty<'tcx>>) -> bool {
+    fn type_needs_ordered_drop_inner<'tcx>(
+        cx: &LateContext<'tcx>,
+        ty: Ty<'tcx>,
+        seen: &mut FxHashSet<Ty<'tcx>>,
+    ) -> bool {
         if !seen.insert(ty) {
             return false;
         }
@@ -1884,7 +1874,7 @@ mod redundant_pattern_match {
 
     // Checks if there are any temporaries created in the given expression for which drop order
     // matters.
-    fn temporaries_need_ordered_drop(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    fn temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
         struct V<'a, 'tcx> {
             cx: &'a LateContext<'tcx>,
             res: bool,

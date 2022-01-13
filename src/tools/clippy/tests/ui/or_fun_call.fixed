@@ -2,7 +2,7 @@
 
 #![warn(clippy::or_fun_call)]
 #![allow(dead_code)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::unnecessary_wraps, clippy::borrow_as_ptr)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;

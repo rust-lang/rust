@@ -113,8 +113,8 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
     }
 }
 
-impl<'hir> Visitor<'hir> for UndocumentedUnsafeBlocks {
-    type Map = Map<'hir>;
+impl<'v> Visitor<'v> for UndocumentedUnsafeBlocks {
+    type Map = Map<'v>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None

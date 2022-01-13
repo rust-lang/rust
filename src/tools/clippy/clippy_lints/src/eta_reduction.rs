@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::higher::VecArgs;
 use clippy_utils::source::snippet_opt;
+use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{get_enclosing_loop_or_closure, higher, path_to_local, path_to_local_id};
 use if_chain::if_chain;
@@ -12,6 +13,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ClosureKind, Ty, TypeFoldable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -113,6 +115,9 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
             // A type param function ref like `T::f` is not 'static, however
             // it is if cast like `T::f as fn()`. This seems like a rustc bug.
             if !substs.types().any(|t| matches!(t.kind(), ty::Param(_)));
+            let callee_ty_unadjusted = cx.typeck_results().expr_ty(callee).peel_refs();
+            if !is_type_diagnostic_item(cx, callee_ty_unadjusted, sym::Arc);
+            if !is_type_diagnostic_item(cx, callee_ty_unadjusted, sym::Rc);
             then {
                 span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
                     if let Some(mut snippet) = snippet_opt(cx, callee.span) {

@@ -39,7 +39,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(StrlenOnCStrings => [STRLEN_ON_C_STRINGS]);
 
-impl LateLintPass<'tcx> for StrlenOnCStrings {
+impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion();

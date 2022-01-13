@@ -339,8 +339,8 @@ fn detect_iter_and_into_iters<'tcx: 'a, 'a>(
     }
 }
 
-fn get_captured_ids(cx: &LateContext<'tcx>, ty: &'_ TyS<'_>) -> HirIdSet {
-    fn get_captured_ids_recursive(cx: &LateContext<'tcx>, ty: &'_ TyS<'_>, set: &mut HirIdSet) {
+fn get_captured_ids(cx: &LateContext<'_>, ty: &'_ TyS<'_>) -> HirIdSet {
+    fn get_captured_ids_recursive(cx: &LateContext<'_>, ty: &'_ TyS<'_>, set: &mut HirIdSet) {
         match ty.kind() {
             ty::Adt(_, generics) => {
                 for generic in *generics {

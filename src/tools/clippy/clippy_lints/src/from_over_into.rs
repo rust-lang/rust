@@ -53,7 +53,7 @@ impl FromOverInto {
 
 impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
 
-impl LateLintPass<'_> for FromOverInto {
+impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         if !meets_msrv(self.msrv.as_ref(), &msrvs::RE_REBALANCING_COHERENCE) {
             return;
