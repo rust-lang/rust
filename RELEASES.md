@@ -5421,8 +5421,6 @@ Cargo
 - [Added `--no-fail-fast` flag to cargo to run all benchmarks regardless of
   failure.][cargo/4248]
 - [Changed the convention around which file is the crate root.][cargo/4259]
-- [The `include`/`exclude` property in `Cargo.toml` now accepts gitignore paths
-  instead of glob patterns][cargo/4270]. Glob patterns are now deprecated.
 
 Compatibility Notes
 -------------------
@@ -5465,7 +5463,6 @@ Compatibility Notes
 [cargo/4229]: https://github.com/rust-lang/cargo/pull/4229
 [cargo/4248]: https://github.com/rust-lang/cargo/pull/4248
 [cargo/4259]: https://github.com/rust-lang/cargo/pull/4259
-[cargo/4270]: https://github.com/rust-lang/cargo/pull/4270
 [`CStr::into_c_string`]: https://doc.rust-lang.org/std/ffi/struct.CStr.html#method.into_c_string
 [`CString::as_c_str`]: https://doc.rust-lang.org/std/ffi/struct.CString.html#method.as_c_str
 [`CString::into_boxed_c_str`]: https://doc.rust-lang.org/std/ffi/struct.CString.html#method.into_boxed_c_str
