@@ -498,12 +498,12 @@ impl Builder {
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
             native: unsafe {
-                Some(imp::Thread::new(
+                imp::Thread::new(
                     stack_size,
                     mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(
                         Box::new(main),
                     ),
-                )?)
+                )?
             },
             thread: my_thread,
             packet: Packet(my_packet),
@@ -1261,15 +1261,15 @@ unsafe impl<T: Sync> Sync for Packet<T> {}
 
 /// Inner representation for JoinHandle
 struct JoinInner<T> {
-    native: Option<imp::Thread>,
+    native: imp::Thread,
     thread: Thread,
     packet: Packet<T>,
 }
 
 impl<T> JoinInner<T> {
-    fn join(&mut self) -> Result<T> {
-        self.native.take().unwrap().join();
-        unsafe { (*self.packet.0.get()).take().unwrap() }
+    fn join(mut self) -> Result<T> {
+        self.native.join();
+        Arc::get_mut(&mut self.packet.0).unwrap().get_mut().take().unwrap()
     }
 }
 
@@ -1400,7 +1400,7 @@ impl<T> JoinHandle<T> {
     /// join_handle.join().expect("Couldn't join on the associated thread");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn join(mut self) -> Result<T> {
+    pub fn join(self) -> Result<T> {
         self.0.join()
     }
 
@@ -1416,13 +1416,13 @@ impl<T> JoinHandle<T> {
 
 impl<T> AsInner<imp::Thread> for JoinHandle<T> {
     fn as_inner(&self) -> &imp::Thread {
-        self.0.native.as_ref().unwrap()
+        &self.0.native
     }
 }
 
 impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
     fn into_inner(self) -> imp::Thread {
-        self.0.native.unwrap()
+        self.0.native
     }
 }
 
