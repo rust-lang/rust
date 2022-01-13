@@ -15,9 +15,5 @@ impl<W> Trait<W> for () {}
 
 fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
     //~^ ERROR non-defining opaque type use in defining scope
-    //~| ERROR non-defining opaque type use in defining scope
-    //~| ERROR non-defining opaque type use in defining scope
-    //~| ERROR `T` is part of concrete type but not used in parameter list
-    //~| ERROR `T` is part of concrete type but not used in parameter list
     ()
 }
