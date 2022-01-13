@@ -863,7 +863,7 @@ class RustBuild(object):
         >>> rb.get_toml("key2")
         'value2'
 
-        If the key does not exists, the result is None:
+        If the key does not exist, the result is None:
 
         >>> rb.get_toml("key3") is None
         True
