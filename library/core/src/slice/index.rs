@@ -498,7 +498,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 ///
 /// use std::slice;
 ///
-/// slice::range(2..1, ..3);
+/// let _ = slice::range(2..1, ..3);
 /// ```
 ///
 /// ```should_panic
@@ -506,7 +506,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 ///
 /// use std::slice;
 ///
-/// slice::range(1..4, ..3);
+/// let _ = slice::range(1..4, ..3);
 /// ```
 ///
 /// ```should_panic
@@ -514,7 +514,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 ///
 /// use std::slice;
 ///
-/// slice::range(1..=usize::MAX, ..3);
+/// let _ = slice::range(1..=usize::MAX, ..3);
 /// ```
 ///
 /// [`Index::index`]: ops::Index::index
