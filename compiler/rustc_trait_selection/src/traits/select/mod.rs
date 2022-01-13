@@ -1953,7 +1953,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Generator(_, ref substs, _) => {
                 let ty = self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
                 let witness = substs.as_generator().witness();
-                t.rebind(vec![ty].into_iter().chain(iter::once(witness)).collect())
+                t.rebind([ty].into_iter().chain(iter::once(witness)).collect())
             }
 
             ty::GeneratorWitness(types) => {

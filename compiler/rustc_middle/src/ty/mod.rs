@@ -20,6 +20,7 @@ pub use generics::*;
 pub use vtable::*;
 
 use crate::metadata::ModChild;
+use crate::middle::privacy::AccessLevels;
 use crate::mir::{Body, GeneratorLayout};
 use crate::traits::{self, Reveal};
 use crate::ty;
@@ -123,6 +124,7 @@ pub struct ResolverOutputs {
     pub definitions: rustc_hir::definitions::Definitions,
     pub cstore: Box<CrateStoreDyn>,
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
+    pub access_levels: AccessLevels,
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
@@ -1502,8 +1504,7 @@ pub struct VariantDef {
     /// If this variant is a struct variant, then this is `None`.
     pub ctor_def_id: Option<DefId>,
     /// Variant or struct name.
-    #[stable_hasher(project(name))]
-    pub ident: Ident,
+    pub name: Symbol,
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
     /// Fields of this variant.
@@ -1532,7 +1533,7 @@ impl VariantDef {
     /// If someone speeds up attribute loading to not be a performance concern, they can
     /// remove this hack and use the constructor `DefId` everywhere.
     pub fn new(
-        ident: Ident,
+        name: Symbol,
         variant_did: Option<DefId>,
         ctor_def_id: Option<DefId>,
         discr: VariantDiscr,
@@ -1544,9 +1545,9 @@ impl VariantDef {
         is_field_list_non_exhaustive: bool,
     ) -> Self {
         debug!(
-            "VariantDef::new(ident = {:?}, variant_did = {:?}, ctor_def_id = {:?}, discr = {:?},
+            "VariantDef::new(name = {:?}, variant_did = {:?}, ctor_def_id = {:?}, discr = {:?},
              fields = {:?}, ctor_kind = {:?}, adt_kind = {:?}, parent_did = {:?})",
-            ident, variant_did, ctor_def_id, discr, fields, ctor_kind, adt_kind, parent_did,
+            name, variant_did, ctor_def_id, discr, fields, ctor_kind, adt_kind, parent_did,
         );
 
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
@@ -1561,7 +1562,7 @@ impl VariantDef {
         VariantDef {
             def_id: variant_did.unwrap_or(parent_did),
             ctor_def_id,
-            ident,
+            name,
             discr,
             fields,
             ctor_kind,
@@ -1579,6 +1580,11 @@ impl VariantDef {
     #[inline]
     pub fn is_recovered(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_RECOVERED)
+    }
+
+    /// Computes the `Ident` of this variant by looking up the `Span`
+    pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
+        Ident::new(self.name, tcx.def_ident_span(self.def_id).unwrap())
     }
 }
 
@@ -1598,8 +1604,7 @@ pub enum VariantDiscr {
 #[derive(Debug, HashStable, TyEncodable, TyDecodable)]
 pub struct FieldDef {
     pub did: DefId,
-    #[stable_hasher(project(name))]
-    pub ident: Ident,
+    pub name: Symbol,
     pub vis: Visibility,
 }
 
@@ -1774,6 +1779,11 @@ impl<'tcx> FieldDef {
     pub fn ty(&self, tcx: TyCtxt<'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
         tcx.type_of(self.did).subst(tcx, subst)
     }
+
+    /// Computes the `Ident` of this variant by looking up the `Span`
+    pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
+        Ident::new(self.name, tcx.def_ident_span(self.did).unwrap())
+    }
 }
 
 pub type Attributes<'tcx> = &'tcx [ast::Attribute];
@@ -1890,7 +1900,10 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {
-        variant.fields.iter().position(|field| self.hygienic_eq(ident, field.ident, variant.def_id))
+        variant
+            .fields
+            .iter()
+            .position(|field| self.hygienic_eq(ident, field.ident(self), variant.def_id))
     }
 
     /// Returns `true` if the impls are the same polarity and the trait either

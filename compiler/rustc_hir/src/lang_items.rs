@@ -151,20 +151,12 @@ impl<CTX> HashStable<CTX> for LangItem {
 /// Extracts the first `lang = "$name"` out of a list of attributes.
 /// The attributes `#[panic_handler]` and `#[alloc_error_handler]`
 /// are also extracted out when found.
-///
-/// About the `check_name` argument: passing in a `Session` would be simpler,
-/// because then we could call `Session::check_name` directly. But we want to
-/// avoid the need for `rustc_hir` to depend on `rustc_session`, so we
-/// use a closure instead.
-pub fn extract<'a, F>(check_name: F, attrs: &'a [ast::Attribute]) -> Option<(Symbol, Span)>
-where
-    F: Fn(&'a ast::Attribute, Symbol) -> bool,
-{
+pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| {
         Some(match attr {
-            _ if check_name(attr, sym::lang) => (attr.value_str()?, attr.span),
-            _ if check_name(attr, sym::panic_handler) => (sym::panic_impl, attr.span),
-            _ if check_name(attr, sym::alloc_error_handler) => (sym::oom, attr.span),
+            _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span),
+            _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span),
+            _ if attr.has_name(sym::alloc_error_handler) => (sym::oom, attr.span),
             _ => return None,
         })
     })

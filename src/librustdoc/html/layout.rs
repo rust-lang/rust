@@ -7,9 +7,9 @@ use crate::externalfiles::ExternalHtml;
 use crate::html::format::{Buffer, Print};
 use crate::html::render::{ensure_trailing_slash, StylePath};
 
-use serde::Serialize;
+use askama::Template;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone)]
 crate struct Layout {
     crate logo: String,
     crate favicon: String,
@@ -19,14 +19,10 @@ crate struct Layout {
     /// The given user css file which allow to customize the generated
     /// documentation theme.
     crate css_file_extension: Option<PathBuf>,
-    /// If false, the `select` element to have search filtering by crates on rendered docs
-    /// won't be generated.
-    crate generate_search_filter: bool,
     /// If true, then scrape-examples.js will be included in the output HTML file
     crate scrape_examples_extension: bool,
 }
 
-#[derive(Serialize)]
 crate struct Page<'a> {
     crate title: &'a str,
     crate css_class: &'a str,
@@ -45,7 +41,8 @@ impl<'a> Page<'a> {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Template)]
+#[template(path = "page.html")]
 struct PageLayout<'a> {
     static_root_path: &'a str,
     page: &'a Page<'a>,
@@ -58,7 +55,6 @@ struct PageLayout<'a> {
 }
 
 crate fn render<T: Print, S: Print>(
-    templates: &tera::Tera,
     layout: &Layout,
     page: &Page<'_>,
     sidebar: S,
@@ -76,7 +72,7 @@ crate fn render<T: Print, S: Print>(
     let rustdoc_version = rustc_interface::util::version_str().unwrap_or("unknown version");
     let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
     let sidebar = Buffer::html().to_display(sidebar);
-    let teractx = tera::Context::from_serialize(PageLayout {
+    PageLayout {
         static_root_path,
         page,
         layout,
@@ -85,9 +81,9 @@ crate fn render<T: Print, S: Print>(
         content,
         krate_with_trailing_slash,
         rustdoc_version,
-    })
-    .unwrap();
-    templates.render("page.html", &teractx).unwrap()
+    }
+    .render()
+    .unwrap()
 }
 
 crate fn redirect(url: &str) -> String {

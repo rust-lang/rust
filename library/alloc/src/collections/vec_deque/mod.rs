@@ -669,7 +669,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<i32> = vec![1].into_iter().collect();
+    /// let mut buf: VecDeque<i32> = [1].into_iter().collect();
     /// buf.reserve_exact(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
@@ -692,7 +692,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<i32> = vec![1].into_iter().collect();
+    /// let mut buf: VecDeque<i32> = [1].into_iter().collect();
     /// buf.reserve(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
@@ -1153,7 +1153,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
+    /// let v: VecDeque<_> = [1, 2, 3].into_iter().collect();
     /// let range = v.range(2..).copied().collect::<VecDeque<_>>();
     /// assert_eq!(range, [3]);
     ///
@@ -1188,7 +1188,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
+    /// let mut v: VecDeque<_> = [1, 2, 3].into_iter().collect();
     /// for v in v.range_mut(2..) {
     ///   *v *= 2;
     /// }
@@ -1235,7 +1235,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut v: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
+    /// let mut v: VecDeque<_> = [1, 2, 3].into_iter().collect();
     /// let drained = v.drain(2..).collect::<VecDeque<_>>();
     /// assert_eq!(drained, [3]);
     /// assert_eq!(v, [1, 2]);
@@ -2025,7 +2025,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
+    /// let mut buf: VecDeque<_> = [1, 2, 3].into_iter().collect();
     /// let buf2 = buf.split_off(1);
     /// assert_eq!(buf, [1]);
     /// assert_eq!(buf2, [2, 3]);
@@ -2091,8 +2091,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = vec![1, 2].into_iter().collect();
-    /// let mut buf2: VecDeque<_> = vec![3, 4].into_iter().collect();
+    /// let mut buf: VecDeque<_> = [1, 2].into_iter().collect();
+    /// let mut buf2: VecDeque<_> = [3, 4].into_iter().collect();
     /// buf.append(&mut buf2);
     /// assert_eq!(buf, [1, 2, 3, 4]);
     /// assert_eq!(buf2, []);

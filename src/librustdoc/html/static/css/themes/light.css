@@ -43,7 +43,7 @@ pre, .rustdoc.source .example-wrap {
 	scrollbar-color: rgba(36, 37, 39, 0.6) #d9d9d9;
 }
 
-.rust-logo > img {
+.rust-logo {
 	/* No need for a border in here! */
 }
 
@@ -177,7 +177,7 @@ nav.main .separator {
 a {
 	color: #3873AD;
 }
-a.srclink,
+
 a#toggle-all-docs,
 a.anchor,
 .small-section-header a,
@@ -241,10 +241,6 @@ details.undocumented > summary::before {
 
 #help span.bottom, #help span.top {
 	border-color: #bfbfbf;
-}
-
-.since {
-	color: grey;
 }
 
 .result-name .primitive > i, .result-name .keyword > i {

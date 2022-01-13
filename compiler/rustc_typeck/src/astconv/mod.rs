@@ -1727,7 +1727,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let variant_def = adt_def
                     .variants
                     .iter()
-                    .find(|vd| tcx.hygienic_eq(assoc_ident, vd.ident, adt_def.did));
+                    .find(|vd| tcx.hygienic_eq(assoc_ident, vd.ident(tcx), adt_def.did));
                 if let Some(variant_def) = variant_def {
                     if permit_variants {
                         tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span, None);
@@ -1786,7 +1786,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         &adt_def
                             .variants
                             .iter()
-                            .map(|variant| variant.ident.name)
+                            .map(|variant| variant.name)
                             .collect::<Vec<Symbol>>(),
                         assoc_ident.name,
                         None,

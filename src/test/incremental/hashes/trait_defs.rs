@@ -400,7 +400,7 @@ trait TraitAddUnsafeModifier {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
+#[rustc_clean(except="hir_owner", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddUnsafeModifier {
     #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]
@@ -425,7 +425,7 @@ trait TraitAddExternModifier {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5")]
+#[rustc_clean(except="hir_owner", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddExternModifier {
     #[rustc_clean(except="hir_owner,fn_sig", cfg="cfail2")]

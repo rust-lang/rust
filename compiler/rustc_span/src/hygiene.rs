@@ -32,6 +32,7 @@ use crate::{HashStableContext, Span, DUMMY_SP};
 use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::unhash::UnhashMap;
@@ -85,6 +86,33 @@ rustc_index::newtype_index! {
     pub struct LocalExpnId {
         ENCODABLE = custom
         DEBUG_FORMAT = "expn{}"
+    }
+}
+
+/// Assert that the provided `HashStableContext` is configured with the 'default'
+/// `HashingControls`. We should always have bailed out before getting to here
+/// with a non-default mode. With this check in place, we can avoid the need
+/// to maintain separate versions of `ExpnData` hashes for each permutation
+/// of `HashingControls` settings.
+fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str) {
+    match ctx.hashing_controls() {
+        // Ideally, we would also check that `node_id_hashing_mode` was always
+        // `NodeIdHashingMode::HashDefPath`. However, we currently end up hashing
+        // `Span`s in this mode, and there's not an easy way to change that.
+        // All of the span-related data that we hash is pretty self-contained
+        // (in particular, we don't hash any `HirId`s), so this shouldn't result
+        // in any caching problems.
+        // FIXME: Enforce that we don't end up transitively hashing any `HirId`s,
+        // or ensure that this method is always invoked with the same
+        // `NodeIdHashingMode`
+        //
+        // Note that we require that `hash_spans` be set according to the global
+        // `-Z incremental-ignore-spans` option. Normally, this option is disabled,
+        // which will cause us to require that this method always be called with `Span` hashing
+        // enabled.
+        HashingControls { hash_spans, node_id_hashing_mode: _ }
+            if hash_spans == !ctx.debug_opts_incremental_ignore_spans() => {}
+        other => panic!("Attempted hashing of {msg} with non-default HashingControls: {:?}", other),
     }
 }
 
@@ -1444,6 +1472,7 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContex
         "Already set disambiguator for ExpnData: {:?}",
         expn_data
     );
+    assert_default_hashing_controls(&ctx, "ExpnData (disambiguator)");
     let mut expn_hash = expn_data.hash_expn(&mut ctx);
 
     let disambiguator = HygieneData::with(|data| {
@@ -1493,6 +1522,7 @@ impl<CTX: HashStableContext> HashStable<CTX> for SyntaxContext {
 
 impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        assert_default_hashing_controls(ctx, "ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.
             Fingerprint::ZERO

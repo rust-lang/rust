@@ -420,8 +420,8 @@ fn test_iterate() {
 
 #[test]
 fn test_keys() {
-    let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
-    let map: HashMap<_, _> = vec.into_iter().collect();
+    let pairs = [(1, 'a'), (2, 'b'), (3, 'c')];
+    let map: HashMap<_, _> = pairs.into_iter().collect();
     let keys: Vec<_> = map.keys().cloned().collect();
     assert_eq!(keys.len(), 3);
     assert!(keys.contains(&1));
@@ -431,8 +431,8 @@ fn test_keys() {
 
 #[test]
 fn test_values() {
-    let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
-    let map: HashMap<_, _> = vec.into_iter().collect();
+    let pairs = [(1, 'a'), (2, 'b'), (3, 'c')];
+    let map: HashMap<_, _> = pairs.into_iter().collect();
     let values: Vec<_> = map.values().cloned().collect();
     assert_eq!(values.len(), 3);
     assert!(values.contains(&'a'));
@@ -442,8 +442,8 @@ fn test_values() {
 
 #[test]
 fn test_values_mut() {
-    let vec = vec![(1, 1), (2, 2), (3, 3)];
-    let mut map: HashMap<_, _> = vec.into_iter().collect();
+    let pairs = [(1, 1), (2, 2), (3, 3)];
+    let mut map: HashMap<_, _> = pairs.into_iter().collect();
     for value in map.values_mut() {
         *value = (*value) * 2
     }
@@ -456,8 +456,8 @@ fn test_values_mut() {
 
 #[test]
 fn test_into_keys() {
-    let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
-    let map: HashMap<_, _> = vec.into_iter().collect();
+    let pairs = [(1, 'a'), (2, 'b'), (3, 'c')];
+    let map: HashMap<_, _> = pairs.into_iter().collect();
     let keys: Vec<_> = map.into_keys().collect();
 
     assert_eq!(keys.len(), 3);
@@ -468,8 +468,8 @@ fn test_into_keys() {
 
 #[test]
 fn test_into_values() {
-    let vec = vec![(1, 'a'), (2, 'b'), (3, 'c')];
-    let map: HashMap<_, _> = vec.into_iter().collect();
+    let pairs = [(1, 'a'), (2, 'b'), (3, 'c')];
+    let map: HashMap<_, _> = pairs.into_iter().collect();
     let values: Vec<_> = map.into_values().collect();
 
     assert_eq!(values.len(), 3);

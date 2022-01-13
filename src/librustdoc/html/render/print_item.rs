@@ -32,7 +32,7 @@ use crate::html::highlight;
 use crate::html::layout::Page;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 
-use serde::Serialize;
+use askama::Template;
 
 const ITEM_TABLE_OPEN: &str = "<div class=\"item-table\">";
 const ITEM_TABLE_CLOSE: &str = "</div>";
@@ -40,13 +40,13 @@ const ITEM_TABLE_ROW_OPEN: &str = "<div class=\"item-row\">";
 const ITEM_TABLE_ROW_CLOSE: &str = "</div>";
 
 // A component in a `use` path, like `string` in std::string::ToString
-#[derive(Serialize)]
 struct PathComponent<'a> {
     path: String,
     name: &'a str,
 }
 
-#[derive(Serialize)]
+#[derive(Template)]
+#[template(path = "print_item.html")]
 struct ItemVars<'a> {
     page: &'a Page<'a>,
     static_root_path: &'a str,
@@ -58,13 +58,7 @@ struct ItemVars<'a> {
     src_href: Option<&'a str>,
 }
 
-pub(super) fn print_item(
-    cx: &Context<'_>,
-    templates: &tera::Tera,
-    item: &clean::Item,
-    buf: &mut Buffer,
-    page: &Page<'_>,
-) {
+pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer, page: &Page<'_>) {
     debug_assert!(!item.is_stripped());
     let typ = match *item.kind {
         clean::ModuleItem(_) => {
@@ -108,10 +102,10 @@ pub(super) fn print_item(
     );
     let stability_since_raw: String = stability_since_raw.into_inner();
 
-    // Write `src` tag
+    // Write source tag
     //
     // When this item is part of a `crate use` in a downstream crate, the
-    // [src] link in the downstream documentation will actually come back to
+    // source link in the downstream documentation will actually come back to
     // this page, and this link will be auto-clicked. The `id` attribute is
     // used to find the link to auto-click.
     let src_href =
@@ -143,8 +137,7 @@ pub(super) fn print_item(
         src_href: src_href.as_deref(),
     };
 
-    let teractx = tera::Context::from_serialize(item_vars).unwrap();
-    let heading = templates.render("print_item.html", &teractx).unwrap();
+    let heading = item_vars.render().unwrap();
     buf.write_str(&heading);
 
     match *item.kind {
@@ -1467,7 +1460,7 @@ fn render_stability_since(
         item.const_stability(tcx),
         containing_item.stable_since(tcx),
         containing_item.const_stable_since(tcx),
-    )
+    );
 }
 
 fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cx: &Context<'_>) -> Ordering {
@@ -1557,7 +1550,7 @@ fn render_union(
     }
 
     if it.has_stripped_fields().unwrap() {
-        write!(w, "    // some fields omitted\n{}", tab);
+        write!(w, "    /* private fields */\n{}", tab);
     }
     if toggle {
         toggle_close(w);
@@ -1613,13 +1606,11 @@ fn render_struct(
 
             if has_visible_fields {
                 if it.has_stripped_fields().unwrap() {
-                    write!(w, "\n{}    // some fields omitted", tab);
+                    write!(w, "\n{}    /* private fields */", tab);
                 }
                 write!(w, "\n{}", tab);
             } else if it.has_stripped_fields().unwrap() {
-                // If there are no visible fields we can just display
-                // `{ /* fields omitted */ }` to save space.
-                write!(w, " /* fields omitted */ ");
+                write!(w, " /* private fields */ ");
             }
             if toggle {
                 toggle_close(w);
@@ -1776,8 +1767,8 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                     };
 
                     for (index, layout) in variants.iter_enumerated() {
-                        let ident = adt.variants[index].ident;
-                        write!(w, "<li><code>{name}</code>: ", name = ident);
+                        let name = adt.variants[index].name;
+                        write!(w, "<li><code>{name}</code>: ", name = name);
                         write_size_of_layout(w, layout, tag_size);
                         writeln!(w, "</li>");
                     }

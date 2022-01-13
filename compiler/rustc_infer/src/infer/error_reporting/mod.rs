@@ -771,7 +771,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.suggest_boxing_for_return_impl_trait(
                         err,
                         ret_sp,
-                        vec![then, else_sp].into_iter(),
+                        [then, else_sp].into_iter(),
                     );
                 }
             }
@@ -807,11 +807,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
         let sugg = arm_spans
             .flat_map(|sp| {
-                vec![
-                    (sp.shrink_to_lo(), "Box::new(".to_string()),
-                    (sp.shrink_to_hi(), ")".to_string()),
-                ]
-                .into_iter()
+                [(sp.shrink_to_lo(), "Box::new(".to_string()), (sp.shrink_to_hi(), ")".to_string())]
+                    .into_iter()
             })
             .collect::<Vec<_>>();
         err.multipart_suggestion(
@@ -1924,7 +1921,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .fields
                 .iter()
                 .filter(|field| field.vis.is_accessible_from(field.did, self.tcx))
-                .map(|field| (field.ident.name, field.ty(self.tcx, expected_substs)))
+                .map(|field| (field.name, field.ty(self.tcx, expected_substs)))
                 .find(|(_, ty)| same_type_modulo_infer(ty, exp_found.found))
             {
                 if let ObligationCauseCode::Pattern { span: Some(span), .. } = *cause.code() {

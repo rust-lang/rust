@@ -626,6 +626,7 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
 ///
 /// Without this check the above code is incorrectly accepted: we would ICE if
 /// some tried, for example, to clone an `Option<X<&mut ()>>`.
+#[instrument(level = "debug", skip(tcx))]
 fn check_opaque_meets_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -633,17 +634,14 @@ fn check_opaque_meets_bounds<'tcx>(
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
-    match origin {
-        // Checked when type checking the function containing them.
-        hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => return,
-        // Can have different predicates to their defining use
-        hir::OpaqueTyOrigin::TyAlias => {}
-    }
-
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let param_env = tcx.param_env(def_id);
+    let defining_use_anchor = match *origin {
+        hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
+        hir::OpaqueTyOrigin::TyAlias => def_id,
+    };
+    let param_env = tcx.param_env(defining_use_anchor);
 
-    tcx.infer_ctxt().enter(move |infcx| {
+    tcx.infer_ctxt().with_opaque_type_inference(defining_use_anchor).enter(move |infcx| {
         let inh = Inherited::new(infcx, def_id);
         let infcx = &inh.infcx;
         let opaque_ty = tcx.mk_opaque(def_id.to_def_id(), substs);
@@ -656,16 +654,15 @@ fn check_opaque_meets_bounds<'tcx>(
 
         let opaque_type_map = infcx.inner.borrow().opaque_types.clone();
         for (OpaqueTypeKey { def_id, substs }, opaque_defn) in opaque_type_map {
-            match infcx
-                .at(&misc_cause, param_env)
-                .eq(opaque_defn.concrete_ty, tcx.type_of(def_id).subst(tcx, substs))
-            {
+            let hidden_type = tcx.type_of(def_id).subst(tcx, substs);
+            trace!(?hidden_type);
+            match infcx.at(&misc_cause, param_env).eq(opaque_defn.concrete_ty, hidden_type) {
                 Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
                 Err(ty_err) => tcx.sess.delay_span_bug(
-                    opaque_defn.definition_span,
+                    span,
                     &format!(
-                        "could not unify `{}` with revealed type:\n{}",
-                        opaque_defn.concrete_ty, ty_err,
+                        "could not check bounds on revealed type `{}`:\n{}",
+                        hidden_type, ty_err,
                     ),
                 ),
             }
@@ -678,10 +675,17 @@ fn check_opaque_meets_bounds<'tcx>(
             infcx.report_fulfillment_errors(&errors, None, false);
         }
 
-        // Finally, resolve all regions. This catches wily misuses of
-        // lifetime parameters.
-        let fcx = FnCtxt::new(&inh, param_env, hir_id);
-        fcx.regionck_item(hir_id, span, FxHashSet::default());
+        match origin {
+            // Checked when type checking the function containing them.
+            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => return,
+            // Can have different predicates to their defining use
+            hir::OpaqueTyOrigin::TyAlias => {
+                // Finally, resolve all regions. This catches wily misuses of
+                // lifetime parameters.
+                let fcx = FnCtxt::new(&inh, param_env, hir_id);
+                fcx.regionck_item(hir_id, span, FxHashSet::default());
+            }
+        }
     });
 }
 
@@ -1173,7 +1177,7 @@ pub(super) fn check_packed_inner(
                 if let ty::Adt(def, _) = field.ty(tcx, substs).kind() {
                     if !stack.contains(&def.did) {
                         if let Some(mut defs) = check_packed_inner(tcx, def.did, stack) {
-                            defs.push((def.did, field.ident.span));
+                            defs.push((def.did, field.ident(tcx).span));
                             return Some(defs);
                         }
                     }

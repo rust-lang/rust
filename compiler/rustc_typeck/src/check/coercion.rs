@@ -1667,10 +1667,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     ],
                     Applicability::MachineApplicable,
                 );
-                let sugg = vec![sp, cause.span]
+                let sugg = [sp, cause.span]
                     .into_iter()
                     .flat_map(|sp| {
-                        vec![
+                        [
                             (sp.shrink_to_lo(), "Box::new(".to_string()),
                             (sp.shrink_to_hi(), ")".to_string()),
                         ]

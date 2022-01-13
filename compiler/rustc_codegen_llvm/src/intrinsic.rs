@@ -791,7 +791,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
     )));
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
-        vec![try_fn_ty, i8p, catch_fn_ty].into_iter(),
+        [try_fn_ty, i8p, catch_fn_ty].into_iter(),
         tcx.types.i32,
         false,
         hir::Unsafety::Unsafe,

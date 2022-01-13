@@ -494,14 +494,7 @@ pub(super) fn write_shared(
                     })
                     .collect::<String>()
             );
-            let v = layout::render(
-                &cx.shared.templates,
-                &cx.shared.layout,
-                &page,
-                "",
-                content,
-                &cx.shared.style_files,
-            );
+            let v = layout::render(&cx.shared.layout, &page, "", content, &cx.shared.style_files);
             cx.shared.fs.write(dst, v)?;
         }
     }

@@ -372,7 +372,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     } else {
                         def.non_enum_variant()
                     };
-                    variant.fields[field.index()].ident.to_string()
+                    variant.fields[field.index()].name.to_string()
                 }
                 ty::Tuple(_) => field.index().to_string(),
                 ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {

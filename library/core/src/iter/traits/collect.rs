@@ -124,7 +124,7 @@ pub trait FromIterator<A>: Sized {
 /// Basic usage:
 ///
 /// ```
-/// let v = vec![1, 2, 3];
+/// let v = [1, 2, 3];
 /// let mut iter = v.into_iter();
 ///
 /// assert_eq!(Some(1), iter.next());
@@ -215,7 +215,7 @@ pub trait IntoIterator {
     /// Basic usage:
     ///
     /// ```
-    /// let v = vec![1, 2, 3];
+    /// let v = [1, 2, 3];
     /// let mut iter = v.into_iter();
     ///
     /// assert_eq!(Some(1), iter.next());

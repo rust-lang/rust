@@ -198,7 +198,7 @@ impl LateLintPass<'_> for Default {
                 let ext_with_default = !variant
                     .fields
                     .iter()
-                    .all(|field| assigned_fields.iter().any(|(a, _)| a == &field.ident.name));
+                    .all(|field| assigned_fields.iter().any(|(a, _)| a == &field.name));
 
                 let field_list = assigned_fields
                     .into_iter()

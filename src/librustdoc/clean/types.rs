@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::default::Default;
-use std::fmt::Write;
 use std::hash::Hash;
 use std::lazy::SyncOnceCell as OnceCell;
 use std::path::PathBuf;
@@ -496,7 +495,7 @@ impl Item {
                 if let Ok((mut href, ..)) = href(*did, cx) {
                     debug!(?href);
                     if let Some(ref fragment) = *fragment {
-                        write!(href, "{}", fragment).unwrap()
+                        fragment.render(&mut href, cx.tcx()).unwrap()
                     }
                     Some(RenderedLink {
                         original_text: s.clone(),

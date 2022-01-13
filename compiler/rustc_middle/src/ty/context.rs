@@ -2452,7 +2452,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Place<'tcx> {
         self.mk_place_elem(
             place,
-            PlaceElem::Downcast(Some(adt_def.variants[variant_index].ident.name), variant_index),
+            PlaceElem::Downcast(Some(adt_def.variants[variant_index].name), variant_index),
         )
     }
 

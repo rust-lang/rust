@@ -11,7 +11,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     #[inline]
     fn hash_hir_id(&mut self, hir_id: hir::HirId, hasher: &mut StableHasher) {
         let hcx = self;
-        match hcx.node_id_hashing_mode {
+        match hcx.hashing_controls.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
                 // Don't do anything.
             }
@@ -89,12 +89,12 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
 
     #[inline]
     fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self, f: F) {
-        let prev_hash_node_ids = self.node_id_hashing_mode;
-        self.node_id_hashing_mode = NodeIdHashingMode::Ignore;
+        let prev_hash_node_ids = self.hashing_controls.node_id_hashing_mode;
+        self.hashing_controls.node_id_hashing_mode = NodeIdHashingMode::Ignore;
 
         f(self);
 
-        self.node_id_hashing_mode = prev_hash_node_ids;
+        self.hashing_controls.node_id_hashing_mode = prev_hash_node_ids;
     }
 
     #[inline]

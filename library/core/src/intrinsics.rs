@@ -961,7 +961,7 @@ extern "rust-intrinsic" {
     /// Below are common applications of `transmute` which can be replaced with safer
     /// constructs.
     ///
-    /// Turning raw bytes(`&[u8]`) to `u32`, `f64`, etc.:
+    /// Turning raw bytes (`&[u8]`) into `u32`, `f64`, etc.:
     ///
     /// ```
     /// let raw_bytes = [0x78, 0x56, 0x34, 0x12];

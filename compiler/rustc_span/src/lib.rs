@@ -42,6 +42,7 @@ pub mod hygiene;
 use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnKind, MacroKind};
 pub use hygiene::{ExpnData, ExpnHash, ExpnId, LocalExpnId, SyntaxContext};
+use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
 use def_id::{CrateNum, DefId, DefPathHash, LocalDefId, LOCAL_CRATE};
 pub mod lev_distance;
@@ -2057,11 +2058,15 @@ impl InnerSpan {
 pub trait HashStableContext {
     fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
     fn hash_spans(&self) -> bool;
+    /// Accesses `sess.opts.debugging_opts.incremental_ignore_spans` since
+    /// we don't have easy access to a `Session`
+    fn debug_opts_incremental_ignore_spans(&self) -> bool;
     fn def_span(&self, def_id: LocalDefId) -> Span;
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,
     ) -> Option<(Lrc<SourceFile>, usize, BytePos, usize, BytePos)>;
+    fn hashing_controls(&self) -> HashingControls;
 }
 
 impl<CTX> HashStable<CTX> for Span

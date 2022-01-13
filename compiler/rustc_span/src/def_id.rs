@@ -221,10 +221,17 @@ impl<D: Decoder> Decodable<D> for DefIndex {
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Copy)]
 // On below-64 bit systems we can simply use the derived `Hash` impl
 #[cfg_attr(not(target_pointer_width = "64"), derive(Hash))]
-// Note that the order is essential here, see below why
+#[repr(C)]
+// We guarantee field order. Note that the order is essential here, see below why.
 pub struct DefId {
+    // cfg-ing the order of fields so that the `DefIndex` which is high entropy always ends up in
+    // the lower bits no matter the endianness. This allows the compiler to turn that `Hash` impl
+    // into a direct call to 'u64::hash(_)`.
+    #[cfg(not(all(target_pointer_width = "64", target_endian = "big")))]
     pub index: DefIndex,
     pub krate: CrateNum,
+    #[cfg(all(target_pointer_width = "64", target_endian = "big"))]
+    pub index: DefIndex,
 }
 
 // On 64-bit systems, we can hash the whole `DefId` as one `u64` instead of two `u32`s. This

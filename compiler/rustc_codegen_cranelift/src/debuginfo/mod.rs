@@ -174,7 +174,7 @@ impl<'tcx> DebugContext<'tcx> {
 
                     field_entry.set(
                         gimli::DW_AT_name,
-                        AttributeValue::String(field_def.ident.as_str().to_string().into_bytes()),
+                        AttributeValue::String(field_def.name.as_str().to_string().into_bytes()),
                     );
                     field_entry.set(
                         gimli::DW_AT_data_member_location,

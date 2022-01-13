@@ -2247,7 +2247,7 @@ pub fn recursive_type_with_infinite_size_error(
             spans
                 .iter()
                 .flat_map(|&span| {
-                    vec![
+                    [
                         (span.shrink_to_lo(), "Box<".to_string()),
                         (span.shrink_to_hi(), ">".to_string()),
                     ]

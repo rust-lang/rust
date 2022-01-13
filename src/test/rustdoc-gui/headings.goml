@@ -15,7 +15,7 @@
 goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
 
 assert-css: ("h1.fqn", {"font-size": "24px"})
-assert-css: ("h1.fqn", {"border-bottom-width": "1px"})
+assert-css: (".main-heading", {"border-bottom-width": "1px"})
 
 assert-css: ("h2#top-doc-prose-title", {"font-size": "20.8px"})
 assert-css: ("h2#top-doc-prose-title", {"border-bottom-width": "1px"})
@@ -55,7 +55,7 @@ assert-css: ("h6#sub-sub-heading-for-struct-impl-item-doc", {"font-size": "15.2p
 goto: file://|DOC_PATH|/test_docs/enum.HeavilyDocumentedEnum.html
 
 assert-css: ("h1.fqn", {"font-size": "24px"})
-assert-css: ("h1.fqn", {"border-bottom-width": "1px"})
+assert-css: (".main-heading", {"border-bottom-width": "1px"})
 
 assert-css: ("h2#top-doc-prose-title", {"font-size": "20.8px"})
 assert-css: ("h2#top-doc-prose-title", {"border-bottom-width": "1px"})
@@ -115,7 +115,7 @@ assert-css: (".sidebar .others h3", {"border-bottom-width": "1px"}, ALL)
 goto: file://|DOC_PATH|/test_docs/union.HeavilyDocumentedUnion.html
 
 assert-css: ("h1.fqn", {"font-size": "24px"})
-assert-css: ("h1.fqn", {"border-bottom-width": "1px"})
+assert-css: (".main-heading", {"border-bottom-width": "1px"})
 
 assert-css: ("h2#top-doc-prose-title", {"font-size": "20.8px"})
 assert-css: ("h2#top-doc-prose-title", {"border-bottom-width": "1px"})
@@ -148,7 +148,7 @@ assert-css: ("h6#sub-heading-for-union-impl-item-doc", {"border-bottom-width": "
 goto: file://|DOC_PATH|/test_docs/macro.heavily_documented_macro.html
 
 assert-css: ("h1.fqn", {"font-size": "24px"})
-assert-css: ("h1.fqn", {"border-bottom-width": "1px"})
+assert-css: (".main-heading", {"border-bottom-width": "1px"})
 
 assert-css: ("h2#top-doc-prose-title", {"font-size": "20.8px"})
 assert-css: ("h2#top-doc-prose-title", {"border-bottom-width": "1px"})

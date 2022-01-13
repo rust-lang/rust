@@ -10,8 +10,8 @@ impl<T> ThinVec<T> {
 fn test_from_iterator() {
     assert_eq!(std::iter::empty().collect::<ThinVec<String>>().into_vec(), Vec::<String>::new());
     assert_eq!(std::iter::once(42).collect::<ThinVec<_>>().into_vec(), vec![42]);
-    assert_eq!(vec![1, 2].into_iter().collect::<ThinVec<_>>().into_vec(), vec![1, 2]);
-    assert_eq!(vec![1, 2, 3].into_iter().collect::<ThinVec<_>>().into_vec(), vec![1, 2, 3]);
+    assert_eq!([1, 2].into_iter().collect::<ThinVec<_>>().into_vec(), vec![1, 2]);
+    assert_eq!([1, 2, 3].into_iter().collect::<ThinVec<_>>().into_vec(), vec![1, 2, 3]);
 }
 
 #[test]

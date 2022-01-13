@@ -199,7 +199,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                                 )
                                 .note(&format!(
                                     "extra field `{}` of type `{}` is not allowed",
-                                    field.ident, ty_a,
+                                    field.name, ty_a,
                                 ))
                                 .emit();
 
@@ -235,7 +235,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                             .map(|field| {
                                 format!(
                                     "`{}` (`{}` to `{}`)",
-                                    field.ident,
+                                    field.name,
                                     field.ty(tcx, substs_a),
                                     field.ty(tcx, substs_b),
                                 )
@@ -479,7 +479,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                         diff_fields
                             .iter()
                             .map(|&(i, a, b)| {
-                                format!("`{}` (`{}` to `{}`)", fields[i].ident, a, b)
+                                format!("`{}` (`{}` to `{}`)", fields[i].name, a, b)
                             })
                             .collect::<Vec<_>>()
                             .join(", ")
