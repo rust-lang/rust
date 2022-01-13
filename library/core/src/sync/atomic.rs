@@ -131,6 +131,7 @@ use crate::hint::spin_loop;
 /// loads and stores of `u8`.
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "AtomicBool"]
 #[repr(C, align(1))]
 pub struct AtomicBool {
     v: UnsafeCell<u8>,
