@@ -520,6 +520,7 @@ unsafe impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 /// [`Index::index`]: ops::Index::index
 #[track_caller]
 #[unstable(feature = "slice_range", issue = "76393")]
+#[must_use]
 pub fn range<R>(range: R, bounds: ops::RangeTo<usize>) -> ops::Range<usize>
 where
     R: ops::RangeBounds<usize>,

@@ -95,6 +95,7 @@ impl_fn_for_zst! {
 /// documentation for more information.
 #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
 #[derive(Clone)]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct EscapeAscii<'a> {
     inner: iter::FlatMap<super::Iter<'a, u8>, ascii::EscapeDefault, EscapeByte>,
 }
