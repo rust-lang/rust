@@ -36,7 +36,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
         for item1 in impl_items1.in_definition_order() {
             let collision = impl_items2
-                .filter_by_name_unhygienic(item1.ident.name)
+                .filter_by_name_unhygienic(item1.name)
                 .any(|item2| self.compare_hygienically(item1, item2));
 
             if collision {
@@ -50,7 +50,8 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
     fn compare_hygienically(&self, item1: &ty::AssocItem, item2: &ty::AssocItem) -> bool {
         // Symbols and namespace match, compare hygienically.
         item1.kind.namespace() == item2.kind.namespace()
-            && item1.ident.normalize_to_macros_2_0() == item2.ident.normalize_to_macros_2_0()
+            && item1.ident(self.tcx).normalize_to_macros_2_0()
+                == item2.ident(self.tcx).normalize_to_macros_2_0()
     }
 
     fn check_for_common_items_in_impls(
@@ -64,11 +65,11 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
         for item1 in impl_items1.in_definition_order() {
             let collision = impl_items2
-                .filter_by_name_unhygienic(item1.ident.name)
+                .filter_by_name_unhygienic(item1.name)
                 .find(|item2| self.compare_hygienically(item1, item2));
 
             if let Some(item2) = collision {
-                let name = item1.ident.normalize_to_macros_2_0();
+                let name = item1.ident(self.tcx).normalize_to_macros_2_0();
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     self.tcx.span_of_impl(item1.def_id).unwrap(),
@@ -181,11 +182,11 @@ impl<'tcx> ItemLikeVisitor<'_> for InherentOverlapChecker<'tcx> {
                         let mut ids = impl_items
                             .in_definition_order()
                             .filter_map(|item| {
-                                let entry = connected_region_ids.entry(item.ident.name);
+                                let entry = connected_region_ids.entry(item.name);
                                 if let Entry::Occupied(e) = &entry {
                                     Some(*e.get())
                                 } else {
-                                    idents_to_add.push(item.ident.name);
+                                    idents_to_add.push(item.name);
                                     None
                                 }
                             })

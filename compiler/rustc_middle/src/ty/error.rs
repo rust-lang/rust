@@ -972,10 +972,10 @@ fn foo(&self) -> Self::T { String::new() }
             let (span, sugg) = if has_params {
                 let pos = span.hi() - BytePos(1);
                 let span = Span::new(pos, pos, span.ctxt(), span.parent());
-                (span, format!(", {} = {}", assoc.ident, ty))
+                (span, format!(", {} = {}", assoc.ident(self), ty))
             } else {
                 let item_args = self.format_generic_args(assoc_substs);
-                (span.shrink_to_hi(), format!("<{}{} = {}>", assoc.ident, item_args, ty))
+                (span.shrink_to_hi(), format!("<{}{} = {}>", assoc.ident(self), item_args, ty))
             };
             db.span_suggestion_verbose(span, msg, sugg, MaybeIncorrect);
             return true;

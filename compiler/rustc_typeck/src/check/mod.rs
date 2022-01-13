@@ -599,7 +599,7 @@ fn missing_items_err(
 ) {
     let missing_items_msg = missing_items
         .iter()
-        .map(|trait_item| trait_item.ident.to_string())
+        .map(|trait_item| trait_item.name.to_string())
         .collect::<Vec<_>>()
         .join("`, `");
 
@@ -628,7 +628,7 @@ fn missing_items_err(
         let msg = format!("implement the missing item: `{}`", snippet);
         let appl = Applicability::HasPlaceholders;
         if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
-            err.span_label(span, format!("`{}` from trait", trait_item.ident));
+            err.span_label(span, format!("`{}` from trait", trait_item.name));
             err.tool_only_span_suggestion(sugg_sp, &msg, code, appl);
         } else {
             err.span_suggestion_hidden(sugg_sp, &msg, code, appl);
@@ -805,16 +805,16 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
             fn_sig_suggestion(
                 tcx,
                 tcx.fn_sig(assoc.def_id).skip_binder(),
-                assoc.ident,
+                assoc.ident(tcx),
                 tcx.predicates_of(assoc.def_id),
                 assoc,
             )
         }
-        ty::AssocKind::Type => format!("type {} = Type;", assoc.ident),
+        ty::AssocKind::Type => format!("type {} = Type;", assoc.name),
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id);
             let val = expr::ty_kind_suggestion(ty).unwrap_or("value");
-            format!("const {}: {} = {};", assoc.ident, ty, val)
+            format!("const {}: {} = {};", assoc.name, ty, val)
         }
     }
 }

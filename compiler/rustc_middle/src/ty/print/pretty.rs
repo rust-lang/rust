@@ -908,7 +908,7 @@ pub trait PrettyPrinter<'tcx>:
                     if !first {
                         p!(", ");
                     }
-                    p!(write("{} = ", self.tcx().associated_item(assoc_item_def_id).ident));
+                    p!(write("{} = ", self.tcx().associated_item(assoc_item_def_id).name));
 
                     match term.skip_binder() {
                         Term::Ty(ty) => {
@@ -2455,7 +2455,7 @@ define_print_and_forward_display! {
     }
 
     ty::ExistentialProjection<'tcx> {
-        let name = cx.tcx().associated_item(self.item_def_id).ident;
+        let name = cx.tcx().associated_item(self.item_def_id).name;
         p!(write("{} = ", name), print(self.term))
     }
 

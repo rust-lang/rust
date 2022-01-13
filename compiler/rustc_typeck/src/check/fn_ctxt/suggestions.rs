@@ -237,7 +237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
                     let mut suggestions = iter::zip(iter::repeat(&expr_text), &methods)
                         .filter_map(|(receiver, method)| {
-                            let method_call = format!(".{}()", method.ident);
+                            let method_call = format!(".{}()", method.name);
                             if receiver.ends_with(&method_call) {
                                 None // do not suggest code that is already there (#53348)
                             } else {

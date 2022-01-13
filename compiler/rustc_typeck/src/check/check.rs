@@ -999,7 +999,7 @@ fn check_impl_items_against_trait<'tcx>(
 
                 if is_implemented_here {
                     let trait_item = tcx.associated_item(trait_item_id);
-                    if required_items.contains(&trait_item.ident) {
+                    if required_items.contains(&trait_item.ident(tcx)) {
                         must_implement_one_of = None;
                     }
                 }

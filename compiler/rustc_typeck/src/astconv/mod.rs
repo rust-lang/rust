@@ -1137,7 +1137,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .filter_by_name_unhygienic(assoc_ident.name)
             .find(|i| {
                 (i.kind == ty::AssocKind::Type || i.kind == ty::AssocKind::Const)
-                    && i.ident.normalize_to_macros_2_0() == assoc_ident
+                    && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
             })
             .expect("missing associated type");
         // FIXME(associated_const_equality): need to handle assoc_consts here as well.
@@ -1176,7 +1176,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Include substitutions for generic parameters of associated types
         let projection_ty = candidate.map_bound(|trait_ref| {
-            let ident = Ident::new(assoc_ty.ident.name, binding.item_name.span);
+            let ident = Ident::new(assoc_ty.name, binding.item_name.span);
             let item_segment = hir::PathSegment {
                 ident,
                 hir_id: Some(binding.hir_id),
@@ -1868,7 +1868,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .in_definition_order()
             .find(|i| {
                 i.kind.namespace() == Namespace::TypeNS
-                    && i.ident.normalize_to_macros_2_0() == assoc_ident
+                    && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
             })
             .expect("missing associated type");
 

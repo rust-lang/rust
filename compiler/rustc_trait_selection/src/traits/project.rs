@@ -1600,7 +1600,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         gen_sig,
     )
     .map_bound(|(trait_ref, yield_ty, return_ty)| {
-        let name = tcx.associated_item(obligation.predicate.item_def_id).ident.name;
+        let name = tcx.associated_item(obligation.predicate.item_def_id).name;
         let ty = if name == sym::Return {
             return_ty
         } else if name == sym::Yield {
@@ -1842,7 +1842,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         // just return Error.
         debug!(
             "confirm_impl_candidate: no associated type {:?} for {:?}",
-            assoc_ty.item.ident, obligation.predicate
+            assoc_ty.item.name, obligation.predicate
         );
         return Progress { ty: tcx.ty_error(), obligations: nested };
     }
