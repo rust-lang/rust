@@ -1,7 +1,7 @@
 // Test for the ICE in rust/83718
 // A blanket impl plus a local type together shouldn't result in mismatched ID issues
 
-// @has method_abi.json "$.index[*][?(@.name=='Load')]"
+// @has blanket_with_local.json "$.index[*][?(@.name=='Load')]"
 pub trait Load {
     fn load() {}
 }
