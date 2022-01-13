@@ -40,6 +40,7 @@ fn main() {
         //~| NOTE: Min Capture p[(1, 0)] -> MutBorrow
         c2();
         println!("{}", p.y);
+        //~^ NOTE: Capturing p[(1, 0)] -> ImmBorrow
     };
 
     c1();

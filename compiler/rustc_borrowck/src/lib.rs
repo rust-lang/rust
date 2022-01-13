@@ -186,7 +186,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         .map(|captured_place| {
             let capture = captured_place.info.capture_kind;
             let by_ref = match capture {
-                ty::UpvarCapture::ByValue(_) => false,
+                ty::UpvarCapture::ByValue => false,
                 ty::UpvarCapture::ByRef(..) => true,
             };
             Upvar { place: captured_place.clone(), by_ref }

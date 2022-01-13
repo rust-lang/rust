@@ -15,6 +15,7 @@ fn main() {
         //~^ NOTE: Capturing m[] -> MutBorrow
         //~| NOTE: Min Capture m[] -> MutBorrow
         m[1] += 40;
+        //~^ NOTE: Capturing m[] -> MutBorrow
     };
 
     c();

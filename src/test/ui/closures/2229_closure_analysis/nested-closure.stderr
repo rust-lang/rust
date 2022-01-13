@@ -58,7 +58,7 @@ LL | |
 LL | |
 LL | |         println!("{}", p.x);
 ...  |
-LL | |         println!("{}", p.y);
+LL | |
 LL | |     };
    | |_____^
    |
@@ -72,6 +72,11 @@ note: Capturing p[(1, 0)] -> MutBorrow
    |
 LL |         || p.y += incr;
    |            ^^^
+note: Capturing p[(1, 0)] -> ImmBorrow
+  --> $DIR/nested-closure.rs:42:24
+   |
+LL |         println!("{}", p.y);
+   |                        ^^^
 
 error: Min Capture analysis includes:
   --> $DIR/nested-closure.rs:22:5
@@ -81,7 +86,7 @@ LL | |
 LL | |
 LL | |         println!("{}", p.x);
 ...  |
-LL | |         println!("{}", p.y);
+LL | |
 LL | |     };
    | |_____^
    |

@@ -48,6 +48,7 @@ fn test_alignment_affected() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let z1: &String = &foo.x;
+        //~^ NOTE: Capturing foo[] -> ImmBorrow
         let z2: &mut u16 = &mut foo.y;
         //~^ NOTE: Capturing foo[] -> MutBorrow
         //~| NOTE: Min Capture foo[] -> MutBorrow

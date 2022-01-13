@@ -266,7 +266,7 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
             // we need to deref it
             upvar_resolved_place_builder = match capture.info.capture_kind {
                 ty::UpvarCapture::ByRef(_) => upvar_resolved_place_builder.deref(),
-                ty::UpvarCapture::ByValue(_) => upvar_resolved_place_builder,
+                ty::UpvarCapture::ByValue => upvar_resolved_place_builder,
             };
 
             let next_projection = capture.place.projections.len();

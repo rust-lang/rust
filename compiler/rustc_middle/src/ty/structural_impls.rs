@@ -47,12 +47,6 @@ impl fmt::Debug for ty::UpvarId {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::UpvarBorrow<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "UpvarBorrow({:?}, {:?})", self.kind, self.region)
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::ExistentialTraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         with_no_trimmed_paths(|| fmt::Display::fmt(self, f))

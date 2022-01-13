@@ -15,6 +15,8 @@ fn arrays() {
     //~| ERROR: Min Capture analysis includes:
         let [a, b, .., e] = arr;
         //~^ NOTE: Capturing arr[Index] -> ByValue
+        //~| NOTE: Capturing arr[Index] -> ByValue
+        //~| NOTE: Capturing arr[Index] -> ByValue
         //~| NOTE: Min Capture arr[] -> ByValue
         assert_eq!(a, "A");
         assert_eq!(b, "B");

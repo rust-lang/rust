@@ -796,14 +796,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     );
 
                     match capture_info.capture_kind {
-                        ty::UpvarCapture::ByValue(_) => {
+                        ty::UpvarCapture::ByValue => {
                             self.delegate_consume(&place_with_id, place_with_id.hir_id);
                         }
                         ty::UpvarCapture::ByRef(upvar_borrow) => {
                             self.delegate.borrow(
                                 &place_with_id,
                                 place_with_id.hir_id,
-                                upvar_borrow.kind,
+                                upvar_borrow,
                             );
                         }
                     }

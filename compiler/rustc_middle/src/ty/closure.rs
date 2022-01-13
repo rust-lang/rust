@@ -52,35 +52,18 @@ impl UpvarId {
 /// Information describing the capture of an upvar. This is computed
 /// during `typeck`, specifically by `regionck`.
 #[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
-pub enum UpvarCapture<'tcx> {
+pub enum UpvarCapture {
     /// Upvar is captured by value. This is always true when the
     /// closure is labeled `move`, but can also be true in other cases
     /// depending on inference.
-    ///
-    /// If the upvar was inferred to be captured by value (e.g. `move`
-    /// was not used), then the `Span` points to a usage that
-    /// required it. There may be more than one such usage
-    /// (e.g. `|| { a; a; }`), in which case we pick an
-    /// arbitrary one.
-    ByValue(Option<Span>),
+    ByValue,
 
     /// Upvar is captured by reference.
-    ByRef(UpvarBorrow<'tcx>),
-}
-
-#[derive(PartialEq, Clone, Copy, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
-pub struct UpvarBorrow<'tcx> {
-    /// The kind of borrow: by-ref upvars have access to shared
-    /// immutable borrows, which are not part of the normal language
-    /// syntax.
-    pub kind: BorrowKind,
-
-    /// Region of the resulting reference.
-    pub region: ty::Region<'tcx>,
+    ByRef(BorrowKind),
 }
 
 pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
-pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
+pub type UpvarCaptureMap = FxHashMap<UpvarId, UpvarCapture>;
 
 /// Given the closure DefId this map provides a map of root variables to minimum
 /// set of `CapturedPlace`s that need to be tracked to support all captures of that closure.
@@ -150,10 +133,13 @@ pub struct CapturedPlace<'tcx> {
     pub place: HirPlace<'tcx>,
 
     /// `CaptureKind` and expression(s) that resulted in such capture of `place`.
-    pub info: CaptureInfo<'tcx>,
+    pub info: CaptureInfo,
 
     /// Represents if `place` can be mutated or not.
     pub mutability: hir::Mutability,
+
+    /// Region of the resulting reference if the upvar is captured by ref.
+    pub region: Option<ty::Region<'tcx>>,
 }
 
 impl<'tcx> CapturedPlace<'tcx> {
@@ -287,7 +273,7 @@ pub fn is_ancestor_or_same_capture(
 /// for a particular capture as well as identifying the part of the source code
 /// that triggered this capture to occur.
 #[derive(PartialEq, Clone, Debug, Copy, TyEncodable, TyDecodable, TypeFoldable, HashStable)]
-pub struct CaptureInfo<'tcx> {
+pub struct CaptureInfo {
     /// Expr Id pointing to use that resulted in selecting the current capture kind
     ///
     /// Eg:
@@ -325,7 +311,7 @@ pub struct CaptureInfo<'tcx> {
     pub path_expr_id: Option<hir::HirId>,
 
     /// Capture mode that was selected
-    pub capture_kind: UpvarCapture<'tcx>,
+    pub capture_kind: UpvarCapture,
 }
 
 pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {

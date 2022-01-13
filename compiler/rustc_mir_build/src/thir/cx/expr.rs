@@ -1108,9 +1108,9 @@ impl<'tcx> Cx<'tcx> {
         let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
 
         match upvar_capture {
-            ty::UpvarCapture::ByValue(_) => captured_place_expr,
+            ty::UpvarCapture::ByValue => captured_place_expr,
             ty::UpvarCapture::ByRef(upvar_borrow) => {
-                let borrow_kind = match upvar_borrow.kind {
+                let borrow_kind = match upvar_borrow {
                     ty::BorrowKind::ImmBorrow => BorrowKind::Shared,
                     ty::BorrowKind::UniqueImmBorrow => BorrowKind::Unique,
                     ty::BorrowKind::MutBorrow => BorrowKind::Mut { allow_two_phase_borrow: false },
