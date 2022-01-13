@@ -549,7 +549,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {
-        let source_map = self.tcx.sess.source_map();
         let remove_borrow_msg = "String concatenation appends the string on the right to the \
                                  string on the left and may require reallocation. This \
                                  requires ownership of the string on the left";
@@ -574,31 +573,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ) =>
             {
                 if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
-                    err.span_label(
-                        op.span,
-                        "`+` cannot be used to concatenate two `&str` strings",
-                    );
-                    match source_map.span_to_snippet(lhs_expr.span) {
-                        Ok(lstring) => {
-                            err.span_suggestion(
-                                lhs_expr.span,
-                                if lstring.starts_with('&') {
-                                    remove_borrow_msg
-                                } else {
-                                    msg
-                                },
-                                if let Some(stripped) = lstring.strip_prefix('&') {
-                                    // let a = String::new();
-                                    // let _ = &a + "bar";
-                                    stripped.to_string()
-                                } else {
-                                    format!("{}.to_owned()", lstring)
-                                },
-                                Applicability::MachineApplicable,
-                            )
-                        }
-                        _ => err.help(msg),
-                    };
+                    err.span_label(op.span, "`+` cannot be used to concatenate two `&str` strings");
+                    if let hir::ExprKind::AddrOf(_,_,lhs_inner_expr) = lhs_expr.kind {
+                        err.span_suggestion(
+                            lhs_expr.span.until(lhs_inner_expr.span),
+                            remove_borrow_msg,
+                            "".to_owned(),
+                            Applicability::MachineApplicable
+                        );
+                    } else {
+                        err.span_suggestion(
+                            lhs_expr.span.shrink_to_hi(),
+                            msg,
+                            ".to_owned()".to_owned(),
+                            Applicability::MachineApplicable
+                        );
+                    }
                 }
                 true
             }
@@ -609,32 +599,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     op.span,
                     "`+` cannot be used to concatenate a `&str` with a `String`",
                 );
-                match (
-                    source_map.span_to_snippet(lhs_expr.span),
-                    source_map.span_to_snippet(rhs_expr.span),
-                    is_assign,
-                ) {
-                    (Ok(l), Ok(r), IsAssign::No) => {
-                        let to_string = if let Some(stripped) = l.strip_prefix('&') {
-                            // let a = String::new(); let b = String::new();
-                            // let _ = &a + b;
-                            stripped.to_string()
-                        } else {
-                            format!("{}.to_owned()", l)
-                        };
-                        err.multipart_suggestion(
-                            msg,
-                            vec![
-                                (lhs_expr.span, to_string),
-                                (rhs_expr.span, format!("&{}", r)),
-                            ],
-                            Applicability::MachineApplicable,
-                        );
+                match is_assign {
+                    IsAssign::No => {
+                        let suggestions = vec![
+                            if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
+                                (lhs_expr.span.until(lhs_inner_expr.span), "".to_owned())
+                            } else {
+                                (lhs_expr.span.shrink_to_hi(), ".to_owned()".to_owned())
+                            },
+                            (rhs_expr.span.shrink_to_lo(), "&".to_owned()),
+                        ];
+                        err.multipart_suggestion(msg, suggestions, Applicability::MachineApplicable);
                     }
-                    _ => {
+                    IsAssign::Yes => {
                         err.help(msg);
                     }
-                };
+                }
                 true
             }
             _ => false,
