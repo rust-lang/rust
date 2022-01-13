@@ -1540,7 +1540,7 @@ impl From<BoundVar> for BoundTy {
 pub struct ExistentialProjection<'tcx> {
     pub item_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
-    pub ty: Ty<'tcx>,
+    pub term: Term<'tcx>,
 }
 
 pub type PolyExistentialProjection<'tcx> = Binder<'tcx, ExistentialProjection<'tcx>>;
@@ -1570,7 +1570,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
                 item_def_id: self.item_def_id,
                 substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
-            term: self.ty.into(),
+            term: self.term,
         }
     }
 
@@ -1580,15 +1580,11 @@ impl<'tcx> ExistentialProjection<'tcx> {
     ) -> Self {
         // Assert there is a Self.
         projection_predicate.projection_ty.substs.type_at(0);
-        let ty = match projection_predicate.term {
-            Term::Ty(ty) => ty,
-            Term::Const(_c) => unimplemented!(),
-        };
 
         Self {
             item_def_id: projection_predicate.projection_ty.item_def_id,
             substs: tcx.intern_substs(&projection_predicate.projection_ty.substs[1..]),
-            ty,
+            term: projection_predicate.term,
         }
     }
 }

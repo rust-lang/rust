@@ -1523,7 +1523,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     bindings.push(TypeBinding {
                         name: cx.tcx.associated_item(pb.item_def_id()).ident.name,
                         kind: TypeBindingKind::Equality {
-                            term: pb.skip_binder().ty.clean(cx).into(),
+                            term: pb.skip_binder().term.clean(cx).into(),
                         },
                     });
                 }

@@ -320,7 +320,10 @@ impl FlagComputation {
 
     fn add_existential_projection(&mut self, projection: &ty::ExistentialProjection<'_>) {
         self.add_substs(projection.substs);
-        self.add_ty(projection.ty);
+        match projection.term {
+            ty::Term::Ty(ty) => self.add_ty(ty),
+            ty::Term::Const(ct) => self.add_const(ct),
+        }
     }
 
     fn add_projection_ty(&mut self, projection_ty: ty::ProjectionTy<'_>) {

@@ -905,29 +905,27 @@ pub trait PrettyPrinter<'tcx>:
                 }
 
                 for (assoc_item_def_id, term) in assoc_items {
-                    let ty = match term.skip_binder() {
-                        Term::Ty(ty) => ty,
-                        Term::Const(c) => {
-                            p!(print(c));
-                            continue;
-                        }
-                    };
                     if !first {
                         p!(", ");
                     }
                     p!(write("{} = ", self.tcx().associated_item(assoc_item_def_id).ident));
 
-                    // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks
-                    match ty.kind() {
-                        ty::Projection(ty::ProjectionTy { item_def_id, .. })
-                            if Some(*item_def_id) == self.tcx().lang_items().generator_return() =>
-                        {
-                            p!("[async output]")
+                    match term.skip_binder() {
+                        Term::Ty(ty) => {
+                            // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks
+                            if matches!(
+                              ty.kind(), ty::Projection(ty::ProjectionTy { item_def_id, .. })
+                              if Some(*item_def_id) == self.tcx().lang_items().generator_return()
+                            ) {
+                                p!("[async output]")
+                            } else {
+                                p!(print(ty))
+                            }
                         }
-                        _ => {
-                            p!(print(ty))
+                        Term::Const(c) => {
+                            p!(print(c));
                         }
-                    }
+                    };
 
                     first = false;
                 }
@@ -1031,7 +1029,11 @@ pub trait PrettyPrinter<'tcx>:
                         let mut projections = predicates.projection_bounds();
                         if let (Some(proj), None) = (projections.next(), projections.next()) {
                             let tys: Vec<_> = args.iter().map(|k| k.expect_ty()).collect();
-                            p!(pretty_fn_sig(&tys, false, proj.skip_binder().ty));
+                            p!(pretty_fn_sig(
+                                &tys,
+                                false,
+                                proj.skip_binder().term.ty().expect("Return type was a const")
+                            ));
                             resugared = true;
                         }
                     }
@@ -2454,7 +2456,7 @@ define_print_and_forward_display! {
 
     ty::ExistentialProjection<'tcx> {
         let name = cx.tcx().associated_item(self.item_def_id).ident;
-        p!(write("{} = ", name), print(self.ty))
+        p!(write("{} = ", name), print(self.term))
     }
 
     ty::ExistentialPredicate<'tcx> {

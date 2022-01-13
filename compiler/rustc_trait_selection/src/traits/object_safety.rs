@@ -571,7 +571,7 @@ fn object_ty_for_trait<'tcx>(
         // `trait MyTrait: for<'s> OtherTrait<&'s T, Output=bool>`.
         super_trait_ref.map_bound(|super_trait_ref| {
             ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
-                ty: tcx.mk_projection(item.def_id, super_trait_ref.substs),
+                term: tcx.mk_projection(item.def_id, super_trait_ref.substs).into(),
                 item_def_id: item.def_id,
                 substs: super_trait_ref.substs,
             })

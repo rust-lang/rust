@@ -795,7 +795,7 @@ pub struct CoercePredicate<'tcx> {
 }
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub enum Term<'tcx> {
     Ty(Ty<'tcx>),

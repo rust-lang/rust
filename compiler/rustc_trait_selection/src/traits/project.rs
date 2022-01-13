@@ -212,7 +212,7 @@ fn project_and_unify_type<'cx, 'tcx>(
     debug!(?normalized_ty, ?obligations, "project_and_unify_type result");
 
     let infcx = selcx.infcx();
-    // FIXME(...): Handle consts here as well as types.
+    // FIXME(associated_const_equality): Handle consts here as well as types.
     let obligation_pred_ty = obligation.predicate.term.ty().unwrap();
     match infcx.at(&obligation.cause, obligation.param_env).eq(normalized_ty, obligation_pred_ty) {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {

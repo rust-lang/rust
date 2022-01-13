@@ -756,8 +756,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             // when we started out trying to unify
                             // some inference variables. See the comment above
                             // for more infomration
-                            if p.term().skip_binder().ty().map_or(false, |ty| ty.has_infer_types())
-                            {
+                            if p.term().skip_binder().ty().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
                                     v.into_iter(),
@@ -779,7 +778,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             // However, we should always make progress (either by generating
                             // subobligations or getting an error) when we started off with
                             // inference variables
-                            if p.term().skip_binder().ty().has_infer_types() {
+                            if p.term().skip_binder().has_infer_types() {
                                 panic!("Unexpected result when selecting {:?} {:?}", ty, obligation)
                             }
                         }

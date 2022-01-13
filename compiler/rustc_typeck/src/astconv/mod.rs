@@ -1136,9 +1136,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .associated_items(candidate.def_id())
             .filter_by_name_unhygienic(assoc_ident.name)
             .find(|i| {
-                i.kind == ty::AssocKind::Type && i.ident.normalize_to_macros_2_0() == assoc_ident
+                (i.kind == ty::AssocKind::Type || i.kind == ty::AssocKind::Const)
+                    && i.ident.normalize_to_macros_2_0() == assoc_ident
             })
             .expect("missing associated type");
+        // FIXME(associated_const_equality): need to handle assoc_consts here as well.
+        if assoc_ty.kind == ty::AssocKind::Const {
+            tcx.sess
+                .struct_span_err(path_span, &format!("associated const equality is incomplete"))
+                .span_label(path_span, "cannot yet relate associated const")
+                .emit();
+            return Err(ErrorReported);
+        }
 
         if !assoc_ty.vis.is_accessible_from(def_scope, tcx) {
             tcx.sess

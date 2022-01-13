@@ -288,6 +288,8 @@ declare_features! (
     (active, asm_sym, "1.58.0", Some(72016), None),
     /// Allows the `may_unwind` option in inline assembly.
     (active, asm_unwind, "1.58.0", Some(72016), None),
+    /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
+    (active, associated_const_equality, "1.58.0", Some(92827), None),
     /// Allows the user of associated type bounds.
     (active, associated_type_bounds, "1.34.0", Some(52662), None),
     /// Allows associated type defaults.

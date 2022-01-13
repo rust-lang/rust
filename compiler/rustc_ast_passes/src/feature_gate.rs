@@ -724,6 +724,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
     gate_all!(inline_const, "inline-const is experimental");
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
+    gate_all!(associated_const_equality, "associated const equality is incomplete");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

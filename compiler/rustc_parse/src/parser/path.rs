@@ -505,7 +505,10 @@ impl<'a> Parser<'a> {
         let span = ident.span.to(self.prev_token.span);
         let term = match arg {
             Some(GenericArg::Type(ty)) => ty.into(),
-            Some(GenericArg::Const(c)) => c.into(),
+            Some(GenericArg::Const(c)) => {
+                self.sess.gated_spans.gate(sym::associated_const_equality, span);
+                c.into()
+            }
             Some(GenericArg::Lifetime(lt)) => {
                 self.struct_span_err(span, "associated lifetimes are not supported")
                     .span_label(lt.ident.span, "the lifetime is given here")

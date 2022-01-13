@@ -423,7 +423,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialProjection<'a> {
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(self.substs).map(|substs| ty::ExistentialProjection {
             substs,
-            ty: tcx.lift(self.ty).expect("type must lift when substs do"),
+            term: tcx.lift(self.term).expect("type must lift when substs do"),
             item_def_id: self.item_def_id,
         })
     }

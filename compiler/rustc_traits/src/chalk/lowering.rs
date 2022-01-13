@@ -226,6 +226,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::AliasEq<RustInterner<'tcx>>>
     for rustc_middle::ty::ProjectionPredicate<'tcx>
 {
     fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::AliasEq<RustInterner<'tcx>> {
+        // FIXME(associated_const_equality): teach chalk about terms for alias eq.
         chalk_ir::AliasEq {
             ty: self.term.ty().unwrap().lower_into(interner),
             alias: self.projection_ty.lower_into(interner),
@@ -663,7 +664,8 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                                 .mk_substs_trait(self_ty, predicate.substs)
                                 .lower_into(interner),
                         }),
-                        ty: predicate.ty.lower_into(interner),
+                        // FIXME(associated_const_equality): teach chalk about terms for alias eq.
+                        ty: predicate.term.ty().unwrap().lower_into(interner),
                     }),
                 ),
                 ty::ExistentialPredicate::AutoTrait(def_id) => chalk_ir::Binders::new(
