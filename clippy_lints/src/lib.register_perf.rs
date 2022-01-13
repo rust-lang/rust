@@ -19,7 +19,6 @@ store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
     LintId::of(methods::SINGLE_CHAR_PATTERN),
     LintId::of(methods::UNNECESSARY_TO_OWNED),
     LintId::of(misc::CMP_OWNED),
-    LintId::of(mutex_atomic::MUTEX_ATOMIC),
     LintId::of(redundant_clone::REDUNDANT_CLONE),
     LintId::of(slow_vector_initialization::SLOW_VECTOR_INITIALIZATION),
     LintId::of(stable_sort_primitive::STABLE_SORT_PRIMITIVE),

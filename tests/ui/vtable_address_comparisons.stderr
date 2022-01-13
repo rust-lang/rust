@@ -1,5 +1,5 @@
 error: comparing trait object pointers compares a non-unique vtable address
-  --> $DIR/vtable_address_comparisons.rs:12:13
+  --> $DIR/vtable_address_comparisons.rs:14:13
    |
 LL |     let _ = a == b;
    |             ^^^^^^
@@ -8,7 +8,7 @@ LL |     let _ = a == b;
    = help: consider extracting and comparing data pointers only
 
 error: comparing trait object pointers compares a non-unique vtable address
-  --> $DIR/vtable_address_comparisons.rs:13:13
+  --> $DIR/vtable_address_comparisons.rs:15:13
    |
 LL |     let _ = a != b;
    |             ^^^^^^
@@ -16,7 +16,7 @@ LL |     let _ = a != b;
    = help: consider extracting and comparing data pointers only
 
 error: comparing trait object pointers compares a non-unique vtable address
-  --> $DIR/vtable_address_comparisons.rs:14:13
+  --> $DIR/vtable_address_comparisons.rs:16:13
    |
 LL |     let _ = a < b;
    |             ^^^^^
@@ -24,7 +24,7 @@ LL |     let _ = a < b;
    = help: consider extracting and comparing data pointers only
 
 error: comparing trait object pointers compares a non-unique vtable address
-  --> $DIR/vtable_address_comparisons.rs:15:13
+  --> $DIR/vtable_address_comparisons.rs:17:13
    |
 LL |     let _ = a <= b;
    |             ^^^^^^
@@ -32,7 +32,7 @@ LL |     let _ = a <= b;
    = help: consider extracting and comparing data pointers only
 
 error: comparing trait object pointers compares a non-unique vtable address
-  --> $DIR/vtable_address_comparisons.rs:16:13
+  --> $DIR/vtable_address_comparisons.rs:18:13
    |
 LL |     let _ = a > b;
    |             ^^^^^
@@ -40,7 +40,7 @@ LL |     let _ = a > b;
    = help: consider extracting and comparing data pointers only
 
 error: comparing trait object pointers compares a non-unique vtable address
-  --> $DIR/vtable_address_comparisons.rs:17:13
+  --> $DIR/vtable_address_comparisons.rs:19:13
    |
 LL |     let _ = a >= b;
    |             ^^^^^^
@@ -48,7 +48,7 @@ LL |     let _ = a >= b;
    = help: consider extracting and comparing data pointers only
 
 error: comparing trait object pointers compares a non-unique vtable address
-  --> $DIR/vtable_address_comparisons.rs:18:5
+  --> $DIR/vtable_address_comparisons.rs:20:5
    |
 LL |     ptr::eq(a, b);
    |     ^^^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     ptr::eq(a, b);
    = help: consider extracting and comparing data pointers only
 
 error: comparing trait object pointers compares a non-unique vtable address
-  --> $DIR/vtable_address_comparisons.rs:22:5
+  --> $DIR/vtable_address_comparisons.rs:24:5
    |
 LL |     ptr::eq(a, b);
    |     ^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |     ptr::eq(a, b);
    = help: consider extracting and comparing data pointers only
 
 error: comparing trait object pointers compares a non-unique vtable address
-  --> $DIR/vtable_address_comparisons.rs:25:5
+  --> $DIR/vtable_address_comparisons.rs:27:5
    |
 LL |     Rc::ptr_eq(&a, &a);
    |     ^^^^^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL |     Rc::ptr_eq(&a, &a);
    = help: consider extracting and comparing data pointers only
 
 error: comparing trait object pointers compares a non-unique vtable address
-  --> $DIR/vtable_address_comparisons.rs:28:5
+  --> $DIR/vtable_address_comparisons.rs:30:5
    |
 LL |     Arc::ptr_eq(&a, &a);
    |     ^^^^^^^^^^^^^^^^^^^

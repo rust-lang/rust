@@ -321,7 +321,7 @@ fn gen_register_lint_list<'a>(
 
     for (is_public, module_name, lint_name) in details {
         if !is_public {
-            output.push_str("    #[cfg(feature = \"internal-lints\")]\n");
+            output.push_str("    #[cfg(feature = \"internal\")]\n");
         }
         output.push_str(&format!("    {}::{},\n", module_name, lint_name));
     }

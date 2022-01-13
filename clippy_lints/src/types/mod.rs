@@ -167,8 +167,9 @@ declare_clippy_lint! {
     /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// ### Why is this bad?
-    /// Any `&Box<T>` can also be a `&T`, which is more
-    /// general.
+    /// A `&Box<T>` parameter requires the function caller to box `T` first before passing it to a function.
+    /// Using `&T` defines a concrete type for the parameter and generalizes the function, this would also
+    /// auto-deref to `&T` at the function call site if passed a `&Box<T>`.
     ///
     /// ### Example
     /// ```rust,ignore

@@ -23,6 +23,14 @@ pub enum DisallowedMethod {
     WithReason { path: String, reason: Option<String> },
 }
 
+impl DisallowedMethod {
+    pub fn path(&self) -> &str {
+        let (Self::Simple(path) | Self::WithReason { path, .. }) = self;
+
+        path
+    }
+}
+
 /// A single disallowed type, used by the `DISALLOWED_TYPES` lint.
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
@@ -113,7 +121,7 @@ macro_rules! define_Conf {
             }
         }
 
-        #[cfg(feature = "metadata-collector-lint")]
+        #[cfg(feature = "internal")]
         pub mod metadata {
             use crate::utils::internal_lints::metadata_collector::ClippyConfiguration;
 

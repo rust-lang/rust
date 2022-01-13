@@ -94,8 +94,8 @@ fn get_call_site(span: Span, ctxt: SyntaxContext) -> Option<Span> {
 }
 
 fn lint_implicit_returns(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
     // The context of the function body.
     ctxt: SyntaxContext,
     // Whether the expression is from a macro expansion.

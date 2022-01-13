@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::higher::FormatExpn;
+use clippy_utils::macros::{root_macro_call_first_node, FormatArgsExpn};
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
@@ -43,38 +43,41 @@ declare_lint_pass!(UselessFormat => [USELESS_FORMAT]);
 
 impl<'tcx> LateLintPass<'tcx> for UselessFormat {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let FormatExpn { call_site, format_args } = match FormatExpn::parse(expr) {
-            Some(e) if !e.call_site.from_expansion() => e,
-            _ => return,
+        let (format_args, call_site) = if_chain! {
+            if let Some(macro_call) = root_macro_call_first_node(cx, expr);
+            if cx.tcx.is_diagnostic_item(sym::format_macro, macro_call.def_id);
+            if let Some(format_args) = FormatArgsExpn::find_nested(cx, expr, macro_call.expn);
+            then {
+                (format_args, macro_call.span)
+            } else {
+                return
+            }
         };
 
         let mut applicability = Applicability::MachineApplicable;
         if format_args.value_args.is_empty() {
-            if format_args.format_string_parts.is_empty() {
-                span_useless_format_empty(cx, call_site, "String::new()".to_owned(), applicability);
-            } else {
-                if_chain! {
-                    if let [e] = &*format_args.format_string_parts;
-                    if let ExprKind::Lit(lit) = &e.kind;
-                    if let Some(s_src) = snippet_opt(cx, lit.span);
-                    then {
+            match *format_args.format_string_parts {
+                [] => span_useless_format_empty(cx, call_site, "String::new()".to_owned(), applicability),
+                [_] => {
+                    if let Some(s_src) = snippet_opt(cx, format_args.format_string_span) {
                         // Simulate macro expansion, converting {{ and }} to { and }.
                         let s_expand = s_src.replace("{{", "{").replace("}}", "}");
                         let sugg = format!("{}.to_string()", s_expand);
                         span_useless_format(cx, call_site, sugg, applicability);
                     }
-                }
+                },
+                [..] => {},
             }
         } else if let [value] = *format_args.value_args {
             if_chain! {
-                if format_args.format_string_symbols == [kw::Empty];
+                if format_args.format_string_parts == [kw::Empty];
                 if match cx.typeck_results().expr_ty(value).peel_refs().kind() {
                     ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::String, adt.did),
                     ty::Str => true,
                     _ => false,
                 };
                 if let Some(args) = format_args.args();
-                if args.iter().all(|arg| arg.is_display() && !arg.has_string_formatting());
+                if args.iter().all(|arg| arg.format_trait == sym::Display && !arg.has_string_formatting());
                 then {
                     let is_new_string = match value.kind {
                         ExprKind::Binary(..) => true,

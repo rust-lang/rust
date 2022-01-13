@@ -25,7 +25,7 @@ pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 /// Checks whether a type can be partially moved.
-pub fn can_partially_move_ty(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     if has_drop(cx, ty) || is_copy(cx, ty) {
         return false;
     }
@@ -366,7 +366,7 @@ pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
 
 /// Returns `true` if types `a` and `b` are same types having same `Const` generic args,
 /// otherwise returns `false`
-pub fn same_type_and_consts(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
     match (&a.kind(), &b.kind()) {
         (&ty::Adt(did_a, substs_a), &ty::Adt(did_b, substs_b)) => {
             if did_a != did_b {

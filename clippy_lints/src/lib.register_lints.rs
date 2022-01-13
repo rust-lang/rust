@@ -3,33 +3,33 @@
 // Manual edits will be overwritten.
 
 store.register_lints(&[
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::CLIPPY_LINTS_INTERNAL,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::COLLAPSIBLE_SPAN_LINT_CALLS,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::COMPILER_LINT_FUNCTIONS,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::DEFAULT_LINT,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::IF_CHAIN_STYLE,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::INTERNING_DEFINED_SYMBOL,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::INVALID_CLIPPY_VERSION_ATTRIBUTE,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::INVALID_PATHS,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::LINT_WITHOUT_LINT_PASS,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::MISSING_CLIPPY_VERSION_ATTRIBUTE,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::OUTER_EXPN_EXPN_DATA,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::PRODUCE_ICE,
-    #[cfg(feature = "internal-lints")]
+    #[cfg(feature = "internal")]
     utils::internal_lints::UNNECESSARY_SYMBOL_STR,
     absurd_extreme_comparisons::ABSURD_EXTREME_COMPARISONS,
     approx_const::APPROX_CONSTANT,
@@ -59,6 +59,7 @@ store.register_lints(&[
     bool_assert_comparison::BOOL_ASSERT_COMPARISON,
     booleans::LOGIC_BUG,
     booleans::NONMINIMAL_BOOL,
+    borrow_as_ptr::BORROW_AS_PTR,
     bytecount::NAIVE_BYTECOUNT,
     cargo_common_metadata::CARGO_COMMON_METADATA,
     case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
@@ -225,6 +226,7 @@ store.register_lints(&[
     main_recursion::MAIN_RECURSION,
     manual_assert::MANUAL_ASSERT,
     manual_async_fn::MANUAL_ASYNC_FN,
+    manual_bits::MANUAL_BITS,
     manual_map::MANUAL_MAP,
     manual_non_exhaustive::MANUAL_NON_EXHAUSTIVE,
     manual_ok_or::MANUAL_OK_OR,
@@ -435,6 +437,7 @@ store.register_lints(&[
     shadow::SHADOW_REUSE,
     shadow::SHADOW_SAME,
     shadow::SHADOW_UNRELATED,
+    single_char_lifetime_names::SINGLE_CHAR_LIFETIME_NAMES,
     single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS,
     size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT,
     slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,

@@ -60,7 +60,7 @@ Two noticeable items here:
 Starting with an `expr`, you can check whether it is calling a specific method `some_method`:
 
 ```rust
-impl LateLintPass<'_> for MyStructLint {
+impl<'tcx> LateLintPass<'tcx> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             // Check our expr is calling a method
