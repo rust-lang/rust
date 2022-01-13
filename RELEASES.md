@@ -8893,13 +8893,13 @@ Misc
 * The compiler gained many new extended error descriptions, which can
   be accessed with the `--explain` flag.
 * The `dropck` pass, which checks that destructors can't access
-  destroyed values, [has been rewritten][dropck]. This fixes some
+  destroyed values, [has been rewritten][27261]. This fixes some
   soundness holes, and as such will cause some previously-compiling
   code to no longer build.
 * `rustc` now uses [LLVM to write archive files where possible][ar].
   Eventually this will eliminate the compiler's dependency on the ar
   utility.
-* Rust has [preliminary support for i686 FreeBSD][fb] (it has long
+* Rust has [preliminary support for i686 FreeBSD][26959] (it has long
   supported FreeBSD on x86_64).
 * The [`unused_mut`][lum], [`unconditional_recursion`][lur],
   [`improper_ctypes`][lic], and [`negate_unsigned`][lnu] lints are
@@ -8938,7 +8938,7 @@ Misc
 [ar]: https://github.com/rust-lang/rust/pull/26926
 [b14]: https://static.rust-lang.org/dist/rust-beta-x86_64-pc-windows-msvc.msi
 [dms]: https://github.com/rust-lang/rust/pull/26241
-[dropck]: https://github.com/rust-lang/rust/pull/27261
+[27261]: https://github.com/rust-lang/rust/pull/27261
 [dropckrfc]: https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md
 [ds]: https://github.com/rust-lang/rust/pull/26818
 [dst1]: http://doc.rust-lang.org/nightly/std/mem/fn.size_of_val.html
@@ -8946,7 +8946,7 @@ Misc
 [dst3]: https://github.com/rust-lang/rust/pull/27351
 [e]: https://github.com/rust-lang/rust/pull/24793
 [f]: https://github.com/rust-lang/rust/pull/26588
-[fb]: https://github.com/rust-lang/rust/pull/26959
+[26959]: https://github.com/rust-lang/rust/pull/26959
 [fl]: https://github.com/rust-lang/rust-installer/pull/41
 [ie]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html
 [iec]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html#method.cause
@@ -9218,7 +9218,7 @@ Misc
   to rustc.
 * [Android executables are always position independent][pie].
 * [The `drop_with_repr_extern` lint warns about mixing `repr(C)`
-  with `Drop`][drop].
+  with `Drop`][24935].
 
 [`str::split_whitespace`]: https://doc.rust-lang.org/nightly/std/primitive.str.html#method.split_whitespace
 [`FromRawFd`]: https://doc.rust-lang.org/nightly/std/os/unix/io/trait.FromRawFd.html
@@ -9248,7 +9248,7 @@ Misc
 [`BinaryHeap`]: https://doc.rust-lang.org/nightly/std/collections/struct.BinaryHeap.html
 [ll]: https://github.com/rust-lang/rust/pull/26022
 [`split_off`]: https://doc.rust-lang.org/nightly/collections/linked_list/struct.LinkedList.html#method.split_off
-[drop]: https://github.com/rust-lang/rust/pull/24935
+[24935]: https://github.com/rust-lang/rust/pull/24935
 
 Version 1.0.0 (2015-05-15)
 ========================
@@ -9301,7 +9301,7 @@ Language
   property: generic code cannot behave differently for different type
   arguments except in minor ways.
 * The `unsafe_destructor` feature is now deprecated in favor of the
-  [new `dropck`][dropck]. This change is a major reduction in unsafe
+  [new `dropck`][rfc769]. This change is a major reduction in unsafe
   code.
 
 Libraries
@@ -9309,7 +9309,7 @@ Libraries
 
 * The `thread_local` module [has been renamed to `std::thread`][th].
 * The methods of `IteratorExt` [have been moved to the `Iterator`
-  trait itself][ie].
+  trait itself][23300].
 * Several traits that implement Rust's conventions for type
   conversions, `AsMut`, `AsRef`, `From`, and `Into` have been
   [centralized in the `std::convert` module][con].
@@ -9328,7 +9328,7 @@ Libraries
 * [In method resolution, object methods are resolved before inherent
   methods][meth].
 * [`String::from_str` has been deprecated in favor of the `From` impl,
-  `String::from`][sf].
+  `String::from`][24517].
 * [`io::Error` implements `Sync`][ios].
 * [The `words` method on `&str` has been replaced with
   `split_whitespace`][sw], to avoid answering the tricky question, 'what is
@@ -9376,7 +9376,7 @@ Misc
 [con]: https://github.com/rust-lang/rust/pull/23875
 [cr]: https://github.com/rust-lang/rust/pull/23419
 [fe]: https://github.com/rust-lang/rust/pull/23879
-[ie]: https://github.com/rust-lang/rust/pull/23300
+[23300]: https://github.com/rust-lang/rust/pull/23300
 [inv]: https://github.com/rust-lang/rust/pull/23938
 [ios]: https://github.com/rust-lang/rust/pull/24133
 [lex]: https://github.com/rust-lang/rfcs/blob/master/text/0879-small-base-lexing.md
@@ -9384,7 +9384,7 @@ Misc
 [meth]: https://github.com/rust-lang/rust/pull/24056
 [pat]: https://github.com/rust-lang/rfcs/blob/master/text/0528-string-patterns.md
 [po]: https://github.com/rust-lang/rust/pull/24270
-[sf]: https://github.com/rust-lang/rust/pull/24517
+[24517]: https://github.com/rust-lang/rust/pull/24517
 [slp]: https://github.com/rust-lang/rust/pull/23949
 [spl]: https://github.com/rust-lang/rfcs/blob/master/text/0979-align-splitn-with-other-languages.md
 [sw]: https://github.com/rust-lang/rfcs/blob/master/text/1054-str-words.md
@@ -9402,7 +9402,7 @@ Misc
 [conversion]: https://github.com/rust-lang/rfcs/pull/529
 [num-traits]: https://github.com/rust-lang/rust/pull/23549
 [index-value]: https://github.com/rust-lang/rust/pull/23601
-[dropck]: https://github.com/rust-lang/rfcs/pull/769
+[rfc769]: https://github.com/rust-lang/rfcs/pull/769
 [ci-compare]: https://gist.github.com/brson/a30a77836fbec057cbee
 [fn-inherit]: https://github.com/rust-lang/rust/pull/23282
 [fn-blanket]: https://github.com/rust-lang/rust/pull/23895
