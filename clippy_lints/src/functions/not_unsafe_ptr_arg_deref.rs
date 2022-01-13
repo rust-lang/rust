@@ -42,8 +42,7 @@ fn check_raw_ptr<'tcx>(
     let expr = &body.value;
     if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(def_id) {
         let raw_ptrs = iter_input_pats(decl, body)
-            .zip(decl.inputs.iter())
-            .filter_map(|(arg, ty)| raw_ptr_arg(arg, ty))
+            .filter_map(|arg| raw_ptr_arg(cx, arg))
             .collect::<HirIdSet>();
 
         if !raw_ptrs.is_empty() {
@@ -59,8 +58,12 @@ fn check_raw_ptr<'tcx>(
     }
 }
 
-fn raw_ptr_arg(arg: &hir::Param<'_>, ty: &hir::Ty<'_>) -> Option<hir::HirId> {
-    if let (&hir::PatKind::Binding(_, id, _, _), &hir::TyKind::Ptr(_)) = (&arg.pat.kind, &ty.kind) {
+fn raw_ptr_arg(cx: &LateContext<'_>, arg: &hir::Param<'_>) -> Option<hir::HirId> {
+    if let (&hir::PatKind::Binding(_, id, _, _), Some(&ty::RawPtr(_))) = (
+        &arg.pat.kind,
+        cx.maybe_typeck_results()
+            .map(|typeck_results| typeck_results.pat_ty(arg.pat).kind()),
+    ) {
         Some(id)
     } else {
         None
