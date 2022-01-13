@@ -8,6 +8,7 @@ path = "lib.rs"
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
+askama = { version = "0.11", default-features = false }
 pulldown-cmark = { version = "0.9", default-features = false }
 minifier = "0.0.41"
 rayon = "1.3.1"
@@ -20,7 +21,6 @@ regex = "1"
 rustdoc-json-types = { path = "../rustdoc-json-types" }
 tracing = "0.1"
 tracing-tree = "0.2.0"
-tera = { version = "1.10.0", default-features = false }
 
 [dependencies.tracing-subscriber]
 version = "0.3.3"

@@ -31,7 +31,6 @@ mod tests;
 mod context;
 mod print_item;
 mod span_map;
-mod templates;
 mod write_shared;
 
 crate use self::context::*;
