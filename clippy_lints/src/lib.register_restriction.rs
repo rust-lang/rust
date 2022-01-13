@@ -54,6 +54,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(shadow::SHADOW_REUSE),
     LintId::of(shadow::SHADOW_SAME),
     LintId::of(shadow::SHADOW_UNRELATED),
+    LintId::of(single_char_lifetime_names::SINGLE_CHAR_LIFETIME_NAMES),
     LintId::of(strings::STRING_ADD),
     LintId::of(strings::STRING_SLICE),
     LintId::of(strings::STRING_TO_STRING),

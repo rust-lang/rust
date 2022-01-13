@@ -316,7 +316,7 @@ struct BlockEqual {
 
 /// This function can also trigger the `IF_SAME_THEN_ELSE` in which case it'll return `None` to
 /// abort any further processing and avoid duplicate lint triggers.
-fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> Option<BlockEqual> {
+fn scan_block_for_eq(cx: &LateContext<'_>, blocks: &[&Block<'_>]) -> Option<BlockEqual> {
     let mut start_eq = usize::MAX;
     let mut end_eq = usize::MAX;
     let mut expr_eq = true;
@@ -385,11 +385,7 @@ fn scan_block_for_eq(cx: &LateContext<'tcx>, blocks: &[&Block<'tcx>]) -> Option<
     })
 }
 
-fn check_for_warn_of_moved_symbol(
-    cx: &LateContext<'tcx>,
-    symbols: &FxHashSet<Symbol>,
-    if_expr: &'tcx Expr<'_>,
-) -> bool {
+fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &FxHashSet<Symbol>, if_expr: &Expr<'_>) -> bool {
     get_enclosing_block(cx, if_expr.hir_id).map_or(false, |block| {
         let ignore_span = block.span.shrink_to_lo().to(if_expr.span);
 
@@ -419,13 +415,13 @@ fn check_for_warn_of_moved_symbol(
 }
 
 fn emit_branches_sharing_code_lint(
-    cx: &LateContext<'tcx>,
+    cx: &LateContext<'_>,
     start_stmts: usize,
     end_stmts: usize,
     lint_end: bool,
     warn_about_moved_symbol: bool,
-    blocks: &[&Block<'tcx>],
-    if_expr: &'tcx Expr<'_>,
+    blocks: &[&Block<'_>],
+    if_expr: &Expr<'_>,
 ) {
     if start_stmts == 0 && !lint_end {
         return;

@@ -2,7 +2,7 @@ use super::{IncrementVisitor, InitializeVisitor, MANUAL_MEMCPY};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::is_copy;
 use clippy_utils::{get_enclosing_block, higher, path_to_local, sugg};
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -62,15 +62,15 @@ pub(super) fn check<'tcx>(
                         if_chain! {
                             if let ExprKind::Index(base_left, idx_left) = lhs.kind;
                             if let ExprKind::Index(base_right, idx_right) = rhs.kind;
-                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_left));
-                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_right));
+                            if let Some(ty) = get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_left));
+                            if get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_right)).is_some();
                             if let Some((start_left, offset_left)) = get_details_from_idx(cx, idx_left, &starts);
                             if let Some((start_right, offset_right)) = get_details_from_idx(cx, idx_right, &starts);
 
                             // Source and destination must be different
                             if path_to_local(base_left) != path_to_local(base_right);
                             then {
-                                Some((IndexExpr { base: base_left, idx: start_left, idx_offset: offset_left },
+                                Some((ty, IndexExpr { base: base_left, idx: start_left, idx_offset: offset_left },
                                     IndexExpr { base: base_right, idx: start_right, idx_offset: offset_right }))
                             } else {
                                 None
@@ -78,7 +78,7 @@ pub(super) fn check<'tcx>(
                         }
                     })
                 })
-                .map(|o| o.map(|(dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, &dst, &src)))
+                .map(|o| o.map(|(ty, dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, ty, &dst, &src)))
                 .collect::<Option<Vec<_>>>()
                 .filter(|v| !v.is_empty())
                 .map(|v| v.join("\n    "));
@@ -105,6 +105,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
     start: &Expr<'_>,
     end: &Expr<'_>,
     limits: ast::RangeLimits,
+    elem_ty: Ty<'tcx>,
     dst: &IndexExpr<'_>,
     src: &IndexExpr<'_>,
 ) -> String {
@@ -187,9 +188,16 @@ fn build_manual_memcpy_suggestion<'tcx>(
         .into()
     };
 
+    let method_str = if is_copy(cx, elem_ty) {
+        "copy_from_slice"
+    } else {
+        "clone_from_slice"
+    };
+
     format!(
-        "{}.clone_from_slice(&{}[{}..{}]);",
+        "{}.{}(&{}[{}..{}]);",
         dst,
+        method_str,
         src_base_str,
         src_offset.maybe_par(),
         src_limit.maybe_par()
@@ -203,7 +211,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
 #[derive(Clone)]
 struct MinifyingSugg<'a>(Sugg<'a>);
 
-impl Display for MinifyingSugg<'a> {
+impl<'a> Display for MinifyingSugg<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
@@ -324,14 +332,13 @@ struct Start<'hir> {
     kind: StartKind<'hir>,
 }
 
-fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
-    let is_slice = match ty.kind() {
-        ty::Ref(_, subty, _) => is_slice_like(cx, subty),
-        ty::Slice(..) | ty::Array(..) => true,
-        _ => false,
-    };
-
-    is_slice || is_type_diagnostic_item(cx, ty, sym::Vec) || is_type_diagnostic_item(cx, ty, sym::VecDeque)
+fn get_slice_like_element_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    match ty.kind() {
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Vec, adt.did) => Some(subs.type_at(0)),
+        ty::Ref(_, subty, _) => get_slice_like_element_ty(cx, subty),
+        ty::Slice(ty) | ty::Array(ty, _) => Some(ty),
+        _ => None,
+    }
 }
 
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {

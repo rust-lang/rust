@@ -40,7 +40,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NonOctalUnixPermissions => [NON_OCTAL_UNIX_PERMISSIONS]);
 
-impl LateLintPass<'_> for NonOctalUnixPermissions {
+impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         match &expr.kind {
             ExprKind::MethodCall(path, _, [func, param], _) => {

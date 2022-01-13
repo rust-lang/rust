@@ -45,7 +45,12 @@ impl ops::BitOrAssign for EagernessSuggestion {
 }
 
 /// Determine the eagerness of the given function call.
-fn fn_eagerness(cx: &LateContext<'tcx>, fn_id: DefId, name: Symbol, args: &'tcx [Expr<'_>]) -> EagernessSuggestion {
+fn fn_eagerness<'tcx>(
+    cx: &LateContext<'tcx>,
+    fn_id: DefId,
+    name: Symbol,
+    args: &'tcx [Expr<'_>],
+) -> EagernessSuggestion {
     use EagernessSuggestion::{Eager, Lazy, NoChange};
     let name = name.as_str();
 
@@ -92,7 +97,7 @@ fn fn_eagerness(cx: &LateContext<'tcx>, fn_id: DefId, name: Symbol, args: &'tcx 
 }
 
 #[allow(clippy::too_many_lines)]
-fn expr_eagerness(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessSuggestion {
+fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessSuggestion {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
         eagerness: EagernessSuggestion,
@@ -225,11 +230,11 @@ fn expr_eagerness(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessSuggest
 }
 
 /// Whether the given expression should be changed to evaluate eagerly
-pub fn switch_to_eager_eval(cx: &'_ LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+pub fn switch_to_eager_eval<'tcx>(cx: &'_ LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
     expr_eagerness(cx, expr) == EagernessSuggestion::Eager
 }
 
 /// Whether the given expression should be changed to evaluate lazily
-pub fn switch_to_lazy_eval(cx: &'_ LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+pub fn switch_to_lazy_eval<'tcx>(cx: &'_ LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
     expr_eagerness(cx, expr) == EagernessSuggestion::Lazy
 }

@@ -10,8 +10,8 @@ use rustc_span::Span;
 use std::iter::{once, Iterator};
 
 pub(super) fn check(
-    cx: &LateContext<'tcx>,
-    block: &'tcx Block<'_>,
+    cx: &LateContext<'_>,
+    block: &Block<'_>,
     loop_id: HirId,
     span: Span,
     for_loop: Option<&ForLoop<'_>>,

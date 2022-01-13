@@ -144,3 +144,38 @@ fn main() {
     c.0 = a;
     a = t;
 }
+
+fn issue_8154() {
+    struct S1 {
+        x: i32,
+        y: i32,
+    }
+    struct S2(S1);
+    struct S3<'a, 'b>(&'a mut &'b mut S1);
+
+    impl std::ops::Deref for S2 {
+        type Target = S1;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+    impl std::ops::DerefMut for S2 {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
+    }
+
+    // Don't lint. `s.0` is mutably borrowed by `s.x` and `s.y` via the deref impl.
+    let mut s = S2(S1 { x: 0, y: 0 });
+    let t = s.x;
+    s.x = s.y;
+    s.y = t;
+
+    // Accessing through a mutable reference is fine
+    let mut s = S1 { x: 0, y: 0 };
+    let mut s = &mut s;
+    let s = S3(&mut s);
+    let t = s.0.x;
+    s.0.x = s.0.y;
+    s.0.y = t;
+}

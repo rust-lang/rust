@@ -1,5 +1,5 @@
 error: transmute from a pointer to a pointer
-  --> $DIR/transmute_ptr_to_ptr.rs:29:29
+  --> $DIR/transmute_ptr_to_ptr.rs:30:29
    |
 LL |         let _: *const f32 = std::mem::transmute(ptr);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr as *const f32`
@@ -7,31 +7,31 @@ LL |         let _: *const f32 = std::mem::transmute(ptr);
    = note: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
 
 error: transmute from a pointer to a pointer
-  --> $DIR/transmute_ptr_to_ptr.rs:30:27
+  --> $DIR/transmute_ptr_to_ptr.rs:31:27
    |
 LL |         let _: *mut f32 = std::mem::transmute(mut_ptr);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `mut_ptr as *mut f32`
 
 error: transmute from a reference to a reference
-  --> $DIR/transmute_ptr_to_ptr.rs:32:23
+  --> $DIR/transmute_ptr_to_ptr.rs:33:23
    |
 LL |         let _: &f32 = std::mem::transmute(&1u32);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&1u32 as *const u32 as *const f32)`
 
 error: transmute from a reference to a reference
-  --> $DIR/transmute_ptr_to_ptr.rs:33:23
+  --> $DIR/transmute_ptr_to_ptr.rs:34:23
    |
 LL |         let _: &f64 = std::mem::transmute(&1f32);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&1f32 as *const f32 as *const f64)`
 
 error: transmute from a reference to a reference
-  --> $DIR/transmute_ptr_to_ptr.rs:36:27
+  --> $DIR/transmute_ptr_to_ptr.rs:37:27
    |
 LL |         let _: &mut f32 = std::mem::transmute(&mut 1u32);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(&mut 1u32 as *mut u32 as *mut f32)`
 
 error: transmute from a reference to a reference
-  --> $DIR/transmute_ptr_to_ptr.rs:37:37
+  --> $DIR/transmute_ptr_to_ptr.rs:38:37
    |
 LL |         let _: &GenericParam<f32> = std::mem::transmute(&GenericParam { t: 1u32 });
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&GenericParam { t: 1u32 } as *const GenericParam<u32> as *const GenericParam<f32>)`

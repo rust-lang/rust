@@ -173,7 +173,7 @@ pub trait Visitable<'tcx> {
 }
 macro_rules! visitable_ref {
     ($t:ident, $f:ident) => {
-        impl Visitable<'tcx> for &'tcx $t<'tcx> {
+        impl<'tcx> Visitable<'tcx> for &'tcx $t<'tcx> {
             fn visit<V: Visitor<'tcx>>(self, visitor: &mut V) {
                 visitor.$f(self);
             }
@@ -217,7 +217,7 @@ pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
 }
 
 /// Checks if the given local is used.
-pub fn is_local_used(cx: &LateContext<'tcx>, visitable: impl Visitable<'tcx>, id: HirId) -> bool {
+pub fn is_local_used<'tcx>(cx: &LateContext<'tcx>, visitable: impl Visitable<'tcx>, id: HirId) -> bool {
     let mut is_used = false;
     let mut visitor = expr_visitor(cx, |expr| {
         if !is_used {
@@ -231,7 +231,7 @@ pub fn is_local_used(cx: &LateContext<'tcx>, visitable: impl Visitable<'tcx>, id
 }
 
 /// Checks if the given expression is a constant.
-pub fn is_const_evaluatable(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
+pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
     struct V<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
         is_const: bool,
@@ -321,7 +321,7 @@ pub fn is_const_evaluatable(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
 }
 
 /// Checks if the given expression performs an unsafe operation outside of an unsafe block.
-pub fn is_expr_unsafe(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
+pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
     struct V<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
         is_unsafe: bool,

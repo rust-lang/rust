@@ -1,5 +1,5 @@
 pub mod author;
 pub mod conf;
 pub mod inspector;
-#[cfg(any(feature = "internal-lints", feature = "metadata-collector-lint"))]
+#[cfg(feature = "internal")]
 pub mod internal_lints;

@@ -1,17 +1,17 @@
 [package]
 name = "clippy_utils"
-version = "0.1.59"
+version = "0.1.60"
 edition = "2021"
 publish = false
 
 [dependencies]
+arrayvec = { version = "0.7", default-features = false }
 if_chain = "1.0"
 rustc-semver = "1.1"
 
 [features]
 deny-warnings = []
-internal-lints = []
-metadata-collector-lint = []
+internal = []
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

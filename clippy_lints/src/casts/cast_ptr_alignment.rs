@@ -9,7 +9,7 @@ use rustc_span::symbol::sym;
 
 use super::CAST_PTR_ALIGNMENT;
 
-pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Cast(cast_expr, cast_to) = expr.kind {
         if is_hir_ty_cfg_dependant(cx, cast_to) {
             return;

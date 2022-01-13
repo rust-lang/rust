@@ -1,8 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::macros::root_macro_call_first_node;
+use clippy_utils::return_ty;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{find_macro_calls, is_expn_of, return_ty};
+use clippy_utils::visitors::expr_visitor_no_bodies;
 use rustc_hir as hir;
-use rustc_hir::intravisit::FnKind;
+use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
@@ -55,19 +57,19 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
 }
 
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir::Body<'tcx>) {
-    let mut panics = find_macro_calls(
-        &[
-            "unimplemented",
-            "unreachable",
-            "panic",
-            "todo",
-            "assert",
-            "assert_eq",
-            "assert_ne",
-        ],
-        body,
-    );
-    panics.retain(|span| is_expn_of(*span, "debug_assert").is_none());
+    let mut panics = Vec::new();
+    expr_visitor_no_bodies(|expr| {
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return true };
+        if matches!(
+            &*cx.tcx.item_name(macro_call.def_id).as_str(),
+            "unimplemented" | "unreachable" | "panic" | "todo" | "assert" | "assert_eq" | "assert_ne"
+        ) {
+            panics.push(macro_call.span);
+            return false;
+        }
+        true
+    })
+    .visit_expr(&body.value);
     if !panics.is_empty() {
         span_lint_and_then(
             cx,

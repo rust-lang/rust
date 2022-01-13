@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::higher::FormatExpn;
+use clippy_utils::macros::{root_macro_call_first_node, FormatArgsExpn};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
@@ -14,7 +14,13 @@ use super::EXPECT_FUN_CALL;
 
 /// Checks for the `EXPECT_FUN_CALL` lint.
 #[allow(clippy::too_many_lines)]
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Span, name: &str, args: &[hir::Expr<'_>]) {
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &hir::Expr<'_>,
+    method_span: Span,
+    name: &str,
+    args: &'tcx [hir::Expr<'tcx>],
+) {
     // Strip `&`, `as_ref()` and `as_str()` off `arg` until we're left with either a `String` or
     // `&str`
     fn get_arg_root<'a>(cx: &LateContext<'_>, arg: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
@@ -128,11 +134,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
     let mut applicability = Applicability::MachineApplicable;
 
     //Special handling for `format!` as arg_root
-    if let Some(format_expn) = FormatExpn::parse(arg_root) {
-        let span = match *format_expn.format_args.value_args {
-            [] => format_expn.format_args.format_string_span,
-            [.., last] => format_expn.format_args.format_string_span.to(last.span),
-        };
+    if let Some(macro_call) = root_macro_call_first_node(cx, arg_root) {
+        if !cx.tcx.is_diagnostic_item(sym::format_macro, macro_call.def_id) {
+            return;
+        }
+        let Some(format_args) = FormatArgsExpn::find_nested(cx, arg_root, macro_call.expn) else { return };
+        let span = format_args.inputs_span();
         let sugg = snippet_with_applicability(cx, span, "..", &mut applicability);
         span_lint_and_sugg(
             cx,

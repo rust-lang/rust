@@ -665,16 +665,6 @@ fn lintcheck_needs_rerun(lintcheck_logs_path: &Path) -> bool {
     logs_modified < clippy_modified
 }
 
-fn is_in_clippy_root() -> bool {
-    if let Ok(pb) = std::env::current_dir() {
-        if let Some(file) = pb.file_name() {
-            return file == PathBuf::from("rust-clippy");
-        }
-    }
-
-    false
-}
-
 /// lintchecks `main()` function
 ///
 /// # Panics
@@ -683,7 +673,7 @@ fn is_in_clippy_root() -> bool {
 /// or if lintcheck is executed from the wrong directory (aka none-repo-root)
 pub fn main() {
     // assert that we launch lintcheck from the repo root (via cargo lintcheck)
-    if !is_in_clippy_root() {
+    if std::fs::metadata("lintcheck/Cargo.toml").is_err() {
         eprintln!("lintcheck needs to be run from clippys repo root!\nUse `cargo lintcheck` alternatively.");
         std::process::exit(3);
     }
