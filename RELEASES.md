@@ -6164,7 +6164,7 @@ Libraries
 * [Ctrl-Z returns from `Stdin.read()` when reading from the console on
   Windows][38274]
 * [std: Fix partial writes in `LineWriter`][38062]
-* [std: Clamp max read/write sizes on Unix][38062]
+* [std: Clamp max read/write sizes on Unix][38622]
 * [Use more specific panic message for `&str` slicing errors][38066]
 * [`TcpListener::set_only_v6` is deprecated][38304]. This
   functionality cannot be achieved in std currently.
@@ -6230,7 +6230,7 @@ Compatibility Notes
 [38006]: https://github.com/rust-lang/rust/pull/38006
 [38051]: https://github.com/rust-lang/rust/pull/38051
 [38062]: https://github.com/rust-lang/rust/pull/38062
-[38062]: https://github.com/rust-lang/rust/pull/38622
+[38622]: https://github.com/rust-lang/rust/pull/38622
 [38066]: https://github.com/rust-lang/rust/pull/38066
 [38069]: https://github.com/rust-lang/rust/pull/38069
 [38131]: https://github.com/rust-lang/rust/pull/38131
