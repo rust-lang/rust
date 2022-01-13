@@ -1,60 +1,10 @@
-error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-  --> $DIR/bound_reduction2.rs:16:60
-   |
-LL |   fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
-   |  ____________________________________________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     ()
-LL | | }
-   | |_^
-
-error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-  --> $DIR/bound_reduction2.rs:16:60
-   |
-LL |   fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
-   |  ____________________________________________________________^
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     ()
-LL | | }
-   | |_^
-
 error: non-defining opaque type use in defining scope
-  --> $DIR/bound_reduction2.rs:16:1
+  --> $DIR/bound_reduction2.rs:16:46
    |
 LL | fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                              ^^^^^^^^^^^^^
    |
 note: used non-generic type `<T as TraitWithAssoc>::Assoc` for generic parameter
-  --> $DIR/bound_reduction2.rs:9:10
-   |
-LL | type Foo<V> = impl Trait<V>;
-   |          ^
-
-error: non-defining opaque type use in defining scope
-  --> $DIR/bound_reduction2.rs:16:1
-   |
-LL | fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: used non-generic type `_` for generic parameter
-  --> $DIR/bound_reduction2.rs:9:10
-   |
-LL | type Foo<V> = impl Trait<V>;
-   |          ^
-
-error: non-defining opaque type use in defining scope
-  --> $DIR/bound_reduction2.rs:16:1
-   |
-LL | fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: used non-generic type `_` for generic parameter
   --> $DIR/bound_reduction2.rs:9:10
    |
 LL | type Foo<V> = impl Trait<V>;
@@ -66,5 +16,5 @@ error: could not find defining uses
 LL | type Foo<V> = impl Trait<V>;
    |               ^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 2 previous errors
 

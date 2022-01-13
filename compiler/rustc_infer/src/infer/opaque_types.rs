@@ -551,6 +551,22 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             let predicate = predicate.subst(tcx, substs);
             debug!(?predicate);
 
+            let predicate = predicate.fold_with(&mut BottomUpFolder {
+                tcx,
+                ty_op: |ty| match *ty.kind() {
+                    // Replace all other mentions of the same opaque type with the hidden type,
+                    // as the bounds must hold on the hidden type after all.
+                    ty::Opaque(def_id2, substs2) if def_id == def_id2 && substs == substs2 => {
+                        ty_var
+                    }
+                    // Instantiate nested instances of `impl Trait`.
+                    ty::Opaque(..) => self.instantiate_opaque_types_in_map(ty),
+                    _ => ty,
+                },
+                lt_op: |lt| lt,
+                ct_op: |ct| ct,
+            });
+
             // We can't normalize associated types from `rustc_infer`, but we can eagerly register inference variables for them.
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
@@ -575,10 +591,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                     return tcx.ty_error();
                 }
             }
-            // Change the predicate to refer to the type variable,
-            // which will be the concrete type instead of the opaque type.
-            // This also instantiates nested instances of `impl Trait`.
-            let predicate = self.instantiate_opaque_types_in_map(predicate);
 
             let cause =
                 traits::ObligationCause::new(self.value_span, self.body_id, traits::OpaqueType);
