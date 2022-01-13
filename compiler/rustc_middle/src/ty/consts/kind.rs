@@ -21,6 +21,7 @@ pub struct Unevaluated<'tcx, P = Option<Promoted>> {
 }
 
 impl<'tcx> Unevaluated<'tcx> {
+    #[inline]
     pub fn shrink(self) -> Unevaluated<'tcx, ()> {
         debug_assert_eq!(self.promoted, None);
         Unevaluated { def: self.def, substs: self.substs, promoted: () }
@@ -28,12 +29,14 @@ impl<'tcx> Unevaluated<'tcx> {
 }
 
 impl<'tcx> Unevaluated<'tcx, ()> {
+    #[inline]
     pub fn expand(self) -> Unevaluated<'tcx> {
         Unevaluated { def: self.def, substs: self.substs, promoted: None }
     }
 }
 
 impl<'tcx, P: Default> Unevaluated<'tcx, P> {
+    #[inline]
     pub fn new(def: ty::WithOptConstParam<DefId>, substs: SubstsRef<'tcx>) -> Unevaluated<'tcx, P> {
         Unevaluated { def, substs, promoted: Default::default() }
     }

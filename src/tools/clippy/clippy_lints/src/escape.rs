@@ -54,7 +54,7 @@ fn is_non_trait_box(ty: Ty<'_>) -> bool {
 struct EscapeDelegate<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     set: HirIdSet,
-    trait_self_ty: Option<Ty<'a>>,
+    trait_self_ty: Option<Ty<'tcx>>,
     too_large_for_stack: u64,
 }
 
