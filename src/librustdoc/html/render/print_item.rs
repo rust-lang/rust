@@ -26,11 +26,13 @@ use crate::formats::item_type::ItemType;
 use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{
-    print_abi_with_space, print_constness_with_space, print_where_clause, Buffer, PrintWithSpace,
+    join_with_double_colon, print_abi_with_space, print_constness_with_space, print_where_clause,
+    Buffer, PrintWithSpace,
 };
 use crate::html::highlight;
 use crate::html::layout::Page;
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
+use crate::html::url_parts_builder::UrlPartsBuilder;
 
 use askama::Template;
 
@@ -40,9 +42,9 @@ const ITEM_TABLE_ROW_OPEN: &str = "<div class=\"item-row\">";
 const ITEM_TABLE_ROW_CLOSE: &str = "</div>";
 
 // A component in a `use` path, like `string` in std::string::ToString
-struct PathComponent<'a> {
+struct PathComponent {
     path: String,
-    name: &'a str,
+    name: Symbol,
 }
 
 #[derive(Template)]
@@ -53,7 +55,7 @@ struct ItemVars<'a> {
     typ: &'a str,
     name: &'a str,
     item_type: &'a str,
-    path_components: Vec<PathComponent<'a>>,
+    path_components: Vec<PathComponent>,
     stability_since_raw: &'a str,
     src_href: Option<&'a str>,
 }
@@ -121,7 +123,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
             .take(amt)
             .map(|(i, component)| PathComponent {
                 path: "../".repeat(cur.len() - i - 1),
-                name: component,
+                name: *component,
             })
             .collect()
     };
@@ -262,7 +264,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     indices.dedup_by_key(|i| {
         (
             items[*i].def_id,
-            if items[*i].name.as_ref().is_some() { Some(full_path(cx, &items[*i])) } else { None },
+            if items[*i].name.is_some() { Some(full_path(cx, &items[*i])) } else { None },
             items[*i].type_(),
             if items[*i].is_import() { *i } else { 0 },
         )
@@ -304,22 +306,18 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 match *src {
-                    Some(ref src) => write!(
+                    Some(src) => write!(
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {} as {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
-                        anchor(myitem.def_id.expect_def_id(), src.as_str(), cx),
-                        myitem.name.as_ref().unwrap(),
+                        anchor(myitem.def_id.expect_def_id(), src, cx),
+                        myitem.name.unwrap(),
                     ),
                     None => write!(
                         w,
                         "<div class=\"item-left\"><code>{}extern crate {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
-                        anchor(
-                            myitem.def_id.expect_def_id(),
-                            myitem.name.as_ref().unwrap().as_str(),
-                            cx
-                        ),
+                        anchor(myitem.def_id.expect_def_id(), myitem.name.unwrap(), cx),
                     ),
                 }
                 w.write_str("</code></div>");
@@ -391,7 +389,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                              {stab_tags}\
                      </div>\
                      <div class=\"item-right docblock-short\">{docs}</div>",
-                    name = *myitem.name.as_ref().unwrap(),
+                    name = myitem.name.unwrap(),
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
                     docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
                     class = myitem.type_(),
@@ -463,7 +461,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
     let asyncness = f.header.asyncness.print_with_space();
     let unsafety = f.header.unsafety.print_with_space();
     let abi = print_abi_with_space(f.header.abi).to_string();
-    let name = it.name.as_ref().unwrap();
+    let name = it.name.unwrap();
 
     let generics_len = format!("{:#}", f.generics.print(cx)).len();
     let header_len = "fn ".len()
@@ -519,7 +517,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 it.visibility.print_with_space(it.def_id, cx),
                 t.unsafety.print_with_space(),
                 if t.is_auto { "auto " } else { "" },
-                it.name.as_ref().unwrap(),
+                it.name.unwrap(),
                 t.generics.print(cx),
                 bounds
             );
@@ -660,7 +658,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     }
 
     fn trait_item(w: &mut Buffer, cx: &Context<'_>, m: &clean::Item, t: &clean::Item) {
-        let name = m.name.as_ref().unwrap();
+        let name = m.name.unwrap();
         info!("Documenting {} on {:?}", name, t.name);
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
@@ -857,20 +855,21 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         }
     }
 
+    let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
+        .take(cx.current.len())
+        .chain(std::iter::once("implementors"))
+        .collect();
+    if it.def_id.is_local() {
+        js_src_path.extend(cx.current.iter().copied());
+    } else {
+        let (ref path, _) = cache.external_paths[&it.def_id.expect_def_id()];
+        js_src_path.extend(path[..path.len() - 1].iter().copied());
+    }
+    js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), it.name.unwrap()));
     write!(
         w,
-        "<script type=\"text/javascript\" \
-                 src=\"{root_path}/implementors/{path}/{ty}.{name}.js\" async>\
-         </script>",
-        root_path = vec![".."; cx.current.len()].join("/"),
-        path = if it.def_id.is_local() {
-            cx.current.join("/")
-        } else {
-            let (ref path, _) = cache.external_paths[&it.def_id.expect_def_id()];
-            path[..path.len() - 1].join("/")
-        },
-        ty = it.type_(),
-        name = *it.name.as_ref().unwrap()
+        "<script type=\"text/javascript\" src=\"{src}\" async></script>",
+        src = js_src_path.finish(),
     );
 }
 
@@ -881,7 +880,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clea
             write!(
                 w,
                 "trait {}{}{} = {};",
-                it.name.as_ref().unwrap(),
+                it.name.unwrap(),
                 t.generics.print(cx),
                 print_where_clause(&t.generics, cx, 0, true),
                 bounds(&t.bounds, true, cx)
@@ -905,7 +904,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean:
             write!(
                 w,
                 "type {}{}{where_clause} = impl {bounds};",
-                it.name.as_ref().unwrap(),
+                it.name.unwrap(),
                 t.generics.print(cx),
                 where_clause = print_where_clause(&t.generics, cx, 0, true),
                 bounds = bounds(&t.bounds, false, cx),
@@ -944,7 +943,7 @@ fn item_typedef(
             write!(
                 w,
                 "type {}{}{where_clause} = {type_};",
-                it.name.as_ref().unwrap(),
+                it.name.unwrap(),
                 t.generics.print(cx),
                 where_clause = print_where_clause(&t.generics, cx, 0, true),
                 type_ = t.type_.print(cx),
@@ -997,7 +996,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
                    Fields<a href=\"#fields\" class=\"anchor\"></a></h2>"
         );
         for (field, ty) in fields {
-            let name = field.name.as_ref().expect("union field name");
+            let name = field.name.expect("union field name");
             let id = format!("{}.{}", ItemType::StructField, name);
             write!(
                 w,
@@ -1042,7 +1041,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 w,
                 "{}enum {}{}{}",
                 it.visibility.print_with_space(it.def_id, cx),
-                it.name.as_ref().unwrap(),
+                it.name.unwrap(),
                 e.generics.print(cx),
                 print_where_clause(&e.generics, cx, 0, true),
             );
@@ -1057,7 +1056,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 }
                 for v in &e.variants {
                     w.write_str("    ");
-                    let name = v.name.as_ref().unwrap();
+                    let name = v.name.unwrap();
                     match *v.kind {
                         clean::VariantItem(ref var) => match var {
                             clean::Variant::CLike => write!(w, "{}", name),
@@ -1106,15 +1105,14 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
         );
         document_non_exhaustive(w, it);
         for variant in &e.variants {
-            let id =
-                cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.as_ref().unwrap()));
+            let id = cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.unwrap()));
             write!(
                 w,
                 "<h3 id=\"{id}\" class=\"variant small-section-header\">\
                     <a href=\"#{id}\" class=\"anchor field\"></a>\
                     <code>{name}",
                 id = id,
-                name = variant.name.as_ref().unwrap()
+                name = variant.name.unwrap()
             );
             if let clean::VariantItem(clean::Variant::Tuple(ref s)) = *variant.kind {
                 w.write_str("(");
@@ -1140,11 +1138,8 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             };
 
             if let Some((heading, fields)) = heading_and_fields {
-                let variant_id = cx.derive_id(format!(
-                    "{}.{}.fields",
-                    ItemType::Variant,
-                    variant.name.as_ref().unwrap()
-                ));
+                let variant_id =
+                    cx.derive_id(format!("{}.{}.fields", ItemType::Variant, variant.name.unwrap()));
                 write!(w, "<div class=\"sub-variant\" id=\"{id}\">", id = variant_id);
                 write!(w, "<h4>{heading}</h4>", heading = heading);
                 document_non_exhaustive(w, variant);
@@ -1154,8 +1149,8 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                         clean::StructFieldItem(ref ty) => {
                             let id = cx.derive_id(format!(
                                 "variant.{}.field.{}",
-                                variant.name.as_ref().unwrap(),
-                                field.name.as_ref().unwrap()
+                                variant.name.unwrap(),
+                                field.name.unwrap()
                             ));
                             write!(
                                 w,
@@ -1165,7 +1160,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                                     <code>{f}:&nbsp;{t}</code>\
                                 </span>",
                                 id = id,
-                                f = field.name.as_ref().unwrap(),
+                                f = field.name.unwrap(),
                                 t = ty.print(cx)
                             );
                             document(w, cx, field, Some(variant), HeadingOffset::H5);
@@ -1204,7 +1199,7 @@ fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Mac
 
 fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) {
     wrap_into_docblock(w, |w| {
-        let name = it.name.as_ref().expect("proc-macros always have names");
+        let name = it.name.expect("proc-macros always have names");
         match m.kind {
             MacroKind::Bang => {
                 wrap_item(w, "macro", |w| {
@@ -1248,7 +1243,7 @@ fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::
                 w,
                 "{vis}const {name}: {typ}",
                 vis = it.visibility.print_with_space(it.def_id, cx),
-                name = it.name.as_ref().unwrap(),
+                name = it.name.unwrap(),
                 typ = c.type_.print(cx),
             );
 
@@ -1341,7 +1336,7 @@ fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
                 "{vis}static {mutability}{name}: {typ}",
                 vis = it.visibility.print_with_space(it.def_id, cx),
                 mutability = s.mutability.print_with_space(),
-                name = it.name.as_ref().unwrap(),
+                name = it.name.unwrap(),
                 typ = s.type_.print(cx)
             );
         });
@@ -1358,7 +1353,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
                 w,
                 "    {}type {};\n}}",
                 it.visibility.print_with_space(it.def_id, cx),
-                it.name.as_ref().unwrap(),
+                it.name.unwrap(),
             );
         });
     });
@@ -1410,7 +1405,7 @@ crate fn compare_names(mut lhs: &str, mut rhs: &str) -> Ordering {
 }
 
 pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
-    let mut s = cx.current.join("::");
+    let mut s = join_with_double_colon(&cx.current);
     s.push_str("::");
     s.push_str(item.name.unwrap().as_str());
     s
@@ -1526,12 +1521,7 @@ fn render_union(
     tab: &str,
     cx: &Context<'_>,
 ) {
-    write!(
-        w,
-        "{}union {}",
-        it.visibility.print_with_space(it.def_id, cx),
-        it.name.as_ref().unwrap()
-    );
+    write!(w, "{}union {}", it.visibility.print_with_space(it.def_id, cx), it.name.unwrap());
     if let Some(g) = g {
         write!(w, "{}", g.print(cx));
         write!(w, "{}", print_where_clause(g, cx, 0, true));
@@ -1551,7 +1541,7 @@ fn render_union(
                 w,
                 "    {}{}: {},\n{}",
                 field.visibility.print_with_space(field.def_id, cx),
-                field.name.as_ref().unwrap(),
+                field.name.unwrap(),
                 ty.print(cx),
                 tab
             );
@@ -1582,7 +1572,7 @@ fn render_struct(
         "{}{}{}",
         it.visibility.print_with_space(it.def_id, cx),
         if structhead { "struct " } else { "" },
-        it.name.as_ref().unwrap()
+        it.name.unwrap()
     );
     if let Some(g) = g {
         write!(w, "{}", g.print(cx))
@@ -1607,7 +1597,7 @@ fn render_struct(
                         "\n{}    {}{}: {},",
                         tab,
                         field.visibility.print_with_space(field.def_id, cx),
-                        field.name.as_ref().unwrap(),
+                        field.name.unwrap(),
                         ty.print(cx),
                     );
                 }

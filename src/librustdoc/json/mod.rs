@@ -120,7 +120,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                                 })
                                 .0
                                 .last()
-                                .map(Clone::clone),
+                                .map(|s| s.to_string()),
                             visibility: types::Visibility::Public,
                             inner: types::ItemEnum::Trait(trait_item.clone().into_tcx(self.tcx)),
                             span: None,
@@ -230,7 +230,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                         from_item_id(k.into()),
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
-                            path,
+                            path: path.iter().map(|s| s.to_string()).collect(),
                             kind: kind.into_tcx(self.tcx),
                         },
                     )

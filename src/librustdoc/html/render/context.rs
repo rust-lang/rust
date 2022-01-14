@@ -11,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::FileName;
-use rustc_span::symbol::sym;
+use rustc_span::{sym, Symbol};
 
 use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
@@ -29,7 +29,7 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
-use crate::html::format::Buffer;
+use crate::html::format::{join_with_double_colon, Buffer};
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
 use crate::html::{layout, sources};
 use crate::scrape_examples::AllCallLocations;
@@ -45,7 +45,7 @@ use crate::try_err;
 crate struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
-    pub(crate) current: Vec<String>,
+    pub(crate) current: Vec<Symbol>,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     crate dst: PathBuf,
@@ -176,7 +176,7 @@ impl<'tcx> Context<'tcx> {
                 title.push_str(" in ");
             }
             // No need to include the namespace for primitive types and keywords
-            title.push_str(&self.current.join("::"));
+            title.push_str(&join_with_double_colon(&self.current));
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
@@ -225,18 +225,18 @@ impl<'tcx> Context<'tcx> {
             if let Some(&(ref names, ty)) = self.cache().paths.get(&it.def_id.expect_def_id()) {
                 let mut path = String::new();
                 for name in &names[..names.len() - 1] {
-                    path.push_str(name);
+                    path.push_str(&name.as_str());
                     path.push('/');
                 }
-                path.push_str(&item_path(ty, names.last().unwrap()));
+                path.push_str(&item_path(ty, &names.last().unwrap().as_str()));
                 match self.shared.redirections {
                     Some(ref redirections) => {
                         let mut current_path = String::new();
                         for name in &self.current {
-                            current_path.push_str(name);
+                            current_path.push_str(&name.as_str());
                             current_path.push('/');
                         }
-                        current_path.push_str(&item_path(ty, names.last().unwrap()));
+                        current_path.push_str(&item_path(ty, &names.last().unwrap().as_str()));
                         redirections.borrow_mut().insert(current_path, path);
                     }
                     None => return layout::redirect(&format!("{}{}", self.root_path(), path)),
@@ -634,8 +634,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.render_redirect_pages = item.is_stripped();
         }
         let scx = &self.shared;
-        let item_name = item.name.as_ref().unwrap().to_string();
-        self.dst.push(&item_name);
+        let item_name = item.name.unwrap();
+        self.dst.push(&*item_name.as_str());
         self.current.push(item_name);
 
         info!("Recursing into {}", self.dst.display());

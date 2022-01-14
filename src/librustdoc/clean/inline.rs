@@ -9,7 +9,6 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::definitions::DefPathData;
 use rustc_hir::Mutability;
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::{self, TyCtxt};
@@ -164,12 +163,10 @@ crate fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) {
-    let crate_name = cx.tcx.crate_name(did.krate).to_string();
+    let crate_name = cx.tcx.crate_name(did.krate);
 
-    let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
-        // Filter out extern blocks
-        (elem.data != DefPathData::ForeignMod).then(|| elem.data.to_string())
-    });
+    let relative =
+        cx.tcx.def_path(did).data.into_iter().filter_map(|elem| elem.data.get_opt_name());
     let fqn = if let ItemType::Macro = kind {
         // Check to see if it is a macro 2.0 or built-in macro
         if matches!(
