@@ -1013,37 +1013,25 @@ pub fn with_source_map<T, F: FnOnce() -> T>(source_map: Lrc<SourceMap>, f: F) ->
     f()
 }
 
-pub fn debug_with_source_map(
-    span: Span,
-    f: &mut fmt::Formatter<'_>,
-    source_map: &SourceMap,
-) -> fmt::Result {
-    write!(f, "{} ({:?})", source_map.span_to_diagnostic_string(span), span.ctxt())
-}
-
-pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    with_session_globals(|session_globals| {
-        if let Some(source_map) = &*session_globals.source_map.borrow() {
-            debug_with_source_map(span, f, source_map)
-        } else {
-            f.debug_struct("Span")
-                .field("lo", &span.lo())
-                .field("hi", &span.hi())
-                .field("ctxt", &span.ctxt())
-                .finish()
-        }
-    })
-}
-
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (*SPAN_DEBUG)(*self, f)
+        with_session_globals(|session_globals| {
+            if let Some(source_map) = &*session_globals.source_map.borrow() {
+                write!(f, "{} ({:?})", source_map.span_to_diagnostic_string(*self), self.ctxt())
+            } else {
+                f.debug_struct("Span")
+                    .field("lo", &self.lo())
+                    .field("hi", &self.hi())
+                    .field("ctxt", &self.ctxt())
+                    .finish()
+            }
+        })
     }
 }
 
 impl fmt::Debug for SpanData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (*SPAN_DEBUG)(Span::new(self.lo, self.hi, self.ctxt, self.parent), f)
+        fmt::Debug::fmt(&Span::new(self.lo, self.hi, self.ctxt, self.parent), f)
     }
 }
 
@@ -2003,8 +1991,6 @@ pub struct FileLines {
     pub lines: Vec<LineInfo>,
 }
 
-pub static SPAN_DEBUG: AtomicRef<fn(Span, &mut fmt::Formatter<'_>) -> fmt::Result> =
-    AtomicRef::new(&(default_span_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
 pub static SPAN_TRACK: AtomicRef<fn(LocalDefId)> = AtomicRef::new(&((|_| {}) as fn(_)));
 
 // _____________________________________________________________________________
