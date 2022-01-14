@@ -3719,7 +3719,7 @@ dependencies = [
 name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
- "itertools 0.9.0",
+ "itertools 0.10.1",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -3763,7 +3763,7 @@ name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools 0.9.0",
+ "itertools 0.10.1",
  "polonius-engine",
  "rustc_const_eval",
  "rustc_data_structures",
@@ -3844,7 +3844,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "cc",
- "itertools 0.9.0",
+ "itertools 0.10.1",
  "jobserver",
  "libc",
  "object 0.28.1",
@@ -4328,7 +4328,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "coverage_test_macros",
- "itertools 0.9.0",
+ "itertools 0.10.1",
  "rustc_ast",
  "rustc_attr",
  "rustc_const_eval",

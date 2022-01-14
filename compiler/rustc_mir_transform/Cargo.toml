@@ -7,7 +7,7 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-itertools = "0.9"
+itertools = "0.10"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 rustc_ast = { path = "../rustc_ast" }
