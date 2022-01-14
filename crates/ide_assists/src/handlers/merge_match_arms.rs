@@ -52,7 +52,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
                     return false;
                 }
 
-                return are_same_types(&current_arm_types, arm, ctx);
+                are_same_types(&current_arm_types, arm, ctx)
             }
             _ => false,
         })
