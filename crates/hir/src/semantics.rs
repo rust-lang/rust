@@ -443,8 +443,7 @@ impl<'db> SemanticsImpl<'db> {
     fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         let sa = self.analyze_no_infer(macro_call.syntax());
         let file_id = sa.expand(self.db, InFile::new(sa.file_id, macro_call))?;
-        let node = self.db.parse_or_expand(file_id)?;
-        self.cache(node.clone(), file_id);
+        let node = self.parse_or_expand(file_id)?;
         Some(node)
     }
 
@@ -452,8 +451,7 @@ impl<'db> SemanticsImpl<'db> {
         let src = self.find_file(item.syntax()).with_value(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src))?;
         let file_id = macro_call_id.as_file();
-        let node = self.db.parse_or_expand(file_id)?;
-        self.cache(node.clone(), file_id);
+        let node = self.parse_or_expand(file_id)?;
         Some(node)
     }
 
@@ -750,9 +748,8 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
-        let root = self.db.parse_or_expand(src.file_id).unwrap();
+        let root = self.parse_or_expand(src.file_id).unwrap();
         let node = src.value.to_node(&root);
-        self.cache(root, src.file_id);
         src.with_value(&node).original_file_range(self.db.upcast())
     }
 

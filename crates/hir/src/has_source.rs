@@ -16,6 +16,9 @@ use crate::{
 
 pub trait HasSource {
     type Ast;
+    /// Fetches the definition's source node.
+    /// Using [`crate::Semantics::source`] is preferred when working with [`crate::Semantics`],
+    /// as that caches the parsed file in the semantics' cache.
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>>;
 }
 
