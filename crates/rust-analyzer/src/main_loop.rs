@@ -70,7 +70,7 @@ pub(crate) enum Task {
 #[derive(Debug)]
 pub(crate) enum PrimeCachesProgress {
     Begin,
-    Report(ide::PrimeCachesProgress),
+    Report(ide::ParallelPrimeCachesProgress),
     End { cancelled: bool },
 }
 
@@ -291,11 +291,23 @@ impl GlobalState {
                         }
                         PrimeCachesProgress::Report(report) => {
                             state = Progress::Report;
-                            message = Some(format!(
-                                "{}/{} ({})",
-                                report.n_done, report.n_total, report.on_crate
-                            ));
-                            fraction = Progress::fraction(report.n_done, report.n_total);
+
+                            message = match &report.crates_currently_indexing[..] {
+                                [crate_name] => Some(format!(
+                                    "{}/{} ({})",
+                                    report.crates_done, report.crates_total, crate_name
+                                )),
+                                [crate_name, rest @ ..] => Some(format!(
+                                    "{}/{} ({} + {} more)",
+                                    report.crates_done,
+                                    report.crates_total,
+                                    crate_name,
+                                    rest.len()
+                                )),
+                                _ => None,
+                            };
+
+                            fraction = Progress::fraction(report.crates_done, report.crates_total);
                         }
                         PrimeCachesProgress::End { cancelled } => {
                             state = Progress::End;
@@ -497,7 +509,7 @@ impl GlobalState {
                 let analysis = self.snapshot().analysis;
                 move |sender| {
                     sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
-                    let res = analysis.prime_caches(|progress| {
+                    let res = analysis.parallel_prime_caches(32, |progress| {
                         let report = PrimeCachesProgress::Report(progress);
                         sender.send(Task::PrimeCaches(report)).unwrap();
                     });
