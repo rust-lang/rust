@@ -4,11 +4,11 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
    |                  --     ^^^^^^^^^^^^
    |                  |
-   |                  hidden type `&ReFree(DefId(0:8 ~ impl_trait_captures[HASH]::foo), BrAnon(0)) T` captures the anonymous lifetime defined here
+   |                  hidden type `&ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrAnon(0)) T` captures the anonymous lifetime defined here
    |
-help: to declare that the `impl Trait` captures `ReFree(DefId(0:8 ~ impl_trait_captures[HASH]::foo), BrAnon(0))`, you can add an explicit `ReFree(DefId(0:8 ~ impl_trait_captures[HASH]::foo), BrAnon(0))` lifetime bound
+help: to declare that the `impl Trait` captures `ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrAnon(0))`, you can add an explicit `ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrAnon(0))` lifetime bound
    |
-LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + ReFree(DefId(0:8 ~ impl_trait_captures[HASH]::foo), BrAnon(0)) {
+LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrAnon(0)) {
    |                                      ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error

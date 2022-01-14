@@ -2,13 +2,13 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/tls.rs:12:25
    |
 LL |     unsafe { let _val = A; }
-   |                         ^ cannot access thread local static (DefId(0:6 ~ tls[HASH]::A))
+   |                         ^ cannot access thread local static (DefId(0:6 ~ tls[78b0]::A))
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/tls.rs:19:26
    |
 LL |     unsafe { let _val = &A; }
-   |                          ^ cannot access thread local static (DefId(0:6 ~ tls[HASH]::A))
+   |                          ^ cannot access thread local static (DefId(0:6 ~ tls[78b0]::A))
 
 warning: skipping const checks
    |
