@@ -1784,10 +1784,11 @@ impl<'tcx, F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
         self = print_prefix(self)?;
 
         // Don't print `'_` if there's no unerased regions.
-        let print_regions = args.iter().any(|arg| match arg.unpack() {
-            GenericArgKind::Lifetime(r) => *r != ty::ReErased,
-            _ => false,
-        });
+        let print_regions = self.tcx.sess.verbose()
+            || args.iter().any(|arg| match arg.unpack() {
+                GenericArgKind::Lifetime(r) => *r != ty::ReErased,
+                _ => false,
+            });
         let args = args.iter().cloned().filter(|arg| match arg.unpack() {
             GenericArgKind::Lifetime(_) => print_regions,
             _ => true,

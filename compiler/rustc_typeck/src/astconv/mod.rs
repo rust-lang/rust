@@ -288,7 +288,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Given the type/lifetime/const arguments provided to some path (along with
     /// an implicit `Self`, if this is a trait reference), returns the complete
     /// set of substitutions. This may involve applying defaulted type parameters.
-    /// Also returns back constraints on associated types.
+    /// Constraints on associated typess are created from `create_assoc_bindings_for_generic_args`.
     ///
     /// Example:
     ///
@@ -302,7 +302,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ///    which will have been resolved to a `def_id`
     /// 3. The `generic_args` contains info on the `<...>` contents. The `usize` type
     ///    parameters are returned in the `SubstsRef`, the associated type bindings like
-    ///    `Output = u32` are returned in the `Vec<ConvertedBinding...>` result.
+    ///    `Output = u32` are returned from `create_assoc_bindings_for_generic_args`.
     ///
     /// Note that the type listing given here is *exactly* what the user provided.
     ///
