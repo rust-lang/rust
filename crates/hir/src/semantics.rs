@@ -2,7 +2,7 @@
 
 mod source_to_def;
 
-use std::{cell::RefCell, fmt};
+use std::{cell::RefCell, fmt, iter};
 
 use base_db::{FileId, FileRange};
 use either::Either;
@@ -749,8 +749,8 @@ impl<'db> SemanticsImpl<'db> {
 
     fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
         let root = self.parse_or_expand(src.file_id).unwrap();
-        let node = src.value.to_node(&root);
-        src.with_value(&node).original_file_range(self.db.upcast())
+        let node = src.map(|it| it.to_node(&root));
+        node.as_ref().original_file_range(self.db.upcast())
     }
 
     fn token_ancestors_with_macros(
@@ -765,7 +765,17 @@ impl<'db> SemanticsImpl<'db> {
         node: SyntaxNode,
     ) -> impl Iterator<Item = SyntaxNode> + Clone + '_ {
         let node = self.find_file(&node);
-        node.ancestors_with_macros(self.db.upcast()).map(|it| it.value)
+        let db = self.db.upcast();
+        iter::successors(Some(node.cloned()), move |&InFile { file_id, ref value }| {
+            match value.parent() {
+                Some(parent) => Some(InFile::new(file_id, parent)),
+                None => {
+                    self.cache(value.clone(), file_id);
+                    file_id.call_node(db)
+                }
+            }
+        })
+        .map(|it| it.value)
     }
 
     fn ancestors_at_offset_with_macros(
