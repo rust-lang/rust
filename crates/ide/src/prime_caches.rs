@@ -79,7 +79,7 @@ where
 
         enum ParallelPrimeCacheWorkerProgress {
             BeginCrate { crate_id: CrateId, crate_name: String },
-            EndCrate { crate_id: CrateId, cancelled: bool },
+            EndCrate { crate_id: CrateId },
         }
 
         let prime_caches_worker = move |db: Snapshot<RootDatabase>| {
@@ -87,18 +87,10 @@ where
                 progress_sender
                     .send(ParallelPrimeCacheWorkerProgress::BeginCrate { crate_id, crate_name })?;
 
-                let cancelled = Cancelled::catch(|| {
-                    // This also computes the DefMap
-                    db.import_map(crate_id);
-                })
-                .is_err();
+                // This also computes the DefMap
+                db.import_map(crate_id);
 
-                progress_sender
-                    .send(ParallelPrimeCacheWorkerProgress::EndCrate { crate_id, cancelled })?;
-
-                if cancelled {
-                    break;
-                }
+                progress_sender.send(ParallelPrimeCacheWorkerProgress::EndCrate { crate_id })?;
             }
 
             Ok::<_, crossbeam_channel::SendError<_>>(())
@@ -113,11 +105,12 @@ where
         let crates_total = crates_to_prime.len();
         let mut crates_done = 0;
 
-        let mut is_cancelled = false;
         let mut crates_currently_indexing =
             FxHashMap::with_capacity_and_hasher(num_worker_threads as _, Default::default());
 
-        while !crates_to_prime.is_empty() && !is_cancelled {
+        while !crates_to_prime.is_empty() {
+            db.unwind_if_cancelled();
+
             for crate_id in &mut crates_to_prime {
                 work_sender
                     .send((
@@ -129,17 +122,20 @@ where
 
             let worker_progress = match progress_receiver.recv() {
                 Ok(p) => p,
-                Err(_) => break,
+                Err(_) => {
+                    // our workers may have died from a cancelled task, so we'll check and re-raise here.
+                    db.unwind_if_cancelled();
+                    break;
+                }
             };
             match worker_progress {
                 ParallelPrimeCacheWorkerProgress::BeginCrate { crate_id, crate_name } => {
                     crates_currently_indexing.insert(crate_id, crate_name);
                 }
-                ParallelPrimeCacheWorkerProgress::EndCrate { crate_id, cancelled } => {
+                ParallelPrimeCacheWorkerProgress::EndCrate { crate_id } => {
                     crates_currently_indexing.remove(&crate_id);
                     crates_to_prime.mark_done(crate_id);
                     crates_done += 1;
-                    is_cancelled = cancelled;
                 }
             };
 
@@ -150,7 +146,6 @@ where
             };
 
             cb(progress);
-            db.unwind_if_cancelled();
         }
     })
     .unwrap();
