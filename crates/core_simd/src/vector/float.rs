@@ -141,11 +141,7 @@ macro_rules! impl_float_vector {
             #[inline]
             #[must_use = "method returns a new vector and does not mutate the original value"]
             pub fn min(self, other: Self) -> Self {
-                // TODO consider using an intrinsic
-                self.is_nan().select(
-                    other,
-                    self.lanes_ge(other).select(other, self)
-                )
+                unsafe { intrinsics::simd_fmin(self, other) }
             }
 
             /// Returns the maximum of each lane.
@@ -154,11 +150,7 @@ macro_rules! impl_float_vector {
             #[inline]
             #[must_use = "method returns a new vector and does not mutate the original value"]
             pub fn max(self, other: Self) -> Self {
-                // TODO consider using an intrinsic
-                self.is_nan().select(
-                    other,
-                    self.lanes_le(other).select(other, self)
-                )
+                unsafe { intrinsics::simd_fmax(self, other) }
             }
 
             /// Restrict each lane to a certain interval unless it is NaN.

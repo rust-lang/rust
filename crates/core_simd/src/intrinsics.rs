@@ -46,6 +46,10 @@ extern "platform-intrinsic" {
     /// fabs
     pub(crate) fn simd_fabs<T>(x: T) -> T;
 
+    // minnum/maxnum
+    pub(crate) fn simd_fmin<T>(x: T, y: T) -> T;
+    pub(crate) fn simd_fmax<T>(x: T, y: T) -> T;
+
     pub(crate) fn simd_eq<T, U>(x: T, y: T) -> U;
     pub(crate) fn simd_ne<T, U>(x: T, y: T) -> U;
     pub(crate) fn simd_lt<T, U>(x: T, y: T) -> U;
