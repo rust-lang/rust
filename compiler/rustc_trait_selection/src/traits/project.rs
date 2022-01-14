@@ -1802,7 +1802,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
             assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
-            // FIXME(...): Handle consts here as well? Maybe this progress type should just take
+            // FIXME(associated_const_equality): Handle consts here as well? Maybe this progress type should just take
             // a term instead.
             Progress { ty: cache_entry.term.ty().unwrap(), obligations: nested_obligations }
         }

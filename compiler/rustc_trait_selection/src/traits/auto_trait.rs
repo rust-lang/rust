@@ -756,7 +756,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             // when we started out trying to unify
                             // some inference variables. See the comment above
                             // for more infomration
-                            if p.term().skip_binder().ty().has_infer_types() {
+                            if p.term().skip_binder().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
                                     v.into_iter(),

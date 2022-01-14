@@ -1804,11 +1804,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             }
             ty::PredicateKind::Projection(data) => {
                 let self_ty = data.projection_ty.self_ty();
-                let ty = data.term.ty();
+                let term = data.term;
                 if predicate.references_error() || self.is_tainted_by_errors() {
                     return;
                 }
-                if self_ty.needs_infer() && ty.needs_infer() {
+                if self_ty.needs_infer() && term.needs_infer() {
                     // We do this for the `foo.collect()?` case to produce a suggestion.
                     let mut err = self.emit_inference_failure_err(
                         body_id,

@@ -1403,9 +1403,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // `trait_object_dummy_self`, so check for that.
                         let references_self = match pred.skip_binder().term {
                             ty::Term::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
-                            ty::Term::Const(c) => {
-                                c.ty.walk().any(|arg| arg == dummy_self.into())
-                            }
+                            ty::Term::Const(c) => c.ty.walk().any(|arg| arg == dummy_self.into()),
                         };
 
                         // If the projection output contains `Self`, force the user to
