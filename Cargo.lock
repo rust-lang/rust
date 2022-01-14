@@ -578,7 +578,6 @@ dependencies = [
  "cfg",
  "cov-mark",
  "crossbeam-channel",
- "crossbeam-utils",
  "dot",
  "either",
  "expect-test",

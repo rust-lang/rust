@@ -12,7 +12,6 @@ doctest = false
 [dependencies]
 cov-mark = "2.0.0-pre.1"
 crossbeam-channel = "0.5.0"
-crossbeam-utils = "0.8.5"
 either = "1.5.3"
 itertools = "0.10.0"
 tracing = "0.1"

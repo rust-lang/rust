@@ -56,12 +56,12 @@ where
         TopologicSortIterBuilder::new()
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub(crate) fn pending(&self) -> usize {
         self.nodes.len()
     }
 
     pub(crate) fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.nodes.len() == 0 && self.ready.len() == 0
     }
 
     pub(crate) fn mark_done(&mut self, item: T) {
