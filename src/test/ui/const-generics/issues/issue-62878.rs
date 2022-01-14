@@ -7,6 +7,5 @@ fn foo<const N: usize, const A: [u8; N]>() {}
 //[min]~| ERROR `[u8; _]` is forbidden as the type of a const generic parameter
 
 fn main() {
-    foo::<_, {[1]}>();
-    //[full]~^ ERROR mismatched types
+    foo::<_, { [1] }>();
 }

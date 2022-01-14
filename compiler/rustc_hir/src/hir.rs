@@ -293,10 +293,6 @@ impl GenericArg<'_> {
         }
     }
 
-    pub fn is_const(&self) -> bool {
-        matches!(self, GenericArg::Const(_))
-    }
-
     pub fn is_synthetic(&self) -> bool {
         matches!(self, GenericArg::Lifetime(lifetime) if lifetime.name.ident() == Ident::empty())
     }

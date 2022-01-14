@@ -18,6 +18,7 @@ use super::{bad_placeholder, is_suggestable_infer_ty};
 /// Computes the relevant generic parameter for a potential generic const argument.
 ///
 /// This should be called using the query `tcx.opt_const_param_of`.
+#[instrument(level = "debug", skip(tcx))]
 pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DefId> {
     // FIXME(generic_arg_infer): allow for returning DefIds of inference of
     // GenericArg::Infer below. This may require a change where GenericArg::Infer has some flag
@@ -29,7 +30,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
         let parent_node_id = tcx.hir().get_parent_node(hir_id);
         let parent_node = tcx.hir().get(parent_node_id);
 
-        match parent_node {
+        let (generics, arg_idx) = match parent_node {
             // This match arm is for when the def_id appears in a GAT whose
             // path can't be resolved without typechecking e.g.
             //
@@ -75,27 +76,22 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                         .and_then(|args| {
                             args.args
                                 .iter()
-                                .filter(|arg| arg.is_const())
+                                .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
                                 .position(|arg| arg.id() == hir_id)
                         })
                         .unwrap_or_else(|| {
                             bug!("no arg matching AnonConst in segment");
                         });
 
-                    return generics
-                        .params
-                        .iter()
-                        .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Const { .. }))
-                        .nth(arg_index)
-                        .map(|param| param.def_id);
+                    (generics, arg_index)
+                } else {
+                    // I dont think it's possible to reach this but I'm not 100% sure - BoxyUwU
+                    tcx.sess.delay_span_bug(
+                        tcx.def_span(def_id),
+                        "unexpected non-GAT usage of an anon const",
+                    );
+                    return None;
                 }
-
-                // I dont think it's possible to reach this but I'm not 100% sure - BoxyUwU
-                tcx.sess.delay_span_bug(
-                    tcx.def_span(def_id),
-                    "unexpected non-GAT usage of an anon const",
-                );
-                return None;
             }
             Node::Expr(&Expr {
                 kind:
@@ -113,19 +109,14 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     .and_then(|args| {
                         args.args
                             .iter()
-                            .filter(|arg| arg.is_const())
+                            .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
                             .position(|arg| arg.id() == hir_id)
                     })
                     .unwrap_or_else(|| {
                         bug!("no arg matching AnonConst in segment");
                     });
 
-                tcx.generics_of(type_dependent_def)
-                    .params
-                    .iter()
-                    .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Const { .. }))
-                    .nth(idx)
-                    .map(|param| param.def_id)
+                (tcx.generics_of(type_dependent_def), idx)
             }
 
             Node::Ty(&Ty { kind: TyKind::Path(_), .. })
@@ -178,7 +169,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     .filter_map(|seg| seg.args.map(|args| (args.args, seg)))
                     .find_map(|(args, seg)| {
                         args.iter()
-                            .filter(|arg| arg.is_const())
+                            .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
                             .position(|arg| arg.id() == hir_id)
                             .map(|index| (index, seg))
                     });
@@ -238,15 +229,29 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     }
                 };
 
-                generics
-                    .params
-                    .iter()
-                    .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Const { .. }))
-                    .nth(arg_index)
-                    .map(|param| param.def_id)
+                (generics, arg_index)
             }
-            _ => None,
-        }
+            _ => return None,
+        };
+
+        debug!(?parent_node);
+        debug!(?generics);
+        debug!(?arg_idx);
+        generics
+            .params
+            .iter()
+            .filter(|param| !matches!(param.kind, ty::GenericParamDefKind::Lifetime { .. }))
+            .nth(match generics.has_self && generics.parent.is_none() {
+                true => arg_idx + 1,
+                false => arg_idx,
+            })
+            .and_then(|param| match param.kind {
+                ty::GenericParamDefKind::Const { .. } => {
+                    debug!(?param);
+                    Some(param.def_id)
+                }
+                _ => None,
+            })
     } else {
         None
     }
