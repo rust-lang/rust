@@ -293,10 +293,6 @@ impl GenericArg<'_> {
         }
     }
 
-    pub fn is_const(&self) -> bool {
-        matches!(self, GenericArg::Const(_))
-    }
-
     pub fn is_synthetic(&self) -> bool {
         matches!(self, GenericArg::Lifetime(lifetime) if lifetime.name.ident() == Ident::empty())
     }
@@ -316,6 +312,13 @@ impl GenericArg<'_> {
             GenericArg::Type(_) => ast::ParamKindOrd::Type,
             GenericArg::Const(_) => ast::ParamKindOrd::Const,
             GenericArg::Infer(_) => ast::ParamKindOrd::Infer,
+        }
+    }
+
+    pub fn is_ty_or_const(&self) -> bool {
+        match self {
+            GenericArg::Lifetime(_) => false,
+            GenericArg::Type(_) | GenericArg::Const(_) | GenericArg::Infer(_) => true,
         }
     }
 }
