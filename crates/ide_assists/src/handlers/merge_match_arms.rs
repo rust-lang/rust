@@ -806,7 +806,7 @@ fn func(binary: &[u8]) {
     };
 }
         "#,
-                    r#"
+            r#"
 fn func(binary: &[u8]) {
     let space = b' ';
     match binary {
