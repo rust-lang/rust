@@ -153,5 +153,49 @@ LL |         self.as_ref()
    |
    = help: a `loop` may express intention better if this is on purpose
 
-error: aborting due to 14 previous errors
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:162:1
+   |
+LL | pub fn drop_and_replace(mut a: Option<String>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     a = None;
+LL |     drop_and_replace(a);
+   |     ------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:168:1
+   |
+LL | pub fn call() -> String {
+   | ^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     let s = String::new();
+LL |     call();
+   |     ------ recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:175:1
+   |
+LL | pub fn overflow_check(a: i32, b: i32) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |     let _ = a + b;
+LL |     overflow_check(a, b);
+   |     -------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/lint-unconditional-recursion.rs:186:5
+   |
+LL |     fn default() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+...
+LL |             ..Default::default()
+   |               ------------------ recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: aborting due to 18 previous errors
 
