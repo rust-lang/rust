@@ -39,7 +39,7 @@ declare_lint_pass!(PtrEq => [PTR_EQ]);
 
 static LINT_MSG: &str = "use `std::ptr::eq` when comparing raw pointers";
 
-impl LateLintPass<'_> for PtrEq {
+impl<'tcx> LateLintPass<'tcx> for PtrEq {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;

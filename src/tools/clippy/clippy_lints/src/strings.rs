@@ -381,7 +381,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(StrToString => [STR_TO_STRING]);
 
-impl LateLintPass<'_> for StrToString {
+impl<'tcx> LateLintPass<'tcx> for StrToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind;
@@ -431,7 +431,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(StringToString => [STRING_TO_STRING]);
 
-impl LateLintPass<'_> for StringToString {
+impl<'tcx> LateLintPass<'tcx> for StringToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if_chain! {
             if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind;

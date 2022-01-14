@@ -639,7 +639,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.59"
+version = "0.1.60"
 dependencies = [
  "cargo_metadata 0.14.0",
  "clippy_lints",
@@ -647,6 +647,7 @@ dependencies = [
  "compiletest_rs",
  "derive-new",
  "filetime",
+ "futures 0.3.12",
  "if_chain",
  "itertools 0.10.1",
  "parking_lot",
@@ -659,6 +660,7 @@ dependencies = [
  "syn",
  "tempfile",
  "tester",
+ "tokio",
 ]
 
 [[package]]
@@ -678,7 +680,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.59"
+version = "0.1.60"
 dependencies = [
  "cargo_metadata 0.14.0",
  "clippy_utils",
@@ -699,8 +701,9 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.59"
+version = "0.1.60"
 dependencies = [
+ "arrayvec",
  "if_chain",
  "rustc-semver",
 ]

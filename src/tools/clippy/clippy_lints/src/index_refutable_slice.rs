@@ -69,7 +69,7 @@ impl IndexRefutableSlice {
 
 impl_lint_pass!(IndexRefutableSlice => [INDEX_REFUTABLE_SLICE]);
 
-impl LateLintPass<'_> for IndexRefutableSlice {
+impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             if !expr.span.from_expansion() || is_expn_of(expr.span, "if_chain").is_some();

@@ -9,9 +9,9 @@ use clippy_utils::is_trait_impl_item;
 use super::TOO_MANY_ARGUMENTS;
 
 pub(super) fn check_fn(
-    cx: &LateContext<'tcx>,
-    kind: intravisit::FnKind<'tcx>,
-    decl: &'tcx hir::FnDecl<'_>,
+    cx: &LateContext<'_>,
+    kind: intravisit::FnKind<'_>,
+    decl: &hir::FnDecl<'_>,
     span: Span,
     hir_id: hir::HirId,
     too_many_arguments_threshold: u64,
@@ -39,11 +39,7 @@ pub(super) fn check_fn(
     }
 }
 
-pub(super) fn check_trait_item(
-    cx: &LateContext<'tcx>,
-    item: &'tcx hir::TraitItem<'_>,
-    too_many_arguments_threshold: u64,
-) {
+pub(super) fn check_trait_item(cx: &LateContext<'_>, item: &hir::TraitItem<'_>, too_many_arguments_threshold: u64) {
     if let hir::TraitItemKind::Fn(ref sig, _) = item.kind {
         // don't lint extern functions decls, it's not their fault
         if sig.header.abi == Abi::Rust {

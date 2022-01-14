@@ -12,5 +12,11 @@ error: this method is named `iter_mut` but its return type does not implement `I
 LL |     fn iter_mut(&self) -> Counter2 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: this method is named `iter` but its return type does not implement `Iterator`
+  --> $DIR/iter_not_returning_iterator.rs:50:5
+   |
+LL |     fn iter(&self) -> Self::I;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 

@@ -1,35 +1,29 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_span::hygiene::{ExpnKind, MacroKind};
 
 use super::UNIT_CMP;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if expr.span.from_expansion() {
-        if let Some(callee) = expr.span.source_callee() {
-            if let ExpnKind::Macro(MacroKind::Bang, symbol) = callee.kind {
-                if let ExprKind::Binary(ref cmp, left, _) = expr.kind {
-                    let op = cmp.node;
-                    if op.is_comparison() && cx.typeck_results().expr_ty(left).is_unit() {
-                        let result = match symbol.as_str() {
-                            "assert_eq" | "debug_assert_eq" => "succeed",
-                            "assert_ne" | "debug_assert_ne" => "fail",
-                            _ => return,
-                        };
-                        span_lint(
-                            cx,
-                            UNIT_CMP,
-                            expr.span,
-                            &format!(
-                                "`{}` of unit values detected. This will always {}",
-                                symbol.as_str(),
-                                result
-                            ),
-                        );
-                    }
-                }
+        if let Some(macro_call) = root_macro_call_first_node(cx, expr) {
+            let macro_name = cx.tcx.item_name(macro_call.def_id);
+            let result = match macro_name.as_str() {
+                "assert_eq" | "debug_assert_eq" => "succeed",
+                "assert_ne" | "debug_assert_ne" => "fail",
+                _ => return,
+            };
+            let Some ((left, _, _)) = find_assert_eq_args(cx, expr, macro_call.expn) else { return };
+            if !cx.typeck_results().expr_ty(left).is_unit() {
+                return;
             }
+            span_lint(
+                cx,
+                UNIT_CMP,
+                macro_call.span,
+                &format!("`{}` of unit values detected. This will always {}", macro_name, result),
+            );
         }
         return;
     }

@@ -220,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     continue;
                 } else if let Some(loc) = clone_usage.cloned_consume_or_mutate_loc {
                     // cloned value is mutated, and the clone is alive.
-                    if possible_borrower.is_alive_at(ret_local, loc) {
+                    if possible_borrower.local_is_alive_at(ret_local, loc) {
                         continue;
                     }
                 }
@@ -767,7 +767,7 @@ impl PossibleBorrowerMap<'_, '_> {
         self.bitset.0 == self.bitset.1
     }
 
-    fn is_alive_at(&mut self, local: mir::Local, at: mir::Location) -> bool {
+    fn local_is_alive_at(&mut self, local: mir::Local, at: mir::Location) -> bool {
         self.maybe_live.seek_after_primary_effect(at);
         self.maybe_live.contains(local)
     }
