@@ -6,7 +6,7 @@ LL |         Ty::List(elem) => foo(elem),
    |
    = note: expected enum `Ty`
             found struct `Box<Ty>`
-help: try dereferencing the `Box`
+help: consider unboxing the value
    |
 LL |         Ty::List(elem) => foo(*elem),
    |                               +
