@@ -342,8 +342,8 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             match length {
                 hir::ArrayLen::Infer(_, _) => println!("{}repeat count: _", ind),
                 hir::ArrayLen::Body(anon_const) => {
-                    print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1)
-                }
+                    print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
+                },
             }
         },
         hir::ExprKind::Err => {

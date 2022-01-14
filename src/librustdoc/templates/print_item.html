@@ -16,12 +16,12 @@
     </h1> {#- -#}
     <span class="out-of-band"> {#- -#}
         {% if !stability_since_raw.is_empty() %}
-        {{- stability_since_raw|safe -}} ·
+        {{- stability_since_raw|safe -}} · {# -#}
         {% endif %}
         {%- match src_href -%}
             {%- when Some with (href) -%}
-                <a class="srclink" href="{{href|safe}}" title="goto source code">source</a>
-            {%- else -%} ·
+                <a class="srclink" href="{{href|safe}}" title="goto source code">source</a> · {# -#}
+            {%- else -%}
         {%- endmatch -%}
         <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs"> {#- -#}
             [<span class="inner">&#x2212;</span>] {#- -#}

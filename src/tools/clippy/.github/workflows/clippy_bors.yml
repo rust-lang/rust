@@ -112,17 +112,22 @@ jobs:
         echo "$SYSROOT/bin" >> $GITHUB_PATH
 
     - name: Build
-      run: cargo build --features deny-warnings,internal-lints,metadata-collector-lint
+      run: cargo build --features deny-warnings,internal
 
     - name: Test
-      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
+      if: runner.os == 'Linux'
+      run: cargo test --features deny-warnings,internal
+
+    - name: Test
+      if: runner.os != 'Linux'
+      run: cargo test --features deny-warnings,internal -- --skip dogfood
 
     - name: Test clippy_lints
-      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
+      run: cargo test --features deny-warnings,internal
       working-directory: clippy_lints
 
     - name: Test clippy_utils
-      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
+      run: cargo test --features deny-warnings,internal
       working-directory: clippy_utils
 
     - name: Test rustc_tools_util
@@ -132,14 +137,6 @@ jobs:
     - name: Test clippy_dev
       run: cargo test --features deny-warnings
       working-directory: clippy_dev
-
-    - name: Test cargo-clippy
-      run: ../target/debug/cargo-clippy
-      working-directory: clippy_workspace_tests
-
-    - name: Test cargo-clippy --fix
-      run: ../target/debug/cargo-clippy clippy --fix
-      working-directory: clippy_workspace_tests
 
     - name: Test clippy-driver
       run: bash .github/driver.sh

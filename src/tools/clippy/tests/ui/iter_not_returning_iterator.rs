@@ -44,4 +44,24 @@ impl Iterator for Counter {
     }
 }
 
+// Issue #8225
+trait Iter {
+    type I;
+    fn iter(&self) -> Self::I;
+}
+
+impl Iter for () {
+    type I = core::slice::Iter<'static, ()>;
+    fn iter(&self) -> Self::I {
+        [].iter()
+    }
+}
+
+struct S;
+impl S {
+    fn iter(&self) -> <() as Iter>::I {
+        ().iter()
+    }
+}
+
 fn main() {}

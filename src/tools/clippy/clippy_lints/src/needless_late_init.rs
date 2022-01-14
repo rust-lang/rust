@@ -330,7 +330,7 @@ fn check<'tcx>(
     Some(())
 }
 
-impl LateLintPass<'tcx> for NeedlessLateInit {
+impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         let mut parents = cx.tcx.hir().parent_iter(local.hir_id);
 

@@ -1,5 +1,5 @@
 error: the operation is ineffective. Consider reducing it to `x`
-  --> $DIR/identity_op.rs:26:5
+  --> $DIR/identity_op.rs:37:5
    |
 LL |     x + 0;
    |     ^^^^^
@@ -7,73 +7,73 @@ LL |     x + 0;
    = note: `-D clippy::identity-op` implied by `-D warnings`
 
 error: the operation is ineffective. Consider reducing it to `x`
-  --> $DIR/identity_op.rs:27:5
+  --> $DIR/identity_op.rs:38:5
    |
 LL |     x + (1 - 1);
    |     ^^^^^^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
-  --> $DIR/identity_op.rs:29:5
+  --> $DIR/identity_op.rs:40:5
    |
 LL |     0 + x;
    |     ^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
-  --> $DIR/identity_op.rs:32:5
+  --> $DIR/identity_op.rs:43:5
    |
 LL |     x | (0);
    |     ^^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
-  --> $DIR/identity_op.rs:35:5
+  --> $DIR/identity_op.rs:46:5
    |
 LL |     x * 1;
    |     ^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
-  --> $DIR/identity_op.rs:36:5
+  --> $DIR/identity_op.rs:47:5
    |
 LL |     1 * x;
    |     ^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
-  --> $DIR/identity_op.rs:42:5
+  --> $DIR/identity_op.rs:53:5
    |
 LL |     -1 & x;
    |     ^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `u`
-  --> $DIR/identity_op.rs:45:5
+  --> $DIR/identity_op.rs:56:5
    |
 LL |     u & 255;
    |     ^^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `42`
-  --> $DIR/identity_op.rs:48:5
+  --> $DIR/identity_op.rs:59:5
    |
 LL |     42 << 0;
    |     ^^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `1`
-  --> $DIR/identity_op.rs:49:5
+  --> $DIR/identity_op.rs:60:5
    |
 LL |     1 >> 0;
    |     ^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `42`
-  --> $DIR/identity_op.rs:50:5
+  --> $DIR/identity_op.rs:61:5
    |
 LL |     42 >> 0;
    |     ^^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `&x`
-  --> $DIR/identity_op.rs:51:5
+  --> $DIR/identity_op.rs:62:5
    |
 LL |     &x >> 0;
    |     ^^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
-  --> $DIR/identity_op.rs:52:5
+  --> $DIR/identity_op.rs:63:5
    |
 LL |     x >> &0;
    |     ^^^^^^^

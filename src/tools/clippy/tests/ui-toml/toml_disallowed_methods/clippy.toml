@@ -1,6 +1,8 @@
 disallowed-methods = [
     # just a string is shorthand for path only
     "std::iter::Iterator::sum",
+    "f32::clamp",
+    "slice::sort_unstable",
     # can give path and reason with an inline table
     { path = "regex::Regex::is_match", reason = "no matching allowed" },
     # can use an inline table but omit reason
