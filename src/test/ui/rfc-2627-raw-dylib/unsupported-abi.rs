@@ -1,4 +1,5 @@
-// only-x86_64-pc-windows-msvc
+// only-x86_64
+// only-windows
 // compile-flags: --crate-type lib --emit link
 #![allow(incomplete_features)]
 #![feature(raw_dylib)]
