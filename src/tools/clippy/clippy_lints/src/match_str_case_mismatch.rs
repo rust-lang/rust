@@ -55,7 +55,7 @@ enum CaseMethod {
     AsciiUppercase,
 }
 
-impl LateLintPass<'_> for MatchStrCaseMismatch {
+impl<'tcx> LateLintPass<'tcx> for MatchStrCaseMismatch {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if !in_external_macro(cx.tcx.sess, expr.span);

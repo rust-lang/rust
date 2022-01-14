@@ -108,5 +108,15 @@ LL | |     a = c.0;
    |
    = note: or maybe you should use `std::mem::replace`?
 
-error: aborting due to 12 previous errors
+error: this looks like you are swapping `s.0.x` and `s.0.y` manually
+  --> $DIR/swap.rs:178:5
+   |
+LL | /     let t = s.0.x;
+LL | |     s.0.x = s.0.y;
+LL | |     s.0.y = t;
+   | |_____________^ help: try: `std::mem::swap(&mut s.0.x, &mut s.0.y)`
+   |
+   = note: or maybe you should use `std::mem::replace`?
+
+error: aborting due to 13 previous errors
 

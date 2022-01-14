@@ -43,7 +43,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(FromStrRadix10 => [FROM_STR_RADIX_10]);
 
-impl LateLintPass<'tcx> for FromStrRadix10 {
+impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, exp: &Expr<'tcx>) {
         if_chain! {
             if let ExprKind::Call(maybe_path, arguments) = &exp.kind;

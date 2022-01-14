@@ -2,9 +2,12 @@
 uitest = "test --test compile-test"
 dev = "run --package clippy_dev --bin clippy_dev --manifest-path clippy_dev/Cargo.toml --"
 lintcheck = "run --package lintcheck --bin lintcheck --manifest-path lintcheck/Cargo.toml  -- "
-collect-metadata = "test --test dogfood --features metadata-collector-lint -- run_metadata_collection_lint --ignored"
+collect-metadata = "test --test dogfood --features internal -- run_metadata_collection_lint --ignored"
 
 [build]
 # -Zbinary-dep-depinfo allows us to track which rlib files to use for compiling UI tests
 rustflags = ["-Zunstable-options", "-Zbinary-dep-depinfo"]
 target-dir = "target"
+
+[unstable]
+binary-dep-depinfo = true

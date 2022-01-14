@@ -40,7 +40,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ManualOkOr => [MANUAL_OK_OR]);
 
-impl LateLintPass<'_> for ManualOkOr {
+impl<'tcx> LateLintPass<'tcx> for ManualOkOr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'tcx>) {
         if in_external_macro(cx.sess(), scrutinee.span) {
             return;

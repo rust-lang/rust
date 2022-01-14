@@ -1,5 +1,5 @@
 error: transmute from an integer to a pointer
-  --> $DIR/transmutes_expressible_as_ptr_casts.rs:19:39
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:18:39
    |
 LL |     let _ptr_i32_transmute = unsafe { transmute::<usize, *const i32>(usize::MAX) };
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `usize::MAX as *const i32`
@@ -7,7 +7,7 @@ LL |     let _ptr_i32_transmute = unsafe { transmute::<usize, *const i32>(usize:
    = note: `-D clippy::useless-transmute` implied by `-D warnings`
 
 error: transmute from a pointer to a pointer
-  --> $DIR/transmutes_expressible_as_ptr_casts.rs:23:38
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:22:38
    |
 LL |     let _ptr_i8_transmute = unsafe { transmute::<*const i32, *const i8>(ptr_i32) };
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr_i32 as *const i8`
@@ -15,13 +15,13 @@ LL |     let _ptr_i8_transmute = unsafe { transmute::<*const i32, *const i8>(ptr
    = note: `-D clippy::transmute-ptr-to-ptr` implied by `-D warnings`
 
 error: transmute from a pointer to a pointer
-  --> $DIR/transmutes_expressible_as_ptr_casts.rs:29:46
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:28:46
    |
 LL |     let _ptr_to_unsized_transmute = unsafe { transmute::<*const [i32], *const [u16]>(slice_ptr) };
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `slice_ptr as *const [u16]`
 
 error: transmute from `*const i32` to `usize` which could be expressed as a pointer cast instead
-  --> $DIR/transmutes_expressible_as_ptr_casts.rs:35:50
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:34:50
    |
 LL |     let _usize_from_int_ptr_transmute = unsafe { transmute::<*const i32, usize>(ptr_i32) };
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr_i32 as usize`
@@ -29,25 +29,25 @@ LL |     let _usize_from_int_ptr_transmute = unsafe { transmute::<*const i32, us
    = note: `-D clippy::transmutes-expressible-as-ptr-casts` implied by `-D warnings`
 
 error: transmute from a reference to a pointer
-  --> $DIR/transmutes_expressible_as_ptr_casts.rs:41:41
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:40:41
    |
 LL |     let _array_ptr_transmute = unsafe { transmute::<&[i32; 4], *const [i32; 4]>(array_ref) };
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `array_ref as *const [i32; 4]`
 
 error: transmute from `fn(usize) -> u8 {main::foo}` to `*const usize` which could be expressed as a pointer cast instead
-  --> $DIR/transmutes_expressible_as_ptr_casts.rs:49:41
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:48:41
    |
 LL |     let _usize_ptr_transmute = unsafe { transmute::<fn(usize) -> u8, *const usize>(foo) };
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `foo as *const usize`
 
 error: transmute from `fn(usize) -> u8 {main::foo}` to `usize` which could be expressed as a pointer cast instead
-  --> $DIR/transmutes_expressible_as_ptr_casts.rs:53:49
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:52:49
    |
 LL |     let _usize_from_fn_ptr_transmute = unsafe { transmute::<fn(usize) -> u8, usize>(foo) };
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `foo as usize`
 
 error: transmute from a reference to a pointer
-  --> $DIR/transmutes_expressible_as_ptr_casts.rs:65:14
+  --> $DIR/transmutes_expressible_as_ptr_casts.rs:64:14
    |
 LL |     unsafe { transmute::<&[i32; 1], *const u8>(in_param) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `in_param as *const [i32; 1] as *const u8`

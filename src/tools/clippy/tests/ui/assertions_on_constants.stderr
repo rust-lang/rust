@@ -1,75 +1,75 @@
 error: `assert!(true)` will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:11:5
+  --> $DIR/assertions_on_constants.rs:10:5
    |
 LL |     assert!(true);
    |     ^^^^^^^^^^^^^
    |
    = note: `-D clippy::assertions-on-constants` implied by `-D warnings`
    = help: remove it
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(false)` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:12:5
+  --> $DIR/assertions_on_constants.rs:11:5
    |
 LL |     assert!(false);
    |     ^^^^^^^^^^^^^^
    |
    = help: use `panic!()` or `unreachable!()`
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(true)` will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:13:5
+  --> $DIR/assertions_on_constants.rs:12:5
    |
 LL |     assert!(true, "true message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: remove it
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `assert!(false, $crate::const_format_args!($($t)+))` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:14:5
+error: `assert!(false, ..)` should probably be replaced
+  --> $DIR/assertions_on_constants.rs:13:5
    |
 LL |     assert!(false, "false message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use `panic!($crate::const_format_args!($($t)+))` or `unreachable!($crate::const_format_args!($($t)+))`
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = help: use `panic!(..)` or `unreachable!(..)`
+
+error: `assert!(false, ..)` should probably be replaced
+  --> $DIR/assertions_on_constants.rs:16:5
+   |
+LL |     assert!(false, "{}", msg.to_uppercase());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `panic!(..)` or `unreachable!(..)`
 
 error: `assert!(true)` will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:20:5
+  --> $DIR/assertions_on_constants.rs:19:5
    |
 LL |     assert!(B);
    |     ^^^^^^^^^^
    |
    = help: remove it
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `assert!(false)` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:23:5
+  --> $DIR/assertions_on_constants.rs:22:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^
    |
    = help: use `panic!()` or `unreachable!()`
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `assert!(false, $crate::const_format_args!($($t)+))` should probably be replaced
-  --> $DIR/assertions_on_constants.rs:24:5
+error: `assert!(false, ..)` should probably be replaced
+  --> $DIR/assertions_on_constants.rs:23:5
    |
 LL |     assert!(C, "C message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use `panic!($crate::const_format_args!($($t)+))` or `unreachable!($crate::const_format_args!($($t)+))`
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = help: use `panic!(..)` or `unreachable!(..)`
 
 error: `debug_assert!(true)` will be optimized out by the compiler
-  --> $DIR/assertions_on_constants.rs:26:5
+  --> $DIR/assertions_on_constants.rs:25:5
    |
 LL |     debug_assert!(true);
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = help: remove it
-   = note: this error originates in the macro `$crate::assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

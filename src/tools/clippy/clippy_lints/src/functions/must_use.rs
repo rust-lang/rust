@@ -18,7 +18,7 @@ use clippy_utils::{match_def_path, must_use_attr, return_ty, trait_ref_of_method
 
 use super::{DOUBLE_MUST_USE, MUST_USE_CANDIDATE, MUST_USE_UNIT};
 
-pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
+pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     let attr = must_use_attr(attrs);
     if let hir::ItemKind::Fn(ref sig, ref _generics, ref body_id) = item.kind {
@@ -40,7 +40,7 @@ pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
     }
 }
 
-pub(super) fn check_impl_item(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
+pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
     if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
         let is_public = cx.access_levels.is_exported(item.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
@@ -62,7 +62,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<
     }
 }
 
-pub(super) fn check_trait_item(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
+pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, ref eid) = item.kind {
         let is_public = cx.access_levels.is_exported(item.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());

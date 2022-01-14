@@ -4,7 +4,13 @@
 extern crate libc;
 
 #[warn(clippy::cast_ptr_alignment)]
-#[allow(clippy::no_effect, clippy::unnecessary_operation, clippy::cast_lossless)]
+#[allow(
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::cast_lossless,
+    clippy::borrow_as_ptr
+)]
+
 fn main() {
     /* These should be warned against */
 

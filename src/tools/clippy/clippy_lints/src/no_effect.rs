@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for NoEffect {
     }
 }
 
-fn check_no_effect(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> bool {
+fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
     if let StmtKind::Semi(expr) = stmt.kind {
         if has_no_effect(cx, expr) {
             span_lint_hir(cx, NO_EFFECT, expr.hir_id, stmt.span, "statement with no effect");
@@ -155,7 +155,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     }
 }
 
-fn check_unnecessary_operation(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
+fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if_chain! {
         if let StmtKind::Semi(expr) = stmt.kind;
         if let Some(reduced) = reduce_expression(cx, expr);

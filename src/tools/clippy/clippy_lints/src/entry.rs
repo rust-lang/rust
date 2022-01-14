@@ -233,7 +233,7 @@ struct ContainsExpr<'tcx> {
     key: &'tcx Expr<'tcx>,
     call_ctxt: SyntaxContext,
 }
-fn try_parse_contains(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(MapType, ContainsExpr<'tcx>)> {
+fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(MapType, ContainsExpr<'tcx>)> {
     let mut negated = false;
     let expr = peel_hir_expr_while(expr, |e| match e.kind {
         ExprKind::Unary(UnOp::Not, e) => {
@@ -280,7 +280,7 @@ struct InsertExpr<'tcx> {
     key: &'tcx Expr<'tcx>,
     value: &'tcx Expr<'tcx>,
 }
-fn try_parse_insert(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<InsertExpr<'tcx>> {
+fn try_parse_insert<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<InsertExpr<'tcx>> {
     if let ExprKind::MethodCall(_, _, [map, key, value], _) = expr.kind {
         let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
         if match_def_path(cx, id, &paths::BTREEMAP_INSERT) || match_def_path(cx, id, &paths::HASHMAP_INSERT) {
@@ -301,7 +301,7 @@ enum Edit<'tcx> {
     /// An insertion into the map.
     Insertion(Insertion<'tcx>),
 }
-impl Edit<'tcx> {
+impl<'tcx> Edit<'tcx> {
     fn as_insertion(self) -> Option<Insertion<'tcx>> {
         if let Self::Insertion(i) = self { Some(i) } else { None }
     }
@@ -532,7 +532,7 @@ struct InsertSearchResults<'tcx> {
     allow_insert_closure: bool,
     is_single_insert: bool,
 }
-impl InsertSearchResults<'tcx> {
+impl<'tcx> InsertSearchResults<'tcx> {
     fn as_single_insertion(&self) -> Option<Insertion<'tcx>> {
         self.is_single_insert.then(|| self.edits[0].as_insertion().unwrap())
     }
@@ -633,7 +633,7 @@ impl InsertSearchResults<'tcx> {
     }
 }
 
-fn find_insert_calls(
+fn find_insert_calls<'tcx>(
     cx: &LateContext<'tcx>,
     contains_expr: &ContainsExpr<'tcx>,
     expr: &'tcx Expr<'_>,
