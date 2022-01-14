@@ -2,7 +2,7 @@ use std::{collections::VecDeque, hash::Hash};
 
 use rustc_hash::FxHashMap;
 
-pub struct TopologicSortIterBuilder<T> {
+pub(crate) struct TopologicSortIterBuilder<T> {
     nodes: FxHashMap<T, Entry<T>>,
 }
 
@@ -18,7 +18,7 @@ where
         self.nodes.entry(item).or_default()
     }
 
-    pub fn add(&mut self, item: T, predecessors: impl IntoIterator<Item = T>) {
+    pub(crate) fn add(&mut self, item: T, predecessors: impl IntoIterator<Item = T>) {
         let mut num_predecessors = 0;
 
         for predecessor in predecessors.into_iter() {
@@ -30,7 +30,7 @@ where
         entry.num_predecessors += num_predecessors;
     }
 
-    pub fn build(self) -> TopologicalSortIter<T> {
+    pub(crate) fn build(self) -> TopologicalSortIter<T> {
         let ready = self
             .nodes
             .iter()
@@ -43,7 +43,7 @@ where
     }
 }
 
-pub struct TopologicalSortIter<T> {
+pub(crate) struct TopologicalSortIter<T> {
     ready: VecDeque<T>,
     nodes: FxHashMap<T, Entry<T>>,
 }
@@ -52,19 +52,19 @@ impl<T> TopologicalSortIter<T>
 where
     T: Copy + Eq + PartialEq + Hash,
 {
-    pub fn builder() -> TopologicSortIterBuilder<T> {
+    pub(crate) fn builder() -> TopologicSortIterBuilder<T> {
         TopologicSortIterBuilder::new()
     }
 
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.nodes.len()
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    pub fn mark_done(&mut self, item: T) {
+    pub(crate) fn mark_done(&mut self, item: T) {
         let entry = self.nodes.remove(&item).expect("invariant: unknown item marked as done");
 
         for successor in entry.successors {

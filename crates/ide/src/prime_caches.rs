@@ -7,7 +7,7 @@ mod topologic_sort;
 use hir::db::DefDatabase;
 use ide_db::base_db::{
     salsa::{Database, ParallelDatabase, Snapshot},
-    Cancelled, CrateGraph, CrateId, SourceDatabase, SourceDatabaseExt,
+    CrateGraph, CrateId, SourceDatabase, SourceDatabaseExt,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -104,7 +104,6 @@ where
 
         let crates_total = crates_to_prime.len();
         let mut crates_done = 0;
-
         let mut crates_currently_indexing =
             FxHashMap::with_capacity_and_hasher(num_worker_threads as _, Default::default());
 
