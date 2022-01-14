@@ -358,7 +358,6 @@ fn do_collect(
         assoc_items.iter().copied(),
         tree_id,
         container,
-        100,
     );
 
     let attribute_calls =
@@ -375,12 +374,7 @@ fn collect_items(
     assoc_items: impl Iterator<Item = AssocItem>,
     tree_id: item_tree::TreeId,
     container: ItemContainerId,
-    limit: usize,
 ) {
-    if limit == 0 {
-        return;
-    }
-
     let item_tree = tree_id.item_tree(db);
     let crate_graph = db.crate_graph();
     let cfg_options = &crate_graph[module.krate].cfg_options;
@@ -401,7 +395,7 @@ fn collect_items(
             {
                 attr_calls.push((ast_id, call_id));
                 let res = expander.enter_expand_id(db, call_id);
-                collect_macro_items(db, items, attr_calls, module, expander, container, limit, res);
+                collect_macro_items(db, items, attr_calls, module, expander, container, res);
                 continue 'items;
             }
         }
@@ -435,9 +429,7 @@ fn collect_items(
                 let res = expander.enter_expand(db, call);
 
                 if let Ok(res) = res {
-                    collect_macro_items(
-                        db, items, attr_calls, module, expander, container, limit, res,
-                    );
+                    collect_macro_items(db, items, attr_calls, module, expander, container, res);
                 }
             }
         }
@@ -451,7 +443,6 @@ fn collect_macro_items(
     module: ModuleId,
     expander: &mut Expander,
     container: ItemContainerId,
-    limit: usize,
     res: ExpandResult<Option<(Mark, ast::MacroItems)>>,
 ) {
     if let Some((mark, mac)) = res.value {
@@ -459,7 +450,7 @@ fn collect_macro_items(
         let tree_id = item_tree::TreeId::new(src.file_id, None);
         let item_tree = tree_id.item_tree(db);
         let iter = item_tree.top_level_items().iter().filter_map(ModItem::as_assoc_item);
-        collect_items(db, items, attr_calls, module, expander, iter, tree_id, container, limit - 1);
+        collect_items(db, items, attr_calls, module, expander, iter, tree_id, container);
 
         expander.exit(db, mark);
     }
