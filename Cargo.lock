@@ -4052,7 +4052,7 @@ dependencies = [
 name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
- "rand 0.7.3",
+ "rand 0.8.4",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",

@@ -9,7 +9,7 @@ doctest = false
 [dependencies]
 rustc_graphviz = { path = "../rustc_graphviz" }
 tracing = "0.1"
-rand = "0.7"
+rand = "0.8.4"
 rustc_middle = { path = "../rustc_middle" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir" }
