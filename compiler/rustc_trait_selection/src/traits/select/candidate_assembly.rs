@@ -173,6 +173,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let needs_infer = stack.obligation.predicate.has_infer_types_or_consts();
 
+        let sized_predicate = self.tcx().lang_items().sized_trait()
+            == Some(stack.obligation.predicate.skip_binder().def_id());
+
         // If there are STILL multiple candidates, we can further
         // reduce the list by dropping duplicates -- including
         // resolving specializations.
@@ -181,6 +184,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             while i < candidates.len() {
                 let is_dup = (0..candidates.len()).filter(|&j| i != j).any(|j| {
                     self.candidate_should_be_dropped_in_favor_of(
+                        sized_predicate,
                         &candidates[i],
                         &candidates[j],
                         needs_infer,
@@ -338,13 +342,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(candidates)
     }
 
+    #[tracing::instrument(level = "debug", skip(self, candidates))]
     fn assemble_candidates_from_projected_tys(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        debug!(?obligation, "assemble_candidates_from_projected_tys");
-
         // Before we go into the whole placeholder thing, just
         // quickly check if the self-type is a projection at all.
         match obligation.predicate.skip_binder().trait_ref.self_ty().kind() {
@@ -369,12 +372,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// supplied to find out whether it is listed among them.
     ///
     /// Never affects the inference environment.
+    #[tracing::instrument(level = "debug", skip(self, stack, candidates))]
     fn assemble_candidates_from_caller_bounds<'o>(
         &mut self,
         stack: &TraitObligationStack<'o, 'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
-        debug!(?stack.obligation, "assemble_candidates_from_caller_bounds");
+        debug!(?stack.obligation);
 
         let all_bounds = stack
             .obligation
@@ -876,6 +880,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
     }
 
+    #[tracing::instrument(level = "debug", skip(self, obligation, candidates))]
     fn assemble_candidates_for_trait_alias(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -883,7 +888,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         // Okay to skip binder here because the tests we do below do not involve bound regions.
         let self_ty = obligation.self_ty().skip_binder();
-        debug!(?self_ty, "assemble_candidates_for_trait_alias");
+        debug!(?self_ty);
 
         let def_id = obligation.predicate.def_id();
 
@@ -894,6 +899,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     /// Assembles the trait which are built-in to the language itself:
     /// `Copy`, `Clone` and `Sized`.
+    #[tracing::instrument(level = "debug", skip(self, candidates))]
     fn assemble_builtin_bound_candidates(
         &mut self,
         conditions: BuiltinImplConditions<'tcx>,
@@ -901,14 +907,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         match conditions {
             BuiltinImplConditions::Where(nested) => {
-                debug!(?nested, "builtin_bound");
                 candidates
                     .vec
                     .push(BuiltinCandidate { has_nested: !nested.skip_binder().is_empty() });
             }
             BuiltinImplConditions::None => {}
             BuiltinImplConditions::Ambiguous => {
-                debug!("assemble_builtin_bound_candidates: ambiguous builtin");
                 candidates.ambiguous = true;
             }
         }

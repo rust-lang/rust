@@ -188,6 +188,11 @@ pub trait Printer<'tcx>: Sized {
             own_params.start = 1;
         }
 
+        // If we're in verbose mode, then print default-equal args too
+        if self.tcx().sess.verbose() {
+            return &substs[own_params];
+        }
+
         // Don't print args that are the defaults of their respective parameters.
         own_params.end -= generics
             .params
