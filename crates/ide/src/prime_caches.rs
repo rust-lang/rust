@@ -5,9 +5,12 @@
 mod topologic_sort;
 
 use hir::db::DefDatabase;
-use ide_db::base_db::{
-    salsa::{Database, ParallelDatabase, Snapshot},
-    CrateGraph, CrateId, SourceDatabase, SourceDatabaseExt,
+use ide_db::{
+    base_db::{
+        salsa::{Database, ParallelDatabase, Snapshot},
+        CrateGraph, CrateId, SourceDatabase, SourceDatabaseExt,
+    },
+    FxIndexMap,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -105,8 +108,11 @@ pub(crate) fn parallel_prime_caches(
 
         let crates_total = crates_to_prime.len();
         let mut crates_done = 0;
+
+        // an index map is used to preserve ordering so we can sort the progress report in order of
+        // "longest crate to index" first
         let mut crates_currently_indexing =
-            FxHashMap::with_capacity_and_hasher(num_worker_threads as _, Default::default());
+            FxIndexMap::with_capacity_and_hasher(num_worker_threads as _, Default::default());
 
         while !crates_to_prime.is_empty() {
             db.unwind_if_cancelled();
