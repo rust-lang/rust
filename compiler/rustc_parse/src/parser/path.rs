@@ -1,5 +1,5 @@
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{Parser, TokenType};
+use super::{Parser, Restrictions, TokenType};
 use crate::maybe_whole;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
@@ -634,7 +634,22 @@ impl<'a> Parser<'a> {
         } else if self.token.is_keyword(kw::Const) {
             return self.recover_const_param_declaration(ty_generics);
         } else {
-            return Ok(None);
+            // Fall back by trying to parse a const-expr expression. If we successfully do so,
+            // then we should report an error that it needs to be wrapped in braces.
+            let snapshot = self.clone();
+            match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
+                Ok(expr) => {
+                    return Ok(Some(self.dummy_const_arg_needs_braces(
+                        self.struct_span_err(expr.span, "invalid const generic expression"),
+                        expr.span,
+                    )));
+                }
+                Err(err) => {
+                    *self = snapshot;
+                    err.cancel();
+                    return Ok(None);
+                }
+            }
         };
         Ok(Some(arg))
     }
