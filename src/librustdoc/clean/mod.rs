@@ -5,6 +5,7 @@ mod auto_trait;
 mod blanket_impl;
 crate mod cfg;
 crate mod inline;
+mod render_macro_matchers;
 mod simplify;
 crate mod types;
 crate mod utils;
