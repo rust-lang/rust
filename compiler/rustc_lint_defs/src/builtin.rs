@@ -1805,7 +1805,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
     /// if let _ = 123 {
     ///     println!("always runs!");
     /// }
@@ -2431,7 +2431,19 @@ declare_lint! {
     /// }
     /// ```
     ///
-    /// {{produces}}
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: formatting may not be suitable for sub-register argument
+    ///  --> src/main.rs:7:19
+    ///   |
+    /// 7 |         asm!("mov {0}, {0}", in(reg) 0i16);
+    ///   |                   ^^^  ^^^           ---- for this argument
+    ///   |
+    ///   = note: `#[warn(asm_sub_register)]` on by default
+    ///   = help: use the `x` modifier to have the register formatted as `ax`
+    ///   = help: or use the `r` modifier to keep the default formatting of `rax`
+    /// ```
     ///
     /// ### Explanation
     ///
@@ -2470,7 +2482,17 @@ declare_lint! {
     /// }
     /// ```
     ///
-    /// {{produces}}
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
+    ///  --> src/main.rs:8:14
+    ///   |
+    /// 8 |             ".att_syntax",
+    ///   |              ^^^^^^^^^^^
+    ///   |
+    ///   = note: `#[warn(bad_asm_style)]` on by default
+    /// ```
     ///
     /// ### Explanation
     ///
@@ -2788,7 +2810,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// #![feature(staged_api)]
     ///
     /// #[derive(Clone)]
@@ -3618,7 +3640,17 @@ declare_lint! {
     /// fn foo() {}
     /// ```
     ///
-    /// {{produces}}
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: duplicated attribute
+    ///  --> src/lib.rs:2:1
+    ///   |
+    /// 2 | #[test]
+    ///   | ^^^^^^^
+    ///   |
+    ///   = note: `#[warn(duplicate_macro_attributes)]` on by default
+    /// ```
     ///
     /// ### Explanation
     ///
