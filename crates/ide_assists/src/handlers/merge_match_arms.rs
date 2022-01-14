@@ -146,6 +146,11 @@ fn get_arm_types(context: &AssistContext, arm: &MatchArm) -> HashMap<String, Opt
                 Some(ast::Pat::ParenPat(parentheses)) => {
                     recurse(&parentheses.pat(), map, ctx);
                 }
+                Some(ast::Pat::SlicePat(slice)) => {
+                    for slice_pat in slice.pats() {
+                        recurse(&Some(slice_pat), map, ctx);
+                    }
+                }
                 Some(ast::Pat::IdentPat(ident_pat)) => {
                     if let Some(name) = ident_pat.name() {
                         let pat_type = ctx.sema.type_of_pat(local_pat);
@@ -746,6 +751,41 @@ fn func(x: i32) {
         1 => $0"",
         ((((variable)))) => "",
         _ => "other"
+    };
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn merge_match_arms_refpat() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+fn func() {
+    let name = Some(String::from(""));
+    let n = String::from("");
+    match name {
+        Some(ref n) => $0"",
+        Some(n) => "",
+        _ => "other",
+    };
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn merge_match_arms_slice() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+fn func(binary: &[u8]) {
+    let space = b' ';
+    match binary {
+        [0x7f, b'E', b'L', b'F', ..] => $0"",
+        [space] => "",
+        _ => "other",
     };
 }
         "#,
