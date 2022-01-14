@@ -1,0 +1,4 @@
+    1|      0|pub fn never_called_function() {
+    2|      0|    println!("I am never called");
+    3|      0|}
+

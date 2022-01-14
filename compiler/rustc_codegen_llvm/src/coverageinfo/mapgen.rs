@@ -5,12 +5,13 @@ use crate::llvm;
 use llvm::coverageinfo::CounterMappingRegion;
 use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression};
 use rustc_codegen_ssa::traits::{ConstMethods, CoverageInfoMethods};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_hir::def_id::{DefId, DefIdSet};
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefIdSet;
 use rustc_llvm::RustString;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Symbol;
 
 use std::ffi::CString;
 
@@ -46,7 +47,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     // functions exist. Generate synthetic functions with a (required) single counter, and add the
     // MIR `Coverage` code regions to the `function_coverage_map`, before calling
     // `ctx.take_function_coverage_map()`.
-    if !tcx.sess.instrument_coverage_except_unused_functions() {
+    if cx.codegen_unit.is_code_coverage_dead_code_cgu() {
         add_unused_functions(cx);
     }
 
@@ -271,26 +272,35 @@ fn save_function_record(
 /// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`tcx` query
 /// `codegened_and_inlined_items`).
 ///
-/// *HOWEVER* the codegenned `DefId`s are partitioned across multiple `CodegenUnit`s (CGUs), and
-/// this function is processing a `function_coverage_map` for the functions (`Instance`/`DefId`)
-/// allocated to only one of those CGUs. We must NOT inject any unused functions's `CodeRegion`s
-/// more than once, so we have to pick a CGUs `function_coverage_map` into which the unused
-/// function will be inserted.
+/// These unused functions are then codegen'd in one of the CGUs which is marked as the
+/// "code coverage dead code cgu" during the partitioning process. This prevents us from generating
+/// code regions for the same function more than once which can lead to linker errors regarding
+/// duplicate symbols.
 fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
-    let tcx = cx.tcx;
+    assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
-    // FIXME(#79622): Can this solution be simplified and/or improved? Are there other sources
-    // of compiler state data that might help (or better sources that could be exposed, but
-    // aren't yet)?
+    let tcx = cx.tcx;
 
     let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
 
-    let all_def_ids: DefIdSet = tcx
+    let eligible_def_ids: DefIdSet = tcx
         .mir_keys(())
         .iter()
         .filter_map(|local_def_id| {
             let def_id = local_def_id.to_def_id();
-            if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
+            let kind = tcx.def_kind(def_id);
+            // `mir_keys` will give us `DefId`s for all kinds of things, not
+            // just "functions", like consts, statics, etc. Filter those out.
+            // If `ignore_unused_generics` was specified, filter out any
+            // generic functions from consideration as well.
+            if !matches!(
+                kind,
+                DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator
+            ) {
+                return None;
+            } else if ignore_unused_generics
+                && tcx.generics_of(def_id).requires_monomorphization(tcx)
+            {
                 return None;
             }
             Some(local_def_id.to_def_id())
@@ -299,79 +309,17 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
 
     let codegenned_def_ids = tcx.codegened_and_inlined_items(());
 
-    let mut unused_def_ids_by_file: FxHashMap<Symbol, Vec<DefId>> = FxHashMap::default();
-    for &non_codegenned_def_id in all_def_ids.difference(codegenned_def_ids) {
-        // Make sure the non-codegenned (unused) function has at least one MIR
-        // `Coverage` statement with a code region, and return its file name.
-        if let Some(non_codegenned_file_name) = tcx.covered_file_name(non_codegenned_def_id) {
-            let def_ids =
-                unused_def_ids_by_file.entry(*non_codegenned_file_name).or_insert_with(Vec::new);
-            def_ids.push(non_codegenned_def_id);
+    for &non_codegenned_def_id in eligible_def_ids.difference(codegenned_def_ids) {
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
+
+        // If a function is marked `#[no_coverage]`, then skip generating a
+        // dead code stub for it.
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+            debug!("skipping unused fn marked #[no_coverage]: {:?}", non_codegenned_def_id);
+            continue;
         }
-    }
 
-    if unused_def_ids_by_file.is_empty() {
-        // There are no unused functions with file names to add (in any CGU)
-        return;
-    }
-
-    // Each `CodegenUnit` (CGU) has its own function_coverage_map, and generates a specific binary
-    // with its own coverage map.
-    //
-    // Each covered function `Instance` can be included in only one coverage map, produced from a
-    // specific function_coverage_map, from a specific CGU.
-    //
-    // Since unused functions did not generate code, they are not associated with any CGU yet.
-    //
-    // To avoid injecting the unused functions in multiple coverage maps (for multiple CGUs)
-    // determine which function_coverage_map has the responsibility for publishing unreachable
-    // coverage, based on file name: For each unused function, find the CGU that generates the
-    // first function (based on sorted `DefId`) from the same file.
-    //
-    // Add a new `FunctionCoverage` to the `function_coverage_map`, with unreachable code regions
-    // for each region in it's MIR.
-
-    // Convert the `HashSet` of `codegenned_def_ids` to a sortable vector, and sort them.
-    let mut sorted_codegenned_def_ids: Vec<DefId> = codegenned_def_ids.iter().copied().collect();
-    sorted_codegenned_def_ids.sort_unstable();
-
-    let mut first_covered_def_id_by_file: FxHashMap<Symbol, DefId> = FxHashMap::default();
-    for &def_id in sorted_codegenned_def_ids.iter() {
-        if let Some(covered_file_name) = tcx.covered_file_name(def_id) {
-            // Only add files known to have unused functions
-            if unused_def_ids_by_file.contains_key(covered_file_name) {
-                first_covered_def_id_by_file.entry(*covered_file_name).or_insert(def_id);
-            }
-        }
-    }
-
-    // Get the set of def_ids with coverage regions, known by *this* CoverageContext.
-    let cgu_covered_def_ids: DefIdSet = match cx.coverage_context() {
-        Some(ctx) => ctx
-            .function_coverage_map
-            .borrow()
-            .keys()
-            .map(|&instance| instance.def.def_id())
-            .collect(),
-        None => return,
-    };
-
-    let cgu_covered_files: FxHashSet<Symbol> = first_covered_def_id_by_file
-        .iter()
-        .filter_map(
-            |(&file_name, def_id)| {
-                if cgu_covered_def_ids.contains(def_id) { Some(file_name) } else { None }
-            },
-        )
-        .collect();
-
-    // For each file for which this CGU is responsible for adding unused function coverage,
-    // get the `def_id`s for each unused function (if any), define a synthetic function with a
-    // single LLVM coverage counter, and add the function's coverage `CodeRegion`s. to the
-    // function_coverage_map.
-    for covered_file_name in cgu_covered_files {
-        for def_id in unused_def_ids_by_file.remove(&covered_file_name).into_iter().flatten() {
-            cx.define_unused_fn(def_id);
-        }
+        debug!("generating unused fn: {:?}", non_codegenned_def_id);
+        cx.define_unused_fn(non_codegenned_def_id);
     }
 }
