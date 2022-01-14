@@ -11,9 +11,9 @@ use super::TOO_MANY_LINES;
 
 pub(super) fn check_fn(
     cx: &LateContext<'_>,
-    kind: FnKind<'tcx>,
+    kind: FnKind<'_>,
     span: Span,
-    body: &'tcx hir::Body<'_>,
+    body: &hir::Body<'_>,
     too_many_lines_threshold: u64,
 ) {
     // Closures must be contained in a parent body, which will be checked for `too_many_lines`.

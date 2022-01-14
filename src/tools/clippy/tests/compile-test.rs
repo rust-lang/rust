@@ -1,4 +1,5 @@
 #![feature(test)] // compiletest_rs requires this attribute
+#![feature(once_cell)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
@@ -11,16 +12,18 @@ use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use test_utils::IS_RUSTC_TEST_SUITE;
 
-mod cargo;
+mod test_utils;
 
 // whether to run internal tests or not
-const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal-lints");
+const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal");
 
 /// All crates used in UI tests are listed here
 static TEST_DEPENDENCIES: &[&str] = &[
     "clippy_utils",
     "derive_new",
+    "futures",
     "if_chain",
     "itertools",
     "quote",
@@ -28,6 +31,7 @@ static TEST_DEPENDENCIES: &[&str] = &[
     "serde",
     "serde_derive",
     "syn",
+    "tokio",
     "parking_lot",
 ];
 
@@ -38,6 +42,8 @@ extern crate clippy_utils;
 #[allow(unused_extern_crates)]
 extern crate derive_new;
 #[allow(unused_extern_crates)]
+extern crate futures;
+#[allow(unused_extern_crates)]
 extern crate if_chain;
 #[allow(unused_extern_crates)]
 extern crate itertools;
@@ -47,6 +53,8 @@ extern crate parking_lot;
 extern crate quote;
 #[allow(unused_extern_crates)]
 extern crate syn;
+#[allow(unused_extern_crates)]
+extern crate tokio;
 
 /// Produces a string with an `--extern` flag for all UI test crate
 /// dependencies.
@@ -298,7 +306,7 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
         Ok(result)
     }
 
-    if cargo::is_rustc_test_suite() {
+    if IS_RUSTC_TEST_SUITE {
         return;
     }
 

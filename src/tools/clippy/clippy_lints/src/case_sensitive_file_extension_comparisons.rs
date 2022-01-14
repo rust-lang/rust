@@ -67,7 +67,7 @@ fn check_case_sensitive_file_extension_comparison(ctx: &LateContext<'_>, expr: &
     None
 }
 
-impl LateLintPass<'tcx> for CaseSensitiveFileExtensionComparisons {
+impl<'tcx> LateLintPass<'tcx> for CaseSensitiveFileExtensionComparisons {
     fn check_expr(&mut self, ctx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let Some(span) = check_case_sensitive_file_extension_comparison(ctx, expr) {
             span_lint_and_help(

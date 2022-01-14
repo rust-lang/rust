@@ -1,5 +1,5 @@
 error: casting integer literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:8:5
+  --> $DIR/unnecessary_cast_fixable.rs:13:5
    |
 LL |     100 as f32;
    |     ^^^^^^^^^^ help: try: `100_f32`
@@ -7,97 +7,97 @@ LL |     100 as f32;
    = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
 
 error: casting integer literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:9:5
+  --> $DIR/unnecessary_cast_fixable.rs:14:5
    |
 LL |     100 as f64;
    |     ^^^^^^^^^^ help: try: `100_f64`
 
 error: casting integer literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:10:5
+  --> $DIR/unnecessary_cast_fixable.rs:15:5
    |
 LL |     100_i32 as f64;
    |     ^^^^^^^^^^^^^^ help: try: `100_f64`
 
 error: casting integer literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:11:13
+  --> $DIR/unnecessary_cast_fixable.rs:16:13
    |
 LL |     let _ = -100 as f32;
    |             ^^^^^^^^^^^ help: try: `-100_f32`
 
 error: casting integer literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:12:13
+  --> $DIR/unnecessary_cast_fixable.rs:17:13
    |
 LL |     let _ = -100 as f64;
    |             ^^^^^^^^^^^ help: try: `-100_f64`
 
 error: casting integer literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:13:13
+  --> $DIR/unnecessary_cast_fixable.rs:18:13
    |
 LL |     let _ = -100_i32 as f64;
    |             ^^^^^^^^^^^^^^^ help: try: `-100_f64`
 
 error: casting float literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:14:5
+  --> $DIR/unnecessary_cast_fixable.rs:19:5
    |
 LL |     100. as f32;
    |     ^^^^^^^^^^^ help: try: `100_f32`
 
 error: casting float literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:15:5
+  --> $DIR/unnecessary_cast_fixable.rs:20:5
    |
 LL |     100. as f64;
    |     ^^^^^^^^^^^ help: try: `100_f64`
 
 error: casting integer literal to `u32` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:27:5
+  --> $DIR/unnecessary_cast_fixable.rs:32:5
    |
 LL |     1 as u32;
    |     ^^^^^^^^ help: try: `1_u32`
 
 error: casting integer literal to `i32` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:28:5
+  --> $DIR/unnecessary_cast_fixable.rs:33:5
    |
 LL |     0x10 as i32;
    |     ^^^^^^^^^^^ help: try: `0x10_i32`
 
 error: casting integer literal to `usize` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:29:5
+  --> $DIR/unnecessary_cast_fixable.rs:34:5
    |
 LL |     0b10 as usize;
    |     ^^^^^^^^^^^^^ help: try: `0b10_usize`
 
 error: casting integer literal to `u16` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:30:5
+  --> $DIR/unnecessary_cast_fixable.rs:35:5
    |
 LL |     0o73 as u16;
    |     ^^^^^^^^^^^ help: try: `0o73_u16`
 
 error: casting integer literal to `u32` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:31:5
+  --> $DIR/unnecessary_cast_fixable.rs:36:5
    |
 LL |     1_000_000_000 as u32;
    |     ^^^^^^^^^^^^^^^^^^^^ help: try: `1_000_000_000_u32`
 
 error: casting float literal to `f64` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:33:5
+  --> $DIR/unnecessary_cast_fixable.rs:38:5
    |
 LL |     1.0 as f64;
    |     ^^^^^^^^^^ help: try: `1.0_f64`
 
 error: casting float literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:34:5
+  --> $DIR/unnecessary_cast_fixable.rs:39:5
    |
 LL |     0.5 as f32;
    |     ^^^^^^^^^^ help: try: `0.5_f32`
 
 error: casting integer literal to `i32` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:38:13
+  --> $DIR/unnecessary_cast_fixable.rs:43:13
    |
 LL |     let _ = -1 as i32;
    |             ^^^^^^^^^ help: try: `-1_i32`
 
 error: casting float literal to `f32` is unnecessary
-  --> $DIR/unnecessary_cast_fixable.rs:39:13
+  --> $DIR/unnecessary_cast_fixable.rs:44:13
    |
 LL |     let _ = -1.0 as f32;
    |             ^^^^^^^^^^^ help: try: `-1.0_f32`

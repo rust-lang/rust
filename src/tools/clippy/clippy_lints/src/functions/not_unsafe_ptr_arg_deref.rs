@@ -9,7 +9,7 @@ use clippy_utils::{iter_input_pats, path_to_local};
 
 use super::NOT_UNSAFE_PTR_ARG_DEREF;
 
-pub(super) fn check_fn(
+pub(super) fn check_fn<'tcx>(
     cx: &LateContext<'tcx>,
     kind: intravisit::FnKind<'tcx>,
     decl: &'tcx hir::FnDecl<'tcx>,
@@ -25,14 +25,14 @@ pub(super) fn check_fn(
     check_raw_ptr(cx, unsafety, decl, body, cx.tcx.hir().local_def_id(hir_id));
 }
 
-pub(super) fn check_trait_item(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
+pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(eid)) = item.kind {
         let body = cx.tcx.hir().body(eid);
         check_raw_ptr(cx, sig.header.unsafety, sig.decl, body, item.def_id);
     }
 }
 
-fn check_raw_ptr(
+fn check_raw_ptr<'tcx>(
     cx: &LateContext<'tcx>,
     unsafety: hir::Unsafety,
     decl: &'tcx hir::FnDecl<'tcx>,

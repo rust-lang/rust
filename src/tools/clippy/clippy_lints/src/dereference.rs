@@ -355,7 +355,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
     }
 }
 
-fn try_parse_ref_op(
+fn try_parse_ref_op<'tcx>(
     tcx: TyCtxt<'tcx>,
     typeck: &'tcx TypeckResults<'_>,
     expr: &'tcx Expr<'_>,
@@ -387,7 +387,7 @@ fn try_parse_ref_op(
 
 // Checks whether the type for a deref call actually changed the type, not just the mutability of
 // the reference.
-fn deref_method_same_type(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
+fn deref_method_same_type(result_ty: Ty<'_>, arg_ty: Ty<'_>) -> bool {
     match (result_ty.kind(), arg_ty.kind()) {
         (ty::Ref(_, result_ty, _), ty::Ref(_, arg_ty, _)) => TyS::same_type(result_ty, arg_ty),
 
@@ -457,7 +457,7 @@ fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId, 
 }
 
 /// Adjustments are sometimes made in the parent block rather than the expression itself.
-fn find_adjustments(
+fn find_adjustments<'tcx>(
     tcx: TyCtxt<'tcx>,
     typeck: &'tcx TypeckResults<'_>,
     expr: &'tcx Expr<'_>,
@@ -499,7 +499,7 @@ fn find_adjustments(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn report(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data: StateData) {
+fn report(cx: &LateContext<'_>, expr: &Expr<'_>, state: State, data: StateData) {
     match state {
         State::DerefMethod {
             ty_changed_count,
@@ -568,7 +568,7 @@ fn report(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data: Stat
 }
 
 impl Dereferencing {
-    fn check_local_usage(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, local: HirId) {
+    fn check_local_usage(&mut self, cx: &LateContext<'_>, e: &Expr<'_>, local: HirId) {
         if let Some(outer_pat) = self.ref_locals.get_mut(&local) {
             if let Some(pat) = outer_pat {
                 // Check for auto-deref

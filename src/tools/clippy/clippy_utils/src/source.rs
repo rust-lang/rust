@@ -281,7 +281,7 @@ pub fn snippet_block_with_applicability<'a, T: LintContext>(
 /// correctly get a snippet of `vec![]`.
 ///
 /// This will also return whether or not the snippet is a macro call.
-pub fn snippet_with_context(
+pub fn snippet_with_context<'a>(
     cx: &LateContext<'_>,
     span: Span,
     outer: SyntaxContext,

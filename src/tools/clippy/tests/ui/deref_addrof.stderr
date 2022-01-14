@@ -49,7 +49,7 @@ LL |     let b = **&aref;
    |              ^^^^^^ help: try this: `aref`
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:45:9
+  --> $DIR/deref_addrof.rs:47:9
    |
 LL |         *& $visitor
    |         ^^^^^^^^^^^ help: try this: `$visitor`
@@ -60,7 +60,7 @@ LL |         m!(self)
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: immediately dereferencing a reference
-  --> $DIR/deref_addrof.rs:52:9
+  --> $DIR/deref_addrof.rs:54:9
    |
 LL |         *& mut $visitor
    |         ^^^^^^^^^^^^^^^ help: try this: `$visitor`

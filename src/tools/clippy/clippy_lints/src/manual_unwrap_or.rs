@@ -43,7 +43,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ManualUnwrapOr => [MANUAL_UNWRAP_OR]);
 
-impl LateLintPass<'_> for ManualUnwrapOr {
+impl<'tcx> LateLintPass<'tcx> for ManualUnwrapOr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if in_external_macro(cx.sess(), expr.span) || in_constant(cx, expr.hir_id) {
             return;
