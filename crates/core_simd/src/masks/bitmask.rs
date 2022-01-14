@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 use super::MaskElement;
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask, ToBitMaskArray};
 use core::marker::PhantomData;
 
 /// A mask where each lane is represented by a single bit.
@@ -113,6 +113,24 @@ where
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub unsafe fn from_int_unchecked(value: Simd<T, LANES>) -> Self {
         unsafe { Self(intrinsics::simd_bitmask(value), PhantomData) }
+    }
+
+    #[inline]
+    #[must_use = "method returns a new array and does not mutate the original value"]
+    pub fn to_bitmask_array<const N: usize>(self) -> [u8; N] {
+        assert!(core::mem::size_of::<Self>() == N);
+
+        // Safety: converting an integer to an array of bytes of the same size is safe
+        unsafe { core::mem::transmute_copy(&self.0) }
+    }
+
+    #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
+    pub fn from_bitmask_array<const N: usize>(bitmask: [u8; N]) -> Self {
+        assert!(core::mem::size_of::<Self>() == N);
+
+        // Safety: converting an array of bytes to an integer of the same size is safe
+        Self(unsafe { core::mem::transmute_copy(&bitmask) }, PhantomData)
     }
 
     #[inline]
