@@ -240,7 +240,7 @@ pub(super) fn write_shared(
     }
 
     if (*cx.shared).layout.logo.is_empty() {
-        write_toolchain("rust-logo.png", static_files::RUST_LOGO)?;
+        write_toolchain("rust-logo.svg", static_files::RUST_LOGO_SVG)?;
     }
     if (*cx.shared).layout.favicon.is_empty() {
         write_toolchain("favicon.svg", static_files::RUST_FAVICON_SVG)?;
