@@ -1,6 +1,7 @@
-#![allow(clippy::redundant_clone)]
-#![warn(clippy::manual_non_exhaustive)]
+#![allow(clippy::redundant_clone, clippy::unnecessary_operation)]
+#![warn(clippy::manual_non_exhaustive, clippy::borrow_as_ptr, clippy::manual_bits)]
 
+use std::mem::{size_of, size_of_val};
 use std::ops::Deref;
 
 mod enums {
@@ -73,6 +74,19 @@ fn map_clone_suggest_copied() {
     let _: Option<u64> = Some(&16).map(|b| *b);
 }
 
+fn borrow_as_ptr() {
+    let val = 1;
+    let _p = &val as *const i32;
+
+    let mut val_mut = 1;
+    let _p_mut = &mut val_mut as *mut i32;
+}
+
+fn manual_bits() {
+    size_of::<i8>() * 8;
+    size_of_val(&0u32) * 8;
+}
+
 fn main() {
     option_as_ref_deref();
     match_like_matches();
@@ -80,4 +94,5 @@ fn main() {
     match_same_arms2();
     manual_strip_msrv();
     check_index_refutable_slice();
+    borrow_as_ptr();
 }
