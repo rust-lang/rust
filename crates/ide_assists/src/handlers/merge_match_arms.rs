@@ -791,4 +791,39 @@ fn func(binary: &[u8]) {
         "#,
         )
     }
+
+    #[test]
+    fn merge_match_arms_slice_identical() {
+        check_assist(
+            merge_match_arms,
+            r#"
+fn func(binary: &[u8]) {
+    let space = b' ';
+    match binary {
+        [space, 5u8] => $0"",
+        [space] => "",
+        _ => "other",
+    };
+}
+        "#,
+                    r#"
+fn func(binary: &[u8]) {
+    let space = b' ';
+    match binary {
+        [space, 5u8] | [space] => "",
+        _ => "other",
+    };
+}
+        "#,
+        )
+    }
+}
+
+fn func(binary: &[u8]) {
+    let space = b' ';
+    match binary {
+        [space, 5u8] => "",
+        [space] => "",
+        _ => "other",
+    };
 }
