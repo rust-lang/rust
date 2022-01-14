@@ -68,6 +68,11 @@ fn check_index_refutable_slice() {
     }
 }
 
+fn map_clone_suggest_copied() {
+    // This should still trigger the lint but suggest `cloned()` instead of `copied()`
+    let _: Option<u64> = Some(&16).map(|b| *b);
+}
+
 fn main() {
     option_as_ref_deref();
     match_like_matches();
