@@ -1799,13 +1799,14 @@ impl<T, A: Allocator> Vec<T, A> {
         self.len += count;
     }
 
-    /// Creates a draining iterator that removes the specified range in the vector
-    /// and yields the removed items.
+    /// Removes the specified range from the vector, returning all removed
+    /// elements as an iterator.
     ///
-    /// When the iterator **is** dropped, all elements in the range are removed
-    /// from the vector, even if the iterator was not fully consumed. If the
-    /// iterator **is not** dropped (with [`mem::forget`] for example), it is
-    /// unspecified how many elements are removed.
+    /// When the iterator **is** dropped, it drops any elements that it has not
+    /// yet yielded (none if the iterator was fully consumed).
+    /// If the iterator **is not** dropped (with [`mem::forget`], for example),
+    /// it is unspecified which elements remain in the vector; even elements
+    /// outside the range may have been removed and leaked.
     ///
     /// # Panics
     ///
@@ -1820,7 +1821,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(v, &[1]);
     /// assert_eq!(u, &[2, 3]);
     ///
-    /// // A full range clears the vector
+    /// // A full range clears the vector, like `clear()` does
     /// v.drain(..);
     /// assert_eq!(v, &[]);
     /// ```

@@ -1215,15 +1215,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
         unsafe { IterMut::new(ring, tail, head, PhantomData) }
     }
 
-    /// Creates a draining iterator that removes the specified range in the
-    /// `VecDeque` and yields the removed items.
+    /// Removes the specified range from the `VecDeque`, returning all removed
+    /// elements as an iterator.
     ///
-    /// Note 1: The element range is removed even if the iterator is not
-    /// consumed until the end.
-    ///
-    /// Note 2: It is unspecified how many elements are removed from the deque,
-    /// if the `Drain` value is not dropped, but the borrow it holds expires
-    /// (e.g., due to `mem::forget`).
+    /// When the iterator **is** dropped, it drops any elements that it has not
+    /// yet yielded (none if the iterator was fully consumed).
+    /// If the iterator **is not** dropped (with [`mem::forget`], for example),
+    /// it is unspecified which elements remain in the vector; even elements
+    /// outside the range may have been removed and leaked.
     ///
     /// # Panics
     ///
@@ -1240,7 +1239,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(drained, [3]);
     /// assert_eq!(v, [1, 2]);
     ///
-    /// // A full range clears all contents
+    /// // A full range clears all contents, like `clear()` does
     /// v.drain(..);
     /// assert!(v.is_empty());
     /// ```

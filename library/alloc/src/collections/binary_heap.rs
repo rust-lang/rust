@@ -748,7 +748,7 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Returns an iterator which retrieves elements in heap order.
     /// The retrieved elements are removed from the original heap.
-    /// The remaining elements will be removed on drop in heap order.
+    /// On drop, the remaining elements are removed and dropped in heap order.
     ///
     /// Note:
     /// * `.drain_sorted()` is *O*(*n* \* log(*n*)); much slower than `.drain()`.

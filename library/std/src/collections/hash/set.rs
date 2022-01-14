@@ -227,7 +227,7 @@ impl<T, S> HashSet<T, S> {
         self.base.is_empty()
     }
 
-    /// Clears the set, returning all elements in an iterator.
+    /// Clears the set, returning all elements as an iterator.
     ///
     /// # Examples
     ///
