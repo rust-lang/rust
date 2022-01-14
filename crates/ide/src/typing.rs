@@ -22,9 +22,7 @@ use ide_db::{
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, edit::IndentLevel, AstToken},
-    AstNode, Parse, SourceFile,
-    SyntaxKind::{self, FIELD_EXPR, METHOD_CALL_EXPR},
-    TextRange, TextSize,
+    AstNode, Parse, SourceFile, SyntaxKind, TextRange, TextSize,
 };
 
 use text_edit::{Indel, TextEdit};
@@ -195,22 +193,46 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     let whitespace =
         file.syntax().token_at_offset(offset).left_biased().and_then(ast::Whitespace::cast)?;
 
+    // if prior is fn call over multiple lines dont indent
+    // or if previous is method call over multiples lines keep that indent
     let current_indent = {
         let text = whitespace.text();
-        let newline = text.rfind('\n')?;
-        &text[newline + 1..]
+        let (_prefix, suffix) = text.rsplit_once('\n')?;
+        suffix
     };
     let current_indent_len = TextSize::of(current_indent);
 
     let parent = whitespace.syntax().parent()?;
     // Make sure dot is a part of call chain
-    if !matches!(parent.kind(), FIELD_EXPR | METHOD_CALL_EXPR) {
+    let receiver = if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
+        field_expr.expr()?
+    } else if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent.clone()) {
+        method_call_expr.receiver()?
+    } else {
         return None;
+    };
+
+    let receiver_is_multiline = receiver.syntax().text().find_char('\n').is_some();
+    let target_indent = match (receiver, receiver_is_multiline) {
+        // if receiver is multiline field or method call, just take the previous `.` indentation
+        (ast::Expr::MethodCallExpr(expr), true) => {
+            expr.dot_token().as_ref().map(IndentLevel::from_token)
+        }
+        (ast::Expr::FieldExpr(expr), true) => {
+            expr.dot_token().as_ref().map(IndentLevel::from_token)
+        }
+        // if receiver is multiline expression, just keeps its indentation
+        (_, true) => Some(IndentLevel::from_node(&parent)),
+        _ => None,
+    };
+    let target_indent = match target_indent {
+        Some(x) => x,
+        // in all other cases, take previous indentation and indent once
+        None => IndentLevel::from_node(&parent) + 1,
     }
-    let prev_indent = IndentLevel::from_node(&parent);
-    let target_indent = format!("    {}", prev_indent);
-    let target_indent_len = TextSize::of(&target_indent);
-    if current_indent_len == target_indent_len {
+    .to_string();
+
+    if current_indent_len == TextSize::of(&target_indent) {
         return None;
     }
 
@@ -659,6 +681,37 @@ use {Thing as _};
             r#"
 use some::pa$0th::to::Item;
             "#,
+        );
+    }
+
+    #[test]
+    fn regression_629() {
+        type_char_noop(
+            '.',
+            r#"
+fn foo() {
+    CompletionItem::new(
+        CompletionKind::Reference,
+        ctx.source_range(),
+        field.name().to_string(),
+    )
+    .foo()
+    $0
+}
+"#,
+        );
+        type_char_noop(
+            '.',
+            r#"
+fn foo() {
+    CompletionItem::new(
+        CompletionKind::Reference,
+        ctx.source_range(),
+        field.name().to_string(),
+    )
+    $0
+}
+"#,
         );
     }
 }
