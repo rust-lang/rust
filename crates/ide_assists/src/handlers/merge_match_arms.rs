@@ -818,12 +818,3 @@ fn func(binary: &[u8]) {
         )
     }
 }
-
-fn func(binary: &[u8]) {
-    let space = b' ';
-    match binary {
-        [space, 5u8] => "",
-        [space] => "",
-        _ => "other",
-    };
-}
