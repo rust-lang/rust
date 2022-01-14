@@ -1303,6 +1303,32 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
             });
 
             (errors.count() == 0).then_some(list)
+        })
+        // Check for duplicates
+        .and_then(|list| {
+            let mut set: FxHashSet<&Ident> = FxHashSet::default();
+            let mut no_dups = true;
+
+            for ident in &*list {
+                if let Some(dup) = set.replace(ident) {
+                    let dup2 = set.get(&dup).copied().unwrap(); // We've just inserted it
+
+                    tcx.sess
+                        .struct_span_err(
+                            vec![dup.span, dup2.span],
+                            "Functions names are duplicated",
+                        )
+                        .note(
+                            "All `#[rustc_must_implement_one_of]` arguments \
+                            must be unique",
+                        )
+                        .emit();
+
+                    no_dups = false;
+                }
+            }
+
+            no_dups.then_some(list)
         });
 
     ty::TraitDef::new(
