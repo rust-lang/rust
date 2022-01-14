@@ -328,6 +328,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             },
         });
     }
+
+    fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<hir::OpaqueTyOrigin> {
+        let tcx = self.tcx;
+        let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+        let parent_def_id = self.defining_use_anchor?;
+        let item_kind = &tcx.hir().expect_item(def_id).kind;
+        let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, ..  }) = item_kind else {
+            span_bug!(
+                tcx.def_span(def_id),
+                "weird opaque type: {:#?}",
+                item_kind
+            )
+        };
+        let in_definition_scope = match *origin {
+            // Async `impl Trait`
+            hir::OpaqueTyOrigin::AsyncFn(parent) => parent == parent_def_id,
+            // Anonymous `impl Trait`
+            hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
+            // Named `type Foo = impl Bar;`
+            hir::OpaqueTyOrigin::TyAlias => {
+                may_define_opaque_type(tcx, parent_def_id, opaque_hir_id)
+            }
+        };
+        in_definition_scope.then_some(*origin)
+    }
 }
 
 // Visitor that requires that (almost) all regions in the type visited outlive
@@ -459,31 +484,10 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                     // }
                     // ```
                     if let Some(def_id) = def_id.as_local() {
-                        let opaque_hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-                        let parent_def_id = self.infcx.defining_use_anchor;
-                        let item_kind = &tcx.hir().expect_item(def_id).kind;
-                        let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, ..  }) = item_kind else {
-                            span_bug!(
-                                self.value_span,
-                                "weird opaque type: {:#?}, {:#?}",
-                                ty.kind(),
-                                item_kind
-                            )
-                        };
-                        let in_definition_scope = match *origin {
-                            // Async `impl Trait`
-                            hir::OpaqueTyOrigin::AsyncFn(parent) => parent == parent_def_id,
-                            // Anonymous `impl Trait`
-                            hir::OpaqueTyOrigin::FnReturn(parent) => parent == parent_def_id,
-                            // Named `type Foo = impl Bar;`
-                            hir::OpaqueTyOrigin::TyAlias => {
-                                may_define_opaque_type(tcx, parent_def_id, opaque_hir_id)
-                            }
-                        };
-                        if in_definition_scope {
+                        if let Some(origin) = self.infcx.opaque_type_origin(def_id) {
                             let opaque_type_key =
                                 OpaqueTypeKey { def_id: def_id.to_def_id(), substs };
-                            return self.fold_opaque_ty(ty, opaque_type_key, *origin);
+                            return self.fold_opaque_ty(ty, opaque_type_key, origin);
                         }
 
                         debug!(
