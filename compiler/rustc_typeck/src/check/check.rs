@@ -980,8 +980,8 @@ fn check_impl_items_against_trait<'tcx>(
         // Check for missing items from trait
         let mut missing_items = Vec::new();
 
-        let mut must_implement_one_of: Option<FxHashSet<Ident>> =
-            trait_def.must_implement_one_of.as_deref().map(|slice| slice.iter().copied().collect());
+        let mut must_implement_one_of: Option<&[Ident]> =
+            trait_def.must_implement_one_of.as_deref();
 
         for &trait_item_id in tcx.associated_item_def_ids(impl_trait_ref.def_id) {
             let is_implemented = ancestors
@@ -1020,7 +1020,7 @@ fn check_impl_items_against_trait<'tcx>(
                 .find(|attr| attr.has_name(sym::rustc_must_implement_one_of))
                 .map(|attr| attr.span);
 
-            missing_items_must_implement_one_of_err(tcx, impl_span, &missing_items, attr_span);
+            missing_items_must_implement_one_of_err(tcx, impl_span, missing_items, attr_span);
         }
     }
 }

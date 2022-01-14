@@ -644,7 +644,7 @@ fn missing_items_err(
 fn missing_items_must_implement_one_of_err(
     tcx: TyCtxt<'_>,
     impl_span: Span,
-    missing_items: &FxHashSet<Ident>,
+    missing_items: &[Ident],
     annotation_span: Option<Span>,
 ) {
     let missing_items_msg =
