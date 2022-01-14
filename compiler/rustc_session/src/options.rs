@@ -184,10 +184,6 @@ top_level_options!(
         externs: Externs [UNTRACKED],
         extern_dep_specs: ExternDepSpecs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
-        /// An optional name to use as the crate for std during std injection,
-        /// written `extern crate name as std`. Defaults to `std`. Used by
-        /// out-of-tree drivers.
-        alt_std_name: Option<String> [TRACKED],
         /// Indicates how the compiler should treat unstable features.
         unstable_features: UnstableFeatures [TRACKED],
 
