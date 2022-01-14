@@ -37,7 +37,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SemicolonIfNothingReturned => [SEMICOLON_IF_NOTHING_RETURNED]);
 
-impl LateLintPass<'_> for SemicolonIfNothingReturned {
+impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if_chain! {
             if !block.span.from_expansion();

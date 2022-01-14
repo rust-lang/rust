@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for UninitVec {
     }
 }
 
-fn handle_uninit_vec_pair(
+fn handle_uninit_vec_pair<'tcx>(
     cx: &LateContext<'tcx>,
     maybe_init_or_reserve: &'tcx Stmt<'tcx>,
     maybe_set_len: &'tcx Expr<'tcx>,
@@ -196,7 +196,7 @@ fn is_reserve(cx: &LateContext<'_>, path: &PathSegment<'_>, self_expr: &Expr<'_>
 }
 
 /// Returns self if the expression is `Vec::set_len()`
-fn extract_set_len_self(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(&'tcx Expr<'tcx>, Span)> {
+fn extract_set_len_self<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(&'tcx Expr<'tcx>, Span)> {
     // peel unsafe blocks in `unsafe { vec.set_len() }`
     let expr = peel_hir_expr_while(expr, |e| {
         if let ExprKind::Block(block, _) = e.kind {

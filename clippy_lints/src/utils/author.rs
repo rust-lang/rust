@@ -573,7 +573,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                         bind!(self, anon_const);
                         out!("if let ArrayLen::Body({anon_const}) = {length};");
                         self.body(field!(anon_const.body));
-                    }
+                    },
                 }
             },
             ExprKind::Err => kind!("Err"),

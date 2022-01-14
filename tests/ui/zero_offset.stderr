@@ -1,5 +1,5 @@
 error: offset calculation on zero-sized value
-  --> $DIR/zero_offset.rs:4:9
+  --> $DIR/zero_offset.rs:5:9
    |
 LL |         m.offset(0);
    |         ^^^^^^^^^^^
@@ -7,43 +7,43 @@ LL |         m.offset(0);
    = note: `#[deny(clippy::zst_offset)]` on by default
 
 error: offset calculation on zero-sized value
-  --> $DIR/zero_offset.rs:5:9
+  --> $DIR/zero_offset.rs:6:9
    |
 LL |         m.wrapping_add(0);
    |         ^^^^^^^^^^^^^^^^^
 
 error: offset calculation on zero-sized value
-  --> $DIR/zero_offset.rs:6:9
+  --> $DIR/zero_offset.rs:7:9
    |
 LL |         m.sub(0);
    |         ^^^^^^^^
 
 error: offset calculation on zero-sized value
-  --> $DIR/zero_offset.rs:7:9
+  --> $DIR/zero_offset.rs:8:9
    |
 LL |         m.wrapping_sub(0);
    |         ^^^^^^^^^^^^^^^^^
 
 error: offset calculation on zero-sized value
-  --> $DIR/zero_offset.rs:10:9
+  --> $DIR/zero_offset.rs:11:9
    |
 LL |         c.offset(0);
    |         ^^^^^^^^^^^
 
 error: offset calculation on zero-sized value
-  --> $DIR/zero_offset.rs:11:9
+  --> $DIR/zero_offset.rs:12:9
    |
 LL |         c.wrapping_add(0);
    |         ^^^^^^^^^^^^^^^^^
 
 error: offset calculation on zero-sized value
-  --> $DIR/zero_offset.rs:12:9
+  --> $DIR/zero_offset.rs:13:9
    |
 LL |         c.sub(0);
    |         ^^^^^^^^
 
 error: offset calculation on zero-sized value
-  --> $DIR/zero_offset.rs:13:9
+  --> $DIR/zero_offset.rs:14:9
    |
 LL |         c.wrapping_sub(0);
    |         ^^^^^^^^^^^^^^^^^

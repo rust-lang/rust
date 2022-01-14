@@ -13,7 +13,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 
 use super::RESULT_UNIT_ERR;
 
-pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
+pub(super) fn check_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
     if let hir::ItemKind::Fn(ref sig, ref _generics, _) = item.kind {
         let is_public = cx.access_levels.is_exported(item.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
@@ -23,7 +23,7 @@ pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
     }
 }
 
-pub(super) fn check_impl_item(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
+pub(super) fn check_impl_item(cx: &LateContext<'_>, item: &hir::ImplItem<'_>) {
     if let hir::ImplItemKind::Fn(ref sig, _) = item.kind {
         let is_public = cx.access_levels.is_exported(item.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
@@ -33,7 +33,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<
     }
 }
 
-pub(super) fn check_trait_item(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
+pub(super) fn check_trait_item(cx: &LateContext<'_>, item: &hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, _) = item.kind {
         let is_public = cx.access_levels.is_exported(item.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());

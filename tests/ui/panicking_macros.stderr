@@ -25,23 +25,18 @@ LL |     todo!();
    |     ^^^^^^^
    |
    = note: `-D clippy::todo` implied by `-D warnings`
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `todo` should not be present in production code
   --> $DIR/panicking_macros.rs:17:5
    |
 LL |     todo!("message");
    |     ^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `todo` should not be present in production code
   --> $DIR/panicking_macros.rs:18:5
    |
 LL |     todo!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `unimplemented` should not be present in production code
   --> $DIR/panicking_macros.rs:24:5
@@ -50,23 +45,18 @@ LL |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unimplemented` implied by `-D warnings`
-   = note: this error originates in the macro `unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `unimplemented` should not be present in production code
   --> $DIR/panicking_macros.rs:25:5
    |
 LL |     unimplemented!("message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `unimplemented` should not be present in production code
   --> $DIR/panicking_macros.rs:26:5
    |
 LL |     unimplemented!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the `unreachable!` macro
   --> $DIR/panicking_macros.rs:32:5
@@ -75,23 +65,18 @@ LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unreachable` implied by `-D warnings`
-   = note: this error originates in the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the `unreachable!` macro
   --> $DIR/panicking_macros.rs:33:5
    |
 LL |     unreachable!("message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `$crate::unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the `unreachable!` macro
   --> $DIR/panicking_macros.rs:34:5
    |
 LL |     unreachable!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `panic` should not be present in production code
   --> $DIR/panicking_macros.rs:40:5
@@ -104,24 +89,18 @@ error: `todo` should not be present in production code
    |
 LL |     todo!();
    |     ^^^^^^^
-   |
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `unimplemented` should not be present in production code
   --> $DIR/panicking_macros.rs:42:5
    |
 LL |     unimplemented!();
    |     ^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the `unreachable!` macro
   --> $DIR/panicking_macros.rs:43:5
    |
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 16 previous errors
 

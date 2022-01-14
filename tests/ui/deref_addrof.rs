@@ -37,6 +37,8 @@ fn main() {
     let b = *&&a;
 
     let b = **&aref;
+
+    let _ = unsafe { *core::ptr::addr_of!(a) };
 }
 
 #[rustfmt::skip]

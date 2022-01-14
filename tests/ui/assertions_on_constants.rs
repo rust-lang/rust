@@ -1,4 +1,3 @@
-//FIXME: suggestions are wrongly expanded, this should be fixed along with #7843
 #![allow(non_fmt_panics)]
 
 macro_rules! assert_const {

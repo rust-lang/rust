@@ -1,6 +1,6 @@
 [package]
 name = "clippy_lints"
-version = "0.1.59"
+version = "0.1.60"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -30,8 +30,7 @@ url = { version = "2.2", features = ["serde"] }
 [features]
 deny-warnings = ["clippy_utils/deny-warnings"]
 # build clippy with internal lints enabled, off by default
-internal-lints = ["clippy_utils/internal-lints"]
-metadata-collector-lint = ["serde_json", "clippy_utils/metadata-collector-lint"]
+internal = ["clippy_utils/internal", "serde_json"]
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]
