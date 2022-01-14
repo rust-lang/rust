@@ -1661,7 +1661,7 @@ CloneLiftImpls! { for<'tcx> { Constness, traits::WellFormedLoc, } }
 pub mod tls {
     use super::{ptr_eq, GlobalCtxt, TyCtxt};
 
-    use crate::dep_graph::{DepKind, TaskDeps};
+    use crate::dep_graph::{DepKind, TaskDepsRef};
     use crate::ty::query;
     use rustc_data_structures::sync::{self, Lock};
     use rustc_data_structures::thin_vec::ThinVec;
@@ -1697,13 +1697,19 @@ pub mod tls {
 
         /// The current dep graph task. This is used to add dependencies to queries
         /// when executing them.
-        pub task_deps: Option<&'a Lock<TaskDeps>>,
+        pub task_deps: TaskDepsRef<'a>,
     }
 
     impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
         pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
             let tcx = TyCtxt { gcx };
-            ImplicitCtxt { tcx, query: None, diagnostics: None, layout_depth: 0, task_deps: None }
+            ImplicitCtxt {
+                tcx,
+                query: None,
+                diagnostics: None,
+                layout_depth: 0,
+                task_deps: TaskDepsRef::Ignore,
+            }
         }
     }
 

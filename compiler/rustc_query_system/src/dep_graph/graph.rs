@@ -9,6 +9,7 @@ use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
 use rustc_index::vec::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use smallvec::{smallvec, SmallVec};
+use std::assert_matches::assert_matches;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -165,7 +166,11 @@ impl<K: DepKind> DepGraph<K> {
     pub fn assert_ignored(&self) {
         if let Some(..) = self.data {
             K::read_deps(|task_deps| {
-                assert!(task_deps.is_none(), "expected no task dependency tracking");
+                assert_matches!(
+                    task_deps,
+                    TaskDepsRef::Ignore,
+                    "expected no task dependency tracking"
+                );
             })
         }
     }
@@ -174,7 +179,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        K::with_deps(None, op)
+        K::with_deps(TaskDepsRef::Ignore, op)
     }
 
     /// Used to wrap the deserialization of a query result from disk,
@@ -227,10 +232,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        let mut deps = TaskDeps::default();
-        deps.read_allowed = false;
-        let deps = Lock::new(deps);
-        K::with_deps(Some(&deps), op)
+        K::with_deps(TaskDepsRef::Forbid, op)
     }
 
     /// Starts a new dep-graph task. Dep-graph tasks are specified
@@ -313,10 +315,15 @@ impl<K: DepKind> DepGraph<K> {
                 reads: SmallVec::new(),
                 read_set: Default::default(),
                 phantom_data: PhantomData,
-                read_allowed: true,
             }))
         };
-        let result = K::with_deps(task_deps.as_ref(), || task(cx, arg));
+
+        let task_deps_ref = match &task_deps {
+            Some(deps) => TaskDepsRef::Allow(deps),
+            None => TaskDepsRef::Ignore,
+        };
+
+        let result = K::with_deps(task_deps_ref, || task(cx, arg));
         let edges = task_deps.map_or_else(|| smallvec![], |lock| lock.into_inner().reads);
 
         let dcx = cx.dep_context();
@@ -369,7 +376,7 @@ impl<K: DepKind> DepGraph<K> {
 
         if let Some(ref data) = self.data {
             let task_deps = Lock::new(TaskDeps::default());
-            let result = K::with_deps(Some(&task_deps), op);
+            let result = K::with_deps(TaskDepsRef::Allow(&task_deps), op);
             let task_deps = task_deps.into_inner();
             let task_deps = task_deps.reads;
 
@@ -422,47 +429,47 @@ impl<K: DepKind> DepGraph<K> {
     pub fn read_index(&self, dep_node_index: DepNodeIndex) {
         if let Some(ref data) = self.data {
             K::read_deps(|task_deps| {
-                if let Some(task_deps) = task_deps {
-                    let mut task_deps = task_deps.lock();
-                    let task_deps = &mut *task_deps;
+                let mut task_deps = match task_deps {
+                    TaskDepsRef::Allow(deps) => deps.lock(),
+                    TaskDepsRef::Ignore => return,
+                    TaskDepsRef::Forbid => {
+                        panic!("Illegal read of: {:?}", dep_node_index)
+                    }
+                };
+                let task_deps = &mut *task_deps;
 
-                    if !task_deps.read_allowed {
-                        panic!("Illegal read of: {:?}", dep_node_index);
+                if cfg!(debug_assertions) {
+                    data.current.total_read_count.fetch_add(1, Relaxed);
+                }
+
+                // As long as we only have a low number of reads we can avoid doing a hash
+                // insert and potentially allocating/reallocating the hashmap
+                let new_read = if task_deps.reads.len() < TASK_DEPS_READS_CAP {
+                    task_deps.reads.iter().all(|other| *other != dep_node_index)
+                } else {
+                    task_deps.read_set.insert(dep_node_index)
+                };
+                if new_read {
+                    task_deps.reads.push(dep_node_index);
+                    if task_deps.reads.len() == TASK_DEPS_READS_CAP {
+                        // Fill `read_set` with what we have so far so we can use the hashset
+                        // next time
+                        task_deps.read_set.extend(task_deps.reads.iter().copied());
                     }
 
-                    if cfg!(debug_assertions) {
-                        data.current.total_read_count.fetch_add(1, Relaxed);
-                    }
-
-                    // As long as we only have a low number of reads we can avoid doing a hash
-                    // insert and potentially allocating/reallocating the hashmap
-                    let new_read = if task_deps.reads.len() < TASK_DEPS_READS_CAP {
-                        task_deps.reads.iter().all(|other| *other != dep_node_index)
-                    } else {
-                        task_deps.read_set.insert(dep_node_index)
-                    };
-                    if new_read {
-                        task_deps.reads.push(dep_node_index);
-                        if task_deps.reads.len() == TASK_DEPS_READS_CAP {
-                            // Fill `read_set` with what we have so far so we can use the hashset
-                            // next time
-                            task_deps.read_set.extend(task_deps.reads.iter().copied());
-                        }
-
-                        #[cfg(debug_assertions)]
-                        {
-                            if let Some(target) = task_deps.node {
-                                if let Some(ref forbidden_edge) = data.current.forbidden_edge {
-                                    let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
-                                    if forbidden_edge.test(&src, &target) {
-                                        panic!("forbidden edge {:?} -> {:?} created", src, target)
-                                    }
+                    #[cfg(debug_assertions)]
+                    {
+                        if let Some(target) = task_deps.node {
+                            if let Some(ref forbidden_edge) = data.current.forbidden_edge {
+                                let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
+                                if forbidden_edge.test(&src, &target) {
+                                    panic!("forbidden edge {:?} -> {:?} created", src, target)
                                 }
                             }
                         }
-                    } else if cfg!(debug_assertions) {
-                        data.current.total_duplicate_read_count.fetch_add(1, Relaxed);
                     }
+                } else if cfg!(debug_assertions) {
+                    data.current.total_duplicate_read_count.fetch_add(1, Relaxed);
                 }
             })
         }
@@ -1185,21 +1192,34 @@ impl<K: DepKind> CurrentDepGraph<K> {
 const TASK_DEPS_READS_CAP: usize = 8;
 type EdgesVec = SmallVec<[DepNodeIndex; TASK_DEPS_READS_CAP]>;
 
-pub struct TaskDeps<K> {
+#[derive(Debug, Clone, Copy)]
+pub enum TaskDepsRef<'a, K: DepKind> {
+    /// New dependencies can be added to the
+    /// `TaskDeps`. This is used when executing a 'normal' query
+    /// (no `eval_always` modifier)
+    Allow(&'a Lock<TaskDeps<K>>),
+    /// New dependencies are ignored. This is used when
+    /// executing an `eval_always` query, since there's no
+    /// need to track dependencies for a query that's always
+    /// re-executed. This is also used for `dep_graph.with_ignore`
+    Ignore,
+    /// Any attempt to add new dependencies will cause a panic.
+    /// This is used when decoding a query result from disk,
+    /// to ensure that the decoding process doesn't itself
+    /// require the execution of any queries.
+    Forbid,
+}
+
+#[derive(Debug)]
+pub struct TaskDeps<K: DepKind> {
     #[cfg(debug_assertions)]
     node: Option<DepNode<K>>,
     reads: EdgesVec,
     read_set: FxHashSet<DepNodeIndex>,
     phantom_data: PhantomData<DepNode<K>>,
-    /// Whether or not we allow `DepGraph::read_index` to run.
-    /// This is normally true, except inside `with_query_deserialization`,
-    /// where it set to `false` to enforce that no new `DepNode` edges are
-    /// created. See the documentation of `with_query_deserialization` for
-    /// more details.
-    read_allowed: bool,
 }
 
-impl<K> Default for TaskDeps<K> {
+impl<K: DepKind> Default for TaskDeps<K> {
     fn default() -> Self {
         Self {
             #[cfg(debug_assertions)]
@@ -1207,7 +1227,6 @@ impl<K> Default for TaskDeps<K> {
             reads: EdgesVec::new(),
             read_set: FxHashSet::default(),
             phantom_data: PhantomData,
-            read_allowed: true,
         }
     }
 }
