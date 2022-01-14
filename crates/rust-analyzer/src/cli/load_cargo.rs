@@ -88,7 +88,7 @@ pub fn load_workspace(
         load_crate_graph(crate_graph, project_folders.source_root_config, &mut vfs, &receiver);
 
     if load_config.prefill_caches {
-        host.analysis().prime_caches(|_| {})?;
+        host.analysis().parallel_prime_caches(1, |_| {})?;
     }
     Ok((host, vfs, proc_macro_client))
 }

@@ -509,10 +509,13 @@ impl GlobalState {
                 let analysis = self.snapshot().analysis;
                 move |sender| {
                     sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
-                    let res = analysis.parallel_prime_caches(32, |progress| {
-                        let report = PrimeCachesProgress::Report(progress);
-                        sender.send(Task::PrimeCaches(report)).unwrap();
-                    });
+                    let res = analysis.parallel_prime_caches(
+                        num_cpus::get_physical().try_into().unwrap_or(u8::MAX),
+                        |progress| {
+                            let report = PrimeCachesProgress::Report(progress);
+                            sender.send(Task::PrimeCaches(report)).unwrap();
+                        },
+                    );
                     sender
                         .send(Task::PrimeCaches(PrimeCachesProgress::End {
                             cancelled: res.is_err(),

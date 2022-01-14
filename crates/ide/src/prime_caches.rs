@@ -16,29 +16,6 @@ use rustc_hash::FxHashSet;
 
 use crate::RootDatabase;
 
-/// We started indexing a crate.
-#[derive(Debug)]
-pub struct PrimeCachesProgress {
-    pub on_crate: String,
-    pub n_done: usize,
-    pub n_total: usize,
-}
-
-pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) + Sync)) {
-    let _p = profile::span("prime_caches");
-    let graph = db.crate_graph();
-    let to_prime = compute_crates_to_prime(db, &graph);
-
-    let n_total = to_prime.len();
-    for (n_done, &crate_id) in to_prime.iter().enumerate() {
-        let crate_name = graph[crate_id].display_name.as_deref().unwrap_or_default().to_string();
-
-        cb(PrimeCachesProgress { on_crate: crate_name, n_done, n_total });
-        // This also computes the DefMap
-        db.import_map(crate_id);
-    }
-}
-
 /// We're indexing many crates.
 #[derive(Debug)]
 pub struct ParallelPrimeCachesProgress {
