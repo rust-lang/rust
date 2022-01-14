@@ -47,10 +47,11 @@ pub struct ParallelPrimeCachesProgress {
     pub crates_done: usize,
 }
 
-pub(crate) fn parallel_prime_caches<F>(db: &RootDatabase, num_worker_threads: u8, cb: &F)
-where
-    F: Fn(ParallelPrimeCachesProgress) + Sync + std::panic::UnwindSafe,
-{
+pub(crate) fn parallel_prime_caches(
+    db: &RootDatabase,
+    num_worker_threads: u8,
+    cb: &(dyn Fn(ParallelPrimeCachesProgress) + Sync),
+) {
     let _p = profile::span("prime_caches");
 
     let graph = db.crate_graph();
