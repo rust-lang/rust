@@ -254,6 +254,9 @@ impl<'a> Parser<'a> {
                         err.emit();
                         None
                     } else {
+                        if self.check(&token::Dot) {
+                            err.help("if this was intended as a const argument, wrap it in curly braces: `{ ... }`");
+                        }
                         // Rewind to before attempting to parse the type and continue parsing.
                         let parser_snapshot_after_type =
                             mem::replace(self, parser_snapshot_before_type);

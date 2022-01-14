@@ -1,0 +1,22 @@
+error: expected one of `!`, `(`, `+`, `,`, `::`, `:`, `<`, `=`, or `>`, found `.`
+  --> $DIR/issue-92776.rs:16:24
+   |
+LL |     let _a: Wow<EXAMPLE.foo> = Wow::new();
+   |         --             ^ expected one of 9 possible tokens
+   |         |
+   |         while parsing the type for `_a`
+   |
+   = help: if this was intended as a const argument, wrap it in curly braces: `{ ... }`
+
+error: expected one of `!`, `(`, `+`, `,`, `::`, `:`, `<`, `=`, or `>`, found `.`
+  --> $DIR/issue-92776.rs:21:26
+   |
+LL |     let _b: Wow<EXAMPLE_2.0> = Wow::new();
+   |         --               ^ expected one of 9 possible tokens
+   |         |
+   |         while parsing the type for `_b`
+   |
+   = help: if this was intended as a const argument, wrap it in curly braces: `{ ... }`
+
+error: aborting due to 2 previous errors
+
