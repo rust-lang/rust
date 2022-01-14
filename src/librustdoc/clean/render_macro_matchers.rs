@@ -5,7 +5,8 @@ use rustc_ast_pretty::pprust::PrintState;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FilePathMapping;
-use rustc_span::symbol::{kw, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::Span;
 
 /// Render a macro matcher in a format suitable for displaying to the user
 /// as part of an item declaration.
@@ -153,7 +154,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
                 }
                 (Pound, token::Not) => (false, PoundBang),
                 (_, token::Ident(symbol, /* is_raw */ false))
-                    if !usually_needs_space_between_keyword_and_open_delim(*symbol) =>
+                    if !usually_needs_space_between_keyword_and_open_delim(*symbol, tt.span) =>
                 {
                     (true, Ident)
                 }
@@ -177,42 +178,63 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
     }
 }
 
-// This rough subset of keywords is listed here to distinguish tokens resembling
-// `f(0)` (no space between ident and paren) from tokens resembling `if let (0,
-// 0) = x` (space between ident and paren).
-fn usually_needs_space_between_keyword_and_open_delim(symbol: Symbol) -> bool {
+fn usually_needs_space_between_keyword_and_open_delim(symbol: Symbol, span: Span) -> bool {
+    let ident = Ident { name: symbol, span };
+    let is_keyword = ident.is_used_keyword() || ident.is_unused_keyword();
+    if !is_keyword {
+        // An identifier that is not a keyword usually does not need a space
+        // before an open delim. For example: `f(0)` or `f[0]`.
+        return false;
+    }
+
     match symbol {
-        kw::As
-        | kw::Box
-        | kw::Break
-        | kw::Const
-        | kw::Continue
-        | kw::Crate
-        | kw::Else
-        | kw::Enum
-        | kw::Extern
-        | kw::For
-        | kw::If
-        | kw::Impl
-        | kw::In
-        | kw::Let
-        | kw::Loop
-        | kw::Macro
-        | kw::Match
-        | kw::Mod
-        | kw::Move
-        | kw::Mut
-        | kw::Ref
-        | kw::Return
-        | kw::Static
-        | kw::Struct
-        | kw::Trait
-        | kw::Type
-        | kw::Unsafe
-        | kw::Use
-        | kw::Where
-        | kw::While
-        | kw::Yield => true,
-        _ => false,
+        // No space after keywords that are syntactically an expression. For
+        // example: a tuple struct created with `let _ = Self(0, 0)`, or if
+        // someone has `impl Index<MyStruct> for bool` then `true[MyStruct]`.
+        kw::False | kw::SelfLower | kw::SelfUpper | kw::True => false,
+
+        // No space, as in `let _: fn();`
+        kw::Fn => false,
+
+        // No space, as in `pub(crate) type T;`
+        kw::Pub => false,
+
+        // No space for keywords that can end an expression, as in `fut.await()`
+        // where fut's Output type is `fn()`.
+        kw::Await => false,
+
+        // Otherwise space after keyword. Some examples:
+        //
+        // `expr as [T; 2]`
+        //         ^
+        // `box (tuple,)`
+        //     ^
+        // `break (tuple,)`
+        //       ^
+        // `type T = dyn (Fn() -> dyn Trait) + Send;`
+        //              ^
+        // `for (tuple,) in iter {}`
+        //     ^
+        // `if (tuple,) == v {}`
+        //    ^
+        // `impl [T] {}`
+        //      ^
+        // `for x in [..] {}`
+        //          ^
+        // `let () = unit;`
+        //     ^
+        // `match [x, y] {...}`
+        //       ^
+        // `&mut (x as T)`
+        //      ^
+        // `return [];`
+        //        ^
+        // `fn f<T>() where (): Into<T>`
+        //                 ^
+        // `while (a + b).what() {}`
+        //       ^
+        // `yield [];`
+        //       ^
+        _ => true,
     }
 }
