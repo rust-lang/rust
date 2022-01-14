@@ -1152,19 +1152,11 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 if self.visit(ty).is_break() {
                     return;
                 }
+            } else {
+                // We don't do anything for const infers here.
             }
         } else {
-            let local_id = self.tcx.hir().local_def_id(inf.hir_id);
-            if let Some(did) = self.tcx.opt_const_param_of(local_id) {
-                if self.visit_def_id(did, "inferred", &"").is_break() {
-                    return;
-                }
-            }
-
-            // FIXME see above note for same issue.
-            if self.visit(rustc_typeck::hir_ty_to_ty(self.tcx, &inf.to_ty())).is_break() {
-                return;
-            }
+            bug!("visit_infer without typeck_results");
         }
         intravisit::walk_inf(self, inf);
     }

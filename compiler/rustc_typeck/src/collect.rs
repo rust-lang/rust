@@ -113,9 +113,9 @@ pub struct ItemCtxt<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
-crate struct PlaceholderHirTyCollector(crate Vec<Span>);
+crate struct HirPlaceholderCollector(crate Vec<Span>);
 
-impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
+impl<'v> Visitor<'v> for HirPlaceholderCollector {
     type Map = intravisit::ErasedMap<'v>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -136,6 +136,12 @@ impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
             hir::GenericArg::Type(t) => self.visit_ty(t),
             _ => {}
         }
+    }
+    fn visit_array_length(&mut self, length: &'v hir::ArrayLen) {
+        if let &hir::ArrayLen::Infer(_, span) = length {
+            self.0.push(span);
+        }
+        intravisit::walk_array_len(self, length)
     }
 }
 
@@ -181,7 +187,7 @@ crate fn placeholder_type_error<'tcx>(
         sugg.push((span, format!(", {}", type_name)));
     }
 
-    let mut err = bad_placeholder(tcx, "type", placeholder_types, kind);
+    let mut err = bad_placeholder(tcx, placeholder_types, kind);
 
     // Suggest, but only if it is not a function in const or static
     if suggest {
@@ -239,7 +245,7 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
         _ => return,
     };
 
-    let mut visitor = PlaceholderHirTyCollector::default();
+    let mut visitor = HirPlaceholderCollector::default();
     visitor.visit_item(item);
 
     placeholder_type_error(
@@ -317,7 +323,6 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 
 fn bad_placeholder<'tcx>(
     tcx: TyCtxt<'tcx>,
-    placeholder_kind: &'static str,
     mut spans: Vec<Span>,
     kind: &'static str,
 ) -> rustc_errors::DiagnosticBuilder<'tcx> {
@@ -328,8 +333,7 @@ fn bad_placeholder<'tcx>(
         tcx.sess,
         spans.clone(),
         E0121,
-        "the {} placeholder `_` is not allowed within types on item signatures for {}",
-        placeholder_kind,
+        "the placeholder `_` is not allowed within types on item signatures for {}",
         kind
     );
     for span in spans {
@@ -387,7 +391,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
     }
 
     fn ty_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx> {
-        self.tcx().ty_error_with_message(span, "bad_placeholder_type")
+        self.tcx().ty_error_with_message(span, "bad placeholder type")
     }
 
     fn ct_infer(
@@ -396,13 +400,11 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         _: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> &'tcx Const<'tcx> {
-        bad_placeholder(self.tcx(), "const", vec![span], "generic").emit();
-        // Typeck doesn't expect erased regions to be returned from `type_of`.
         let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match r {
             ty::ReErased => self.tcx.lifetimes.re_static,
             _ => r,
         });
-        self.tcx().const_error(ty)
+        self.tcx().const_error_with_message(ty, span, "bad placeholder constant")
     }
 
     fn projected_ty_from_poly_trait_ref(
@@ -746,7 +748,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 match item.kind {
                     hir::ForeignItemKind::Fn(..) => tcx.ensure().fn_sig(item.def_id),
                     hir::ForeignItemKind::Static(..) => {
-                        let mut visitor = PlaceholderHirTyCollector::default();
+                        let mut visitor = HirPlaceholderCollector::default();
                         visitor.visit_foreign_item(item);
                         placeholder_type_error(
                             tcx,
@@ -829,7 +831,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 hir::ItemKind::Const(ty, ..) | hir::ItemKind::Static(ty, ..) => {
                     // (#75889): Account for `const C: dyn Fn() -> _ = "";`
                     if let hir::TyKind::TraitObject(..) = ty.kind {
-                        let mut visitor = PlaceholderHirTyCollector::default();
+                        let mut visitor = HirPlaceholderCollector::default();
                         visitor.visit_item(it);
                         placeholder_type_error(
                             tcx,
@@ -865,7 +867,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
         hir::TraitItemKind::Const(..) => {
             tcx.ensure().type_of(trait_item_id.def_id);
             // Account for `const C: _;`.
-            let mut visitor = PlaceholderHirTyCollector::default();
+            let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
             placeholder_type_error(tcx, None, &[], visitor.0, false, None, "constant");
         }
@@ -874,7 +876,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             tcx.ensure().item_bounds(trait_item_id.def_id);
             tcx.ensure().type_of(trait_item_id.def_id);
             // Account for `type T = _;`.
-            let mut visitor = PlaceholderHirTyCollector::default();
+            let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
             placeholder_type_error(tcx, None, &[], visitor.0, false, None, "associated type");
         }
@@ -883,7 +885,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             tcx.ensure().item_bounds(trait_item_id.def_id);
             // #74612: Visit and try to find bad placeholders
             // even if there is no concrete type.
-            let mut visitor = PlaceholderHirTyCollector::default();
+            let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
 
             placeholder_type_error(tcx, None, &[], visitor.0, false, None, "associated type");
@@ -905,7 +907,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
         }
         hir::ImplItemKind::TyAlias(_) => {
             // Account for `type T = _;`
-            let mut visitor = PlaceholderHirTyCollector::default();
+            let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_impl_item(impl_item);
 
             placeholder_type_error(tcx, None, &[], visitor.0, false, None, "associated type");
@@ -1738,10 +1740,14 @@ fn are_suggestable_generic_args(generic_args: &[hir::GenericArg<'_>]) -> bool {
 /// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only to
 /// use inference to provide suggestions for the appropriate type if possible.
 fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
+    debug!(?ty);
     use hir::TyKind::*;
     match &ty.kind {
         Infer => true,
-        Slice(ty) | Array(ty, _) => is_suggestable_infer_ty(ty),
+        Slice(ty) => is_suggestable_infer_ty(ty),
+        Array(ty, length) => {
+            is_suggestable_infer_ty(ty) || matches!(length, hir::ArrayLen::Infer(_, _))
+        }
         Tup(tys) => tys.iter().any(is_suggestable_infer_ty),
         Ptr(mut_ty) | Rptr(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
         OpaqueDef(_, generic_args) => are_suggestable_generic_args(generic_args),
@@ -1793,9 +1799,9 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     });
                     let fn_sig = ty::Binder::dummy(fn_sig);
 
-                    let mut visitor = PlaceholderHirTyCollector::default();
+                    let mut visitor = HirPlaceholderCollector::default();
                     visitor.visit_ty(ty);
-                    let mut diag = bad_placeholder(tcx, "type", visitor.0, "return type");
+                    let mut diag = bad_placeholder(tcx, visitor.0, "return type");
                     let ret_ty = fn_sig.skip_binder().output();
                     if !ret_ty.references_error() {
                         if !ret_ty.is_closure() {

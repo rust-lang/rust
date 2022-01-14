@@ -4,7 +4,7 @@ error: missing type for `const` item
 LL | const A = 5;
    |       ^ help: provide a type for the constant: `A: i32`
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for static variables
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/unnamable-types.rs:10:11
    |
 LL | static B: _ = "abc";
@@ -13,7 +13,7 @@ LL | static B: _ = "abc";
    |           not allowed in type signatures
    |           help: replace with the correct type: `&str`
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for constants
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/unnamable-types.rs:17:10
    |
 LL | const C: _ = || 42;
