@@ -80,7 +80,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     .and_then(|args| {
                         args.args
                             .iter()
-                            .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
+                            .filter(|arg| arg.is_ty_or_const())
                             .position(|arg| arg.id() == hir_id)
                     })
                     .unwrap_or_else(|| {
@@ -113,7 +113,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 .and_then(|args| {
                     args.args
                         .iter()
-                        .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
+                        .filter(|arg| arg.is_ty_or_const())
                         .position(|arg| arg.id() == hir_id)
                 })
                 .unwrap_or_else(|| {
@@ -169,7 +169,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                 .filter_map(|seg| seg.args.map(|args| (args.args, seg)))
                 .find_map(|(args, seg)| {
                     args.iter()
-                        .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
+                        .filter(|arg| arg.is_ty_or_const())
                         .position(|arg| arg.id() == hir_id)
                         .map(|index| (index, seg))
                 });
@@ -232,12 +232,11 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
     };
 
     debug!(?parent_node);
-    debug!(?generics);
-    debug!(?arg_idx);
+    debug!(?generics, ?arg_idx);
     generics
         .params
         .iter()
-        .filter(|param| !matches!(param.kind, ty::GenericParamDefKind::Lifetime { .. }))
+        .filter(|param| param.kind.is_ty_or_const())
         .nth(match generics.has_self && generics.parent.is_none() {
             true => arg_idx + 1,
             false => arg_idx,

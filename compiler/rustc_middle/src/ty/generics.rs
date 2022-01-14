@@ -31,6 +31,13 @@ impl GenericParamDefKind {
             GenericParamDefKind::Const { .. } => ast::ParamKindOrd::Const,
         }
     }
+
+    pub fn is_ty_or_const(&self) -> bool {
+        match self {
+            GenericParamDefKind::Lifetime => false,
+            GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => true,
+        }
+    }
 }
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]

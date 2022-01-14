@@ -314,6 +314,13 @@ impl GenericArg<'_> {
             GenericArg::Infer(_) => ast::ParamKindOrd::Infer,
         }
     }
+
+    pub fn is_ty_or_const(&self) -> bool {
+        match self {
+            GenericArg::Lifetime(_) => false,
+            GenericArg::Type(_) | GenericArg::Const(_) | GenericArg::Infer(_) => true,
+        }
+    }
 }
 
 #[derive(Debug, HashStable_Generic)]
