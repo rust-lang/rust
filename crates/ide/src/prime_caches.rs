@@ -14,7 +14,7 @@ use ide_db::{
 };
 use rustc_hash::FxHashSet;
 
-use crate::RootDatabase;
+use crate::{prime_caches, RootDatabase};
 
 /// We're indexing many crates.
 #[derive(Debug)]
@@ -54,33 +54,36 @@ pub(crate) fn parallel_prime_caches(
         builder.build()
     };
 
-    let (work_sender, work_receiver) = crossbeam_channel::unbounded();
-    let (progress_sender, progress_receiver) = crossbeam_channel::unbounded();
-
     enum ParallelPrimeCacheWorkerProgress {
         BeginCrate { crate_id: CrateId, crate_name: String },
         EndCrate { crate_id: CrateId },
     }
 
-    let prime_caches_worker = move |db: Snapshot<RootDatabase>| {
-        while let Ok((crate_id, crate_name)) = work_receiver.recv() {
-            progress_sender
-                .send(ParallelPrimeCacheWorkerProgress::BeginCrate { crate_id, crate_name })?;
+    let (work_sender, progress_receiver) = {
+        let (progress_sender, progress_receiver) = crossbeam_channel::unbounded();
+        let (work_sender, work_receiver) = crossbeam_channel::unbounded();
+        let prime_caches_worker = move |db: Snapshot<RootDatabase>| {
+            while let Ok((crate_id, crate_name)) = work_receiver.recv() {
+                progress_sender
+                    .send(ParallelPrimeCacheWorkerProgress::BeginCrate { crate_id, crate_name })?;
 
-            // This also computes the DefMap
-            db.import_map(crate_id);
+                // This also computes the DefMap
+                db.import_map(crate_id);
 
-            progress_sender.send(ParallelPrimeCacheWorkerProgress::EndCrate { crate_id })?;
+                progress_sender.send(ParallelPrimeCacheWorkerProgress::EndCrate { crate_id })?;
+            }
+
+            Ok::<_, crossbeam_channel::SendError<_>>(())
+        };
+
+        for _ in 0..num_worker_threads {
+            let worker = prime_caches_worker.clone();
+            let db = db.snapshot();
+            std::thread::spawn(move || Cancelled::catch(|| worker(db)));
         }
 
-        Ok::<_, crossbeam_channel::SendError<_>>(())
+        (work_sender, progress_receiver)
     };
-
-    for _ in 0..num_worker_threads {
-        let worker = prime_caches_worker.clone();
-        let db = db.snapshot();
-        std::thread::spawn(move || Cancelled::catch(|| worker(db)));
-    }
 
     let crates_total = crates_to_prime.pending();
     let mut crates_done = 0;
