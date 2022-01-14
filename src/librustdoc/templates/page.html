@@ -79,7 +79,7 @@
                 {%- if !layout.logo.is_empty()  %}
                     <img src="{{layout.logo}}" alt="logo"> {#- -#}
                 {%- else -%}
-                    <img class="rust-logo" src="{{static_root_path|safe}}rust-logo{{page.resource_suffix}}.png" alt="logo"> {#- -#}
+                    <img class="rust-logo" src="{{static_root_path|safe}}rust-logo{{page.resource_suffix}}.svg" alt="logo"> {#- -#}
                 {%- endif -%}
             </div>
         </a> {#- -#}
@@ -92,7 +92,7 @@
                     {%- if !layout.logo.is_empty()  %}
                         <img src="{{layout.logo}}" alt="logo"> {#- -#}
                     {%- else -%}
-                        <img class="rust-logo" src="{{static_root_path|safe}}rust-logo{{page.resource_suffix}}.png" alt="logo"> {#- -#}
+                        <img class="rust-logo" src="{{static_root_path|safe}}rust-logo{{page.resource_suffix}}.svg" alt="logo"> {#- -#}
                     {%- endif -%}
                 </a> {#- -#}
                 <nav class="sub"> {#- -#}
