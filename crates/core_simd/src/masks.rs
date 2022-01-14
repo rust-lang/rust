@@ -12,8 +12,10 @@
 )]
 mod mask_impl;
 
-use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+mod to_bitmask;
+pub use to_bitmask::ToBitMask;
+
+use crate::simd::{intrinsics, LaneCount, Simd, SimdElement, SupportedLaneCount};
 use core::cmp::Ordering;
 use core::{fmt, mem};
 
@@ -214,22 +216,6 @@ where
         unsafe {
             self.set_unchecked(lane, value);
         }
-    }
-
-    /// Convert this mask to a bitmask, with one bit set per lane.
-    #[cfg(feature = "generic_const_exprs")]
-    #[inline]
-    #[must_use = "method returns a new array and does not mutate the original value"]
-    pub fn to_bitmask(self) -> [u8; LaneCount::<LANES>::BITMASK_LEN] {
-        self.0.to_bitmask()
-    }
-
-    /// Convert a bitmask to a mask.
-    #[cfg(feature = "generic_const_exprs")]
-    #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask(bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN]) -> Self {
-        Self(mask_impl::Mask::from_bitmask(bitmask))
     }
 
     /// Returns true if any lane is set, or false otherwise.
