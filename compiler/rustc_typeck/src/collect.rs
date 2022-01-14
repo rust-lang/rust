@@ -1306,18 +1306,13 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
         })
         // Check for duplicates
         .and_then(|list| {
-            let mut set: FxHashSet<&Ident> = FxHashSet::default();
+            let mut set: FxHashMap<Symbol, Span> = FxHashMap::default();
             let mut no_dups = true;
 
             for ident in &*list {
-                if let Some(dup) = set.replace(ident) {
-                    let dup2 = set.get(&dup).copied().unwrap(); // We've just inserted it
-
+                if let Some(dup) = set.insert(ident.name, ident.span) {
                     tcx.sess
-                        .struct_span_err(
-                            vec![dup.span, dup2.span],
-                            "Functions names are duplicated",
-                        )
+                        .struct_span_err(vec![dup, ident.span], "Functions names are duplicated")
                         .note(
                             "All `#[rustc_must_implement_one_of]` arguments \
                             must be unique",
