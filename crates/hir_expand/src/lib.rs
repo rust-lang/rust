@@ -636,10 +636,7 @@ impl<'a> InFile<&'a SyntaxNode> {
     ) -> impl Iterator<Item = InFile<SyntaxNode>> + Clone + '_ {
         iter::successors(Some(self.cloned()), move |node| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
-            None => {
-                let parent_node = node.file_id.call_node(db)?;
-                Some(parent_node)
-            }
+            None => node.file_id.call_node(db),
         })
     }
 

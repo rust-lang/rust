@@ -31,7 +31,7 @@
 //! }
 //! ```
 
-use hir::{self, HasAttrs, HasSource};
+use hir::{self, HasAttrs};
 use ide_db::{path_transform::PathTransform, traits::get_missing_assoc_items, SymbolKind};
 use syntax::{
     ast::{self, edit_in_place::AttrsOwnerEdit},
@@ -151,7 +151,7 @@ fn add_function_impl(
 
     let range = replacement_range(ctx, fn_def_node);
 
-    if let Some(source) = func.source(ctx.db) {
+    if let Some(source) = ctx.sema.source(func) {
         let assoc_item = ast::AssocItem::Fn(source.value);
         if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
             let transformed_fn = match transformed_item {
@@ -189,7 +189,7 @@ fn get_transformed_assoc_item(
         target_scope,
         source_scope,
         trait_,
-        impl_def.source(ctx.db)?.value,
+        ctx.sema.source(impl_def)?.value,
     );
 
     transform.apply(assoc_item.syntax());
@@ -227,7 +227,7 @@ fn add_const_impl(
     let const_name = const_.name(ctx.db).map(|n| n.to_smol_str());
 
     if let Some(const_name) = const_name {
-        if let Some(source) = const_.source(ctx.db) {
+        if let Some(source) = ctx.sema.source(const_) {
             let assoc_item = ast::AssocItem::Const(source.value);
             if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
                 let transformed_const = match transformed_item {

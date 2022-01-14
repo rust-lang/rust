@@ -1,8 +1,8 @@
 //! Renderer for macro invocations.
 
 use either::Either;
-use hir::{db::HirDatabase, Documentation, HasSource};
-use ide_db::SymbolKind;
+use hir::{Documentation, HasSource, InFile, Semantics};
+use ide_db::{RootDatabase, SymbolKind};
 use syntax::{
     display::{fn_as_proc_macro_label, macro_label},
     SmolStr,
@@ -30,8 +30,6 @@ fn render(
     macro_: hir::MacroDef,
     import_to_add: Option<ImportEdit>,
 ) -> CompletionItem {
-    let db = completion.db;
-
     let source_range = if completion.is_immediately_after_macro_bang() {
         cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
         completion.token.parent().map_or_else(|| ctx.source_range(), |it| it.text_range())
@@ -54,7 +52,7 @@ fn render(
         label(&ctx, needs_bang, bra, ket, &name),
     );
     item.set_deprecated(ctx.is_deprecated(macro_))
-        .set_detail(detail(db, macro_))
+        .set_detail(detail(&completion.sema, macro_))
         .set_documentation(docs);
 
     if let Some(import_to_add) = import_to_add {
@@ -104,9 +102,11 @@ fn banged_name(name: &str) -> SmolStr {
     SmolStr::from_iter([name, "!"])
 }
 
-fn detail(db: &dyn HirDatabase, macro_: hir::MacroDef) -> Option<String> {
+fn detail(sema: &Semantics<RootDatabase>, macro_: hir::MacroDef) -> Option<String> {
     // FIXME: This is parsing the file!
-    let detail = match macro_.source(db)?.value {
+    let InFile { file_id, value } = macro_.source(sema.db)?;
+    let _ = sema.parse_or_expand(file_id);
+    let detail = match value {
         Either::Left(node) => macro_label(&node),
         Either::Right(node) => fn_as_proc_macro_label(&node),
     };

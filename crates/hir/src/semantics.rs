@@ -2,7 +2,7 @@
 
 mod source_to_def;
 
-use std::{cell::RefCell, fmt};
+use std::{cell::RefCell, fmt, iter};
 
 use base_db::{FileId, FileRange};
 use either::Either;
@@ -443,8 +443,7 @@ impl<'db> SemanticsImpl<'db> {
     fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         let sa = self.analyze_no_infer(macro_call.syntax());
         let file_id = sa.expand(self.db, InFile::new(sa.file_id, macro_call))?;
-        let node = self.db.parse_or_expand(file_id)?;
-        self.cache(node.clone(), file_id);
+        let node = self.parse_or_expand(file_id)?;
         Some(node)
     }
 
@@ -452,8 +451,7 @@ impl<'db> SemanticsImpl<'db> {
         let src = self.find_file(item.syntax()).with_value(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src))?;
         let file_id = macro_call_id.as_file();
-        let node = self.db.parse_or_expand(file_id)?;
-        self.cache(node.clone(), file_id);
+        let node = self.parse_or_expand(file_id)?;
         Some(node)
     }
 
@@ -750,10 +748,9 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
-        let root = self.db.parse_or_expand(src.file_id).unwrap();
-        let node = src.value.to_node(&root);
-        self.cache(root, src.file_id);
-        src.with_value(&node).original_file_range(self.db.upcast())
+        let root = self.parse_or_expand(src.file_id).unwrap();
+        let node = src.map(|it| it.to_node(&root));
+        node.as_ref().original_file_range(self.db.upcast())
     }
 
     fn token_ancestors_with_macros(
@@ -768,7 +765,17 @@ impl<'db> SemanticsImpl<'db> {
         node: SyntaxNode,
     ) -> impl Iterator<Item = SyntaxNode> + Clone + '_ {
         let node = self.find_file(&node);
-        node.ancestors_with_macros(self.db.upcast()).map(|it| it.value)
+        let db = self.db.upcast();
+        iter::successors(Some(node.cloned()), move |&InFile { file_id, ref value }| {
+            match value.parent() {
+                Some(parent) => Some(InFile::new(file_id, parent)),
+                None => {
+                    self.cache(value.clone(), file_id);
+                    file_id.call_node(db)
+                }
+            }
+        })
+        .map(|it| it.value)
     }
 
     fn ancestors_at_offset_with_macros(
