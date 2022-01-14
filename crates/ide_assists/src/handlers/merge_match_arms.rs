@@ -131,6 +131,11 @@ fn get_arm_types(context: &AssistContext, arm: &MatchArm) -> HashMap<String, Opt
                         recurse(&Some(field), map, ctx);
                     }
                 }
+                Some(ast::Pat::TuplePat(tuple)) => {
+                    for field in tuple.fields() {
+                        recurse(&Some(field), map, ctx);
+                    }
+                }
                 Some(ast::Pat::RecordPat(record)) => {
                     if let Some(field_list) = record.record_pat_field_list() {
                         for field in field_list.fields() {
@@ -706,6 +711,21 @@ fn main(msg: Message) {
         Message::ChangeColor(x, Color::Rgb(y, b, c)) => $0"",
         Message::ChangeColor(y, Color::Hsv(x, b, c)) => "",
         _ => "other"
+    };
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn merge_match_arms_tuple() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+fn func() {
+    match (0, "boo") {
+        (x, y) => $0"",
+        (y, x) => "",
     };
 }
         "#,
