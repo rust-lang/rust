@@ -84,6 +84,39 @@ in documentation.
 `#![feature(doc_cfg)]` feature gate. For more information, see [its chapter in the Unstable
 Book][unstable-doc-cfg] and [its tracking issue][issue-doc-cfg].
 
+### `doc_auto_cfg`: Automatically generate `#[doc(cfg)]`
+
+`doc_auto_cfg` is an extension to the `#[doc(cfg)]` feature. With it, you don't need to add
+`#[doc(cfg(...)]` anymore unless you want to override the default behaviour. So if we take the
+previous source code:
+
+```rust
+#![feature(doc_auto_cfg)]
+
+/// Token struct that can only be used on Windows.
+#[cfg(any(windows, doc))]
+pub struct WindowsToken;
+
+/// Token struct that can only be used on Unix.
+#[cfg(any(unix, doc))]
+pub struct UnixToken;
+
+/// Token struct that is only available with the `serde` feature
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+pub struct SerdeToken;
+```
+
+It'll render almost the same, the difference being that `doc` will also be displayed. To fix this,
+you can use `doc_cfg_hide`:
+
+```rust
+#![feature(doc_cfg_hide)]
+#![doc(cfg_hide(doc))]
+```
+
+And `doc` won't show up anymore!
+
 [cfg-doc]: ./advanced-features.md
 [unstable-doc-cfg]: ../unstable-book/language-features/doc-cfg.html
 [issue-doc-cfg]: https://github.com/rust-lang/rust/issues/43781
