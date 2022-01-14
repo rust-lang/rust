@@ -43,11 +43,10 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::TraitAliasItem(..)
             | clean::MacroItem(..)
             | clean::ForeignTypeItem => {
-                if i.def_id.is_local() {
-                    if !self.access_levels.is_exported(i.def_id.expect_def_id()) {
-                        debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
-                        return None;
-                    }
+                if i.def_id.is_local() && !self.access_levels.is_exported(i.def_id.expect_def_id())
+                {
+                    debug!("Stripper: stripping {:?} {:?}", i.type_(), i.name);
+                    return None;
                 }
             }
 
