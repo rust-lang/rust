@@ -31,9 +31,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: TypeError<'tcx>,
     ) {
         self.annotate_expected_due_to_let_ty(err, expr, error);
-        self.suggest_box_deref(err, expr, expected, expr_ty);
-        self.suggest_compatible_variants(err, expr, expected, expr_ty);
         self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr);
+        self.suggest_compatible_variants(err, expr, expected, expr_ty);
         if self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty) {
             return;
         }
@@ -256,23 +255,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             _ => {}
-        }
-    }
-
-    fn suggest_box_deref(
-        &self,
-        err: &mut DiagnosticBuilder<'_>,
-        expr: &hir::Expr<'_>,
-        expected: Ty<'tcx>,
-        expr_ty: Ty<'tcx>,
-    ) {
-        if expr_ty.is_box() && expr_ty.boxed_ty() == expected {
-            err.span_suggestion_verbose(
-                expr.span.shrink_to_lo(),
-                "try dereferencing the `Box`",
-                "*".to_string(),
-                Applicability::MachineApplicable,
-            );
         }
     }
 
@@ -857,14 +839,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Applicability::MachineApplicable,
                                 false,
                             ));
-                        } else if self.infcx.type_is_copy_modulo_regions(
-                            self.param_env,
-                            expected,
-                            sp,
-                        ) {
-                            // For this suggestion to make sense, the type would need to be `Copy`.
+                        }
+
+                        // For this suggestion to make sense, the type would need to be `Copy`,
+                        // or we have to be moving out of a `Box<T>`
+                        if self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp)
+                            || checked_ty.is_box()
+                        {
                             if let Ok(code) = sm.span_to_snippet(expr.span) {
-                                let message = if checked_ty.is_region_ptr() {
+                                let message = if checked_ty.is_box() {
+                                    "consider unboxing the value"
+                                } else if checked_ty.is_region_ptr() {
                                     "consider dereferencing the borrow"
                                 } else {
                                     "consider dereferencing the type"

@@ -6,7 +6,7 @@ LL |     want_foo(b);
    |
    = note: expected struct `Foo`
               found struct `Box<Foo>`
-help: try dereferencing the `Box`
+help: consider unboxing the value
    |
 LL |     want_foo(*b);
    |              +
