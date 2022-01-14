@@ -13,6 +13,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
@@ -57,7 +58,7 @@ fn push_debuginfo_type_name<'tcx>(
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let cpp_like_debuginfo = cpp_like_debuginfo(tcx);
 
-    match *t.kind() {
+    ensure_sufficient_stack(|| match *t.kind() {
         ty::Bool => output.push_str("bool"),
         ty::Char => output.push_str("char"),
         ty::Str => output.push_str("str"),
@@ -424,7 +425,7 @@ fn push_debuginfo_type_name<'tcx>(
                 t
             );
         }
-    }
+    });
 
     /// MSVC names enums differently than other platforms so that the debugging visualization
     // format (natvis) is able to understand enums and render the active variant correctly in the

@@ -13,6 +13,7 @@ use rustc_ast::walk_list;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{
@@ -215,7 +216,7 @@ impl<'a> AstValidator<'a> {
 
     // Mirrors `visit::walk_ty`, but tracks relevant state.
     fn walk_ty(&mut self, t: &'a Ty) {
-        match t.kind {
+        ensure_sufficient_stack(|| match t.kind {
             TyKind::ImplTrait(..) => {
                 self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t))
             }
@@ -254,7 +255,7 @@ impl<'a> AstValidator<'a> {
                 }
             }
             _ => visit::walk_ty(self, t),
-        }
+        })
     }
 
     fn visit_struct_field_def(&mut self, field: &'a FieldDef) {

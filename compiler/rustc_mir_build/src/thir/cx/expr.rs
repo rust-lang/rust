@@ -28,7 +28,7 @@ impl<'tcx> Cx<'tcx> {
     }
 
     crate fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Box<[ExprId]> {
-        exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect()
+        ensure_sufficient_stack(|| exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect())
     }
 
     pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {

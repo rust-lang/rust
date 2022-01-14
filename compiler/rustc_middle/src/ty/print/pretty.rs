@@ -4,6 +4,7 @@ use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCt
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sso::SsoHashSet;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_ID, LOCAL_CRATE};
@@ -553,49 +554,57 @@ pub trait PrettyPrinter<'tcx>:
     }
 
     fn pretty_print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-        define_scoped_cx!(self);
+        ensure_sufficient_stack(|| {
+            define_scoped_cx!(self);
 
-        match *ty.kind() {
-            ty::Bool => p!("bool"),
-            ty::Char => p!("char"),
-            ty::Int(t) => p!(write("{}", t.name_str())),
-            ty::Uint(t) => p!(write("{}", t.name_str())),
-            ty::Float(t) => p!(write("{}", t.name_str())),
-            ty::RawPtr(ref tm) => {
-                p!(write(
-                    "*{} ",
-                    match tm.mutbl {
-                        hir::Mutability::Mut => "mut",
-                        hir::Mutability::Not => "const",
+            match *ty.kind() {
+                ty::Bool => p!("bool"),
+                ty::Char => p!("char"),
+                ty::Int(t) => p!(write("{}", t.name_str())),
+                ty::Uint(t) => p!(write("{}", t.name_str())),
+                ty::Float(t) => p!(write("{}", t.name_str())),
+                ty::RawPtr(ref tm) => {
+                    p!(write(
+                        "*{} ",
+                        match tm.mutbl {
+                            hir::Mutability::Mut => "mut",
+                            hir::Mutability::Not => "const",
+                        }
+                    ));
+                    p!(print(tm.ty))
+                }
+                ty::Ref(r, ty, mutbl) => {
+                    p!("&");
+                    if self.should_print_region(r) {
+                        p!(print(r), " ");
                     }
-                ));
-                p!(print(tm.ty))
-            }
-            ty::Ref(r, ty, mutbl) => {
-                p!("&");
-                if self.should_print_region(r) {
-                    p!(print(r), " ");
+                    p!(print(ty::TypeAndMut { ty, mutbl }))
                 }
-                p!(print(ty::TypeAndMut { ty, mutbl }))
-            }
-            ty::Never => p!("!"),
-            ty::Tuple(ref tys) => {
-                p!("(", comma_sep(tys.iter()));
-                if tys.len() == 1 {
-                    p!(",");
+                ty::Never => p!("!"),
+                ty::Tuple(ref tys) => {
+                    p!("(", comma_sep(tys.iter()));
+                    if tys.len() == 1 {
+                        p!(",");
+                    }
+                    p!(")")
                 }
-                p!(")")
-            }
-            ty::FnDef(def_id, substs) => {
-                let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), substs);
-                p!(print(sig), " {{", print_value_path(def_id, substs), "}}");
-            }
-            ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
-            ty::Infer(infer_ty) => {
-                let verbose = self.tcx().sess.verbose();
-                if let ty::TyVar(ty_vid) = infer_ty {
-                    if let Some(name) = self.ty_infer_name(ty_vid) {
-                        p!(write("{}", name))
+                ty::FnDef(def_id, substs) => {
+                    let sig = self.tcx().fn_sig(def_id).subst(self.tcx(), substs);
+                    p!(print(sig), " {{", print_value_path(def_id, substs), "}}");
+                }
+                ty::FnPtr(ref bare_fn) => p!(print(bare_fn)),
+                ty::Infer(infer_ty) => {
+                    let verbose = self.tcx().sess.verbose();
+                    if let ty::TyVar(ty_vid) = infer_ty {
+                        if let Some(name) = self.ty_infer_name(ty_vid) {
+                            p!(write("{}", name))
+                        } else {
+                            if verbose {
+                                p!(write("{:?}", infer_ty))
+                            } else {
+                                p!(write("{}", infer_ty))
+                            }
+                        }
                     } else {
                         if verbose {
                             p!(write("{:?}", infer_ty))
@@ -603,115 +612,74 @@ pub trait PrettyPrinter<'tcx>:
                             p!(write("{}", infer_ty))
                         }
                     }
-                } else {
-                    if verbose { p!(write("{:?}", infer_ty)) } else { p!(write("{}", infer_ty)) }
                 }
-            }
-            ty::Error(_) => p!("[type error]"),
-            ty::Param(ref param_ty) => p!(print(param_ty)),
-            ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
-                ty::BoundTyKind::Anon => self.pretty_print_bound_var(debruijn, bound_ty.var)?,
-                ty::BoundTyKind::Param(p) => p!(write("{}", p)),
-            },
-            ty::Adt(def, substs) => {
-                p!(print_def_path(def.did(), substs));
-            }
-            ty::Dynamic(data, r) => {
-                let print_r = self.should_print_region(r);
-                if print_r {
-                    p!("(");
+                ty::Error(_) => p!("[type error]"),
+                ty::Param(ref param_ty) => p!(print(param_ty)),
+                ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
+                    ty::BoundTyKind::Anon => self.pretty_print_bound_var(debruijn, bound_ty.var)?,
+                    ty::BoundTyKind::Param(p) => p!(write("{}", p)),
+                },
+                ty::Adt(def, substs) => {
+                    p!(print_def_path(def.did(), substs));
                 }
-                p!("dyn ", print(data));
-                if print_r {
-                    p!(" + ", print(r), ")");
+                ty::Dynamic(data, r) => {
+                    let print_r = self.should_print_region(r);
+                    if print_r {
+                        p!("(");
+                    }
+                    p!("dyn ", print(data));
+                    if print_r {
+                        p!(" + ", print(r), ")");
+                    }
                 }
-            }
-            ty::Foreign(def_id) => {
-                p!(print_def_path(def_id, &[]));
-            }
-            ty::Projection(ref data) => p!(print(data)),
-            ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
-            ty::Opaque(def_id, substs) => {
-                // FIXME(eddyb) print this with `print_def_path`.
-                // We use verbose printing in 'NO_QUERIES' mode, to
-                // avoid needing to call `predicates_of`. This should
-                // only affect certain debug messages (e.g. messages printed
-                // from `rustc_middle::ty` during the computation of `tcx.predicates_of`),
-                // and should have no effect on any compiler output.
-                if self.tcx().sess.verbose() || NO_QUERIES.with(|q| q.get()) {
-                    p!(write("Opaque({:?}, {:?})", def_id, substs));
-                    return Ok(self);
+                ty::Foreign(def_id) => {
+                    p!(print_def_path(def_id, &[]));
                 }
-
-                let parent = self.tcx().parent(def_id).expect("opaque types always have a parent");
-                match self.tcx().def_kind(parent) {
-                    DefKind::TyAlias | DefKind::AssocTy => {
-                        if let ty::Opaque(d, _) = *self.tcx().type_of(parent).kind() {
-                            if d == def_id {
-                                // If the type alias directly starts with the `impl` of the
-                                // opaque type we're printing, then skip the `::{opaque#1}`.
-                                p!(print_def_path(parent, substs));
-                                return Ok(self);
-                            }
-                        }
-                        // Complex opaque type, e.g. `type Foo = (i32, impl Debug);`
-                        p!(print_def_path(def_id, substs));
+                ty::Projection(ref data) => p!(print(data)),
+                ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
+                ty::Opaque(def_id, substs) => {
+                    // FIXME(eddyb) print this with `print_def_path`.
+                    // We use verbose printing in 'NO_QUERIES' mode, to
+                    // avoid needing to call `predicates_of`. This should
+                    // only affect certain debug messages (e.g. messages printed
+                    // from `rustc_middle::ty` during the computation of `tcx.predicates_of`),
+                    // and should have no effect on any compiler output.
+                    if self.tcx().sess.verbose() || NO_QUERIES.with(|q| q.get()) {
+                        p!(write("Opaque({:?}, {:?})", def_id, substs));
                         return Ok(self);
                     }
-                    _ => return self.pretty_print_opaque_impl_type(def_id, substs),
-                }
-            }
-            ty::Str => p!("str"),
-            ty::Generator(did, substs, movability) => {
-                p!(write("["));
-                match movability {
-                    hir::Movability::Movable => {}
-                    hir::Movability::Static => p!("static "),
-                }
 
-                if !self.tcx().sess.verbose() {
-                    p!("generator");
-                    // FIXME(eddyb) should use `def_span`.
-                    if let Some(did) = did.as_local() {
-                        let span = self.tcx().def_span(did);
-                        p!(write(
-                            "@{}",
-                            // This may end up in stderr diagnostics but it may also be emitted
-                            // into MIR. Hence we use the remapped path if available
-                            self.tcx().sess.source_map().span_to_embeddable_string(span)
-                        ));
-                    } else {
-                        p!(write("@"), print_def_path(did, substs));
-                    }
-                } else {
-                    p!(print_def_path(did, substs));
-                    p!(" upvar_tys=(");
-                    if !substs.as_generator().is_valid() {
-                        p!("unavailable");
-                    } else {
-                        self = self.comma_sep(substs.as_generator().upvar_tys())?;
-                    }
-                    p!(")");
-
-                    if substs.as_generator().is_valid() {
-                        p!(" ", print(substs.as_generator().witness()));
+                    let parent =
+                        self.tcx().parent(def_id).expect("opaque types always have a parent");
+                    match self.tcx().def_kind(parent) {
+                        DefKind::TyAlias | DefKind::AssocTy => {
+                            if let ty::Opaque(d, _) = *self.tcx().type_of(parent).kind() {
+                                if d == def_id {
+                                    // If the type alias directly starts with the `impl` of the
+                                    // opaque type we're printing, then skip the `::{opaque#1}`.
+                                    p!(print_def_path(parent, substs));
+                                    return Ok(self);
+                                }
+                            }
+                            // Complex opaque type, e.g. `type Foo = (i32, impl Debug);`
+                            p!(print_def_path(def_id, substs));
+                            return Ok(self);
+                        }
+                        _ => return self.pretty_print_opaque_impl_type(def_id, substs),
                     }
                 }
+                ty::Str => p!("str"),
+                ty::Generator(did, substs, movability) => {
+                    p!(write("["));
+                    match movability {
+                        hir::Movability::Movable => {}
+                        hir::Movability::Static => p!("static "),
+                    }
 
-                p!("]")
-            }
-            ty::GeneratorWitness(types) => {
-                p!(in_binder(&types));
-            }
-            ty::Closure(did, substs) => {
-                p!(write("["));
-                if !self.tcx().sess.verbose() {
-                    p!(write("closure"));
-                    // FIXME(eddyb) should use `def_span`.
-                    if let Some(did) = did.as_local() {
-                        if self.tcx().sess.opts.debugging_opts.span_free_formats {
-                            p!("@", print_def_path(did.to_def_id(), substs));
-                        } else {
+                    if !self.tcx().sess.verbose() {
+                        p!("generator");
+                        // FIXME(eddyb) should use `def_span`.
+                        if let Some(did) = did.as_local() {
                             let span = self.tcx().def_span(did);
                             p!(write(
                                 "@{}",
@@ -719,50 +687,92 @@ pub trait PrettyPrinter<'tcx>:
                                 // into MIR. Hence we use the remapped path if available
                                 self.tcx().sess.source_map().span_to_embeddable_string(span)
                             ));
+                        } else {
+                            p!(write("@"), print_def_path(did, substs));
                         }
                     } else {
-                        p!(write("@"), print_def_path(did, substs));
-                    }
-                } else {
-                    p!(print_def_path(did, substs));
-                    if !substs.as_closure().is_valid() {
-                        p!(" closure_substs=(unavailable)");
-                        p!(write(" substs={:?}", substs));
-                    } else {
-                        p!(" closure_kind_ty=", print(substs.as_closure().kind_ty()));
-                        p!(
-                            " closure_sig_as_fn_ptr_ty=",
-                            print(substs.as_closure().sig_as_fn_ptr_ty())
-                        );
+                        p!(print_def_path(did, substs));
                         p!(" upvar_tys=(");
-                        self = self.comma_sep(substs.as_closure().upvar_tys())?;
+                        if !substs.as_generator().is_valid() {
+                            p!("unavailable");
+                        } else {
+                            self = self.comma_sep(substs.as_generator().upvar_tys())?;
+                        }
                         p!(")");
-                    }
-                }
-                p!("]");
-            }
-            ty::Array(ty, sz) => {
-                p!("[", print(ty), "; ");
-                if self.tcx().sess.verbose() {
-                    p!(write("{:?}", sz));
-                } else if let ty::ConstKind::Unevaluated(..) = sz.val() {
-                    // Do not try to evaluate unevaluated constants. If we are const evaluating an
-                    // array length anon const, rustc will (with debug assertions) print the
-                    // constant's path. Which will end up here again.
-                    p!("_");
-                } else if let Some(n) = sz.val().try_to_bits(self.tcx().data_layout.pointer_size) {
-                    p!(write("{}", n));
-                } else if let ty::ConstKind::Param(param) = sz.val() {
-                    p!(print(param));
-                } else {
-                    p!("_");
-                }
-                p!("]")
-            }
-            ty::Slice(ty) => p!("[", print(ty), "]"),
-        }
 
-        Ok(self)
+                        if substs.as_generator().is_valid() {
+                            p!(" ", print(substs.as_generator().witness()));
+                        }
+                    }
+
+                    p!("]")
+                }
+                ty::GeneratorWitness(types) => {
+                    p!(in_binder(&types));
+                }
+                ty::Closure(did, substs) => {
+                    p!(write("["));
+                    if !self.tcx().sess.verbose() {
+                        p!(write("closure"));
+                        // FIXME(eddyb) should use `def_span`.
+                        if let Some(did) = did.as_local() {
+                            if self.tcx().sess.opts.debugging_opts.span_free_formats {
+                                p!("@", print_def_path(did.to_def_id(), substs));
+                            } else {
+                                let span = self.tcx().def_span(did);
+                                p!(write(
+                                    "@{}",
+                                    // This may end up in stderr diagnostics but it may also be emitted
+                                    // into MIR. Hence we use the remapped path if available
+                                    self.tcx().sess.source_map().span_to_embeddable_string(span)
+                                ));
+                            }
+                        } else {
+                            p!(write("@"), print_def_path(did, substs));
+                        }
+                    } else {
+                        p!(print_def_path(did, substs));
+                        if !substs.as_closure().is_valid() {
+                            p!(" closure_substs=(unavailable)");
+                            p!(write(" substs={:?}", substs));
+                        } else {
+                            p!(" closure_kind_ty=", print(substs.as_closure().kind_ty()));
+                            p!(
+                                " closure_sig_as_fn_ptr_ty=",
+                                print(substs.as_closure().sig_as_fn_ptr_ty())
+                            );
+                            p!(" upvar_tys=(");
+                            self = self.comma_sep(substs.as_closure().upvar_tys())?;
+                            p!(")");
+                        }
+                    }
+                    p!("]");
+                }
+                ty::Array(ty, sz) => {
+                    p!("[", print(ty), "; ");
+                    if self.tcx().sess.verbose() {
+                        p!(write("{:?}", sz));
+                    } else if let ty::ConstKind::Unevaluated(..) = sz.val() {
+                        // Do not try to evaluate unevaluated constants. If we are const evaluating an
+                        // array length anon const, rustc will (with debug assertions) print the
+                        // constant's path. Which will end up here again.
+                        p!("_");
+                    } else if let Some(n) =
+                        sz.val().try_to_bits(self.tcx().data_layout.pointer_size)
+                    {
+                        p!(write("{}", n));
+                    } else if let ty::ConstKind::Param(param) = sz.val() {
+                        p!(print(param));
+                    } else {
+                        p!("_");
+                    }
+                    p!("]")
+                }
+                ty::Slice(ty) => p!("[", print(ty), "]"),
+            }
+
+            Ok(self)
+        })
     }
 
     fn pretty_print_opaque_impl_type(

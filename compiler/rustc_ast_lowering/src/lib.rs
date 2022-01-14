@@ -48,6 +48,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -1166,13 +1167,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_ty_direct(&mut self, t: &Ty, mut itctx: ImplTraitContext<'_, 'hir>) -> hir::Ty<'hir> {
-        let kind = match t.kind {
-            TyKind::Infer => hir::TyKind::Infer,
-            TyKind::Err => hir::TyKind::Err,
-            TyKind::Slice(ref ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
-            TyKind::Ptr(ref mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
-            TyKind::Rptr(ref region, ref mt) => {
-                let region = region.unwrap_or_else(|| {
+        ensure_sufficient_stack(|| {
+            let kind = match t.kind {
+                TyKind::Infer => hir::TyKind::Infer,
+                TyKind::Err => hir::TyKind::Err,
+                TyKind::Slice(ref ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
+                TyKind::Ptr(ref mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
+                TyKind::Rptr(ref region, ref mt) => {
+                    let region = region.unwrap_or_else(|| {
                     let Some(LifetimeRes::ElidedAnchor { start, end }) = self.resolver.get_lifetime_res(t.id) else {
                         panic!()
                     };
@@ -1183,56 +1185,53 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         id: start,
                     }
                 });
-                let lifetime = self.lower_lifetime(&region);
-                hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
-            }
-            TyKind::BareFn(ref f) => self.with_lifetime_binder(t.id, |this| {
-                hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
-                    generic_params: this.lower_generic_params(
-                        &f.generic_params,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    ),
-                    unsafety: this.lower_unsafety(f.unsafety),
-                    abi: this.lower_extern(f.ext),
-                    decl: this.lower_fn_decl(&f.decl, None, FnDeclKind::Pointer, None),
-                    param_names: this.lower_fn_params_to_names(&f.decl),
-                }))
-            }),
-            TyKind::Never => hir::TyKind::Never,
-            TyKind::Tup(ref tys) => {
-                hir::TyKind::Tup(self.arena.alloc_from_iter(
+                    let lifetime = self.lower_lifetime(&region);
+                    hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
+                }
+                TyKind::BareFn(ref f) => self.with_lifetime_binder(t.id, |this| {
+                    hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
+                        generic_params: this.lower_generic_params(
+                            &f.generic_params,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                        ),
+                        unsafety: this.lower_unsafety(f.unsafety),
+                        abi: this.lower_extern(f.ext),
+                        decl: this.lower_fn_decl(&f.decl, None, FnDeclKind::Pointer, None),
+                        param_names: this.lower_fn_params_to_names(&f.decl),
+                    }))
+                }),
+                TyKind::Never => hir::TyKind::Never,
+                TyKind::Tup(ref tys) => hir::TyKind::Tup(self.arena.alloc_from_iter(
                     tys.iter().map(|ty| self.lower_ty_direct(ty, itctx.reborrow())),
-                ))
-            }
-            TyKind::Paren(ref ty) => {
-                return self.lower_ty_direct(ty, itctx);
-            }
-            TyKind::Path(ref qself, ref path) => {
-                return self.lower_path_ty(t, qself, path, ParamMode::Explicit, itctx);
-            }
-            TyKind::ImplicitSelf => {
-                let res = self.expect_full_res(t.id);
-                let res = self.lower_res(res);
-                hir::TyKind::Path(hir::QPath::Resolved(
-                    None,
-                    self.arena.alloc(hir::Path {
-                        res,
-                        segments: arena_vec![self; hir::PathSegment::from_ident(
-                            Ident::with_dummy_span(kw::SelfUpper)
-                        )],
-                        span: self.lower_span(t.span),
-                    }),
-                ))
-            }
-            TyKind::Array(ref ty, ref length) => {
-                hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_array_length(length))
-            }
-            TyKind::Typeof(ref expr) => hir::TyKind::Typeof(self.lower_anon_const(expr)),
-            TyKind::TraitObject(ref bounds, kind) => {
-                let mut lifetime_bound = None;
-                let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
-                    let bounds =
-                        this.arena.alloc_from_iter(bounds.iter().filter_map(
+                )),
+                TyKind::Paren(ref ty) => {
+                    return self.lower_ty_direct(ty, itctx);
+                }
+                TyKind::Path(ref qself, ref path) => {
+                    return self.lower_path_ty(t, qself, path, ParamMode::Explicit, itctx);
+                }
+                TyKind::ImplicitSelf => {
+                    let res = self.expect_full_res(t.id);
+                    let res = self.lower_res(res);
+                    hir::TyKind::Path(hir::QPath::Resolved(
+                        None,
+                        self.arena.alloc(hir::Path {
+                            res,
+                            segments: arena_vec![self; hir::PathSegment::from_ident(
+                                Ident::with_dummy_span(kw::SelfUpper)
+                            )],
+                            span: self.lower_span(t.span),
+                        }),
+                    ))
+                }
+                TyKind::Array(ref ty, ref length) => {
+                    hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_array_length(length))
+                }
+                TyKind::Typeof(ref expr) => hir::TyKind::Typeof(self.lower_anon_const(expr)),
+                TyKind::TraitObject(ref bounds, kind) => {
+                    let mut lifetime_bound = None;
+                    let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
+                        let bounds = this.arena.alloc_from_iter(bounds.iter().filter_map(
                             |bound| match *bound {
                                 GenericBound::Trait(
                                     ref ty,
@@ -1252,48 +1251,51 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 }
                             },
                         ));
-                    let lifetime_bound =
-                        lifetime_bound.unwrap_or_else(|| this.elided_dyn_bound(t.span));
-                    (bounds, lifetime_bound)
-                });
-                hir::TyKind::TraitObject(bounds, lifetime_bound, kind)
-            }
-            TyKind::ImplTrait(def_node_id, ref bounds) => {
-                let span = t.span;
-                match itctx {
-                    ImplTraitContext::ReturnPositionOpaqueTy { origin } => self
-                        .lower_opaque_impl_trait(span, origin, def_node_id, |this| {
-                            this.lower_param_bounds(bounds, itctx)
-                        }),
-                    ImplTraitContext::TypeAliasesOpaqueTy => {
-                        let nested_itctx = ImplTraitContext::TypeAliasesOpaqueTy;
-                        self.lower_opaque_impl_trait(
-                            span,
-                            hir::OpaqueTyOrigin::TyAlias,
-                            def_node_id,
-                            |this| this.lower_param_bounds(bounds, nested_itctx),
-                        )
-                    }
-                    ImplTraitContext::Universal(in_band_ty_params, parent_def_id) => {
-                        // Add a definition for the in-band `Param`.
-                        let def_id = self.resolver.local_def_id(def_node_id);
+                        let lifetime_bound =
+                            lifetime_bound.unwrap_or_else(|| this.elided_dyn_bound(t.span));
+                        (bounds, lifetime_bound)
+                    });
+                    hir::TyKind::TraitObject(bounds, lifetime_bound, kind)
+                }
+                TyKind::ImplTrait(def_node_id, ref bounds) => {
+                    let span = t.span;
+                    match itctx {
+                        ImplTraitContext::ReturnPositionOpaqueTy { origin } => self
+                            .lower_opaque_impl_trait(span, origin, def_node_id, |this| {
+                                this.lower_param_bounds(bounds, itctx)
+                            }),
+                        ImplTraitContext::TypeAliasesOpaqueTy => {
+                            let nested_itctx = ImplTraitContext::TypeAliasesOpaqueTy;
+                            self.lower_opaque_impl_trait(
+                                span,
+                                hir::OpaqueTyOrigin::TyAlias,
+                                def_node_id,
+                                |this| this.lower_param_bounds(bounds, nested_itctx),
+                            )
+                        }
+                        ImplTraitContext::Universal(in_band_ty_params, parent_def_id) => {
+                            // Add a definition for the in-band `Param`.
+                            let def_id = self.resolver.local_def_id(def_node_id);
 
-                        let hir_bounds = self.lower_param_bounds(
-                            bounds,
-                            ImplTraitContext::Universal(in_band_ty_params, parent_def_id),
-                        );
-                        // Set the name to `impl Bound1 + Bound2`.
-                        let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
-                        in_band_ty_params.push(hir::GenericParam {
-                            hir_id: self.lower_node_id(def_node_id),
-                            name: ParamName::Plain(self.lower_ident(ident)),
-                            pure_wrt_drop: false,
-                            bounds: hir_bounds,
-                            span: self.lower_span(span),
-                            kind: hir::GenericParamKind::Type { default: None, synthetic: true },
-                        });
+                            let hir_bounds = self.lower_param_bounds(
+                                bounds,
+                                ImplTraitContext::Universal(in_band_ty_params, parent_def_id),
+                            );
+                            // Set the name to `impl Bound1 + Bound2`.
+                            let ident = Ident::from_str_and_span(&pprust::ty_to_string(t), span);
+                            in_band_ty_params.push(hir::GenericParam {
+                                hir_id: self.lower_node_id(def_node_id),
+                                name: ParamName::Plain(self.lower_ident(ident)),
+                                pure_wrt_drop: false,
+                                bounds: hir_bounds,
+                                span: self.lower_span(span),
+                                kind: hir::GenericParamKind::Type {
+                                    default: None,
+                                    synthetic: true,
+                                },
+                            });
 
-                        hir::TyKind::Path(hir::QPath::Resolved(
+                            hir::TyKind::Path(hir::QPath::Resolved(
                             None,
                             self.arena.alloc(hir::Path {
                                 span: self.lower_span(span),
@@ -1301,31 +1303,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 segments: arena_vec![self; hir::PathSegment::from_ident(self.lower_ident(ident))],
                             }),
                         ))
-                    }
-                    ImplTraitContext::Disallowed(position) => {
-                        let mut err = struct_span_err!(
-                            self.sess,
-                            t.span,
-                            E0562,
-                            "`impl Trait` only allowed in function and inherent method return types, not in {}",
-                            position
-                        );
-                        err.emit();
-                        hir::TyKind::Err
+                        }
+                        ImplTraitContext::Disallowed(position) => {
+                            let mut err = struct_span_err!(
+                                self.sess,
+                                t.span,
+                                E0562,
+                                "`impl Trait` only allowed in function and inherent method return types, not in {}",
+                                position
+                            );
+                            err.emit();
+                            hir::TyKind::Err
+                        }
                     }
                 }
-            }
-            TyKind::MacCall(_) => panic!("`TyKind::MacCall` should have been expanded by now"),
-            TyKind::CVarArgs => {
-                self.sess.delay_span_bug(
-                    t.span,
-                    "`TyKind::CVarArgs` should have been handled elsewhere",
-                );
-                hir::TyKind::Err
-            }
-        };
+                TyKind::MacCall(_) => panic!("`TyKind::MacCall` should have been expanded by now"),
+                TyKind::CVarArgs => {
+                    self.sess.delay_span_bug(
+                        t.span,
+                        "`TyKind::CVarArgs` should have been handled elsewhere",
+                    );
+                    hir::TyKind::Err
+                }
+            };
 
-        hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.lower_node_id(t.id) }
+            hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.lower_node_id(t.id) }
+        })
     }
 
     #[tracing::instrument(level = "debug", skip(self, lower_bounds))]

@@ -12,6 +12,7 @@
 //! initialization and can otherwise silence errors, if
 //! move analysis runs after promotion on broken MIR.
 
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_middle::mir::traversal::ReversePostorder;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
@@ -926,7 +927,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _: Location) {
         if self.is_temp_kind(*local) {
-            *local = self.promote_temp(*local);
+            *local = ensure_sufficient_stack(|| self.promote_temp(*local));
         }
     }
 }

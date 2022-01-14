@@ -3,6 +3,7 @@ use crate::context::TypeLowering;
 use crate::llvm_util::get_version;
 use crate::type_::Type;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
@@ -226,72 +227,74 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {
-        if let Abi::Scalar(scalar) = self.abi {
-            // Use a different cache for scalars because pointers to DSTs
-            // can be either fat or thin (data pointers of fat pointers).
-            if let Some(&llty) = cx.scalar_lltypes.borrow().get(&self.ty) {
+        ensure_sufficient_stack(|| {
+            if let Abi::Scalar(scalar) = self.abi {
+                // Use a different cache for scalars because pointers to DSTs
+                // can be either fat or thin (data pointers of fat pointers).
+                if let Some(&llty) = cx.scalar_lltypes.borrow().get(&self.ty) {
+                    return llty;
+                }
+                let llty = match *self.ty.kind() {
+                    ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
+                        cx.type_ptr_to(cx.layout_of(ty).llvm_type(cx))
+                    }
+                    ty::Adt(def, _) if def.is_box() => {
+                        cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).llvm_type(cx))
+                    }
+                    ty::FnPtr(sig) => {
+                        cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
+                    }
+                    _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO),
+                };
+                cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);
                 return llty;
             }
-            let llty = match *self.ty.kind() {
-                ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                    cx.type_ptr_to(cx.layout_of(ty).llvm_type(cx))
-                }
-                ty::Adt(def, _) if def.is_box() => {
-                    cx.type_ptr_to(cx.layout_of(self.ty.boxed_ty()).llvm_type(cx))
-                }
-                ty::FnPtr(sig) => {
-                    cx.fn_ptr_backend_type(cx.fn_abi_of_fn_ptr(sig, ty::List::empty()))
-                }
-                _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO),
+
+            // Check the cache.
+            let variant_index = match self.variants {
+                Variants::Single { index } => Some(index),
+                _ => None,
             };
-            cx.scalar_lltypes.borrow_mut().insert(self.ty, llty);
-            return llty;
-        }
-
-        // Check the cache.
-        let variant_index = match self.variants {
-            Variants::Single { index } => Some(index),
-            _ => None,
-        };
-        if let Some(llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
-            return llty.lltype;
-        }
-
-        debug!("llvm_type({:#?})", self);
-
-        assert!(!self.ty.has_escaping_bound_vars(), "{:?} has escaping bound vars", self.ty);
-
-        // Make sure lifetimes are erased, to avoid generating distinct LLVM
-        // types for Rust types that only differ in the choice of lifetimes.
-        let normal_ty = cx.tcx.erase_regions(self.ty);
-
-        let mut defer = None;
-        let mut field_remapping = None;
-        let llty = if self.ty != normal_ty {
-            let mut layout = cx.layout_of(normal_ty);
-            if let Some(v) = variant_index {
-                layout = layout.for_variant(cx, v);
+            if let Some(llty) = cx.type_lowering.borrow().get(&(self.ty, variant_index)) {
+                return llty.lltype;
             }
-            layout.llvm_type(cx)
-        } else {
-            uncached_llvm_type(cx, *self, &mut defer, &mut field_remapping)
-        };
-        debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        cx.type_lowering
-            .borrow_mut()
-            .insert((self.ty, variant_index), TypeLowering { lltype: llty, field_remapping });
+            debug!("llvm_type({:#?})", self);
 
-        if let Some((llty, layout)) = defer {
-            let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
-            cx.set_struct_body(llty, &llfields, packed);
+            assert!(!self.ty.has_escaping_bound_vars(), "{:?} has escaping bound vars", self.ty);
+
+            // Make sure lifetimes are erased, to avoid generating distinct LLVM
+            // types for Rust types that only differ in the choice of lifetimes.
+            let normal_ty = cx.tcx.erase_regions(self.ty);
+
+            let mut defer = None;
+            let mut field_remapping = None;
+            let llty = if self.ty != normal_ty {
+                let mut layout = cx.layout_of(normal_ty);
+                if let Some(v) = variant_index {
+                    layout = layout.for_variant(cx, v);
+                }
+                layout.llvm_type(cx)
+            } else {
+                uncached_llvm_type(cx, *self, &mut defer, &mut field_remapping)
+            };
+            debug!("--> mapped {:#?} to llty={:?}", self, llty);
+
             cx.type_lowering
                 .borrow_mut()
-                .get_mut(&(self.ty, variant_index))
-                .unwrap()
-                .field_remapping = new_field_remapping;
-        }
-        llty
+                .insert((self.ty, variant_index), TypeLowering { lltype: llty, field_remapping });
+
+            if let Some((llty, layout)) = defer {
+                let (llfields, packed, new_field_remapping) = struct_llfields(cx, layout);
+                cx.set_struct_body(llty, &llfields, packed);
+                cx.type_lowering
+                    .borrow_mut()
+                    .get_mut(&(self.ty, variant_index))
+                    .unwrap()
+                    .field_remapping = new_field_remapping;
+            }
+            llty
+        })
     }
 
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type {

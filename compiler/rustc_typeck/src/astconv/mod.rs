@@ -15,6 +15,7 @@ use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError,
 };
@@ -2368,7 +2369,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn ast_ty_to_ty_inner(&self, ast_ty: &hir::Ty<'_>, borrowed: bool, in_path: bool) -> Ty<'tcx> {
         let tcx = self.tcx();
 
-        let result_ty = match ast_ty.kind {
+        let result_ty = ensure_sufficient_stack(|| match ast_ty.kind {
             hir::TyKind::Slice(ref ty) => tcx.mk_slice(self.ast_ty_to_ty(ty)),
             hir::TyKind::Ptr(ref mt) => {
                 tcx.mk_ptr(ty::TypeAndMut { ty: self.ast_ty_to_ty(mt.ty), mutbl: mt.mutbl })
@@ -2479,7 +2480,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.ty_infer(None, ast_ty.span)
             }
             hir::TyKind::Err => tcx.ty_error(),
-        };
+        });
 
         debug!(?result_ty);
 

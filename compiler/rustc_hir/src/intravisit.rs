@@ -35,6 +35,7 @@ use crate::hir::*;
 use crate::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_ast::walk_list;
 use rustc_ast::{Attribute, Label};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
@@ -707,7 +708,7 @@ pub fn walk_variant<'v, V: Visitor<'v>>(
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
     visitor.visit_id(typ.hir_id);
 
-    match typ.kind {
+    ensure_sufficient_stack(|| match typ.kind {
         TyKind::Slice(ref ty) => visitor.visit_ty(ty),
         TyKind::Ptr(ref mutable_type) => visitor.visit_ty(&mutable_type.ty),
         TyKind::Rptr(ref lifetime, ref mutable_type) => {
@@ -741,7 +742,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
         }
         TyKind::Typeof(ref expression) => visitor.visit_anon_const(expression),
         TyKind::Infer | TyKind::Err => {}
-    }
+    })
 }
 
 pub fn walk_inf<'v, V: Visitor<'v>>(visitor: &mut V, inf: &'v InferArg) {
@@ -1119,7 +1120,7 @@ pub fn walk_let_expr<'v, V: Visitor<'v>>(visitor: &mut V, let_expr: &'v Let<'v>)
 
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) {
     visitor.visit_id(expression.hir_id);
-    match expression.kind {
+    ensure_sufficient_stack(|| match expression.kind {
         ExprKind::Box(ref subexpression) => visitor.visit_expr(subexpression),
         ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
@@ -1225,7 +1226,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_expr(subexpression);
         }
         ExprKind::Lit(_) | ExprKind::Err => {}
-    }
+    })
 }
 
 pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) {

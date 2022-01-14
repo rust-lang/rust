@@ -16,6 +16,7 @@ use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_ast_lowering::{LifetimeRes, ResolverAstLowering};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
@@ -26,11 +27,11 @@ use rustc_index::vec::Idx;
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
 use smallvec::{smallvec, SmallVec};
 
-use rustc_span::source_map::{respan, Spanned};
 use std::collections::{hash_map::Entry, BTreeSet};
 use std::mem::{replace, take};
 use tracing::debug;
@@ -3074,7 +3075,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.record_candidate_traits_for_expr_if_necessary(expr);
 
         // Next, resolve the node.
-        match expr.kind {
+        ensure_sufficient_stack(|| match expr.kind {
             ExprKind::Path(ref qself, ref path) => {
                 self.smart_resolve_path(expr.id, qself.as_ref(), path, PathSource::Expr(parent));
                 visit::walk_expr(self, expr);
@@ -3223,7 +3224,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             _ => {
                 visit::walk_expr(self, expr);
             }
-        }
+        })
     }
 
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &'ast Expr) {

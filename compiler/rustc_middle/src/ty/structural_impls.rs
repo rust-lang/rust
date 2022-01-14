@@ -8,6 +8,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeVisitor};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::{self, InferConst, Lift, Term, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_index::vec::{Idx, IndexVec};
@@ -976,52 +977,56 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        let kind = match *self.kind() {
-            ty::RawPtr(tm) => ty::RawPtr(tm.try_fold_with(folder)?),
-            ty::Array(typ, sz) => ty::Array(typ.try_fold_with(folder)?, sz.try_fold_with(folder)?),
-            ty::Slice(typ) => ty::Slice(typ.try_fold_with(folder)?),
-            ty::Adt(tid, substs) => ty::Adt(tid, substs.try_fold_with(folder)?),
-            ty::Dynamic(trait_ty, region) => {
-                ty::Dynamic(trait_ty.try_fold_with(folder)?, region.try_fold_with(folder)?)
-            }
-            ty::Tuple(ts) => ty::Tuple(ts.try_fold_with(folder)?),
-            ty::FnDef(def_id, substs) => ty::FnDef(def_id, substs.try_fold_with(folder)?),
-            ty::FnPtr(f) => ty::FnPtr(f.try_fold_with(folder)?),
-            ty::Ref(r, ty, mutbl) => {
-                ty::Ref(r.try_fold_with(folder)?, ty.try_fold_with(folder)?, mutbl)
-            }
-            ty::Generator(did, substs, movability) => {
-                ty::Generator(did, substs.try_fold_with(folder)?, movability)
-            }
-            ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
-            ty::Closure(did, substs) => ty::Closure(did, substs.try_fold_with(folder)?),
-            ty::Projection(data) => ty::Projection(data.try_fold_with(folder)?),
-            ty::Opaque(did, substs) => ty::Opaque(did, substs.try_fold_with(folder)?),
+        ensure_sufficient_stack(|| {
+            let kind = match *self.kind() {
+                ty::RawPtr(tm) => ty::RawPtr(tm.try_fold_with(folder)?),
+                ty::Array(typ, sz) => {
+                    ty::Array(typ.try_fold_with(folder)?, sz.try_fold_with(folder)?)
+                }
+                ty::Slice(typ) => ty::Slice(typ.try_fold_with(folder)?),
+                ty::Adt(tid, substs) => ty::Adt(tid, substs.try_fold_with(folder)?),
+                ty::Dynamic(trait_ty, region) => {
+                    ty::Dynamic(trait_ty.try_fold_with(folder)?, region.try_fold_with(folder)?)
+                }
+                ty::Tuple(ts) => ty::Tuple(ts.try_fold_with(folder)?),
+                ty::FnDef(def_id, substs) => ty::FnDef(def_id, substs.try_fold_with(folder)?),
+                ty::FnPtr(f) => ty::FnPtr(f.try_fold_with(folder)?),
+                ty::Ref(r, ty, mutbl) => {
+                    ty::Ref(r.try_fold_with(folder)?, ty.try_fold_with(folder)?, mutbl)
+                }
+                ty::Generator(did, substs, movability) => {
+                    ty::Generator(did, substs.try_fold_with(folder)?, movability)
+                }
+                ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
+                ty::Closure(did, substs) => ty::Closure(did, substs.try_fold_with(folder)?),
+                ty::Projection(data) => ty::Projection(data.try_fold_with(folder)?),
+                ty::Opaque(did, substs) => ty::Opaque(did, substs.try_fold_with(folder)?),
 
-            ty::Bool
-            | ty::Char
-            | ty::Str
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Error(_)
-            | ty::Infer(_)
-            | ty::Param(..)
-            | ty::Bound(..)
-            | ty::Placeholder(..)
-            | ty::Never
-            | ty::Foreign(..) => return Ok(self),
-        };
+                ty::Bool
+                | ty::Char
+                | ty::Str
+                | ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Error(_)
+                | ty::Infer(_)
+                | ty::Param(..)
+                | ty::Bound(..)
+                | ty::Placeholder(..)
+                | ty::Never
+                | ty::Foreign(..) => return Ok(self),
+            };
 
-        Ok(if *self.kind() == kind { self } else { folder.tcx().mk_ty(kind) })
+            Ok(if *self.kind() == kind { self } else { folder.tcx().mk_ty(kind) })
+        })
     }
 
     fn try_fold_with<F: FallibleTypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        folder.try_fold_ty(self)
+        ensure_sufficient_stack(|| folder.try_fold_ty(self))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        match self.kind() {
+        ensure_sufficient_stack(|| match self.kind() {
             ty::RawPtr(ref tm) => tm.visit_with(visitor),
             ty::Array(typ, sz) => {
                 typ.visit_with(visitor)?;
@@ -1059,11 +1064,11 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             | ty::Param(..)
             | ty::Never
             | ty::Foreign(..) => ControlFlow::CONTINUE,
-        }
+        })
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        visitor.visit_ty(*self)
+        ensure_sufficient_stack(|| visitor.visit_ty(*self))
     }
 }
 

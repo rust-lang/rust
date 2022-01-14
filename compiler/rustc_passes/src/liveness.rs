@@ -86,6 +86,7 @@ use self::VarKind::*;
 
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -825,7 +826,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn propagate_through_expr(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         debug!("propagate_through_expr: {:?}", expr);
 
-        match expr.kind {
+        ensure_sufficient_stack(|| match expr.kind {
             // Interesting cases with control flow or which gen/kill
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 self.access_path(expr.hir_id, path, succ, ACC_READ | ACC_USE)
@@ -1099,7 +1100,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             // Note that labels have been resolved, so we don't need to look
             // at the label ident
             hir::ExprKind::Block(ref blk, _) => self.propagate_through_block(&blk, succ),
-        }
+        })
     }
 
     fn propagate_through_place_components(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {

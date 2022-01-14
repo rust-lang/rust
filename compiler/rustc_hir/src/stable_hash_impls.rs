@@ -1,10 +1,11 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-
 use crate::hir::{
     AttributeMap, BodyId, Crate, Expr, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
     Ty,
 };
 use crate::hir_id::{HirId, ItemLocalId};
+
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_span::def_id::DefPathHash;
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
@@ -98,7 +99,7 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for BodyId {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Expr<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_hir_expr(self, hasher)
+        ensure_sufficient_stack(|| hcx.hash_hir_expr(self, hasher))
     }
 }
 

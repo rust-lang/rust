@@ -9,6 +9,7 @@
 use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -867,7 +868,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     #[tracing::instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-        match ty.kind {
+        ensure_sufficient_stack(|| match ty.kind {
             hir::TyKind::BareFn(ref c) => {
                 let next_early_index = self.next_early_index();
                 let lifetime_span: Option<Span> =
@@ -1118,7 +1119,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 }
             }
             _ => intravisit::walk_ty(self, ty),
-        }
+        })
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {

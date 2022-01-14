@@ -33,6 +33,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -466,7 +467,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
             outer_exclusive_binder: _,
         } = self;
 
-        kind.hash_stable(hcx, hasher)
+        ensure_sufficient_stack(|| kind.hash_stable(hcx, hasher))
     }
 }
 

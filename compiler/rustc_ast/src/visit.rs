@@ -16,6 +16,7 @@
 use crate::ast::*;
 use crate::token;
 
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::Span;
 
@@ -411,7 +412,7 @@ pub fn walk_pat_field<'a, V: Visitor<'a>>(visitor: &mut V, fp: &'a PatField) {
 }
 
 pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
-    match typ.kind {
+    ensure_sufficient_stack(|| match typ.kind {
         TyKind::Slice(ref ty) | TyKind::Paren(ref ty) => visitor.visit_ty(ty),
         TyKind::Ptr(ref mutable_type) => visitor.visit_ty(&mutable_type.ty),
         TyKind::Rptr(ref opt_lifetime, ref mutable_type) => {
@@ -445,7 +446,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err => {}
         TyKind::MacCall(ref mac) => visitor.visit_mac_call(mac),
         TyKind::Never | TyKind::CVarArgs => {}
-    }
+    })
 }
 
 pub fn walk_path<'a, V: Visitor<'a>>(visitor: &mut V, path: &'a Path) {
@@ -721,7 +722,7 @@ pub fn walk_block<'a, V: Visitor<'a>>(visitor: &mut V, block: &'a Block) {
 }
 
 pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) {
-    match statement.kind {
+    ensure_sufficient_stack(|| match statement.kind {
         StmtKind::Local(ref local) => visitor.visit_local(local),
         StmtKind::Item(ref item) => visitor.visit_item(item),
         StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => visitor.visit_expr(expr),
@@ -733,7 +734,7 @@ pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) {
                 visitor.visit_attribute(attr);
             }
         }
-    }
+    })
 }
 
 pub fn walk_mac<'a, V: Visitor<'a>>(visitor: &mut V, mac: &'a MacCall) {
@@ -773,7 +774,7 @@ pub fn walk_inline_asm_sym<'a, V: Visitor<'a>>(visitor: &mut V, sym: &'a InlineA
 pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
     walk_list!(visitor, visit_attribute, expression.attrs.iter());
 
-    match expression.kind {
+    ensure_sufficient_stack(|| match expression.kind {
         ExprKind::Box(ref subexpression) => visitor.visit_expr(subexpression),
         ExprKind::Array(ref subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
@@ -902,7 +903,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Try(ref subexpression) => visitor.visit_expr(subexpression),
         ExprKind::TryBlock(ref body) => visitor.visit_block(body),
         ExprKind::Lit(_) | ExprKind::Err => {}
-    }
+    });
 
     visitor.visit_expr_post(expression)
 }

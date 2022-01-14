@@ -5,6 +5,7 @@ use rustc_ast::util::parser::{self, AssocOp, Fixity};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node, Term};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
@@ -1359,7 +1360,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(self.attrs(expr.hir_id));
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
-        match expr.kind {
+        ensure_sufficient_stack(|| match expr.kind {
             hir::ExprKind::Box(ref expr) => {
                 self.word_space("box");
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
@@ -1545,7 +1546,7 @@ impl<'a> State<'a> {
                 self.word("/*ERROR*/");
                 self.pclose();
             }
-        }
+        });
         self.ann.post(self, AnnNode::Expr(expr));
         self.end()
     }

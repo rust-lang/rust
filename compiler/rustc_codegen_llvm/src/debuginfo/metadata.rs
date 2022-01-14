@@ -24,6 +24,7 @@ use cstr::cstr;
 use rustc_codegen_ssa::debuginfo::type_names::cpp_like_debuginfo;
 use rustc_codegen_ssa::debuginfo::type_names::VTableNameKind;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -435,61 +436,63 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
 
     debug!("type_di_node: {:?}", t);
 
-    let DINodeCreationResult { di_node, already_stored_in_typemap } = match *t.kind() {
-        ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
-            build_basic_type_di_node(cx, t)
-        }
-        ty::Tuple(elements) if elements.is_empty() => build_basic_type_di_node(cx, t),
-        ty::Array(..) => build_fixed_size_array_di_node(cx, unique_type_id, t),
-        ty::Slice(_) | ty::Str => build_slice_type_di_node(cx, t, unique_type_id),
-        ty::Dynamic(..) => build_dyn_type_di_node(cx, t, unique_type_id),
-        ty::Foreign(..) => build_foreign_type_di_node(cx, t, unique_type_id),
-        ty::RawPtr(ty::TypeAndMut { ty: pointee_type, .. }) | ty::Ref(_, pointee_type, _) => {
-            build_pointer_or_reference_di_node(cx, t, pointee_type, unique_type_id)
-        }
-        // Box<T, A> may have a non-ZST allocator A. In that case, we
-        // cannot treat Box<T, A> as just an owned alias of `*mut T`.
-        ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
-            build_pointer_or_reference_di_node(cx, t, t.boxed_ty(), unique_type_id)
-        }
-        ty::FnDef(..) | ty::FnPtr(_) => build_subroutine_type_di_node(cx, unique_type_id),
-        ty::Closure(..) => build_closure_env_di_node(cx, unique_type_id),
-        ty::Generator(..) => enums::build_generator_di_node(cx, unique_type_id),
-        ty::Adt(def, ..) => match def.adt_kind() {
-            AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id),
-            AdtKind::Union => build_union_type_di_node(cx, unique_type_id),
-            AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id),
-        },
-        ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
-        // Type parameters from polymorphized functions.
-        ty::Param(_) => build_param_type_di_node(cx, t),
-        _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
-    };
+    ensure_sufficient_stack(|| {
+        let DINodeCreationResult { di_node, already_stored_in_typemap } = match *t.kind() {
+            ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
+                build_basic_type_di_node(cx, t)
+            }
+            ty::Tuple(elements) if elements.is_empty() => build_basic_type_di_node(cx, t),
+            ty::Array(..) => build_fixed_size_array_di_node(cx, unique_type_id, t),
+            ty::Slice(_) | ty::Str => build_slice_type_di_node(cx, t, unique_type_id),
+            ty::Dynamic(..) => build_dyn_type_di_node(cx, t, unique_type_id),
+            ty::Foreign(..) => build_foreign_type_di_node(cx, t, unique_type_id),
+            ty::RawPtr(ty::TypeAndMut { ty: pointee_type, .. }) | ty::Ref(_, pointee_type, _) => {
+                build_pointer_or_reference_di_node(cx, t, pointee_type, unique_type_id)
+            }
+            // Box<T, A> may have a non-ZST allocator A. In that case, we
+            // cannot treat Box<T, A> as just an owned alias of `*mut T`.
+            ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
+                build_pointer_or_reference_di_node(cx, t, t.boxed_ty(), unique_type_id)
+            }
+            ty::FnDef(..) | ty::FnPtr(_) => build_subroutine_type_di_node(cx, unique_type_id),
+            ty::Closure(..) => build_closure_env_di_node(cx, unique_type_id),
+            ty::Generator(..) => enums::build_generator_di_node(cx, unique_type_id),
+            ty::Adt(def, ..) => match def.adt_kind() {
+                AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id),
+                AdtKind::Union => build_union_type_di_node(cx, unique_type_id),
+                AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id),
+            },
+            ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
+            // Type parameters from polymorphized functions.
+            ty::Param(_) => build_param_type_di_node(cx, t),
+            _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
+        };
 
-    {
-        if already_stored_in_typemap {
-            // Make sure that we really do have a `TypeMap` entry for the unique type ID.
-            let di_node_for_uid =
-                match debug_context(cx).type_map.di_node_for_unique_id(unique_type_id) {
-                    Some(di_node) => di_node,
-                    None => {
-                        bug!(
-                            "expected type debuginfo node for unique \
+        {
+            if already_stored_in_typemap {
+                // Make sure that we really do have a `TypeMap` entry for the unique type ID.
+                let di_node_for_uid =
+                    match debug_context(cx).type_map.di_node_for_unique_id(unique_type_id) {
+                        Some(di_node) => di_node,
+                        None => {
+                            bug!(
+                                "expected type debuginfo node for unique \
                                type ID '{:?}' to already be in \
                                the `debuginfo::TypeMap` but it \
                                was not.",
-                            unique_type_id,
-                        );
-                    }
-                };
+                                unique_type_id,
+                            );
+                        }
+                    };
 
-            debug_assert_eq!(di_node_for_uid as *const _, di_node as *const _);
-        } else {
-            debug_context(cx).type_map.insert(unique_type_id, di_node);
+                debug_assert_eq!(di_node_for_uid as *const _, di_node as *const _);
+            } else {
+                debug_context(cx).type_map.insert(unique_type_id, di_node);
+            }
         }
-    }
 
-    di_node
+        di_node
+    })
 }
 
 // FIXME(mw): Cache this via a regular UniqueTypeId instead of an extra field in the debug context.
