@@ -4,6 +4,8 @@
 //! various caches, it's not really advanced at the moment.
 mod topologic_sort;
 
+use std::time::Duration;
+
 use hir::db::DefDatabase;
 use ide_db::{
     base_db::{
@@ -14,7 +16,7 @@ use ide_db::{
 };
 use rustc_hash::FxHashSet;
 
-use crate::{prime_caches, RootDatabase};
+use crate::RootDatabase;
 
 /// We're indexing many crates.
 #[derive(Debug)]
@@ -93,7 +95,7 @@ pub(crate) fn parallel_prime_caches(
     let mut crates_currently_indexing =
         FxIndexMap::with_capacity_and_hasher(num_worker_threads as _, Default::default());
 
-    while !crates_to_prime.is_empty() {
+    while crates_done < crates_total {
         db.unwind_if_cancelled();
 
         for crate_id in &mut crates_to_prime {
@@ -105,9 +107,14 @@ pub(crate) fn parallel_prime_caches(
                 .ok();
         }
 
-        let worker_progress = match progress_receiver.recv() {
+        // recv_timeout is somewhat a hack, we need a way to from this thread check to see if the current salsa revision
+        // is cancelled.
+        let worker_progress = match progress_receiver.recv_timeout(Duration::from_millis(10)) {
             Ok(p) => p,
-            Err(_) => {
+            Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
+                continue;
+            }
+            Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
                 // our workers may have died from a cancelled task, so we'll check and re-raise here.
                 db.unwind_if_cancelled();
                 break;
