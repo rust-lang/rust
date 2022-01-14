@@ -38,9 +38,12 @@ error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:17:9
    |
 LL |     f = Box::new(f);
-   |         ^^^^^^^^^^^- help: try using a conversion method: `.to_string()`
-   |         |
-   |         cyclic type of infinite size
+   |         ^^^^^^^^^^^ cyclic type of infinite size
+   |
+help: consider unboxing the value
+   |
+LL |     f = *Box::new(f);
+   |         +
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:21:9

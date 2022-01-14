@@ -8,7 +8,7 @@ fn foo(x: Ty) -> Ty {
         Ty::Unit => Ty::Unit,
         Ty::List(elem) => foo(elem),
         //~^ ERROR mismatched types
-        //~| HELP try dereferencing the `Box`
+        //~| HELP consider unboxing the value
         //~| HELP try wrapping
     }
 }
