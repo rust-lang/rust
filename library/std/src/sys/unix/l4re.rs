@@ -122,6 +122,11 @@ pub mod net {
         pub fn take_error(&self) -> io::Result<Option<io::Error>> {
             unimpl!();
         }
+
+        // This is used by sys_common code to abstract over Windows and Unix.
+        pub fn as_raw(&self) -> RawFd {
+            self.as_raw_fd()
+        }
     }
 
     impl AsInner<FileDesc> for Socket {
