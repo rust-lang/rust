@@ -154,7 +154,7 @@ use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::{handle_alloc_error, WriteCloneIntoRaw};
-use crate::alloc::{AllocError, Allocator, Global, Layout};
+use crate::alloc::{deallocate_box, AllocError, Allocator, Global, Layout};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
@@ -1171,9 +1171,15 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> const Drop for Box<T, A> {
+unsafe impl<
+    #[may_dangle] T: ?Sized,
+    A: ~const Allocator,
+> const Drop for Box<T, A> {
+    #[inline]
     fn drop(&mut self) {
-        // FIXME: Do nothing, drop is currently performed by compiler.
+        unsafe {
+            deallocate_box(self.0, &self.1)
+        }
     }
 }
 

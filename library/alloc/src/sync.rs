@@ -30,7 +30,7 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
 #[cfg(not(no_global_oom_handling))]
-use crate::alloc::{box_free, WriteCloneIntoRaw};
+use crate::alloc::{deallocate_box, WriteCloneIntoRaw};
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
@@ -1191,7 +1191,7 @@ impl<T: ?Sized> Arc<T> {
             );
 
             // Free the allocation without dropping its contents
-            box_free(box_unique, alloc);
+            deallocate_box(box_unique, &alloc);
 
             Self::from_ptr(ptr)
         }

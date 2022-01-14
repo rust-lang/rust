@@ -321,17 +321,24 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     }
 }
 
-#[cfg_attr(not(test), lang = "box_free")]
+#[cfg(all(bootstrap, not(test)))]
+#[lang = "box_free"]
 #[inline]
 #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-// This signature has to be the same as `Box`, otherwise an ICE will happen.
-// When an additional parameter to `Box` is added (like `A: Allocator`), this has to be added here as
-// well.
-// For example if `Box` is changed to  `struct Box<T: ?Sized, A: Allocator>(Unique<T>, A)`,
-// this function has to be changed to `fn box_free<T: ?Sized, A: Allocator>(Unique<T>, A)` as well.
-pub(crate) const unsafe fn box_free<T: ?Sized, A: ~const Allocator + ~const Drop>(
+const unsafe fn box_free<T: ?Sized, A: ~const Allocator + ~const Drop>(
     ptr: Unique<T>,
     alloc: A,
+) {
+    unsafe {
+        deallocate_box(ptr, &alloc);
+    }
+}
+
+#[inline]
+#[rustc_const_unstable(feature = "const_box", issue = "92521")]
+pub(crate) const unsafe fn deallocate_box<T: ?Sized, A: ~const Allocator>(
+    ptr: Unique<T>,
+    alloc: &A,
 ) {
     unsafe {
         let size = size_of_val(ptr.as_ref());
