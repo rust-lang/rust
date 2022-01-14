@@ -5,7 +5,7 @@ use rustc_ast_pretty::pprust::PrintState;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FilePathMapping;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{kw, Symbol};
 
 /// Render a macro matcher in a format suitable for displaying to the user
 /// as part of an item declaration.
@@ -181,11 +181,38 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
 // `f(0)` (no space between ident and paren) from tokens resembling `if let (0,
 // 0) = x` (space between ident and paren).
 fn usually_needs_space_between_keyword_and_open_delim(symbol: Symbol) -> bool {
-    match symbol.as_str() {
-        "as" | "box" | "break" | "const" | "continue" | "crate" | "else" | "enum" | "extern"
-        | "for" | "if" | "impl" | "in" | "let" | "loop" | "macro" | "match" | "mod" | "move"
-        | "mut" | "ref" | "return" | "static" | "struct" | "trait" | "type" | "unsafe" | "use"
-        | "where" | "while" | "yield" => true,
+    match symbol {
+        kw::As
+        | kw::Box
+        | kw::Break
+        | kw::Const
+        | kw::Continue
+        | kw::Crate
+        | kw::Else
+        | kw::Enum
+        | kw::Extern
+        | kw::For
+        | kw::If
+        | kw::Impl
+        | kw::In
+        | kw::Let
+        | kw::Loop
+        | kw::Macro
+        | kw::Match
+        | kw::Mod
+        | kw::Move
+        | kw::Mut
+        | kw::Ref
+        | kw::Return
+        | kw::Static
+        | kw::Struct
+        | kw::Trait
+        | kw::Type
+        | kw::Unsafe
+        | kw::Use
+        | kw::Where
+        | kw::While
+        | kw::Yield => true,
         _ => false,
     }
 }
