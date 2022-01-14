@@ -37,7 +37,6 @@ fn test_assume_can_be_in_const_contexts() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 const fn test_write_bytes_in_const_contexts() {
     use core::intrinsics::write_bytes;
 

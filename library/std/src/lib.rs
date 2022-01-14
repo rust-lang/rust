@@ -195,15 +195,12 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(
-    not(bootstrap),
-    doc(cfg_hide(
-        not(test),
-        not(any(test, bootstrap)),
-        no_global_oom_handling,
-        not(no_global_oom_handling)
-    ))
-)]
+#![doc(cfg_hide(
+    not(test),
+    not(any(test, bootstrap)),
+    no_global_oom_handling,
+    not(no_global_oom_handling)
+))]
 // Don't link to std. We are std.
 #![no_std]
 #![warn(deprecated_in_future)]
@@ -249,7 +246,7 @@
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
-#![cfg_attr(not(bootstrap), feature(concat_bytes))]
+#![feature(concat_bytes)]
 #![feature(concat_idents)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
@@ -578,7 +575,6 @@ pub use core::{
     issue = "87555",
     reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
-#[cfg(not(bootstrap))]
 pub use core::concat_bytes;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]

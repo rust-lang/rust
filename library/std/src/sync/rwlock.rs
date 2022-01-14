@@ -95,12 +95,9 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 /// [`read`]: RwLock::read
 /// [`try_read`]: RwLock::try_read
 #[must_use = "if unused the RwLock will immediately unlock"]
-#[cfg_attr(
-    not(bootstrap),
-    must_not_suspend = "holding a RwLockReadGuard across suspend \
+#[must_not_suspend = "holding a RwLockReadGuard across suspend \
                       points can cause deadlocks, delays, \
-                      and cause Futures to not implement `Send`"
-)]
+                      and cause Futures to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
     lock: &'a RwLock<T>,
@@ -121,12 +118,9 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 /// [`write`]: RwLock::write
 /// [`try_write`]: RwLock::try_write
 #[must_use = "if unused the RwLock will immediately unlock"]
-#[cfg_attr(
-    not(bootstrap),
-    must_not_suspend = "holding a RwLockWriteGuard across suspend \
+#[must_not_suspend = "holding a RwLockWriteGuard across suspend \
                       points can cause deadlocks, delays, \
-                      and cause Future's to not implement `Send`"
-)]
+                      and cause Future's to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
     lock: &'a RwLock<T>,
