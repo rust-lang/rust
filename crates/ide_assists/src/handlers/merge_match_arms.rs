@@ -143,6 +143,9 @@ fn get_arm_types(context: &AssistContext, arm: &MatchArm) -> HashMap<String, Opt
                         }
                     }
                 }
+                Some(ast::Pat::ParenPat(parentheses)) => {
+                    recurse(&parentheses.pat(), map, ctx);
+                }
                 Some(ast::Pat::IdentPat(ident_pat)) => {
                     if let Some(name) = ident_pat.name() {
                         let pat_type = ctx.sema.type_of_pat(local_pat);
@@ -726,6 +729,23 @@ fn func() {
     match (0, "boo") {
         (x, y) => $0"",
         (y, x) => "",
+    };
+}
+        "#,
+        )
+    }
+
+    #[test]
+    fn merge_match_arms_parentheses() {
+        check_assist_not_applicable(
+            merge_match_arms,
+            r#"
+fn func(x: i32) {
+    let variable = 2;
+    match x {
+        1 => $0"",
+        ((((variable)))) => "",
+        _ => "other"
     };
 }
         "#,
