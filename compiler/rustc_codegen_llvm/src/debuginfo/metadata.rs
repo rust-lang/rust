@@ -136,10 +136,10 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
 
     let upper_bound = len.eval_usize(cx.tcx, ty::ParamEnv::reveal_all()) as c_longlong;
 
-    let subrange =
-        unsafe { Some(llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)) };
+    let subrange = unsafe { llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound) };
+    debug_context(cx).add_di_node(subrange);
 
-    let subscripts = create_DIArray(DIB(cx), &[subrange]);
+    let subscripts = create_DIArray(cx, &[Some(subrange)]);
     let di_node = unsafe {
         llvm::LLVMRustDIBuilderCreateArrayType(
             DIB(cx),
@@ -149,6 +149,7 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
             subscripts,
         )
     };
+    debug_context(cx).add_di_node(di_node);
 
     DINodeCreationResult::new(di_node, false)
 }
@@ -204,6 +205,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     ptr_type_debuginfo_name.len(),
                 )
             };
+            debug_context(cx).add_di_node(di_node);
 
             DINodeCreationResult { di_node, already_stored_in_typemap: false }
         }
@@ -255,6 +257,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             0,
                         )
                     };
+                    debug_context(cx).add_di_node(data_ptr_type_di_node);
 
                     smallvec![
                         build_field_di_node(
@@ -332,9 +335,10 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     let fn_di_node = unsafe {
         llvm::LLVMRustDIBuilderCreateSubroutineType(
             DIB(cx),
-            create_DIArray(DIB(cx), &signature_di_nodes[..]),
+            create_DIArray(cx, &signature_di_nodes[..]),
         )
     };
+    debug_context(cx).add_nested_di_node(fn_di_node, &[3]);
 
     // This is actually a function pointer, so wrap it in pointer DI.
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
@@ -349,6 +353,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
             name.len(),
         )
     };
+    debug_context(cx).add_di_node(di_node);
 
     DINodeCreationResult::new(di_node, false)
 }
@@ -498,7 +503,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
 // FIXME(mw): Cache this via a regular UniqueTypeId instead of an extra field in the debug context.
 fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll DIType {
     *debug_context(cx).recursion_marker_type.get_or_init(move || {
-        unsafe {
+        let di_node = unsafe {
             // The choice of type here is pretty arbitrary -
             // anything reading the debuginfo for a recursive
             // type is going to see *something* weird - the only
@@ -517,7 +522,9 @@ fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll D
                 cx.tcx.data_layout.pointer_size.bits(),
                 DW_ATE_unsigned,
             )
-        }
+        };
+        debug_context(cx).add_di_node(di_node);
+        di_node
     })
 }
 
@@ -595,6 +602,7 @@ fn file_metadata_raw<'ll>(
                     hash_value.len(),
                 )
             };
+            debug_context(cx).add_di_node(file_metadata);
 
             v.insert(file_metadata);
             file_metadata
@@ -680,6 +688,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(
             encoding,
         )
     };
+    debug_context(cx).add_di_node(ty_di_node);
 
     if !cpp_like_debuginfo {
         return DINodeCreationResult::new(ty_di_node, false);
@@ -703,6 +712,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(
             None,
         )
     };
+    debug_context(cx).add_di_node(typedef_di_node);
 
     DINodeCreationResult::new(typedef_di_node, false)
 }
@@ -740,18 +750,17 @@ fn build_param_type_di_node<'ll, 'tcx>(
 ) -> DINodeCreationResult<'ll> {
     debug!("build_param_type_di_node: {:?}", t);
     let name = format!("{:?}", t);
-    DINodeCreationResult {
-        di_node: unsafe {
-            llvm::LLVMRustDIBuilderCreateBasicType(
-                DIB(cx),
-                name.as_ptr().cast(),
-                name.len(),
-                Size::ZERO.bits(),
-                DW_ATE_unsigned,
-            )
-        },
-        already_stored_in_typemap: false,
-    }
+    let di_node = unsafe {
+        llvm::LLVMRustDIBuilderCreateBasicType(
+            DIB(cx),
+            name.as_ptr().cast(),
+            name.len(),
+            Size::ZERO.bits(),
+            DW_ATE_unsigned,
+        )
+    };
+    debug_context(cx).add_di_node(di_node);
+    DINodeCreationResult { di_node, already_stored_in_typemap: false }
 }
 
 pub fn build_compile_unit_di_node<'ll, 'tcx>(
@@ -838,6 +847,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             ptr::null(),
             0,
         );
+        debug_context.add_di_node(compile_unit_file);
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
@@ -857,6 +867,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             0,
             tcx.sess.opts.debugging_opts.split_dwarf_inlining,
         );
+        debug_context.add_di_node(unit_metadata);
 
         if tcx.sess.opts.debugging_opts.profile {
             let cu_desc_metadata =
@@ -924,7 +935,7 @@ fn build_field_di_node<'ll, 'tcx>(
     flags: DIFlags,
     type_di_node: &'ll DIType,
 ) -> &'ll DIType {
-    unsafe {
+    let di_node = unsafe {
         llvm::LLVMRustDIBuilderCreateMemberType(
             DIB(cx),
             owner,
@@ -938,7 +949,9 @@ fn build_field_di_node<'ll, 'tcx>(
             flags,
             type_di_node,
         )
-    }
+    };
+    debug_context(cx).add_di_node(di_node);
+    di_node
 }
 
 /// Creates the debuginfo node for a Rust struct type. Maybe be a regular struct or a tuple-struct.
@@ -1257,7 +1270,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
                             cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                         let actual_type_di_node = type_di_node(cx, actual_type);
                         let name = name.as_str();
-                        Some(unsafe {
+                        let template_param = unsafe {
                             llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                                 DIB(cx),
                                 None,
@@ -1265,7 +1278,9 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
                                 name.len(),
                                 actual_type_di_node,
                             )
-                        })
+                        };
+                        debug_context(cx).add_di_node(template_param);
+                        Some(template_param)
                     } else {
                         None
                     }
@@ -1326,7 +1341,7 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
 
     let global_align = cx.align_of(variable_type);
 
-    unsafe {
+    let di_node = unsafe {
         llvm::LLVMRustDIBuilderCreateStaticVariable(
             DIB(cx),
             Some(var_scope),
@@ -1341,8 +1356,9 @@ pub fn build_global_var_di_node<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, glo
             global,
             None,
             global_align.bytes() as u32,
-        );
-    }
+        )
+    };
+    debug_context(cx).add_nested_di_node(di_node, &[0, 1]);
 }
 
 /// Generates LLVM debuginfo for a vtable.
@@ -1467,7 +1483,7 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
     let vtable_type_di_node = build_vtable_type_di_node(cx, ty, poly_trait_ref);
     let linkage_name = "";
 
-    unsafe {
+    let di_node = unsafe {
         llvm::LLVMRustDIBuilderCreateStaticVariable(
             DIB(cx),
             NO_SCOPE_METADATA,
@@ -1482,8 +1498,9 @@ pub fn create_vtable_di_node<'ll, 'tcx>(
             vtable,
             None,
             0,
-        );
-    }
+        )
+    };
+    debug_context(cx).add_nested_di_node(di_node, &[0, 1]);
 }
 
 /// Creates an "extension" of an existing `DIScope` into another file.
@@ -1493,7 +1510,11 @@ pub fn extend_scope_to_file<'ll>(
     file: &SourceFile,
 ) -> &'ll DILexicalBlock {
     let file_metadata = file_metadata(cx, file);
-    unsafe { llvm::LLVMRustDIBuilderCreateLexicalBlockFile(DIB(cx), scope_metadata, file_metadata) }
+    let di_node = unsafe {
+        llvm::LLVMRustDIBuilderCreateLexicalBlockFile(DIB(cx), scope_metadata, file_metadata)
+    };
+    debug_context(cx).add_di_node(di_node);
+    di_node
 }
 
 pub fn tuple_field_name(field_index: usize) -> Cow<'static, str> {

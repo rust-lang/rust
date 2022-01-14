@@ -42,6 +42,7 @@ pub fn item_namespace<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'ll DISco
             false, // ExportSymbols (only relevant for C++ anonymous namespaces)
         )
     };
+    debug_context(cx).add_di_node(scope);
 
     debug_context(cx).namespace_map.borrow_mut().insert(def_id, scope);
     scope

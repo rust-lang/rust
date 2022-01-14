@@ -1075,6 +1075,7 @@ extern "C" {
     pub fn LLVMGetUndef(Ty: &Type) -> &Value;
 
     // Operations on metadata
+    pub fn LLVMIsAMDNode(Val: &Value) -> Option<&Value>;
     pub fn LLVMMDStringInContext(C: &Context, Str: *const c_char, SLen: c_uint) -> &Value;
     pub fn LLVMMDNodeInContext<'a>(
         C: &'a Context,
@@ -1082,6 +1083,8 @@ extern "C" {
         Count: c_uint,
     ) -> &'a Value;
     pub fn LLVMAddNamedMetadataOperand<'a>(M: &'a Module, Name: *const c_char, Val: &'a Value);
+    pub fn LLVMGetMDNodeNumOperands(V: &Value) -> c_uint;
+    pub fn LLVMGetMDNodeOperands<'a>(V: &'a Value, Dest: *mut Option<&'a Value>);
 
     // Operations on scalar constants
     pub fn LLVMConstInt(IntTy: &Type, N: c_ulonglong, SignExtend: Bool) -> &Value;

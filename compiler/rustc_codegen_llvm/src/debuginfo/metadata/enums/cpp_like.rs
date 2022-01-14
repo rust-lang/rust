@@ -27,7 +27,7 @@ use crate::{
             unknown_file_metadata, DINodeCreationResult, SmallVec, NO_GENERICS, NO_SCOPE_METADATA,
             UNKNOWN_LINE_NUMBER,
         },
-        utils::DIB,
+        utils::{debug_context, DIB},
     },
     llvm::{
         self,
@@ -441,7 +441,7 @@ fn build_union_fields_for_direct_tag_enum_or_generator<'ll, 'tcx>(
         // We use LLVMRustDIBuilderCreateMemberType() member type directly because
         // the build_field_di_node() function does not support specifying a source location,
         // which is something that we don't do anywhere else.
-        unsafe {
+        let member_type_di_node = unsafe {
             llvm::LLVMRustDIBuilderCreateMemberType(
                 DIB(cx),
                 enum_type_di_node,
@@ -458,7 +458,9 @@ fn build_union_fields_for_direct_tag_enum_or_generator<'ll, 'tcx>(
                 DIFlags::FlagZero,
                 variant_member_info.variant_struct_type_di_node,
             )
-        }
+        };
+        debug_context(cx).add_di_node(member_type_di_node);
+        member_type_di_node
     }));
 
     debug_assert_eq!(

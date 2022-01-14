@@ -175,7 +175,7 @@ pub(super) fn stub<'ll, 'tcx>(
     containing_scope: Option<&'ll DIScope>,
     flags: DIFlags,
 ) -> StubInfo<'ll, 'tcx> {
-    let empty_array = create_DIArray(DIB(cx), &[]);
+    let empty_array = create_DIArray(cx, &[]);
     let unique_type_id_str = unique_type_id.generate_unique_id_string(cx.tcx);
 
     let metadata = match kind {
@@ -222,6 +222,7 @@ pub(super) fn stub<'ll, 'tcx>(
             )
         },
     };
+    debug_context(cx).add_di_node(metadata);
     StubInfo { metadata, unique_type_id }
 }
 
@@ -251,8 +252,8 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
 
     if !(members.is_empty() && generics.is_empty()) {
         unsafe {
-            let members_array = create_DIArray(DIB(cx), &members[..]);
-            let generics_array = create_DIArray(DIB(cx), &generics[..]);
+            let members_array = create_DIArray(cx, &members[..]);
+            let generics_array = create_DIArray(cx, &generics[..]);
             llvm::LLVMRustDICompositeTypeReplaceArrays(
                 DIB(cx),
                 stub_info.metadata,
@@ -260,6 +261,7 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
                 Some(generics_array),
             );
         }
+        debug_context(cx).add_di_node(stub_info.metadata);
     }
 
     DINodeCreationResult { di_node: stub_info.metadata, already_stored_in_typemap: true }

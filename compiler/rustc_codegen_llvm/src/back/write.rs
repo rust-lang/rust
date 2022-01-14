@@ -19,6 +19,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_data_structures::stack::ensure_recursive_stack;
 use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::bug;
@@ -757,6 +758,13 @@ pub(crate) unsafe fn codegen(
             create_msvc_imps(cgcx, llcx, llmod);
         }
 
+        let stack_size = crate::debuginfo::LLMOD_DEPTHS
+            .lock()
+            .unwrap()
+            .get(&(llmod as *const _ as usize))
+            .unwrap_or(&0)
+            * 256;
+
         // A codegen-specific pass manager is used to generate object
         // files for an LLVM module.
         //
@@ -769,6 +777,7 @@ pub(crate) unsafe fn codegen(
             tm: &'ll llvm::TargetMachine,
             llmod: &'ll llvm::Module,
             no_builtins: bool,
+            stack_size: usize,
             f: F,
         ) -> R
         where
@@ -777,7 +786,7 @@ pub(crate) unsafe fn codegen(
             let cpm = llvm::LLVMCreatePassManager();
             llvm::LLVMAddAnalysisPasses(tm, cpm);
             llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
-            f(cpm)
+            ensure_recursive_stack(stack_size, || f(cpm))
         }
 
         // Two things to note:
@@ -881,7 +890,7 @@ pub(crate) unsafe fn codegen(
             } else {
                 llmod
             };
-            with_codegen(tm, llmod, config.no_builtins, |cpm| {
+            with_codegen(tm, llmod, config.no_builtins, stack_size, |cpm| {
                 write_output_file(
                     diag_handler,
                     tm,
@@ -916,7 +925,7 @@ pub(crate) unsafe fn codegen(
                     (_, SplitDwarfKind::Split) => Some(dwo_out.as_path()),
                 };
 
-                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                with_codegen(tm, llmod, config.no_builtins, stack_size, |cpm| {
                     write_output_file(
                         diag_handler,
                         tm,

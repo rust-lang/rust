@@ -1,5 +1,5 @@
 use super::metadata::file_metadata;
-use super::utils::DIB;
+use super::utils::{self, DIB};
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext};
 use rustc_codegen_ssa::traits::*;
 
@@ -97,15 +97,19 @@ fn make_mir_scope<'ll, 'tcx>(
             let callee_fn_abi = cx.fn_abi_of_instance(callee, ty::List::empty());
             cx.dbg_scope_fn(callee, callee_fn_abi, None)
         }
-        None => unsafe {
-            llvm::LLVMRustDIBuilderCreateLexicalBlock(
-                DIB(cx),
-                parent_scope.dbg_scope.unwrap(),
-                file_metadata,
-                loc.line,
-                loc.col,
-            )
-        },
+        None => {
+            let dbg_scope = unsafe {
+                llvm::LLVMRustDIBuilderCreateLexicalBlock(
+                    DIB(cx),
+                    parent_scope.dbg_scope.unwrap(),
+                    file_metadata,
+                    loc.line,
+                    loc.col,
+                )
+            };
+            utils::debug_context(cx).add_di_node(dbg_scope);
+            dbg_scope
+        }
     };
 
     let inlined_at = scope_data.inlined.map(|(_, callsite_span)| {

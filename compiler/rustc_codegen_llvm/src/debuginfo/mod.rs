@@ -5,7 +5,7 @@ use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 use self::metadata::{file_metadata, type_di_node};
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER};
 use self::namespace::mangled_name_of_instance;
-use self::utils::{create_DIArray, is_node_local_to_unit, DIB};
+use self::utils::{create_DIArray, debug_context, is_node_local_to_unit, DIB};
 
 use crate::abi::FnAbi;
 use crate::builder::Builder;
@@ -38,7 +38,8 @@ use libc::c_uint;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::iter;
-use std::lazy::OnceCell;
+use std::lazy::{OnceCell, SyncLazy};
+use std::sync::Mutex;
 use tracing::debug;
 
 mod create_scope_map;
@@ -56,6 +57,8 @@ const DW_TAG_auto_variable: c_uint = 0x100;
 #[allow(non_upper_case_globals)]
 const DW_TAG_arg_variable: c_uint = 0x101;
 
+pub static LLMOD_DEPTHS: SyncLazy<Mutex<FxHashMap<usize, usize>>> = SyncLazy::new(Default::default);
+
 /// A context object for maintaining all state needed by the debuginfo module.
 pub struct CodegenUnitDebugContext<'ll, 'tcx> {
     llcontext: &'ll llvm::Context,
@@ -66,6 +69,7 @@ pub struct CodegenUnitDebugContext<'ll, 'tcx> {
     type_map: metadata::TypeMap<'ll, 'tcx>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
+    depth_map: RefCell<FxHashMap<&'ll llvm::Metadata, usize>>,
 }
 
 impl Drop for CodegenUnitDebugContext<'_, '_> {
@@ -90,6 +94,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             type_map: Default::default(),
             namespace_map: RefCell::new(Default::default()),
             recursion_marker_type: OnceCell::new(),
+            depth_map: Default::default(),
         }
     }
 
@@ -131,6 +136,47 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 llvm::LLVMRustDebugMetadataVersion(),
             );
         }
+    }
+
+    pub fn add_di_node(&self, di_node: &'ll llvm::Metadata) {
+        self.add_nested_di_node(di_node, &[])
+    }
+
+    pub fn add_nested_di_node(&self, di_node: &'ll llvm::Metadata, indices: &[usize]) {
+        let di_node_as_llval = unsafe { llvm::LLVMRustMetadataAsValue(self.llcontext, di_node) };
+        let num_operands = unsafe { llvm::LLVMGetMDNodeNumOperands(di_node_as_llval) as usize };
+        let mut operands = Vec::with_capacity(num_operands);
+        unsafe {
+            llvm::LLVMGetMDNodeOperands(di_node_as_llval, operands.as_mut_ptr());
+            operands.set_len(num_operands);
+        }
+        for &index in indices {
+            if let Some(operand) = operands[index] {
+                let operand = unsafe {
+                    assert!(llvm::LLVMIsAMDNode(operand).is_some());
+                    llvm::LLVMValueAsMetadata(operand)
+                };
+                self.add_di_node(operand);
+            }
+        }
+        let mut depth_map = self.depth_map.borrow_mut();
+        let node_depth = operands
+            .into_iter()
+            .flatten()
+            .filter_map(|operand| unsafe { llvm::LLVMIsAMDNode(operand) })
+            .map(|operand| {
+                let operand = unsafe { llvm::LLVMValueAsMetadata(operand) };
+                depth_map[&operand] + 1
+            })
+            .max()
+            .unwrap_or(1);
+        depth_map.insert(di_node, node_depth);
+        LLMOD_DEPTHS
+            .lock()
+            .unwrap()
+            .entry(self.llmod as *const _ as usize)
+            .and_modify(|depth| *depth = (*depth).max(node_depth))
+            .or_insert(node_depth);
     }
 }
 
@@ -326,6 +372,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let fn_signature = get_function_signature(self, fn_abi);
             llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
         };
+        debug_context(self).add_nested_di_node(function_type_metadata, &[3]);
 
         let mut name = String::new();
         type_names::push_item_name(tcx, def_id, false, &mut name);
@@ -373,8 +420,8 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             }
         }
 
-        unsafe {
-            return llvm::LLVMRustDIBuilderCreateFunction(
+        let function_metadata = unsafe {
+            llvm::LLVMRustDIBuilderCreateFunction(
                 DIB(self),
                 containing_scope,
                 name.as_ptr().cast(),
@@ -390,15 +437,17 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 maybe_definition_llfn,
                 template_parameters,
                 None,
-            );
-        }
+            )
+        };
+        debug_context(self).add_nested_di_node(function_metadata, &[7]);
+        return function_metadata;
 
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         ) -> &'ll DIArray {
             if cx.sess().opts.debuginfo == DebugInfo::Limited {
-                return create_DIArray(DIB(cx), &[]);
+                return create_DIArray(cx, &[]);
             }
 
             let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
@@ -439,7 +488,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     .extend(fn_abi.args.iter().map(|arg| Some(type_di_node(cx, arg.layout.ty))));
             }
 
-            create_DIArray(DIB(cx), &signature[..])
+            create_DIArray(cx, &signature[..])
         }
 
         fn get_template_parameters<'ll, 'tcx>(
@@ -448,7 +497,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             substs: SubstsRef<'tcx>,
         ) -> &'ll DIArray {
             if substs.types().next().is_none() {
-                return create_DIArray(DIB(cx), &[]);
+                return create_DIArray(cx, &[]);
             }
 
             // Again, only create type information if full debuginfo is enabled
@@ -461,15 +510,17 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                                 cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                             let actual_type_metadata = type_di_node(cx, actual_type);
                             let name = name.as_str();
-                            Some(unsafe {
-                                Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                            let template_param = unsafe {
+                                llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                                     DIB(cx),
                                     None,
                                     name.as_ptr().cast(),
                                     name.len(),
                                     actual_type_metadata,
-                                ))
-                            })
+                                )
+                            };
+                            debug_context(cx).add_di_node(template_param);
+                            Some(Some(template_param))
                         } else {
                             None
                         }
@@ -479,7 +530,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 vec![]
             };
 
-            create_DIArray(DIB(cx), &template_params)
+            create_DIArray(cx, &template_params)
         }
 
         fn get_parameter_names(cx: &CodegenCx<'_, '_>, generics: &ty::Generics) -> Vec<Symbol> {
@@ -552,7 +603,10 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     ) -> &'ll DILocation {
         let DebugLoc { line, col, .. } = self.lookup_debug_loc(span.lo());
 
-        unsafe { llvm::LLVMRustDIBuilderCreateDebugLocation(line, col, scope, inlined_at) }
+        let dbg_loc =
+            unsafe { llvm::LLVMRustDIBuilderCreateDebugLocation(line, col, scope, inlined_at) };
+        debug_context(self).add_di_node(dbg_loc);
+        dbg_loc
     }
 
     fn create_vtable_debuginfo(
@@ -598,7 +652,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let align = self.align_of(variable_type);
 
         let name = variable_name.as_str();
-        unsafe {
+        let dbg_var = unsafe {
             llvm::LLVMRustDIBuilderCreateVariable(
                 DIB(self),
                 dwarf_tag,
@@ -613,6 +667,8 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 argument_index,
                 align.bytes() as u32,
             )
-        }
+        };
+        debug_context(self).add_di_node(dbg_var);
+        dbg_var
     }
 }

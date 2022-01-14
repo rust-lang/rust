@@ -16,3 +16,8 @@ const STACK_PER_RECURSION: usize = 1 * 1024 * 1024; // 1MB
 pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     stacker::maybe_grow(RED_ZONE, STACK_PER_RECURSION, f)
 }
+
+pub fn ensure_recursive_stack<R>(stack_size: usize, f: impl FnOnce() -> R) -> R {
+    let full_size = stack_size + RED_ZONE;
+    stacker::maybe_grow(full_size, full_size, f)
+}

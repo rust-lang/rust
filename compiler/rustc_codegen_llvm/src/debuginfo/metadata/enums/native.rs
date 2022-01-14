@@ -11,7 +11,7 @@ use crate::{
             unknown_file_metadata, DINodeCreationResult, SmallVec, NO_GENERICS,
             UNKNOWN_LINE_NUMBER,
         },
-        utils::{create_DIArray, get_namespace_for_item, DIB},
+        utils::{create_DIArray, debug_context, get_namespace_for_item, DIB},
     },
     llvm::{
         self,
@@ -243,28 +243,29 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
     let variant_part_unique_type_id =
         UniqueTypeId::for_enum_variant_part(cx.tcx, enum_type_and_layout.ty);
 
-    let stub = StubInfo::new(
-        cx,
-        variant_part_unique_type_id,
-        |cx, variant_part_unique_type_id_str| unsafe {
-            let variant_part_name = "";
-            llvm::LLVMRustDIBuilderCreateVariantPart(
-                DIB(cx),
-                enum_type_di_node,
-                variant_part_name.as_ptr().cast(),
-                variant_part_name.len(),
-                unknown_file_metadata(cx),
-                UNKNOWN_LINE_NUMBER,
-                enum_type_and_layout.size.bits(),
-                enum_type_and_layout.align.abi.bits() as u32,
-                DIFlags::FlagZero,
-                tag_member_di_node,
-                create_DIArray(DIB(cx), &[]),
-                variant_part_unique_type_id_str.as_ptr().cast(),
-                variant_part_unique_type_id_str.len(),
-            )
-        },
-    );
+    let stub =
+        StubInfo::new(cx, variant_part_unique_type_id, |cx, variant_part_unique_type_id_str| {
+            let variant_part_di_node = unsafe {
+                let variant_part_name = "";
+                llvm::LLVMRustDIBuilderCreateVariantPart(
+                    DIB(cx),
+                    enum_type_di_node,
+                    variant_part_name.as_ptr().cast(),
+                    variant_part_name.len(),
+                    unknown_file_metadata(cx),
+                    UNKNOWN_LINE_NUMBER,
+                    enum_type_and_layout.size.bits(),
+                    enum_type_and_layout.align.abi.bits() as u32,
+                    DIFlags::FlagZero,
+                    tag_member_di_node,
+                    create_DIArray(cx, &[]),
+                    variant_part_unique_type_id_str.as_ptr().cast(),
+                    variant_part_unique_type_id_str.len(),
+                )
+            };
+            debug_context(cx).add_di_node(variant_part_di_node);
+            variant_part_di_node
+        });
 
     type_map::build_type_with_children(
         cx,
@@ -330,8 +331,8 @@ fn build_discr_member_di_node<'ll, 'tcx>(
             let tag_base_type = tag_base_type(cx, enum_or_generator_type_and_layout);
             let (size, align) = cx.size_and_align_of(tag_base_type);
 
-            unsafe {
-                Some(llvm::LLVMRustDIBuilderCreateMemberType(
+            let di_node = unsafe {
+                llvm::LLVMRustDIBuilderCreateMemberType(
                     DIB(cx),
                     containing_scope,
                     tag_name.as_ptr().cast(),
@@ -343,8 +344,10 @@ fn build_discr_member_di_node<'ll, 'tcx>(
                     enum_or_generator_type_and_layout.fields.offset(tag_field).bits(),
                     DIFlags::FlagArtificial,
                     type_di_node(cx, tag_base_type),
-                ))
-            }
+                )
+            };
+            debug_context(cx).add_di_node(di_node);
+            Some(di_node)
         }
     }
 }
@@ -402,7 +405,7 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
         .source_info
         .unwrap_or_else(|| (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER));
 
-    unsafe {
+    let di_node = unsafe {
         llvm::LLVMRustDIBuilderCreateVariantMemberType(
             DIB(cx),
             variant_part_di_node,
@@ -417,7 +420,9 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
             DIFlags::FlagZero,
             variant_member_info.variant_struct_type_di_node,
         )
-    }
+    };
+    debug_context(cx).add_di_node(di_node);
+    di_node
 }
 
 /// Information needed for building a `DW_TAG_variant`:

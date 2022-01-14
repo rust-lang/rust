@@ -26,7 +26,7 @@ use crate::{
             type_map::{self, Stub},
             unknown_file_metadata, UNKNOWN_LINE_NUMBER,
         },
-        utils::{create_DIArray, get_namespace_for_item, DIB},
+        utils::{create_DIArray, debug_context, get_namespace_for_item, DIB},
     },
     llvm::{
         self,
@@ -163,22 +163,24 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
 
     let enumerator_di_nodes: SmallVec<Option<&'ll DIType>> = variants
         .map(|(discr, variant_name)| {
-            unsafe {
-                Some(llvm::LLVMRustDIBuilderCreateEnumerator(
+            let enumerator_di_node = unsafe {
+                llvm::LLVMRustDIBuilderCreateEnumerator(
                     DIB(cx),
                     variant_name.as_ptr().cast(),
                     variant_name.len(),
                     // FIXME: what if enumeration has i128 discriminant?
                     discr.val as i64,
                     is_unsigned,
-                ))
-            }
+                )
+            };
+            debug_context(cx).add_di_node(enumerator_di_node);
+            Some(enumerator_di_node)
         })
         .collect();
 
     let (size, align) = cx.size_and_align_of(base_type);
 
-    unsafe {
+    let di_node = unsafe {
         llvm::LLVMRustDIBuilderCreateEnumerationType(
             DIB(cx),
             containing_scope,
@@ -188,11 +190,13 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
             UNKNOWN_LINE_NUMBER,
             size.bits(),
             align.bits() as u32,
-            create_DIArray(DIB(cx), &enumerator_di_nodes[..]),
+            create_DIArray(cx, &enumerator_di_nodes[..]),
             type_di_node(cx, base_type),
             true,
         )
-    }
+    };
+    debug_context(cx).add_di_node(di_node);
+    di_node
 }
 
 /// Build the debuginfo node for the struct type describing a single variant of an enum.

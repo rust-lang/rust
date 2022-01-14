@@ -26,10 +26,13 @@ pub fn is_node_local_to_unit(cx: &CodegenCx<'_, '_>, def_id: DefId) -> bool {
 
 #[allow(non_snake_case)]
 pub fn create_DIArray<'ll>(
-    builder: &DIBuilder<'ll>,
+    cx: &CodegenCx<'ll, '_>,
     arr: &[Option<&'ll DIDescriptor>],
 ) -> &'ll DIArray {
-    unsafe { llvm::LLVMRustDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32) }
+    let di_array =
+        unsafe { llvm::LLVMRustDIBuilderGetOrCreateArray(DIB(cx), arr.as_ptr(), arr.len() as u32) };
+    debug_context(cx).add_di_node(di_array);
+    di_array
 }
 
 #[inline]
