@@ -637,9 +637,10 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
+    /// #![feature(const_path)]
     /// use std::ffi::OsStr;
     ///
-    /// const OS_STR: OsStr = OsStr::from_str("foo");
+    /// const OS_STR: &OsStr = OsStr::from_str("foo");
     /// ```
     #[inline]
     #[unstable(feature = "const_path", reason = "TBD", issue = "none")]

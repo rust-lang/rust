@@ -1959,10 +1959,11 @@ impl Path {
     /// # Examples
     ///
     /// ```
+    /// #![feature(const_path)]
     /// use std::ffi::OsStr;
     /// use std::path::Path;
     ///
-    /// const PATH: Path = Path::from_os_str(OsStr::from_str("/foo/bar"));
+    /// const PATH: &Path = Path::from_os_str(OsStr::from_str("/foo/bar"));
     /// ```
     #[inline]
     #[unstable(feature = "const_path", reason = "TBD", issue = "none")]
