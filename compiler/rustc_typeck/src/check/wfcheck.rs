@@ -14,8 +14,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::ItemKind;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::infer::{self, RegionckMode, SubregionOrigin};
+use rustc_infer::infer::region_constraints::GenericKind;
+use rustc_infer::infer::{self, RegionckMode};
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -332,6 +333,12 @@ fn check_gat_where_clauses(
         // outlives relationship (`Self: 'a`), then we want to ensure that is
         // reflected in a where clause on the GAT itself.
         for (region, region_idx) in &regions {
+            // Ignore `'static` lifetimes for the purpose of this lint: it's
+            // because we know it outlives everything and so doesn't give meaninful
+            // clues
+            if let ty::ReStatic = region {
+                continue;
+            }
             for (ty, ty_idx) in &types {
                 // In our example, requires that Self: 'a
                 if ty_known_to_outlive(tcx, id, param_env, &wf_tys, *ty, *region) {
@@ -371,8 +378,17 @@ fn check_gat_where_clauses(
         // outlives relationship, then we want to ensure that is
         // reflected in a where clause on the GAT itself.
         for (region_a, region_a_idx) in &regions {
+            // Ignore `'static` lifetimes for the purpose of this lint: it's
+            // because we know it outlives everything and so doesn't give meaninful
+            // clues
+            if let ty::ReStatic = region_a {
+                continue;
+            }
             for (region_b, region_b_idx) in &regions {
                 if region_a == region_b {
+                    continue;
+                }
+                if let ty::ReStatic = region_b {
                     continue;
                 }
 
@@ -502,8 +518,6 @@ fn check_gat_where_clauses(
     }
 }
 
-// FIXME(jackh726): refactor some of the shared logic between the two functions below
-
 /// Given a known `param_env` and a set of well formed types, can we prove that
 /// `ty` outlives `region`.
 fn ty_known_to_outlive<'tcx>(
@@ -514,6 +528,50 @@ fn ty_known_to_outlive<'tcx>(
     ty: Ty<'tcx>,
     region: ty::Region<'tcx>,
 ) -> bool {
+    resolve_regions_with_wf_tys(tcx, id, param_env, &wf_tys, |infcx, region_bound_pairs| {
+        let origin = infer::RelateParamBound(DUMMY_SP, ty, None);
+        let outlives = &mut TypeOutlives::new(
+            infcx,
+            tcx,
+            region_bound_pairs,
+            Some(infcx.tcx.lifetimes.re_root_empty),
+            param_env,
+        );
+        outlives.type_must_outlive(origin, ty, region);
+    })
+}
+
+/// Given a known `param_env` and a set of well formed types, can we prove that
+/// `region_a` outlives `region_b`
+fn region_known_to_outlive<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    id: hir::HirId,
+    param_env: ty::ParamEnv<'tcx>,
+    wf_tys: &FxHashSet<Ty<'tcx>>,
+    region_a: ty::Region<'tcx>,
+    region_b: ty::Region<'tcx>,
+) -> bool {
+    resolve_regions_with_wf_tys(tcx, id, param_env, &wf_tys, |mut infcx, _| {
+        use rustc_infer::infer::outlives::obligations::TypeOutlivesDelegate;
+        let origin = infer::RelateRegionParamBound(DUMMY_SP);
+        // `region_a: region_b` -> `region_b <= region_a`
+        infcx.push_sub_region_constraint(origin, region_b, region_a);
+    })
+}
+
+/// Given a known `param_env` and a set of well formed types, set up an
+/// `InferCtxt`, call the passed function (to e.g. set up region constraints
+/// to be tested), then resolve region and return errors
+fn resolve_regions_with_wf_tys<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    id: hir::HirId,
+    param_env: ty::ParamEnv<'tcx>,
+    wf_tys: &FxHashSet<Ty<'tcx>>,
+    add_constraints: impl for<'a> FnOnce(
+        &'a InferCtxt<'a, 'tcx>,
+        &'a Vec<(&'tcx ty::RegionKind, GenericKind<'tcx>)>,
+    ),
+) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
     // region constraints get added and solved there and we need to test each
     // call individually.
@@ -523,63 +581,7 @@ fn ty_known_to_outlive<'tcx>(
         outlives_environment.save_implied_bounds(id);
         let region_bound_pairs = outlives_environment.region_bound_pairs_map().get(&id).unwrap();
 
-        let cause = ObligationCause::new(DUMMY_SP, id, ObligationCauseCode::MiscObligation);
-
-        let sup_type = ty;
-        let sub_region = region;
-
-        let origin = SubregionOrigin::from_obligation_cause(&cause, || {
-            infer::RelateParamBound(cause.span, sup_type, None)
-        });
-
-        let outlives = &mut TypeOutlives::new(
-            &infcx,
-            tcx,
-            &region_bound_pairs,
-            Some(infcx.tcx.lifetimes.re_root_empty),
-            param_env,
-        );
-        outlives.type_must_outlive(origin, sup_type, sub_region);
-
-        let errors = infcx.resolve_regions(
-            id.expect_owner().to_def_id(),
-            &outlives_environment,
-            RegionckMode::default(),
-        );
-
-        debug!(?errors, "errors");
-
-        // If we were able to prove that the type outlives the region without
-        // an error, it must be because of the implied or explicit bounds...
-        errors.is_empty()
-    })
-}
-
-fn region_known_to_outlive<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    id: hir::HirId,
-    param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxHashSet<Ty<'tcx>>,
-    region_a: ty::Region<'tcx>,
-    region_b: ty::Region<'tcx>,
-) -> bool {
-    // Unfortunately, we have to use a new `InferCtxt` each call, because
-    // region constraints get added and solved there and we need to test each
-    // call individually.
-    tcx.infer_ctxt().enter(|infcx| {
-        let mut outlives_environment = OutlivesEnvironment::new(param_env);
-        outlives_environment.add_implied_bounds(&infcx, wf_tys.clone(), id, DUMMY_SP);
-        outlives_environment.save_implied_bounds(id);
-
-        let cause = ObligationCause::new(DUMMY_SP, id, ObligationCauseCode::MiscObligation);
-
-        let origin = SubregionOrigin::from_obligation_cause(&cause, || {
-            infer::RelateRegionParamBound(cause.span)
-        });
-
-        use rustc_infer::infer::outlives::obligations::TypeOutlivesDelegate;
-        // `region_a: region_b` -> `region_b <= region_a`
-        (&infcx).push_sub_region_constraint(origin, region_b, region_a);
+        add_constraints(&infcx, region_bound_pairs);
 
         let errors = infcx.resolve_regions(
             id.expect_owner().to_def_id(),
