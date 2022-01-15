@@ -150,7 +150,7 @@ impl Buf {
 
 impl Slice {
     #[inline]
-    pub fn from_str(s: &str) -> &Slice {
+    pub const fn from_str(s: &str) -> &Slice {
         unsafe { mem::transmute(Wtf8::from_str(s)) }
     }
 

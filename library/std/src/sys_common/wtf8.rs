@@ -507,7 +507,7 @@ impl Wtf8 {
     ///
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
-    pub fn from_str(value: &str) -> &Wtf8 {
+    pub const fn from_str(value: &str) -> &Wtf8 {
         unsafe { Wtf8::from_bytes_unchecked(value.as_bytes()) }
     }
 
@@ -516,7 +516,7 @@ impl Wtf8 {
     /// Since the byte slice is not checked for valid WTF-8, this functions is
     /// marked unsafe.
     #[inline]
-    unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
+    const unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
         mem::transmute(value)
     }
 
