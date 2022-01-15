@@ -12,7 +12,7 @@ use rustc_middle::ty::print::Print;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, Const, DefIdTree, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_span::symbol::kw;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use std::borrow::Cow;
 
 struct FindHirNodeVisitor<'a, 'tcx> {
@@ -1003,9 +1003,9 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
             | ty::Opaque(..)
             | ty::Projection(_)
             | ty::Never => t.super_fold_with(self),
-            ty::Array(ty, c) => self
-                .tcx()
-                .mk_ty(ty::Array(self.fold_ty(ty), self.replace_infers(c, 0, Symbol::intern("N")))),
+            ty::Array(ty, c) => {
+                self.tcx().mk_ty(ty::Array(self.fold_ty(ty), self.replace_infers(c, 0, sym::N)))
+            }
             // We don't want to hide type params that haven't been resolved yet.
             // This would be the type that will be written out with the type param
             // name in the output.

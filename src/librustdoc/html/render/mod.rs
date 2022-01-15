@@ -1191,11 +1191,9 @@ fn render_deref_methods(
             }
         }
         render_assoc_items_inner(w, cx, container_item, did, what, derefs);
-    } else {
-        if let Some(prim) = target.primitive_type() {
-            if let Some(&did) = cache.primitive_locations.get(&prim) {
-                render_assoc_items_inner(w, cx, container_item, did, what, derefs);
-            }
+    } else if let Some(prim) = target.primitive_type() {
+        if let Some(&did) = cache.primitive_locations.get(&prim) {
+            render_assoc_items_inner(w, cx, container_item, did, what, derefs);
         }
     }
 }

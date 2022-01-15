@@ -11,7 +11,7 @@ use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::DUMMY_SP;
 
 impl<'hir> LoweringContext<'_, 'hir> {
@@ -1204,11 +1204,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         let fields = self.arena.alloc_from_iter(
-            e1.iter().map(|e| ("start", e)).chain(e2.iter().map(|e| ("end", e))).map(|(s, e)| {
-                let expr = self.lower_expr(&e);
-                let ident = Ident::new(Symbol::intern(s), self.lower_span(e.span));
-                self.expr_field(ident, expr, e.span)
-            }),
+            e1.iter().map(|e| (sym::start, e)).chain(e2.iter().map(|e| (sym::end, e))).map(
+                |(s, e)| {
+                    let expr = self.lower_expr(&e);
+                    let ident = Ident::new(s, self.lower_span(e.span));
+                    self.expr_field(ident, expr, e.span)
+                },
+            ),
         );
 
         hir::ExprKind::Struct(

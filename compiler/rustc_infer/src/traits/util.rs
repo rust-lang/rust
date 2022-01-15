@@ -152,7 +152,7 @@ impl<'tcx> Elaborator<'tcx> {
                         obligation.cause.clone(),
                     )
                 });
-                debug!("super_predicates: data={:?}", data);
+                debug!(?data, ?obligations, "super_predicates");
 
                 // Only keep those bounds that we haven't already seen.
                 // This is necessary to prevent infinite recursion in some
