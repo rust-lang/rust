@@ -159,7 +159,7 @@ pub trait CommandExt: Sealed {
     ///
     /// This is useful for passing arguments to `cmd.exe /c`, which doesn't follow
     /// `CommandLineToArgvW` escaping rules.
-    #[unstable(feature = "windows_process_extensions_raw_arg", issue = "29494")]
+    #[stable(feature = "windows_process_extensions_raw_arg", since = "1.61.0")]
     fn raw_arg<S: AsRef<OsStr>>(&mut self, text_to_append_as_is: S) -> &mut process::Command;
 }
 
