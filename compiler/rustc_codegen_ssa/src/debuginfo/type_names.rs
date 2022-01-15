@@ -519,12 +519,18 @@ fn push_unqualified_item_name(
             output.push_str(tcx.crate_name(def_id.krate).as_str());
         }
         DefPathData::ClosureExpr if tcx.generator_kind(def_id).is_some() => {
+            let key = match tcx.generator_kind(def_id).unwrap() {
+                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) => "async_block",
+                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure) => "async_closure",
+                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn) => "async_fn",
+                hir::GeneratorKind::Gen => "generator",
+            };
             // Generators look like closures, but we want to treat them differently
             // in the debug info.
             if cpp_like_debuginfo(tcx) {
-                write!(output, "generator${}", disambiguated_data.disambiguator).unwrap();
+                write!(output, "{}${}", key, disambiguated_data.disambiguator).unwrap();
             } else {
-                write!(output, "{{generator#{}}}", disambiguated_data.disambiguator).unwrap();
+                write!(output, "{{{}#{}}}", key, disambiguated_data.disambiguator).unwrap();
             }
         }
         _ => match disambiguated_data.data.name() {
