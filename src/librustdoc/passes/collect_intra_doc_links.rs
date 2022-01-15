@@ -384,7 +384,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// In particular, this will return an error whenever there aren't three
     /// full path segments left in the link.
     ///
-    /// [enum struct variant]: hir::VariantData::Struct
+    /// [enum struct variant]: rustc_hir::VariantData::Struct
     fn variant_field<'path>(
         &self,
         path_str: &'path str,
