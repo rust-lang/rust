@@ -4,6 +4,7 @@ use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_mac
 use clippy_utils::ty::{implements_trait, match_type};
 use clippy_utils::{contains_return, is_trait_item, last_path_segment, paths};
 use if_chain::if_chain;
+use rustc_errors::emitter::MAX_SUGGESTION_HIGHLIGHT_LINES;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -52,16 +53,24 @@ pub(super) fn check<'tcx>(
 
             then {
                 let mut applicability = Applicability::MachineApplicable;
+                let hint = ".unwrap_or_default()";
+                let mut sugg: String = format!(
+                    "{}{}",
+                    snippet_with_applicability(cx, self_expr.span, "..", &mut applicability),
+                    hint
+                );
+
+                if sugg.lines().count() > MAX_SUGGESTION_HIGHLIGHT_LINES {
+                    sugg = hint.to_string();
+                }
+
                 span_lint_and_sugg(
                     cx,
                     OR_FUN_CALL,
                     span,
                     &format!("use of `{}` followed by a call to `{}`", name, path),
                     "try this",
-                    format!(
-                        "{}.unwrap_or_default()",
-                        snippet_with_applicability(cx, self_expr.span, "..", &mut applicability)
-                    ),
+                    sugg,
                     applicability,
                 );
 
