@@ -163,3 +163,10 @@ fn into_rc() {
     assert_eq!(&*rc2, os_str);
     assert_eq!(&*arc2, os_str);
 }
+
+#[test]
+pub fn test_const() {
+    const STR: &str = "/foo/bar";
+    const OS_STR: &OsStr = OsStr::from_str(STR);
+    assert_eq!(OS_STR, OsStr::new(STR));
+}

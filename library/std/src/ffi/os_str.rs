@@ -629,7 +629,18 @@ impl OsStr {
         s.as_ref()
     }
 
-    /// Creates a new `OsStr` from a `str`.
+    /// Creates a new [`OsStr`] from a [`str`].
+    ///
+    /// This method supports const expressions. However, if you don't need const,
+    /// you should probably use the [`OsStr::new`] method instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    ///
+    /// const OS_STR: OsStr = OsStr::from_str("foo");
+    /// ```
     #[inline]
     #[unstable(feature = "const_path", reason = "TBD", issue = "none")]
     pub const fn from_str(s: &str) -> &OsStr {

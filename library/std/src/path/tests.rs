@@ -1665,6 +1665,13 @@ fn test_ord() {
     ord!(Equal, "foo/bar", "foo/bar//");
 }
 
+#[test]
+pub fn test_const() {
+    const STR: &str = "/foo/bar";
+    const PATH: &Path = Path::from_os_str(OsStr::from_str(STR));
+    assert_eq!(PATH, Path::new(STR));
+}
+
 #[bench]
 fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
     let prefix = "my/home";

@@ -1951,12 +1951,19 @@ impl Path {
         Self::from_os_str(s.as_ref())
     }
 
-    /// Creates a new `Path` from an `OsStr`.
+    /// Creates a new [`Path`] from an [`OsStr`].
     ///
-    /// This is a cost-free conversion.
+    /// This method supports const expressions. However, if you don't need const,
+    /// you should probably use the [`Path::new`] method instead.
     ///
-    /// You should probably use the [`Path::new`] method instead,
-    /// however, this method supports const expressions
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    /// use std::path::Path;
+    ///
+    /// const PATH: Path = Path::from_os_str(OsStr::from_str("/foo/bar"));
+    /// ```
     #[inline]
     #[unstable(feature = "const_path", reason = "TBD", issue = "none")]
     pub const fn from_os_str(s: &OsStr) -> &Path {
