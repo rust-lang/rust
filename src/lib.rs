@@ -1,6 +1,6 @@
 /*
  * TODO(antoyo): support #[inline] attributes.
- * TODO(antoyo): support LTO.
+ * TODO(antoyo): support LTO (gcc's equivalent to Thin LTO is enabled by -fwhopr: https://stackoverflow.com/questions/64954525/does-gcc-have-thin-lto).
  *
  * TODO(antoyo): remove the patches.
  */
