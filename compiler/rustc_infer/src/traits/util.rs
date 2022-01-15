@@ -241,10 +241,19 @@ impl<'tcx> Elaborator<'tcx> {
 
                             Component::UnresolvedInferenceVariable(_) => None,
 
-                            Component::Projection(_) | Component::EscapingProjection(_) => {
-                                // We can probably do more here. This
-                                // corresponds to a case like `<T as
-                                // Foo<'a>>::U: 'b`.
+                            Component::Projection(projection) => {
+                                // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
+                                // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
+                                let ty =
+                                    tcx.mk_projection(projection.item_def_id, projection.substs);
+                                Some(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
+                                    ty, r_min,
+                                )))
+                            }
+
+                            Component::EscapingProjection(_) => {
+                                // We might be able to do more here, but we don't
+                                // want to deal with escaping vars right now.
                                 None
                             }
                         })
