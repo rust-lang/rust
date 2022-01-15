@@ -64,4 +64,11 @@ impl S {
     }
 }
 
+struct S2([u8]);
+impl S2 {
+    fn iter(&self) -> core::slice::Iter<u8> {
+        self.0.iter()
+    }
+}
+
 fn main() {}
