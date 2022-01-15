@@ -57,8 +57,8 @@ impl<T, U, O, const N: usize> DropCheck<T, U, O, N> {
         // Since `dc.i` is stricty-monotonic, we will only
         // take each element only once from each of lhs/rhs
         unsafe {
-            let lhs = ManuallyDrop::take(&mut self.lhs[self.assign.i]);
-            let out = &mut self.output[self.assign.i];
+            let lhs = ManuallyDrop::take(self.lhs.get_unchecked_mut(self.assign.i));
+            let out = self.output.get_unchecked_mut(self.assign.i);
             out.write(f(lhs, self.assign.next_unchecked()));
         }
     }
@@ -122,7 +122,7 @@ impl<U, const N: usize> DropCheckAssign<U, N> {
         // Since `dc.i` is stricty-monotonic, we will only
         // take each element only once from each of lhs/rhs
         unsafe {
-            let rhs = ManuallyDrop::take(&mut self.rhs[self.i]);
+            let rhs = ManuallyDrop::take(self.rhs.get_unchecked_mut(self.i));
             self.i += 1;
             rhs
         }
@@ -142,7 +142,7 @@ macro_rules! binop_assign {
                 for _ in 0..N {
                     // SAFETY:
                     // Will only be called a maximum of N times
-                    unsafe { self[dc.i].$method(dc.next_unchecked()) }
+                    unsafe { self.get_unchecked_mut(dc.i).$method(dc.next_unchecked()) }
                 }
             }
         }
