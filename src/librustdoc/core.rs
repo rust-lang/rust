@@ -492,9 +492,9 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
                 "could not resolve path `{}`",
                 path.segments
                     .iter()
-                    .map(|segment| segment.ident.as_str().to_string())
-                    .collect::<Vec<_>>()
-                    .join("::")
+                    .map(|segment| segment.ident.as_str())
+                    .intersperse("::")
+                    .collect::<String>()
             );
             let mut err = rustc_errors::struct_span_err!(
                 self.tcx.sess,
