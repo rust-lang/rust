@@ -109,7 +109,7 @@ fn format_project<T: FormatHandler>(
         let src = source_file.src.as_ref().expect("SourceFile without src");
 
         let should_ignore = (!input_is_stdin && context.ignore_file(&path))
-            || (!config.format_generated_files() && is_generated_file(src));
+            || (!input_is_stdin && !config.format_generated_files() && is_generated_file(src));
 
         if (config.skip_children() && path != main_file) || should_ignore {
             continue;
