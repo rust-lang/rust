@@ -14,6 +14,7 @@ pub(crate) mod record;
 pub(crate) mod snippet;
 pub(crate) mod trait_impl;
 pub(crate) mod unqualified_path;
+pub(crate) mod format_string;
 
 use std::iter;
 

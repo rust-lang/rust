@@ -168,6 +168,7 @@ pub fn completions(
     completions::flyimport::import_on_the_fly(&mut acc, &ctx);
     completions::lifetime::complete_lifetime(&mut acc, &ctx);
     completions::lifetime::complete_label(&mut acc, &ctx);
+    completions::format_string::format_string(&mut acc, &ctx);
 
     Some(acc)
 }

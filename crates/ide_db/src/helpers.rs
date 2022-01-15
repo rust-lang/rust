@@ -7,6 +7,7 @@ pub mod merge_imports;
 pub mod insert_whitespace_into_node;
 pub mod node_ext;
 pub mod rust_doc;
+pub mod format_string;
 
 use std::{collections::VecDeque, iter};
 
