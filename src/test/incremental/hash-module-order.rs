@@ -19,7 +19,7 @@ mod foo {
 }
 
 #[cfg(rpass2)]
-#[rustc_clean(cfg="rpass2",except="hir_owner")]
+#[rustc_clean(cfg="rpass2",except="hir_owner,hir_owner_nodes")]
 mod foo {
     struct Second;
     struct First;
