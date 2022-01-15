@@ -929,9 +929,9 @@ fn add_one(x: i32) -> i32 {
 ## `format_generated_files`
 
 Format generated files. A file is considered generated
-if any of the first five lines contains `@generated` marker.
+if any of the first five lines contain a `@generated` comment marker.
 
-- **Default value**: `false`
+- **Default value**: `true`
 - **Possible values**: `true`, `false`
 - **Stable**: No (tracking issue: [#5080](https://github.com/rust-lang/rustfmt/issues/5080))
 
