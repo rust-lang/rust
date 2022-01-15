@@ -447,10 +447,12 @@ impl Item {
         let ast_attrs = cx.tcx.get_attrs(def_id);
         let mut clean_attrs = box ast_attrs.clean(cx);
 
-        if let Some(items) = cx.cache.inlined_items.get(&def_id) {
-            tracing::debug!("associating attributes from associated inlined items: {:?}", items);
-            let other_attrs = cx.tcx.get_attrs(def_id).clean(cx);
-            clean_attrs.doc_strings.extend(other_attrs.doc_strings);
+        if let Some(inlined_ids) = cx.cache.inlined_items.get(&def_id).cloned() {
+            tracing::debug!("extending docstrings of {:?} with {:?}", def_id, inlined_ids);
+            for &inlined_id in inlined_ids.iter() {
+                let other_attrs = cx.tcx.get_attrs(inlined_id).clean(cx);
+                clean_attrs.doc_strings.extend(other_attrs.doc_strings);
+            }
         }
 
         Self::from_def_id_and_attrs_and_parts(
