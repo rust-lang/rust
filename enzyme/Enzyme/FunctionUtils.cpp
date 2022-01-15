@@ -1555,10 +1555,10 @@ Function *PreProcessCache::preprocessForClone(Function *F,
   return NewF;
 }
 
-FunctionType *
-getFunctionTypeForClone(llvm::FunctionType *FTy, llvm::Type *additionalArg,
-                        const std::vector<DIFFE_TYPE> &constant_args,
-                        bool diffeReturnArg, ReturnType returnValue) {
+FunctionType *getFunctionTypeForClone(
+    llvm::FunctionType *FTy, DerivativeMode mode, unsigned width,
+    llvm::Type *additionalArg, const std::vector<DIFFE_TYPE> &constant_args,
+    bool diffeReturnArg, ReturnType returnValue, DIFFE_TYPE returnType) {
   std::vector<Type *> RetTypes;
   if (returnValue == ReturnType::ArgsWithReturn ||
       returnValue == ReturnType::ArgsWithTwoReturns ||
@@ -1621,17 +1621,18 @@ getFunctionTypeForClone(llvm::FunctionType *FTy, llvm::Type *additionalArg,
 }
 
 Function *PreProcessCache::CloneFunctionWithReturns(
-    DerivativeMode mode, Function *&F, ValueToValueMapTy &ptrInputs,
-    const std::vector<DIFFE_TYPE> &constant_args,
+    DerivativeMode mode, unsigned width, Function *&F,
+    ValueToValueMapTy &ptrInputs, const std::vector<DIFFE_TYPE> &constant_args,
     SmallPtrSetImpl<Value *> &constants, SmallPtrSetImpl<Value *> &nonconstant,
-    SmallPtrSetImpl<Value *> &returnvals, ReturnType returnValue, Twine name,
-    ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type *additionalArg) {
+    SmallPtrSetImpl<Value *> &returnvals, ReturnType returnValue,
+    DIFFE_TYPE returnType, Twine name, ValueToValueMapTy *VMapO,
+    bool diffeReturnArg, llvm::Type *additionalArg) {
   assert(!F->empty());
   F = preprocessForClone(F, mode);
   llvm::ValueToValueMapTy VMap;
-  llvm::FunctionType *FTy =
-      getFunctionTypeForClone(F->getFunctionType(), additionalArg,
-                              constant_args, diffeReturnArg, returnValue);
+  llvm::FunctionType *FTy = getFunctionTypeForClone(
+      F->getFunctionType(), mode, width, additionalArg, constant_args,
+      diffeReturnArg, returnValue, returnType);
 
   for (BasicBlock &BB : *F) {
     if (auto ri = dyn_cast<ReturnInst>(BB.getTerminator())) {

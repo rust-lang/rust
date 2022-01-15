@@ -134,6 +134,7 @@ struct ReverseCacheKey {
   bool returnUsed;
   bool shadowReturnUsed;
   DerivativeMode mode;
+  unsigned width;
   bool freeMemory;
   bool AtomicAdd;
   llvm::Type *additionalType;
@@ -258,7 +259,7 @@ public:
       std::tuple<llvm::Function *, DIFFE_TYPE /*retType*/,
                  std::vector<DIFFE_TYPE> /*constant_args*/,
                  std::map<llvm::Argument *, bool> /*uncacheable_args*/,
-                 bool /*retval*/, DerivativeMode, llvm::Type *,
+                 bool /*retval*/, DerivativeMode, unsigned, llvm::Type *,
                  const FnTypeInfo>;
   std::map<ForwardCacheKey, llvm::Function *> ForwardCachedFunctions;
 
@@ -287,7 +288,7 @@ public:
   CreateForwardDiff(llvm::Function *todiff, DIFFE_TYPE retType,
                     const std::vector<DIFFE_TYPE> &constant_args,
                     llvm::TargetLibraryInfo &TLI, TypeAnalysis &TA,
-                    bool returnValue, DerivativeMode mode,
+                    bool returnValue, DerivativeMode mode, unsigned width,
                     llvm::Type *additionalArg, const FnTypeInfo &typeInfo,
                     const std::map<llvm::Argument *, bool> _uncacheable_args,
                     bool PostOpt = false, bool omp = false);

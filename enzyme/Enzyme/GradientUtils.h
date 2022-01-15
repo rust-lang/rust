@@ -926,13 +926,21 @@ public:
   AAResults &OrigAA;
   TypeAnalysis &TA;
   bool omp;
+
+private:
+  unsigned width;
+
+public:
+  unsigned getWidth() { return width; }
+
+public:
   GradientUtils(EnzymeLogic &Logic, Function *newFunc_, Function *oldFunc_,
                 TargetLibraryInfo &TLI_, TypeAnalysis &TA_,
                 ValueToValueMapTy &invertedPointers_,
                 const SmallPtrSetImpl<Value *> &constantvalues_,
                 const SmallPtrSetImpl<Value *> &activevals_,
                 DIFFE_TYPE ReturnActivity, ValueToValueMapTy &originalToNewFn_,
-                DerivativeMode mode, bool omp)
+                DerivativeMode mode, unsigned width, bool omp)
       : CacheUtility(TLI_, newFunc_), Logic(Logic), mode(mode),
         oldFunc(oldFunc_), invertedPointers(),
         OrigDT(Logic.PPC.FAM.getResult<llvm::DominatorTreeAnalysis>(*oldFunc_)),
@@ -947,8 +955,8 @@ public:
                                  notForAnalysis, TLI_, constantvalues_,
                                  activevals_, ReturnActivity)),
         tid(nullptr), numThreads(nullptr),
-        OrigAA(Logic.PPC.getAAResultsFromFunction(oldFunc_)), TA(TA_),
-        omp(omp) {
+        OrigAA(Logic.PPC.getAAResultsFromFunction(oldFunc_)), TA(TA_), omp(omp),
+        width(width) {
     if (oldFunc_->getSubprogram()) {
       assert(originalToNewFn_.hasMD());
     }
@@ -1439,12 +1447,14 @@ public:
   static Constant *
   GetOrCreateShadowConstant(EnzymeLogic &Logic, TargetLibraryInfo &TLI,
                             TypeAnalysis &TA, Constant *F, DerivativeMode mode,
-                            bool AtomicAdd = true, bool PostOpt = false);
+                            unsigned width, bool AtomicAdd = true,
+                            bool PostOpt = false);
 
   static Constant *
   GetOrCreateShadowFunction(EnzymeLogic &Logic, TargetLibraryInfo &TLI,
                             TypeAnalysis &TA, Function *F, DerivativeMode mode,
-                            bool AtomicAdd = true, bool PostOpt = false);
+                            unsigned width, bool AtomicAdd = true,
+                            bool PostOpt = false);
 
   void branchToCorrespondingTarget(
       BasicBlock *ctx, IRBuilder<> &BuilderM,
@@ -1497,10 +1507,10 @@ class DiffeGradientUtils : public GradientUtils {
                      const SmallPtrSetImpl<Value *> &constantvalues_,
                      const SmallPtrSetImpl<Value *> &returnvals_,
                      DIFFE_TYPE ActiveReturn, ValueToValueMapTy &origToNew_,
-                     DerivativeMode mode, bool omp)
+                     DerivativeMode mode, unsigned width, bool omp)
       : GradientUtils(Logic, newFunc_, oldFunc_, TLI, TA, invertedPointers_,
                       constantvalues_, returnvals_, ActiveReturn, origToNew_,
-                      mode, omp) {
+                      mode, width, omp) {
     assert(reverseBlocks.size() == 0);
     if (mode == DerivativeMode::ForwardMode ||
         mode == DerivativeMode::ForwardModeSplit ||
@@ -1523,9 +1533,9 @@ public:
   bool FreeMemory;
   ValueMap<const Value *, TrackingVH<AllocaInst>> differentials;
   static DiffeGradientUtils *
-  CreateFromClone(EnzymeLogic &Logic, DerivativeMode mode, Function *todiff,
-                  TargetLibraryInfo &TLI, TypeAnalysis &TA, DIFFE_TYPE retType,
-                  bool diffeReturnArg,
+  CreateFromClone(EnzymeLogic &Logic, DerivativeMode mode, unsigned width,
+                  Function *todiff, TargetLibraryInfo &TLI, TypeAnalysis &TA,
+                  DIFFE_TYPE retType, bool diffeReturnArg,
                   const std::vector<DIFFE_TYPE> &constant_args,
                   ReturnType returnValue, Type *additionalArg, bool omp);
 
