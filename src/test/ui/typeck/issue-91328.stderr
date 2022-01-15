@@ -16,6 +16,15 @@ LL |
 LL |         Some([a, b]) => a + b,
    |              ^^^^^^ pattern cannot match with input type `Vec<i32>`
 
-error: aborting due to 2 previous errors
+error[E0529]: expected an array or slice, found `Vec<i32>`
+  --> $DIR/issue-91328.rs:30:9
+   |
+LL |     match v {
+   |           - help: consider slicing here: `v[..]`
+LL |
+LL |         [a, b] => a + b,
+   |         ^^^^^^ pattern cannot match with input type `Vec<i32>`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0529`.

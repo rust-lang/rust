@@ -24,4 +24,14 @@ fn bar(o: Option<Vec<i32>>) -> i32 {
     }
 }
 
+fn baz(v: Vec<i32>) -> i32 {
+    match v {
+    //~^ HELP: consider slicing here
+        [a, b] => a + b,
+        //~^ ERROR: expected an array or slice
+        //~| NOTE: pattern cannot match with input type
+        _ => 42,
+    }
+}
+
 fn main() {}
