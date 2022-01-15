@@ -201,6 +201,7 @@ struct EvaluatedCandidate<'tcx> {
 }
 
 /// When does the builtin impl for `T: Trait` apply?
+#[derive(Debug)]
 enum BuiltinImplConditions<'tcx> {
     /// The impl is conditional on `T1, T2, ...: Trait`.
     Where(ty::Binder<'tcx, Vec<Ty<'tcx>>>),
@@ -344,7 +345,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             Err(e) => Err(e),
             Ok(candidate) => {
-                debug!(?candidate);
+                debug!(?candidate, "confirmed");
                 Ok(Some(candidate))
             }
         }
@@ -1523,6 +1524,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// See the comment for "SelectionCandidate" for more details.
     fn candidate_should_be_dropped_in_favor_of(
         &mut self,
+        sized_predicate: bool,
         victim: &EvaluatedCandidate<'tcx>,
         other: &EvaluatedCandidate<'tcx>,
         needs_infer: bool,
@@ -1594,6 +1596,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Drop otherwise equivalent non-const fn pointer candidates
             (FnPointerCandidate { .. }, FnPointerCandidate { is_const: false }) => true,
 
+            // If obligation is a sized predicate or the where-clause bound is
+            // global, prefer the projection or object candidate. See issue
+            // #50825 and #89352.
+            (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref cand)) => {
+                sized_predicate || is_global(cand)
+            }
+            (ParamCandidate(ref cand), ObjectCandidate(_) | ProjectionCandidate(_)) => {
+                !(sized_predicate || is_global(cand))
+            }
+
             // Global bounds from the where clause should be ignored
             // here (see issue #50825). Otherwise, we have a where
             // clause so don't go around looking for impls.
@@ -1609,15 +1621,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | BuiltinUnsizeCandidate
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
-                | TraitAliasCandidate(..)
-                | ObjectCandidate(_)
-                | ProjectionCandidate(_),
+                | TraitAliasCandidate(..),
             ) => !is_global(cand),
-            (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref cand)) => {
-                // Prefer these to a global where-clause bound
-                // (see issue #50825).
-                is_global(cand)
-            }
             (
                 ImplCandidate(_)
                 | ClosureCandidate

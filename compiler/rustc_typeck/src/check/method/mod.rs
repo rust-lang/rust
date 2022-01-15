@@ -359,6 +359,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (obligation, substs) =
             self.obligation_for_method(span, trait_def_id, self_ty, opt_input_types);
 
+        debug!(?obligation);
+
         // Now we want to know if this can be matched
         if !self.predicate_may_hold(&obligation) {
             debug!("--> Cannot match obligation");
