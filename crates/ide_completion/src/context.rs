@@ -940,6 +940,7 @@ const OP_TRAIT_LANG_NAMES: &[&str] = &[
     "deref",
     "div_assign",
     "div",
+    "eq",
     "fn_mut",
     "fn_once",
     "fn",
@@ -949,13 +950,13 @@ const OP_TRAIT_LANG_NAMES: &[&str] = &[
     "mul",
     "neg",
     "not",
+    "partial_ord",
     "rem_assign",
     "rem",
     "shl_assign",
     "shl",
     "shr_assign",
     "shr",
-    "sub",
     "sub",
 ];
 #[cfg(test)]

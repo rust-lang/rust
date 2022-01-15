@@ -139,7 +139,7 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub is_local: bool,
-    /// Set for method completions of the `core::ops` family.
+    /// Set for method completions of the `core::ops` and `core::cmp` family.
     pub is_op_method: bool,
     /// This is set in cases like these:
     ///
