@@ -38,6 +38,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_str_from_utf8)]
 #![feature(nonnull_slice_from_raw_parts)]
+#![feature(panic_update_hook)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
