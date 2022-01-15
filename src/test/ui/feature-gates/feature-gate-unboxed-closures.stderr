@@ -11,16 +11,16 @@ error[E0658]: the precise format of `Fn`-family traits' type parameters is subje
   --> $DIR/feature-gate-unboxed-closures.rs:5:6
    |
 LL | impl FnOnce<(u32, u32)> for Test {
-   |      ^^^^^^^^^^^^^^^^^^ help: use parenthetical notation instead: `FnOnce(u32, u32) -> ()`
+   |      ^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0183]: manual implementations of `FnOnce` are experimental
-  --> $DIR/feature-gate-unboxed-closures.rs:5:1
+  --> $DIR/feature-gate-unboxed-closures.rs:5:6
    |
 LL | impl FnOnce<(u32, u32)> for Test {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ manual implementations of `FnOnce` are experimental
+   |      ^^^^^^^^^^^^^^^^^^ manual implementations of `FnOnce` are experimental
    |
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 

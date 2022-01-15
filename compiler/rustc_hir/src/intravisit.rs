@@ -1088,7 +1088,8 @@ pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(
 
 pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, impl_item_ref: &'v ImplItemRef) {
     // N.B., deliberately force a compilation error if/when new fields are added.
-    let ImplItemRef { id, ident, ref kind, span: _, ref defaultness } = *impl_item_ref;
+    let ImplItemRef { id, ident, ref kind, span: _, ref defaultness, trait_item_def_id: _ } =
+        *impl_item_ref;
     visitor.visit_nested_impl_item(id);
     visitor.visit_ident(ident);
     visitor.visit_associated_item_kind(kind);

@@ -23,13 +23,7 @@ note: struct defined here, with 0 generic parameters
 LL |     struct Foo {
    |            ^^^
 
-error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-3214.rs:6:10
-   |
-LL |     impl<T> Drop for Foo<T> {
-   |          ^ unconstrained type parameter
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0107, E0207, E0401.
+Some errors have detailed explanations: E0107, E0401.
 For more information about an error, try `rustc --explain E0107`.

@@ -371,7 +371,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let tcx = self.tcx;
-        let method_item = match self.associated_item(trait_def_id, m_name, Namespace::ValueNS) {
+        let method_item = match self.associated_value(trait_def_id, m_name) {
             Some(method_item) => method_item,
             None => {
                 tcx.sess.delay_span_bug(
@@ -540,15 +540,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Finds item with name `item_name` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
-    pub fn associated_item(
-        &self,
-        def_id: DefId,
-        item_name: Ident,
-        ns: Namespace,
-    ) -> Option<ty::AssocItem> {
+    pub fn associated_value(&self, def_id: DefId, item_name: Ident) -> Option<ty::AssocItem> {
         self.tcx
             .associated_items(def_id)
-            .find_by_name_and_namespace(self.tcx, item_name, ns, def_id)
+            .find_by_name_and_namespace(self.tcx, item_name, Namespace::ValueNS, def_id)
             .copied()
     }
 }

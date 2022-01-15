@@ -262,6 +262,14 @@ enum ResolutionError<'a> {
     SelfInGenericParamDefault,
     /// Error E0767: use of unreachable label
     UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
+    /// Error E0323, E0324, E0325: mismatch between trait item and impl item.
+    TraitImplMismatch {
+        name: Symbol,
+        kind: &'static str,
+        trait_path: String,
+        trait_item_span: Span,
+        code: rustc_errors::DiagnosticId,
+    },
 }
 
 enum VisResolutionError<'a> {

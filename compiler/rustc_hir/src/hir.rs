@@ -2881,6 +2881,8 @@ pub struct ImplItemRef {
     pub kind: AssocItemKind,
     pub span: Span,
     pub defaultness: Defaultness,
+    /// When we are in a trait impl, link to the trait-item's id.
+    pub trait_item_def_id: Option<DefId>,
 }
 
 #[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]

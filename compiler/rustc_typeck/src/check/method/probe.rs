@@ -1915,7 +1915,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .collect()
             } else {
                 self.fcx
-                    .associated_item(def_id, name, Namespace::ValueNS)
+                    .associated_value(def_id, name)
                     .map_or_else(SmallVec::new, |x| SmallVec::from_buf([x]))
             }
         } else {

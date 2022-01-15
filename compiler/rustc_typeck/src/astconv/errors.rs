@@ -93,61 +93,95 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
         trait_def_id: DefId,
         trait_segment: &'_ hir::PathSegment<'_>,
+        is_impl: bool,
     ) {
-        let trait_def = self.tcx().trait_def(trait_def_id);
+        if self.tcx().features().unboxed_closures {
+            return;
+        }
 
-        if !self.tcx().features().unboxed_closures
-            && trait_segment.args().parenthesized != trait_def.paren_sugar
-        {
-            let sess = &self.tcx().sess.parse_sess;
+        let trait_def = self.tcx().trait_def(trait_def_id);
+        if !trait_def.paren_sugar {
+            if trait_segment.args().parenthesized {
+                // For now, require that parenthetical notation be used only with `Fn()` etc.
+                let mut err = feature_err(
+                    &self.tcx().sess.parse_sess,
+                    sym::unboxed_closures,
+                    span,
+                    "parenthetical notation is only stable when used with `Fn`-family traits",
+                );
+                err.emit();
+            }
+
+            return;
+        }
+
+        let sess = self.tcx().sess;
+
+        if !trait_segment.args().parenthesized {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
-            let (msg, sugg) = if trait_def.paren_sugar {
-                (
-                    "the precise format of `Fn`-family traits' type parameters is subject to \
-                     change",
-                    Some(format!(
-                        "{}{} -> {}",
-                        trait_segment.ident,
-                        trait_segment
-                            .args
-                            .as_ref()
-                            .and_then(|args| args.args.get(0))
-                            .and_then(|arg| match arg {
-                                hir::GenericArg::Type(ty) => match ty.kind {
-                                    hir::TyKind::Tup(t) => t
-                                        .iter()
-                                        .map(|e| sess.source_map().span_to_snippet(e.span))
-                                        .collect::<Result<Vec<_>, _>>()
-                                        .map(|a| a.join(", ")),
-                                    _ => sess.source_map().span_to_snippet(ty.span),
-                                }
-                                .map(|s| format!("({})", s))
-                                .ok(),
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| "()".to_string()),
-                        trait_segment
-                            .args()
-                            .bindings
-                            .iter()
-                            .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
-                                (true, hir::TypeBindingKind::Equality { ty }) => {
-                                    sess.source_map().span_to_snippet(ty.span).ok()
-                                }
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| "()".to_string()),
-                    )),
-                )
-            } else {
-                ("parenthetical notation is only stable when used with `Fn`-family traits", None)
-            };
-            let mut err = feature_err(sess, sym::unboxed_closures, span, msg);
-            if let Some(sugg) = sugg {
-                let msg = "use parenthetical notation instead";
-                err.span_suggestion(span, msg, sugg, Applicability::MaybeIncorrect);
+            let mut err = feature_err(
+                &sess.parse_sess,
+                sym::unboxed_closures,
+                span,
+                "the precise format of `Fn`-family traits' type parameters is subject to change",
+            );
+            // Do not suggest the other syntax if we are in trait impl:
+            // the desugaring would contain an associated type constrait.
+            if !is_impl {
+                let args = trait_segment
+                    .args
+                    .as_ref()
+                    .and_then(|args| args.args.get(0))
+                    .and_then(|arg| match arg {
+                        hir::GenericArg::Type(ty) => match ty.kind {
+                            hir::TyKind::Tup(t) => t
+                                .iter()
+                                .map(|e| sess.source_map().span_to_snippet(e.span))
+                                .collect::<Result<Vec<_>, _>>()
+                                .map(|a| a.join(", ")),
+                            _ => sess.source_map().span_to_snippet(ty.span),
+                        }
+                        .map(|s| format!("({})", s))
+                        .ok(),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| "()".to_string());
+                let ret = trait_segment
+                    .args()
+                    .bindings
+                    .iter()
+                    .find_map(|b| match (b.ident.name == sym::Output, &b.kind) {
+                        (true, hir::TypeBindingKind::Equality { ty }) => {
+                            sess.source_map().span_to_snippet(ty.span).ok()
+                        }
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| "()".to_string());
+                err.span_suggestion(
+                    span,
+                    "use parenthetical notation instead",
+                    format!("{}{} -> {}", trait_segment.ident, args, ret),
+                    Applicability::MaybeIncorrect,
+                );
             }
             err.emit();
+        }
+
+        if is_impl {
+            let trait_name = self.tcx().def_path_str(trait_def_id);
+            struct_span_err!(
+                self.tcx().sess,
+                span,
+                E0183,
+                "manual implementations of `{}` are experimental",
+                trait_name,
+            )
+            .span_label(
+                span,
+                format!("manual implementations of `{}` are experimental", trait_name),
+            )
+            .help("add `#![feature(unboxed_closures)]` to the crate attributes to enable")
+            .emit();
         }
     }
 
