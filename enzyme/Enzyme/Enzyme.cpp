@@ -77,7 +77,7 @@ llvm::cl::opt<bool>
     EnzymePostOpt("enzyme-postopt", cl::init(false), cl::Hidden,
                   cl::desc("Run enzymepostprocessing optimizations"));
 
-llvm::cl::opt<bool> EnzymeAttributor("enzyme-attributor", cl::init(true),
+llvm::cl::opt<bool> EnzymeAttributor("enzyme-attributor", cl::init(false),
                                      cl::Hidden,
                                      cl::desc("Run attributor post Enzyme"));
 #if LLVM_VERSION_MAJOR >= 14

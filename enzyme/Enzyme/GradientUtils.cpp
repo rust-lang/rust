@@ -2334,23 +2334,10 @@ bool GradientUtils::shouldRecompute(const Value *val,
             bool inLoop = const_cast<GradientUtils *>(this)->getContext(
                 i2->getParent(), lc);
             if (!inLoop) {
-              if (i2->getParent() == &newFunc->getEntryBlock()) {
-                continue;
-              }
               // TODO upgrade this to be all returns that this could enter from
-              bool legal = true;
-              for (auto &BB : *oldFunc) {
-                if (isa<ReturnInst>(BB.getTerminator())) {
-                  BasicBlock *returningBlock =
-                      cast<BasicBlock>(getNewFromOriginal(&BB));
-                  if (i2->getParent() == returningBlock)
-                    continue;
-                  if (!DT.dominates(i2, returningBlock)) {
-                    legal = false;
-                    break;
-                  }
-                }
-              }
+              BasicBlock *orig = isOriginal(i2->getParent());
+              assert(orig);
+              bool legal = BlocksDominatingAllReturns.count(orig);
               if (legal) {
                 continue;
               }
@@ -3496,47 +3483,37 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
       // Something in the entry (or anything that dominates all returns, doesn't
       // need caching)
 
-      BasicBlock *forwardBlock =
-          originalForReverseBlock(*BuilderM.GetInsertBlock());
+      BasicBlock *orig = isOriginal(inst->getParent());
+      assert(orig);
 
-      // Don't allow this if we're not definitely using the last iteration of
-      // this value
-      //   + either because the value isn't in a loop
-      //   + or because the forward of the block usage location isn't in a loop
-      //   (thus last iteration)
-      //   + or because the loop nests share no ancestry
+      // TODO upgrade this to be all returns that this could enter from
+      bool legal = BlocksDominatingAllReturns.count(orig);
+      if (legal) {
 
-      bool loopLegal = true;
-      for (Loop *idx = LI.getLoopFor(inst->getParent()); idx != nullptr;
-           idx = idx->getParentLoop()) {
-        for (Loop *fdx = LI.getLoopFor(forwardBlock); fdx != nullptr;
-             fdx = fdx->getParentLoop()) {
-          if (idx == fdx) {
-            loopLegal = false;
-            break;
-          }
-        }
-      }
+        BasicBlock *forwardBlock =
+            isOriginal(originalForReverseBlock(*BuilderM.GetInsertBlock()));
+        assert(forwardBlock);
 
-      if (loopLegal) {
-        if (inst->getParent() == &newFunc->getEntryBlock()) {
-          return inst;
-        }
-        // TODO upgrade this to be all returns that this could enter from
-        bool legal = true;
-        for (auto &BB : *oldFunc) {
-          if (isa<ReturnInst>(BB.getTerminator())) {
-            BasicBlock *returningBlock =
-                cast<BasicBlock>(getNewFromOriginal(&BB));
-            if (inst->getParent() == returningBlock)
-              continue;
-            if (!DT.dominates(inst, returningBlock)) {
-              legal = false;
+        // Don't allow this if we're not definitely using the last iteration of
+        // this value
+        //   + either because the value isn't in a loop
+        //   + or because the forward of the block usage location isn't in a
+        //   loop (thus last iteration)
+        //   + or because the loop nests share no ancestry
+
+        bool loopLegal = true;
+        for (Loop *idx = OrigLI.getLoopFor(orig); idx != nullptr;
+             idx = idx->getParentLoop()) {
+          for (Loop *fdx = OrigLI.getLoopFor(forwardBlock); fdx != nullptr;
+               fdx = fdx->getParentLoop()) {
+            if (idx == fdx) {
+              loopLegal = false;
               break;
             }
           }
         }
-        if (legal) {
+
+        if (loopLegal) {
           return inst;
         }
       }

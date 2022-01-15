@@ -133,6 +133,9 @@ public:
   LoopInfo &OrigLI;
   ScalarEvolution &OrigSE;
 
+  // (Original) Blocks which dominate all returns
+  SmallPtrSet<BasicBlock *, 4> BlocksDominatingAllReturns;
+
   SmallPtrSet<BasicBlock *, 4> notForAnalysis;
   std::shared_ptr<ActivityAnalyzer> ATA;
   SmallVector<BasicBlock *, 12> originalBlocks;
@@ -999,6 +1002,23 @@ public:
     assert(originalBlocks.size() > 0);
     if (omp)
       setupOMPFor();
+
+    SmallVector<BasicBlock *, 4> ReturningBlocks;
+    for (BasicBlock &BB : *oldFunc) {
+      if (isa<ReturnInst>(BB.getTerminator()))
+        ReturningBlocks.push_back(&BB);
+    }
+    for (BasicBlock &BB : *oldFunc) {
+      bool legal = true;
+      for (auto BRet : ReturningBlocks) {
+        if (!(BRet == &BB || OrigDT.dominates(&BB, BRet))) {
+          legal = false;
+          break;
+        }
+      }
+      if (legal)
+        BlocksDominatingAllReturns.insert(&BB);
+    }
   }
 
 public:

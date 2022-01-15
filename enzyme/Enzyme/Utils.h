@@ -89,12 +89,14 @@ void EmitWarning(llvm::StringRef RemarkName,
                  const llvm::BasicBlock *BB, const Args &...args) {
 
   llvm::OptimizationRemarkEmitter ORE(F);
-  std::string str;
-  llvm::raw_string_ostream ss(str);
-  (ss << ... << args);
-  ORE.emit(llvm::OptimizationRemark("enzyme", RemarkName, Loc, BB) << ss.str());
+  ORE.emit([&]() {
+    std::string str;
+    llvm::raw_string_ostream ss(str);
+    (ss << ... << args);
+    return llvm::OptimizationRemark("enzyme", RemarkName, Loc, BB) << ss.str();
+  });
   if (EnzymePrintPerf)
-    llvm::errs() << ss.str() << "\n";
+    (llvm::errs() << ... << args) << "\n";
 }
 
 class EnzymeFailure : public llvm::DiagnosticInfoIROptimization {
