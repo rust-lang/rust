@@ -1,0 +1,21 @@
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/issue-91560.rs:10:19
+   |
+LL |     let mut length: usize = 2;
+   |     -------------- help: consider using `const` instead of `let`: `const length`
+LL |
+LL |     let arr = [0; length];
+   |                   ^^^^^^ non-constant value
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/issue-91560.rs:17:19
+   |
+LL |     let   length: usize = 2;
+   |     ------------ help: consider using `const` instead of `let`: `const length`
+LL |
+LL |     let arr = [0; length];
+   |                   ^^^^^^ non-constant value
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0435`.
