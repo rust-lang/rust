@@ -312,6 +312,7 @@ fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
     }
 }
 
+#[track_caller]
 fn mirbug(tcx: TyCtxt<'_>, span: Span, msg: &str) {
     // We sometimes see MIR failures (notably predicate failures) due to
     // the fact that we check rvalue sized predicates here. So use `delay_span_bug`
