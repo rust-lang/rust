@@ -2743,6 +2743,10 @@ pub struct FnHeader {
 }
 
 impl FnHeader {
+    pub fn is_async(&self) -> bool {
+        matches!(&self.asyncness, IsAsync::Async)
+    }
+
     pub fn is_const(&self) -> bool {
         matches!(&self.constness, Constness::Const)
     }
@@ -3184,7 +3188,7 @@ impl<'hir> Node<'hir> {
         }
     }
 
-    pub fn fn_decl(&self) -> Option<&FnDecl<'hir>> {
+    pub fn fn_decl(&self) -> Option<&'hir FnDecl<'hir>> {
         match self {
             Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
             | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
@@ -3192,6 +3196,15 @@ impl<'hir> Node<'hir> {
             Node::ForeignItem(ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
                 Some(fn_decl)
             }
+            _ => None,
+        }
+    }
+
+    pub fn fn_sig(&self) -> Option<&'hir FnSig<'hir>> {
+        match self {
+            Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
+            | Node::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig),
             _ => None,
         }
     }
