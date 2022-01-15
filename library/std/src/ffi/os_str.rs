@@ -629,8 +629,15 @@ impl OsStr {
         s.as_ref()
     }
 
+    /// Creates a new `OsStr` from a `str`.
     #[inline]
-    fn from_inner(inner: &Slice) -> &OsStr {
+    #[unstable(feature = "const_path", reason = "TBD", issue = "none")]
+    pub const fn from_str(s: &str) -> &OsStr {
+        Self::from_inner(Slice::from_str(s))
+    }
+
+    #[inline]
+    const fn from_inner(inner: &Slice) -> &OsStr {
         // SAFETY: OsStr is just a wrapper of Slice,
         // therefore converting &Slice to &OsStr is safe.
         unsafe { &*(inner as *const Slice as *const OsStr) }
@@ -1249,7 +1256,7 @@ impl AsRef<OsStr> for OsString {
 impl AsRef<OsStr> for str {
     #[inline]
     fn as_ref(&self) -> &OsStr {
-        OsStr::from_inner(Slice::from_str(self))
+        OsStr::from_str(self)
     }
 }
 

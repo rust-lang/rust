@@ -1948,7 +1948,19 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
-        unsafe { &*(s.as_ref() as *const OsStr as *const Path) }
+        Self::from_os_str(s.as_ref())
+    }
+
+    /// Creates a new `Path` from an `OsStr`.
+    ///
+    /// This is a cost-free conversion.
+    ///
+    /// You should probably use the [`Path::new`] method instead,
+    /// however, this method supports const expressions
+    #[inline]
+    #[unstable(feature = "const_path", reason = "TBD", issue = "none")]
+    pub const fn from_os_str(s: &OsStr) -> &Path {
+        unsafe { &*(s as *const OsStr as *const Path) }
     }
 
     /// Yields the underlying [`OsStr`] slice.
