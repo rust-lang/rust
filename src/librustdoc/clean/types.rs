@@ -449,7 +449,7 @@ impl Item {
 
         if let Some(items) = cx.cache.inlined_items.get(&def_id) {
             tracing::debug!("associating attributes from associated inlined items: {:?}", items);
-            let other_attrs = box cx.tcx.get_attrs(def_id).clean(cx);
+            let other_attrs = cx.tcx.get_attrs(def_id).clean(cx);
             clean_attrs.doc_strings.extend(other_attrs.doc_strings);
         }
 
