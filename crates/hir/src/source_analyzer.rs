@@ -5,7 +5,10 @@
 //!
 //! So, this modules should not be used during hir construction, it exists
 //! purely for "IDE needs".
-use std::{iter::once, sync::Arc};
+use std::{
+    iter::{self, once},
+    sync::Arc,
+};
 
 use hir_def::{
     body::{
@@ -25,7 +28,7 @@ use hir_ty::{
 };
 use syntax::{
     ast::{self, AstNode},
-    SyntaxNode, TextRange, TextSize,
+    SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 
 use crate::{
@@ -488,14 +491,20 @@ fn scope_for_offset(
         .scope_by_expr()
         .iter()
         .filter_map(|(id, scope)| {
-            let source = source_map.expr_syntax(*id).ok()?;
-            // FIXME: correctly handle macro expansion
-            if source.file_id != offset.file_id {
-                return None;
+            let InFile { file_id, value } = source_map.expr_syntax(*id).ok()?;
+            if offset.file_id == file_id {
+                let root = db.parse_or_expand(file_id)?;
+                let node = value.to_node(&root);
+                return Some((node.syntax().text_range(), scope));
             }
-            let root = source.file_syntax(db.upcast());
-            let node = source.value.to_node(&root);
-            Some((node.syntax().text_range(), scope))
+
+            // FIXME handle attribute expansion
+            let source = iter::successors(file_id.call_node(db.upcast()), |it| {
+                it.file_id.call_node(db.upcast())
+            })
+            .find(|it| it.file_id == offset.file_id)
+            .filter(|it| it.value.kind() == SyntaxKind::MACRO_CALL)?;
+            Some((source.value.text_range(), scope))
         })
         // find containing scope
         .min_by_key(|(expr_range, _scope)| {
