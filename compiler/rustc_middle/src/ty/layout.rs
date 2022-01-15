@@ -1310,7 +1310,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     },
                 };
                 let mut abi = Abi::Aggregate { sized: true };
-                if tag.value.size(dl) == size {
+
+                // Without latter check aligned enums with custom discriminant values
+                // Would result in ICE see the issue #92464 for more info
+                if tag.value.size(dl) == size || variants.iter().all(|layout| layout.is_empty()) {
                     abi = Abi::Scalar(tag);
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
