@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-91762.rs:25:45
+   |
+LL | / pub trait FunctorExt<T>: Sized {
+LL | |     type Base: Functor<With<T> = Self>;
+LL | |
+LL | |     fn fmap<U>(self) {
+...  |
+LL | |         ret = <Self::Base as Functor>::fmap(arg);
+   | |                                             ^^^ expected associated type, found type parameter `Self`
+LL | |
+LL | |     }
+LL | | }
+   | |_- this type parameter
+   |
+   = note: expected associated type `<<Self as FunctorExt<T>>::Base as Functor>::With<_>`
+               found type parameter `Self`
+   = note: you might be missing a type parameter or trait bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

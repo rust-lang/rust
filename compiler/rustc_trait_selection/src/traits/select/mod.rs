@@ -1521,6 +1521,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             infer_predicate.projection_ty
         };
 
+        // If the obligation contains any inference types or consts in associated
+        // type substs, then we don't match any projection candidates against it.
+        // This isn't really correct, but otherwise we can end up in a case where
+        // we constrain inference variables by selecting a single predicate, when
+        // we need to stay general. See issue #91762.
+        let (_, predicate_own_substs) =
+            obligation.predicate.trait_ref_and_own_substs(self.infcx.tcx);
+        if predicate_own_substs.iter().any(|g| g.has_infer_types_or_consts()) {
+            return false;
+        }
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(obligation.predicate, infer_projection)
