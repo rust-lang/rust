@@ -23,7 +23,7 @@ pub trait FunctorExt<T>: Sized {
 
         arg = self;
         ret = <Self::Base as Functor>::fmap(arg);
-        //~^ mismatched types
+        //~^ type annotations needed
     }
 }
 
