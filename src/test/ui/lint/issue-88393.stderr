@@ -1,0 +1,28 @@
+error: unreachable expression
+  --> $DIR/issue-88393.rs:21:5
+   |
+LL | /     match b {
+LL | |         false => unsafe { std::mem::uninitialized::<Void>(); }
+LL | |         _ => unreachable!(),
+LL | |     }
+   | |_____- any code following this expression is unreachable
+LL |       println!();
+   |       ^^^^^^^^^^ unreachable expression
+   |
+note: the lint level is defined here
+  --> $DIR/issue-88393.rs:4:11
+   |
+LL | #![forbid(unreachable_code)]
+   |           ^^^^^^^^^^^^^^^^
+note: all arms of this `match` expression diverge
+  --> $DIR/issue-88393.rs:17:5
+   |
+LL | /     match b {
+LL | |         false => unsafe { std::mem::uninitialized::<Void>(); }
+LL | |         _ => unreachable!(),
+LL | |     }
+   | |_____^
+   = note: this error originates in the macro `$crate::format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

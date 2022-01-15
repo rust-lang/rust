@@ -515,6 +515,33 @@ struct Liveness<'a, 'tcx> {
     cont_ln: HirIdMap<LiveNode>,
 }
 
+// As we go through the code, we warn about unreachable code after expressions
+// with uninhabited types. We do not want to warn if the last expression of an
+// if or match arm has an uninhabited type, though, because the code after the
+// if/match could still be reachable via another arm -- unless all arms
+// diverge. The following two enums are used for tracking this information.
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum WarnUnreachable {
+    Yes,
+    No,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Diverges {
+    Yes,
+    No,
+}
+impl std::ops::BitOr for Diverges {
+    type Output = Self;
+    fn bitor(self, rhs: Self) -> Self {
+        match (self, rhs) {
+            (Diverges::No, Diverges::No) => Diverges::No,
+            _ => Diverges::Yes,
+        }
+    }
+}
+
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn new(ir: &'a mut IrMaps<'tcx>, body_owner: LocalDefId) -> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
@@ -732,7 +759,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
         }
 
-        let succ = self.propagate_through_expr(&body.value, self.exit_ln);
+        let succ = self.propagate_through_expr(&body.value, self.exit_ln, WarnUnreachable::Yes).0;
 
         if self.closure_min_captures.is_none() {
             // Either not a closure, or closure without any captured variables.
@@ -772,21 +799,48 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             if !self.merge_from_succ(self.exit_ln, self.closure_ln) {
                 break;
             }
-            assert_eq!(succ, self.propagate_through_expr(&body.value, self.exit_ln));
+            assert_eq!(
+                succ,
+                self.propagate_through_expr(&body.value, self.exit_ln, WarnUnreachable::Yes).0
+            );
         }
 
         succ
     }
 
-    fn propagate_through_block(&mut self, blk: &hir::Block<'_>, succ: LiveNode) -> LiveNode {
+    fn propagate_through_block(
+        &mut self,
+        blk: &hir::Block<'_>,
+        succ: LiveNode,
+        warn_about_unreachable: WarnUnreachable,
+    ) -> (LiveNode, Diverges) {
         if blk.targeted_by_break {
             self.break_ln.insert(blk.hir_id, succ);
         }
-        let succ = self.propagate_through_opt_expr(blk.expr, succ);
-        blk.stmts.iter().rev().fold(succ, |succ, stmt| self.propagate_through_stmt(stmt, succ))
+        let mut first = blk.expr.is_none();
+        let (succ, succ_div) =
+            self.propagate_through_opt_expr(blk.expr, succ, warn_about_unreachable);
+        blk.stmts.iter().rev().fold((succ, succ_div), |(succ, succ_div), stmt| {
+            let (s, sd) = self.propagate_through_stmt(
+                stmt,
+                succ,
+                if first {
+                    first = false;
+                    warn_about_unreachable
+                } else {
+                    WarnUnreachable::Yes
+                },
+            );
+            (s, sd | succ_div)
+        })
     }
 
-    fn propagate_through_stmt(&mut self, stmt: &hir::Stmt<'_>, succ: LiveNode) -> LiveNode {
+    fn propagate_through_stmt(
+        &mut self,
+        stmt: &hir::Stmt<'_>,
+        succ: LiveNode,
+        warn_about_unreachable: WarnUnreachable,
+    ) -> (LiveNode, Diverges) {
         match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 // Note: we mark the variable as defined regardless of whether
@@ -803,38 +857,67 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // initialization, which is mildly more complex than checking
                 // once at the func header but otherwise equivalent.
 
-                let succ = self.propagate_through_opt_expr(local.init, succ);
-                self.define_bindings_in_pat(&local.pat, succ)
+                let (succ, succ_div) =
+                    self.propagate_through_opt_expr(local.init, succ, warn_about_unreachable);
+                (self.define_bindings_in_pat(&local.pat, succ), succ_div)
             }
-            hir::StmtKind::Item(..) => succ,
+            hir::StmtKind::Item(..) => (succ, Diverges::No),
             hir::StmtKind::Expr(ref expr) | hir::StmtKind::Semi(ref expr) => {
-                self.propagate_through_expr(&expr, succ)
+                self.propagate_through_expr(&expr, succ, warn_about_unreachable)
             }
         }
     }
 
-    fn propagate_through_exprs(&mut self, exprs: &[Expr<'_>], succ: LiveNode) -> LiveNode {
-        exprs.iter().rev().fold(succ, |succ, expr| self.propagate_through_expr(&expr, succ))
+    fn propagate_through_exprs(
+        &mut self,
+        exprs: &[Expr<'_>],
+        succ: LiveNode,
+        warn_about_unreachable: WarnUnreachable,
+    ) -> (LiveNode, Diverges) {
+        let mut first = true;
+        exprs.iter().rev().fold((succ, Diverges::No), |(succ, succ_div), expr| {
+            let (s, sd) = self.propagate_through_expr(
+                &expr,
+                succ,
+                if first {
+                    first = false;
+                    warn_about_unreachable
+                } else {
+                    WarnUnreachable::Yes
+                },
+            );
+            (s, succ_div | sd)
+        })
     }
 
     fn propagate_through_opt_expr(
         &mut self,
         opt_expr: Option<&Expr<'_>>,
         succ: LiveNode,
-    ) -> LiveNode {
-        opt_expr.map_or(succ, |expr| self.propagate_through_expr(expr, succ))
+        warn_about_unreachable: WarnUnreachable,
+    ) -> (LiveNode, Diverges) {
+        opt_expr.map_or((succ, Diverges::No), |expr| {
+            self.propagate_through_expr(expr, succ, warn_about_unreachable)
+        })
     }
 
-    fn propagate_through_expr(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
+    fn propagate_through_expr(
+        &mut self,
+        expr: &Expr<'_>,
+        succ: LiveNode,
+        warn_about_unreachable: WarnUnreachable,
+    ) -> (LiveNode, Diverges) {
         debug!("propagate_through_expr: {:?}", expr);
 
         match expr.kind {
             // Interesting cases with control flow or which gen/kill
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-                self.access_path(expr.hir_id, path, succ, ACC_READ | ACC_USE)
+                (self.access_path(expr.hir_id, path, succ, ACC_READ | ACC_USE), Diverges::No)
             }
 
-            hir::ExprKind::Field(ref e, _) => self.propagate_through_expr(&e, succ),
+            hir::ExprKind::Field(ref e, _) => {
+                self.propagate_through_expr(&e, succ, warn_about_unreachable)
+            }
 
             hir::ExprKind::Closure(..) => {
                 debug!("{:?} is an ExprKind::Closure", expr);
@@ -848,28 +931,34 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     .cloned()
                     .unwrap_or_else(|| span_bug!(expr.span, "no registered caps"));
 
-                caps.iter().rev().fold(succ, |succ, cap| {
-                    self.init_from_succ(cap.ln, succ);
-                    let var = self.variable(cap.var_hid, expr.span);
-                    self.acc(cap.ln, var, ACC_READ | ACC_USE);
-                    cap.ln
-                })
+                (
+                    caps.iter().rev().fold(succ, |succ, cap| {
+                        self.init_from_succ(cap.ln, succ);
+                        let var = self.variable(cap.var_hid, expr.span);
+                        self.acc(cap.ln, var, ACC_READ | ACC_USE);
+                        cap.ln
+                    }),
+                    Diverges::No,
+                )
             }
 
             hir::ExprKind::Let(let_expr) => {
-                let succ = self.propagate_through_expr(let_expr.init, succ);
-                self.define_bindings_in_pat(let_expr.pat, succ)
+                let (succ, succ_div) =
+                    self.propagate_through_expr(let_expr.init, succ, warn_about_unreachable);
+                (self.define_bindings_in_pat(let_expr.pat, succ), succ_div)
             }
 
             // Note that labels have been resolved, so we don't need to look
             // at the label ident
-            hir::ExprKind::Loop(ref blk, ..) => self.propagate_through_loop(expr, &blk, succ),
+            hir::ExprKind::Loop(ref blk, ..) => {
+                (self.propagate_through_loop(expr, &blk, succ), Diverges::No)
+            }
 
             hir::ExprKind::Yield(ref e, ..) => {
                 let yield_ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(yield_ln, succ);
                 self.merge_from_succ(yield_ln, self.exit_ln);
-                self.propagate_through_expr(e, yield_ln)
+                self.propagate_through_expr(e, yield_ln, warn_about_unreachable)
             }
 
             hir::ExprKind::If(ref cond, ref then, ref else_opt) => {
@@ -886,13 +975,28 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 //    v     v
                 //   (  succ  )
                 //
-                let else_ln =
-                    self.propagate_through_opt_expr(else_opt.as_ref().map(|e| &**e), succ);
-                let then_ln = self.propagate_through_expr(&then, succ);
+                let (else_ln, else_div) = self.propagate_through_opt_expr(
+                    else_opt.as_ref().map(|e| &**e),
+                    succ,
+                    WarnUnreachable::No,
+                );
+                let (then_ln, then_div) =
+                    self.propagate_through_expr(&then, succ, WarnUnreachable::No);
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(ln, else_ln);
                 self.merge_from_succ(ln, then_ln);
-                self.propagate_through_expr(&cond, ln)
+
+                let both_diverge = else_div == Diverges::Yes && then_div == Diverges::Yes;
+                if warn_about_unreachable == WarnUnreachable::Yes && both_diverge {
+                    self.warn_about_unreachable(
+                        expr.span,
+                        Err("both branches of this `if` expression diverge".to_string()),
+                        succ,
+                    );
+                }
+
+                let (cond, cond_div) = self.propagate_through_expr(&cond, ln, WarnUnreachable::Yes);
+                (cond, cond_div | if both_diverge { Diverges::Yes } else { Diverges::No })
             }
 
             hir::ExprKind::Match(ref e, arms, _) => {
@@ -911,26 +1015,48 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 //
                 //
                 let ln = self.live_node(expr.hir_id, expr.span);
+                let mut all_arms_div = true;
                 self.init_empty(ln, succ);
                 for arm in arms {
-                    let body_succ = self.propagate_through_expr(&arm.body, succ);
+                    let (body_succ, body_div) =
+                        self.propagate_through_expr(&arm.body, succ, WarnUnreachable::No);
 
-                    let guard_succ = arm.guard.as_ref().map_or(body_succ, |g| match g {
-                        hir::Guard::If(e) => self.propagate_through_expr(e, body_succ),
-                        hir::Guard::IfLet(pat, e) => {
-                            let let_bind = self.define_bindings_in_pat(pat, body_succ);
-                            self.propagate_through_expr(e, let_bind)
-                        }
-                    });
+                    let (guard_succ, guard_div) =
+                        arm.guard.as_ref().map_or((body_succ, Diverges::No), |g| match g {
+                            hir::Guard::If(e) => {
+                                self.propagate_through_expr(e, body_succ, WarnUnreachable::No)
+                            }
+                            hir::Guard::IfLet(pat, e) => {
+                                let let_bind = self.define_bindings_in_pat(pat, body_succ);
+                                self.propagate_through_expr(e, let_bind, WarnUnreachable::No)
+                            }
+                        });
                     let arm_succ = self.define_bindings_in_pat(&arm.pat, guard_succ);
                     self.merge_from_succ(ln, arm_succ);
+
+                    all_arms_div = all_arms_div && ((body_div | guard_div) == Diverges::Yes);
                 }
-                self.propagate_through_expr(&e, ln)
+
+                if warn_about_unreachable == WarnUnreachable::Yes && all_arms_div && arms.len() > 0
+                {
+                    self.warn_about_unreachable(
+                        expr.span,
+                        Err("all arms of this `match` expression diverge".to_string()),
+                        succ,
+                    );
+                }
+
+                let (e, e_div) = self.propagate_through_expr(&e, ln, WarnUnreachable::Yes);
+                (e, e_div | if all_arms_div { Diverges::Yes } else { Diverges::No })
             }
 
             hir::ExprKind::Ret(ref o_e) => {
                 // Ignore succ and subst exit_ln.
-                self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), self.exit_ln)
+                self.propagate_through_opt_expr(
+                    o_e.as_ref().map(|e| &**e),
+                    self.exit_ln,
+                    WarnUnreachable::No,
+                )
             }
 
             hir::ExprKind::Break(label, ref opt_expr) => {
@@ -945,7 +1071,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // look it up in the break loop nodes table
 
                 match target {
-                    Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
+                    Some(b) => self.propagate_through_opt_expr(
+                        opt_expr.as_ref().map(|e| &**e),
+                        b,
+                        WarnUnreachable::No,
+                    ),
                     None => span_bug!(expr.span, "`break` to unknown label"),
                 }
             }
@@ -958,71 +1088,96 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 // Now that we know the label we're going to,
                 // look it up in the continue loop nodes table
-                self.cont_ln
-                    .get(&sc)
-                    .cloned()
-                    .unwrap_or_else(|| span_bug!(expr.span, "continue to unknown label"))
+                (
+                    self.cont_ln
+                        .get(&sc)
+                        .cloned()
+                        .unwrap_or_else(|| span_bug!(expr.span, "continue to unknown label")),
+                    Diverges::No,
+                )
             }
 
             hir::ExprKind::Assign(ref l, ref r, _) => {
                 // see comment on places in
                 // propagate_through_place_components()
                 let succ = self.write_place(&l, succ, ACC_WRITE);
-                let succ = self.propagate_through_place_components(&l, succ);
-                self.propagate_through_expr(&r, succ)
+                let (succ, succ_div) =
+                    self.propagate_through_place_components(&l, succ, warn_about_unreachable);
+                let (s, sd) = self.propagate_through_expr(&r, succ, WarnUnreachable::Yes);
+                (s, succ_div | sd)
             }
 
             hir::ExprKind::AssignOp(_, ref l, ref r) => {
                 // an overloaded assign op is like a method call
                 if self.typeck_results.is_method_call(expr) {
-                    let succ = self.propagate_through_expr(&l, succ);
-                    self.propagate_through_expr(&r, succ)
+                    let (succ, succ_div) =
+                        self.propagate_through_expr(&l, succ, warn_about_unreachable);
+                    let (s, sd) = self.propagate_through_expr(&r, succ, WarnUnreachable::Yes);
+                    (s, succ_div | sd)
                 } else {
                     // see comment on places in
                     // propagate_through_place_components()
                     let succ = self.write_place(&l, succ, ACC_WRITE | ACC_READ);
-                    let succ = self.propagate_through_expr(&r, succ);
-                    self.propagate_through_place_components(&l, succ)
+                    let (succ, succ_div) =
+                        self.propagate_through_expr(&r, succ, warn_about_unreachable);
+                    let (s, sd) =
+                        self.propagate_through_place_components(&l, succ, WarnUnreachable::Yes);
+                    (s, sd | succ_div)
                 }
             }
 
             // Uninteresting cases: just propagate in rev exec order
-            hir::ExprKind::Array(ref exprs) => self.propagate_through_exprs(exprs, succ),
+            hir::ExprKind::Array(ref exprs) => {
+                self.propagate_through_exprs(exprs, succ, warn_about_unreachable)
+            }
 
             hir::ExprKind::Struct(_, ref fields, ref with_expr) => {
-                let succ = self.propagate_through_opt_expr(with_expr.as_ref().map(|e| &**e), succ);
-                fields
-                    .iter()
-                    .rev()
-                    .fold(succ, |succ, field| self.propagate_through_expr(&field.expr, succ))
+                let (succ, _) = self.propagate_through_opt_expr(
+                    with_expr.as_ref().map(|e| &**e),
+                    succ,
+                    warn_about_unreachable,
+                );
+                fields.iter().rev().fold((succ, Diverges::No), |(succ, succ_div), field| {
+                    let (s, sd) =
+                        self.propagate_through_expr(&field.expr, succ, WarnUnreachable::Yes);
+                    (s, sd | succ_div)
+                })
             }
 
             hir::ExprKind::Call(ref f, ref args) => {
-                let succ = self.check_is_ty_uninhabited(expr, succ);
-                let succ = self.propagate_through_exprs(args, succ);
-                self.propagate_through_expr(&f, succ)
+                let (succ, div) = self.check_is_ty_uninhabited(expr, succ, warn_about_unreachable);
+                let (succ, succ_div) =
+                    self.propagate_through_exprs(args, succ, WarnUnreachable::Yes);
+                let (s, sd) = self.propagate_through_expr(&f, succ, WarnUnreachable::Yes);
+                (s, div | sd | succ_div)
             }
 
             hir::ExprKind::MethodCall(.., ref args, _) => {
-                let succ = self.check_is_ty_uninhabited(expr, succ);
-                self.propagate_through_exprs(args, succ)
+                let (succ, succ_div) =
+                    self.check_is_ty_uninhabited(expr, succ, warn_about_unreachable);
+                let (s, sd) = self.propagate_through_exprs(args, succ, WarnUnreachable::Yes);
+                (s, sd | succ_div)
             }
 
-            hir::ExprKind::Tup(ref exprs) => self.propagate_through_exprs(exprs, succ),
+            hir::ExprKind::Tup(ref exprs) => {
+                self.propagate_through_exprs(exprs, succ, warn_about_unreachable)
+            }
 
             hir::ExprKind::Binary(op, ref l, ref r) if op.node.is_lazy() => {
-                let r_succ = self.propagate_through_expr(&r, succ);
+                let (r_succ, r_div) = self.propagate_through_expr(&r, succ, warn_about_unreachable);
 
                 let ln = self.live_node(expr.hir_id, expr.span);
                 self.init_from_succ(ln, succ);
                 self.merge_from_succ(ln, r_succ);
 
-                self.propagate_through_expr(&l, ln)
+                let (s, sd) = self.propagate_through_expr(&l, ln, WarnUnreachable::Yes);
+                (s, sd | r_div)
             }
 
             hir::ExprKind::Index(ref l, ref r) | hir::ExprKind::Binary(_, ref l, ref r) => {
-                let r_succ = self.propagate_through_expr(&r, succ);
-                self.propagate_through_expr(&l, r_succ)
+                let (r_succ, r_div) = self.propagate_through_expr(&r, succ, warn_about_unreachable);
+                let (s, sd) = self.propagate_through_expr(&l, r_succ, WarnUnreachable::Yes);
+                (s, sd | r_div)
             }
 
             hir::ExprKind::Box(ref e)
@@ -1031,7 +1186,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             | hir::ExprKind::Type(ref e, _)
             | hir::ExprKind::DropTemps(ref e)
             | hir::ExprKind::Unary(_, ref e)
-            | hir::ExprKind::Repeat(ref e, _) => self.propagate_through_expr(&e, succ),
+            | hir::ExprKind::Repeat(ref e, _) => {
+                self.propagate_through_expr(&e, succ, warn_about_unreachable)
+            }
 
             hir::ExprKind::InlineAsm(ref asm) => {
                 // Handle non-returning asm
@@ -1069,26 +1226,46 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     match op {
                         hir::InlineAsmOperand::In { expr, .. }
                         | hir::InlineAsmOperand::Sym { expr, .. } => {
-                            succ = self.propagate_through_expr(expr, succ)
+                            succ = self.propagate_through_expr(expr, succ, warn_about_unreachable).0
                         }
                         hir::InlineAsmOperand::Out { expr, .. } => {
                             if let Some(expr) = expr {
-                                succ = self.propagate_through_place_components(expr, succ);
+                                succ = self
+                                    .propagate_through_place_components(
+                                        expr,
+                                        succ,
+                                        warn_about_unreachable,
+                                    )
+                                    .0;
                             }
                         }
                         hir::InlineAsmOperand::InOut { expr, .. } => {
-                            succ = self.propagate_through_place_components(expr, succ);
+                            succ = self
+                                .propagate_through_place_components(
+                                    expr,
+                                    succ,
+                                    warn_about_unreachable,
+                                )
+                                .0;
                         }
                         hir::InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                             if let Some(expr) = out_expr {
-                                succ = self.propagate_through_place_components(expr, succ);
+                                succ = self
+                                    .propagate_through_place_components(
+                                        expr,
+                                        succ,
+                                        warn_about_unreachable,
+                                    )
+                                    .0;
                             }
-                            succ = self.propagate_through_expr(in_expr, succ);
+                            succ = self
+                                .propagate_through_expr(in_expr, succ, warn_about_unreachable)
+                                .0;
                         }
                         hir::InlineAsmOperand::Const { .. } => {}
                     }
                 }
-                succ
+                (succ, Diverges::No)
             }
 
             hir::ExprKind::LlvmInlineAsm(ref asm) => {
@@ -1099,31 +1276,38 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     // see comment on places
                     // in propagate_through_place_components()
                     if o.is_indirect {
-                        self.propagate_through_expr(output, succ)
+                        self.propagate_through_expr(output, succ, WarnUnreachable::No).0
                     } else {
                         let acc = if o.is_rw { ACC_WRITE | ACC_READ } else { ACC_WRITE };
                         let succ = self.write_place(output, succ, acc);
-                        self.propagate_through_place_components(output, succ)
+                        self.propagate_through_place_components(output, succ, WarnUnreachable::No).0
                     }
                 });
 
                 // Inputs are executed first. Propagate last because of rev order
-                self.propagate_through_exprs(inputs, succ)
+                self.propagate_through_exprs(inputs, succ, WarnUnreachable::No)
             }
 
             hir::ExprKind::Lit(..)
             | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Err
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
-            | hir::ExprKind::Path(hir::QPath::LangItem(..)) => succ,
+            | hir::ExprKind::Path(hir::QPath::LangItem(..)) => (succ, Diverges::No),
 
             // Note that labels have been resolved, so we don't need to look
             // at the label ident
-            hir::ExprKind::Block(ref blk, _) => self.propagate_through_block(&blk, succ),
+            hir::ExprKind::Block(ref blk, _) => {
+                self.propagate_through_block(&blk, succ, warn_about_unreachable)
+            }
         }
     }
 
-    fn propagate_through_place_components(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
+    fn propagate_through_place_components(
+        &mut self,
+        expr: &Expr<'_>,
+        succ: LiveNode,
+        warn_about_unreachable: WarnUnreachable,
+    ) -> (LiveNode, Diverges) {
         // # Places
         //
         // In general, the full flow graph structure for an
@@ -1174,9 +1358,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // just ignore such cases and treat them as reads.
 
         match expr.kind {
-            hir::ExprKind::Path(_) => succ,
-            hir::ExprKind::Field(ref e, _) => self.propagate_through_expr(&e, succ),
-            _ => self.propagate_through_expr(expr, succ),
+            hir::ExprKind::Path(_) => (succ, Diverges::No),
+            hir::ExprKind::Field(ref e, _) => {
+                self.propagate_through_expr(&e, succ, warn_about_unreachable)
+            }
+            _ => self.propagate_through_expr(expr, succ, warn_about_unreachable),
         }
     }
 
@@ -1252,44 +1438,49 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         self.cont_ln.insert(expr.hir_id, ln);
 
-        let body_ln = self.propagate_through_block(body, ln);
+        let body_ln = self.propagate_through_block(body, ln, WarnUnreachable::No).0;
 
         // repeat until fixed point is reached:
         while self.merge_from_succ(ln, body_ln) {
-            assert_eq!(body_ln, self.propagate_through_block(body, ln));
+            assert_eq!(body_ln, self.propagate_through_block(body, ln, WarnUnreachable::No).0);
         }
 
         ln
     }
 
-    fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
+    fn check_is_ty_uninhabited(
+        &mut self,
+        expr: &Expr<'_>,
+        succ: LiveNode,
+        warn_about_unreachable: WarnUnreachable,
+    ) -> (LiveNode, Diverges) {
         let ty = self.typeck_results.expr_ty(expr);
         let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
         if self.ir.tcx.is_ty_uninhabited_from(m, ty, self.param_env) {
-            match self.ir.lnks[succ] {
-                LiveNodeKind::ExprNode(succ_span, succ_id) => {
-                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
-                }
-                LiveNodeKind::VarDefNode(succ_span, succ_id) => {
-                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
-                }
-                _ => {}
-            };
-            self.exit_ln
+            if warn_about_unreachable == WarnUnreachable::Yes {
+                self.warn_about_unreachable(expr.span, Ok(ty), succ);
+            }
+            (self.exit_ln, Diverges::Yes)
         } else {
-            succ
+            (succ, Diverges::No)
         }
     }
 
     fn warn_about_unreachable(
         &mut self,
         orig_span: Span,
-        orig_ty: Ty<'tcx>,
-        expr_span: Span,
-        expr_id: HirId,
-        descr: &str,
+        orig_reason: Result<Ty<'tcx>, String>,
+        succ: LiveNode,
     ) {
-        if !orig_ty.is_never() {
+        let (expr_span, expr_id, descr) = match self.ir.lnks[succ] {
+            LiveNodeKind::ExprNode(succ_span, succ_id) => (succ_span, succ_id, "expression"),
+            LiveNodeKind::VarDefNode(succ_span, succ_id) => (succ_span, succ_id, "definition"),
+            _ => {
+                return;
+            }
+        };
+
+        if orig_reason.as_ref().map_or(true, |orig_ty| !orig_ty.is_never()) {
             // Unreachable code warnings are already emitted during type checking.
             // However, during type checking, full type information is being
             // calculated but not yet available, so the check for diverging
@@ -1322,10 +1513,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             )
                             .span_note(
                                 orig_span,
-                                &format!(
-                                    "this expression has type `{}`, which is uninhabited",
-                                    orig_ty
-                                ),
+                                &match orig_reason {
+                                    Ok(orig_ty) => format!(
+                                        "this expression has type `{}`, which is uninhabited",
+                                        orig_ty
+                                    ),
+                                    Err(orig_str) => orig_str,
+                                },
                             )
                             .emit();
                     },

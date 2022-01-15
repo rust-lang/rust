@@ -1,0 +1,61 @@
+error: unreachable expression
+  --> $DIR/unreachable-uninhabited.rs:28:5
+   |
+LL | /     if false {
+LL | |
+LL | |
+LL | |         stop().unwrap();
+LL | |     } else {
+LL | |         stop().unwrap();
+LL | |     }
+   | |_____- any code following this expression is unreachable
+LL | 
+LL |       println!("Hello, world!");
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable expression
+   |
+note: the lint level is defined here
+  --> $DIR/unreachable-uninhabited.rs:3:11
+   |
+LL | #![forbid(unreachable_code)]
+   |           ^^^^^^^^^^^^^^^^
+note: both branches of this `if` expression diverge
+  --> $DIR/unreachable-uninhabited.rs:20:5
+   |
+LL | /     if false {
+LL | |
+LL | |
+LL | |         stop().unwrap();
+LL | |     } else {
+LL | |         stop().unwrap();
+LL | |     }
+   | |_____^
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unreachable expression
+  --> $DIR/unreachable-uninhabited.rs:40:5
+   |
+LL | /     match stop() {
+LL | |
+LL | |
+LL | |         Ok(x) => stop().unwrap(),
+LL | |         Err(_) => stop().unwrap(),
+LL | |     };
+   | |_____- any code following this expression is unreachable
+LL | 
+LL |       println!("Hello, world!");
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable expression
+   |
+note: all arms of this `match` expression diverge
+  --> $DIR/unreachable-uninhabited.rs:33:5
+   |
+LL | /     match stop() {
+LL | |
+LL | |
+LL | |         Ok(x) => stop().unwrap(),
+LL | |         Err(_) => stop().unwrap(),
+LL | |     };
+   | |_____^
+   = note: this error originates in the macro `$crate::format_args_nl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
