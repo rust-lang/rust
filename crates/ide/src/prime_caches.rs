@@ -108,7 +108,8 @@ pub(crate) fn parallel_prime_caches(
         }
 
         // recv_timeout is somewhat a hack, we need a way to from this thread check to see if the current salsa revision
-        // is cancelled.
+        // is cancelled on a regular basis. workers will only exit if they are processing a task that is cancelled, or
+        // if this thread exits, and closes the work channel.
         let worker_progress = match progress_receiver.recv_timeout(Duration::from_millis(10)) {
             Ok(p) => p,
             Err(crossbeam_channel::RecvTimeoutError::Timeout) => {

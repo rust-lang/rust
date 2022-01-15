@@ -880,6 +880,13 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.primeCaches.numThreads": {
+                    "markdownDescription": "How many worker threads to to handle priming caches. The default `0` means to pick automatically.",
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                },
                 "rust-analyzer.procMacro.enable": {
                     "markdownDescription": "Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScripts#`.",
                     "default": true,
