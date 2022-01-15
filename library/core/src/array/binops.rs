@@ -2,7 +2,6 @@ use core::mem::{ManuallyDrop, MaybeUninit};
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use core::ptr::{drop_in_place, read};
 
-
 macro_rules! binop {
     ($trait:ident, $method:ident) => {
         #[stable(feature = "array_bin_ops", since = "1.59.0")]
@@ -70,10 +69,9 @@ impl<T, U, O, const N: usize> Drop for Iter3<T, U, O, N> {
     fn drop(&mut self) {
         let i = self.rhs.i;
         // SAFETY:
-        // `i` defines how many elements are valid at this point.
-        // The only possible panic point is in the `f` passed to `step`,
-        // so it means that `i..` elements are currently live in lhs
-        // and `..i-1` elements are live in the output.
+        // `i` defines how many elements have been processed from the arrays.
+        // Caveat, the only potential panic would happen *before* the wrote to the output,
+        // so the `i`th output is not initialised as one would assume.
         unsafe {
             drop_in_place((&mut self.lhs[i..]) as *mut [_] as *mut [T]);
             drop_in_place(&mut self.output[..i - 1] as *mut [_] as *mut [O]);
@@ -83,11 +81,7 @@ impl<T, U, O, const N: usize> Drop for Iter3<T, U, O, N> {
 
 impl<T, U, O, const N: usize> Iter3<T, U, O, N> {
     fn new(lhs: [T; N], rhs: [U; N]) -> Self {
-        Self {
-            rhs: Iter::new(rhs),
-            lhs: md_array(lhs),
-            output: MaybeUninit::uninit_array(),
-        }
+        Self { rhs: Iter::new(rhs), lhs: md_array(lhs), output: MaybeUninit::uninit_array() }
     }
 
     /// # Safety
@@ -130,9 +124,8 @@ impl<U, const N: usize> Drop for Iter<U, N> {
     fn drop(&mut self) {
         let i = self.i;
         // SAFETY:
-        // `i` defines how many elements are valid at this point.
-        // The only possible panic point is the element-wise `$method` op,
-        // so it means that `i+1..` elements are currently live in rhs
+        // `i` defines how many elements have been processed from the array,
+        // meaning that theres `i..` elements left to process (and therefore, drop)
         unsafe {
             drop_in_place((&mut self.rhs[i..]) as *mut [_] as *mut [U]);
         }
