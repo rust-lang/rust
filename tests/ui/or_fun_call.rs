@@ -176,4 +176,54 @@ mod issue6675 {
     }
 }
 
+mod issue8239 {
+    unsafe fn more_than_max_suggestion_highest_lines_0() {
+        let frames = Vec::new();
+        frames
+            .iter()
+            .map(|f: &String| f.to_lowercase())
+            .reduce(|mut acc, f| {
+                acc.push_str(&f);
+                acc
+            })
+            .unwrap_or(String::new());
+    }
+
+    unsafe fn more_to_max_suggestion_highest_lines_1() {
+        let frames = Vec::new();
+        let iter = frames.iter();
+        iter.map(|f: &String| f.to_lowercase())
+            .reduce(|mut acc, f| {
+                let _ = "";
+                let _ = "";
+                acc.push_str(&f);
+                acc
+            })
+            .unwrap_or(String::new());
+    }
+
+    unsafe fn equal_to_max_suggestion_highest_lines() {
+        let frames = Vec::new();
+        let iter = frames.iter();
+        iter.map(|f: &String| f.to_lowercase())
+            .reduce(|mut acc, f| {
+                let _ = "";
+                acc.push_str(&f);
+                acc
+            })
+            .unwrap_or(String::new());
+    }
+
+    unsafe fn less_than_max_suggestion_highest_lines() {
+        let frames = Vec::new();
+        let iter = frames.iter();
+        let map = iter.map(|f: &String| f.to_lowercase());
+        map.reduce(|mut acc, f| {
+            acc.push_str(&f);
+            acc
+        })
+        .unwrap_or(String::new());
+    }
+}
+
 fn main() {}
