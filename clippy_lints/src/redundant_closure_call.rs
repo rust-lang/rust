@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::intravisit::Visitor as HirVisitor;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -106,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 count: usize,
             }
             impl<'a, 'tcx> hir_visit::Visitor<'tcx> for ClosureUsageCount<'a, 'tcx> {
-                type Map = Map<'tcx>;
+                type NestedFilter = nested_filter::OnlyBodies;
 
                 fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
                     if_chain! {
@@ -121,8 +121,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                     hir_visit::walk_expr(self, expr);
                 }
 
-                fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {
-                    hir_visit::NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+                fn nested_visit_map(&mut self) -> Self::Map {
+                    self.cx.tcx.hir()
                 }
             }
             let mut closure_usage_count = ClosureUsageCount { cx, path, count: 0 };

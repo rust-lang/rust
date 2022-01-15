@@ -3,10 +3,10 @@ use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_loc
 use if_chain::if_chain;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, Visitor};
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, Pat, PatKind, Stmt};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::Ty;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
@@ -50,8 +50,6 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.done {
             return;
@@ -102,9 +100,6 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
             walk_expr(self, expr);
         }
     }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
 }
 
 enum InitializeVisitorState<'hir> {
@@ -151,7 +146,7 @@ impl<'a, 'tcx> InitializeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_local(&mut self, l: &'tcx Local<'_>) {
         // Look for declarations of the variable
@@ -254,8 +249,8 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 
@@ -283,8 +278,6 @@ pub(super) struct LoopNestVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
-    type Map = Map<'tcx>;
-
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         if stmt.hir_id == self.hir_id {
             self.nesting = LookFurther;
@@ -322,10 +315,6 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
             }
         }
         walk_pat(self, pat);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }
 

@@ -7,10 +7,10 @@ use clippy_utils::{can_move_expr_to_closure, is_trait_method, path_to_local, pat
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, Local, Mutability, Node, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, TyS};
 use rustc_span::sym;
@@ -262,11 +262,6 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
             walk_expr(self, expr);
         }
     }
-
-    type Map = Map<'tcx>;
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
 }
 
 impl<'tcx> IterFunctionVisitor<'_, 'tcx> {
@@ -298,7 +293,7 @@ struct UsedCountVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UsedCountVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if path_to_local_id(expr, self.id) {
@@ -308,8 +303,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UsedCountVisitor<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 

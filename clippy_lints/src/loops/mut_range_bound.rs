@@ -2,11 +2,10 @@ use super::MUT_RANGE_BOUND;
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::{get_enclosing_block, higher, path_to_local};
 use if_chain::if_chain;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Node, PatKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
 use rustc_middle::{mir::FakeReadCause, ty};
 use rustc_span::source_map::Span;
 use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
@@ -148,12 +147,6 @@ impl BreakAfterExprVisitor {
 }
 
 impl<'tcx> intravisit::Visitor<'tcx> for BreakAfterExprVisitor {
-    type Map = Map<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if self.past_candidate {
             return;

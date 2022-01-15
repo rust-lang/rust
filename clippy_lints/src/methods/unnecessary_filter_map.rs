@@ -2,10 +2,9 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::{is_lang_ctor, is_trait_method, path_to_local_id};
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, TyS};
 use rustc_span::sym;
 
@@ -113,8 +112,6 @@ impl<'a, 'tcx> ReturnVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ReturnVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         if let hir::ExprKind::Ret(Some(expr)) = &expr.kind {
             let (found_mapping, found_filtering) = check_expression(self.cx, self.arg_id, expr);
@@ -123,9 +120,5 @@ impl<'a, 'tcx> Visitor<'tcx> for ReturnVisitor<'a, 'tcx> {
         } else {
             walk_expr(self, expr);
         }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }

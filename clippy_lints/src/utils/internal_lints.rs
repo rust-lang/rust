@@ -17,13 +17,12 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::CRATE_HIR_ID;
-use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::{
     BinOpKind, Block, Expr, ExprKind, HirId, Item, Local, MutTy, Mutability, Node, Path, Stmt, StmtKind, Ty, TyKind,
     UnOp,
 };
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::map::Map;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
@@ -544,7 +543,7 @@ struct LintCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::All;
 
     fn visit_path(&mut self, path: &'tcx Path<'_>, _: HirId) {
         if path.segments.len() == 1 {
@@ -552,8 +551,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::All(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 

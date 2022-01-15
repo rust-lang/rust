@@ -5,10 +5,9 @@ use clippy_utils::{get_enclosing_block, is_expr_path_def_path, path_to_local, pa
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
@@ -270,8 +269,6 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         if self.initialization_found {
             match stmt.kind {
@@ -307,9 +304,5 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
         }
 
         walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }

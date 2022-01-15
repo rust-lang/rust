@@ -4,7 +4,6 @@ use rustc_hir::def_id::{DefIdSet, LocalDefId};
 use rustc_hir::{self as hir, def::Res, intravisit, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::{
-    hir::map::Map,
     lint::in_external_macro,
     ty::{self, Ty},
 };
@@ -211,8 +210,6 @@ struct StaticMutVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         use hir::ExprKind::{AddrOf, Assign, AssignOp, Call, MethodCall};
 
@@ -243,10 +240,6 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
             },
             _ => {},
         }
-    }
-
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::None
     }
 }
 
