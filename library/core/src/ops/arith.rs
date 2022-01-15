@@ -65,11 +65,36 @@
 /// ```
 #[lang = "add"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
-    on(all(_Self = "{integer}", Rhs = "{float}"), message = "cannot add a float to an integer",),
-    on(all(_Self = "{float}", Rhs = "{integer}"), message = "cannot add an integer to a float",),
-    message = "cannot add `{Rhs}` to `{Self}`",
-    label = "no implementation for `{Self} + {Rhs}`"
+#[cfg_attr(
+    bootstrap,
+    rustc_on_unimplemented(
+        on(
+            all(_Self = "{integer}", Rhs = "{float}"),
+            message = "cannot add a float to an integer",
+        ),
+        on(
+            all(_Self = "{float}", Rhs = "{integer}"),
+            message = "cannot add an integer to a float",
+        ),
+        message = "cannot add `{Rhs}` to `{Self}`",
+        label = "no implementation for `{Self} + {Rhs}`"
+    )
+)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_on_unimplemented(
+        on(
+            all(_Self = "{integer}", Rhs = "{float}"),
+            message = "cannot add a float to an integer",
+        ),
+        on(
+            all(_Self = "{float}", Rhs = "{integer}"),
+            message = "cannot add an integer to a float",
+        ),
+        message = "cannot add `{Rhs}` to `{Self}`",
+        label = "no implementation for `{Self} + {Rhs}`",
+        append_const_msg,
+    )
 )]
 #[doc(alias = "+")]
 pub trait Add<Rhs = Self> {

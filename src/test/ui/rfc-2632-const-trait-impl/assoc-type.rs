@@ -16,7 +16,7 @@ trait Foo {
 
 impl const Foo for NonConstAdd {
     type Bar = NonConstAdd;
-    //~^ ERROR: the trait bound `NonConstAdd: ~const Add` is not satisfied
+    //~^ ERROR: cannot add `NonConstAdd` to `NonConstAdd` in const contexts
 }
 
 trait Baz {

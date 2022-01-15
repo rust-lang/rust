@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `S: ~const PartialEq` is not satisfied
+error[E0277]: can't compare `S` with `S` in const contexts
   --> $DIR/call-generic-method-nonconst.rs:19:34
    |
 LL | pub const EQ: bool = equals_self(&S);

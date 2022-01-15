@@ -310,13 +310,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             })
                             .unwrap_or_default();
 
-                        let OnUnimplementedNote { message, label, note, enclosing_scope } =
-                            self.on_unimplemented_note(trait_ref, &obligation);
+                        let OnUnimplementedNote {
+                            message,
+                            label,
+                            note,
+                            enclosing_scope,
+                            append_const_msg,
+                        } = self.on_unimplemented_note(trait_ref, &obligation);
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try_conversion = self.is_try_conversion(span, trait_ref.def_id());
                         let is_unsize =
                             { Some(trait_ref.def_id()) == self.tcx.lang_items().unsize_trait() };
-                        let (message, note) = if is_try_conversion {
+                        let (message, note, append_const_msg) = if is_try_conversion {
                             (
                                 Some(format!(
                                     "`?` couldn't convert the error to `{}`",
@@ -327,9 +332,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         conversion on the error value using the `From` trait"
                                         .to_owned(),
                                 ),
+                                Some(None),
                             )
                         } else {
-                            (message, note)
+                            (message, note, append_const_msg)
                         };
 
                         let mut err = struct_span_err!(
@@ -337,12 +343,27 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             span,
                             E0277,
                             "{}",
-                            (!predicate_is_const).then(|| message).flatten().unwrap_or_else(
-                                || format!(
+                            message
+                                .and_then(|cannot_do_this| {
+                                    match (predicate_is_const, append_const_msg) {
+                                        // do nothing if predicate is not const
+                                        (false, _) => Some(cannot_do_this),
+                                        // suggested using default post message
+                                        (true, Some(None)) => {
+                                            Some(format!("{cannot_do_this} in const contexts"))
+                                        }
+                                        // overriden post message
+                                        (true, Some(Some(post_message))) => {
+                                            Some(format!("{cannot_do_this}{post_message}"))
+                                        }
+                                        // fallback to generic message
+                                        (true, None) => None,
+                                    }
+                                })
+                                .unwrap_or_else(|| format!(
                                     "the trait bound `{}` is not satisfied{}",
                                     trait_predicate, post_message,
-                                )
-                            )
+                                ))
                         );
 
                         if is_try_conversion {
