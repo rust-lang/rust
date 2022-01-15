@@ -623,6 +623,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         lang, Normal, template!(NameValueStr: "name"), DuplicatesOk, lang_items,
         "language items are subject to change",
     ),
+    rustc_attr!(
+        rustc_pass_by_value, Normal,
+        template!(Word), WarnFollowing,
+        "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
+    ),
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,
         type_: Normal,

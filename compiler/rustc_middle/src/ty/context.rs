@@ -961,6 +961,7 @@ pub struct FreeRegionInfo {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/ty.html
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
+#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
