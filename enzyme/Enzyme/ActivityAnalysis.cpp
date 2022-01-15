@@ -114,6 +114,7 @@ const std::map<std::string, size_t> MPIInactiveCommAllocators = {
 const std::set<std::string> KnownInactiveFunctions = {
     "abort",
     "__assert_fail",
+    "__cxa_atexit",
     "__cxa_guard_acquire",
     "__cxa_guard_release",
     "__cxa_guard_abort",
