@@ -75,4 +75,10 @@ fn main() {
     let _s: String = format!("{}", &*v.join("\n"));
 
     format!("prepend {:+}", "s");
+
+    // Issue #8290
+    let x = "foo";
+    let _ = format!("{x}");
+    let _ = format!("{x:?}"); // Don't lint on debug
+    let _ = format!("{y}", y = x);
 }
