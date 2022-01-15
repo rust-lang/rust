@@ -21,6 +21,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
+use rustc_middle::hir::map::Map;
 use rustc_middle::hir::place::{PlaceBase, PlaceWithHirId};
 use rustc_middle::ty;
 use std::collections::BTreeMap;
@@ -53,15 +54,18 @@ pub fn compute_drop_ranges<'a, 'tcx>(
     DropRanges { tracked_value_map: drop_ranges.tracked_value_map, nodes: drop_ranges.nodes }
 }
 
-/// Applies `f` to consumable portion of a HIR node.
+/// Applies `f` to consumable node in the HIR subtree pointed to by `place`.
 ///
-/// The `node` parameter should be the result of calling `Map::find(place)`.
-fn for_each_consumable(
-    place: TrackedValue,
-    node: Option<Node<'_>>,
-    mut f: impl FnMut(TrackedValue),
-) {
+/// This includes the place itself, and if the place is a reference to a local
+/// variable then `f` is also called on the HIR node for that variable as well.
+///
+/// For example, if `place` points to `foo()`, then `f` is called once for the
+/// result of `foo`. On the other hand, if `place` points to `x` then `f` will
+/// be called both on the `ExprKind::Path` node that represents the expression
+/// as well as the HirId of the local `x` itself.
+fn for_each_consumable<'tcx>(hir: Map<'tcx>, place: TrackedValue, mut f: impl FnMut(TrackedValue)) {
     f(place);
+    let node = hir.find(place.hir_id());
     if let Some(Node::Expr(expr)) = node {
         match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(
@@ -108,15 +112,37 @@ impl TrackedValue {
     }
 }
 
-impl From<&PlaceWithHirId<'_>> for TrackedValue {
-    fn from(place_with_id: &PlaceWithHirId<'_>) -> Self {
+/// Represents a reason why we might not be able to convert a HirId or Place
+/// into a tracked value.
+#[derive(Debug)]
+enum TrackedValueConversionError {
+    /// Place projects are not currently supported.
+    ///
+    /// The reasoning around these is kind of subtle, so we choose to be more
+    /// conservative around these for now. There is not reason in theory we
+    /// cannot support these, we just have not implemented it yet.
+    PlaceProjectionsNotSupported,
+}
+
+impl TryFrom<&PlaceWithHirId<'_>> for TrackedValue {
+    type Error = TrackedValueConversionError;
+
+    fn try_from(place_with_id: &PlaceWithHirId<'_>) -> Result<Self, Self::Error> {
+        if !place_with_id.place.projections.is_empty() {
+            debug!(
+                "TrackedValue from PlaceWithHirId: {:?} has projections, which are not supported.",
+                place_with_id
+            );
+            return Err(TrackedValueConversionError::PlaceProjectionsNotSupported);
+        }
+
         match place_with_id.place.base {
             PlaceBase::Rvalue | PlaceBase::StaticItem => {
-                TrackedValue::Temporary(place_with_id.hir_id)
+                Ok(TrackedValue::Temporary(place_with_id.hir_id))
             }
             PlaceBase::Local(hir_id)
             | PlaceBase::Upvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id }, .. }) => {
-                TrackedValue::Variable(hir_id)
+                Ok(TrackedValue::Variable(hir_id))
             }
         }
     }

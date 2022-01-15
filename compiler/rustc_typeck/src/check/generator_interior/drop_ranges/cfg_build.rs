@@ -43,6 +43,41 @@ pub(super) fn build_control_flow_graph<'tcx>(
 /// We are interested in points where a variables is dropped or initialized, and the control flow
 /// of the code. We identify locations in code by their post-order traversal index, so it is
 /// important for this traversal to match that in `RegionResolutionVisitor` and `InteriorVisitor`.
+///
+/// We make several simplifying assumptions, with the goal of being more conservative than
+/// necessary rather than less conservative (since being less conservative is unsound, but more
+/// conservative is still safe). These assumptions are:
+///
+/// 1. Moving a variable `a` counts as a move of the whole variable.
+/// 2. Moving a partial path like `a.b.c` is ignored.
+/// 3. Reinitializing through a field (e.g. `a.b.c = 5`) counds as a reinitialization of all of
+///    `a`.
+///
+/// Some examples:
+///
+/// Rule 1:
+/// ```rust
+/// let mut a = (vec![0], vec![0]);
+/// drop(a);
+/// // `a` is not considered initialized.
+/// ```
+///
+/// Rule 2:
+/// ```rust
+/// let mut a = (vec![0], vec![0]);
+/// drop(a.0);
+/// drop(a.1);
+/// // `a` is still considered initialized.
+/// ```
+///
+/// Rule 3:
+/// ```rust
+/// let mut a = (vec![0], vec![0]);
+/// drop(a);
+/// a.1 = vec![1];
+/// // all of `a` is considered initialized
+/// ```
+
 struct DropRangeVisitor<'a, 'tcx> {
     hir: Map<'tcx>,
     places: ConsumedAndBorrowedPlaces,
@@ -89,23 +124,76 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             .get(&expr.hir_id)
             .map_or(vec![], |places| places.iter().cloned().collect());
         for place in places {
-            for_each_consumable(place, self.hir.find(place.hir_id()), |value| {
-                self.record_drop(value)
-            });
+            for_each_consumable(self.hir, place, |value| self.record_drop(value));
         }
     }
 
+    /// Marks an expression as being reinitialized.
+    ///
+    /// Note that we always approximated on the side of things being more
+    /// initialized than they actually are, as opposed to less. In cases such
+    /// as `x.y = ...`, we would consider all of `x` as being initialized
+    /// instead of just the `y` field.
+    ///
+    /// This is because it is always safe to consider something initialized
+    /// even when it is not, but the other way around will cause problems.
+    ///
+    /// In the future, we will hopefully tighten up these rules to be more
+    /// precise.
     fn reinit_expr(&mut self, expr: &hir::Expr<'_>) {
-        if let ExprKind::Path(hir::QPath::Resolved(
-            _,
-            hir::Path { res: hir::def::Res::Local(hir_id), .. },
-        )) = expr.kind
-        {
-            let location = self.expr_index;
-            debug!("reinitializing {:?} at {:?}", hir_id, location);
-            self.drop_ranges.reinit_at(TrackedValue::Variable(*hir_id), location);
-        } else {
-            debug!("reinitializing {:?} is not supported", expr);
+        // Walk the expression to find the base. For example, in an expression
+        // like `*a[i].x`, we want to find the `a` and mark that as
+        // reinitialized.
+        match expr.kind {
+            ExprKind::Path(hir::QPath::Resolved(
+                _,
+                hir::Path { res: hir::def::Res::Local(hir_id), .. },
+            )) => {
+                // This is the base case, where we have found an actual named variable.
+
+                let location = self.expr_index;
+                debug!("reinitializing {:?} at {:?}", hir_id, location);
+                self.drop_ranges.reinit_at(TrackedValue::Variable(*hir_id), location);
+            }
+
+            ExprKind::Field(base, _) => self.reinit_expr(base),
+
+            // Most expressions do not refer to something where we need to track
+            // reinitializations.
+            //
+            // Some of these may be interesting in the future
+            ExprKind::Path(..)
+            | ExprKind::Box(_)
+            | ExprKind::ConstBlock(_)
+            | ExprKind::Array(_)
+            | ExprKind::Call(_, _)
+            | ExprKind::MethodCall(_, _, _, _)
+            | ExprKind::Tup(_)
+            | ExprKind::Binary(_, _, _)
+            | ExprKind::Unary(_, _)
+            | ExprKind::Lit(_)
+            | ExprKind::Cast(_, _)
+            | ExprKind::Type(_, _)
+            | ExprKind::DropTemps(_)
+            | ExprKind::Let(_, _, _)
+            | ExprKind::If(_, _, _)
+            | ExprKind::Loop(_, _, _, _)
+            | ExprKind::Match(_, _, _)
+            | ExprKind::Closure(_, _, _, _, _)
+            | ExprKind::Block(_, _)
+            | ExprKind::Assign(_, _, _)
+            | ExprKind::AssignOp(_, _, _)
+            | ExprKind::Index(_, _)
+            | ExprKind::AddrOf(_, _, _)
+            | ExprKind::Break(_, _)
+            | ExprKind::Continue(_)
+            | ExprKind::Ret(_)
+            | ExprKind::InlineAsm(_)
+            | ExprKind::LlvmInlineAsm(_)
+            | ExprKind::Struct(_, _, _)
+            | ExprKind::Repeat(_, _)
+            | ExprKind::Yield(_, _)
+            | ExprKind::Err => (),
         }
     }
 
@@ -158,13 +246,47 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                 self.drop_ranges.add_control_edge(true_end, self.expr_index + 1);
             }
             ExprKind::Match(scrutinee, arms, ..) => {
+                // We walk through the match expression almost like a chain of if expressions.
+                // Here's a diagram to follow along with:
+                //
+                //           ┌─┐
+                //     match │A│ {
+                //       ┌───┴─┘
+                //       │
+                //      ┌▼┌───►┌─┐   ┌─┐
+                //      │B│ if │C│ =>│D│,
+                //      └─┘    ├─┴──►└─┴──────┐
+                //          ┌──┘              │
+                //       ┌──┘                 │
+                //       │                    │
+                //      ┌▼┌───►┌─┐   ┌─┐      │
+                //      │E│ if │F│ =>│G│,     │
+                //      └─┘    ├─┴──►└─┴┐     │
+                //             │        │     │
+                //     }       ▼        ▼     │
+                //     ┌─┐◄───────────────────┘
+                //     │H│
+                //     └─┘
+                //
+                // The order we want is that the scrutinee (A) flows into the first pattern (B),
+                // which flows into the guard (C). Then the guard either flows into the arm body
+                // (D) or into the start of the next arm (E). Finally, the body flows to the end
+                // of the match block (H).
+                //
+                // The subsequent arms follow the same ordering. First we go to the pattern, then
+                // the guard (if present, otherwise it flows straight into the body), then into
+                // the body and then to the end of the match expression.
+                //
+                // The comments below show which edge is being added.
                 self.visit_expr(scrutinee);
 
                 let (guard_exit, arm_end_ids) = arms.iter().fold(
                     (self.expr_index, vec![]),
                     |(incoming_edge, mut arm_end_ids), hir::Arm { pat, body, guard, .. }| {
+                        // A -> B, or C -> E
                         self.drop_ranges.add_control_edge(incoming_edge, self.expr_index + 1);
                         self.visit_pat(pat);
+                        // B -> C and E -> F are added implicitly due to the traversal order.
                         match guard {
                             Some(Guard::If(expr)) => self.visit_expr(expr),
                             Some(Guard::IfLet(pat, expr)) => {
@@ -173,17 +295,34 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                             }
                             None => (),
                         }
+                        // Likewise, C -> D and F -> G are added implicitly.
+
+                        // Save C, F, so we can add the other outgoing edge.
                         let to_next_arm = self.expr_index;
+
                         // The default edge does not get added since we also have an explicit edge,
                         // so we also need to add an edge to the next node as well.
+                        //
+                        // This adds C -> D, F -> G
                         self.drop_ranges.add_control_edge(self.expr_index, self.expr_index + 1);
                         self.visit_expr(body);
+
+                        // Save the end of the body so we can add the exit edge once we know where
+                        // the exit is.
                         arm_end_ids.push(self.expr_index);
+
+                        // Pass C to the next iteration, as well as vec![D]
+                        //
+                        // On the last round through, we pass F and vec![D, G] so that we can
+                        // add all the exit edges.
                         (to_next_arm, arm_end_ids)
                     },
                 );
+                // F -> H
                 self.drop_ranges.add_control_edge(guard_exit, self.expr_index + 1);
+
                 arm_end_ids.into_iter().for_each(|arm_end| {
+                    // D -> H, G -> H
                     self.drop_ranges.add_control_edge(arm_end, self.expr_index + 1)
                 });
             }
@@ -275,7 +414,7 @@ impl DropRangesBuilder {
         let mut tracked_value_map = FxHashMap::<_, TrackedValueIndex>::default();
         let mut next = <_>::from(0u32);
         for value in tracked_values {
-            for_each_consumable(value, hir.find(value.hir_id()), |value| {
+            for_each_consumable(hir, value, |value| {
                 if !tracked_value_map.contains_key(&value) {
                     tracked_value_map.insert(value, next);
                     next = next + 1;
