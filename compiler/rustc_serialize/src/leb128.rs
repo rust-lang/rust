@@ -53,16 +53,24 @@ impl_write_unsigned_leb128!(write_usize_leb128, usize);
 macro_rules! impl_read_unsigned_leb128 {
     ($fn_name:ident, $int_ty:ty) => {
         #[inline]
-        pub fn $fn_name(slice: &[u8]) -> ($int_ty, usize) {
-            let mut result = 0;
-            let mut shift = 0;
-            let mut position = 0;
+        pub fn $fn_name(slice: &[u8], position: &mut usize) -> $int_ty {
+            // The first iteration of this loop is unpeeled. This is a
+            // performance win because this code is hot and integer values less
+            // than 128 are very common, typically occurring 50-80% or more of
+            // the time, even for u64 and u128.
+            let byte = slice[*position];
+            *position += 1;
+            if (byte & 0x80) == 0 {
+                return byte as $int_ty;
+            }
+            let mut result = (byte & 0x7F) as $int_ty;
+            let mut shift = 7;
             loop {
-                let byte = slice[position];
-                position += 1;
+                let byte = slice[*position];
+                *position += 1;
                 if (byte & 0x80) == 0 {
                     result |= (byte as $int_ty) << shift;
-                    return (result, position);
+                    return result;
                 } else {
                     result |= ((byte & 0x7F) as $int_ty) << shift;
                 }
@@ -122,15 +130,14 @@ impl_write_signed_leb128!(write_isize_leb128, isize);
 macro_rules! impl_read_signed_leb128 {
     ($fn_name:ident, $int_ty:ty) => {
         #[inline]
-        pub fn $fn_name(slice: &[u8]) -> ($int_ty, usize) {
+        pub fn $fn_name(slice: &[u8], position: &mut usize) -> $int_ty {
             let mut result = 0;
             let mut shift = 0;
-            let mut position = 0;
             let mut byte;
 
             loop {
-                byte = slice[position];
-                position += 1;
+                byte = slice[*position];
+                *position += 1;
                 result |= <$int_ty>::from(byte & 0x7F) << shift;
                 shift += 7;
 
@@ -144,7 +151,7 @@ macro_rules! impl_read_signed_leb128 {
                 result |= (!0 << shift);
             }
 
-            (result, position)
+            result
         }
     };
 }

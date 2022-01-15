@@ -560,11 +560,7 @@ impl<'a> Decoder<'a> {
 }
 
 macro_rules! read_leb128 {
-    ($dec:expr, $fun:ident) => {{
-        let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position..]);
-        $dec.position += bytes_read;
-        Ok(value)
-    }};
+    ($dec:expr, $fun:ident) => {{ Ok(leb128::$fun($dec.data, &mut $dec.position)) }};
 }
 
 impl<'a> serialize::Decoder for Decoder<'a> {
