@@ -939,7 +939,18 @@ fn traits_implemented_by<'a>(
                 ty
             );
             // Fast path: if this is a primitive simple `==` will work
-            let saw_impl = impl_type == ty;
+            // NOTE: the `match` is necessary; see #92662.
+            // this allows us to ignore generics because the user input
+            // may not include the generic placeholders
+            // e.g. this allows us to match Foo (user comment) with Foo<T> (actual type)
+            let saw_impl = impl_type == ty
+                || match (impl_type.kind(), ty.kind()) {
+                    (ty::Adt(impl_def, _), ty::Adt(ty_def, _)) => {
+                        debug!("impl def_id: {:?}, ty def_id: {:?}", impl_def.did, ty_def.did);
+                        impl_def.did == ty_def.did
+                    }
+                    _ => false,
+                };
 
             if saw_impl { Some(trait_) } else { None }
         })
