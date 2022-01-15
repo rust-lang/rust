@@ -1,9 +1,9 @@
 //! Syntax highlighting for format macro strings.
-use ide_db::{helpers::format_string::is_format_string, SymbolKind};
-use syntax::{
-    ast::{self, FormatSpecifier, HasFormatSpecifier},
-    TextRange,
+use ide_db::{
+    helpers::format_string::{is_format_string, lex_format_specifiers, FormatSpecifier},
+    SymbolKind,
 };
+use syntax::{ast, TextRange};
 
 use crate::{syntax_highlighting::highlights::Highlights, HlRange, HlTag};
 
@@ -17,7 +17,7 @@ pub(super) fn highlight_format_string(
         return;
     }
 
-    string.lex_format_specifier(|piece_range, kind| {
+    lex_format_specifiers(string, &mut |piece_range, kind| {
         if let Some(highlight) = highlight_format_specifier(kind) {
             stack.add(HlRange {
                 range: piece_range + range.start(),
