@@ -1,4 +1,5 @@
 use core::num::bignum::tests::Big8x3 as Big;
+use core::num::bignum::Big32x40;
 
 #[test]
 #[should_panic]
@@ -215,12 +216,46 @@ fn test_get_bit_out_of_range() {
 
 #[test]
 fn test_bit_length() {
+    for i in 0..8 * 3 {
+        // 010000...000
+        assert_eq!(Big::from_small(1).mul_pow2(i).bit_length(), i + 1);
+    }
+    for i in 1..8 * 3 - 1 {
+        // 010000...001
+        assert_eq!(Big::from_small(1).mul_pow2(i).add(&Big::from_small(1)).bit_length(), i + 1);
+        // 110000...000
+        assert_eq!(Big::from_small(3).mul_pow2(i).bit_length(), i + 2);
+    }
     assert_eq!(Big::from_small(0).bit_length(), 0);
     assert_eq!(Big::from_small(1).bit_length(), 1);
     assert_eq!(Big::from_small(5).bit_length(), 3);
     assert_eq!(Big::from_small(0x18).bit_length(), 5);
     assert_eq!(Big::from_u64(0x4073).bit_length(), 15);
     assert_eq!(Big::from_u64(0xffffff).bit_length(), 24);
+}
+
+#[test]
+fn test_bit_length_32x40() {
+    for i in 0..32 * 40 {
+        // 010000...000
+        assert_eq!(Big32x40::from_small(1).mul_pow2(i).bit_length(), i + 1);
+    }
+    for i in 1..32 * 40 - 1 {
+        // 010000...001
+        assert_eq!(
+            Big32x40::from_small(1).mul_pow2(i).add(&Big32x40::from_small(1)).bit_length(),
+            i + 1
+        );
+        // 110000...000
+        assert_eq!(Big32x40::from_small(3).mul_pow2(i).bit_length(), i + 2);
+    }
+    assert_eq!(Big32x40::from_small(0).bit_length(), 0);
+    assert_eq!(Big32x40::from_small(1).bit_length(), 1);
+    assert_eq!(Big32x40::from_small(5).bit_length(), 3);
+    assert_eq!(Big32x40::from_small(0x18).bit_length(), 5);
+    assert_eq!(Big32x40::from_u64(0x4073).bit_length(), 15);
+    assert_eq!(Big32x40::from_u64(0xffffff).bit_length(), 24);
+    assert_eq!(Big32x40::from_u64(0xffffffffffffffff).bit_length(), 64);
 }
 
 #[test]
