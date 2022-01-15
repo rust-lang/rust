@@ -16,6 +16,7 @@ use rustc_middle::middle::privacy;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 use std::mem;
 
 // Any local node that may call something in its body block should be
@@ -49,7 +50,9 @@ struct MarkSymbolVisitor<'tcx> {
     // maps from tuple struct constructors to tuple struct items
     struct_constructors: FxHashMap<LocalDefId, LocalDefId>,
     // maps from ADTs to ignored derived traits (e.g. Debug and Clone)
-    ignored_derived_traits: FxHashMap<DefId, Vec<DefId>>,
+    // and the span of their respective impl (i.e., part of the derive
+    // macro)
+    ignored_derived_traits: FxHashMap<DefId, Vec<(Span, DefId)>>,
 }
 
 impl<'tcx> MarkSymbolVisitor<'tcx> {
@@ -255,10 +258,12 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 if self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads) {
                     let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap();
                     if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind() {
+                        let impl_span = self.tcx.def_span(impl_of);
                         if let Some(v) = self.ignored_derived_traits.get_mut(&adt_def.did) {
-                            v.push(trait_of);
+                            v.push((impl_span, trait_of));
                         } else {
-                            self.ignored_derived_traits.insert(adt_def.did, vec![trait_of]);
+                            self.ignored_derived_traits
+                                .insert(adt_def.did, vec![(impl_span, trait_of)]);
                         }
                     }
                     return true;
@@ -588,7 +593,7 @@ fn create_and_seed_worklist<'tcx>(
 fn find_live<'tcx>(
     tcx: TyCtxt<'tcx>,
     access_levels: &privacy::AccessLevels,
-) -> (FxHashSet<LocalDefId>, FxHashMap<DefId, Vec<DefId>>) {
+) -> (FxHashSet<LocalDefId>, FxHashMap<DefId, Vec<(Span, DefId)>>) {
     let (worklist, struct_constructors) = create_and_seed_worklist(tcx, access_levels);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
@@ -610,7 +615,7 @@ fn find_live<'tcx>(
 struct DeadVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     live_symbols: FxHashSet<LocalDefId>,
-    ignored_derived_traits: FxHashMap<DefId, Vec<DefId>>,
+    ignored_derived_traits: FxHashMap<DefId, Vec<(Span, DefId)>>,
 }
 
 impl<'tcx> DeadVisitor<'tcx> {
@@ -683,26 +688,29 @@ impl<'tcx> DeadVisitor<'tcx> {
                 let hir = self.tcx.hir();
                 if let Some(encl_scope) = hir.get_enclosing_scope(id) {
                     if let Some(encl_def_id) = hir.opt_local_def_id(encl_scope) {
-                        if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id.to_def_id()) {
+                        if let Some(ign_traits) =
+                            self.ignored_derived_traits.get(&encl_def_id.to_def_id())
+                        {
                             let traits_str = ign_traits
                                 .iter()
-                                .map(|t| format!("`{}`", self.tcx.item_name(*t))).collect::<Vec<_>>()
+                                .map(|(_, t)| format!("`{}`", self.tcx.item_name(*t)))
+                                .collect::<Vec<_>>()
                                 .join(" and ");
                             let plural_s = pluralize!(ign_traits.len());
                             let article = if ign_traits.len() > 1 { "" } else { "a " };
                             let is_are = if ign_traits.len() > 1 { "these are" } else { "this is" };
-                            let msg = format!("`{}` has {}derived impl{} for the trait{} {}, but {} ignored during dead code analysis",
-                                              self.tcx.item_name(encl_def_id.to_def_id()),
-                                              article,
-                                              plural_s,
-                                              plural_s,
-                                              traits_str,
-                                              is_are);
-                            if let Some(span) = self.tcx.def_ident_span(encl_def_id) {
-                                err.span_note(span, &msg);
-                            } else {
-                                err.note(&msg);
-                            }
+                            let msg = format!(
+                                "`{}` has {}derived impl{} for the trait{} {}, but {} \
+                                 intentionally ignored during dead code analysis",
+                                self.tcx.item_name(encl_def_id.to_def_id()),
+                                article,
+                                plural_s,
+                                plural_s,
+                                traits_str,
+                                is_are
+                            );
+                            let multispan = ign_traits.iter().map(|(s, _)| *s).collect::<Vec<_>>();
+                            err.span_note(multispan, &msg);
                         }
                     }
                 }
