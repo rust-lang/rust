@@ -158,24 +158,15 @@ macro_rules! define_bignum {
             /// Returns the number of bits necessary to represent this value. Note that zero
             /// is considered to need 0 bits.
             pub fn bit_length(&self) -> usize {
-                // Skip over the most significant digits which are zero.
-                let digits = self.digits();
-                let zeros = digits.iter().rev().take_while(|&&x| x == 0).count();
-                let end = digits.len() - zeros;
-                let nonzero = &digits[..end];
-
-                if nonzero.is_empty() {
-                    // There are no non-zero digits, i.e., the number is zero.
-                    return 0;
-                }
-                // This could be optimized with leading_zeros() and bit shifts, but that's
-                // probably not worth the hassle.
                 let digitbits = <$ty>::BITS as usize;
-                let mut i = nonzero.len() * digitbits - 1;
-                while self.get_bit(i) == 0 {
-                    i -= 1;
+                let digits = self.digits();
+                // Find the most significant non-zero digit.
+                let msd = digits.iter().rposition(|&x| x != 0);
+                match msd {
+                    Some(msd) => msd * digitbits + digits[msd].log2() as usize + 1,
+                    // There are no non-zero digits, i.e., the number is zero.
+                    _ => 0,
                 }
-                i + 1
             }
 
             /// Adds `other` to itself and returns its own mutable reference.
