@@ -464,6 +464,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
 }
 
 #[rustc_diagnostic_item = "Ty"]
+#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl ty::EarlyBoundRegion {
