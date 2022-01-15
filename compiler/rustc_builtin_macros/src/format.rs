@@ -11,9 +11,9 @@ use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
+use smallvec::SmallVec;
 
 use std::borrow::Cow;
-use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 
 #[derive(PartialEq)]
@@ -760,21 +760,23 @@ impl<'a, 'b> Context<'a, 'b> {
         // "{1} {0}"), or may have multiple entries referring to the same
         // element of original_args ("{0} {0}").
         //
-        // The following Iterator<Item = (usize, &ArgumentType)> has one item
-        // per element of our output slice, identifying the index of which
-        // element of original_args it's passing, and that argument's type.
-        let fmt_arg_index_and_ty = self
-            .arg_unique_types
-            .iter()
-            .enumerate()
-            .flat_map(|(i, unique_types)| unique_types.iter().map(move |ty| (i, ty)))
-            .chain(self.count_args.iter().map(|i| (*i, &Count)));
+        // The following vector has one item per element of our output slice,
+        // identifying the index of which element of original_args it's passing,
+        // and that argument's type.
+        let mut fmt_arg_index_and_ty = SmallVec::<[(usize, &ArgumentType); 8]>::new();
+        for (i, unique_types) in self.arg_unique_types.iter().enumerate() {
+            fmt_arg_index_and_ty.extend(unique_types.iter().map(|ty| (i, ty)));
+        }
+        fmt_arg_index_and_ty.extend(self.count_args.iter().map(|&i| (i, &Count)));
 
         // Figure out whether there are permuted or repeated elements. If not,
         // we can generate simpler code.
-        let nicely_ordered = fmt_arg_index_and_ty
-            .clone()
-            .is_sorted_by(|(i, _), (j, _)| (i < j).then_some(Ordering::Less));
+        //
+        // The sequence has no indices out of order or repeated if: for every
+        // adjacent pair of elements, the first one's index is less than the
+        // second one's index.
+        let nicely_ordered =
+            fmt_arg_index_and_ty.array_windows().all(|[(i, _i_ty), (j, _j_ty)]| i < j);
 
         // We want to emit:
         //
