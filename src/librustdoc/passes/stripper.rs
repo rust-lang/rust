@@ -144,7 +144,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
             }
             if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
                 for typaram in generics {
-                    if let Some(did) = typaram.def_id_no_primitives() {
+                    if let Some(did) = typaram.def_id(self.cache) {
                         if did.is_local() && !self.retained.contains(&did.into()) {
                             debug!(
                                 "ImplStripper: stripped item in trait's generics; removing impl"

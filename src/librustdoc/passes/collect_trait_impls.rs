@@ -208,7 +208,7 @@ impl DocVisitor for ItemCollector {
 struct BadImplStripper<'a> {
     prims: FxHashSet<PrimitiveType>,
     items: FxHashSet<ItemId>,
-    crate cache: &'a Cache,
+    cache: &'a Cache,
 }
 
 impl<'a> BadImplStripper<'a> {
