@@ -2,8 +2,7 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::trait_ref_of_method;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::intravisit::{
-    walk_fn_decl, walk_generic_param, walk_generics, walk_item, walk_param_bound, walk_poly_trait_ref, walk_ty,
-    NestedVisitorMap, Visitor,
+    walk_fn_decl, walk_generic_param, walk_generics, walk_item, walk_param_bound, walk_poly_trait_ref, walk_ty, Visitor,
 };
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
@@ -12,7 +11,6 @@ use rustc_hir::{
     TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereClause, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, Symbol};
@@ -354,8 +352,6 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
         self.record(&Some(*lifetime));
@@ -409,9 +405,6 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
         }
         walk_ty(self, ty);
     }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
 }
 
 /// Are any lifetimes mentioned in the `where` clause? If so, we don't try to
@@ -457,8 +450,6 @@ struct LifetimeChecker {
 }
 
 impl<'tcx> Visitor<'tcx> for LifetimeChecker {
-    type Map = Map<'tcx>;
-
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
         self.map.remove(&lifetime.name.ident().name);
@@ -473,9 +464,6 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
         if let GenericParamKind::Type { .. } = param.kind {
             walk_generic_param(self, param);
         }
-    }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }
 
@@ -508,16 +496,10 @@ struct BodyLifetimeChecker {
 }
 
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
-    type Map = Map<'tcx>;
-
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
         if lifetime.name.ident().name != kw::Empty && lifetime.name.ident().name != kw::StaticLifetime {
             self.lifetimes_used_in_body = true;
         }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }

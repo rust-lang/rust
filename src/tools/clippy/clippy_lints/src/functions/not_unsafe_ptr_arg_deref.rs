@@ -1,6 +1,6 @@
 use rustc_hir::{self as hir, intravisit, HirIdSet};
 use rustc_lint::LateContext;
-use rustc_middle::{hir::map::Map, ty};
+use rustc_middle::ty;
 use rustc_span::def_id::LocalDefId;
 
 use clippy_utils::diagnostics::span_lint;
@@ -74,8 +74,6 @@ struct DerefVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Call(f, args) => {
@@ -102,10 +100,6 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
         }
 
         intravisit::walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::None
     }
 }
 
