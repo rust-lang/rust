@@ -80,7 +80,9 @@ fn should_skip_module<T: FormatHandler>(
         return true;
     }
 
-    if !config.format_generated_files() {
+    // FIXME(calebcartwright) - we need to determine how we'll handle the
+    // `format_generated_files` option with stdin based input.
+    if !input_is_stdin && !config.format_generated_files() {
         let source_file = context.parse_session.span_to_file_contents(module.span);
         let src = source_file.src.as_ref().expect("SourceFile without src");
 
