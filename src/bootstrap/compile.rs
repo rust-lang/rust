@@ -227,8 +227,10 @@ fn copy_self_contained_objects(
             target_deps.push((target, DependencyType::TargetSelfContained));
         }
 
-        let libunwind_path = copy_llvm_libunwind(builder, target, &libdir_self_contained);
-        target_deps.push((libunwind_path, DependencyType::TargetSelfContained));
+        if !target.starts_with("s390x") {
+            let libunwind_path = copy_llvm_libunwind(builder, target, &libdir_self_contained);
+            target_deps.push((libunwind_path, DependencyType::TargetSelfContained));
+        }
     } else if target.ends_with("-wasi") {
         let srcdir = builder
             .wasi_root(target)
