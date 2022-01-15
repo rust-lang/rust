@@ -1,0 +1,35 @@
+error[E0107]: missing generics for associated type `Trait::Assoc`
+  --> $DIR/elided-in-expr-position.rs:10:26
+   |
+LL |     fn g(&self) -> Self::Assoc;
+   |                          ^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/elided-in-expr-position.rs:5:10
+   |
+LL |     type Assoc<'a> where Self: 'a;
+   |          ^^^^^ --
+help: add missing lifetime argument
+   |
+LL |     fn g(&self) -> Self::Assoc<'_>;
+   |                          ~~~~~~~~~
+
+error[E0107]: missing generics for associated type `Trait::Assoc`
+  --> $DIR/elided-in-expr-position.rs:32:26
+   |
+LL |     fn g(&self) -> Self::Assoc {
+   |                          ^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/elided-in-expr-position.rs:5:10
+   |
+LL |     type Assoc<'a> where Self: 'a;
+   |          ^^^^^ --
+help: add missing lifetime argument
+   |
+LL |     fn g(&self) -> Self::Assoc<'_> {
+   |                          ~~~~~~~~~
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.
