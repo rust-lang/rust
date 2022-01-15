@@ -310,8 +310,7 @@ impl Bridge<'_> {
         // NB. the server can't do this because it may use a different libstd.
         static HIDE_PANICS_DURING_EXPANSION: Once = Once::new();
         HIDE_PANICS_DURING_EXPANSION.call_once(|| {
-            let prev = panic::take_hook();
-            panic::set_hook(Box::new(move |info| {
+            panic::update_hook(move |prev, info| {
                 let show = BridgeState::with(|state| match state {
                     BridgeState::NotConnected => true,
                     BridgeState::Connected(_) | BridgeState::InUse => force_show_panics,
@@ -319,7 +318,7 @@ impl Bridge<'_> {
                 if show {
                     prev(info)
                 }
-            }));
+            });
         });
 
         BRIDGE_STATE.with(|state| state.set(BridgeState::Connected(self), f))
