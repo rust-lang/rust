@@ -18,6 +18,7 @@ use crate::slice::{Iter, IterMut};
 
 mod equality;
 mod iter;
+mod binops;
 
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;

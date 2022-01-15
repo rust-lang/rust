@@ -668,3 +668,21 @@ fn array_mixed_equality_nans() {
     assert!(!(mut3 == array3));
     assert!(mut3 != array3);
 }
+
+#[test]
+fn add() {
+    let a: [i32; 4] = [0, 1, 2, 3];
+    let b: [i32; 4] = [4, 5, 6, 7];
+
+    assert_eq!(a + b, [4, 6, 8, 10]);
+}
+
+#[test]
+fn add_assign() {
+    let mut a: [i32; 4] = [0, 1, 2, 3];
+    let b: [i32; 4] = [4, 5, 6, 7];
+
+    a += b;
+
+    assert_eq!(a, [4, 6, 8, 10]);
+}
