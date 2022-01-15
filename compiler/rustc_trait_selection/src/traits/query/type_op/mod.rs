@@ -4,9 +4,7 @@ use crate::infer::canonical::{
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::query::Fallible;
 use crate::traits::ObligationCause;
-use rustc_infer::infer::canonical::{Canonical, Certainty};
-use rustc_infer::traits::query::NoSolution;
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::infer::canonical::Canonical;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use std::fmt;
@@ -19,6 +17,7 @@ pub mod implied_outlives_bounds;
 pub mod normalize;
 pub mod outlives;
 pub mod prove_predicate;
+use self::prove_predicate::ProvePredicate;
 pub mod subtype;
 
 pub use rustc_middle::traits::query::type_op::*;
@@ -81,14 +80,9 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<'tcx> + 'tcx {
         query_key: ParamEnvAnd<'tcx, Self>,
         infcx: &InferCtxt<'_, 'tcx>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
-    ) -> Fallible<(
-        Self::QueryResponse,
-        Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
-        PredicateObligations<'tcx>,
-        Certainty,
-    )> {
+    ) -> Fallible<(Self::QueryResponse, Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>)> {
         if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key) {
-            return Ok((result, None, vec![], Certainty::Proven));
+            return Ok((result, None));
         }
 
         // FIXME(#33684) -- We need to use
@@ -110,7 +104,20 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<'tcx> + 'tcx {
                 output_query_region_constraints,
             )?;
 
-        Ok((value, Some(canonical_self), obligations, canonical_result.value.certainty))
+        // Typically, instantiating NLL query results does not
+        // create obligations. However, in some cases there
+        // are unresolved type variables, and unify them *can*
+        // create obligations. In that case, we have to go
+        // fulfill them. We do this via a (recursive) query.
+        for obligation in obligations {
+            let ((), _) = ProvePredicate::fully_perform_into(
+                obligation.param_env.and(ProvePredicate::new(obligation.predicate)),
+                infcx,
+                output_query_region_constraints,
+            )?;
+        }
+
+        Ok((value, Some(canonical_self)))
     }
 }
 
@@ -122,38 +129,8 @@ where
 
     fn fully_perform(self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
         let mut region_constraints = QueryRegionConstraints::default();
-        let (output, canonicalized_query, mut obligations, _) =
+        let (output, canonicalized_query) =
             Q::fully_perform_into(self, infcx, &mut region_constraints)?;
-
-        // Typically, instantiating NLL query results does not
-        // create obligations. However, in some cases there
-        // are unresolved type variables, and unify them *can*
-        // create obligations. In that case, we have to go
-        // fulfill them. We do this via a (recursive) query.
-        while !obligations.is_empty() {
-            trace!("{:#?}", obligations);
-            let mut progress = false;
-            for obligation in std::mem::take(&mut obligations) {
-                let obligation = infcx.resolve_vars_if_possible(obligation);
-                match ProvePredicate::fully_perform_into(
-                    obligation.param_env.and(ProvePredicate::new(obligation.predicate)),
-                    infcx,
-                    &mut region_constraints,
-                ) {
-                    Ok(((), _, new, certainty)) => {
-                        obligations.extend(new);
-                        progress = true;
-                        if let Certainty::Ambiguous = certainty {
-                            obligations.push(obligation);
-                        }
-                    }
-                    Err(_) => obligations.push(obligation),
-                }
-            }
-            if !progress {
-                return Err(NoSolution);
-            }
-        }
 
         // Promote the final query-region-constraints into a
         // (optional) ref-counted vector:
