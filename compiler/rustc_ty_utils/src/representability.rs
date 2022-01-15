@@ -99,12 +99,7 @@ fn are_inner_types_recursive<'tcx>(
             // Find non representable fields with their spans
             fold_repr(def.all_fields().map(|field| {
                 let ty = field.ty(tcx, substs);
-                let span = match field
-                    .did
-                    .as_local()
-                    .map(|id| tcx.hir().local_def_id_to_hir_id(id))
-                    .and_then(|id| tcx.hir().find(id))
-                {
+                let span = match field.did.as_local().and_then(|id| tcx.hir().find_by_def_id(id)) {
                     Some(hir::Node::Field(field)) => field.ty.span,
                     _ => sp,
                 };

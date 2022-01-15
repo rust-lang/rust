@@ -628,42 +628,39 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
         (
             true,
-            td.as_local().and_then(|tld| {
-                let h = hir_map.local_def_id_to_hir_id(tld);
-                match hir_map.find(h) {
-                    Some(Node::Item(hir::Item {
-                        kind: hir::ItemKind::Trait(_, _, _, _, items),
-                        ..
-                    })) => {
-                        let mut f_in_trait_opt = None;
-                        for hir::TraitItemRef { id: fi, kind: k, .. } in *items {
-                            let hi = fi.hir_id();
-                            if !matches!(k, hir::AssocItemKind::Fn { .. }) {
-                                continue;
-                            }
-                            if hir_map.name(hi) != hir_map.name(my_hir) {
-                                continue;
-                            }
-                            f_in_trait_opt = Some(hi);
-                            break;
+            td.as_local().and_then(|tld| match hir_map.find_by_def_id(tld) {
+                Some(Node::Item(hir::Item {
+                    kind: hir::ItemKind::Trait(_, _, _, _, items),
+                    ..
+                })) => {
+                    let mut f_in_trait_opt = None;
+                    for hir::TraitItemRef { id: fi, kind: k, .. } in *items {
+                        let hi = fi.hir_id();
+                        if !matches!(k, hir::AssocItemKind::Fn { .. }) {
+                            continue;
                         }
-                        f_in_trait_opt.and_then(|f_in_trait| match hir_map.find(f_in_trait) {
-                            Some(Node::TraitItem(hir::TraitItem {
-                                kind:
-                                    hir::TraitItemKind::Fn(
-                                        hir::FnSig { decl: hir::FnDecl { inputs, .. }, .. },
-                                        _,
-                                    ),
-                                ..
-                            })) => {
-                                let hir::Ty { span, .. } = inputs[local.index() - 1];
-                                Some(span)
-                            }
-                            _ => None,
-                        })
+                        if hir_map.name(hi) != hir_map.name(my_hir) {
+                            continue;
+                        }
+                        f_in_trait_opt = Some(hi);
+                        break;
                     }
-                    _ => None,
+                    f_in_trait_opt.and_then(|f_in_trait| match hir_map.find(f_in_trait) {
+                        Some(Node::TraitItem(hir::TraitItem {
+                            kind:
+                                hir::TraitItemKind::Fn(
+                                    hir::FnSig { decl: hir::FnDecl { inputs, .. }, .. },
+                                    _,
+                                ),
+                            ..
+                        })) => {
+                            let hir::Ty { span, .. } = inputs[local.index() - 1];
+                            Some(span)
+                        }
+                        _ => None,
+                    })
                 }
+                _ => None,
             }),
         )
     }
@@ -896,7 +893,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if look_at_return && hir.get_return_block(closure_id).is_some() {
             // ...otherwise we are probably in the tail expression of the function, point at the
             // return type.
-            match hir.get(hir.get_parent_item(fn_call_id)) {
+            match hir.get_by_def_id(hir.get_parent_item(fn_call_id)) {
                 hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(sig, ..), .. })
                 | hir::Node::TraitItem(hir::TraitItem {
                     ident,
@@ -1075,8 +1072,7 @@ fn get_mut_span_in_struct_field<'tcx>(
         if let ty::Adt(def, _) = ty.kind() {
             let field = def.all_fields().nth(field.index())?;
             // Use the HIR types to construct the diagnostic message.
-            let hir_id = tcx.hir().local_def_id_to_hir_id(field.did.as_local()?);
-            let node = tcx.hir().find(hir_id)?;
+            let node = tcx.hir().find_by_def_id(field.did.as_local()?)?;
             // Now we're dealing with the actual struct that we're going to suggest a change to,
             // we can expect a field that is an immutable reference to a type.
             if let hir::Node::Field(field) = node {

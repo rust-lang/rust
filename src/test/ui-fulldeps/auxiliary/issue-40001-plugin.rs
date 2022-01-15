@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingAllowedAttrPass {
     ) {
         let item = match cx.tcx.hir().get(id) {
             Node::Item(item) => item,
-            _ => cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(id).expect_owner()),
+            _ => cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(id)),
         };
 
         let allowed = |attr| pprust::attribute_to_string(attr).contains("allowed_attr");

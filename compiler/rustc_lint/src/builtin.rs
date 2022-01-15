@@ -610,8 +610,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
                 let Some(def_id) = real_trait.as_local() else { return };
-                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
-                let Some(Node::Item(item)) = cx.tcx.hir().find(hir_id) else { return };
+                let Some(Node::Item(item)) = cx.tcx.hir().find_by_def_id(def_id) else { return };
                 if let hir::VisibilityKind::Inherited = item.vis.node {
                     for impl_item_ref in items {
                         self.private_traits.insert(impl_item_ref.id.hir_id());
@@ -656,7 +655,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
         // If the method is an impl for an item with docs_hidden, don't doc.
         if method_context(cx, impl_item.hir_id()) == MethodLateContext::PlainImpl {
-            let parent = cx.tcx.hir().get_parent_did(impl_item.hir_id());
+            let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
             let impl_ty = cx.tcx.type_of(parent);
             let outerdef = match impl_ty.kind() {
                 ty::Adt(def, _) => Some(def.did),
@@ -1212,7 +1211,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
                                 Some(generics),
-                                cx.tcx.hir().get_generics(it.id.def_id.to_def_id()).unwrap(),
+                                cx.tcx.hir().get_generics(it.id.def_id).unwrap(),
                                 it.span,
                             );
                         }

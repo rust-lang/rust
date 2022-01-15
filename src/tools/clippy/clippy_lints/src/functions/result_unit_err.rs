@@ -27,7 +27,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, item: &hir::ImplItem<'_>) {
     if let hir::ImplItemKind::Fn(ref sig, _) = item.kind {
         let is_public = cx.access_levels.is_exported(item.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-        if is_public && trait_ref_of_method(cx, item.hir_id()).is_none() {
+        if is_public && trait_ref_of_method(cx, item.def_id).is_none() {
             check_result_unit_err(cx, sig.decl, item.span, fn_header_span);
         }
     }

@@ -616,8 +616,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             self.tcx.sess.source_map().guess_head_span(
                                 self.tcx.hir().span_if_local(closure_def_id).unwrap(),
                             );
-                        let hir_id =
-                            self.tcx.hir().local_def_id_to_hir_id(closure_def_id.expect_local());
                         let mut err = struct_span_err!(
                             self.tcx.sess,
                             closure_span,
@@ -640,6 +638,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         // Additional context information explaining why the closure only implements
                         // a particular trait.
                         if let Some(typeck_results) = self.in_progress_typeck_results {
+                            let hir_id = self
+                                .tcx
+                                .hir()
+                                .local_def_id_to_hir_id(closure_def_id.expect_local());
                             let typeck_results = typeck_results.borrow();
                             match (found_kind, typeck_results.closure_kind_origins().get(hir_id)) {
                                 (ty::ClosureKind::FnOnce, Some((span, place))) => {

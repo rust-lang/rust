@@ -34,11 +34,10 @@ impl<'tcx> LateLintPass<'tcx> for Exit {
             if let Some(def_id) = cx.qpath_res(path, path_expr.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::EXIT);
             let parent = cx.tcx.hir().get_parent_item(e.hir_id);
-            if let Some(Node::Item(Item{kind: ItemKind::Fn(..), ..})) = cx.tcx.hir().find(parent);
+            if let Some(Node::Item(Item{kind: ItemKind::Fn(..), ..})) = cx.tcx.hir().find_by_def_id(parent);
             // If the next item up is a function we check if it is an entry point
             // and only then emit a linter warning
-            let def_id = cx.tcx.hir().local_def_id(parent);
-            if !is_entrypoint_fn(cx, def_id.to_def_id());
+            if !is_entrypoint_fn(cx, parent.to_def_id());
             then {
                 span_lint(cx, EXIT, e.span, "usage of `process::exit`");
             }

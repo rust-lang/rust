@@ -1914,7 +1914,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .and_then(|def_id| {
                     def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
                 })
-                .map(|hir_id| tcx.hir().get_parent_did(hir_id).to_def_id());
+                .map(|hir_id| tcx.hir().get_parent_item(hir_id).to_def_id());
 
             debug!("qpath_to_ty: parent_def_id={:?}", parent_def_id);
 

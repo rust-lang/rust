@@ -28,7 +28,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::weak_lang_items;
 use rustc_hir::{GenericParamKind, HirId, Node};
@@ -435,7 +435,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
             match self.node() {
                 hir::Node::Field(_) | hir::Node::Ctor(_) | hir::Node::Variant(_) => {
                     let item =
-                        self.tcx.hir().expect_item(self.tcx.hir().get_parent_did(self.hir_id()));
+                        self.tcx.hir().expect_item(self.tcx.hir().get_parent_item(self.hir_id()));
                     match &item.kind {
                         hir::ItemKind::Enum(_, generics)
                         | hir::ItemKind::Struct(_, generics)
@@ -569,13 +569,12 @@ fn type_param_predicates(
 
     let param_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let param_owner = tcx.hir().ty_param_owner(param_id);
-    let param_owner_def_id = tcx.hir().local_def_id(param_owner);
-    let generics = tcx.generics_of(param_owner_def_id);
+    let generics = tcx.generics_of(param_owner);
     let index = generics.param_def_id_to_index[&def_id.to_def_id()];
     let ty = tcx.mk_ty_param(index, tcx.hir().ty_param_name(param_id));
 
     // Don't look for bounds where the type parameter isn't in scope.
-    let parent = if item_def_id == param_owner_def_id.to_def_id() {
+    let parent = if item_def_id == param_owner.to_def_id() {
         None
     } else {
         tcx.generics_of(item_def_id).parent
@@ -1396,13 +1395,12 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
         | Node::Ctor(..)
         | Node::Field(_) => {
             let parent_id = tcx.hir().get_parent_item(hir_id);
-            Some(tcx.hir().local_def_id(parent_id).to_def_id())
+            Some(parent_id.to_def_id())
         }
         // FIXME(#43408) always enable this once `lazy_normalization` is
         // stable enough and does not need a feature gate anymore.
         Node::AnonConst(_) => {
-            let parent_id = tcx.hir().get_parent_item(hir_id);
-            let parent_def_id = tcx.hir().local_def_id(parent_id);
+            let parent_def_id = tcx.hir().get_parent_item(hir_id);
 
             let mut in_param_ty = false;
             for (_parent, node) in tcx.hir().parent_iter(hir_id) {
@@ -1512,11 +1510,11 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             }) => Some(fn_def_id.to_def_id()),
             ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::TyAlias, .. }) => {
                 let parent_id = tcx.hir().get_parent_item(hir_id);
-                assert!(parent_id != hir_id && parent_id != CRATE_HIR_ID);
+                assert_ne!(parent_id, CRATE_DEF_ID);
                 debug!("generics_of: parent of opaque ty {:?} is {:?}", def_id, parent_id);
                 // Opaque types are always nested within another item, and
                 // inherit the generics of the item.
-                Some(tcx.hir().local_def_id(parent_id).to_def_id())
+                Some(parent_id.to_def_id())
             }
             _ => None,
         },
@@ -1861,7 +1859,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
         }
 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor_hir_id().is_some() => {
-            let ty = tcx.type_of(tcx.hir().get_parent_did(hir_id).to_def_id());
+            let ty = tcx.type_of(tcx.hir().get_parent_item(hir_id));
             let inputs =
                 data.fields().iter().map(|f| tcx.type_of(tcx.hir().local_def_id(f.hir_id)));
             ty::Binder::dummy(tcx.mk_fn_sig(
@@ -2431,8 +2429,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
                 //        parent of generics returned by `generics_of`
                 //
                 // In the above code we want the anon const to have predicates in its param env for `T: Trait`
-                let item_id = tcx.hir().get_parent_item(hir_id);
-                let item_def_id = tcx.hir().local_def_id(item_id).to_def_id();
+                let item_def_id = tcx.hir().get_parent_item(hir_id);
                 // In the above code example we would be calling `explicit_predicates_of(Foo)` here
                 return tcx.explicit_predicates_of(item_def_id);
             }
@@ -3230,7 +3227,7 @@ fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span:
     let hir_id = tcx.hir().local_def_id_to_hir_id(id);
     let node = tcx.hir().get(hir_id);
     if let Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) = node {
-        let parent_id = tcx.hir().get_parent_did(hir_id);
+        let parent_id = tcx.hir().get_parent_item(hir_id);
         let parent_item = tcx.hir().expect_item(parent_id);
         if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = parent_item.kind {
             tcx.sess

@@ -116,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::String);
 
             // Filters instances of to_string which are required by a trait
-            if trait_ref_of_method(cx, impl_item.hir_id()).is_none();
+            if trait_ref_of_method(cx, impl_item.def_id).is_none();
 
             then {
                 show_lint(cx, impl_item);

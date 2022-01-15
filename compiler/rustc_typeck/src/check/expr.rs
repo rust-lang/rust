@@ -742,7 +742,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 kind: hir::ImplItemKind::Fn(..),
                 span: encl_fn_span,
                 ..
-            })) = self.tcx.hir().find(encl_item_id)
+            })) = self.tcx.hir().find_by_def_id(encl_item_id)
             {
                 // We are inside a function body, so reporting "return statement
                 // outside of function body" needs an explanation.
@@ -751,7 +751,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // If this didn't hold, we would not have to report an error in
                 // the first place.
-                assert_ne!(encl_item_id, encl_body_owner_id);
+                assert_ne!(hir::HirId::make_owner(encl_item_id), encl_body_owner_id);
 
                 let encl_body_id = self.tcx.hir().body_owned_by(encl_body_owner_id);
                 let encl_body = self.tcx.hir().body(encl_body_id);

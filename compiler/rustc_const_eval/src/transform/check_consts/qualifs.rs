@@ -210,8 +210,7 @@ impl Qualif for CustomEq {
         // because that component may be part of an enum variant (e.g.,
         // `Option::<NonStructuralMatchTy>::Some`), in which case some values of this type may be
         // structural-match (`Option::None`).
-        let id = cx.tcx.hir().local_def_id_to_hir_id(cx.def_id());
-        traits::search_for_structural_match_violation(id, cx.body.span, cx.tcx, ty).is_some()
+        traits::search_for_structural_match_violation(cx.body.span, cx.tcx, ty).is_some()
     }
 
     fn in_adt_inherently<'tcx>(

@@ -184,8 +184,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
 
-    let self_type_hir_id = tcx.hir().local_def_id_to_hir_id(self_type_did);
-
     // We can assume the predicates attached to struct/enum definition
     // hold.
     let generic_assumptions = tcx.predicates_of(self_type_did);
@@ -252,7 +250,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         };
 
         if !assumptions_in_impl_context.iter().copied().any(predicate_matches_closure) {
-            let item_span = tcx.hir().span(self_type_hir_id);
+            let item_span = tcx.def_span(self_type_did);
             let self_descr = tcx.def_kind(self_type_did).descr(self_type_did.to_def_id());
             struct_span_err!(
                 tcx.sess,

@@ -511,19 +511,15 @@ struct GeneratorTypes<'tcx> {
 fn get_owner_return_paths<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> Option<(hir::HirId, ReturnsVisitor<'tcx>)> {
+) -> Option<(LocalDefId, ReturnsVisitor<'tcx>)> {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let id = tcx.hir().get_parent_item(hir_id);
-    tcx.hir()
-        .find(id)
-        .map(|n| (id, n))
-        .and_then(|(hir_id, node)| node.body_id().map(|b| (hir_id, b)))
-        .map(|(hir_id, body_id)| {
-            let body = tcx.hir().body(body_id);
-            let mut visitor = ReturnsVisitor::default();
-            visitor.visit_body(body);
-            (hir_id, visitor)
-        })
+    let parent_id = tcx.hir().get_parent_item(hir_id);
+    tcx.hir().find_by_def_id(parent_id).and_then(|node| node.body_id()).map(|body_id| {
+        let body = tcx.hir().body(body_id);
+        let mut visitor = ReturnsVisitor::default();
+        visitor.visit_body(body);
+        (parent_id, visitor)
+    })
 }
 
 // Forbid defining intrinsics in Rust code,

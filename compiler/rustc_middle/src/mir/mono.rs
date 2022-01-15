@@ -179,15 +179,11 @@ impl<'tcx> MonoItem<'tcx> {
 
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
         match *self {
-            MonoItem::Fn(Instance { def, .. }) => {
-                def.def_id().as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
-            }
-            MonoItem::Static(def_id) => {
-                def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
-            }
-            MonoItem::GlobalAsm(item_id) => Some(item_id.hir_id()),
+            MonoItem::Fn(Instance { def, .. }) => def.def_id().as_local(),
+            MonoItem::Static(def_id) => def_id.as_local(),
+            MonoItem::GlobalAsm(item_id) => Some(item_id.def_id),
         }
-        .map(|hir_id| tcx.hir().span(hir_id))
+        .map(|def_id| tcx.def_span(def_id))
     }
 
     // Only used by rustc_codegen_cranelift

@@ -1,8 +1,8 @@
 use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, Node, TraitItem, CRATE_HIR_ID};
+use rustc_hir::{ForeignItem, ImplItem, Item, ItemKind, Node, TraitItem, CRATE_HIR_ID};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -18,14 +18,14 @@ struct EntryContext<'a, 'tcx> {
     map: Map<'tcx>,
 
     /// The function that has attribute named `main`.
-    attr_main_fn: Option<(HirId, Span)>,
+    attr_main_fn: Option<(LocalDefId, Span)>,
 
     /// The function that has the attribute 'start' on it.
-    start_fn: Option<(HirId, Span)>,
+    start_fn: Option<(LocalDefId, Span)>,
 
     /// The functions that one might think are `main` but aren't, e.g.
     /// main functions not defined at the top level. For diagnostics.
-    non_main_fns: Vec<(HirId, Span)>,
+    non_main_fns: Vec<Span>,
 }
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
@@ -112,11 +112,11 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
         }
         EntryPointType::MainNamed => (),
         EntryPointType::OtherMain => {
-            ctxt.non_main_fns.push((item.hir_id(), item.span));
+            ctxt.non_main_fns.push(item.span);
         }
         EntryPointType::MainAttr => {
             if ctxt.attr_main_fn.is_none() {
-                ctxt.attr_main_fn = Some((item.hir_id(), item.span));
+                ctxt.attr_main_fn = Some((item.def_id, item.span));
             } else {
                 struct_span_err!(
                     ctxt.session,
@@ -131,7 +131,7 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
         }
         EntryPointType::Start => {
             if ctxt.start_fn.is_none() {
-                ctxt.start_fn = Some((item.hir_id(), item.span));
+                ctxt.start_fn = Some((item.def_id, item.span));
             } else {
                 struct_span_err!(ctxt.session, item.span, E0138, "multiple `start` functions")
                     .span_label(ctxt.start_fn.unwrap().1, "previous `#[start]` function here")
@@ -143,20 +143,19 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
 }
 
 fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(DefId, EntryFnType)> {
-    if let Some((hir_id, _)) = visitor.start_fn {
-        Some((tcx.hir().local_def_id(hir_id).to_def_id(), EntryFnType::Start))
-    } else if let Some((hir_id, _)) = visitor.attr_main_fn {
-        Some((tcx.hir().local_def_id(hir_id).to_def_id(), EntryFnType::Main))
+    if let Some((def_id, _)) = visitor.start_fn {
+        Some((def_id.to_def_id(), EntryFnType::Start))
+    } else if let Some((def_id, _)) = visitor.attr_main_fn {
+        Some((def_id.to_def_id(), EntryFnType::Main))
     } else {
         if let Some(main_def) = tcx.resolutions(()).main_def {
             if let Some(def_id) = main_def.opt_fn_def_id() {
                 // non-local main imports are handled below
-                if def_id.is_local() {
-                    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                    if matches!(tcx.hir().find(hir_id), Some(Node::ForeignItem(_))) {
+                if let Some(def_id) = def_id.as_local() {
+                    if matches!(tcx.hir().find_by_def_id(def_id), Some(Node::ForeignItem(_))) {
                         tcx.sess
                             .struct_span_err(
-                                tcx.hir().span(hir_id),
+                                tcx.def_span(def_id),
                                 "the `main` function cannot be declared in an `extern` block",
                             )
                             .emit();
@@ -201,7 +200,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     );
     let filename = &tcx.sess.local_crate_source_file;
     let note = if !visitor.non_main_fns.is_empty() {
-        for &(_, span) in &visitor.non_main_fns {
+        for &span in &visitor.non_main_fns {
             err.span_note(span, "here is a function named `main`");
         }
         err.note("you have one or more functions named `main` not defined at the crate level");

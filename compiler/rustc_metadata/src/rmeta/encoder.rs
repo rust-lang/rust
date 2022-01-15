@@ -1579,12 +1579,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_info_for_closure(&mut self, def_id: LocalDefId) {
+    fn encode_info_for_closure(&mut self, hir_id: hir::HirId) {
+        let def_id = self.tcx.hir().local_def_id(hir_id);
         debug!("EncodeContext::encode_info_for_closure({:?})", def_id);
 
         // NOTE(eddyb) `tcx.type_of(def_id)` isn't used because it's fully generic,
         // including on the signature, which is inferred in `typeck.
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let ty = self.tcx.typeck(def_id).node_type(hir_id);
 
         match ty.kind() {
@@ -1605,9 +1605,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_info_for_anon_const(&mut self, def_id: LocalDefId) {
+    fn encode_info_for_anon_const(&mut self, id: hir::HirId) {
+        let def_id = self.tcx.hir().local_def_id(id);
         debug!("EncodeContext::encode_info_for_anon_const({:?})", def_id);
-        let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
         let body_id = self.tcx.hir().body_owned_by(id);
         let const_data = self.encode_rendered_const_for_body(body_id);
         let qualifs = self.tcx.mir_const_qualif(def_id);
@@ -1928,8 +1928,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EncodeContext<'a, 'tcx> {
     }
     fn visit_anon_const(&mut self, c: &'tcx AnonConst) {
         intravisit::walk_anon_const(self, c);
-        let def_id = self.tcx.hir().local_def_id(c.hir_id);
-        self.encode_info_for_anon_const(def_id);
+        self.encode_info_for_anon_const(c.hir_id);
     }
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         intravisit::walk_item(self, item);
@@ -1983,8 +1982,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_info_for_expr(&mut self, expr: &hir::Expr<'_>) {
         if let hir::ExprKind::Closure(..) = expr.kind {
-            let def_id = self.tcx.hir().local_def_id(expr.hir_id);
-            self.encode_info_for_closure(def_id);
+            self.encode_info_for_closure(expr.hir_id);
         }
     }
 

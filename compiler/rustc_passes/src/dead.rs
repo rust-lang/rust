@@ -23,7 +23,7 @@ use std::mem;
 // may need to be marked as live.
 fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     matches!(
-        tcx.hir().find(tcx.hir().local_def_id_to_hir_id(def_id)),
+        tcx.hir().find_by_def_id(def_id),
         Some(
             Node::Item(..)
                 | Node::ImplItem(..)
@@ -232,7 +232,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             // tuple struct constructor function
             let id = self.struct_constructors.get(&id).copied().unwrap_or(id);
 
-            if let Some(node) = self.tcx.hir().find(self.tcx.hir().local_def_id_to_hir_id(id)) {
+            if let Some(node) = self.tcx.hir().find_by_def_id(id) {
                 self.live_symbols.insert(id);
                 self.visit_node(node);
             }

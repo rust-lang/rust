@@ -151,11 +151,10 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
 ) -> (String, Span) {
     let sm = tcx.sess.source_map();
 
-    let scope = region.free_region_binding_scope(tcx);
-    let node = tcx.hir().local_def_id_to_hir_id(scope.expect_local());
+    let scope = region.free_region_binding_scope(tcx).expect_local();
     match *region {
         ty::ReEarlyBound(ref br) => {
-            let mut sp = sm.guess_head_span(tcx.hir().span(node));
+            let mut sp = sm.guess_head_span(tcx.def_span(scope));
             if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
             {
@@ -166,7 +165,7 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
         ty::ReFree(ty::FreeRegion {
             bound_region: ty::BoundRegionKind::BrNamed(_, name), ..
         }) => {
-            let mut sp = sm.guess_head_span(tcx.hir().span(node));
+            let mut sp = sm.guess_head_span(tcx.def_span(scope));
             if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(name))
             {
@@ -181,13 +180,13 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
                 } else {
                     (
                         format!("the anonymous lifetime #{} defined here", idx + 1),
-                        tcx.hir().span(node),
+                        tcx.def_span(scope),
                     )
                 }
             }
             _ => (
                 format!("the lifetime `{}` as defined here", region),
-                sm.guess_head_span(tcx.hir().span(node)),
+                sm.guess_head_span(tcx.def_span(scope)),
             ),
         },
         _ => bug!(),
@@ -1759,8 +1758,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values {
             if let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind() {
                 if let Some(def_id) = def_id.as_local() {
-                    let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                    let span = self.tcx.hir().span(hir_id);
+                    let span = self.tcx.def_span(def_id);
                     diag.span_note(span, "this closure does not fulfill the lifetime requirements");
                 }
             }
@@ -2212,9 +2210,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     if let Some(Node::Item(Item {
                         kind: ItemKind::Trait(..) | ItemKind::Impl { .. },
                         ..
-                    })) = hir.find(parent_id)
+                    })) = hir.find_by_def_id(parent_id)
                     {
-                        Some(self.tcx.generics_of(hir.local_def_id(parent_id).to_def_id()))
+                        Some(self.tcx.generics_of(parent_id))
                     } else {
                         None
                     },
@@ -2245,7 +2243,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         if let Node::GenericParam(param) = hir.get(id) {
                             has_bounds = !param.bounds.is_empty();
                         }
-                        let sp = hir.span(id);
+                        let sp = self.tcx.def_span(def_id);
                         // `sp` only covers `T`, change it so that it covers
                         // `T:` when appropriate
                         let is_impl_trait = bound_kind.to_string().starts_with("impl ");
@@ -2291,12 +2289,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .as_ref()
             .and_then(|(_, g, _)| g.params.first())
             .and_then(|param| param.def_id.as_local())
-            .map(|def_id| {
-                (
-                    hir.span(hir.local_def_id_to_hir_id(def_id)).shrink_to_lo(),
-                    format!("{}, ", new_lt),
-                )
-            });
+            .map(|def_id| (self.tcx.def_span(def_id).shrink_to_lo(), format!("{}, ", new_lt)));
 
         let labeled_user_string = match bound_kind {
             GenericKind::Param(ref p) => format!("the parameter type `{}`", p),

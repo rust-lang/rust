@@ -409,8 +409,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let generics = tcx.generics_of(self.mir_def_id());
                     let param = generics.type_param(&param_ty, tcx);
                     if let Some(generics) = tcx
-                        .hir()
-                        .get_generics(tcx.typeck_root_def_id(self.mir_def_id().to_def_id()))
+                        .typeck_root_def_id(self.mir_def_id().to_def_id())
+                        .as_local()
+                        .and_then(|def_id| tcx.hir().get_generics(def_id))
                     {
                         suggest_constraining_type_param(
                             tcx,

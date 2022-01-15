@@ -279,8 +279,7 @@ fn well_formed_types_in_env<'tcx>(
     if !def_id.is_local() {
         return ty::List::empty();
     }
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let node = tcx.hir().get(hir_id);
+    let node = tcx.hir().get_by_def_id(def_id.expect_local());
 
     enum NodeKind {
         TraitImpl,
@@ -436,9 +435,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-
-    let node = tcx.hir().get(hir_id);
+    let node = tcx.hir().get_by_def_id(def_id.expect_local());
 
     let fn_kind = node.fn_kind().unwrap_or_else(|| {
         bug!("asyncness: expected fn-like node but got `{:?}`", def_id);
