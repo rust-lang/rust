@@ -16,7 +16,7 @@ use hir::{InFile, Name, Semantics};
 use ide_db::RootDatabase;
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self, HasFormatSpecifier},
+    ast::{self, IsString},
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
     SyntaxNode, TextRange, WalkEvent, T,
@@ -336,17 +336,19 @@ fn traverse(
                 }
                 highlight_format_string(hl, &string, &expanded_string, range);
                 // Highlight escape sequences
-                if let Some(char_ranges) = string.char_ranges() {
-                    for (piece_range, _) in char_ranges.iter().filter(|(_, char)| char.is_ok()) {
-                        if string.text()[piece_range.start().into()..].starts_with('\\') {
-                            hl.add(HlRange {
-                                range: piece_range + range.start(),
-                                highlight: HlTag::EscapeSequence.into(),
-                                binding_hash: None,
-                            });
-                        }
+                string.escaped_char_ranges(&mut |piece_range, char| {
+                    if char.is_err() {
+                        return;
                     }
-                }
+
+                    if string.text()[piece_range.start().into()..].starts_with('\\') {
+                        hl.add(HlRange {
+                            range: piece_range + range.start(),
+                            highlight: HlTag::EscapeSequence.into(),
+                            binding_hash: None,
+                        });
+                    }
+                });
             }
         }
 
