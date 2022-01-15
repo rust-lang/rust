@@ -132,6 +132,9 @@
 //! methods called `Printer::scan_*`, and the 'PRINT' process is the
 //! method called `Printer::print`.
 
+mod ring;
+
+use ring::RingBuffer;
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt;
@@ -190,8 +193,7 @@ impl fmt::Display for Token {
     }
 }
 
-fn buf_str(buf: &[BufEntry], left: usize, right: usize, lim: usize) -> String {
-    let n = buf.len();
+fn buf_str(buf: &RingBuffer<BufEntry>, left: usize, right: usize, lim: usize) -> String {
     let mut i = left;
     let mut l = lim;
     let mut s = String::from("[");
@@ -202,7 +204,6 @@ fn buf_str(buf: &[BufEntry], left: usize, right: usize, lim: usize) -> String {
         }
         s.push_str(&format!("{}={}", buf[i].size, &buf[i].token));
         i += 1;
-        i %= n;
     }
     s.push(']');
     s
@@ -224,7 +225,6 @@ const SIZE_INFINITY: isize = 0xffff;
 
 pub struct Printer {
     out: String,
-    buf_max_len: usize,
     /// Width of lines we're constrained to
     margin: isize,
     /// Number of spaces left on line
@@ -234,7 +234,7 @@ pub struct Printer {
     /// Index of right side of input stream
     right: usize,
     /// Ring-buffer of tokens and calculated sizes
-    buf: Vec<BufEntry>,
+    buf: RingBuffer<BufEntry>,
     /// Running size of stream "...left"
     left_total: isize,
     /// Running size of stream "...right"
@@ -267,19 +267,16 @@ impl Default for BufEntry {
 impl Printer {
     pub fn new() -> Self {
         let linewidth = 78;
-        // Yes 55, it makes the ring buffers big enough to never fall behind.
-        let n: usize = 55 * linewidth;
         debug!("Printer::new {}", linewidth);
+        let mut buf = RingBuffer::new();
+        buf.advance_right();
         Printer {
             out: String::new(),
-            buf_max_len: n,
             margin: linewidth as isize,
             space: linewidth as isize,
             left: 0,
             right: 0,
-            // Initialize a single entry; advance_right() will extend it on demand
-            // up to `buf_max_len` elements.
-            buf: vec![BufEntry::default()],
+            buf,
             left_total: 0,
             right_total: 0,
             scan_stack: VecDeque::new(),
@@ -308,8 +305,8 @@ impl Printer {
         if self.scan_stack.is_empty() {
             self.left_total = 1;
             self.right_total = 1;
-            self.left = 0;
-            self.right = 0;
+            self.right = self.left;
+            self.buf.truncate(1);
         } else {
             self.advance_right();
         }
@@ -332,8 +329,8 @@ impl Printer {
         if self.scan_stack.is_empty() {
             self.left_total = 1;
             self.right_total = 1;
-            self.left = 0;
-            self.right = 0;
+            self.right = self.left;
+            self.buf.truncate(1);
         } else {
             self.advance_right();
         }
@@ -400,12 +397,7 @@ impl Printer {
 
     fn advance_right(&mut self) {
         self.right += 1;
-        self.right %= self.buf_max_len;
-        // Extend the buf if necessary.
-        if self.right == self.buf.len() {
-            self.buf.push(BufEntry::default());
-        }
-        assert_ne!(self.right, self.left);
+        self.buf.advance_right();
     }
 
     fn advance_left(&mut self) {
@@ -437,8 +429,8 @@ impl Printer {
                 break;
             }
 
+            self.buf.advance_left();
             self.left += 1;
-            self.left %= self.buf_max_len;
 
             left_size = self.buf[self.left].size;
         }
