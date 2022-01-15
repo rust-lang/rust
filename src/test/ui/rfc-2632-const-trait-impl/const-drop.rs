@@ -45,6 +45,15 @@ mod t {
 
     pub struct HasConstDrop(pub ConstDrop);
     pub struct TrivialFields(pub u8, pub i8, pub usize, pub isize);
+
+    pub trait SomeTrait {}
+    impl const SomeTrait for () {}
+
+    pub struct ConstDropWithBound<T: SomeTrait>;
+
+    impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {
+        fn drop(&mut self) {}
+    }
 }
 
 use t::*;
@@ -61,6 +70,7 @@ implements_const_drop! {
     TrivialFields(1, 2, 3, 4),
     &1,
     &1 as *const i32,
+    ConstDropWithBound<()>,
 }
 
 fn main() {

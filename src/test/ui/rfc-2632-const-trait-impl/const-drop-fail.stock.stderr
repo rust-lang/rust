@@ -1,11 +1,3 @@
-error: `~const` is not allowed here
-  --> $DIR/const-drop-fail.rs:27:35
-   |
-LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   |                                   ^^^^^^^^
-   |
-   = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
-
 error[E0277]: the trait bound `NonTrivialDrop: Drop` is not satisfied
   --> $DIR/const-drop-fail.rs:45:5
    |
