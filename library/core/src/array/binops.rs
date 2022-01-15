@@ -11,23 +11,21 @@ fn md_array<T, const N: usize>(a: [T; N]) -> [ManuallyDrop<T>; N] {
 /// Drop checked to handle dropping the values properly in case of a panic
 struct DropCheck<T, U, O, const N: usize> {
     lhs: [ManuallyDrop<T>; N],
-    rhs: [ManuallyDrop<U>; N],
+    assign: DropCheckAssign<U, N>,
     output: [MaybeUninit<O>; N],
-    i: usize,
 }
 
 impl<T, U, O, const N: usize> Drop for DropCheck<T, U, O, N> {
     fn drop(&mut self) {
-        let i = self.i;
+        let i = self.assign.i;
         // SAFETY:
         // `i` defines how many elements are valid at this point.
         // The only possible panic point is the element-wise `$method` op,
-        // so it means that `i+1..` elements are currently live in lhs/rhs
+        // so it means that `i+1..` elements are currently live in lhs
         // and `..i` elements are live in the output.
         unsafe {
-            drop_in_place((&mut self.lhs[i + 1..]) as *mut [_] as *mut [T]);
-            drop_in_place((&mut self.rhs[i + 1..]) as *mut [_] as *mut [U]);
-            drop_in_place(&mut self.output[..i] as *mut [_] as *mut [O]);
+            drop_in_place((&mut self.lhs[i..]) as *mut [_] as *mut [T]);
+            drop_in_place(&mut self.output[..i - 1] as *mut [_] as *mut [O]);
         }
     }
 }
@@ -36,9 +34,8 @@ impl<T, U, O, const N: usize> DropCheck<T, U, O, N> {
     fn new(lhs: [T; N], rhs: [U; N]) -> Self {
         Self {
             lhs: md_array(lhs),
-            rhs: md_array(rhs),
+            assign: DropCheckAssign::new(rhs),
             output: MaybeUninit::uninit_array(),
-            i: 0,
         }
     }
 
@@ -54,15 +51,15 @@ impl<T, U, O, const N: usize> DropCheck<T, U, O, N> {
 
     /// # Safety
     /// Must be called no more than `N` times.
-    unsafe fn inc(&mut self, f: impl FnOnce(T, U) -> O) {
+    #[inline(always)]
+    unsafe fn step(&mut self, f: impl FnOnce(T, U) -> O) {
         // SAFETY:
         // Since `dc.i` is stricty-monotonic, we will only
         // take each element only once from each of lhs/rhs
         unsafe {
-            let lhs = ManuallyDrop::take(&mut self.lhs[self.i]);
-            let rhs = ManuallyDrop::take(&mut self.rhs[self.i]);
-            self.output[self.i].write(f(lhs, rhs));
-            self.i += 1;
+            let lhs = ManuallyDrop::take(&mut self.lhs[self.assign.i]);
+            let out = &mut self.output[self.assign.i];
+            out.write(f(lhs, self.assign.next_unchecked()));
         }
     }
 }
@@ -82,7 +79,7 @@ macro_rules! binop {
                 for _ in 0..N {
                     // SAFETY:
                     // Will only be called a maximum of N times
-                    unsafe { dc.inc(T::$method) }
+                    unsafe { dc.step(T::$method) }
                 }
 
                 // SAFETY:
@@ -107,29 +104,27 @@ impl<U, const N: usize> Drop for DropCheckAssign<U, N> {
         // The only possible panic point is the element-wise `$method` op,
         // so it means that `i+1..` elements are currently live in rhs
         unsafe {
-            drop_in_place((&mut self.rhs[i + 1..]) as *mut [_] as *mut [U]);
+            drop_in_place((&mut self.rhs[i..]) as *mut [_] as *mut [U]);
         }
     }
 }
 
 impl<U, const N: usize> DropCheckAssign<U, N> {
     fn new(rhs: [U; N]) -> Self {
-        Self {
-            rhs: md_array(rhs),
-            i: 0,
-        }
+        Self { rhs: md_array(rhs), i: 0 }
     }
 
     /// # Safety
     /// Must be called no more than `N` times.
-    unsafe fn inc<T>(&mut self, lhs: &mut T, f: impl FnOnce(&mut T, U)) {
+    #[inline(always)]
+    unsafe fn next_unchecked(&mut self) -> U {
         // SAFETY:
         // Since `dc.i` is stricty-monotonic, we will only
         // take each element only once from each of lhs/rhs
         unsafe {
             let rhs = ManuallyDrop::take(&mut self.rhs[self.i]);
-            f(lhs, rhs);
             self.i += 1;
+            rhs
         }
     }
 }
@@ -147,7 +142,7 @@ macro_rules! binop_assign {
                 for _ in 0..N {
                     // SAFETY:
                     // Will only be called a maximum of N times
-                    unsafe { dc.inc(&mut self[dc.i], T::$method) }
+                    unsafe { self[dc.i].$method(dc.next_unchecked()) }
                 }
             }
         }
