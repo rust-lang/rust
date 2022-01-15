@@ -58,6 +58,10 @@ crate struct Cache {
     /// the impl for the inlined type.
     crate exact_paths: FxHashMap<DefId, Vec<Symbol>>,
 
+    /// Associates every items with all of its public reexports. This is used to merge
+    /// every docstrings that are relevant to show.
+    crate inlined_items: FxHashMap<DefId, Vec<DefId>>,
+
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods

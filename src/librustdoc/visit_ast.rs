@@ -68,6 +68,7 @@ crate struct RustdocVisitor<'a, 'tcx> {
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
     exact_paths: FxHashMap<DefId, Vec<Symbol>>,
+    inlined_items: FxHashMap<DefId, Vec<DefId>>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
@@ -78,6 +79,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         RustdocVisitor {
             cx,
             view_item_stack: stack,
+            inlined_items: FxHashMap::default(),
             inlining: false,
             inside_public_path: true,
             exact_paths: FxHashMap::default(),
@@ -144,6 +146,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             .collect();
 
         self.cx.cache.exact_paths = self.exact_paths;
+        self.cx.cache.inlined_items = self.inlined_items;
+
         top_level_module
     }
 
@@ -194,6 +198,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         };
 
         let use_attrs = tcx.hir().attrs(id);
+
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
         let is_no_inline = use_attrs.lists(sym::doc).has_word(sym::no_inline)
             || use_attrs.lists(sym::doc).has_word(sym::hidden);
@@ -320,6 +325,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         om,
                         please_inline,
                     ) {
+                        self.inlined_items
+                            .entry(path.res.def_id())
+                            .or_default()
+                            .push(item.def_id.to_def_id());
                         return;
                     }
                 }

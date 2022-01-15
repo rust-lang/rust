@@ -445,12 +445,19 @@ impl Item {
         cx: &mut DocContext<'_>,
     ) -> Item {
         let ast_attrs = cx.tcx.get_attrs(def_id);
+        let mut clean_attrs = box ast_attrs.clean(cx);
+
+        if let Some(items) = cx.cache.inlined_items.get(&def_id) {
+            tracing::debug!("associating attributes from associated inlined items: {:?}", items);
+            let other_attrs = box cx.tcx.get_attrs(def_id).clean(cx);
+            clean_attrs.doc_strings.extend(other_attrs.doc_strings);
+        }
 
         Self::from_def_id_and_attrs_and_parts(
             def_id,
             name,
             kind,
-            box ast_attrs.clean(cx),
+            clean_attrs,
             cx,
             ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
