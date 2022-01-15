@@ -18,6 +18,7 @@
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
+#![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
 
 #[macro_use]
 extern crate tracing;
