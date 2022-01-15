@@ -411,7 +411,11 @@ impl<'tcx> ExprVisitor<'tcx> {
                             let msg = format!(
                                 "register class `{}` requires at least one of the following target features: {}",
                                 reg_class.name(),
-                                features.iter().map(|f| f.as_str()).collect::<Vec<_>>().join(", ")
+                                features
+                                    .iter()
+                                    .map(|f| f.as_str())
+                                    .intersperse(", ")
+                                    .collect::<String>(),
                             );
                             self.tcx.sess.struct_span_err(*op_sp, &msg).emit();
                             // register isn't enabled, don't do more checks
