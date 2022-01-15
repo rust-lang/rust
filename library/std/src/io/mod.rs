@@ -1031,14 +1031,14 @@ pub trait Read {
 ///
 /// # use std::io;
 /// fn main() -> io::Result<()> {
-///     let stdin = io::read_to_string(&mut io::stdin())?;
+///     let stdin = io::read_to_string(io::stdin())?;
 ///     println!("Stdin was:");
 ///     println!("{}", stdin);
 ///     Ok(())
 /// }
 /// ```
 #[unstable(feature = "io_read_to_string", issue = "80218")]
-pub fn read_to_string<R: Read>(reader: &mut R) -> Result<String> {
+pub fn read_to_string<R: Read>(mut reader: R) -> Result<String> {
     let mut buf = String::new();
     reader.read_to_string(&mut buf)?;
     Ok(buf)
