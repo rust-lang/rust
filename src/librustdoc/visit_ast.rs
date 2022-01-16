@@ -4,7 +4,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::middle::privacy::AccessLevel;
@@ -68,7 +68,7 @@ crate struct RustdocVisitor<'a, 'tcx> {
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
     exact_paths: FxHashMap<DefId, Vec<Symbol>>,
-    inlined_items: FxHashMap<DefId, Vec<DefId>>,
+    inlined_items: FxHashMap<DefId, Vec<LocalDefId>>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
@@ -325,10 +325,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         om,
                         please_inline,
                     ) {
-                        self.inlined_items
-                            .entry(path.res.def_id())
-                            .or_default()
-                            .push(item.def_id.to_def_id());
+                        self.inlined_items.entry(path.res.def_id()).or_default().push(item.def_id);
                         return;
                     }
                 }

@@ -1,7 +1,7 @@
 use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{sym, Symbol};
@@ -53,6 +53,7 @@ crate struct Cache {
     /// This map is used when writing out the special 'implementors'
     /// javascript file. By using the exact path that the type
     /// is declared with, we ensure that each path will be identical
+    ///
     /// to the path used if the corresponding type is inlined. By
     /// doing this, we can detect duplicate impls on a trait page, and only display
     /// the impl for the inlined type.
@@ -60,7 +61,7 @@ crate struct Cache {
 
     /// Associates every items with all of its public reexports. This is used to merge
     /// every docstrings that are relevant to show.
-    crate inlined_items: FxHashMap<DefId, Vec<DefId>>,
+    crate inlined_items: FxHashMap<DefId, Vec<LocalDefId>>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
