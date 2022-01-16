@@ -302,7 +302,7 @@ nonzero_integers_div! {
 
 // A bunch of methods for unsigned nonzero types only.
 macro_rules! nonzero_unsigned_operations {
-    ( $( $Ty: ident($Int: ty); )+ ) => {
+    ( $( $Ty: ident($Int: ident); )+ ) => {
         $(
             impl $Ty {
                 /// Add an unsigned integer to a non-zero value.
@@ -441,6 +441,56 @@ macro_rules! nonzero_unsigned_operations {
                     } else {
                         None
                     }
+                }
+
+                /// Returns the base 2 logarithm of the number, rounded down.
+                ///
+                /// This is the same operation as
+                #[doc = concat!("[`", stringify!($Int), "::log2`],")]
+                /// except that it has no failure cases to worry about
+                /// since this value can never be zero.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(int_log)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(7).unwrap().log2(), 2);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(8).unwrap().log2(), 3);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(9).unwrap().log2(), 3);")]
+                /// ```
+                #[unstable(feature = "int_log", issue = "70887")]
+                #[must_use = "this returns the result of the operation, \
+                              without modifying the original"]
+                #[inline]
+                pub const fn log2(self) -> u32 {
+                    <$Int>::BITS - 1 - self.leading_zeros()
+                }
+
+                /// Returns the base 10 logarithm of the number, rounded down.
+                ///
+                /// This is the same operation as
+                #[doc = concat!("[`", stringify!($Int), "::log10`],")]
+                /// except that it has no failure cases to worry about
+                /// since this value can never be zero.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(int_log)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(99).unwrap().log10(), 1);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(100).unwrap().log10(), 2);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(101).unwrap().log10(), 2);")]
+                /// ```
+                #[unstable(feature = "int_log", issue = "70887")]
+                #[must_use = "this returns the result of the operation, \
+                              without modifying the original"]
+                #[inline]
+                pub const fn log10(self) -> u32 {
+                    super::int_log10::$Int(self.0)
                 }
             }
         )+
