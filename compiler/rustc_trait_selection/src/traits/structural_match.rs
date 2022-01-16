@@ -130,9 +130,6 @@ impl<'a, 'tcx> Search<'a, 'tcx> {
 
 impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
     type BreakTy = NonStructuralMatchTy<'tcx>;
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        Some(self.tcx())
-    }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!("Search visiting ty: {:?}", ty);

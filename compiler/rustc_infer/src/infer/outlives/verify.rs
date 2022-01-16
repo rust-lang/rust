@@ -189,7 +189,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         visited: &mut SsoHashSet<GenericArg<'tcx>>,
     ) -> VerifyBound<'tcx> {
         let mut bounds = parent
-            .walk_shallow(self.tcx, visited)
+            .walk_shallow(visited)
             .filter_map(|child| match child.unpack() {
                 GenericArgKind::Type(ty) => Some(self.type_bound(ty, visited)),
                 GenericArgKind::Lifetime(lt) => {

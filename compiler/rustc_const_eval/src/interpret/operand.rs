@@ -568,7 +568,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
             ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorReported)),
             ty::ConstKind::Unevaluated(uv) => {
-                let instance = self.resolve(uv.def, uv.substs(*self.tcx))?;
+                let instance = self.resolve(uv.def, uv.substs)?;
                 Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
             }
             ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {

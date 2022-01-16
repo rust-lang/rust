@@ -124,7 +124,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             .predicates_of(def_id.to_def_id())
             .predicates
             .iter()
-            .filter_map(|(p, _)| if p.is_global(tcx) { Some(*p) } else { None });
+            .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
         if traits::impossible_predicates(
             tcx,
             traits::elaborate_predicates(tcx, predicates).map(|o| o.predicate).collect(),
@@ -136,7 +136,6 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         trace!("ConstProp starting for {:?}", def_id);
 
         let dummy_body = &Body::new(
-            tcx,
             body.source,
             body.basic_blocks().clone(),
             body.source_scopes.clone(),
@@ -473,7 +472,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// Returns the value, if any, of evaluating `c`.
     fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
-        if c.definitely_needs_subst(self.tcx) {
+        if c.needs_subst() {
             return None;
         }
 
@@ -488,14 +487,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             // Promoteds must lint and not error as the user didn't ask for them
                             ConstKind::Unevaluated(ty::Unevaluated {
                                 def: _,
-                                substs_: _,
+                                substs: _,
                                 promoted: Some(_),
                             }) => true,
                             // Out of backwards compatibility we cannot report hard errors in unused
                             // generic functions using associated constants of the generic parameters.
-                            _ => c.literal.definitely_needs_subst(*tcx),
+                            _ => c.literal.needs_subst(),
                         },
-                        ConstantKind::Val(_, ty) => ty.definitely_needs_subst(*tcx),
+                        ConstantKind::Val(_, ty) => ty.needs_subst(),
                     };
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
@@ -726,7 +725,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
 
         // FIXME we need to revisit this for #67176
-        if rvalue.definitely_needs_subst(self.tcx) {
+        if rvalue.needs_subst() {
             return None;
         }
 

@@ -67,7 +67,6 @@ fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         opt_const_param_of: type_of::opt_const_param_of,
-        default_anon_const_substs: type_of::default_anon_const_substs,
         type_of: type_of::type_of,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
@@ -2277,7 +2276,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             tcx,
             &mut predicates,
             trait_ref,
-            &mut cgp::parameters_for_impl(tcx, self_ty, trait_ref),
+            &mut cgp::parameters_for_impl(self_ty, trait_ref),
         );
     }
 

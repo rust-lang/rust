@@ -95,15 +95,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_vars_bound_at_or_above(ty::INNERMOST)
     }
 
-    fn definitely_has_type_flags(&self, tcx: TyCtxt<'tcx>, flags: TypeFlags) -> bool {
-        self.visit_with(&mut HasTypeFlagsVisitor { tcx: Some(tcx), flags }).break_value()
-            == Some(FoundFlags)
-    }
-
     #[instrument(level = "trace")]
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
-        self.visit_with(&mut HasTypeFlagsVisitor { tcx: None, flags }).break_value()
-            == Some(FoundFlags)
+        self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value() == Some(FoundFlags)
     }
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
@@ -114,18 +108,8 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
-    fn potentially_has_param_types_or_consts(&self) -> bool {
-        self.has_type_flags(
-            TypeFlags::HAS_KNOWN_TY_PARAM
-                | TypeFlags::HAS_KNOWN_CT_PARAM
-                | TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS,
-        )
-    }
-    fn definitely_has_param_types_or_consts(&self, tcx: TyCtxt<'tcx>) -> bool {
-        self.definitely_has_type_flags(
-            tcx,
-            TypeFlags::HAS_KNOWN_TY_PARAM | TypeFlags::HAS_KNOWN_CT_PARAM,
-        )
+    fn has_param_types_or_consts(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_CT_PARAM)
     }
     fn has_infer_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_INFER)
@@ -146,18 +130,13 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
                 | TypeFlags::HAS_CT_PLACEHOLDER,
         )
     }
-    fn potentially_needs_subst(&self) -> bool {
-        self.has_type_flags(
-            TypeFlags::KNOWN_NEEDS_SUBST | TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS,
-        )
-    }
-    fn definitely_needs_subst(&self, tcx: TyCtxt<'tcx>) -> bool {
-        self.definitely_has_type_flags(tcx, TypeFlags::KNOWN_NEEDS_SUBST)
+    fn needs_subst(&self) -> bool {
+        self.has_type_flags(TypeFlags::NEEDS_SUBST)
     }
     /// "Free" regions in this context means that it has any region
     /// that is not (a) erased or (b) late-bound.
-    fn has_free_regions(&self, tcx: TyCtxt<'tcx>) -> bool {
-        self.definitely_has_type_flags(tcx, TypeFlags::HAS_KNOWN_FREE_REGIONS)
+    fn has_free_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
 
     fn has_erased_regions(&self) -> bool {
@@ -165,25 +144,15 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 
     /// True if there are any un-erased free regions.
-    fn has_erasable_regions(&self, tcx: TyCtxt<'tcx>) -> bool {
-        self.definitely_has_type_flags(tcx, TypeFlags::HAS_KNOWN_FREE_REGIONS)
-    }
-
-    /// Indicates whether this value definitely references only 'global'
-    /// generic parameters that are the same regardless of what fn we are
-    /// in. This is used for caching.
-    ///
-    /// Note that this function is pessimistic and may incorrectly return
-    /// `false`.
-    fn is_known_global(&self) -> bool {
-        !self.has_type_flags(TypeFlags::HAS_POTENTIAL_FREE_LOCAL_NAMES)
+    fn has_erasable_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
 
     /// Indicates whether this value references only 'global'
     /// generic parameters that are the same regardless of what fn we are
     /// in. This is used for caching.
-    fn is_global(&self, tcx: TyCtxt<'tcx>) -> bool {
-        !self.definitely_has_type_flags(tcx, TypeFlags::HAS_KNOWN_FREE_LOCAL_NAMES)
+    fn is_global(&self) -> bool {
+        !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
     }
 
     /// True if there are any late-bound regions
@@ -361,17 +330,6 @@ where
 
 pub trait TypeVisitor<'tcx>: Sized {
     type BreakTy = !;
-    /// Supplies the `tcx` for an unevaluated anonymous constant in case its default substs
-    /// are not yet supplied.
-    ///
-    /// Returning `None` for this method is only recommended if the `TypeVisitor`
-    /// does not care about default anon const substs, as it ignores generic parameters,
-    /// and fetching the default substs would cause a query cycle.
-    ///
-    /// For visitors which return `None` we completely skip the default substs in `ty::Unevaluated::super_visit_with`.
-    /// This means that incorrectly returning `None` can very quickly lead to ICE or other critical bugs, so be careful and
-    /// try to return an actual `tcx` if possible.
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>>;
 
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
@@ -488,8 +446,7 @@ impl<'tcx> TyCtxt<'tcx> {
         value: &impl TypeFoldable<'tcx>,
         callback: impl FnMut(ty::Region<'tcx>) -> bool,
     ) -> bool {
-        struct RegionVisitor<'tcx, F> {
-            tcx: TyCtxt<'tcx>,
+        struct RegionVisitor<F> {
             /// The index of a binder *just outside* the things we have
             /// traversed. If we encounter a bound region bound by this
             /// binder or one outer to it, it appears free. Example:
@@ -511,15 +468,11 @@ impl<'tcx> TyCtxt<'tcx> {
             callback: F,
         }
 
-        impl<'tcx, F> TypeVisitor<'tcx> for RegionVisitor<'tcx, F>
+        impl<'tcx, F> TypeVisitor<'tcx> for RegionVisitor<F>
         where
             F: FnMut(ty::Region<'tcx>) -> bool,
         {
             type BreakTy = ();
-
-            fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-                Some(self.tcx)
-            }
 
             fn visit_binder<T: TypeFoldable<'tcx>>(
                 &mut self,
@@ -548,7 +501,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 // We're only interested in types involving regions
-                if ty.flags().intersects(TypeFlags::HAS_POTENTIAL_FREE_REGIONS) {
+                if ty.flags().intersects(TypeFlags::HAS_FREE_REGIONS) {
                     ty.super_visit_with(self)
                 } else {
                     ControlFlow::CONTINUE
@@ -556,9 +509,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
-        value
-            .visit_with(&mut RegionVisitor { tcx: self, outer_index: ty::INNERMOST, callback })
-            .is_break()
+        value.visit_with(&mut RegionVisitor { outer_index: ty::INNERMOST, callback }).is_break()
     }
 }
 
@@ -897,7 +848,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let mut collector = LateBoundRegionsCollector::new(self, just_constraint);
+        let mut collector = LateBoundRegionsCollector::new(just_constraint);
         let result = value.as_ref().skip_binder().visit_with(&mut collector);
         assert!(result.is_continue()); // should never have stopped early
         collector.regions
@@ -963,11 +914,6 @@ impl<'tcx> ValidateBoundVars<'tcx> {
 
 impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
     type BreakTy = ();
-
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        // Anonymous constants do not contain bound vars in their substs by default.
-        None
-    }
 
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
@@ -1183,11 +1129,6 @@ struct HasEscapingVarsVisitor {
 impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     type BreakTy = FoundEscapingVars;
 
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        // Anonymous constants do not contain bound vars in their substs by default.
-        None
-    }
-
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: &Binder<'tcx, T>,
@@ -1252,35 +1193,32 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
 struct FoundFlags;
 
 // FIXME: Optimize for checking for infer flags
-struct HasTypeFlagsVisitor<'tcx> {
-    tcx: Option<TyCtxt<'tcx>>,
+struct HasTypeFlagsVisitor {
     flags: ty::TypeFlags,
 }
 
-impl<'tcx> std::fmt::Debug for HasTypeFlagsVisitor<'tcx> {
+impl std::fmt::Debug for HasTypeFlagsVisitor {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.flags.fmt(fmt)
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
+impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        bug!("we shouldn't call this method as we manually look at ct substs");
-    }
 
     #[inline]
     #[instrument(level = "trace")]
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        let flags = t.flags();
-        trace!(t.flags=?t.flags());
-        if flags.intersects(self.flags) {
+    fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
+        debug!(
+            "HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}",
+            t,
+            t.flags(),
+            self.flags
+        );
+        if t.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
-            match flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
-                true if self.tcx.is_some() => UnknownConstSubstsVisitor::search(&self, t),
-                _ => ControlFlow::CONTINUE,
-            }
+            ControlFlow::CONTINUE
         }
     }
 
@@ -1304,10 +1242,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
-            match flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
-                true if self.tcx.is_some() => UnknownConstSubstsVisitor::search(&self, c),
-                _ => ControlFlow::CONTINUE,
-            }
+            ControlFlow::CONTINUE
         }
     }
 
@@ -1319,128 +1254,28 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor<'tcx> {
         if flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
-            match flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
-                true if self.tcx.is_some() => UnknownConstSubstsVisitor::search(&self, uv),
-                _ => ControlFlow::CONTINUE,
-            }
+            ControlFlow::CONTINUE
         }
     }
 
     #[inline]
     #[instrument(level = "trace")]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
-        let flags = predicate.inner.flags;
-        trace!(predicate.flags=?flags);
-        if flags.intersects(self.flags) {
+        debug!(
+            "HasTypeFlagsVisitor: predicate={:?} predicate.flags={:?} self.flags={:?}",
+            predicate, predicate.inner.flags, self.flags
+        );
+        if predicate.inner.flags.intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
-            match flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
-                true if self.tcx.is_some() => UnknownConstSubstsVisitor::search(&self, predicate),
-                _ => ControlFlow::CONTINUE,
-            }
-        }
-    }
-}
-
-struct UnknownConstSubstsVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    flags: ty::TypeFlags,
-}
-
-impl<'tcx> UnknownConstSubstsVisitor<'tcx> {
-    /// This is fairly cold and we don't want to
-    /// bloat the size of the `HasTypeFlagsVisitor`.
-    #[inline(never)]
-    pub fn search<T: TypeFoldable<'tcx>>(
-        visitor: &HasTypeFlagsVisitor<'tcx>,
-        v: T,
-    ) -> ControlFlow<FoundFlags> {
-        if visitor.flags.intersects(TypeFlags::MAY_NEED_DEFAULT_CONST_SUBSTS) {
-            v.super_visit_with(&mut UnknownConstSubstsVisitor {
-                tcx: visitor.tcx.unwrap(),
-                flags: visitor.flags,
-            })
-        } else {
             ControlFlow::CONTINUE
-        }
-    }
-}
-
-impl<'tcx> TypeVisitor<'tcx> for UnknownConstSubstsVisitor<'tcx> {
-    type BreakTy = FoundFlags;
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        bug!("we shouldn't call this method as we manually look at ct substs");
-    }
-
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if t.flags().intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
-            t.super_visit_with(self)
-        } else {
-            ControlFlow::CONTINUE
-        }
-    }
-
-    #[inline]
-    fn visit_unevaluated_const(&mut self, uv: ty::Unevaluated<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if uv.substs_.is_none() {
-            self.tcx
-                .default_anon_const_substs(uv.def.did)
-                .visit_with(&mut HasTypeFlagsVisitor { tcx: Some(self.tcx), flags: self.flags })
-        } else {
-            ControlFlow::CONTINUE
-        }
-    }
-
-    #[inline]
-    fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if predicate.inner.flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
-            predicate.super_visit_with(self)
-        } else {
-            ControlFlow::CONTINUE
-        }
-    }
-}
-
-impl<'tcx> TyCtxt<'tcx> {
-    /// This is a HACK(const_generics) and should probably not be needed.
-    /// Might however be perf relevant, so who knows.
-    ///
-    /// FIXME(@lcnr): explain this function a bit more
-    pub fn expose_default_const_substs<T: TypeFoldable<'tcx>>(self, v: T) -> T {
-        v.fold_with(&mut ExposeDefaultConstSubstsFolder { tcx: self })
-    }
-}
-
-struct ExposeDefaultConstSubstsFolder<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-impl<'tcx> TypeFolder<'tcx> for ExposeDefaultConstSubstsFolder<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if ty.flags().intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
-            ty.super_fold_with(self)
-        } else {
-            ty
-        }
-    }
-
-    fn fold_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        if pred.inner.flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
-            pred.super_fold_with(self)
-        } else {
-            pred
         }
     }
 }
 
 /// Collects all the late-bound regions at the innermost binding level
 /// into a hash set.
-struct LateBoundRegionsCollector<'tcx> {
-    tcx: TyCtxt<'tcx>,
+struct LateBoundRegionsCollector {
     current_index: ty::DebruijnIndex,
     regions: FxHashSet<ty::BoundRegionKind>,
 
@@ -1454,10 +1289,9 @@ struct LateBoundRegionsCollector<'tcx> {
     just_constrained: bool,
 }
 
-impl<'tcx> LateBoundRegionsCollector<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, just_constrained: bool) -> Self {
+impl LateBoundRegionsCollector {
+    fn new(just_constrained: bool) -> Self {
         LateBoundRegionsCollector {
-            tcx,
             current_index: ty::INNERMOST,
             regions: Default::default(),
             just_constrained,
@@ -1465,11 +1299,7 @@ impl<'tcx> LateBoundRegionsCollector<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector<'tcx> {
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        Some(self.tcx)
-    }
-
+impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: &Binder<'tcx, T>,

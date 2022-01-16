@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ty = self.resolve_vars_if_possible(ty);
                     // We walk the argument type because the argument's type could have
                     // been `Option<T>`, but the `FulfillmentError` references `T`.
-                    if ty.walk(self.tcx).any(|arg| arg == self_) { Some(i) } else { None }
+                    if ty.walk().any(|arg| arg == self_) { Some(i) } else { None }
                 })
                 .collect::<Vec<usize>>();
 

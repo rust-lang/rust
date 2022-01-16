@@ -997,7 +997,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let tail_field_ty = tcx.type_of(tail_field.did);
 
                 let mut unsizing_params = GrowableBitSet::new_empty();
-                for arg in tail_field_ty.walk(tcx) {
+                for arg in tail_field_ty.walk() {
                     if let Some(i) = maybe_unsizing_param_idx(arg) {
                         unsizing_params.insert(i);
                     }
@@ -1006,7 +1006,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Ensure none of the other fields mention the parameters used
                 // in unsizing.
                 for field in prefix_fields {
-                    for arg in tcx.type_of(field.did).walk(tcx) {
+                    for arg in tcx.type_of(field.did).walk() {
                         if let Some(i) = maybe_unsizing_param_idx(arg) {
                             unsizing_params.remove(i);
                         }

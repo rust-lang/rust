@@ -157,16 +157,6 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         predicates.extend(environment);
     }
 
-    // It's important that we include the default substs in unevaluated
-    // constants, since `Unevaluated` instances in predicates whose substs are None
-    // can lead to "duplicate" caller bounds candidates during trait selection,
-    // duplicate in the sense that both have their default substs, but the
-    // candidate that resulted from a superpredicate still uses `None` in its
-    // `substs_` field of `Unevaluated` to indicate that it has its default substs,
-    // whereas the other candidate has `substs_: Some(default_substs)`, see
-    // issue #89334
-    predicates = tcx.expose_default_const_substs(predicates);
-
     let local_did = def_id.as_local();
     let hir_id = local_did.map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id));
 
@@ -333,7 +323,7 @@ fn well_formed_types_in_env<'tcx>(
         // constituents are well-formed.
         NodeKind::InherentImpl => {
             let self_ty = tcx.type_of(def_id);
-            inputs.extend(self_ty.walk(tcx));
+            inputs.extend(self_ty.walk());
         }
 
         // In an fn, we assume that the arguments and all their constituents are
@@ -342,7 +332,7 @@ fn well_formed_types_in_env<'tcx>(
             let fn_sig = tcx.fn_sig(def_id);
             let fn_sig = tcx.liberate_late_bound_regions(def_id, fn_sig);
 
-            inputs.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk(tcx)));
+            inputs.extend(fn_sig.inputs().iter().flat_map(|ty| ty.walk()));
         }
 
         NodeKind::Other => (),

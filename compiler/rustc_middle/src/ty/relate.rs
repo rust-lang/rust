@@ -599,13 +599,13 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
             let substs = relation.relate_with_variance(
                 ty::Variance::Invariant,
                 ty::VarianceDiagInfo::default(),
-                au.substs(tcx),
-                bu.substs(tcx),
+                au.substs,
+                bu.substs,
             )?;
             return Ok(tcx.mk_const(ty::Const {
                 val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: au.def,
-                    substs_: Some(substs),
+                    substs,
                     promoted: au.promoted,
                 }),
                 ty: a.ty,

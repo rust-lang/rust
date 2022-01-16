@@ -209,7 +209,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
             let layout = bx.layout_of(fx.monomorphize(decl.ty));
-            assert!(!layout.ty.has_erasable_regions(cx.tcx()));
+            assert!(!layout.ty.has_erasable_regions());
 
             if local == mir::RETURN_PLACE && fx.fn_abi.ret.is_indirect() {
                 debug!("alloc: {:?} (return place) -> place", local);

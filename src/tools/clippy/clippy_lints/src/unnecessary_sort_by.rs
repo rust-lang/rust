@@ -226,7 +226,7 @@ fn expr_borrows(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
     matches!(ty.kind(), ty::Ref(..))
         || ty
-            .walk(cx.tcx)
+            .walk()
             .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)))
 }
 

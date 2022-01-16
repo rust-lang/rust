@@ -185,7 +185,7 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
                 write!(f, "ClosureKind({:?}, {:?}, {:?})", closure_def_id, closure_substs, kind)
             }
             ty::PredicateKind::ConstEvaluatable(uv) => {
-                write!(f, "ConstEvaluatable({:?}, {:?})", uv.def, uv.substs_)
+                write!(f, "ConstEvaluatable({:?}, {:?})", uv.def, uv.substs)
             }
             ty::PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({:?}, {:?})", c1, c2),
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
@@ -1226,7 +1226,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx> {
     ) -> Result<Self, F::Error> {
         Ok(ty::Unevaluated {
             def: self.def,
-            substs_: Some(self.substs(folder.tcx()).try_fold_with(folder)?),
+            substs: self.substs.try_fold_with(folder)?,
             promoted: self.promoted,
         })
     }
@@ -1236,14 +1236,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        if let Some(tcx) = visitor.tcx_for_anon_const_substs() {
-            self.substs(tcx).visit_with(visitor)
-        } else if let Some(substs) = self.substs_ {
-            substs.visit_with(visitor)
-        } else {
-            debug!("ignoring default substs of `{:?}`", self.def);
-            ControlFlow::CONTINUE
-        }
+        self.substs.visit_with(visitor)
     }
 }
 
@@ -1254,7 +1247,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx, ()> {
     ) -> Result<Self, F::Error> {
         Ok(ty::Unevaluated {
             def: self.def,
-            substs_: Some(self.substs(folder.tcx()).try_fold_with(folder)?),
+            substs: self.substs.try_fold_with(folder)?,
             promoted: self.promoted,
         })
     }
@@ -1264,13 +1257,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx, ()> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        if let Some(tcx) = visitor.tcx_for_anon_const_substs() {
-            self.substs(tcx).visit_with(visitor)
-        } else if let Some(substs) = self.substs_ {
-            substs.visit_with(visitor)
-        } else {
-            debug!("ignoring default substs of `{:?}`", self.def);
-            ControlFlow::CONTINUE
-        }
+        self.substs.visit_with(visitor)
     }
 }

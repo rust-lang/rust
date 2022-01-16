@@ -462,17 +462,14 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
     debug!(?item, ?span);
 
     struct FoundParentLifetime;
-    struct FindParentLifetimeVisitor<'tcx>(TyCtxt<'tcx>, &'tcx ty::Generics);
+    struct FindParentLifetimeVisitor<'tcx>(&'tcx ty::Generics);
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for FindParentLifetimeVisitor<'tcx> {
         type BreakTy = FoundParentLifetime;
-        fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-            Some(self.0)
-        }
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
             debug!("FindParentLifetimeVisitor: r={:?}", r);
             if let RegionKind::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = r {
-                if *index < self.1.parent_count as u32 {
+                if *index < self.0.parent_count as u32 {
                     return ControlFlow::Break(FoundParentLifetime);
                 } else {
                     return ControlFlow::CONTINUE;
@@ -502,16 +499,13 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
 
     impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
         type BreakTy = Ty<'tcx>;
-        fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-            Some(self.tcx)
-        }
 
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
             if t == self.opaque_identity_ty {
                 ControlFlow::CONTINUE
             } else {
-                t.super_visit_with(&mut FindParentLifetimeVisitor(self.tcx, self.generics))
+                t.super_visit_with(&mut FindParentLifetimeVisitor(self.generics))
                     .map_break(|FoundParentLifetime| t)
             }
         }
@@ -1381,7 +1375,7 @@ pub(super) fn check_type_params_are_used<'tcx>(
         return;
     }
 
-    for leaf in ty.walk(tcx) {
+    for leaf in ty.walk() {
         if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
             if let ty::Param(param) = leaf_ty.kind() {
                 debug!("found use of ty param {:?}", param);
@@ -1479,10 +1473,6 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
             {
                 struct OpaqueTypeCollector(Vec<DefId>);
                 impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypeCollector {
-                    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-                        // Default anon const substs cannot contain opaque types.
-                        None
-                    }
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                         match *t.kind() {
                             ty::Opaque(def, _) => {

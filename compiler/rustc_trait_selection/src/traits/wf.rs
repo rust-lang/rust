@@ -132,11 +132,10 @@ pub fn predicate_obligations<'a, 'tcx>(
             wf.compute(b.into());
         }
         ty::PredicateKind::ConstEvaluatable(uv) => {
-            let substs = uv.substs(wf.tcx());
-            let obligations = wf.nominal_obligations(uv.def.did, substs);
+            let obligations = wf.nominal_obligations(uv.def.did, uv.substs);
             wf.out.extend(obligations);
 
-            for arg in substs.iter() {
+            for arg in uv.substs.iter() {
                 wf.compute(arg);
             }
         }
@@ -429,7 +428,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     /// Pushes all the predicates needed to validate that `ty` is WF into `out`.
     fn compute(&mut self, arg: GenericArg<'tcx>) {
-        let mut walker = arg.walk(self.tcx());
+        let mut walker = arg.walk();
         let param_env = self.param_env;
         let depth = self.recursion_depth;
         while let Some(arg) = walker.next() {
@@ -443,16 +442,12 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 GenericArgKind::Const(constant) => {
                     match constant.val {
                         ty::ConstKind::Unevaluated(uv) => {
-                            assert!(uv.promoted.is_none());
-                            let substs = uv.substs(self.tcx());
-
-                            let obligations = self.nominal_obligations(uv.def.did, substs);
+                            let obligations = self.nominal_obligations(uv.def.did, uv.substs);
                             self.out.extend(obligations);
 
-                            let predicate = ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(
-                                ty::Unevaluated::new(uv.def, substs),
-                            ))
-                            .to_predicate(self.tcx());
+                            let predicate =
+                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(uv.shrink()))
+                                    .to_predicate(self.tcx());
                             let cause = self.cause(traits::MiscObligation);
                             self.out.push(traits::Obligation::with_depth(
                                 cause,

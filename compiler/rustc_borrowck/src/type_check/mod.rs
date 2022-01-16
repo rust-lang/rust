@@ -426,7 +426,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
                             constant.literal.ty(),
                             uv.def.did,
-                            UserSubsts { substs: uv.substs(self.tcx()), user_self_ty: None },
+                            UserSubsts { substs: uv.substs, user_self_ty: None },
                         )),
                     ) {
                         span_mirbug!(
@@ -1970,7 +1970,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let predicates = self.prove_closure_bounds(
                             tcx,
                             def_id.expect_local(),
-                            uv.substs(tcx),
+                            uv.substs,
                             location,
                         );
                         self.normalize_and_prove_instantiated_predicates(

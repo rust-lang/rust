@@ -1585,8 +1585,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         unevaluated: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
-        let mut substs = unevaluated.substs(self.tcx);
-        substs = self.resolve_vars_if_possible(substs);
+        let substs = self.resolve_vars_if_possible(unevaluated.substs);
 
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
@@ -1599,7 +1598,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let unevaluated = ty::Unevaluated {
             def: unevaluated.def,
-            substs_: Some(substs_erased),
+            substs: substs_erased,
             promoted: unevaluated.promoted,
         };
 

@@ -527,7 +527,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // contain the "'static" lifetime (any other lifetime
                     // would either be late-bound or local), so it is guaranteed
                     // to outlive any other lifetime
-                    if pred.0.is_global(self.infcx.tcx) && !pred.0.has_late_bound_regions() {
+                    if pred.0.is_global() && !pred.0.has_late_bound_regions() {
                         Ok(EvaluatedToOk)
                     } else {
                         Ok(EvaluatedToOkModuloRegions)
@@ -712,12 +712,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         mut obligation: TraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         if !self.intercrate
-            && obligation.is_global(self.tcx())
-            && obligation
-                .param_env
-                .caller_bounds()
-                .iter()
-                .all(|bound| bound.definitely_needs_subst(self.tcx()))
+            && obligation.is_global()
+            && obligation.param_env.caller_bounds().iter().all(|bound| bound.needs_subst())
         {
             // If a param env has no global bounds, global obligations do not
             // depend on its particular value in order to work, so we can clear
@@ -1537,7 +1533,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // the param_env so that it can be given the lowest priority. See
         // #50825 for the motivation for this.
         let is_global = |cand: &ty::PolyTraitPredicate<'tcx>| {
-            cand.is_global(self.infcx.tcx) && !cand.has_late_bound_regions()
+            cand.is_global() && !cand.has_late_bound_regions()
         };
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,

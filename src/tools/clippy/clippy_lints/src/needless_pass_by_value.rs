@@ -118,7 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
 
         let preds = traits::elaborate_predicates(cx.tcx, cx.param_env.caller_bounds().iter())
-            .filter(|p| !p.is_global(cx.tcx))
+            .filter(|p| !p.is_global())
             .filter_map(|obligation| {
                 // Note that we do not want to deal with qualified predicates here.
                 match obligation.predicate.kind().no_bound_vars() {
