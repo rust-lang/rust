@@ -53,5 +53,5 @@ attributes #2 = { nounwind }
 !3 = !{!"Simple C++ TBAA"}
 
 ; CHECK: define internal void @differmax(double* %arg, double* %"arg'", i64 %arg1, double %differeturn)
-; CHECK:  %"tmp51!manual_lcssa{{.*}}" = phi double* [ %tmp51, %bb81 ], [ %tmp51, %bb88 ], [ undef, %entry ]
+; CHECK:  %"tmp51!manual_lcssa{{.*}}" = phi double* [ %tmp51, %bb88 ], [ %tmp51, %bb81 ], [ undef, %entry ]
 ; OLD:  %"tmp50!manual_lcssa" = phi i8* [ %tmp50, %bb81 ], [ %tmp50, %bb88 ], [ undef, %entry ]

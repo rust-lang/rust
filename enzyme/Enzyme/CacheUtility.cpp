@@ -1094,11 +1094,12 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
                   limitMinus1, ConstantInt::get(limitMinus1->getType(), 1));
         }
       } else {
-        Value *lim = unwrapM(contexts[i].maxLimit, *RB, reverseMap,
-                             UnwrapMode::AttemptFullUnwrapWithLookup);
+        Value *lim = unwrapM(limitMinus1, *RB, reverseMap,
+                             UnwrapMode::AttemptFullUnwrapWithLookup,
+                             allocationPreheaders[i]);
         if (!lim) {
           llvm::errs() << *newFunc << "\n";
-          llvm::errs() << *contexts[i].maxLimit << "\n";
+          llvm::errs() << *limitMinus1 << "\n";
         }
         assert(lim);
         limits[i] = RB->CreateNUWAdd(lim, ConstantInt::get(lim->getType(), 1));

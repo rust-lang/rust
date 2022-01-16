@@ -96,22 +96,6 @@ llvm::cl::opt<bool> EnzymeFreeInternalAllocations(
              "access outside)"));
 }
 
-bool isPotentialLastLoopValue(Value *val, const BasicBlock *loc,
-                              const LoopInfo &LI) {
-  if (Instruction *inst = dyn_cast<Instruction>(val)) {
-    const Loop *InstLoop = LI.getLoopFor(inst->getParent());
-    if (InstLoop == nullptr) {
-      return false;
-    }
-    for (const Loop *L = LI.getLoopFor(loc); L;
-         L = LI.getLoopFor(L->getHeader())) {
-      return false;
-    }
-    return true;
-  }
-  return false;
-}
-
 Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                               const ValueToValueMapTy &available,
                               UnwrapMode unwrapMode, BasicBlock *scope,
@@ -297,8 +281,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           }                                                                    \
         if (origParent)                                                        \
           if (auto opinst = dyn_cast<Instruction>(v)) {                        \
-            v = fixLCSSA(opinst, origParent, /*mergeIfTrue*/ false,            \
-                         /*guaranteedVisible*/ false);                         \
+            v = fixLCSSA(opinst, origParent);                                  \
           }                                                                    \
         if (!noLookup)                                                         \
           ___res = lookupM(v, Builder, available, v != val);                   \
@@ -308,8 +291,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     } else {                                                                   \
       if (origParent)                                                          \
         if (auto opinst = dyn_cast<Instruction>(v)) {                          \
-          v = fixLCSSA(opinst, origParent, /*mergeIfTrue*/ false,              \
-                       /*guaranteedVisible*/ false);                           \
+          v = fixLCSSA(opinst, origParent);                                    \
         }                                                                      \
       assert(unwrapMode == UnwrapMode::AttemptSingleUnwrap);                   \
       ___res = lookupM(v, Builder, available, v != val);                       \
@@ -1054,10 +1036,11 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                 val->getContext(), oldB->getName() + "_phimerge", newFunc);
 
             for (size_t i = 0; i < predBlocks.size(); i++) {
-              BasicBlock *parent = (i < 2) ? subblock : block;
-              assert(done.find(std::make_pair(parent, predBlocks[i])) !=
+              BasicBlock *valparent = (i < 2) ? subblock : block;
+              assert(done.find(std::make_pair(valparent, predBlocks[i])) !=
                      done.end());
-              assert(done[std::make_pair(parent, predBlocks[i])].size() == 1);
+              assert(done[std::make_pair(valparent, predBlocks[i])].size() ==
+                     1);
               blocks.push_back(BasicBlock::Create(
                   val->getContext(), oldB->getName() + "_phirc", newFunc));
               blocks[i]->moveAfter(last);
@@ -1068,7 +1051,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
               unwrap_cache[blocks[i]] = unwrap_cache[oldB];
               lookup_cache[blocks[i]] = lookup_cache[oldB];
-              auto PB = *done[std::make_pair(parent, predBlocks[i])].begin();
+              auto PB = *done[std::make_pair(valparent, predBlocks[i])].begin();
 
               if (auto inst = dyn_cast<Instruction>(
                       phi->getIncomingValueForBlock(PB))) {
@@ -1079,15 +1062,16 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                 //    condition illegal)
                 // 2) the value is a call or load and option is set to not
                 //    speculatively recompute values within a phi
+                BasicBlock *nextScope = PB;
+                // if (inst->getParent() == nextScope) nextScope =
+                // phi->getParent();
                 if ((inst->mayReadFromMemory() &&
                      !DT.dominates(inst->getParent(), phi->getParent())) ||
                     (!EnzymeSpeculatePHIs &&
                      (isa<CallInst>(inst) || isa<LoadInst>(inst))))
-                  vals.push_back(
-                      getOpFull(B, phi->getIncomingValueForBlock(PB), PB));
+                  vals.push_back(getOpFull(B, inst, nextScope));
                 else
-                  vals.push_back(getOpFull(
-                      BuilderM, phi->getIncomingValueForBlock(PB), PB));
+                  vals.push_back(getOpFull(BuilderM, inst, nextScope));
               } else
                 vals.push_back(
                     getOpFull(BuilderM, phi->getIncomingValueForBlock(PB), PB));
@@ -1261,17 +1245,17 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           //    recomputation without the condition illegal)
           // 2) the value is a call or load and option is set to not
           //    speculatively recompute values within a phi
+          BasicBlock *nextScope = PB;
+          // if (inst->getParent() == nextScope) nextScope = phi->getParent();
           if ((inst->mayReadFromMemory() &&
                !DT.dominates(inst->getParent(), phi->getParent())) ||
               (!EnzymeSpeculatePHIs &&
                (isa<CallInst>(inst) || isa<LoadInst>(inst))))
-            vals.push_back(getOpFull(B, phi->getIncomingValueForBlock(PB), PB));
+            vals.push_back(getOpFull(B, inst, nextScope));
           else
-            vals.push_back(
-                getOpFull(BuilderM, phi->getIncomingValueForBlock(PB), PB));
+            vals.push_back(getOpFull(BuilderM, inst, nextScope));
         } else
-          vals.push_back(
-              getOpFull(BuilderM, phi->getIncomingValueForBlock(PB), PB));
+          vals.push_back(phi->getIncomingValueForBlock(PB));
 
         if (!vals[i]) {
           for (size_t j = 0; j <= i; j++) {
@@ -1412,8 +1396,7 @@ endCheck:
       }
     if (scope)
       if (auto opinst = dyn_cast<Instruction>(nval)) {
-        nval = fixLCSSA(opinst, scope, /*mergeIfTrue*/ false,
-                        /*guaranteedVisible*/ false);
+        nval = fixLCSSA(opinst, scope);
       }
     auto toreturn =
         lookupM(nval, BuilderM, available, /*tryLegalRecomputeCheck*/ false);
@@ -3626,8 +3609,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   Instruction *prelcssaInst = inst;
 
   assert(inst->getName() != "<badref>");
-  val = fixLCSSA(inst, BuilderM.GetInsertBlock(), /*mergeIfTrue*/ false,
-                 /*guaranteedVisible*/ false);
+  val = fixLCSSA(inst, BuilderM.GetInsertBlock());
   if (isa<UndefValue>(val)) {
     llvm::errs() << *oldFunc << "\n";
     llvm::errs() << *newFunc << "\n";

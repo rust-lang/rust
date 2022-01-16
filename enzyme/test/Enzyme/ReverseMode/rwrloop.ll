@@ -121,7 +121,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %cmp233 = icmp sgt i32 %[[a0]], 0
 ; CHECK-NEXT:   %_unwrap5 = sext i32 %[[a0]] to i64
 ; TODO-CHECK-NEXT:   %_unwrap6 = icmp sgt i64 %_unwrap5, 1
-; TODO-CHECK-NEXT:   %smax_unwrap = select i1 %_unwrap6, i64 %_unwrap5, i64 1
+; TODO-CHECK-NEXT:   %[[smax_unwrap:.+]] = select i1 %_unwrap6, i64 %_unwrap5, i64 1
 ; CHECK:   %[[a1:.+]] = mul nuw nsw i64 %[[smax_unwrap:.+]], 10
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %[[a1]], 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
@@ -195,11 +195,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[a13]] = fadd fast double %"sum.134'de.1", %"add10'de.1"
 ; CHECK-NEXT:   %[[a14:.+]] = fadd fast double %"mul9'de.1", %"add10'de.1"
-; CHECK-NEXT:   %[[a15:.+]] = load i32, i32* %[[a25:.+]], align 4, !invariant.group !8
-; TODO-CHECK-NEXT:   %_unwrap12 = sext i32 %[[a15]] to i64
-; TODO-CHECK-NEXT:   %_unwrap13 = icmp sgt i64 %_unwrap12, 1
-; TODO-CHECK-NEXT:   %smax_unwrap14 = select i1 %_unwrap13, i64 %_unwrap12, i64 1
-; CHECK:   %[[a16:.+]] = mul nuw nsw i64 %"iv'ac.0", %[[smax_unwrap14:.+]]
+; CHECK-NEXT:   %[[a16:.+]] = mul nuw nsw i64 %"iv'ac.0", %[[smax_unwrap:.+]]
 ; CHECK-NEXT:   %[[a17:.+]] = add nuw nsw i64 %"iv1'ac.1", %[[a16]]
 ; CHECK-NEXT:   %[[a18:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %[[a17]]
 ; CHECK-NEXT:   %[[a19:.+]] = load double, double* %[[a18]], align 8, !invariant.group !9
@@ -215,11 +211,11 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   br label %invertfor.body4
 
 ; CHECK: invertfor.cond.cleanup3.loopexit:                 ; preds = %invertfor.cond.cleanup3
-; CHECK-NEXT:   %[[a25]] = getelementptr inbounds i32, i32* %[[malloccache12]], i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[a25:.+]] = getelementptr inbounds i32, i32* %[[malloccache12]], i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[a26:.+]] = load i32, i32* %[[a25]], align 4, !invariant.group !8
 ; CHECK-NEXT:   %[[_unwrap17:.+]] = sext i32 %[[a26]] to i64
-; TODO-CHECK-NEXT:   %_unwrap18 = icmp sgt i64 %_unwrap17, 1
-; TODO-CHECK-NEXT:   %smax_unwrap19 = select i1 %_unwrap18, i64 %_unwrap17, i64 1
+; TODO-CHECK-NEXT:   %[[_unwrap14:.+]] = icmp sgt i64 %[[_unwrap17]], 1
+; TODO-CHECK-NEXT:   %[[smax_unwrap19:.+]] = select i1 %[[_unwrap14]], i64 %[[_unwrap17]], i64 1
 ; CHECK:   %[[_unwrap20]] = add{{( nsw)?}} i64 %[[smax_unwrap19:.+]], -1
 ; CHECK-NEXT:   br label %invertfor.body4
 
