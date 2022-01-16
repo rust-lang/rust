@@ -1766,12 +1766,12 @@ pub trait Iterator {
     /// #![feature(iter_more_collects)]
     ///
     /// let a = [1, 2, 3];
-    /// let mut vec: Vec::<i32> = Vec::new();
+    /// let mut vec: Vec::<i32> = vec![0, 1];
     ///
     /// a.iter().map(|&x| x * 2).collect_into(&mut vec);
     /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
     ///
-    /// assert_eq!(vec![2, 4, 6, 10, 20, 30], vec);
+    /// assert_eq!(vec![0, 1, 2, 4, 6, 10, 20, 30], vec);
     /// ```
     ///
     /// `Vec` can have a manual set capacity to avoid reallocating it:
