@@ -156,6 +156,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(methods::ITER_NEXT_SLICE),
     LintId::of(methods::ITER_NTH),
     LintId::of(methods::ITER_NTH_ZERO),
+    LintId::of(methods::ITER_OVEREAGER_CLONED),
     LintId::of(methods::ITER_SKIP_NEXT),
     LintId::of(methods::MANUAL_FILTER_MAP),
     LintId::of(methods::MANUAL_FIND_MAP),
