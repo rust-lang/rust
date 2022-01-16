@@ -652,6 +652,10 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   if (Val->getType()->isVoidTy())
     return true;
 
+  // Token values are definitionally inactive
+  if (Val->getType()->isTokenTy())
+    return true;
+
   // All function pointers are considered active in case an augmented primal
   // or reverse is needed
   if (isa<Function>(Val) || isa<InlineAsm>(Val)) {
@@ -2028,7 +2032,8 @@ bool ActivityAnalyzer::isValueInactiveFromUsers(TypeResults &TR,
         continue;
       }
       if (ConstantInstructions.count(I) &&
-          (I->getType()->isVoidTy() || ConstantValues.count(I))) {
+          (I->getType()->isVoidTy() || I->getType()->isTokenTy() ||
+           ConstantValues.count(I))) {
         if (EnzymePrintActivity) {
           llvm::errs() << "Value found constant inst use:" << *val << " user "
                        << *I << "\n";
