@@ -668,7 +668,7 @@ impl<T: Clone> Clone for Reverse<T> {
 /// Here's an example:
 ///
 /// ```
-/// #[derive(PartialEq, PartialOrd)]
+/// #[derive(PartialEq, Eq, PartialOrd, Ord)]
 /// enum Size {
 ///     Small,
 ///     Large,
@@ -898,6 +898,18 @@ impl PartialOrd for Ordering {
 /// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
 /// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
 /// When `derive`d on enums, variants are ordered by their top-to-bottom discriminant order.
+/// This means variants at the top are less than variants at the bottom.
+/// Here's an example:
+///
+/// ```
+/// #[derive(PartialEq, PartialOrd)]
+/// enum Size {
+///     Small,
+///     Large,
+/// }
+///
+/// assert!(Size::Small < Size::Large);
+/// ```
 ///
 /// ## How can I implement `PartialOrd`?
 ///
@@ -970,8 +982,8 @@ impl PartialOrd for Ordering {
 /// # Examples
 ///
 /// ```
-/// let x : u32 = 0;
-/// let y : u32 = 1;
+/// let x: u32 = 0;
+/// let y: u32 = 1;
 ///
 /// assert_eq!(x < y, true);
 /// assert_eq!(x.lt(&y), true);
