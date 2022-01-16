@@ -24,7 +24,7 @@ mod zip_map;
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
 
-use zip_map::{ZipMapIter, ForwardIter};
+use zip_map::{ForwardIter, ZipMapIter};
 
 /// Creates an array `[T; N]` where each array element `T` is returned by the `cb` call.
 ///
