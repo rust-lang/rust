@@ -407,7 +407,8 @@ impl clean::GenericBound {
                 let modifier_str = match modifier {
                     hir::TraitBoundModifier::None => "",
                     hir::TraitBoundModifier::Maybe => "?",
-                    hir::TraitBoundModifier::MaybeConst => "~const",
+                    // ~const is experimental; do not display those bounds in rustdoc
+                    hir::TraitBoundModifier::MaybeConst => "",
                 };
                 if f.alternate() {
                     write!(f, "{}{:#}", modifier_str, ty.print(cx))
