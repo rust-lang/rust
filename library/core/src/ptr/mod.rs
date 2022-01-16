@@ -1451,21 +1451,62 @@ macro_rules! fnptr_impls_safety_abi {
     }
 }
 
-macro_rules! fnptr_impls_args {
-    ($($Arg: ident),+) => {
-        fnptr_impls_safety_abi! { extern "Rust" fn($($Arg),+) -> Ret, $($Arg),+ }
-        fnptr_impls_safety_abi! { extern "C" fn($($Arg),+) -> Ret, $($Arg),+ }
-        fnptr_impls_safety_abi! { extern "C" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
-        fnptr_impls_safety_abi! { unsafe extern "Rust" fn($($Arg),+) -> Ret, $($Arg),+ }
-        fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),+) -> Ret, $($Arg),+ }
-        fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),+ , ...) -> Ret, $($Arg),+ }
+macro_rules! fnptr_impl_for_abi {
+    ($Abi:tt, $($Arg: ident),*) => {
+        fnptr_impls_safety_abi! { extern $Abi fn($($Arg),*) -> Ret, $($Arg),* }
+        fnptr_impls_safety_abi! { unsafe extern $Abi fn($($Arg),*) -> Ret, $($Arg),* }
     };
-    () => {
+}
+
+macro_rules! fnptr_impl_for_abi_variadic_support {
+    ($Abi:tt, ) => {
         // No variadic functions with 0 parameters
-        fnptr_impls_safety_abi! { extern "Rust" fn() -> Ret, }
-        fnptr_impls_safety_abi! { extern "C" fn() -> Ret, }
-        fnptr_impls_safety_abi! { unsafe extern "Rust" fn() -> Ret, }
-        fnptr_impls_safety_abi! { unsafe extern "C" fn() -> Ret, }
+        fnptr_impls_safety_abi! { extern $Abi fn() -> Ret, }
+        fnptr_impls_safety_abi! { unsafe extern $Abi fn() -> Ret, }
+    };
+
+    ($Abi:tt, $($Arg: ident),*) => {
+        fnptr_impl_for_abi! { $Abi, $($Arg),* }
+
+        fnptr_impls_safety_abi! { extern $Abi fn($($Arg),*, ...) -> Ret, $($Arg),* }
+        fnptr_impls_safety_abi! { unsafe extern $Abi fn($($Arg),*, ...) -> Ret, $($Arg),* }
+    }
+}
+
+macro_rules! fnptr_impls_args {
+    ($($Arg: ident),*) => {
+        fnptr_impl_for_abi! { "Rust", $($Arg),* }
+        fnptr_impl_for_abi! { "stdcall", $($Arg),* }
+        fnptr_impl_for_abi! { "fastcall", $($Arg),* }
+        fnptr_impl_for_abi! { "aapcs", $($Arg),* }
+        fnptr_impl_for_abi! { "win64", $($Arg),* }
+        fnptr_impl_for_abi! { "sysv64", $($Arg),* }
+        fnptr_impl_for_abi! { "system", $($Arg),* }
+        fnptr_impl_for_abi! { "rust-intrinsic", $($Arg),* }
+        fnptr_impl_for_abi! { "rust-call", $($Arg),* }
+        fnptr_impl_for_abi! { "platform-intrinsic", $($Arg),* }
+        fnptr_impl_for_abi! { "unadjusted", $($Arg),* }
+
+        // fnptr_impl_for_abi! { "C-unwind", $($Arg),* }
+        // fnptr_impl_for_abi! { "stdcall-unwind", $($Arg),* }
+        // fnptr_impl_for_abi! { "vectorcall", $($Arg),* }
+        // fnptr_impl_for_abi! { "thiscall", $($Arg),* }
+        // fnptr_impl_for_abi! { "thiscall-unwind", $($Arg),* }
+
+        // fnptr_impl_for_abi! { "ptx-kernel", $($Arg),* }
+        // fnptr_impl_for_abi! { "msp430-interrupt", $($Arg),* }
+        // fnptr_impl_for_abi! { "x86-interrupt", $($Arg),* }
+        // fnptr_impl_for_abi! { "amdgpu-kernel", $($Arg),* }
+        // fnptr_impl_for_abi! { "efiapi", $($Arg),* }
+        // fnptr_impl_for_abi! { "avr-interrupt", $($Arg),* }
+        // fnptr_impl_for_abi! { "avr-non-blocking-interrupt", $($Arg),* }
+        // fnptr_impl_for_abi! { "C-cmse-nonsecure-call", $($Arg),* }
+        // fnptr_impl_for_abi! { "wasm", $($Arg),* }
+
+        // fnptr_impl_for_abi! { "system-unwind", $($Arg),* }
+
+        fnptr_impl_for_abi_variadic_support! { "C", $($Arg),* }
+        fnptr_impl_for_abi_variadic_support! { "cdecl", $($Arg),* }
     };
 }
 
