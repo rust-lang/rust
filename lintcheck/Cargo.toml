@@ -13,7 +13,7 @@ publish = false
 clap = "2.33"
 flate2 = "1.0"
 fs_extra = "1.2"
-rayon = "1.5"
+rayon = "1.5.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tar = "0.4"
