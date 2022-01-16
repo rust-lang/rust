@@ -2319,7 +2319,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("is_file", []) => filetype_is_file::check(cx, expr, recv),
             ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
             ("is_some", []) => check_is_some_is_none(cx, expr, recv, true),
-            ("last" | "skip", args @ []) => {
+            ("last", args @ []) | ("skip", args @ [_]) => {
                 if let Some((name2, [recv2, args2 @ ..], _span2)) = method_call(recv) {
                     if let ("cloned", []) = (name2, args2) {
                         iter_overeager_cloned::check(cx, expr, recv2, name, args);
