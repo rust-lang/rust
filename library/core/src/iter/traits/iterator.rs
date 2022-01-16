@@ -1741,6 +1741,154 @@ pub trait Iterator {
         FromIterator::from_iter(self)
     }
 
+    /// Collects all the items from an iterator into a collection.
+    ///
+    /// This method consumes the iterator and adds all its items to the
+    /// passed collection. The collection is then returned, so the call chain
+    /// can be continued.
+    ///
+    /// The collection is passed and returned by mutable reference.
+    /// To pass it by by value, use [`collect_with`].
+    ///
+    /// [`collect_with`]: Iterator::collect_with
+    ///
+    /// This is useful when you already have a collection and wants to add
+    /// the iterator items to it.
+    ///
+    /// This method is a convenience method to call [Extend::extend](trait.Extend.html),
+    /// but instead of being called on a collection, it's called on an iterator.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_more_collects)]
+    ///
+    /// let a = [1, 2, 3];
+    /// let mut vec: Vec::<i32> = Vec::new();
+    ///
+    /// a.iter().map(|&x| x * 2).collect_into(&mut vec);
+    /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
+    ///
+    /// assert_eq!(vec![2, 4, 6, 10, 20, 30], vec);
+    /// ```
+    ///
+    /// `Vec` can have a manual set capacity to avoid reallocating it:
+    ///
+    /// ```
+    /// #![feature(iter_more_collects)]
+    ///
+    /// let a = [1, 2, 3];
+    /// let mut vec: Vec::<i32> = Vec::with_capacity(6);
+    ///
+    /// a.iter().map(|&x| x * 2).collect_into(&mut vec);
+    /// a.iter().map(|&x| x * 10).collect_into(&mut vec);
+    ///
+    /// assert_eq!(6, vec.capacity());
+    /// ```
+    ///
+    /// The returned mutable reference can be used to continue the call chain:
+    ///
+    /// ```
+    /// #![feature(iter_more_collects)]
+    ///
+    /// let a = [1, 2, 3];
+    /// let mut vec: Vec::<i32> = Vec::new();
+    ///
+    /// let count = a.iter().collect_into(&mut vec).iter().count();
+    ///
+    /// assert_eq!(count, vec.len());
+    /// println!("Vec len is {}", count);
+    ///
+    /// let count = a.iter().collect_into(&mut vec).iter().count();
+    ///
+    /// assert_eq!(count, vec.len());
+    /// println!("Vec len now is {}", count);
+    /// ```
+    // must_use not added here since collect_into takes a (mutable) reference
+    #[inline]
+    #[unstable(feature = "iter_more_collects", reason = "new API", issue = "none")]
+    fn collect_into<E: Extend<Self::Item>>(self, collection: &mut E) -> &mut E
+    where
+        Self: Sized,
+    {
+        collection.extend(self);
+        collection
+    }
+
+    /// Collects all the items from an iterator with a collection.
+    ///
+    /// This method consumes the iterator and adds all its items to the
+    /// passed collection. The collection is then returned, so the call chain
+    /// can be continued.
+    ///
+    /// The collection is passed and returned by value. To pass it by by mutable
+    /// reference, use [`collect_into`].
+    ///
+    /// [`collect_into`]: Iterator::collect_into
+    ///
+    /// This is useful when you want to pre-allocate memory for the collection
+    /// that will contains the iterator items.
+    ///
+    /// This method is a convenience method to call [Extend::extend](trait.Extend.html),
+    /// but instead of being called on a collection, it's called on an iterator.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_more_collects)]
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// let doubled = a.iter()
+    ///                .map(|&x| x * 2)
+    ///                .collect_with(Vec::new());
+    ///
+    /// assert_eq!(vec![2, 4, 6], doubled);
+    /// ```
+    ///
+    /// Collecting an iterator into a `Vec` with manually set capacity in order
+    /// to avoid reallocating it:
+    ///
+    /// ```
+    /// #![feature(iter_more_collects)]
+    ///
+    /// let doubled = (0..50).map(|x| x * 2)
+    ///                      .collect_with(Vec::with_capacity(50));
+    ///
+    /// assert_eq!(50, doubled.capacity());
+    /// ```
+    ///
+    /// Passing to `collect_into` a collection with less capacity than necessary
+    /// can lead to less performant code:
+    ///
+    /// ```
+    /// #![feature(iter_more_collects)]
+    ///
+    /// let chars = ['g', 'd', 'k', 'k', 'n'];
+    ///
+    /// let hello = chars.iter()
+    ///     .map(|&x| x as u8)
+    ///     .map(|x| (x + 1) as char)
+    ///     .collect_with(String::with_capacity(2));
+    ///
+    /// assert_eq!("hello", hello);
+    /// assert!(5 <= hello.capacity()); // At least one reallocation happened
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_more_collects", reason = "new API", issue = "none")]
+    #[must_use = "if you really need to exhaust the iterator, consider `.for_each(drop)` instead"]
+    fn collect_with<E: Extend<Self::Item>>(self, mut collection: E) -> E
+    where
+        Self: Sized,
+    {
+        collection.extend(self);
+        collection
+    }
+
     /// Consumes an iterator, creating two collections from it.
     ///
     /// The predicate passed to `partition()` can return `true`, or `false`.
