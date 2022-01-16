@@ -1170,6 +1170,7 @@ symbols! {
         rustc_paren_sugar,
         rustc_partition_codegened,
         rustc_partition_reused,
+        rustc_pass_by_value,
         rustc_peek,
         rustc_peek_definite_init,
         rustc_peek_liveness,

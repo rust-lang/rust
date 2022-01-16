@@ -5,10 +5,7 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{
-    GenericArg, HirId, Item, ItemKind, MutTy, Mutability, Node, Path, PathSegment, QPath, Ty,
-    TyKind,
-};
+use rustc_hir::{GenericArg, HirId, Item, ItemKind, Node, Path, PathSegment, QPath, Ty, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -59,13 +56,6 @@ declare_tool_lint! {
 }
 
 declare_tool_lint! {
-    pub rustc::TY_PASS_BY_REFERENCE,
-    Allow,
-    "passing `Ty` or `TyCtxt` by reference",
-    report_in_external_macro: true
-}
-
-declare_tool_lint! {
     pub rustc::USAGE_OF_QUALIFIED_TY,
     Allow,
     "using `ty::{Ty,TyCtxt}` instead of importing it",
@@ -74,7 +64,6 @@ declare_tool_lint! {
 
 declare_lint_pass!(TyTyKind => [
     USAGE_OF_TY_TYKIND,
-    TY_PASS_BY_REFERENCE,
     USAGE_OF_QUALIFIED_TY,
 ]);
 
@@ -129,26 +118,6 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                             }
                         }
                     }
-                }
-            }
-            TyKind::Rptr(_, MutTy { ty: inner_ty, mutbl: Mutability::Not }) => {
-                if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner.to_def_id()) {
-                    if cx.tcx.impl_trait_ref(impl_did).is_some() {
-                        return;
-                    }
-                }
-                if let Some(t) = is_ty_or_ty_ctxt(cx, &inner_ty) {
-                    cx.struct_span_lint(TY_PASS_BY_REFERENCE, ty.span, |lint| {
-                        lint.build(&format!("passing `{}` by reference", t))
-                            .span_suggestion(
-                                ty.span,
-                                "try passing by value",
-                                t,
-                                // Changing type of function argument
-                                Applicability::MaybeIncorrect,
-                            )
-                            .emit();
-                    })
                 }
             }
             _ => {}
