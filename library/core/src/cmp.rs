@@ -661,20 +661,37 @@ impl<T: Clone> Clone for Reverse<T> {
 ///
 /// ## Derivable
 ///
-/// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
-/// [lexicographic](https://en.wikipedia.org/wiki/Lexicographic_order) ordering based on the top-to-bottom declaration order of the struct's members.
-/// When `derive`d on enums, variants are ordered by their top-to-bottom discriminant order.
-/// This means variants at the top are less than variants at the bottom.
-/// Here's an example:
+/// This trait can be used with `#[derive]`.
+///
+/// When `derive`d on structs, it will produce a
+/// [lexicographic](https://en.wikipedia.org/wiki/Lexicographic_order) ordering
+/// based on the top-to-bottom declaration order of the struct's members.
+///
+/// When `derive`d on enums, variants are ordered by their discriminants.
+/// By default, the discriminant is smallest for variants at the top, and
+/// largest for variants at the bottom. Here's an example:
 ///
 /// ```
 /// #[derive(PartialEq, Eq, PartialOrd, Ord)]
-/// enum Size {
-///     Small,
-///     Large,
+/// enum E {
+///     Top,
+///     Bottom,
 /// }
 ///
-/// assert!(Size::Small < Size::Large);
+/// assert!(E::Top < E::Bottom);
+/// ```
+///
+/// However, manually setting the discriminants can override this default
+/// behavior:
+////
+/// ```
+/// #[derive(PartialEq, Eq, PartialOrd, Ord)]
+/// enum E {
+///     Top = 2,
+///     Bottom = 1,
+/// }
+///
+/// assert!(E::Bottom < E::Top);
 /// ```
 ///
 /// ## Lexicographical comparison
@@ -895,20 +912,37 @@ impl PartialOrd for Ordering {
 ///
 /// ## Derivable
 ///
-/// This trait can be used with `#[derive]`. When `derive`d on structs, it will produce a
-/// lexicographic ordering based on the top-to-bottom declaration order of the struct's members.
-/// When `derive`d on enums, variants are ordered by their top-to-bottom discriminant order.
-/// This means variants at the top are less than variants at the bottom.
-/// Here's an example:
+/// This trait can be used with `#[derive]`.
+///
+/// When `derive`d on structs, it will produce a
+/// [lexicographic](https://en.wikipedia.org/wiki/Lexicographic_order) ordering
+/// based on the top-to-bottom declaration order of the struct's members.
+///
+/// When `derive`d on enums, variants are ordered by their discriminants.
+/// By default, the discriminant is smallest for variants at the top, and
+/// largest for variants at the bottom. Here's an example:
 ///
 /// ```
 /// #[derive(PartialEq, PartialOrd)]
-/// enum Size {
-///     Small,
-///     Large,
+/// enum E {
+///     Top,
+///     Bottom,
 /// }
 ///
-/// assert!(Size::Small < Size::Large);
+/// assert!(E::Top < E::Bottom);
+/// ```
+///
+/// However, manually setting the discriminants can override this default
+/// behavior:
+////
+/// ```
+/// #[derive(PartialEq, PartialOrd)]
+/// enum E {
+///     Top = 2,
+///     Bottom = 1,
+/// }
+///
+/// assert!(E::Bottom < E::Top);
 /// ```
 ///
 /// ## How can I implement `PartialOrd`?
