@@ -15,7 +15,7 @@ use super::Recover;
 
 // FIXME(conventions): implement bounded iterators
 
-/// A set based on a B-Tree.
+/// An ordered set based on a B-Tree.
 ///
 /// See [`BTreeMap`]'s documentation for a detailed discussion of this collection's performance
 /// benefits and drawbacks.
@@ -26,6 +26,9 @@ use super::Recover;
 /// The behavior resulting from such a logic error is not specified (it could include panics,
 /// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
 /// behavior.
+///
+/// Iterators returned by [`BTreeSet::iter`] produce their items in order, and take worst-case
+/// logarithmic and amortized constant time per item returned.
 ///
 /// [`Ord`]: core::cmp::Ord
 /// [`Cell`]: core::cell::Cell
