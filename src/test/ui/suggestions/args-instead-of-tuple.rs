@@ -12,7 +12,16 @@ fn main() {
     //~^ ERROR this enum variant takes 1 argument but 0 arguments were supplied
 
     two_ints(1, 2); //~ ERROR this function takes 1 argument
+
+    with_generic(3, 4); //~ ERROR this function takes 1 argument
 }
 
 fn two_ints(_: (i32, i32)) {
+}
+
+fn with_generic<T: Copy + Send>((a, b): (i32, T)) {
+    if false {
+        // test generics/bound handling
+        with_generic(a, b); //~ ERROR this function takes 1 argument
+    }
 }

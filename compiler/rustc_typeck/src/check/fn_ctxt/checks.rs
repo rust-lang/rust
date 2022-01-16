@@ -18,7 +18,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, ParamEnv, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, MultiSpan, Span};
@@ -514,7 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let supplied_types: Vec<_> = provided_args.iter().map(|arg| self.check_expr(arg)).collect();
 
         let all_match = iter::zip(expected_types, supplied_types)
-            .all(|(expected, supplied)| self.can_eq(ParamEnv::empty(), expected, supplied).is_ok());
+            .all(|(expected, supplied)| self.can_eq(self.param_env, expected, supplied).is_ok());
 
         if all_match {
             match provided_args {
