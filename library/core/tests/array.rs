@@ -1,5 +1,6 @@
 use core::array;
 use core::convert::TryFrom;
+use core::iter::Iterator;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
@@ -685,4 +686,26 @@ fn add_assign() {
     a += b;
 
     assert_eq!(a, [4, 6, 8, 10]);
+}
+
+#[test]
+fn add_many() {
+    let a: [i32; 128] = (0..128).collect();
+    let b: [i32; 128] = (128..256).collect();
+
+    let exp = (128..384).step_by(2).collect();
+
+    assert_eq!(a + b, exp);
+}
+
+#[test]
+fn add_assign_many() {
+    let mut a: [i32; 128] = (0..128).collect();
+    let b: [i32; 128] = (128..256).collect();
+
+    let exp = (128..384).step_by(2).collect();
+
+    a += b;
+
+    assert_eq!(a, exp);
 }
