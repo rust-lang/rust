@@ -714,7 +714,16 @@ fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_unstable_api_usage, stability_index, ..*providers };
+    *providers = Providers {
+        check_mod_unstable_api_usage,
+        stability_index,
+        lookup_stability: |tcx, id| tcx.stability().local_stability(id.expect_local()),
+        lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id.expect_local()),
+        lookup_deprecation_entry: |tcx, id| {
+            tcx.stability().local_deprecation_entry(id.expect_local())
+        },
+        ..*providers
+    };
 }
 
 struct Checker<'tcx> {
