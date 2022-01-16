@@ -930,6 +930,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 // This marks the corresponding crate-level attributes
                 // as used, and ensures that their values are valid.
                 tcx.ensure().limits(());
+                tcx.ensure().stability_index(());
             }
         );
     });
