@@ -273,7 +273,6 @@ const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[
     // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
     // under control.
     "cargo",
-    "rustc-ap-rustc_ast",
 ];
 
 /// Dependency checks.
