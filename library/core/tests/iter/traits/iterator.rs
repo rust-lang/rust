@@ -496,3 +496,18 @@ fn test_collect() {
     let b: Vec<isize> = a.iter().cloned().collect();
     assert!(a == b);
 }
+
+#[test]
+fn test_collect_into() {
+    let a = vec![1, 2, 3, 4, 5];
+    let mut b = Vec::new();
+    a.iter().cloned().collect_into(&mut b);
+    assert!(a == b);
+}
+
+#[test]
+fn test_collect_with() {
+    let a = vec![1, 2, 3, 4, 5];
+    let b = a.iter().cloned().collect_with(Vec::with_capacity(5));
+    assert!(a == b);
+}
