@@ -683,7 +683,7 @@ impl<T: Clone> Clone for Reverse<T> {
 ///
 /// However, manually setting the discriminants can override this default
 /// behavior:
-////
+///
 /// ```
 /// #[derive(PartialEq, Eq, PartialOrd, Ord)]
 /// enum E {
@@ -934,7 +934,7 @@ impl PartialOrd for Ordering {
 ///
 /// However, manually setting the discriminants can override this default
 /// behavior:
-////
+///
 /// ```
 /// #[derive(PartialEq, PartialOrd)]
 /// enum E {
