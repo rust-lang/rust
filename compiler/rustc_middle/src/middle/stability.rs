@@ -6,7 +6,7 @@ pub use self::StabilityLevel::*;
 use crate::ty::{self, DefIdTree, TyCtxt};
 use rustc_ast::NodeId;
 use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
@@ -66,9 +66,6 @@ pub struct Index<'tcx> {
 
     /// Maps for each crate whether it is part of the staged API.
     pub staged_api: FxHashMap<CrateNum, bool>,
-
-    /// Features enabled for this crate.
-    pub active_features: FxHashSet<Symbol>,
 }
 
 impl<'tcx> Index<'tcx> {
@@ -423,7 +420,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     debug!("stability: skipping span={:?} since it is internal", span);
                     return EvalResult::Allow;
                 }
-                if self.stability().active_features.contains(&feature) {
+                if self.features().active(feature) {
                     return EvalResult::Allow;
                 }
 

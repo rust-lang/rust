@@ -665,18 +665,7 @@ fn stability_index<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> Index<'tcx> {
         stab_map: Default::default(),
         const_stab_map: Default::default(),
         depr_map: Default::default(),
-        active_features: Default::default(),
     };
-
-    let active_lib_features = &tcx.features().declared_lib_features;
-    let active_lang_features = &tcx.features().declared_lang_features;
-
-    // Put the active features into a map for quick lookup.
-    index.active_features = active_lib_features
-        .iter()
-        .map(|&(s, ..)| s)
-        .chain(active_lang_features.iter().map(|&(s, ..)| s))
-        .collect();
 
     {
         let mut annotator = Annotator {
