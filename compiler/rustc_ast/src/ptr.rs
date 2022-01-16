@@ -21,23 +21,36 @@
 //!   implementation changes (using a special thread-local heap, for example).
 //!   Moreover, a switch to, e.g., `P<'a, T>` would be easy and mostly automated.
 
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+
 use std::fmt::{self, Debug, Display};
 use std::iter::FromIterator;
+use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut};
 use std::{slice, vec};
 
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 /// An owned smart pointer.
 pub struct P<T: ?Sized> {
-    ptr: Box<T>,
+    ptr: ManuallyDrop<Box<T>>,
 }
 
 /// Construct a `P<T>` from a `T` value.
 #[allow(non_snake_case)]
 pub fn P<T: 'static>(value: T) -> P<T> {
-    P { ptr: Box::new(value) }
+    P::from_box(Box::new(value))
+}
+
+impl<T: ?Sized> P<T> {
+    const fn from_box(ptr: Box<T>) -> P<T> {
+        P { ptr: ManuallyDrop::new(ptr) }
+    }
+
+    fn into_box(self) -> Box<T> {
+        let mut this = ManuallyDrop::new(self);
+        unsafe { ManuallyDrop::take(&mut this.ptr) }
+    }
 }
 
 impl<T: 'static> P<T> {
@@ -47,32 +60,38 @@ impl<T: 'static> P<T> {
     where
         F: FnOnce(T) -> U,
     {
-        f(*self.ptr)
+        f(*self.into_box())
     }
 
     /// Equivalent to `and_then(|x| x)`.
     pub fn into_inner(self) -> T {
-        *self.ptr
+        *self.into_box()
     }
 
     /// Produce a new `P<T>` from `self` without reallocating.
-    pub fn map<F>(mut self, f: F) -> P<T>
+    pub fn map<F>(self, f: F) -> P<T>
     where
         F: FnOnce(T) -> T,
     {
-        let x = f(*self.ptr);
-        *self.ptr = x;
-
-        self
+        let mut ptr = self.into_box();
+        *ptr = f(*ptr);
+        P::from_box(ptr)
     }
 
     /// Optionally produce a new `P<T>` from `self` without reallocating.
-    pub fn filter_map<F>(mut self, f: F) -> Option<P<T>>
+    pub fn filter_map<F>(self, f: F) -> Option<P<T>>
     where
         F: FnOnce(T) -> Option<T>,
     {
-        *self.ptr = f(*self.ptr)?;
-        Some(self)
+        let mut ptr = self.into_box();
+        *ptr = f(*ptr)?;
+        Some(P::from_box(ptr))
+    }
+}
+
+impl<T: ?Sized> Drop for P<T> {
+    fn drop(&mut self) {
+        ensure_sufficient_stack(|| unsafe { ManuallyDrop::drop(&mut self.ptr) });
     }
 }
 
@@ -98,7 +117,7 @@ impl<T: 'static + Clone> Clone for P<T> {
 
 impl<T: ?Sized + Debug> Debug for P<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Debug::fmt(&self.ptr, f)
+        Debug::fmt(&*self.ptr, f)
     }
 }
 
@@ -110,7 +129,7 @@ impl<T: Display> Display for P<T> {
 
 impl<T> fmt::Pointer for P<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Pointer::fmt(&self.ptr, f)
+        fmt::Pointer::fmt(&*self.ptr, f)
     }
 }
 
@@ -128,17 +147,17 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<T> {
 
 impl<T> P<[T]> {
     pub const fn new() -> P<[T]> {
-        P { ptr: Box::default() }
+        P::from_box(Box::default())
     }
 
     #[inline(never)]
     pub fn from_vec(v: Vec<T>) -> P<[T]> {
-        P { ptr: v.into_boxed_slice() }
+        P::from_box(v.into_boxed_slice())
     }
 
     #[inline(never)]
     pub fn into_vec(self) -> Vec<T> {
-        self.ptr.into_vec()
+        self.into_box().into_vec()
     }
 }
 
