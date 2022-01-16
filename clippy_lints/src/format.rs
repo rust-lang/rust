@@ -9,7 +9,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::kw;
-use rustc_span::{sym, Span};
+use rustc_span::{sym, BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -84,7 +84,22 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                         ExprKind::MethodCall(path, ..) => path.ident.name.as_str() == "to_string",
                         _ => false,
                     };
-                    let sugg = if is_new_string {
+                    let sugg = if format_args.format_string_span.contains(value.span) {
+                        // Implicit argument. e.g. `format!("{x}")` span points to `{x}`
+                        let spdata = value.span.data();
+                        let span = Span::new(
+                            spdata.lo + BytePos(1),
+                            spdata.hi - BytePos(1),
+                            spdata.ctxt,
+                            spdata.parent
+                        );
+                        let snip = snippet_with_applicability(cx, span, "..", &mut applicability);
+                        if is_new_string {
+                            snip.into()
+                        } else {
+                            format!("{snip}.to_string()")
+                        }
+                    } else if is_new_string {
                         snippet_with_applicability(cx, value.span, "..", &mut applicability).into_owned()
                     } else {
                         let sugg = Sugg::hir_with_applicability(cx, value, "<arg>", &mut applicability);
