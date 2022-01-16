@@ -1,8 +1,5 @@
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
-mod imp;
-use imp::{binop_assign_impl, binop_impl};
-
 macro_rules! binop {
     ($trait:ident, $method:ident) => {
         #[stable(feature = "array_bin_ops", since = "1.60.0")]
@@ -13,7 +10,7 @@ macro_rules! binop {
             type Output = [T::Output; N];
 
             fn $method(self, rhs: [U; N]) -> Self::Output {
-                binop_impl(self, rhs, T::$method)
+                self.zip_map(rhs, T::$method)
             }
         }
     };
@@ -27,7 +24,7 @@ macro_rules! binop_assign {
             T: $trait<U>,
         {
             fn $method(&mut self, rhs: [U; N]) {
-                binop_assign_impl(self, rhs, T::$method)
+                self.zip_map_assign(rhs, T::$method)
             }
         }
     };

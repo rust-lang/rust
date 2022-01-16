@@ -19,9 +19,12 @@ use crate::slice::{Iter, IterMut};
 mod binops;
 mod equality;
 mod iter;
+mod zip_map;
 
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
+
+use zip_map::{ZipMapIter, ForwardIter};
 
 /// Creates an array `[T; N]` where each array element `T` is returned by the `cb` call.
 ///
@@ -504,11 +507,76 @@ impl<T, const N: usize> [T; N] {
     /// ```
     #[unstable(feature = "array_zip", issue = "80094")]
     pub fn zip<U>(self, rhs: [U; N]) -> [(T, U); N] {
-        let mut iter = IntoIterator::into_iter(self).zip(rhs);
+        self.zip_map(rhs, |a, b| (a, b))
+    }
 
-        // SAFETY: we know for certain that this iterator will yield exactly `N`
-        // items.
-        unsafe { collect_into_array_unchecked(&mut iter) }
+    /// 'Zips up' two arrays into a single array, applying the `op` over the pairs
+    ///
+    /// This is equivalent but faster than doing manual zip + map
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use std::ops::Add;
+    /// #![feature(array_zip_map)]
+    /// let op = i32::add;
+    ///
+    /// let x = [1, 2, 3];
+    /// let y = [4, 5, 6];
+    ///
+    /// let output1 = x.zip(y).map(|(a, b)| op(a, b));
+    /// let output2 = x.zip_map(y, op);
+    ///
+    /// assert_eq!(output1, output2);
+    /// ```
+    #[unstable(feature = "array_zip_map", issue = "none")]
+    pub fn zip_map<U, F, R>(self, rhs: [U; N], mut op: F) -> [R; N]
+    where
+        F: FnMut(T, U) -> R,
+    {
+        let mut iter = ZipMapIter::new(self, rhs);
+
+        for _ in 0..N {
+            // SAFETY:
+            // Will only be called a maximum of N times
+            unsafe { iter.step(&mut op) }
+        }
+
+        // SAFETY:
+        // By this point, we are certain we have initialised all N elements
+        unsafe { iter.output() }
+    }
+
+    /// Applies the op over pairs of elements
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use std::ops::Add;
+    /// #![feature(array_zip_map)]
+    /// let op = i32::add;
+    ///
+    /// let x = [1, 2, 3];
+    /// let y = [4, 5, 6];
+    ///
+    /// let output1 = x.zip(y).map(|(a, b)| op(a, b));
+    /// let output2 = x.zip_map(y, op);
+    ///
+    /// assert_eq!(output1, output2);
+    /// ```
+    #[unstable(feature = "array_zip_map", issue = "none")]
+    pub fn zip_map_assign<U, F>(&mut self, rhs: [U; N], mut op: F)
+    where
+        F: FnMut(&mut T, U),
+    {
+        let mut iter = ForwardIter::new(rhs);
+        let op = &mut op;
+
+        for _ in 0..N {
+            // SAFETY:
+            // Will only be called a maximum of N times
+            unsafe { op(self.get_unchecked_mut(iter.index()), iter.next_unchecked()) }
+        }
     }
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.

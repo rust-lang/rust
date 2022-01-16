@@ -1,47 +1,15 @@
 use core::mem::{transmute_copy, ManuallyDrop, MaybeUninit};
 use core::ptr::drop_in_place;
 
-pub fn binop_impl<T, U, O, const N: usize>(
-    lhs: [T; N],
-    rhs: [U; N],
-    op: impl Fn(T, U) -> O + Copy,
-) -> [O; N] {
-    let mut dc = BinOpsIter::new(lhs, rhs);
-
-    for _ in 0..N {
-        // SAFETY:
-        // Will only be called a maximum of N times
-        unsafe { dc.step(op) }
-    }
-
-    // SAFETY:
-    // By this point, we are certain we have initialised all N elements
-    unsafe { dc.output() }
-}
-
-pub fn binop_assign_impl<T, U, const N: usize>(
-    lhs: &mut [T; N],
-    rhs: [U; N],
-    op: impl Fn(&mut T, U) + Copy,
-) {
-    let mut dc = Iter::new(rhs);
-
-    for _ in 0..N {
-        // SAFETY:
-        // Will only be called a maximum of N times
-        unsafe { op(lhs.get_unchecked_mut(dc.index()), dc.next_unchecked()) }
-    }
-}
-
 /// Like [`Iter`], but traverses 3 arrays at once
-pub struct BinOpsIter<T, U, O, const N: usize> {
+pub struct ZipMapIter<T, U, O, const N: usize> {
     lhs: [MaybeUninit<T>; N],
     rhs: [MaybeUninit<U>; N],
     output: [MaybeUninit<O>; N],
     i: usize,
 }
 
-impl<T, U, O, const N: usize> Drop for BinOpsIter<T, U, O, N> {
+impl<T, U, O, const N: usize> Drop for ZipMapIter<T, U, O, N> {
     fn drop(&mut self) {
         let i = self.i;
         // SAFETY:
@@ -56,7 +24,7 @@ impl<T, U, O, const N: usize> Drop for BinOpsIter<T, U, O, N> {
     }
 }
 
-impl<T, U, O, const N: usize> BinOpsIter<T, U, O, N> {
+impl<T, U, O, const N: usize> ZipMapIter<T, U, O, N> {
     pub fn new(lhs: [T; N], rhs: [U; N]) -> Self {
         Self { lhs: mu_array(lhs), rhs: mu_array(rhs), output: MaybeUninit::uninit_array(), i: 0 }
     }
@@ -92,12 +60,12 @@ impl<T, U, O, const N: usize> BinOpsIter<T, U, O, N> {
 
 /// For sake of optimisation, it's a simplified version of [`array::IntoIter`]
 /// that can only go forward, and can only be accessed through unsafe (to avoid bounds checks)
-pub struct Iter<U, const N: usize> {
+pub struct ForwardIter<U, const N: usize> {
     rhs: [MaybeUninit<U>; N],
     i: usize,
 }
 
-impl<U, const N: usize> Drop for Iter<U, N> {
+impl<U, const N: usize> Drop for ForwardIter<U, N> {
     fn drop(&mut self) {
         let i = self.i;
         // SAFETY:
@@ -109,7 +77,7 @@ impl<U, const N: usize> Drop for Iter<U, N> {
     }
 }
 
-impl<U, const N: usize> Iter<U, N> {
+impl<U, const N: usize> ForwardIter<U, N> {
     pub fn index(&self) -> usize {
         self.i
     }
