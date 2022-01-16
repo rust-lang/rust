@@ -8,6 +8,7 @@ use std::mem;
 use std::ops;
 
 use rustc_ast::{LitKind, MetaItem, MetaItemKind, NestedMetaItem};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
@@ -45,7 +46,7 @@ impl Cfg {
     /// Parses a `NestedMetaItem` into a `Cfg`.
     fn parse_nested(
         nested_cfg: &NestedMetaItem,
-        exclude: &[Symbol],
+        exclude: &FxHashSet<Cfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         match nested_cfg {
             NestedMetaItem::MetaItem(ref cfg) => Cfg::parse_without(cfg, exclude),
@@ -57,7 +58,7 @@ impl Cfg {
 
     crate fn parse_without(
         cfg: &MetaItem,
-        exclude: &[Symbol],
+        exclude: &FxHashSet<Cfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         let name = match cfg.ident() {
             Some(ident) => ident.name,
@@ -70,19 +71,13 @@ impl Cfg {
         };
         match cfg.kind {
             MetaItemKind::Word => {
-                if exclude.contains(&name) {
-                    Ok(None)
-                } else {
-                    Ok(Some(Cfg::Cfg(name, None)))
-                }
+                let cfg = Cfg::Cfg(name, None);
+                if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
             }
             MetaItemKind::NameValue(ref lit) => match lit.kind {
                 LitKind::Str(value, _) => {
-                    if exclude.contains(&name) {
-                        Ok(None)
-                    } else {
-                        Ok(Some(Cfg::Cfg(name, Some(value))))
-                    }
+                    let cfg = Cfg::Cfg(name, Some(value));
+                    if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
                 }
                 _ => Err(InvalidCfgError {
                     // FIXME: if the main #[cfg] syntax decided to support non-string literals,
@@ -126,7 +121,7 @@ impl Cfg {
     /// If the content is not properly formatted, it will return an error indicating what and where
     /// the error is.
     crate fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
-        Self::parse_without(cfg, &[]).map(|ret| ret.unwrap())
+        Self::parse_without(cfg, &FxHashSet::default()).map(|ret| ret.unwrap())
     }
 
     /// Checks whether the given configuration can be matched in the current session.

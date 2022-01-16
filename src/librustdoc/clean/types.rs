@@ -831,11 +831,10 @@ impl AttributesExt for [ast::Attribute] {
                 self.iter()
                     .filter(|attr| attr.has_name(sym::cfg))
                     .filter_map(|attr| single(attr.meta_item_list()?))
-                    .filter_map(|attr| match Cfg::parse_without(attr.meta_item()?, &[sym::test]) {
+                    .filter_map(|attr| match Cfg::parse_without(attr.meta_item()?, hidden_cfg) {
                         Ok(Some(c)) => Some(c),
                         _ => None,
                     })
-                    .filter(|cfg| !hidden_cfg.contains(cfg))
                     .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
             } else {
                 Cfg::True
