@@ -3189,6 +3189,10 @@ pub trait Iterator {
     /// This is useful when you have an iterator over `&T`, but you need an
     /// iterator over `T`.
     ///
+    /// There is no guarantee whatsoever about the `clone` method actually
+    /// being called *or* optimized away. So code should not depend on
+    /// either.
+    ///
     /// [`clone`]: Clone::clone
     ///
     /// # Examples
@@ -3205,6 +3209,18 @@ pub trait Iterator {
     ///
     /// assert_eq!(v_cloned, vec![1, 2, 3]);
     /// assert_eq!(v_map, vec![1, 2, 3]);
+    /// ```
+    ///
+    /// To get the best performance, try to clone late:
+    ///
+    /// ```
+    /// let a = [vec![0_u8, 1, 2], vec![3, 4], vec![23]];
+    /// // don't do this:
+    /// let slower: Vec<_> = a.iter().cloned().filter(|s| s.len() == 1).collect();
+    /// assert_eq!(&[vec![23]], &slower[..]);
+    /// // instead call `cloned` late
+    /// let faster: Vec<_> = a.iter().filter(|s| s.len() == 1).cloned().collect();
+    /// assert_eq!(&[vec![23]], &faster[..]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>
