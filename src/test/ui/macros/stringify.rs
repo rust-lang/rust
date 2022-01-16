@@ -589,7 +589,7 @@ fn test_item() {
         stringify_item!(
             pub trait Trait<T> = Sized where T: 'a;
         ),
-        "", // FIXME
+        "pub trait Trait<T> = Sized where T: 'a;",
     );
 
     // ItemKind::Impl
