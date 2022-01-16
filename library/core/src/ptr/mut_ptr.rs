@@ -617,7 +617,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
+    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
     #[inline(always)]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
     where
