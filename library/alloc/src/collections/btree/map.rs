@@ -65,8 +65,9 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
 /// behavior.
 ///
-/// Iterators yielded by functions such as [`BTreeMap::iter`], [`BTreeMap::values`], or [`BTreeMap::keys`]
-/// yield their items in order by key, and take worst-case logarithmic and amortized constant time per item yielded.
+/// Iterators obtained from functions such as [`BTreeMap::iter`], [`BTreeMap::values`], or
+/// [`BTreeMap::keys`] produce their items in order by key, and take worst-case logarithmic and
+/// amortized constant time per item returned.
 ///
 /// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
 /// [`Cell`]: core::cell::Cell

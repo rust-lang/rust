@@ -27,8 +27,8 @@ use super::Recover;
 /// incorrect results, aborts, memory leaks, or non-termination) but will not be undefined
 /// behavior.
 ///
-/// Iterators returned by [`BTreeSet::iter`] yield their items in order,
-/// and take worst-case logarithmic and amortized constant time per item yielded.
+/// Iterators returned by [`BTreeSet::iter`] produce their items in order, and take worst-case
+/// logarithmic and amortized constant time per item returned.
 ///
 /// [`Ord`]: core::cmp::Ord
 /// [`Cell`]: core::cell::Cell
