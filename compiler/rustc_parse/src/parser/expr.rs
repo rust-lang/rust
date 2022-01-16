@@ -682,7 +682,7 @@ impl<'a> Parser<'a> {
         // Save the state of the parser before parsing type normally, in case there is a
         // LessThan comparison after this cast.
         let parser_snapshot_before_type = self.clone();
-        let cast_expr = match self.parse_ty_no_plus() {
+        let cast_expr = match self.parse_as_cast_ty() {
             Ok(rhs) => mk_expr(self, lhs, rhs),
             Err(mut type_err) => {
                 // Rewind to before attempting to parse the type with generics, to recover
@@ -808,7 +808,7 @@ impl<'a> Parser<'a> {
                 "casts cannot be followed by {}",
                 match with_postfix.kind {
                     ExprKind::Index(_, _) => "indexing",
-                    ExprKind::Try(_) => "?",
+                    ExprKind::Try(_) => "`?`",
                     ExprKind::Field(_, _) => "a field access",
                     ExprKind::MethodCall(_, _, _) => "a method call",
                     ExprKind::Call(_, _) => "a function call",

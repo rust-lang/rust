@@ -1,17 +1,13 @@
-error: expected parameter name, found `?`
+error: invalid `?` in type
   --> $DIR/issue-84148-1.rs:1:14
    |
 LL | fn f(t:for<>t?)
-   |              ^ expected parameter name
-
-error: expected one of `(`, `)`, `+`, `,`, `::`, or `<`, found `?`
-  --> $DIR/issue-84148-1.rs:1:14
+   |              ^ `?` is only allowed on expressions, not types
    |
-LL | fn f(t:for<>t?)
-   |              ^
-   |              |
-   |              expected one of `(`, `)`, `+`, `,`, `::`, or `<`
-   |              help: missing `,`
+help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
+   |
+LL | fn f(t:Option<for<>t>)
+   |        +++++++      ~
 
 error: expected one of `->`, `where`, or `{`, found `<eof>`
   --> $DIR/issue-84148-1.rs:1:15
@@ -19,5 +15,5 @@ error: expected one of `->`, `where`, or `{`, found `<eof>`
 LL | fn f(t:for<>t?)
    |               ^ expected one of `->`, `where`, or `{`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

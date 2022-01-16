@@ -117,9 +117,9 @@ static bar2: &[i32] = &(&[1i32,2,3]: &[i32; 3][0..1]);
 
 pub fn cast_then_try() -> Result<u64,u64> {
     Err(0u64) as Result<u64,u64>?;
-    //~^ ERROR: casts cannot be followed by ?
+    //~^ ERROR: casts cannot be followed by `?`
     Err(0u64): Result<u64,u64>?;
-    //~^ ERROR: casts cannot be followed by ?
+    //~^ ERROR: casts cannot be followed by `?`
     Ok(1)
 }
 

@@ -265,7 +265,7 @@ help: try surrounding the expression in parentheses
 LL | static bar2: &[i32] = &((&[1i32,2,3]: &[i32; 3])[0..1]);
    |                         +                      +
 
-error: casts cannot be followed by ?
+error: casts cannot be followed by `?`
   --> $DIR/issue-35813-postfix-after-cast.rs:119:5
    |
 LL |     Err(0u64) as Result<u64,u64>?;
@@ -276,7 +276,7 @@ help: try surrounding the expression in parentheses
 LL |     (Err(0u64) as Result<u64,u64>)?;
    |     +                            +
 
-error: casts cannot be followed by ?
+error: casts cannot be followed by `?`
   --> $DIR/issue-35813-postfix-after-cast.rs:121:5
    |
 LL |     Err(0u64): Result<u64,u64>?;
