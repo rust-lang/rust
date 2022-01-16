@@ -9,8 +9,8 @@ use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
-use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
+use rustc_span::{Span, SpanData};
 use std::fmt;
 use std::hash::Hash;
 
@@ -348,8 +348,10 @@ impl<'tcx> CodegenUnit<'tcx> {
     ) -> Vec<(MonoItem<'tcx>, (Linkage, Visibility))> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by span first
+        //
+        // We directly cache a SpanData to avoid having to query the interner for each comparison.
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey<'tcx>(Option<Span>, SymbolName<'tcx>);
+        pub struct ItemSortKey<'tcx>(Option<SpanData>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             let span = match item {
@@ -373,6 +375,7 @@ impl<'tcx> CodegenUnit<'tcx> {
                 MonoItem::Static(def_id) => tcx.hir().span_if_local(def_id),
                 MonoItem::GlobalAsm(item_id) => Some(tcx.def_span(item_id.def_id)),
             };
+            let span = span.map(Span::data);
             ItemSortKey(span, item.symbol_name(tcx))
         }
 
