@@ -7,6 +7,9 @@ fn main() {
     //~^ ERROR this enum variant takes 1 argument but 2 arguments were supplied
     int_bool(1, 2);
     //~^ ERROR this function takes 1 argument but 2 arguments were supplied
+
+    let _: Option<(i8,)> = Some();
+    //~^ ERROR this enum variant takes 1 argument but 0 arguments were supplied
 }
 
 fn int_bool(_: (i32, bool)) {

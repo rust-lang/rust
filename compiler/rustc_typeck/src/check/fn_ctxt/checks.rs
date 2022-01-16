@@ -28,9 +28,9 @@ use crate::structured_errors::StructuredDiagnostic;
 use std::iter;
 use std::slice;
 
-enum FnArgsAsTuple<'hir> {
-    Single(&'hir hir::Expr<'hir>),
-    Multi { first: &'hir hir::Expr<'hir>, last: &'hir hir::Expr<'hir> },
+struct FnArgsAsTuple<'hir> {
+    first: &'hir hir::Expr<'hir>,
+    last: &'hir hir::Expr<'hir>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -432,23 +432,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     String::from("()"),
                     Applicability::MachineApplicable,
                 );
-            } else if let Some(tuple_fn_arg) = sugg_tuple_wrap_args {
-                use FnArgsAsTuple::*;
-
-                let spans = match tuple_fn_arg {
-                    Multi { first, last } => vec![
+            } else if let Some(FnArgsAsTuple { first, last }) = sugg_tuple_wrap_args {
+                err.multipart_suggestion(
+                    "use parentheses to construct a tuple",
+                    vec![
                         (first.span.shrink_to_lo(), '('.to_string()),
                         (last.span.shrink_to_hi(), ')'.to_string()),
                     ],
-                    Single(single) => vec![
-                        (single.span.shrink_to_lo(), '('.to_string()),
-                        (single.span.shrink_to_hi(), ",)".to_string()),
-                    ],
-                };
-
-                err.multipart_suggestion(
-                    "use parentheses to construct a tuple",
-                    spans,
                     Applicability::MachineApplicable,
                 );
             } else {
@@ -519,8 +509,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if all_match {
             match provided_args {
                 [] => None,
-                [single] => Some(FnArgsAsTuple::Single(single)),
-                [first, .., last] => Some(FnArgsAsTuple::Multi { first, last }),
+                [_] => unreachable!(
+                    "shouldn't reach here - need count mismatch between 1-tuple and 1-argument"
+                ),
+                [first, .., last] => Some(FnArgsAsTuple { first, last }),
             }
         } else {
             None
