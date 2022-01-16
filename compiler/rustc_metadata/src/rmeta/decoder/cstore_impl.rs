@@ -179,8 +179,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         reachable_non_generics
     }
-    native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
-    foreign_modules => { cdata.get_foreign_modules(tcx) }
+    native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess).collect()) }
+    foreign_modules => {
+        Lrc::new(cdata.get_foreign_modules(tcx.sess).map(|m| (m.def_id, m)).collect())
+    }
     crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.name }
@@ -371,11 +373,18 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
 }
 
 impl CStore {
-    pub fn struct_field_names_untracked(&self, def: DefId, sess: &Session) -> Vec<Spanned<Symbol>> {
+    pub fn struct_field_names_untracked<'a>(
+        &'a self,
+        def: DefId,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = Spanned<Symbol>> + 'a {
         self.get_crate_data(def.krate).get_struct_field_names(def.index, sess)
     }
 
-    pub fn struct_field_visibilities_untracked(&self, def: DefId) -> Vec<Visibility> {
+    pub fn struct_field_visibilities_untracked(
+        &self,
+        def: DefId,
+    ) -> impl Iterator<Item = Visibility> + '_ {
         self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
     }
 
@@ -460,8 +469,12 @@ impl CStore {
         self.get_crate_data(cnum).num_def_ids()
     }
 
-    pub fn item_attrs_untracked(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
-        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess).collect()
+    pub fn item_attrs_untracked<'a>(
+        &'a self,
+        def_id: DefId,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = ast::Attribute> + 'a {
+        self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess)
     }
 
     pub fn get_proc_macro_quoted_span_untracked(
@@ -473,15 +486,15 @@ impl CStore {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
     }
 
-    pub fn traits_in_crate_untracked(&self, cnum: CrateNum) -> Vec<DefId> {
-        self.get_crate_data(cnum).get_traits().collect()
+    pub fn traits_in_crate_untracked(&self, cnum: CrateNum) -> impl Iterator<Item = DefId> + '_ {
+        self.get_crate_data(cnum).get_traits()
     }
 
     pub fn trait_impls_in_crate_untracked(
         &self,
         cnum: CrateNum,
-    ) -> Vec<(DefId, Option<SimplifiedType>)> {
-        self.get_crate_data(cnum).get_trait_impls().collect()
+    ) -> impl Iterator<Item = (DefId, Option<SimplifiedType>)> + '_ {
+        self.get_crate_data(cnum).get_trait_impls()
     }
 }
 

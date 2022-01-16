@@ -1033,45 +1033,33 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     /// Iterates over all the stability attributes in the given crate.
     fn get_lib_features(self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Option<Symbol>)] {
-        // FIXME: For a proc macro crate, not sure whether we should return the "host"
-        // features or an empty Vec. Both don't cause ICEs.
         tcx.arena.alloc_from_iter(self.root.lib_features.decode(self))
     }
 
     /// Iterates over the language items in the given crate.
     fn get_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, usize)] {
-        if self.root.is_proc_macro_crate() {
-            // Proc macro crates do not export any lang-items to the target.
-            &[]
-        } else {
-            tcx.arena.alloc_from_iter(
-                self.root
-                    .lang_items
-                    .decode(self)
-                    .map(|(def_index, index)| (self.local_def_id(def_index), index)),
-            )
-        }
+        tcx.arena.alloc_from_iter(
+            self.root
+                .lang_items
+                .decode(self)
+                .map(|(def_index, index)| (self.local_def_id(def_index), index)),
+        )
     }
 
     /// Iterates over the diagnostic items in the given crate.
     fn get_diagnostic_items(self) -> DiagnosticItems {
-        if self.root.is_proc_macro_crate() {
-            // Proc macro crates do not export any diagnostic-items to the target.
-            Default::default()
-        } else {
-            let mut id_to_name = FxHashMap::default();
-            let name_to_id = self
-                .root
-                .diagnostic_items
-                .decode(self)
-                .map(|(name, def_index)| {
-                    let id = self.local_def_id(def_index);
-                    id_to_name.insert(id, name);
-                    (name, id)
-                })
-                .collect();
-            DiagnosticItems { id_to_name, name_to_id }
-        }
+        let mut id_to_name = FxHashMap::default();
+        let name_to_id = self
+            .root
+            .diagnostic_items
+            .decode(self)
+            .map(|(name, def_index)| {
+                let id = self.local_def_id(def_index);
+                id_to_name.insert(id, name);
+                (name, id)
+            })
+            .collect();
+        DiagnosticItems { id_to_name, name_to_id }
     }
 
     /// Iterates over all named children of the given module,
@@ -1346,26 +1334,28 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, sess))
     }
 
-    fn get_struct_field_names(self, id: DefIndex, sess: &Session) -> Vec<Spanned<Symbol>> {
+    fn get_struct_field_names(
+        self,
+        id: DefIndex,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = Spanned<Symbol>> + 'a {
         self.root
             .tables
             .children
             .get(self, id)
             .unwrap_or_else(Lazy::empty)
             .decode(self)
-            .map(|index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
-            .collect()
+            .map(move |index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
     }
 
-    fn get_struct_field_visibilities(self, id: DefIndex) -> Vec<Visibility> {
+    fn get_struct_field_visibilities(self, id: DefIndex) -> impl Iterator<Item = Visibility> + 'a {
         self.root
             .tables
             .children
             .get(self, id)
             .unwrap_or_else(Lazy::empty)
             .decode(self)
-            .map(|field_index| self.get_visibility(field_index))
-            .collect()
+            .map(move |field_index| self.get_visibility(field_index))
     }
 
     fn get_inherent_implementations_for_type(
@@ -1401,8 +1391,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx: TyCtxt<'tcx>,
         trait_def_id: DefId,
     ) -> &'tcx [(DefId, Option<SimplifiedType>)] {
-        if self.root.is_proc_macro_crate() {
-            // proc-macro crates export no trait impls.
+        if self.trait_impls.is_empty() {
             return &[];
         }
 
@@ -1437,13 +1426,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
-    fn get_native_libraries(self, sess: &Session) -> Vec<NativeLib> {
-        if self.root.is_proc_macro_crate() {
-            // Proc macro crates do not have any *target* native libraries.
-            vec![]
-        } else {
-            self.root.native_libraries.decode((self, sess)).collect()
-        }
+    fn get_native_libraries(self, sess: &'a Session) -> impl Iterator<Item = NativeLib> + 'a {
+        self.root.native_libraries.decode((self, sess))
     }
 
     fn get_proc_macro_quoted_span(self, index: usize, sess: &Session) -> Span {
@@ -1455,15 +1439,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, sess))
     }
 
-    fn get_foreign_modules(self, tcx: TyCtxt<'tcx>) -> Lrc<FxHashMap<DefId, ForeignModule>> {
-        if self.root.is_proc_macro_crate() {
-            // Proc macro crates do not have any *target* foreign modules.
-            Lrc::new(FxHashMap::default())
-        } else {
-            let modules: FxHashMap<DefId, ForeignModule> =
-                self.root.foreign_modules.decode((self, tcx.sess)).map(|m| (m.def_id, m)).collect();
-            Lrc::new(modules)
-        }
+    fn get_foreign_modules(self, sess: &'a Session) -> impl Iterator<Item = ForeignModule> + '_ {
+        self.root.foreign_modules.decode((self, sess))
     }
 
     fn get_dylib_dependency_formats(
@@ -1479,12 +1456,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn get_missing_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [lang_items::LangItem] {
-        if self.root.is_proc_macro_crate() {
-            // Proc macro crates do not depend on any target weak lang-items.
-            &[]
-        } else {
-            tcx.arena.alloc_from_iter(self.root.lang_items_missing.decode(self))
-        }
+        tcx.arena.alloc_from_iter(self.root.lang_items_missing.decode(self))
     }
 
     fn get_fn_param_names(self, tcx: TyCtxt<'tcx>, id: DefIndex) -> &'tcx [Ident] {
@@ -1500,13 +1472,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
-        if self.root.is_proc_macro_crate() {
-            // If this crate is a custom derive crate, then we're not even going to
-            // link those in so we skip those crates.
-            &[]
-        } else {
-            tcx.arena.alloc_from_iter(self.root.exported_symbols.decode((self, tcx)))
-        }
+        tcx.arena.alloc_from_iter(self.root.exported_symbols.decode((self, tcx)))
     }
 
     fn get_rendered_const(self, id: DefIndex) -> String {

@@ -999,12 +999,14 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let cstore = self.r.cstore();
         match res {
             Res::Def(DefKind::Struct, def_id) => {
-                let field_names = cstore.struct_field_names_untracked(def_id, self.r.session);
+                let field_names =
+                    cstore.struct_field_names_untracked(def_id, self.r.session).collect();
                 let ctor = cstore.ctor_def_id_and_kind_untracked(def_id);
                 if let Some((ctor_def_id, ctor_kind)) = ctor {
                     let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                     let ctor_vis = cstore.visibility_untracked(ctor_def_id);
-                    let field_visibilities = cstore.struct_field_visibilities_untracked(def_id);
+                    let field_visibilities =
+                        cstore.struct_field_visibilities_untracked(def_id).collect();
                     self.r
                         .struct_constructors
                         .insert(def_id, (ctor_res, ctor_vis, field_visibilities));
@@ -1012,7 +1014,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::Union, def_id) => {
-                let field_names = cstore.struct_field_names_untracked(def_id, self.r.session);
+                let field_names =
+                    cstore.struct_field_names_untracked(def_id, self.r.session).collect();
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::AssocFn, def_id) => {
