@@ -27,18 +27,17 @@ const LICENSES: &[&str] = &[
 /// tooling. It is _crucial_ that no exception crates be dependencies
 /// of the Rust runtime (std/test).
 const EXCEPTIONS: &[(&str, &str)] = &[
-    ("mdbook", "MPL-2.0"),                                  // mdbook
-    ("openssl", "Apache-2.0"),                              // cargo, mdbook
-    ("colored", "MPL-2.0"),                                 // rustfmt
-    ("ordslice", "Apache-2.0"),                             // rls
-    ("ryu", "Apache-2.0 OR BSL-1.0"),                       // rls/cargo/... (because of serde)
-    ("bytesize", "Apache-2.0"),                             // cargo
-    ("im-rc", "MPL-2.0+"),                                  // cargo
-    ("sized-chunks", "MPL-2.0+"),                           // cargo via im-rc
-    ("bitmaps", "MPL-2.0+"),                                // cargo via im-rc
-    ("crossbeam-queue", "MIT/Apache-2.0 AND BSD-2-Clause"), // rls via rayon
-    ("instant", "BSD-3-Clause"), // rustc_driver/tracing-subscriber/parking_lot
-    ("snap", "BSD-3-Clause"),    // rustc
+    ("mdbook", "MPL-2.0"),            // mdbook
+    ("openssl", "Apache-2.0"),        // cargo, mdbook
+    ("colored", "MPL-2.0"),           // rustfmt
+    ("ordslice", "Apache-2.0"),       // rls
+    ("ryu", "Apache-2.0 OR BSL-1.0"), // rls/cargo/... (because of serde)
+    ("bytesize", "Apache-2.0"),       // cargo
+    ("im-rc", "MPL-2.0+"),            // cargo
+    ("sized-chunks", "MPL-2.0+"),     // cargo via im-rc
+    ("bitmaps", "MPL-2.0+"),          // cargo via im-rc
+    ("instant", "BSD-3-Clause"),      // rustc_driver/tracing-subscriber/parking_lot
+    ("snap", "BSD-3-Clause"),         // rustc
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
 ];
@@ -98,7 +97,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "crc32fast",
     "crossbeam-deque",
     "crossbeam-epoch",
-    "crossbeam-queue",
     "crossbeam-utils",
     "cstr",
     "datafrog",
@@ -136,7 +134,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "lock_api",
     "log",
     "matchers",
-    "maybe-uninit",
     "md-5",
     "measureme",
     "memchr",
