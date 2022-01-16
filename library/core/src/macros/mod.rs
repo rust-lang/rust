@@ -31,6 +31,7 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "assert_eq_macro")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => ({
@@ -80,6 +81,7 @@ macro_rules! assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "assert_ne_macro")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => ({
@@ -236,6 +238,7 @@ macro_rules! debug_assert {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_eq_macro")]
 macro_rules! debug_assert_eq {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_eq!($($arg)*); })
 }
@@ -261,6 +264,7 @@ macro_rules! debug_assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_ne_macro")]
 macro_rules! debug_assert_ne {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_ne!($($arg)*); })
 }
@@ -320,6 +324,7 @@ pub macro debug_assert_matches($($arg:tt)*) {
 /// ```
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "matches_macro")]
 macro_rules! matches {
     ($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $expression {
@@ -475,6 +480,7 @@ macro_rules! r#try {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "write_macro")]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ($dst.write_fmt($crate::format_args!($($arg)*)))
 }
@@ -525,6 +531,7 @@ macro_rules! write {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "writeln_macro")]
 #[allow_internal_unstable(format_args_nl)]
 macro_rules! writeln {
     ($dst:expr $(,)?) => (
@@ -589,6 +596,7 @@ macro_rules! writeln {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "unreachable_macro")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! unreachable {
     () => ({
@@ -675,6 +683,7 @@ macro_rules! unreachable {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "unimplemented_macro")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! unimplemented {
     () => ($crate::panicking::panic("not implemented"));
@@ -737,6 +746,7 @@ macro_rules! unimplemented {
 /// ```
 #[macro_export]
 #[stable(feature = "todo_macro", since = "1.40.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "todo_macro")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! todo {
     () => ($crate::panicking::panic("not yet implemented"));
@@ -786,6 +796,7 @@ pub(crate) mod builtin {
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "compile_error_macro")]
     macro_rules! compile_error {
         ($msg:expr $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -835,6 +846,7 @@ pub(crate) mod builtin {
     /// assert_eq!(s, format!("hello {}", "world"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "format_args_macro")]
     #[allow_internal_unsafe]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
@@ -905,6 +917,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "env_macro")]
     macro_rules! env {
         ($name:expr $(,)?) => {{ /* compiler built-in */ }};
         ($name:expr, $error_msg:expr $(,)?) => {{ /* compiler built-in */ }};
@@ -930,6 +943,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "option_env_macro")]
     macro_rules! option_env {
         ($name:expr $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -1015,6 +1029,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "concat_macro")]
     macro_rules! concat {
         ($($e:expr),* $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -1040,6 +1055,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "line_macro")]
     macro_rules! line {
         () => {
             /* compiler built-in */
@@ -1079,6 +1095,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "column_macro")]
     macro_rules! column {
         () => {
             /* compiler built-in */
@@ -1104,6 +1121,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "file_macro")]
     macro_rules! file {
         () => {
             /* compiler built-in */
@@ -1128,6 +1146,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "stringify_macro")]
     macro_rules! stringify {
         ($($t:tt)*) => {
             /* compiler built-in */
@@ -1169,6 +1188,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "include_str_macro")]
     macro_rules! include_str {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -1208,6 +1228,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "include_bytes_macro")]
     macro_rules! include_bytes {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -1232,6 +1253,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "module_path_macro")]
     macro_rules! module_path {
         () => {
             /* compiler built-in */
@@ -1265,6 +1287,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "cfg_macro")]
     macro_rules! cfg {
         ($($cfg:tt)*) => {
             /* compiler built-in */
@@ -1315,6 +1338,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "include_macro")]
     macro_rules! include {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }

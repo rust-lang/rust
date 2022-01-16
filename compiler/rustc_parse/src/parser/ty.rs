@@ -44,6 +44,11 @@ pub(super) enum RecoverQPath {
     No,
 }
 
+pub(super) enum IsAsCast {
+    Yes,
+    No,
+}
+
 /// Signals whether parsing a type should recover `->`.
 ///
 /// More specifically, when parsing a function like:
@@ -100,6 +105,7 @@ impl<'a> Parser<'a> {
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
             None,
+            IsAsCast::No,
         )
     }
 
@@ -113,6 +119,7 @@ impl<'a> Parser<'a> {
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
             Some(ty_params),
+            IsAsCast::No,
         )
     }
 
@@ -126,6 +133,7 @@ impl<'a> Parser<'a> {
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
             None,
+            IsAsCast::No,
         )
     }
 
@@ -142,9 +150,22 @@ impl<'a> Parser<'a> {
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
             None,
+            IsAsCast::No,
         )
     }
 
+    /// Parses a type following an `as` cast. Similar to `parse_ty_no_plus`, but signaling origin
+    /// for better diagnostics involving `?`.
+    pub(super) fn parse_as_cast_ty(&mut self) -> PResult<'a, P<Ty>> {
+        self.parse_ty_common(
+            AllowPlus::No,
+            AllowCVariadic::No,
+            RecoverQPath::Yes,
+            RecoverReturnSign::Yes,
+            None,
+            IsAsCast::Yes,
+        )
+    }
     /// Parse a type without recovering `:` as `->` to avoid breaking code such as `where fn() : for<'a>`
     pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
@@ -153,6 +174,7 @@ impl<'a> Parser<'a> {
             RecoverQPath::Yes,
             RecoverReturnSign::OnlyFatArrow,
             None,
+            IsAsCast::No,
         )
     }
 
@@ -171,6 +193,7 @@ impl<'a> Parser<'a> {
                 recover_qpath,
                 recover_return_sign,
                 None,
+                IsAsCast::No,
             )?;
             FnRetTy::Ty(ty)
         } else if recover_return_sign.can_recover(&self.token.kind) {
@@ -191,6 +214,7 @@ impl<'a> Parser<'a> {
                 recover_qpath,
                 recover_return_sign,
                 None,
+                IsAsCast::No,
             )?;
             FnRetTy::Ty(ty)
         } else {
@@ -205,6 +229,7 @@ impl<'a> Parser<'a> {
         recover_qpath: RecoverQPath,
         recover_return_sign: RecoverReturnSign,
         ty_generics: Option<&Generics>,
+        is_as_cast: IsAsCast,
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
@@ -280,6 +305,7 @@ impl<'a> Parser<'a> {
         // Try to recover from use of `+` with incorrect priority.
         self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
         self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
+        let ty = self.maybe_recover_from_question_mark(ty, is_as_cast);
         self.maybe_recover_from_bad_qpath(ty, allow_qpath_recovery)
     }
 

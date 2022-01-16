@@ -705,9 +705,7 @@ impl<'a> State<'a> {
                 self.bclose(item.span);
             }
             hir::ItemKind::TraitAlias(ref generics, ref bounds) => {
-                self.head("");
-                self.print_visibility(&item.vis);
-                self.word_nbsp("trait");
+                self.head(visibility_qualified(&item.vis, "trait"));
                 self.print_ident(item.ident);
                 self.print_generic_params(&generics.params);
                 let mut real_bounds = Vec::with_capacity(bounds.len());
@@ -725,6 +723,8 @@ impl<'a> State<'a> {
                 self.print_bounds("=", real_bounds);
                 self.print_where_clause(&generics.where_clause);
                 self.word(";");
+                self.end(); // end inner head-block
+                self.end(); // end outer head-block
             }
         }
         self.ann.post(self, AnnNode::Item(item))

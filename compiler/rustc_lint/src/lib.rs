@@ -56,6 +56,7 @@ mod non_ascii_idents;
 mod non_fmt_panic;
 mod nonstandard_style;
 mod noop_method_call;
+mod pass_by_value;
 mod passes;
 mod redundant_semicolon;
 mod traits;
@@ -85,6 +86,7 @@ use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
 use noop_method_call::*;
+use pass_by_value::*;
 use redundant_semicolon::*;
 use traits::*;
 use types::*;
@@ -490,6 +492,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_pass(|| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
     store.register_late_pass(|| Box::new(TyTyKind));
+    store.register_lints(&PassByValue::get_lints());
+    store.register_late_pass(|| Box::new(PassByValue));
     store.register_group(
         false,
         "rustc::internal",
@@ -497,8 +501,8 @@ fn register_internals(store: &mut LintStore) {
         vec![
             LintId::of(DEFAULT_HASH_TYPES),
             LintId::of(USAGE_OF_TY_TYKIND),
+            LintId::of(PASS_BY_VALUE),
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
-            LintId::of(TY_PASS_BY_REFERENCE),
             LintId::of(USAGE_OF_QUALIFIED_TY),
             LintId::of(EXISTING_DOC_KEYWORD),
         ],

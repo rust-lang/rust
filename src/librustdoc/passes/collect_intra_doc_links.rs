@@ -6,13 +6,12 @@ use rustc_ast as ast;
 use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::SyntaxExtensionKind;
-use rustc_hir as hir;
 use rustc_hir::def::{
     DefKind,
     Namespace::{self, *},
     PerNS,
 };
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_ID};
 use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::ParentScope;
@@ -108,6 +107,45 @@ impl Res {
             // FIXME: maybe this should handle the subset of PrimitiveType that fits into hir::PrimTy?
             Res::Primitive(_) => None,
         }
+    }
+
+    /// Used for error reporting.
+    fn disambiguator_suggestion(self) -> Suggestion {
+        let kind = match self {
+            Res::Primitive(_) => return Suggestion::Prefix("prim"),
+            Res::Def(kind, _) => kind,
+        };
+        if kind == DefKind::Macro(MacroKind::Bang) {
+            return Suggestion::Macro;
+        } else if kind == DefKind::Fn || kind == DefKind::AssocFn {
+            return Suggestion::Function;
+        } else if kind == DefKind::Field {
+            return Suggestion::RemoveDisambiguator;
+        }
+
+        let prefix = match kind {
+            DefKind::Struct => "struct",
+            DefKind::Enum => "enum",
+            DefKind::Trait => "trait",
+            DefKind::Union => "union",
+            DefKind::Mod => "mod",
+            DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
+                "const"
+            }
+            DefKind::Static => "static",
+            DefKind::Macro(MacroKind::Derive) => "derive",
+            // Now handle things that don't have a specific disambiguator
+            _ => match kind
+                .ns()
+                .expect("tried to calculate a disambiguator for a def without a namespace?")
+            {
+                Namespace::TypeNS => "type",
+                Namespace::ValueNS => "value",
+                Namespace::MacroNS => "macro",
+            },
+        };
+
+        Suggestion::Prefix(prefix)
     }
 }
 
@@ -346,7 +384,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     /// In particular, this will return an error whenever there aren't three
     /// full path segments left in the link.
     ///
-    /// [enum struct variant]: hir::VariantData::Struct
+    /// [enum struct variant]: rustc_hir::VariantData::Struct
     fn variant_field<'path>(
         &self,
         path_str: &'path str,
@@ -667,10 +705,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         }))
     }
 
-    /// Returns:
-    /// - None if no associated item was found
-    /// - Some((_, _, Some(_))) if an item was found and should go through a side channel
-    /// - Some((_, _, None)) otherwise
+    /// Resolve an associated item, returning its containing page's `Res`
+    /// and the fragment targeting the associated item on its page.
     fn resolve_associated_item(
         &mut self,
         root_res: Res,
@@ -903,7 +939,18 @@ fn traits_implemented_by<'a>(
                 ty
             );
             // Fast path: if this is a primitive simple `==` will work
-            let saw_impl = impl_type == ty;
+            // NOTE: the `match` is necessary; see #92662.
+            // this allows us to ignore generics because the user input
+            // may not include the generic placeholders
+            // e.g. this allows us to match Foo (user comment) with Foo<T> (actual type)
+            let saw_impl = impl_type == ty
+                || match (impl_type.kind(), ty.kind()) {
+                    (ty::Adt(impl_def, _), ty::Adt(ty_def, _)) => {
+                        debug!("impl def_id: {:?}, ty def_id: {:?}", impl_def.did, ty_def.did);
+                        impl_def.did == ty_def.did
+                    }
+                    _ => false,
+                };
 
             if saw_impl { Some(trait_) } else { None }
         })
@@ -958,17 +1005,7 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
             {
                 self.cx.tcx.parent(did)
             }
-            Some(did) => match self.cx.tcx.parent(did) {
-                // HACK(jynelson): `clean` marks associated types as `TypedefItem`, not as `AssocTypeItem`.
-                // Fixing this breaks `fn render_deref_methods`.
-                // As a workaround, see if the parent of the item is an `impl`; if so this must be an associated item,
-                // regardless of what rustdoc wants to call it.
-                Some(parent) => {
-                    let parent_kind = self.cx.tcx.def_kind(parent);
-                    Some(if parent_kind == DefKind::Impl { parent } else { did })
-                }
-                None => Some(did),
-            },
+            Some(did) => Some(did),
         };
 
         // FIXME(jynelson): this shouldn't go through stringification, rustdoc should just use the DefId directly
@@ -1277,79 +1314,9 @@ impl LinkCollector<'_, '_> {
             }
         }
 
-        let report_mismatch = |specified: Disambiguator, resolved: Disambiguator| {
-            // The resolved item did not match the disambiguator; give a better error than 'not found'
-            let msg = format!("incompatible link kind for `{}`", path_str);
-            let callback = |diag: &mut DiagnosticBuilder<'_>, sp: Option<rustc_span::Span>| {
-                let note = format!(
-                    "this link resolved to {} {}, which is not {} {}",
-                    resolved.article(),
-                    resolved.descr(),
-                    specified.article(),
-                    specified.descr()
-                );
-                if let Some(sp) = sp {
-                    diag.span_label(sp, &note);
-                } else {
-                    diag.note(&note);
-                }
-                suggest_disambiguator(resolved, diag, path_str, &ori_link.link, sp);
-            };
-            report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, callback);
-        };
-
-        let verify = |kind: DefKind, id: DefId| {
-            let (kind, id) = if let Some(UrlFragment::Item(ItemFragment(_, id))) = fragment {
-                (self.cx.tcx.def_kind(id), id)
-            } else {
-                (kind, id)
-            };
-            debug!("intra-doc link to {} resolved to {:?} (id: {:?})", path_str, res, id);
-
-            // Disallow e.g. linking to enums with `struct@`
-            debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
-            match (kind, disambiguator) {
-                | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
-                // NOTE: this allows 'method' to mean both normal functions and associated functions
-                // This can't cause ambiguity because both are in the same namespace.
-                | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
-                // These are namespaces; allow anything in the namespace to match
-                | (_, Some(Disambiguator::Namespace(_)))
-                // If no disambiguator given, allow anything
-                | (_, None)
-                // All of these are valid, so do nothing
-                => {}
-                (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
-                (_, Some(specified @ Disambiguator::Kind(_) | specified @ Disambiguator::Primitive)) => {
-                    report_mismatch(specified, Disambiguator::Kind(kind));
-                    return None;
-                }
-            }
-
-            // item can be non-local e.g. when using #[doc(primitive = "pointer")]
-            if let Some((src_id, dst_id)) = id
-                .as_local()
-                // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
-                // would presumably panic if a fake `DefIndex` were passed.
-                .and_then(|dst_id| {
-                    item.def_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
-                })
-            {
-                if self.cx.tcx.privacy_access_levels(()).is_exported(src_id)
-                    && !self.cx.tcx.privacy_access_levels(()).is_exported(dst_id)
-                {
-                    privacy_error(self.cx, &diag_info, path_str);
-                }
-            }
-
-            Some(())
-        };
-
         match res {
             Res::Primitive(prim) => {
                 if let Some(UrlFragment::Item(ItemFragment(_, id))) = fragment {
-                    let kind = self.cx.tcx.def_kind(id);
-
                     // We're actually resolving an associated item of a primitive, so we need to
                     // verify the disambiguator (if any) matches the type of the associated item.
                     // This case should really follow the same flow as the `Res::Def` branch below,
@@ -1358,7 +1325,16 @@ impl LinkCollector<'_, '_> {
                     // doesn't allow statements like `use str::trim;`, making this a (hopefully)
                     // valid omission. See https://github.com/rust-lang/rust/pull/80660#discussion_r551585677
                     // for discussion on the matter.
-                    verify(kind, id)?;
+                    let kind = self.cx.tcx.def_kind(id);
+                    self.verify_disambiguator(
+                        path_str,
+                        &ori_link,
+                        kind,
+                        id,
+                        disambiguator,
+                        item,
+                        &diag_info,
+                    )?;
 
                     // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
                     // However I'm not sure how to check that across crates.
@@ -1372,7 +1348,9 @@ impl LinkCollector<'_, '_> {
                     match disambiguator {
                         Some(Disambiguator::Primitive | Disambiguator::Namespace(_)) | None => {}
                         Some(other) => {
-                            report_mismatch(other, Disambiguator::Primitive);
+                            self.report_disambiguator_mismatch(
+                                path_str, &ori_link, other, res, &diag_info,
+                            );
                             return None;
                         }
                     }
@@ -1386,11 +1364,104 @@ impl LinkCollector<'_, '_> {
                 })
             }
             Res::Def(kind, id) => {
-                verify(kind, id)?;
+                let (kind_for_dis, id_for_dis) =
+                    if let Some(UrlFragment::Item(ItemFragment(_, id))) = fragment {
+                        (self.cx.tcx.def_kind(id), id)
+                    } else {
+                        (kind, id)
+                    };
+                self.verify_disambiguator(
+                    path_str,
+                    &ori_link,
+                    kind_for_dis,
+                    id_for_dis,
+                    disambiguator,
+                    item,
+                    &diag_info,
+                )?;
                 let id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
                 Some(ItemLink { link: ori_link.link, link_text, did: id, fragment })
             }
         }
+    }
+
+    fn verify_disambiguator(
+        &self,
+        path_str: &str,
+        ori_link: &MarkdownLink,
+        kind: DefKind,
+        id: DefId,
+        disambiguator: Option<Disambiguator>,
+        item: &Item,
+        diag_info: &DiagnosticInfo<'_>,
+    ) -> Option<()> {
+        debug!("intra-doc link to {} resolved to {:?}", path_str, (kind, id));
+
+        // Disallow e.g. linking to enums with `struct@`
+        debug!("saw kind {:?} with disambiguator {:?}", kind, disambiguator);
+        match (kind, disambiguator) {
+                | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
+                // NOTE: this allows 'method' to mean both normal functions and associated functions
+                // This can't cause ambiguity because both are in the same namespace.
+                | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
+                // These are namespaces; allow anything in the namespace to match
+                | (_, Some(Disambiguator::Namespace(_)))
+                // If no disambiguator given, allow anything
+                | (_, None)
+                // All of these are valid, so do nothing
+                => {}
+                (actual, Some(Disambiguator::Kind(expected))) if actual == expected => {}
+                (_, Some(specified @ Disambiguator::Kind(_) | specified @ Disambiguator::Primitive)) => {
+                    self.report_disambiguator_mismatch(path_str,ori_link,specified, Res::Def(kind, id),diag_info);
+                    return None;
+                }
+            }
+
+        // item can be non-local e.g. when using #[doc(primitive = "pointer")]
+        if let Some((src_id, dst_id)) = id
+            .as_local()
+            // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
+            // would presumably panic if a fake `DefIndex` were passed.
+            .and_then(|dst_id| {
+                item.def_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
+            })
+        {
+            if self.cx.tcx.privacy_access_levels(()).is_exported(src_id)
+                && !self.cx.tcx.privacy_access_levels(()).is_exported(dst_id)
+            {
+                privacy_error(self.cx, diag_info, path_str);
+            }
+        }
+
+        Some(())
+    }
+
+    fn report_disambiguator_mismatch(
+        &self,
+        path_str: &str,
+        ori_link: &MarkdownLink,
+        specified: Disambiguator,
+        resolved: Res,
+        diag_info: &DiagnosticInfo<'_>,
+    ) {
+        // The resolved item did not match the disambiguator; give a better error than 'not found'
+        let msg = format!("incompatible link kind for `{}`", path_str);
+        let callback = |diag: &mut DiagnosticBuilder<'_>, sp: Option<rustc_span::Span>| {
+            let note = format!(
+                "this link resolved to {} {}, which is not {} {}",
+                resolved.article(),
+                resolved.descr(),
+                specified.article(),
+                specified.descr(),
+            );
+            if let Some(sp) = sp {
+                diag.span_label(sp, &note);
+            } else {
+                diag.note(&note);
+            }
+            suggest_disambiguator(resolved, diag, path_str, &ori_link.link, sp);
+        };
+        report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, callback);
     }
 
     fn report_rawptr_assoc_feature_gate(&self, dox: &str, ori_link: &MarkdownLink, item: &Item) {
@@ -1413,7 +1484,6 @@ impl LinkCollector<'_, '_> {
         diag: DiagnosticInfo<'_>,
         cache_resolution_failure: bool,
     ) -> Option<(Res, Option<UrlFragment>)> {
-        // Try to look up both the result and the corresponding side channel value
         if let Some(ref cached) = self.visited_links.get(&key) {
             match cached {
                 Some(cached) => {
@@ -1686,53 +1756,6 @@ impl Disambiguator {
         }
     }
 
-    fn from_res(res: Res) -> Self {
-        match res {
-            Res::Def(kind, _) => Disambiguator::Kind(kind),
-            Res::Primitive(_) => Disambiguator::Primitive,
-        }
-    }
-
-    /// Used for error reporting.
-    fn suggestion(self) -> Suggestion {
-        let kind = match self {
-            Disambiguator::Primitive => return Suggestion::Prefix("prim"),
-            Disambiguator::Kind(kind) => kind,
-            Disambiguator::Namespace(_) => panic!("display_for cannot be used on namespaces"),
-        };
-        if kind == DefKind::Macro(MacroKind::Bang) {
-            return Suggestion::Macro;
-        } else if kind == DefKind::Fn || kind == DefKind::AssocFn {
-            return Suggestion::Function;
-        } else if kind == DefKind::Field {
-            return Suggestion::RemoveDisambiguator;
-        }
-
-        let prefix = match kind {
-            DefKind::Struct => "struct",
-            DefKind::Enum => "enum",
-            DefKind::Trait => "trait",
-            DefKind::Union => "union",
-            DefKind::Mod => "mod",
-            DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
-                "const"
-            }
-            DefKind::Static => "static",
-            DefKind::Macro(MacroKind::Derive) => "derive",
-            // Now handle things that don't have a specific disambiguator
-            _ => match kind
-                .ns()
-                .expect("tried to calculate a disambiguator for a def without a namespace?")
-            {
-                Namespace::TypeNS => "type",
-                Namespace::ValueNS => "value",
-                Namespace::MacroNS => "macro",
-            },
-        };
-
-        Suggestion::Prefix(prefix)
-    }
-
     fn ns(self) -> Namespace {
         match self {
             Self::Namespace(n) => n,
@@ -1754,9 +1777,9 @@ impl Disambiguator {
     fn descr(self) -> &'static str {
         match self {
             Self::Namespace(n) => n.descr(),
-            // HACK(jynelson): by looking at the source I saw the DefId we pass
-            // for `expected.descr()` doesn't matter, since it's not a crate
-            Self::Kind(k) => k.descr(DefId::local(hir::def_id::DefIndex::from_usize(0))),
+            // HACK(jynelson): the source of `DefKind::descr` only uses the DefId for
+            // printing "module" vs "crate" so using the wrong ID is not a huge problem
+            Self::Kind(k) => k.descr(CRATE_DEF_ID.to_def_id()),
             Self::Primitive => "builtin type",
         }
     }
@@ -2080,16 +2103,7 @@ fn resolution_failure(
                     ResolutionFailure::NotResolved { .. } => unreachable!("handled above"),
                     ResolutionFailure::Dummy => continue,
                     ResolutionFailure::WrongNamespace { res, expected_ns } => {
-                        if let Res::Def(kind, _) = res {
-                            let disambiguator = Disambiguator::Kind(kind);
-                            suggest_disambiguator(
-                                disambiguator,
-                                diag,
-                                path_str,
-                                diag_info.ori_link,
-                                sp,
-                            )
-                        }
+                        suggest_disambiguator(res, diag, path_str, diag_info.ori_link, sp);
 
                         format!(
                             "this link resolves to {}, which is not in the {} namespace",
@@ -2224,8 +2238,7 @@ fn ambiguity_error(
         }
 
         for res in candidates {
-            let disambiguator = Disambiguator::from_res(res);
-            suggest_disambiguator(disambiguator, diag, path_str, diag_info.ori_link, sp);
+            suggest_disambiguator(res, diag, path_str, diag_info.ori_link, sp);
         }
     });
 }
@@ -2233,14 +2246,14 @@ fn ambiguity_error(
 /// In case of an ambiguity or mismatched disambiguator, suggest the correct
 /// disambiguator.
 fn suggest_disambiguator(
-    disambiguator: Disambiguator,
+    res: Res,
     diag: &mut DiagnosticBuilder<'_>,
     path_str: &str,
     ori_link: &str,
     sp: Option<rustc_span::Span>,
 ) {
-    let suggestion = disambiguator.suggestion();
-    let help = format!("to link to the {}, {}", disambiguator.descr(), suggestion.descr());
+    let suggestion = res.disambiguator_suggestion();
+    let help = format!("to link to the {}, {}", res.descr(), suggestion.descr());
 
     if let Some(sp) = sp {
         let mut spans = suggestion.as_help_span(path_str, ori_link, sp);
