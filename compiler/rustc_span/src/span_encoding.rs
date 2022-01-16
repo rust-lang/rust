@@ -10,6 +10,7 @@ use crate::SPAN_TRACK;
 use crate::{BytePos, SpanData};
 
 use rustc_data_structures::fx::FxIndexSet;
+use std::cmp::Ordering;
 
 /// A compressed span.
 ///
@@ -130,6 +131,60 @@ impl Span {
     }
 }
 
+// Order spans by position in the file.
+impl Ord for SpanData {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        let SpanData {
+            lo: s_lo,
+            hi: s_hi,
+            ctxt: s_ctxt,
+            // `LocalDefId` does not implement `Ord`.
+            // The other fields are enough to determine in-file order.
+            parent: _,
+        } = self;
+        let SpanData {
+            lo: o_lo,
+            hi: o_hi,
+            ctxt: o_ctxt,
+            // `LocalDefId` does not implement `Ord`.
+            // The other fields are enough to determine in-file order.
+            parent: _,
+        } = other;
+
+        (s_lo, s_hi, s_ctxt).cmp(&(o_lo, o_hi, o_ctxt))
+    }
+}
+
+impl PartialOrd for SpanData {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialOrd for Span {
+    #[inline]
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        Some(self.cmp(rhs))
+    }
+}
+impl Ord for Span {
+    #[inline]
+    fn cmp(&self, rhs: &Self) -> Ordering {
+        if self.len_or_tag != LEN_TAG && rhs.len_or_tag != LEN_TAG {
+            // Inline format has `parent == None`, so we don't need to call `SPAN_TRACK`.
+            // In lexicographic comparison (lo, hi, ctxt) is equivalent to (lo, hi - lo, ctxt).
+            Ord::cmp(
+                &(self.base_or_index, self.len_or_tag, self.ctxt_or_zero),
+                &(rhs.base_or_index, rhs.len_or_tag, rhs.ctxt_or_zero),
+            )
+        } else {
+            Ord::cmp(&self.data(), &rhs.data())
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct SpanInterner {
     spans: FxIndexSet<SpanData>,
@@ -141,6 +196,14 @@ impl SpanInterner {
         index as u32
     }
 }
+
+// The interner is pointed to by a thread local value which is only set on the main thread
+// with parallelization is disabled. So we don't allow `Span` to transfer between threads
+// to avoid panics and other errors, even though it would be memory safe to do so.
+#[cfg(not(parallel_compiler))]
+impl !Send for Span {}
+#[cfg(not(parallel_compiler))]
+impl !Sync for Span {}
 
 // If an interner exists, return it. Otherwise, prepare a fresh one.
 #[inline]
