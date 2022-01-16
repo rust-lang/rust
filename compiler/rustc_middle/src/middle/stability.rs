@@ -11,7 +11,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
@@ -63,9 +63,6 @@ pub struct Index<'tcx> {
     pub stab_map: FxHashMap<LocalDefId, &'tcx Stability>,
     pub const_stab_map: FxHashMap<LocalDefId, &'tcx ConstStability>,
     pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
-
-    /// Maps for each crate whether it is part of the staged API.
-    pub staged_api: FxHashMap<CrateNum, bool>,
 }
 
 impl<'tcx> Index<'tcx> {
