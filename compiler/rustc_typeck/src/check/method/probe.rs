@@ -1904,8 +1904,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .associated_items(def_id)
                     .in_definition_order()
                     .filter(|x| {
+                        if x.kind.namespace() != Namespace::ValueNS {
+                            return false;
+                        }
                         let dist = lev_distance(name.as_str(), x.name.as_str());
-                        x.kind.namespace() == Namespace::ValueNS && dist > 0 && dist <= max_dist
+                        dist > 0 && dist <= max_dist
                     })
                     .copied()
                     .collect()
