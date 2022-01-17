@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let hint = "unwrap_or_default()";
-                let mut shrink = span;
+                let mut sugg_span = span;
 
                 let mut sugg: String = format!(
                     "{}.{}",
@@ -65,14 +65,14 @@ pub(super) fn check<'tcx>(
                 );
 
                 if sugg.lines().count() > MAX_SUGGESTION_HIGHLIGHT_LINES {
-                    shrink = method_span.with_hi(span.hi());
+                    sugg_span = method_span.with_hi(span.hi());
                     sugg = hint.to_string();
                 }
 
                 span_lint_and_sugg(
                     cx,
                     OR_FUN_CALL,
-                    shrink,
+                    sugg_span,
                     &format!("use of `{}` followed by a call to `{}`", name, path),
                     "try this",
                     sugg,
