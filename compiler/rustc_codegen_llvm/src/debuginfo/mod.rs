@@ -390,7 +390,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             signature.push(if fn_abi.ret.is_ignore() {
                 None
             } else {
-                Some(type_metadata(cx, fn_abi.ret.layout.ty, rustc_span::DUMMY_SP))
+                Some(type_metadata(cx, fn_abi.ret.layout.ty))
             });
 
             // Arguments types
@@ -415,15 +415,11 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         }
                         _ => t,
                     };
-                    Some(type_metadata(cx, t, rustc_span::DUMMY_SP))
+                    Some(type_metadata(cx, t))
                 }));
             } else {
-                signature.extend(
-                    fn_abi
-                        .args
-                        .iter()
-                        .map(|arg| Some(type_metadata(cx, arg.layout.ty, rustc_span::DUMMY_SP))),
-                );
+                signature
+                    .extend(fn_abi.args.iter().map(|arg| Some(type_metadata(cx, arg.layout.ty))));
             }
 
             create_DIArray(DIB(cx), &signature[..])
@@ -453,8 +449,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         if let GenericArgKind::Type(ty) = kind.unpack() {
                             let actual_type =
                                 cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
-                            let actual_type_metadata =
-                                type_metadata(cx, actual_type, rustc_span::DUMMY_SP);
+                            let actual_type_metadata = type_metadata(cx, actual_type);
                             let name = name.as_str();
                             Some(unsafe {
                                 Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
@@ -509,7 +504,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             if cx.sess().opts.debuginfo == DebugInfo::Full
                                 && !impl_self_ty.needs_subst()
                             {
-                                Some(type_metadata(cx, impl_self_ty, rustc_span::DUMMY_SP))
+                                Some(type_metadata(cx, impl_self_ty))
                             } else {
                                 Some(namespace::item_namespace(cx, def.did))
                             }
@@ -584,7 +579,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
-        let type_metadata = type_metadata(self, variable_type, span);
+        let type_metadata = type_metadata(self, variable_type);
 
         let (argument_index, dwarf_tag) = match variable_kind {
             ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),

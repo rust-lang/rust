@@ -2320,7 +2320,6 @@ extern "C" {
     pub fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
     pub fn LLVMRustAddAlwaysInlinePass(P: &PassManagerBuilder, AddLifetimes: bool);
     pub fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
-    pub fn LLVMRustMarkAllFunctionsNounwind(M: &Module);
 
     pub fn LLVMRustOpenArchive(path: *const c_char) -> Option<&'static mut Archive>;
     pub fn LLVMRustArchiveIteratorNew(AR: &Archive) -> &mut ArchiveIterator<'_>;

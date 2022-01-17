@@ -27,7 +27,7 @@ all:
 	$(RUSTC) b.rs --extern a=$(TMPDIR)/liba$(EXT) --crate-type=bin -Crpath $(FLAGS)
 	$(call RUN,b)
 	# Now re-compile a.rs with another rustc version
-	RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER=deadfeed $(RUSTC) a.rs --crate-type=dylib $(FLAGS)
+	RUSTC_FORCE_RUSTC_VERSION=deadfeed $(RUSTC) a.rs --crate-type=dylib $(FLAGS)
 	# After compiling with a different rustc version, write symbols to disk again.
 	$(NM_CMD) $(call DYLIB,a) > $(TMPDIR)/symbolsafter
 	# As a sanity check, test if the symbols changed:

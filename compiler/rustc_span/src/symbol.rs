@@ -1162,6 +1162,7 @@ symbols! {
         rustc_macro_transparency,
         rustc_main,
         rustc_mir,
+        rustc_must_implement_one_of,
         rustc_nonnull_optimization_guaranteed,
         rustc_object_lifetime_default,
         rustc_on_unimplemented,

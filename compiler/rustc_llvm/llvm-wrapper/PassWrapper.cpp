@@ -1168,25 +1168,6 @@ extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
   passes.run(*unwrap(M));
 }
 
-extern "C" void LLVMRustMarkAllFunctionsNounwind(LLVMModuleRef M) {
-  for (Module::iterator GV = unwrap(M)->begin(), E = unwrap(M)->end(); GV != E;
-       ++GV) {
-    GV->setDoesNotThrow();
-    Function *F = dyn_cast<Function>(GV);
-    if (F == nullptr)
-      continue;
-
-    for (Function::iterator B = F->begin(), BE = F->end(); B != BE; ++B) {
-      for (BasicBlock::iterator I = B->begin(), IE = B->end(); I != IE; ++I) {
-        if (isa<InvokeInst>(I)) {
-          InvokeInst *CI = cast<InvokeInst>(I);
-          CI->setDoesNotThrow();
-        }
-      }
-    }
-  }
-}
-
 extern "C" void
 LLVMRustSetDataLayoutFromTargetMachine(LLVMModuleRef Module,
                                        LLVMTargetMachineRef TMR) {
