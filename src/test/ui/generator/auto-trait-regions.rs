@@ -2,13 +2,19 @@
 #![feature(auto_traits)]
 #![feature(negative_impls)]
 
+use std::cell::Cell;
+
 auto trait Foo {}
 
 struct No;
 
 impl !Foo for No {}
 
-struct A<'a, 'b>(&'a mut bool, &'b mut bool, No);
+struct A<'a, 'b>(Cell<&'a bool>, Cell<&'b mut bool>, No);
+
+impl<'a, 'b> Drop for A<'a, 'b> {
+    fn drop(&mut self) {}
+}
 
 impl<'a, 'b: 'a> Foo for A<'a, 'b> {}
 
@@ -18,36 +24,39 @@ impl Foo for &'static OnlyFooIfStaticRef {}
 struct OnlyFooIfRef(No);
 impl<'a> Foo for &'a OnlyFooIfRef {}
 
-fn assert_foo<T: Foo>(f: T) {}
+fn assert_foo<T: Foo>(_f: T) {}
 
 fn main() {
-    // Make sure 'static is erased for generator interiors so we can't match it in trait selection
-    let x: &'static _ = &OnlyFooIfStaticRef(No);
+    let z = OnlyFooIfStaticRef(No);
+    let x = &z;
     let gen = || {
         let x = x;
         yield;
         assert_foo(x);
     };
-    assert_foo(gen);
+    assert_foo(gen); // bad
     //~^ ERROR implementation of `Foo` is not general enough
     //~| ERROR implementation of `Foo` is not general enough
+    drop(z);
 
     // Allow impls which matches any lifetime
-    let x = &OnlyFooIfRef(No);
+    let z = OnlyFooIfRef(No);
+    let x = &z;
     let gen = || {
         let x = x;
         yield;
         assert_foo(x);
     };
     assert_foo(gen); // ok
+    drop(z);
 
-    // Disallow impls which relates lifetimes in the generator interior
-    let gen = || {
-        let a = A(&mut true, &mut true, No);
+    let gen = static || {
+        let mut y = true;
+        let a = A::<'static, '_>(Cell::new(&true), Cell::new(&mut y), No);
         yield;
-        assert_foo(a);
+        drop(a);
     };
     assert_foo(gen);
-    //~^ ERROR not general enough
-    //~| ERROR not general enough
+    //~^ ERROR implementation of `Foo` is not general enough
+    //~| ERROR implementation of `Foo` is not general enough
 }
