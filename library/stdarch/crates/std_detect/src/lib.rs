@@ -18,13 +18,7 @@
 #![allow(clippy::shadow_reuse)]
 #![deny(clippy::missing_inline_in_public_items)]
 #![cfg_attr(test, allow(unused_imports))]
-#![cfg_attr(feature = "std_detect_file_io", feature(vec_spare_capacity))]
 #![no_std]
-
-// rust-lang/rust#83888: removing `extern crate` gives an error that `vec_spare_capacity` is unknown
-#[cfg_attr(feature = "std_detect_file_io", allow(unused_extern_crates))]
-#[cfg(feature = "std_detect_file_io")]
-extern crate alloc;
 
 #[cfg(test)]
 #[macro_use]
