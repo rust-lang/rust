@@ -32,7 +32,7 @@ use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
-use rustc_target::spec::{MergeFunctions, PanicStrategy, SanitizerSet};
+use rustc_target::spec::{MergeFunctions, SanitizerSet};
 
 use std::any::Any;
 use std::fs;
@@ -313,7 +313,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub backend: B,
     pub prof: SelfProfilerRef,
     pub lto: Lto,
-    pub no_landing_pads: bool,
     pub save_temps: bool,
     pub fewer_names: bool,
     pub time_trace: bool,
@@ -1039,7 +1038,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         crate_types: sess.crate_types().to_vec(),
         each_linked_rlib_for_lto,
         lto: sess.lto(),
-        no_landing_pads: sess.panic_strategy() == PanicStrategy::Abort,
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
         time_trace: sess.opts.debugging_opts.llvm_time_trace,

@@ -349,13 +349,6 @@ fn fat_lto(
             );
             save_temp_bitcode(cgcx, &module, "lto.after-restriction");
         }
-
-        if cgcx.no_landing_pads {
-            unsafe {
-                llvm::LLVMRustMarkAllFunctionsNounwind(llmod);
-            }
-            save_temp_bitcode(cgcx, &module, "lto.after-nounwind");
-        }
     }
 
     Ok(LtoModuleCodegen::Fat { module: Some(module), _serialized_bitcode: serialized_bitcode })
@@ -768,16 +761,6 @@ pub unsafe fn optimize_thin_module(
         if !cu2.is_null() {
             let msg = "multiple source DICompileUnits found";
             return Err(write::llvm_err(&diag_handler, msg));
-        }
-
-        // Like with "fat" LTO, get some better optimizations if landing pads
-        // are disabled by removing all landing pads.
-        if cgcx.no_landing_pads {
-            let _timer = cgcx
-                .prof
-                .generic_activity_with_arg("LLVM_thin_lto_remove_landing_pads", thin_module.name());
-            llvm::LLVMRustMarkAllFunctionsNounwind(llmod);
-            save_temp_bitcode(cgcx, &module, "thin-lto-after-nounwind");
         }
 
         // Up next comes the per-module local analyses that we do for Thin LTO.
