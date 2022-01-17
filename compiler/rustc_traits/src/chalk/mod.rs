@@ -22,9 +22,8 @@ use rustc_infer::infer::canonical::{
 use rustc_infer::traits::{self, CanonicalChalkEnvironmentAndGoal};
 
 use crate::chalk::db::RustIrDatabase as ChalkRustIrDatabase;
-use crate::chalk::lowering::{
-    LowerInto, ParamsSubstitutor, PlaceholdersCollector, RegionsSubstitutor,
-};
+use crate::chalk::lowering::LowerInto;
+use crate::chalk::lowering::{ParamsSubstitutor, PlaceholdersCollector};
 
 use chalk_solve::Solution;
 
@@ -42,19 +41,10 @@ crate fn evaluate_goal<'tcx>(
     let mut placeholders_collector = PlaceholdersCollector::new();
     obligation.visit_with(&mut placeholders_collector);
 
-    let reempty_placeholder = tcx.mk_region(ty::RegionKind::RePlaceholder(ty::Placeholder {
-        universe: ty::UniverseIndex::ROOT,
-        name: ty::BoundRegionKind::BrAnon(placeholders_collector.next_anon_region_placeholder + 1),
-    }));
-
     let mut params_substitutor =
         ParamsSubstitutor::new(tcx, placeholders_collector.next_ty_placeholder);
     let obligation = obligation.fold_with(&mut params_substitutor);
-    // FIXME(chalk): we really should be substituting these back in the solution
     let _params: FxHashMap<usize, ParamTy> = params_substitutor.params;
-
-    let mut regions_substitutor = RegionsSubstitutor::new(tcx, reempty_placeholder);
-    let obligation = obligation.fold_with(&mut regions_substitutor);
 
     let max_universe = obligation.max_universe.index();
 
@@ -96,7 +86,8 @@ crate fn evaluate_goal<'tcx>(
 
     use chalk_solve::Solver;
     let mut solver = chalk_engine::solve::SLGSolver::new(32, None);
-    let db = ChalkRustIrDatabase { interner, reempty_placeholder };
+    let db = ChalkRustIrDatabase { interner };
+    debug!(?lowered_goal);
     let solution = solver.solve(&db, &lowered_goal);
     debug!(?obligation, ?solution, "evaluate goal");
 

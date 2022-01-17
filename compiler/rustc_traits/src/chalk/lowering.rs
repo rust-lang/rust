@@ -464,9 +464,11 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
                 })
                 .intern(interner)
             }
-            ReEmpty(_) => unimplemented!(),
-            // FIXME(chalk): need to handle ReErased
-            ReErased => unimplemented!(),
+            ReEmpty(ui) => {
+                chalk_ir::LifetimeData::Empty(chalk_ir::UniverseIndex { counter: ui.index() })
+                    .intern(interner)
+            }
+            ReErased => chalk_ir::LifetimeData::Erased.intern(interner),
         }
     }
 }
@@ -488,12 +490,12 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
                     name: ty::BoundRegionKind::BrAnon(p.idx as u32),
                 })
             }
-            chalk_ir::LifetimeData::Static => ty::RegionKind::ReStatic,
-            chalk_ir::LifetimeData::Phantom(_, _) => unimplemented!(),
+            chalk_ir::LifetimeData::Static => return interner.tcx.lifetimes.re_static,
             chalk_ir::LifetimeData::Empty(ui) => {
-                ty::RegionKind::ReEmpty(ty::UniverseIndex::from_usize(ui.counter))
+                ty::ReEmpty(ty::UniverseIndex::from_usize(ui.counter))
             }
-            chalk_ir::LifetimeData::Erased => ty::RegionKind::ReErased,
+            chalk_ir::LifetimeData::Erased => return interner.tcx.lifetimes.re_erased,
+            chalk_ir::LifetimeData::Phantom(void, _) => match *void {},
         };
         interner.tcx.mk_region(kind)
     }
@@ -1108,34 +1110,5 @@ impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
         };
 
         r.super_visit_with(self)
-    }
-}
-
-/// Used to substitute specific `Regions`s with placeholders.
-crate struct RegionsSubstitutor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    reempty_placeholder: ty::Region<'tcx>,
-}
-
-impl<'tcx> RegionsSubstitutor<'tcx> {
-    crate fn new(tcx: TyCtxt<'tcx>, reempty_placeholder: ty::Region<'tcx>) -> Self {
-        RegionsSubstitutor { tcx, reempty_placeholder }
-    }
-}
-
-impl<'tcx> TypeFolder<'tcx> for RegionsSubstitutor<'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        match r {
-            ty::ReEmpty(ui) => {
-                assert_eq!(ui.as_usize(), 0);
-                self.reempty_placeholder
-            }
-
-            _ => r.super_fold_with(self),
-        }
     }
 }
