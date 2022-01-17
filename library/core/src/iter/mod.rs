@@ -419,6 +419,7 @@ pub use self::adapters::{Intersperse, IntersperseWith};
 pub(crate) use self::adapters::{try_process, ByRefSized};
 
 mod adapters;
+mod loop_desugar;
 mod range;
 mod sources;
 mod traits;

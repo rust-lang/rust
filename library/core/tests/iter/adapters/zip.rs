@@ -119,7 +119,7 @@ fn test_zip_cloned_sideffectful() {
 
     for _ in xs.iter().cloned().zip(ys.iter().cloned()) {}
 
-    assert_eq!(&xs, &[1, 1, 1, 0][..]);
+    assert_eq!(&xs, &[1, 1, 0, 0][..]);
     assert_eq!(&ys, &[1, 1][..]);
 
     let xs = [CountClone::new(), CountClone::new()];
@@ -138,7 +138,7 @@ fn test_zip_map_sideffectful() {
 
     for _ in xs.iter_mut().map(|x| *x += 1).zip(ys.iter_mut().map(|y| *y += 1)) {}
 
-    assert_eq!(&xs, &[1, 1, 1, 1, 1, 0]);
+    assert_eq!(&xs, &[1, 1, 1, 1, 0, 0]);
     assert_eq!(&ys, &[1, 1, 1, 1]);
 
     let mut xs = [0; 4];
