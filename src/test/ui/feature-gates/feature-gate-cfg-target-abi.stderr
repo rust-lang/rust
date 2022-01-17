@@ -1,13 +1,4 @@
 error[E0658]: `cfg(target_abi)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-target-abi.rs:2:12
-   |
-LL | #[cfg_attr(target_abi = "x", x)]
-   |            ^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #80970 <https://github.com/rust-lang/rust/issues/80970> for more information
-   = help: add `#![feature(cfg_target_abi)]` to the crate attributes to enable
-
-error[E0658]: `cfg(target_abi)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-abi.rs:1:7
    |
 LL | #[cfg(target_abi = "x")]
@@ -17,7 +8,16 @@ LL | #[cfg(target_abi = "x")]
    = help: add `#![feature(cfg_target_abi)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_abi)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-target-abi.rs:5:19
+  --> $DIR/feature-gate-cfg-target-abi.rs:4:12
+   |
+LL | #[cfg_attr(target_abi = "x", x)]
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #80970 <https://github.com/rust-lang/rust/issues/80970> for more information
+   = help: add `#![feature(cfg_target_abi)]` to the crate attributes to enable
+
+error[E0658]: `cfg(target_abi)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-target-abi.rs:7:19
    |
 LL | #[cfg(not(any(all(target_abi = "x"))))]
    |                   ^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | #[cfg(not(any(all(target_abi = "x"))))]
    = help: add `#![feature(cfg_target_abi)]` to the crate attributes to enable
 
 error[E0658]: `cfg(target_abi)` is experimental and subject to change
-  --> $DIR/feature-gate-cfg-target-abi.rs:9:10
+  --> $DIR/feature-gate-cfg-target-abi.rs:11:10
    |
 LL |     cfg!(target_abi = "x");
    |          ^^^^^^^^^^^^^^^^

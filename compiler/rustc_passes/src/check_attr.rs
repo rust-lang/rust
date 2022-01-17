@@ -135,7 +135,6 @@ impl CheckAttrVisitor<'_> {
                 }
                 sym::macro_use | sym::macro_escape => self.check_macro_use(hir_id, attr, target),
                 sym::path => self.check_generic_attr(hir_id, attr, target, &[Target::Mod]),
-                sym::cfg_attr => self.check_cfg_attr(hir_id, attr),
                 sym::plugin_registrar => self.check_plugin_registrar(hir_id, attr, target),
                 sym::macro_export => self.check_macro_export(hir_id, attr, target),
                 sym::ignore | sym::should_panic | sym::proc_macro_derive => {
@@ -1839,16 +1838,6 @@ impl CheckAttrVisitor<'_> {
             self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
                 lint.build("`#[macro_export]` only has an effect on macro definitions").emit();
             });
-        }
-    }
-
-    fn check_cfg_attr(&self, hir_id: HirId, attr: &Attribute) {
-        if let Some((_, attrs)) = rustc_parse::parse_cfg_attr(&attr, &self.tcx.sess.parse_sess) {
-            if attrs.is_empty() {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build("`#[cfg_attr]` does not expand to any attributes").emit();
-                });
-            }
         }
     }
 

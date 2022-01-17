@@ -15,7 +15,6 @@ use rustc_ast::{AssocItemKind, AstLike, AstLikeWrapper, AttrStyle, ExprKind, For
 use rustc_ast::{Inline, ItemKind, MacArgs, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem};
 use rustc_ast::{NodeId, PatKind, StmtKind, TyKind};
 use rustc_ast_pretty::pprust;
-use rustc_attr::is_builtin_attr;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, PResult};
@@ -1014,6 +1013,9 @@ trait InvocationCollectorNode: AstLike {
     fn to_annotatable(self) -> Annotatable;
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy;
     fn id(&mut self) -> &mut NodeId;
+    fn descr() -> &'static str {
+        unreachable!()
+    }
     fn noop_flat_map<V: MutVisitor>(self, _visitor: &mut V) -> Self::OutputTy {
         unreachable!()
     }
@@ -1477,6 +1479,9 @@ impl InvocationCollectorNode for P<ast::Expr> {
     fn id(&mut self) -> &mut NodeId {
         &mut self.id
     }
+    fn descr() -> &'static str {
+        "an expression"
+    }
     fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
         noop_visit_expr(self, visitor)
     }
@@ -1576,13 +1581,28 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     ) -> Option<(ast::Attribute, usize, Vec<ast::Path>)> {
         let mut attr = None;
 
+        let mut cfg_pos = None;
+        let mut attr_pos = None;
+        for (pos, attr) in item.attrs().iter().enumerate() {
+            if !attr.is_doc_comment() && !self.cx.expanded_inert_attrs.is_marked(attr) {
+                let name = attr.ident().map(|ident| ident.name);
+                if name == Some(sym::cfg) || name == Some(sym::cfg_attr) {
+                    cfg_pos = Some(pos); // a cfg attr found, no need to search anymore
+                    break;
+                } else if attr_pos.is_none()
+                    && !name.map_or(false, rustc_feature::is_builtin_attr_name)
+                {
+                    attr_pos = Some(pos); // a non-cfg attr found, still may find a cfg attr
+                }
+            }
+        }
+
         item.visit_attrs(|attrs| {
-            attr = attrs
-                .iter()
-                .position(|a| !self.cx.expanded_inert_attrs.is_marked(a) && !is_builtin_attr(a))
-                .map(|attr_pos| {
-                    let attr = attrs.remove(attr_pos);
-                    let following_derives = attrs[attr_pos..]
+            attr = Some(match (cfg_pos, attr_pos) {
+                (Some(pos), _) => (attrs.remove(pos), pos, Vec::new()),
+                (_, Some(pos)) => {
+                    let attr = attrs.remove(pos);
+                    let following_derives = attrs[pos..]
                         .iter()
                         .filter(|a| a.has_name(sym::derive))
                         .flat_map(|a| a.meta_item_list().unwrap_or_default())
@@ -1596,15 +1616,13 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         })
                         .collect();
 
-                    (attr, attr_pos, following_derives)
-                })
+                    (attr, pos, following_derives)
+                }
+                _ => return,
+            });
         });
 
         attr
-    }
-
-    fn configure<T: AstLike>(&mut self, node: T) -> Option<T> {
-        self.cfg.configure(node)
     }
 
     // Detect use of feature-gated or invalid attributes on macro invocations
@@ -1653,28 +1671,71 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         }
     }
 
+    fn expand_cfg_true(
+        &mut self,
+        node: &mut impl AstLike,
+        attr: ast::Attribute,
+        pos: usize,
+    ) -> bool {
+        let res = self.cfg.cfg_true(&attr);
+        if res {
+            // FIXME: `cfg(TRUE)` attributes do not currently remove themselves during expansion,
+            // and some tools like rustdoc and clippy rely on that. Find a way to remove them
+            // while keeping the tools working.
+            self.cx.expanded_inert_attrs.mark(&attr);
+            node.visit_attrs(|attrs| attrs.insert(pos, attr));
+        }
+        res
+    }
+
+    fn expand_cfg_attr(&self, node: &mut impl AstLike, attr: ast::Attribute, pos: usize) {
+        node.visit_attrs(|attrs| {
+            attrs.splice(pos..pos, self.cfg.expand_cfg_attr(attr, false));
+        });
+    }
+
     fn flat_map_node<Node: InvocationCollectorNode<OutputTy: Default>>(
         &mut self,
-        node: Node,
+        mut node: Node,
     ) -> Node::OutputTy {
-        let mut node = configure!(self, node);
-
-        if let Some(attr) = self.take_first_attr(&mut node) {
-            Node::pre_flat_map_node_collect_attr(&self.cfg, &attr.0);
-            self.collect_attr(attr, node.to_annotatable(), Node::KIND).make_ast::<Node>()
-        } else if node.is_mac_call() {
-            let (mac, attrs, add_semicolon) = node.take_mac_call();
-            self.check_attributes(&attrs, &mac);
-            let mut res = self.collect_bang(mac, Node::KIND).make_ast::<Node>();
-            Node::post_flat_map_node_collect_bang(&mut res, add_semicolon);
-            res
-        } else {
-            match Node::wrap_flat_map_node_noop_flat_map(node, self, |mut node, this| {
-                assign_id!(this, node.id(), || node.noop_flat_map(this))
-            }) {
-                Ok(output) => output,
-                Err(node) => self.flat_map_node(node),
-            }
+        loop {
+            return match self.take_first_attr(&mut node) {
+                Some((attr, pos, derives)) => match attr.name_or_empty() {
+                    sym::cfg => {
+                        if self.expand_cfg_true(&mut node, attr, pos) {
+                            continue;
+                        }
+                        Default::default()
+                    }
+                    sym::cfg_attr => {
+                        self.expand_cfg_attr(&mut node, attr, pos);
+                        continue;
+                    }
+                    _ => {
+                        Node::pre_flat_map_node_collect_attr(&self.cfg, &attr);
+                        self.collect_attr((attr, pos, derives), node.to_annotatable(), Node::KIND)
+                            .make_ast::<Node>()
+                    }
+                },
+                None if node.is_mac_call() => {
+                    let (mac, attrs, add_semicolon) = node.take_mac_call();
+                    self.check_attributes(&attrs, &mac);
+                    let mut res = self.collect_bang(mac, Node::KIND).make_ast::<Node>();
+                    Node::post_flat_map_node_collect_bang(&mut res, add_semicolon);
+                    res
+                }
+                None => {
+                    match Node::wrap_flat_map_node_noop_flat_map(node, self, |mut node, this| {
+                        assign_id!(this, node.id(), || node.noop_flat_map(this))
+                    }) {
+                        Ok(output) => output,
+                        Err(returned_node) => {
+                            node = returned_node;
+                            continue;
+                        }
+                    }
+                }
+            };
         }
     }
 
@@ -1682,19 +1743,40 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         &mut self,
         node: &mut Node,
     ) {
-        if let Some(attr) = self.take_first_attr(node) {
-            visit_clobber(node, |node| {
-                self.collect_attr(attr, node.to_annotatable(), Node::KIND).make_ast::<Node>()
-            })
-        } else if node.is_mac_call() {
-            visit_clobber(node, |node| {
-                // Do not clobber unless it's actually a macro (uncommon case).
-                let (mac, attrs, _) = node.take_mac_call();
-                self.check_attributes(&attrs, &mac);
-                self.collect_bang(mac, Node::KIND).make_ast::<Node>()
-            })
-        } else {
-            assign_id!(self, node.id(), || node.noop_visit(self))
+        loop {
+            return match self.take_first_attr(node) {
+                Some((attr, pos, derives)) => match attr.name_or_empty() {
+                    sym::cfg => {
+                        let span = attr.span;
+                        if self.expand_cfg_true(node, attr, pos) {
+                            continue;
+                        }
+                        let msg =
+                            format!("removing {} is not supported in this position", Node::descr());
+                        self.cx.span_err(span, &msg);
+                        continue;
+                    }
+                    sym::cfg_attr => {
+                        self.expand_cfg_attr(node, attr, pos);
+                        continue;
+                    }
+                    _ => visit_clobber(node, |node| {
+                        self.collect_attr((attr, pos, derives), node.to_annotatable(), Node::KIND)
+                            .make_ast::<Node>()
+                    }),
+                },
+                None if node.is_mac_call() => {
+                    visit_clobber(node, |node| {
+                        // Do not clobber unless it's actually a macro (uncommon case).
+                        let (mac, attrs, _) = node.take_mac_call();
+                        self.check_attributes(&attrs, &mac);
+                        self.collect_bang(mac, Node::KIND).make_ast::<Node>()
+                    })
+                }
+                None => {
+                    assign_id!(self, node.id(), || node.noop_visit(self))
+                }
+            };
         }
     }
 }
@@ -1750,7 +1832,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_stmt(&mut self, node: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
+    fn flat_map_stmt(&mut self, mut node: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         // FIXME: invocations in semicolon-less expressions positions are expanded as expressions,
         // changing that requires some compatibility measures.
         if node.is_expr() {
@@ -1761,7 +1843,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             // `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` lint if needed.
             // See #78991 for an investigation of treating macros in this position
             // as statements, rather than expressions, during parsing.
-            let mut node = configure!(self, node);
             return match &node.kind {
                 StmtKind::Expr(expr)
                     if matches!(**expr, ast::Expr { kind: ExprKind::MacCall(..), .. }) =>
@@ -1793,7 +1874,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_expr(&mut self, node: &mut P<ast::Expr>) {
-        self.cfg.configure_expr(node);
+        // FIXME: Feature gating is performed inconsistently between `Expr` and `OptExpr`.
+        if let Some(attr) = node.attrs.first() {
+            self.cfg.maybe_emit_expr_attr_err(attr);
+        }
         self.visit_node(node)
     }
 
