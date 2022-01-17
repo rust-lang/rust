@@ -670,7 +670,11 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         }
         write!(w, "<div id=\"{}\" class=\"method has-srclink\">", id);
         write!(w, "<div class=\"rightside\">");
-        render_stability_since(w, m, t, cx.tcx());
+
+        let has_stability = render_stability_since(w, m, t, cx.tcx());
+        if has_stability {
+            w.write_str(" · ");
+        }
         write_srclink(cx, m, w);
         write!(w, "</div>");
         write!(w, "<h4 class=\"code-header\">");
@@ -1457,14 +1461,14 @@ fn render_stability_since(
     item: &clean::Item,
     containing_item: &clean::Item,
     tcx: TyCtxt<'_>,
-) {
+) -> bool {
     render_stability_since_raw(
         w,
         item.stable_since(tcx),
         item.const_stability(tcx),
         containing_item.stable_since(tcx),
         containing_item.const_stable_since(tcx),
-    );
+    )
 }
 
 fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cx: &Context<'_>) -> Ordering {
