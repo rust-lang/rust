@@ -1397,32 +1397,6 @@ pub(crate) mod builtin {
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
     }
 
-    /// LLVM-style inline assembly.
-    ///
-    /// Read the [unstable book] for the usage.
-    ///
-    /// [unstable book]: ../unstable-book/library-features/llvm-asm.html
-    #[unstable(
-        feature = "llvm_asm",
-        issue = "70173",
-        reason = "prefer using the new asm! syntax instead"
-    )]
-    #[rustc_deprecated(
-        since = "1.56",
-        reason = "will be removed from the compiler, use asm! instead"
-    )]
-    #[rustc_builtin_macro]
-    #[macro_export]
-    macro_rules! llvm_asm {
-        ("assembly template"
-                        : $("output"(operand),)*
-                        : $("input"(operand),)*
-                        : $("clobbers",)*
-                        : $("options",)*) => {
-            /* compiler built-in */
-        };
-    }
-
     /// Prints passed tokens into the standard output.
     #[unstable(
         feature = "log_syntax",

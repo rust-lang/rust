@@ -408,19 +408,6 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::LlvmInlineAsm(asm) => {
-                        for output in & $($mutability)? asm.outputs[..] {
-                            self.visit_place(
-                                output,
-                                PlaceContext::MutatingUse(MutatingUseContext::LlvmAsmOutput),
-                                location
-                            );
-                        }
-                        for (span, input) in & $($mutability)? asm.inputs[..] {
-                            self.visit_span(span);
-                            self.visit_operand(input, location);
-                        }
-                    }
                     StatementKind::Retag(kind, place) => {
                         self.visit_retag(kind, place, location);
                     }
@@ -1178,10 +1165,6 @@ pub enum NonMutatingUseContext {
 pub enum MutatingUseContext {
     /// Appears as LHS of an assignment.
     Store,
-    /// Can often be treated as a `Store`, but needs to be separate because
-    /// ASM is allowed to read outputs as well, so a `Store`-`LlvmAsmOutput` sequence
-    /// cannot be simplified the way a `Store`-`Store` can be.
-    LlvmAsmOutput,
     /// Output operand of an inline assembly block.
     AsmOutput,
     /// Destination of a call.
@@ -1271,7 +1254,6 @@ impl PlaceContext {
             PlaceContext::MutatingUse(
                 MutatingUseContext::Store
                     | MutatingUseContext::Call
-                    | MutatingUseContext::LlvmAsmOutput
                     | MutatingUseContext::AsmOutput,
             )
         )

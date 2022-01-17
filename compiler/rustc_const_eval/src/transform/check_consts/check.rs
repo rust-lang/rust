@@ -751,10 +751,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         self.super_statement(statement, location);
 
         match statement.kind {
-            StatementKind::LlvmInlineAsm { .. } => {
-                self.check_op(ops::InlineAsm);
-            }
-
             StatementKind::Assign(..)
             | StatementKind::SetDiscriminant { .. }
             | StatementKind::FakeRead(..)

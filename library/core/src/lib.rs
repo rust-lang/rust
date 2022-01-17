@@ -180,7 +180,6 @@
 #![feature(intrinsics)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
-#![feature(llvm_asm)]
 #![feature(min_specialization)]
 #![feature(mixed_integer_ops)]
 #![feature(must_not_suspend)]

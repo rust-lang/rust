@@ -233,8 +233,6 @@ fn check_statement<'tcx>(
         // just an assignment
         StatementKind::SetDiscriminant { place, .. } => check_place(tcx, **place, span, body),
 
-        StatementKind::LlvmInlineAsm { .. } => Err((span, "cannot use inline assembly in const fn".into())),
-
         StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
             check_operand(tcx, dst, span, body)?;
             check_operand(tcx, src, span, body)?;

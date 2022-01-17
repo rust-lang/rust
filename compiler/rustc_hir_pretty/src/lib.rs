@@ -1581,67 +1581,6 @@ impl<'a> State<'a> {
                 self.word("asm!");
                 self.print_inline_asm(asm);
             }
-            hir::ExprKind::LlvmInlineAsm(ref a) => {
-                let i = &a.inner;
-                self.word("llvm_asm!");
-                self.popen();
-                self.print_symbol(i.asm, i.asm_str_style);
-                self.word_space(":");
-
-                let mut out_idx = 0;
-                self.commasep(Inconsistent, &i.outputs, |s, out| {
-                    let constraint = out.constraint.as_str();
-                    let mut ch = constraint.chars();
-                    match ch.next() {
-                        Some('=') if out.is_rw => {
-                            s.print_string(&format!("+{}", ch.as_str()), ast::StrStyle::Cooked)
-                        }
-                        _ => s.print_string(&constraint, ast::StrStyle::Cooked),
-                    }
-                    s.popen();
-                    s.print_expr(&a.outputs_exprs[out_idx]);
-                    s.pclose();
-                    out_idx += 1;
-                });
-                self.space();
-                self.word_space(":");
-
-                let mut in_idx = 0;
-                self.commasep(Inconsistent, &i.inputs, |s, &co| {
-                    s.print_symbol(co, ast::StrStyle::Cooked);
-                    s.popen();
-                    s.print_expr(&a.inputs_exprs[in_idx]);
-                    s.pclose();
-                    in_idx += 1;
-                });
-                self.space();
-                self.word_space(":");
-
-                self.commasep(Inconsistent, &i.clobbers, |s, &co| {
-                    s.print_symbol(co, ast::StrStyle::Cooked);
-                });
-
-                let mut options = vec![];
-                if i.volatile {
-                    options.push("volatile");
-                }
-                if i.alignstack {
-                    options.push("alignstack");
-                }
-                if i.dialect == ast::LlvmAsmDialect::Intel {
-                    options.push("intel");
-                }
-
-                if !options.is_empty() {
-                    self.space();
-                    self.word_space(":");
-                    self.commasep(Inconsistent, &options, |s, &co| {
-                        s.print_string(co, ast::StrStyle::Cooked);
-                    });
-                }
-
-                self.pclose();
-            }
             hir::ExprKind::Yield(ref expr, _) => {
                 self.word_space("yield");
                 self.print_expr_maybe_paren(&expr, parser::PREC_JUMP);

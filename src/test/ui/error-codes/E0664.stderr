@@ -1,9 +1,0 @@
-error[E0664]: clobber should not be surrounded by braces
-  --> $DIR/E0664.rs:10:17
-   |
-LL |               : "{eax}"
-   |                 ^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0664`.

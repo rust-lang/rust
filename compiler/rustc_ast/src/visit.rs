@@ -864,14 +864,6 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::MacCall(ref mac) => visitor.visit_mac_call(mac),
         ExprKind::Paren(ref subexpression) => visitor.visit_expr(subexpression),
         ExprKind::InlineAsm(ref asm) => walk_inline_asm(visitor, asm),
-        ExprKind::LlvmInlineAsm(ref ia) => {
-            for &(_, ref input) in &ia.inputs {
-                visitor.visit_expr(input)
-            }
-            for output in &ia.outputs {
-                visitor.visit_expr(&output.expr)
-            }
-        }
         ExprKind::Yield(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }

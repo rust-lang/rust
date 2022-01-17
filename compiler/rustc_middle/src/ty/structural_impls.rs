@@ -219,7 +219,6 @@ TrivialTypeFoldableAndLiftImpls! {
     ::rustc_hir::def_id::DefId,
     ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::HirId,
-    ::rustc_hir::LlvmInlineAsmInner,
     ::rustc_hir::MatchSource,
     ::rustc_hir::Mutability,
     ::rustc_hir::Unsafety,

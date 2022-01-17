@@ -176,7 +176,6 @@ impl DefUse {
             // All other contexts are uses...
             PlaceContext::MutatingUse(
                 MutatingUseContext::AddressOf
-                | MutatingUseContext::LlvmAsmOutput
                 | MutatingUseContext::Borrow
                 | MutatingUseContext::Drop
                 | MutatingUseContext::Retag,

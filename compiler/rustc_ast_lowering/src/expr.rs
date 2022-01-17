@@ -226,7 +226,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::InlineAsm(ref asm) => {
                     hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
                 }
-                ExprKind::LlvmInlineAsm(ref asm) => self.lower_expr_llvm_asm(asm),
                 ExprKind::Struct(ref se) => {
                     let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
@@ -1284,38 +1283,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.is_in_loop_condition = was_in_loop_condition;
 
         result
-    }
-
-    fn lower_expr_llvm_asm(&mut self, asm: &LlvmInlineAsm) -> hir::ExprKind<'hir> {
-        let inner = hir::LlvmInlineAsmInner {
-            inputs: asm.inputs.iter().map(|&(c, _)| c).collect(),
-            outputs: asm
-                .outputs
-                .iter()
-                .map(|out| hir::LlvmInlineAsmOutput {
-                    constraint: out.constraint,
-                    is_rw: out.is_rw,
-                    is_indirect: out.is_indirect,
-                    span: self.lower_span(out.expr.span),
-                })
-                .collect(),
-            asm: asm.asm,
-            asm_str_style: asm.asm_str_style,
-            clobbers: asm.clobbers.clone(),
-            volatile: asm.volatile,
-            alignstack: asm.alignstack,
-            dialect: asm.dialect,
-        };
-        let hir_asm = hir::LlvmInlineAsm {
-            inner,
-            inputs_exprs: self.arena.alloc_from_iter(
-                asm.inputs.iter().map(|&(_, ref input)| self.lower_expr_mut(input)),
-            ),
-            outputs_exprs: self
-                .arena
-                .alloc_from_iter(asm.outputs.iter().map(|out| self.lower_expr_mut(&out.expr))),
-        };
-        hir::ExprKind::LlvmInlineAsm(self.arena.alloc(hir_asm))
     }
 
     fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {

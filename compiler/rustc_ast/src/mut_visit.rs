@@ -1350,23 +1350,6 @@ pub fn noop_visit_expr<T: MutVisitor>(
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
         ExprKind::InlineAsm(asm) => noop_visit_inline_asm(asm, vis),
-        ExprKind::LlvmInlineAsm(asm) => {
-            let LlvmInlineAsm {
-                asm: _,
-                asm_str_style: _,
-                outputs,
-                inputs,
-                clobbers: _,
-                volatile: _,
-                alignstack: _,
-                dialect: _,
-            } = asm.deref_mut();
-            for out in outputs {
-                let LlvmInlineAsmOutput { constraint: _, expr, is_rw: _, is_indirect: _ } = out;
-                vis.visit_expr(expr);
-            }
-            visit_vec(inputs, |(_c, expr)| vis.visit_expr(expr));
-        }
         ExprKind::MacCall(mac) => vis.visit_mac_call(mac),
         ExprKind::Struct(se) => {
             let StructExpr { qself, path, fields, rest } = se.deref_mut();

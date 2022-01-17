@@ -33,7 +33,6 @@ mod env;
 mod format;
 mod format_foreign;
 mod global_allocator;
-mod llvm_asm;
 mod log_syntax;
 mod panic;
 mod source_util;
@@ -78,7 +77,6 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         include_str: source_util::expand_include_str,
         include: source_util::expand_include,
         line: source_util::expand_line,
-        llvm_asm: llvm_asm::expand_llvm_asm,
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
         option_env: env::expand_option_env,

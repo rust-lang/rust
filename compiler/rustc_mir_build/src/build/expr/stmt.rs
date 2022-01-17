@@ -101,38 +101,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 BreakableTarget::Return,
                 source_info,
             ),
-            ExprKind::LlvmInlineAsm { asm, ref outputs, ref inputs } => {
-                debug!("stmt_expr LlvmInlineAsm block_context.push(SubExpr) : {:?}", expr);
-                this.block_context.push(BlockFrame::SubExpr);
-                let outputs = outputs
-                    .into_iter()
-                    .copied()
-                    .map(|output| unpack!(block = this.as_place(block, &this.thir[output])))
-                    .collect::<Vec<_>>()
-                    .into_boxed_slice();
-                let inputs = inputs
-                    .into_iter()
-                    .copied()
-                    .map(|input| {
-                        let input = &this.thir[input];
-                        (input.span, unpack!(block = this.as_local_operand(block, &input)))
-                    })
-                    .collect::<Vec<_>>()
-                    .into_boxed_slice();
-                this.cfg.push(
-                    block,
-                    Statement {
-                        source_info,
-                        kind: StatementKind::LlvmInlineAsm(Box::new(LlvmInlineAsm {
-                            asm: asm.clone(),
-                            outputs,
-                            inputs,
-                        })),
-                    },
-                );
-                this.block_context.pop();
-                block.unit()
-            }
             _ => {
                 assert!(
                     statement_scope.is_some(),

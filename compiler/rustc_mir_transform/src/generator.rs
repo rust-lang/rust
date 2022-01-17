@@ -1449,9 +1449,6 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
                 self.check_assigned_place(*lhs, |this| this.visit_rvalue(rhs, location));
             }
 
-            // FIXME: Does `llvm_asm!` have any aliasing requirements?
-            StatementKind::LlvmInlineAsm(_) => {}
-
             StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
             | StatementKind::StorageLive(_)

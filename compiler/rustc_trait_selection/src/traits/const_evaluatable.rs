@@ -479,7 +479,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             // let expressions imply control flow
             ExprKind::Match { .. } | ExprKind::If { .. } | ExprKind::Let { .. } =>
                 self.error(node.span, "control flow is not supported in generic constants")?,
-            ExprKind::LlvmInlineAsm { .. } | ExprKind::InlineAsm { .. } => {
+            ExprKind::InlineAsm { .. } => {
                 self.error(node.span, "assembly is not supported in generic constants")?
             }
 

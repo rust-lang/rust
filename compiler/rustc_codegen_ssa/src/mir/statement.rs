@@ -1,9 +1,7 @@
-use rustc_errors::struct_span_err;
 use rustc_middle::mir;
 
 use super::FunctionCx;
 use super::LocalRef;
-use super::OperandValue;
 use crate::traits::BuilderMethods;
 use crate::traits::*;
 
@@ -63,51 +61,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     cg_place.storage_dead(&mut bx);
                 } else if let LocalRef::UnsizedPlace(cg_indirect_place) = self.locals[local] {
                     cg_indirect_place.storage_dead(&mut bx);
-                }
-                bx
-            }
-            mir::StatementKind::LlvmInlineAsm(ref asm) => {
-                let outputs = asm
-                    .outputs
-                    .iter()
-                    .map(|output| self.codegen_place(&mut bx, output.as_ref()))
-                    .collect();
-
-                let input_vals = asm.inputs.iter().fold(
-                    Vec::with_capacity(asm.inputs.len()),
-                    |mut acc, (span, input)| {
-                        let op = self.codegen_operand(&mut bx, input);
-                        if let OperandValue::Immediate(_) = op.val {
-                            acc.push(op.immediate());
-                        } else {
-                            struct_span_err!(
-                                bx.sess(),
-                                span.to_owned(),
-                                E0669,
-                                "invalid value for constraint in inline assembly"
-                            )
-                            .emit();
-                        }
-                        acc
-                    },
-                );
-
-                if input_vals.len() == asm.inputs.len() {
-                    let res = bx.codegen_llvm_inline_asm(
-                        &asm.asm,
-                        outputs,
-                        input_vals,
-                        statement.source_info.span,
-                    );
-                    if !res {
-                        struct_span_err!(
-                            bx.sess(),
-                            statement.source_info.span,
-                            E0668,
-                            "malformed inline assembly"
-                        )
-                        .emit();
-                    }
                 }
                 bx
             }

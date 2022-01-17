@@ -570,12 +570,6 @@ impl<'tcx> Cx<'tcx> {
                 line_spans: asm.line_spans,
             },
 
-            hir::ExprKind::LlvmInlineAsm(ref asm) => ExprKind::LlvmInlineAsm {
-                asm: &asm.inner,
-                outputs: self.mirror_exprs(asm.outputs_exprs),
-                inputs: self.mirror_exprs(asm.inputs_exprs),
-            },
-
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
                 let value = ty::Const::from_inline_const(self.tcx, anon_const_def_id);

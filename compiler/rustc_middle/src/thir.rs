@@ -431,12 +431,6 @@ pub enum ExprKind<'tcx> {
     },
     /// An expression taking a reference to a thread local.
     ThreadLocalRef(DefId),
-    /// Inline LLVM assembly, i.e. `llvm_asm!()`.
-    LlvmInlineAsm {
-        asm: &'tcx hir::LlvmInlineAsmInner,
-        outputs: Box<[ExprId]>,
-        inputs: Box<[ExprId]>,
-    },
     /// A `yield` expression.
     Yield {
         value: ExprId,

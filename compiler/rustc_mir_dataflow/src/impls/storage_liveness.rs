@@ -134,11 +134,6 @@ impl<'mir, 'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'mir, 'tc
             | StatementKind::SetDiscriminant { box place, .. } => {
                 trans.gen(place.local);
             }
-            StatementKind::LlvmInlineAsm(asm) => {
-                for place in &*asm.outputs {
-                    trans.gen(place.local);
-                }
-            }
 
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
