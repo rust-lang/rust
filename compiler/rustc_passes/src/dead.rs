@@ -41,9 +41,11 @@ struct MarkSymbolVisitor<'tcx> {
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
     live_symbols: FxHashSet<LocalDefId>,
     repr_has_repr_c: bool,
+    repr_has_repr_simd: bool,
     in_pat: bool,
     inherited_pub_visibility: bool,
     pub_visibility: bool,
+    allow_dead_field: bool,
     ignore_variant_stack: Vec<DefId>,
     // maps from tuple struct constructors to tuple struct items
     struct_constructors: FxHashMap<LocalDefId, LocalDefId>,
@@ -221,6 +223,32 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
+    fn handle_tuple_field_pattern_match(
+        &mut self,
+        lhs: &hir::Pat<'_>,
+        res: Res,
+        pats: &[hir::Pat<'_>],
+        dotdot: Option<usize>,
+    ) {
+        let variant = match self.typeck_results().node_type(lhs.hir_id).kind() {
+            ty::Adt(adt, _) => adt.variant_of_res(res),
+            _ => span_bug!(lhs.span, "non-ADT in tuple struct pattern"),
+        };
+        let first_n = pats.iter().enumerate().take(dotdot.unwrap_or(pats.len()));
+        let missing = variant.fields.len() - pats.len();
+        let last_n = pats
+            .iter()
+            .enumerate()
+            .skip(dotdot.unwrap_or(pats.len()))
+            .map(|(idx, pat)| (idx + missing, pat));
+        for (idx, pat) in first_n.chain(last_n) {
+            if let PatKind::Wild = pat.kind {
+                continue;
+            }
+            self.insert_def_id(variant.fields[idx].did);
+        }
+    }
+
     fn mark_live_symbols(&mut self) {
         let mut scanned = FxHashSet::default();
         while let Some(id) = self.worklist.pop() {
@@ -269,19 +297,38 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
 
         let had_repr_c = self.repr_has_repr_c;
+        let had_repr_simd = self.repr_has_repr_simd;
         let had_inherited_pub_visibility = self.inherited_pub_visibility;
         let had_pub_visibility = self.pub_visibility;
+        let had_allow_dead_field = self.allow_dead_field;
         self.repr_has_repr_c = false;
+        self.repr_has_repr_simd = false;
         self.inherited_pub_visibility = false;
         self.pub_visibility = false;
+        self.allow_dead_field = false;
         match node {
             Node::Item(item) => {
                 self.pub_visibility = item.vis.node.is_pub();
 
-                match item.kind {
-                    hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
+                match &item.kind {
+                    hir::ItemKind::Struct(vd, ..) | hir::ItemKind::Union(vd, ..) => {
                         let def = self.tcx.adt_def(item.def_id);
                         self.repr_has_repr_c = def.repr.c();
+                        self.repr_has_repr_simd = def.repr.simd();
+
+                        // A single non-public field of unit type in a public tuple struct
+                        // can be used to make the tuple struct constructor private. This
+                        // is allowed and shouldn't yield a "field is never read" warning.
+                        if let hir::VariantData::Tuple([field_def], _) = vd {
+                            match field_def.vis.node {
+                                hir::VisibilityKind::Public => {}
+                                _ => {
+                                    if let hir::TyKind::Tup([]) = field_def.ty.kind {
+                                        self.allow_dead_field = true;
+                                    }
+                                }
+                            }
+                        }
 
                         intravisit::walk_item(self, &item);
                     }
@@ -307,8 +354,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
             _ => {}
         }
+        self.allow_dead_field = had_allow_dead_field;
         self.pub_visibility = had_pub_visibility;
         self.inherited_pub_visibility = had_inherited_pub_visibility;
+        self.repr_has_repr_simd = had_repr_simd;
         self.repr_has_repr_c = had_repr_c;
     }
 
@@ -346,10 +395,15 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         _: rustc_span::Span,
     ) {
         let has_repr_c = self.repr_has_repr_c;
+        let has_repr_simd = self.repr_has_repr_simd;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let pub_visibility = self.pub_visibility;
+        let allow_dead_field = self.allow_dead_field;
         let live_fields = def.fields().iter().filter(|f| {
-            has_repr_c || (pub_visibility && (inherited_pub_visibility || f.vis.node.is_pub()))
+            has_repr_c
+                || (pub_visibility && (inherited_pub_visibility || f.vis.node.is_pub()))
+                || (f.is_positional() && has_repr_simd)
+                || allow_dead_field
         });
         let hir = self.tcx.hir();
         self.live_symbols.extend(live_fields.map(|f| hir.local_def_id(f.hir_id)));
@@ -402,6 +456,10 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             PatKind::Path(ref qpath) => {
                 let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
                 self.handle_res(res);
+            }
+            PatKind::TupleStruct(ref qpath, ref fields, dotdot) => {
+                let res = self.typeck_results().qpath_res(qpath, pat.hir_id);
+                self.handle_tuple_field_pattern_match(pat, res, fields, dotdot);
             }
             _ => (),
         }
@@ -585,9 +643,11 @@ fn find_live<'tcx>(
         maybe_typeck_results: None,
         live_symbols: Default::default(),
         repr_has_repr_c: false,
+        repr_has_repr_simd: false,
         in_pat: false,
         inherited_pub_visibility: false,
         pub_visibility: false,
+        allow_dead_field: false,
         ignore_variant_stack: vec![],
         struct_constructors,
     };
@@ -618,8 +678,7 @@ impl<'tcx> DeadVisitor<'tcx> {
     fn should_warn_about_field(&mut self, field: &hir::FieldDef<'_>) -> bool {
         let def_id = self.tcx.hir().local_def_id(field.hir_id);
         let field_type = self.tcx.type_of(def_id);
-        !field.is_positional()
-            && !self.symbol_is_live(def_id)
+        !self.symbol_is_live(def_id)
             && !field_type.is_phantom_data()
             && !has_allow_dead_code_or_lang_attr(self.tcx, field.hir_id)
     }

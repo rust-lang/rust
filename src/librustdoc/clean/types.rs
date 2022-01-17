@@ -685,7 +685,7 @@ crate enum ItemKind {
     AssocTypeItem(Vec<GenericBound>, Option<Type>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
-    KeywordItem(Symbol),
+    KeywordItem,
 }
 
 impl ItemKind {
@@ -722,7 +722,7 @@ impl ItemKind {
             | AssocConstItem(_, _)
             | AssocTypeItem(_, _)
             | StrippedItem(_)
-            | KeywordItem(_) => [].iter(),
+            | KeywordItem => [].iter(),
         }
     }
 }
@@ -2312,7 +2312,7 @@ impl TypeBinding {
 crate enum SubstParam {
     Type(Type),
     Lifetime(Lifetime),
-    Constant(Constant),
+    Constant,
 }
 
 impl SubstParam {

@@ -13,8 +13,8 @@ impl Foo for () {
     type Bar = ();
 }
 
-struct Wrapper1<T: Foo>(<T as Foo>::Bar);
-struct Wrapper2<T: Foo>(<Wrapper1<T> as Pointee>::Metadata);
+struct Wrapper1<T: Foo>(#[allow(dead_code)] <T as Foo>::Bar);
+struct Wrapper2<T: Foo>(#[allow(dead_code)] <Wrapper1<T> as Pointee>::Metadata);
 
 fn main() {
     let _: Wrapper2<()> = Wrapper2(());

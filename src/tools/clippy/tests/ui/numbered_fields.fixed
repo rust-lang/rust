@@ -2,6 +2,7 @@
 #![warn(clippy::init_numbered_fields)]
 
 #[derive(Default)]
+#[allow(dead_code)]
 struct TupleStruct(u32, u32, u8);
 
 // This shouldn't lint because it's in a macro

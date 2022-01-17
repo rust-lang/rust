@@ -7,6 +7,6 @@
 use std::mem::MaybeUninit;
 
 #[repr(transparent)]
-pub struct MaybeUninitWrapper<const N: usize>(MaybeUninit<[u64; N]>);
+pub struct MaybeUninitWrapper<const N: usize>(#[allow(dead_code)] MaybeUninit<[u64; N]>);
 
 fn main() {}

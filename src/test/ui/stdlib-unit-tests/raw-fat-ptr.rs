@@ -39,6 +39,7 @@ impl<T> Foo for T {
     }
 }
 
+#[allow(dead_code)]
 struct S<T:?Sized>(u32, T);
 
 fn main() {

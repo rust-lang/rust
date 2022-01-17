@@ -25,9 +25,9 @@ impl<T> Front for Vec<T> {
     type Back = Vec<T>;
 }
 
-struct PtrBack<T: Front>(Vec<T::Back>);
+struct PtrBack<T: Front>(#[allow(dead_code)] Vec<T::Back>);
 
-struct M(PtrBack<Vec<M>>);
+struct M(#[allow(dead_code)] PtrBack<Vec<M>>);
 
 #[allow(unused_must_use)]
 fn main() {

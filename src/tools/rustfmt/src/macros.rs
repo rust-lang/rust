@@ -1320,7 +1320,7 @@ fn format_lazy_static(
             context,
             stmt,
             &*expr,
-            &RhsAssignKind::Expr(&expr.kind, expr.span),
+            &RhsAssignKind::Expr(&expr.kind),
             nested_shape.sub_width(1)?,
         )?);
         result.push(';');

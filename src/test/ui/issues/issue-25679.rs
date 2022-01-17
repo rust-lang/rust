@@ -2,6 +2,7 @@
 trait Device {
     type Resources;
 }
+#[allow(dead_code)]
 struct Foo<D, R>(D, R);
 
 impl<D: Device> Foo<D, D::Resources> {

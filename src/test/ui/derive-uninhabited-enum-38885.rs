@@ -9,8 +9,8 @@ enum Void {}
 
 #[derive(Debug)]
 enum Foo {
-    Bar(u8),
-    Void(Void), //~ WARN never constructed
+    Bar(#[allow(dead_code)] u8),
+    Void(#[allow(dead_code)] Void), //~ WARN never constructed
 }
 
 fn main() {

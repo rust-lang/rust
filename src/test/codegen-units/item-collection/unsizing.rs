@@ -39,7 +39,7 @@ impl Trait for u32 {
 }
 
 #[derive(Clone, Copy)]
-struct Wrapper<T: ?Sized>(*const T);
+struct Wrapper<T: ?Sized>(#[allow(dead_code)] *const T);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
 

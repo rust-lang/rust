@@ -465,7 +465,7 @@ enum ModuleKind {
     ///     f(); // Resolves to (1)
     /// }
     /// ```
-    Block(NodeId),
+    Block,
     /// Any module with a name.
     ///
     /// This could be:
@@ -482,7 +482,7 @@ impl ModuleKind {
     /// Get name of the module.
     pub fn name(&self) -> Option<Symbol> {
         match self {
-            ModuleKind::Block(..) => None,
+            ModuleKind::Block => None,
             ModuleKind::Def(.., name) => Some(*name),
         }
     }
@@ -558,7 +558,7 @@ impl<'a> ModuleData<'a> {
     ) -> Self {
         let is_foreign = match kind {
             ModuleKind::Def(_, def_id, _) => !def_id.is_local(),
-            ModuleKind::Block(_) => false,
+            ModuleKind::Block => false,
         };
         ModuleData {
             parent,
@@ -1987,7 +1987,7 @@ impl<'a> Resolver<'a> {
             };
 
             match module.kind {
-                ModuleKind::Block(..) => {} // We can see through blocks
+                ModuleKind::Block => {} // We can see through blocks
                 _ => break,
             }
 
@@ -2026,7 +2026,7 @@ impl<'a> Resolver<'a> {
             return Some((self.expn_def_scope(ctxt.remove_mark()), None));
         }
 
-        if let ModuleKind::Block(..) = module.kind {
+        if let ModuleKind::Block = module.kind {
             return Some((module.parent.unwrap().nearest_item_scope(), None));
         }
 
@@ -3029,7 +3029,7 @@ impl<'a> Resolver<'a> {
 
         let container = match parent.kind {
             ModuleKind::Def(kind, _, _) => kind.descr(parent.def_id()),
-            ModuleKind::Block(..) => "block",
+            ModuleKind::Block => "block",
         };
 
         let old_noun = match old_binding.is_import() {

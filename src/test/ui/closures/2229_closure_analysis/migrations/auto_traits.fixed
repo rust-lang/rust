@@ -51,10 +51,10 @@ fn test_sync_trait() {
 }
 
 /* Test Clone Trait Migration */
-struct S(Foo);
-struct T(i32);
+struct S(#[allow(dead_code)] Foo);
+struct T(#[allow(dead_code)] i32);
 
-struct U(S, T);
+struct U(#[allow(dead_code)] S, T);
 
 impl Clone for U {
     fn clone(&self) -> Self {

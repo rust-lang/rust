@@ -1,6 +1,6 @@
 // run-pass
 #[derive(Debug)]
-struct Matrix4<S>(S);
+struct Matrix4<S>(#[allow(dead_code)] S);
 trait POrd<S> {}
 
 fn translate<S: POrd<S>>(s: S) -> Matrix4<S> { Matrix4(s) }

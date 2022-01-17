@@ -1,8 +1,8 @@
-error: variant is never constructed: `Bar`
-  --> $DIR/unused-struct-variant.rs:8:5
+error: field is never read: `0`
+  --> $DIR/unused-struct-variant.rs:7:9
    |
-LL |     Bar(B),
-   |     ^^^^^^
+LL |     Foo(F),
+   |         ^
    |
 note: the lint level is defined here
   --> $DIR/unused-struct-variant.rs:1:9
@@ -11,5 +11,11 @@ LL | #![deny(unused)]
    |         ^^^^^^
    = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
 
-error: aborting due to previous error
+error: variant is never constructed: `Bar`
+  --> $DIR/unused-struct-variant.rs:8:5
+   |
+LL |     Bar(B),
+   |     ^^^^^^
+
+error: aborting due to 2 previous errors
 

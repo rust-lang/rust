@@ -51,7 +51,7 @@ pub(crate) fn target_from_impl_item<'tcx>(
 #[derive(Clone, Copy)]
 enum ItemLike<'tcx> {
     Item(&'tcx Item<'tcx>),
-    ForeignItem(&'tcx ForeignItem<'tcx>),
+    ForeignItem,
 }
 
 struct CheckAttrVisitor<'tcx> {
@@ -1889,12 +1889,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
-        self.check_attributes(
-            f_item.hir_id(),
-            &f_item.span,
-            target,
-            Some(ItemLike::ForeignItem(f_item)),
-        );
+        self.check_attributes(f_item.hir_id(), &f_item.span, target, Some(ItemLike::ForeignItem));
         intravisit::walk_foreign_item(self, f_item)
     }
 

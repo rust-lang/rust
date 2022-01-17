@@ -1307,7 +1307,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     // Items from this module
                     self.r.add_module_candidates(module, &mut names, &filter_fn);
 
-                    if let ModuleKind::Block(..) = module.kind {
+                    if let ModuleKind::Block = module.kind {
                         // We can see through blocks
                     } else {
                         // Items from the prelude

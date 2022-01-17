@@ -1315,9 +1315,8 @@ fn maybe_expand_private_type_alias(cx: &mut DocContext<'_>, path: &hir::Path<'_>
                     }
                     _ => None,
                 });
-                if let Some(ct) = const_ {
-                    substs
-                        .insert(const_param_def_id.to_def_id(), SubstParam::Constant(ct.clean(cx)));
+                if let Some(_) = const_ {
+                    substs.insert(const_param_def_id.to_def_id(), SubstParam::Constant);
                 }
                 // FIXME(const_generics_defaults)
                 indices.consts += 1;

@@ -16,7 +16,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 const BIG_FUT_SIZE: usize = 1024;
-struct Big([u8; BIG_FUT_SIZE]);
+struct Big(#[allow(dead_code)] [u8; BIG_FUT_SIZE]);
 
 impl Big {
     fn new() -> Self {

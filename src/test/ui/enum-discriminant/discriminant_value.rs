@@ -27,13 +27,14 @@ enum CLike3 {
     D
 }
 
+#[allow(dead_code)]
 enum ADT {
     First(u32, u32),
     Second(u64)
 }
 
 enum NullablePointer {
-    Something(&'static u32),
+    Something(#[allow(dead_code)] &'static u32),
     Nothing
 }
 

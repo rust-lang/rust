@@ -28,6 +28,12 @@ error: struct is never constructed: `PrivStruct`
 LL | struct PrivStruct;
    |        ^^^^^^^^^^
 
+error: field is never read: `0`
+  --> $DIR/lint-dead-code-1.rs:40:20
+   |
+LL | struct UsedStruct2(isize);
+   |                    ^^^^^
+
 error: enum is never used: `priv_enum`
   --> $DIR/lint-dead-code-1.rs:64:6
    |
@@ -64,5 +70,5 @@ error: function is never used: `baz`
 LL | fn baz() -> impl Copy {
    |    ^^^
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 

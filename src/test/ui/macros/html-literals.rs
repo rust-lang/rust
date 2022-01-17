@@ -88,6 +88,7 @@ pub fn main() {
     );
 }
 
+#[allow(dead_code)]
 enum HTMLFragment {
     tag(String, Vec<HTMLFragment> ),
     text(String),

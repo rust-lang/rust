@@ -5,7 +5,7 @@
 
 use std::mem;
 
-struct Foo(u32);
+struct Foo(#[allow(dead_code)] u32);
 
 #[derive(Clone, Copy)]
 struct Bar {

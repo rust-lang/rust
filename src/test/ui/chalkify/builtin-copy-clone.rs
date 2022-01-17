@@ -4,7 +4,7 @@
 // Test that `Clone` is correctly implemented for builtin types.
 
 #[derive(Copy, Clone)]
-struct S(i32);
+struct S(#[allow(dead_code)] i32);
 
 fn test_clone<T: Clone>(arg: T) {
     let _ = arg.clone();

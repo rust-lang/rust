@@ -841,7 +841,7 @@ impl<'a> ControlFlow<'a> {
                 &format!("{}{}{}", matcher, pat_string, self.connector),
                 expr,
                 cond_shape,
-                &RhsAssignKind::Expr(&expr.kind, expr.span),
+                &RhsAssignKind::Expr(&expr.kind),
                 RhsTactics::Default,
                 comments_span,
                 true,
@@ -1854,7 +1854,7 @@ fn rewrite_unary_op(
 }
 
 pub(crate) enum RhsAssignKind<'ast> {
-    Expr(&'ast ast::ExprKind, Span),
+    Expr(&'ast ast::ExprKind),
     Bounds,
     Ty,
 }
@@ -1867,7 +1867,7 @@ impl<'ast> RhsAssignKind<'ast> {
     #[allow(dead_code)]
     fn is_chain(&self) -> bool {
         match self {
-            RhsAssignKind::Expr(kind, _) => {
+            RhsAssignKind::Expr(kind) => {
                 matches!(
                     kind,
                     ast::ExprKind::Try(..)
@@ -1901,7 +1901,7 @@ fn rewrite_assignment(
         context,
         lhs_str,
         rhs,
-        &RhsAssignKind::Expr(&rhs.kind, rhs.span),
+        &RhsAssignKind::Expr(&rhs.kind),
         shape,
     )
 }

@@ -5,7 +5,7 @@
 
 extern crate default_type_params_xc;
 
-struct Vec<T, A = default_type_params_xc::Heap>(Option<(T,A)>);
+struct Vec<T, A = default_type_params_xc::Heap>(#[allow(dead_code)] Option<(T,A)>);
 
 struct Foo;
 

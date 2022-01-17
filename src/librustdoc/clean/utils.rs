@@ -71,7 +71,7 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
             )
         }));
         m.items.extend(keywords.into_iter().map(|(def_id, kw)| {
-            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem(kw), cx)
+            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx)
         }));
     }
 

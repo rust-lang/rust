@@ -492,7 +492,7 @@ fn test_cmp() {
 #[test]
 fn test_vec_truncate_drop() {
     static mut DROPS: u32 = 0;
-    struct Elem(i32);
+    struct Elem(#[allow(dead_code)] i32);
     impl Drop for Elem {
         fn drop(&mut self) {
             unsafe {
@@ -1077,7 +1077,7 @@ fn test_from_iter_specialization_panic_during_drop_leaks() {
 
     #[derive(Debug)]
     enum Droppable {
-        DroppedTwice(Box<i32>),
+        DroppedTwice(#[allow(dead_code)] Box<i32>),
         PanicOnDrop,
     }
 
@@ -2251,7 +2251,7 @@ fn test_vec_dedup_multiple_ident() {
 #[test]
 fn test_vec_dedup_partialeq() {
     #[derive(Debug)]
-    struct Foo(i32, i32);
+    struct Foo(i32, #[allow(dead_code)] i32);
 
     impl PartialEq for Foo {
         fn eq(&self, other: &Foo) -> bool {

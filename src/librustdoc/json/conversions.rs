@@ -228,7 +228,7 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         },
         // `convert_item` early returns `None` for striped items
         StrippedItem(_) => unreachable!(),
-        KeywordItem(_) => {
+        KeywordItem => {
             panic!("{:?} is not supported for JSON output", item)
         }
         ExternCrateItem { ref src } => ItemEnum::ExternCrate {

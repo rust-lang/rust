@@ -4,7 +4,7 @@ struct F;
 struct B;
 
 enum E {
-    Foo(F),
+    Foo(F), //~ ERROR field is never read
     Bar(B), //~ ERROR variant is never constructed
 }
 

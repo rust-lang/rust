@@ -120,7 +120,7 @@ impl Rewrite for ast::Local {
                 context,
                 result,
                 init,
-                &RhsAssignKind::Expr(&init.kind, init.span),
+                &RhsAssignKind::Expr(&init.kind),
                 nested_shape,
             )?;
             // todo else
@@ -576,7 +576,7 @@ impl<'a> FmtVisitor<'a> {
                 lhs,
                 ex,
                 shape,
-                &RhsAssignKind::Expr(&ex.kind, ex.span),
+                &RhsAssignKind::Expr(&ex.kind),
                 RhsTactics::AllowOverflow,
             )?
         } else {
@@ -1866,7 +1866,7 @@ fn rewrite_static(
             &lhs,
             &**expr,
             Shape::legacy(remaining_width, offset.block_only()),
-            &RhsAssignKind::Expr(&expr.kind, expr.span),
+            &RhsAssignKind::Expr(&expr.kind),
             RhsTactics::Default,
             comments_span,
             true,

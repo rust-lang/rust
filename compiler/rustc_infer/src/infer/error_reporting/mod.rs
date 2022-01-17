@@ -2377,9 +2377,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         #[derive(Debug)]
         enum SubOrigin<'hir> {
             GAT(&'hir hir::Generics<'hir>),
-            Impl(&'hir hir::Generics<'hir>),
-            Trait(&'hir hir::Generics<'hir>),
-            Fn(&'hir hir::Generics<'hir>),
+            Impl,
+            Trait,
+            Fn,
             Unknown,
         }
         let sub_origin = 'origin: {
@@ -2397,9 +2397,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     }) => SubOrigin::GAT(generics),
                                     Node::ImplItem(hir::ImplItem {
                                         kind: hir::ImplItemKind::Fn(..),
-                                        generics,
                                         ..
-                                    }) => SubOrigin::Fn(generics),
+                                    }) => SubOrigin::Fn,
                                     Node::TraitItem(hir::TraitItem {
                                         kind: hir::TraitItemKind::Type(..),
                                         generics,
@@ -2407,21 +2406,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     }) => SubOrigin::GAT(generics),
                                     Node::TraitItem(hir::TraitItem {
                                         kind: hir::TraitItemKind::Fn(..),
-                                        generics,
                                         ..
-                                    }) => SubOrigin::Fn(generics),
+                                    }) => SubOrigin::Fn,
                                     Node::Item(hir::Item {
-                                        kind: hir::ItemKind::Trait(_, _, generics, _, _),
+                                        kind: hir::ItemKind::Trait(..),
                                         ..
-                                    }) => SubOrigin::Trait(generics),
+                                    }) => SubOrigin::Trait,
                                     Node::Item(hir::Item {
-                                        kind: hir::ItemKind::Impl(hir::Impl { generics, .. }),
+                                        kind: hir::ItemKind::Impl(hir::Impl { .. }),
                                         ..
-                                    }) => SubOrigin::Impl(generics),
+                                    }) => SubOrigin::Impl,
                                     Node::Item(hir::Item {
-                                        kind: hir::ItemKind::Fn(_, generics, _),
-                                        ..
-                                    }) => SubOrigin::Fn(generics),
+                                        kind: hir::ItemKind::Fn(..), ..
+                                    }) => SubOrigin::Fn,
                                     _ => continue,
                                 };
                             }

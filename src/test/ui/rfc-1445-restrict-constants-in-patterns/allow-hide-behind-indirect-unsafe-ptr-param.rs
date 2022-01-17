@@ -5,7 +5,7 @@
 
 #![warn(pointer_structural_match)]
 
-struct NoDerive(i32);
+struct NoDerive(#[allow(dead_code)] i32);
 
 // This impl makes NoDerive irreflexive
 // (which doesn't matter here because `<*const T>::eq` won't recur on `T`).

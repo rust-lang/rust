@@ -2,7 +2,7 @@
 
 #![deny(dead_code)]
 
-pub struct GenericFoo<T>(T);
+pub struct GenericFoo<T>(#[allow(dead_code)] T);
 
 type Foo = GenericFoo<u32>;
 

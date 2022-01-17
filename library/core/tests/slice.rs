@@ -1942,8 +1942,10 @@ fn test_align_to_zst() {
 #[test]
 fn test_align_to_non_trivial() {
     #[repr(align(8))]
+    #[allow(dead_code)]
     struct U64(u64, u64);
     #[repr(align(8))]
+    #[allow(dead_code)]
     struct U64U64U32(u64, u64, u32);
     let data = [
         U64(1, 2),
@@ -2029,7 +2031,7 @@ fn test_slice_partition_dedup_multiple_ident() {
 #[test]
 fn test_slice_partition_dedup_partialeq() {
     #[derive(Debug)]
-    struct Foo(i32, i32);
+    struct Foo(i32, #[allow(dead_code)] i32);
 
     impl PartialEq for Foo {
         fn eq(&self, other: &Foo) -> bool {

@@ -4,6 +4,7 @@
 
 use std::mem;
 
+#[allow(dead_code)]
 enum ADT {
     First(u32, u32),
     Second(u64)

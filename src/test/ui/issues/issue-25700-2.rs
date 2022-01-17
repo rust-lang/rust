@@ -3,8 +3,9 @@ pub trait Parser {
     type Input;
 }
 
-pub struct Iter<P: Parser>(P, P::Input);
+pub struct Iter<P: Parser>(#[allow(dead_code)] P, P::Input);
 
+#[allow(dead_code)]
 pub struct Map<P, F>(P, F);
 impl<P, F> Parser for Map<P, F> where F: FnMut(P) {
     type Input = u8;

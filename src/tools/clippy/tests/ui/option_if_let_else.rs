@@ -110,7 +110,7 @@ fn pattern_to_vec(pattern: &str) -> Vec<String> {
 }
 
 enum DummyEnum {
-    One(u8),
+    One(#[allow(dead_code)] u8),
     Two,
 }
 

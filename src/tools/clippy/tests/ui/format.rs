@@ -3,7 +3,7 @@
 #![allow(clippy::print_literal, clippy::redundant_clone, clippy::to_string_in_format_args)]
 #![warn(clippy::useless_format)]
 
-struct Foo(pub String);
+struct Foo(#[allow(dead_code)] pub String);
 
 macro_rules! foo {
     ($($t:tt)*) => (Foo(format!($($t)*)))

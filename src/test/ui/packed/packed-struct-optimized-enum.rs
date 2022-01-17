@@ -1,6 +1,6 @@
 // run-pass
 #[repr(packed)]
-struct Packed<T: Copy>(T);
+struct Packed<T: Copy>(#[allow(dead_code)] T);
 
 impl<T: Copy> Copy for Packed<T> {}
 impl<T: Copy> Clone for Packed<T> {

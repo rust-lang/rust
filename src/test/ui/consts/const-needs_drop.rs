@@ -2,8 +2,10 @@
 
 use std::mem;
 
+#[allow(dead_code)]
 struct Trivial(u8, f32);
 
+#[allow(dead_code)]
 struct NonTrivial(u8, String);
 
 const CONST_U8: bool = mem::needs_drop::<u8>();

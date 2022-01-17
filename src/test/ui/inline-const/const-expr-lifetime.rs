@@ -11,7 +11,7 @@ fn issue_78174() {
     assert_eq!(foo, "foo");
 }
 
-pub struct InvariantRef<'a, T: ?Sized>(&'a T, PhantomData<&'a mut &'a T>);
+pub struct InvariantRef<'a, T: ?Sized>(#[allow(dead_code)] &'a T, PhantomData<&'a mut &'a T>);
 
 impl<'a, T: ?Sized> InvariantRef<'a, T> {
     pub const fn new(r: &'a T) -> Self {

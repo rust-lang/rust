@@ -11,13 +11,13 @@ use std::cell::UnsafeCell;
 use std::mem::size_of;
 use std::num::NonZeroU32 as N32;
 
-struct Wrapper<T>(T);
+struct Wrapper<T>(#[allow(dead_code)] T);
 
 #[repr(transparent)]
-struct Transparent<T>(T);
+struct Transparent<T>(#[allow(dead_code)] T);
 
 #[repr(no_niche)]
-struct NoNiche<T>(T);
+struct NoNiche<T>(#[allow(dead_code)] T);
 
 fn main() {
     assert_eq!(size_of::<Option<Wrapper<u32>>>(),     8);

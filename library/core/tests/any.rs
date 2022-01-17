@@ -119,6 +119,7 @@ fn any_unsized() {
 fn distinct_type_names() {
     // https://github.com/rust-lang/rust/issues/84666
 
+    #[allow(dead_code)]
     struct Velocity(f32, f32);
 
     fn type_name_of_val<T>(_: T) -> &'static str {

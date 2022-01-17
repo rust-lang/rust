@@ -1,11 +1,11 @@
 error[E0283]: type annotations needed
-  --> $DIR/issue-29147.rs:21:13
+  --> $DIR/issue-29147.rs:22:13
    |
 LL |     let _ = <S5<_>>::xxx;
    |             ^^^^^^^^^^^^ cannot infer type for struct `S5<_>`
    |
 note: multiple `impl`s satisfying `S5<_>: Foo` found
-  --> $DIR/issue-29147.rs:17:1
+  --> $DIR/issue-29147.rs:18:1
    |
 LL | impl Foo for S5<u32> { fn xxx(&self) {} }
    | ^^^^^^^^^^^^^^^^^^^^

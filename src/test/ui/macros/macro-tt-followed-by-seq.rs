@@ -5,6 +5,7 @@
 use self::Join::*;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 enum Join<A,B> {
   Keep(A,B),
   Skip(A,B),

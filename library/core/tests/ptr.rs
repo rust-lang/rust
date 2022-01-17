@@ -354,19 +354,27 @@ fn align_offset_stride1() {
 #[test]
 fn align_offset_weird_strides() {
     #[repr(packed)]
+    #[allow(dead_code)]
     struct A3(u16, u8);
+    #[allow(dead_code)]
     struct A4(u32);
     #[repr(packed)]
+    #[allow(dead_code)]
     struct A5(u32, u8);
     #[repr(packed)]
+    #[allow(dead_code)]
     struct A6(u32, u16);
     #[repr(packed)]
+    #[allow(dead_code)]
     struct A7(u32, u16, u8);
     #[repr(packed)]
+    #[allow(dead_code)]
     struct A8(u32, u32);
     #[repr(packed)]
+    #[allow(dead_code)]
     struct A9(u32, u32, u8);
     #[repr(packed)]
+    #[allow(dead_code)]
     struct A10(u32, u32, u16);
 
     unsafe fn test_weird_stride<T>(ptr: *const T, align: usize) -> bool {
@@ -434,7 +442,7 @@ fn offset_from() {
 #[test]
 fn ptr_metadata() {
     struct Unit;
-    struct Pair<A, B: ?Sized>(A, B);
+    struct Pair<A, B: ?Sized>(#[allow(dead_code)] A, B);
     extern "C" {
         type Extern;
     }
@@ -524,7 +532,7 @@ fn ptr_metadata_bounds() {
 fn dyn_metadata() {
     #[derive(Debug)]
     #[repr(align(32))]
-    struct Something([u8; 47]);
+    struct Something(#[allow(dead_code)] [u8; 47]);
 
     let value = Something([0; 47]);
     let trait_object: &dyn Debug = &value;

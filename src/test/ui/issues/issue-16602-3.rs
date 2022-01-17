@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #[derive(Debug)]
+#[allow(dead_code)]
 enum Foo {
     Bar(u32, u32),
     Baz(&'static u32, &'static u32)

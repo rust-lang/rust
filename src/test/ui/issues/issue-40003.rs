@@ -153,7 +153,7 @@ mod stream {
     }
 
     enum Slot<T> {
-        Next(usize),
+        Next(#[allow(dead_code)] usize),
         _Data { _a: T },
     }
 

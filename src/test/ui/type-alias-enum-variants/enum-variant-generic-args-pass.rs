@@ -9,7 +9,7 @@
 
 #![allow(irrefutable_let_patterns)]
 
-enum Enum<T> { TSVariant(T), SVariant { _v: T }, UVariant }
+enum Enum<T> { TSVariant(#[allow(dead_code)] T), SVariant { _v: T }, UVariant }
 type Alias<T> = Enum<T>;
 type AliasFixed = Enum<()>;
 

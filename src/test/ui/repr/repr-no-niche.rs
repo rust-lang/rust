@@ -22,29 +22,29 @@ use std::num::{NonZeroU8, NonZeroU16};
 mod struct_inline {
     use std::num::NonZeroU16 as N16;
 
-    #[derive(Debug)] pub struct Visible(N16);
+    #[derive(Debug)] pub struct Visible(#[allow(dead_code)] N16);
 
     #[repr(no_niche)]
-    #[derive(Debug)] pub struct Cloaked(N16);
+    #[derive(Debug)] pub struct Cloaked(#[allow(dead_code)] N16);
 
     #[repr(transparent)]
-    #[derive(Debug)] pub struct Transparent(N16);
+    #[derive(Debug)] pub struct Transparent(#[allow(dead_code)] N16);
 
     #[repr(transparent, no_niche)]
-    #[derive(Debug)] pub struct Shadowy(N16);
+    #[derive(Debug)] pub struct Shadowy(#[allow(dead_code)] N16);
 }
 
 mod struct_param {
-    #[derive(Debug)] pub struct Visible<T>(T);
+    #[derive(Debug)] pub struct Visible<T>(#[allow(dead_code)] T);
 
     #[repr(no_niche)]
-    #[derive(Debug)] pub struct Cloaked<T>(T);
+    #[derive(Debug)] pub struct Cloaked<T>(#[allow(dead_code)] T);
 
     #[repr(transparent)]
-    #[derive(Debug)] pub struct Transparent<T>(T);
+    #[derive(Debug)] pub struct Transparent<T>(#[allow(dead_code)] T);
 
     #[repr(transparent, no_niche)]
-    #[derive(Debug)] pub struct Shadowy<T>(T);
+    #[derive(Debug)] pub struct Shadowy<T>(#[allow(dead_code)] T);
 }
 
 mod enum_inline {

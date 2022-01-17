@@ -1,7 +1,7 @@
 // run-pass
 enum Abc {
-    A(u8),
-    B(i8),
+    A(#[allow(dead_code)] u8),
+    B(#[allow(dead_code)] i8),
     C,
     D,
 }

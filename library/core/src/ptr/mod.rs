@@ -469,7 +469,9 @@ const unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     //
     // FIXME repr(simd) broken on emscripten and redox
     #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox")), repr(simd))]
+    #[allow(dead_code)]
     struct Block(u64, u64, u64, u64);
+    #[allow(dead_code)]
     struct UnalignedBlock(u64, u64, u64, u64);
 
     let block_size = mem::size_of::<Block>();

@@ -92,7 +92,7 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
 extern fn rust_eh_personality() {}
 
 #[derive(Debug)]
-struct Page([[u64; 32]; 16]);
+struct Page(#[allow(dead_code)] [[u64; 32]; 16]);
 
 #[start]
 pub fn main(_argc: isize, _argv: *const *const u8) -> isize {

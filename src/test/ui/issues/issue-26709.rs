@@ -1,5 +1,5 @@
 // run-pass
-struct Wrapper<'a, T: ?Sized>(&'a mut i32, T);
+struct Wrapper<'a, T: ?Sized>(&'a mut i32, #[allow(dead_code)] T);
 
 impl<'a, T: ?Sized> Drop for Wrapper<'a, T> {
     fn drop(&mut self) {

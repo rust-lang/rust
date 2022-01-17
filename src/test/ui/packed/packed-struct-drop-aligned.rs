@@ -24,7 +24,7 @@ impl<'a> Drop for Aligned<'a> {
 }
 
 #[repr(transparent)]
-struct NotCopy(u8);
+struct NotCopy(#[allow(dead_code)] u8);
 
 #[repr(packed)]
 struct Packed<'a>(NotCopy, Aligned<'a>);

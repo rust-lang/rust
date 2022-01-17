@@ -1,6 +1,7 @@
 // run-pass
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct Pair<T, V> (T, V);
 
 impl Pair<

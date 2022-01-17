@@ -105,6 +105,7 @@ macro_rules! rotate {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 struct Rgb(u8, u8, u8);
 
 rotate!(rotate_u8, 32, |i| i as u8);
@@ -118,7 +119,7 @@ rotate!(rotate_64_usize_5, 64, |i| [i; 5]);
 #[bench]
 fn fill_byte_sized(b: &mut Bencher) {
     #[derive(Copy, Clone)]
-    struct NewType(u8);
+    struct NewType(#[allow(dead_code)] u8);
 
     let mut ary = [NewType(0); 1024];
 

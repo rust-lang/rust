@@ -510,7 +510,7 @@ fn test_partial_eq() {
 
 #[test]
 fn test_eq() {
-    struct AssertEq<T: Eq>(pub T);
+    struct AssertEq<T: Eq>(#[allow(dead_code)] pub T);
 
     let _: AssertEq<Cursor<Vec<u8>>> = AssertEq(Cursor::new(Vec::new()));
 }

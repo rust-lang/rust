@@ -7,7 +7,7 @@ trait X {
 }
 
 #[derive(Debug)]
-struct Y(isize);
+struct Y(#[allow(dead_code)] isize);
 
 #[derive(Debug)]
 struct Z<T: X+std::fmt::Debug> {

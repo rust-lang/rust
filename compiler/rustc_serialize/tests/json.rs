@@ -627,8 +627,8 @@ struct DecodeStruct {
 }
 #[derive(Decodable)]
 enum DecodeEnum {
-    A(f64),
-    B(string::String),
+    A(#[allow(dead_code)] f64),
+    B(#[allow(dead_code)] string::String),
 }
 fn check_err<T: Decodable<Decoder>>(to_parse: &'static str, expected: DecoderError) {
     let res: DecodeResult<T> = match from_str(to_parse) {

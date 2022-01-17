@@ -1,0 +1,14 @@
+error: field is never read: `0`
+  --> $DIR/tuple-struct-field.rs:6:16
+   |
+LL | struct Wrapper([u8; LEN]);
+   |                ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/tuple-struct-field.rs:1:9
+   |
+LL | #![deny(dead_code)]
+   |         ^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
-pub struct V<S>(S);
+pub struct V<S>(#[allow(dead_code)] S);
 pub trait An {
     type U;
 }

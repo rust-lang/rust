@@ -3,6 +3,7 @@ fn main() {}
 #[derive(Clone)]
 pub struct Little;
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct Big(
     Little,
     Little,

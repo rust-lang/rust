@@ -6,7 +6,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::iter::FromIterator;
 
-struct Foo(Vec<bool>);
+struct Foo(#[allow(dead_code)] Vec<bool>);
 
 impl FromIterator<bool> for Foo {
     fn from_iter<T: IntoIterator<Item = bool>>(_: T) -> Self {

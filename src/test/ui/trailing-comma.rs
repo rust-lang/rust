@@ -3,7 +3,7 @@
 
 fn f<T,>(_: T,) {}
 
-struct Foo<T,>(T);
+struct Foo<T,>(#[allow(dead_code)] T);
 
 struct Bar;
 
@@ -14,7 +14,7 @@ impl Bar {
 }
 
 enum Baz {
-    Qux(isize,),
+    Qux(#[allow(dead_code)] isize,),
 }
 
 #[allow(unused,)]

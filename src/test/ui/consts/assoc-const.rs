@@ -6,7 +6,7 @@ trait Nat {
 }
 
 struct Zero;
-struct Succ<N>(N);
+struct Succ<N>(#[allow(dead_code)] N);
 
 impl Nat for Zero {
     const VALUE: usize = 0;

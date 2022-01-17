@@ -5,6 +5,7 @@
 trait Device {
     type Resources;
 }
+#[allow(dead_code)]
 struct Foo<D, R>(D, R);
 
 trait Tr {

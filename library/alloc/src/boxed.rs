@@ -25,6 +25,7 @@
 //!
 //! ```
 //! #[derive(Debug)]
+//! # #[allow(dead_code)]
 //! enum List<T> {
 //!     Cons(T, Box<List<T>>),
 //!     Nil,

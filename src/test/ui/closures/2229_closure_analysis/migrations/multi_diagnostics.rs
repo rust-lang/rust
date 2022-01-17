@@ -18,10 +18,10 @@ impl Foo {
     }
 }
 
-struct S(Foo);
+struct S(#[allow(dead_code)] Foo);
 
 #[derive(Clone)]
-struct T(i32);
+struct T(#[allow(dead_code)] i32);
 
 struct U(S, T);
 

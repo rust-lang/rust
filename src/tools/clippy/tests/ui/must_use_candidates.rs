@@ -6,7 +6,7 @@ use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-pub struct MyAtomic(AtomicBool);
+pub struct MyAtomic(#[allow(dead_code)] AtomicBool);
 pub struct MyPure;
 
 pub fn pure(i: u8) -> u8 {

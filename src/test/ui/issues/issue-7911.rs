@@ -6,7 +6,7 @@
 trait FooBar {
     fn dummy(&self) { }
 }
-struct Bar(i32);
+struct Bar(#[allow(dead_code)] i32);
 struct Foo { bar: Bar }
 
 impl FooBar for Bar {}

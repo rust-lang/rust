@@ -12,7 +12,7 @@ impl Bar for BarImpl {
 }
 
 
-struct Foo<B: Bar>(B);
+struct Foo<B: Bar>(#[allow(dead_code)] B);
 
 impl<B: Bar> Drop for Foo<B> {
     fn drop(&mut self) {

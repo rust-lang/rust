@@ -9,6 +9,7 @@ trait Foo {
     const ASSOC: usize = 1;
 }
 
+#[allow(dead_code)]
 struct Iced<T: Foo>(T, [(); T::ASSOC])
 where
     [(); T::ASSOC]: ;

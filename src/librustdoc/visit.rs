@@ -42,7 +42,7 @@ crate trait DocVisitor: Sized {
             | PrimitiveItem(_)
             | AssocConstItem(_, _)
             | AssocTypeItem(_, _)
-            | KeywordItem(_) => {}
+            | KeywordItem => {}
         }
     }
 

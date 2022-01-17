@@ -20,5 +20,5 @@ impl<T> Test<T> {
 }
 
 trait Foo { fn dummy(&self) { }}
-struct Output(isize);
+struct Output(#[allow(dead_code)] isize);
 impl Foo for Output {}

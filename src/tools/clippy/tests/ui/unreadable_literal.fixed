@@ -2,7 +2,7 @@
 
 #![warn(clippy::unreadable_literal)]
 
-struct Foo(u64);
+struct Foo(#[allow(dead_code)] u64);
 
 macro_rules! foo {
     () => {
@@ -10,7 +10,7 @@ macro_rules! foo {
     };
 }
 
-struct Bar(f32);
+struct Bar(#[allow(dead_code)] f32);
 
 macro_rules! bar {
     () => {
