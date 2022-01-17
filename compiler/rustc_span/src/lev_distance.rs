@@ -56,6 +56,7 @@ pub fn find_best_match_for_name(
     dist: Option<usize>,
 ) -> Option<Symbol> {
     let lookup = lookup.as_str();
+    let lookup_uppercase = lookup.to_uppercase();
     let max_dist = dist.unwrap_or_else(|| cmp::max(lookup.len(), 3) / 3);
 
     // Priority of matches:
@@ -63,7 +64,7 @@ pub fn find_best_match_for_name(
     // 2. Levenshtein distance match
     // 3. Sorted word match
     if let Some(case_insensitive_match) =
-        name_vec.iter().find(|candidate| candidate.as_str().to_uppercase() == lookup.to_uppercase())
+        name_vec.iter().find(|candidate| candidate.as_str().to_uppercase() == lookup_uppercase)
     {
         return Some(*case_insensitive_match);
     }
