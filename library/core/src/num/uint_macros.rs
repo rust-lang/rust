@@ -1,5 +1,6 @@
 macro_rules! uint_impl {
-    ($SelfT:ty, $ActualT:ident, $SignedT:ident, $BITS:expr, $MaxV:expr,
+    ($SelfT:ty, $ActualT:ident, $SignedT:ident, $NonZeroT:ident,
+        $BITS:expr, $MaxV:expr,
         $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
         $reversed:expr, $le_bytes:expr, $be_bytes:expr,
         $to_xe_bytes_doc:expr, $from_xe_bytes_doc:expr) => {
@@ -839,12 +840,10 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_log2(self) -> Option<u32> {
-            if self <= 0 {
-                None
+            if let Some(x) = <$NonZeroT>::new(self) {
+                Some(x.log2())
             } else {
-                // SAFETY: We just checked that this number is positive
-                let log = (Self::BITS - 1) - unsafe { intrinsics::ctlz_nonzero(self) as u32 };
-                Some(log)
+                None
             }
         }
 
@@ -863,7 +862,11 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_log10(self) -> Option<u32> {
-            int_log10::$ActualT(self as $ActualT)
+            if let Some(x) = <$NonZeroT>::new(self) {
+                Some(x.log10())
+            } else {
+                None
+            }
         }
 
         /// Checked negation. Computes `-self`, returning `None` unless `self ==

@@ -2362,7 +2362,11 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_log10(self) -> Option<u32> {
-            int_log10::$ActualT(self as $ActualT)
+            if self > 0 {
+                Some(int_log10::$ActualT(self as $ActualT))
+            } else {
+                None
+            }
         }
 
         /// Computes the absolute value of `self`.
