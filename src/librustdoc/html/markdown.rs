@@ -923,9 +923,7 @@ impl LangString {
 
         data.original = string.to_owned();
 
-        let tokens = Self::tokens(string).collect::<Vec<&str>>();
-
-        for token in tokens {
+        for token in Self::tokens(string) {
             match token {
                 "should_panic" => {
                     data.should_panic = true;
