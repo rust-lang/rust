@@ -1210,7 +1210,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(Error(DelaySpanBugEmitted(())))
     }
 
-    /// Like [`ty_error`] but for constants.
+    /// Like [TyCtxt::ty_error] but for constants.
     #[track_caller]
     pub fn const_error(self, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
         self.const_error_with_message(
@@ -1220,7 +1220,7 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    /// Like [`ty_error_with_message`] but for constants.
+    /// Like [TyCtxt::ty_error_with_message] but for constants.
     #[track_caller]
     pub fn const_error_with_message<S: Into<MultiSpan>>(
         self,
