@@ -27,7 +27,7 @@ use std::mem::take;
 use tracing::{debug, trace};
 
 const TURBOFISH_SUGGESTION_STR: &str =
-    "use `::<...>` instead of `<...>` to specify type or const arguments";
+    "use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments";
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident) -> Param {
@@ -731,21 +731,28 @@ impl<'a> Parser<'a> {
                     match x {
                         Ok((_, _, false)) => {
                             if self.eat(&token::Gt) {
-                                match self.parse_expr() {
-                                    Ok(_) => {
-                                        e.span_suggestion_verbose(
-                                            binop.span.shrink_to_lo(),
-                                            TURBOFISH_SUGGESTION_STR,
-                                            "::".to_string(),
-                                            Applicability::MaybeIncorrect,
-                                        );
-                                        e.emit();
-                                        *expr =
-                                            self.mk_expr_err(expr.span.to(self.prev_token.span));
-                                        return Ok(());
-                                    }
-                                    Err(mut err) => {
-                                        err.cancel();
+                                let turbo_err = e.span_suggestion_verbose(
+                                    binop.span.shrink_to_lo(),
+                                    TURBOFISH_SUGGESTION_STR,
+                                    "::".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                if self.check(&TokenKind::Semi) {
+                                    turbo_err.emit();
+                                    *expr = self.mk_expr_err(expr.span);
+                                    return Ok(());
+                                } else {
+                                    match self.parse_expr() {
+                                        Ok(_) => {
+                                            turbo_err.emit();
+                                            *expr = self
+                                                .mk_expr_err(expr.span.to(self.prev_token.span));
+                                            return Ok(());
+                                        }
+                                        Err(mut err) => {
+                                            turbo_err.cancel();
+                                            err.cancel();
+                                        }
                                     }
                                 }
                             }
