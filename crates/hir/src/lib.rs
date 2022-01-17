@@ -1266,17 +1266,14 @@ impl DefWithBody {
                             if let ast::Expr::MatchExpr(match_expr) =
                                 &source_ptr.value.to_node(&root)
                             {
-                                if let (Some(match_expr), Some(arms)) =
-                                    (match_expr.expr(), match_expr.match_arm_list())
-                                {
+                                if let Some(match_expr) = match_expr.expr() {
                                     acc.push(
                                         MissingMatchArms {
                                             file: source_ptr.file_id,
                                             match_expr: AstPtr::new(&match_expr),
-                                            arms: AstPtr::new(&arms),
                                         }
                                         .into(),
-                                    )
+                                    );
                                 }
                             }
                         }

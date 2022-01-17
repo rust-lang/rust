@@ -164,7 +164,6 @@ pub struct MissingOkOrSomeInTailExpr {
 pub struct MissingMatchArms {
     pub file: HirFileId,
     pub match_expr: AstPtr<ast::Expr>,
-    pub arms: AstPtr<ast::MatchArmList>,
 }
 
 #[derive(Debug)]

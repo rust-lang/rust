@@ -112,7 +112,7 @@ pub(crate) mod entry {
 
         pub(crate) fn pattern(p: &mut Parser) {
             let m = p.start();
-            patterns::pattern_single(p);
+            patterns::pattern_top(p);
             if p.at(EOF) {
                 m.abandon(p);
                 return;
