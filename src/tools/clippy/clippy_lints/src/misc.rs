@@ -548,6 +548,7 @@ fn is_array(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     matches!(&cx.typeck_results().expr_ty(expr).peel_refs().kind(), ty::Array(_, _))
 }
 
+#[allow(clippy::too_many_lines)]
 fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool) {
     #[derive(Default)]
     struct EqImpl {
@@ -644,10 +645,26 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
                 hint = expr_snip;
             } else {
                 span = expr.span.to(other.span);
-                if eq_impl.ty_eq_other {
-                    hint = format!("{} == {}", expr_snip, snippet(cx, other.span, ".."));
+
+                let cmp_span = if other.span < expr.span {
+                    other.span.between(expr.span)
                 } else {
-                    hint = format!("{} == {}", snippet(cx, other.span, ".."), expr_snip);
+                    expr.span.between(other.span)
+                };
+                if eq_impl.ty_eq_other {
+                    hint = format!(
+                        "{}{}{}",
+                        expr_snip,
+                        snippet(cx, cmp_span, ".."),
+                        snippet(cx, other.span, "..")
+                    );
+                } else {
+                    hint = format!(
+                        "{}{}{}",
+                        snippet(cx, other.span, ".."),
+                        snippet(cx, cmp_span, ".."),
+                        expr_snip
+                    );
                 }
             }
 

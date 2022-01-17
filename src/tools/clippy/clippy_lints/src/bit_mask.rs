@@ -18,14 +18,14 @@ declare_clippy_lint! {
     /// {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following
     /// table:
     ///
-    /// |Comparison  |Bit Op|Example     |is always|Formula               |
-    /// |------------|------|------------|---------|----------------------|
-    /// |`==` or `!=`| `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
-    /// |`<`  or `>=`| `&`  |`x & 2 < 3` |`true`   |`m < c`               |
-    /// |`>`  or `<=`| `&`  |`x & 1 > 1` |`false`  |`m <= c`              |
-    /// |`==` or `!=`| `|`  |`x | 1 == 0`|`false`  |`c | m != c`          |
-    /// |`<`  or `>=`| `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
-    /// |`<=` or `>` | `|`  |`x | 1 > 0` |`true`   |`m > c`               |
+    /// |Comparison  |Bit Op|Example      |is always|Formula               |
+    /// |------------|------|-------------|---------|----------------------|
+    /// |`==` or `!=`| `&`  |`x & 2 == 3` |`false`  |`c & m != c`          |
+    /// |`<`  or `>=`| `&`  |`x & 2 < 3`  |`true`   |`m < c`               |
+    /// |`>`  or `<=`| `&`  |`x & 1 > 1`  |`false`  |`m <= c`              |
+    /// |`==` or `!=`| `\|` |`x \| 1 == 0`|`false`  |`c \| m != c`         |
+    /// |`<`  or `>=`| `\|` |`x \| 1 < 1` |`false`  |`m >= c`              |
+    /// |`<=` or `>` | `\|` |`x \| 1 > 0` |`true`   |`m > c`               |
     ///
     /// ### Why is this bad?
     /// If the bits that the comparison cares about are always
@@ -53,10 +53,10 @@ declare_clippy_lint! {
     /// without changing the outcome. The basic structure can be seen in the
     /// following table:
     ///
-    /// |Comparison| Bit Op  |Example    |equals |
-    /// |----------|---------|-----------|-------|
-    /// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|
-    /// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|
+    /// |Comparison| Bit Op   |Example     |equals |
+    /// |----------|----------|------------|-------|
+    /// |`>` / `<=`|`\|` / `^`|`x \| 2 > 3`|`x > 3`|
+    /// |`<` / `>=`|`\|` / `^`|`x ^ 1 < 4` |`x < 4`|
     ///
     /// ### Why is this bad?
     /// Not equally evil as [`bad_bit_mask`](#bad_bit_mask),

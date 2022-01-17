@@ -1,0 +1,58 @@
+error: called `cloned().last()` on an `Iterator`. It may be more efficient to call `last().cloned()` instead
+  --> $DIR/iter_overeager_cloned.rs:7:29
+   |
+LL |     let _: Option<String> = vec.iter().cloned().last();
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `vec.iter().last().cloned()`
+   |
+   = note: `-D clippy::iter-overeager-cloned` implied by `-D warnings`
+
+error: called `cloned().next()` on an `Iterator`. It may be more efficient to call `next().cloned()` instead
+  --> $DIR/iter_overeager_cloned.rs:9:29
+   |
+LL |     let _: Option<String> = vec.iter().chain(vec.iter()).cloned().next();
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `vec.iter().chain(vec.iter()).next().cloned()`
+
+error: called `cloned().count()` on an `Iterator`. It may be more efficient to call `count()` instead
+  --> $DIR/iter_overeager_cloned.rs:11:20
+   |
+LL |     let _: usize = vec.iter().filter(|x| x == &"2").cloned().count();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `vec.iter().filter(|x| x == &"2").count()`
+   |
+   = note: `-D clippy::redundant-clone` implied by `-D warnings`
+
+error: called `cloned().take(...)` on an `Iterator`. It may be more efficient to call `take(...).cloned()` instead
+  --> $DIR/iter_overeager_cloned.rs:13:21
+   |
+LL |     let _: Vec<_> = vec.iter().cloned().take(2).collect();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `vec.iter().take(2).cloned()`
+
+error: called `cloned().skip(...)` on an `Iterator`. It may be more efficient to call `skip(...).cloned()` instead
+  --> $DIR/iter_overeager_cloned.rs:15:21
+   |
+LL |     let _: Vec<_> = vec.iter().cloned().skip(2).collect();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `vec.iter().skip(2).cloned()`
+
+error: called `cloned().nth(...)` on an `Iterator`. It may be more efficient to call `nth(...).cloned()` instead
+  --> $DIR/iter_overeager_cloned.rs:17:13
+   |
+LL |     let _ = vec.iter().filter(|x| x == &"2").cloned().nth(2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `vec.iter().filter(|x| x == &"2").nth(2).cloned()`
+
+error: called `cloned().flatten()` on an `Iterator`. It may be more efficient to call `flatten().cloned()` instead
+  --> $DIR/iter_overeager_cloned.rs:19:13
+   |
+LL |       let _ = [Some(Some("str".to_string())), Some(Some("str".to_string()))]
+   |  _____________^
+LL | |         .iter()
+LL | |         .cloned()
+LL | |         .flatten();
+   | |__________________^
+   |
+help: try this
+   |
+LL ~     let _ = [Some(Some("str".to_string())), Some(Some("str".to_string()))]
+LL ~         .iter().flatten().cloned();
+   |
+
+error: aborting due to 7 previous errors
+
