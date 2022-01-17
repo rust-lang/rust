@@ -30,6 +30,7 @@ mod iter_count;
 mod iter_next_slice;
 mod iter_nth;
 mod iter_nth_zero;
+mod iter_overeager_cloned;
 mod iter_skip_next;
 mod iterator_step_by_zero;
 mod manual_saturating_arithmetic;
@@ -104,6 +105,41 @@ declare_clippy_lint! {
     pub CLONED_INSTEAD_OF_COPIED,
     pedantic,
     "used `cloned` where `copied` could be used instead"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `_.cloned().<func>()` where call to `.cloned()` can be postponed.
+    ///
+    /// ### Why is this bad?
+    /// It's often inefficient to clone all elements of an iterator, when eventually, only some
+    /// of them will be consumed.
+    ///
+    /// ### Examples
+    /// ```rust
+    /// # let vec = vec!["string".to_string()];
+    ///
+    /// // Bad
+    /// vec.iter().cloned().take(10);
+    ///
+    /// // Good
+    /// vec.iter().take(10).cloned();
+    ///
+    /// // Bad
+    /// vec.iter().cloned().last();
+    ///
+    /// // Good
+    /// vec.iter().last().cloned();
+    ///
+    /// ```
+    /// ### Known Problems
+    /// This `lint` removes the side of effect of cloning items in the iterator.
+    /// A code that relies on that side-effect could fail.
+    ///
+    #[clippy::version = "1.59.0"]
+    pub ITER_OVEREAGER_CLONED,
+    perf,
+    "using `cloned()` early with `Iterator::iter()` can lead to some performance inefficiencies"
 }
 
 declare_clippy_lint! {
@@ -1950,6 +1986,7 @@ impl_lint_pass!(Methods => [
     CLONE_ON_COPY,
     CLONE_ON_REF_PTR,
     CLONE_DOUBLE_REF,
+    ITER_OVEREAGER_CLONED,
     CLONED_INSTEAD_OF_COPIED,
     FLAT_MAP_OPTION,
     INEFFICIENT_TO_STRING,
@@ -2243,9 +2280,10 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 },
                 _ => {},
             },
-            ("count", []) => match method_call(recv) {
-                Some((name @ ("into_iter" | "iter" | "iter_mut"), [recv2], _)) => {
-                    iter_count::check(cx, expr, recv2, name);
+            (name @ "count", args @ []) => match method_call(recv) {
+                Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv2, name, args),
+                Some((name2 @ ("into_iter" | "iter" | "iter_mut"), [recv2], _)) => {
+                    iter_count::check(cx, expr, recv2, name2);
                 },
                 Some(("map", [_, arg], _)) => suspicious_map::check(cx, expr, recv, arg),
                 _ => {},
@@ -2266,10 +2304,10 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 flat_map_identity::check(cx, expr, arg, span);
                 flat_map_option::check(cx, expr, arg, span);
             },
-            ("flatten", []) => {
-                if let Some(("map", [recv, map_arg], _)) = method_call(recv) {
-                    map_flatten::check(cx, expr, recv, map_arg);
-                }
+            (name @ "flatten", args @ []) => match method_call(recv) {
+                Some(("map", [recv, map_arg], _)) => map_flatten::check(cx, expr, recv, map_arg),
+                Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv2, name, args),
+                _ => {},
             },
             ("fold", [init, acc]) => unnecessary_fold::check(cx, expr, init, acc, span),
             ("for_each", [_]) => {
@@ -2281,6 +2319,13 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("is_file", []) => filetype_is_file::check(cx, expr, recv),
             ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
             ("is_some", []) => check_is_some_is_none(cx, expr, recv, true),
+            ("last", args @ []) | ("skip", args @ [_]) => {
+                if let Some((name2, [recv2, args2 @ ..], _span2)) = method_call(recv) {
+                    if let ("cloned", []) = (name2, args2) {
+                        iter_overeager_cloned::check(cx, expr, recv2, name, args);
+                    }
+                }
+            },
             ("map", [m_arg]) => {
                 if let Some((name, [recv2, args @ ..], span2)) = method_call(recv) {
                     match (name, args) {
@@ -2296,20 +2341,22 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 map_identity::check(cx, expr, recv, m_arg, span);
             },
             ("map_or", [def, map]) => option_map_or_none::check(cx, expr, recv, def, map),
-            ("next", []) => {
-                if let Some((name, [recv, args @ ..], _)) = method_call(recv) {
-                    match (name, args) {
-                        ("filter", [arg]) => filter_next::check(cx, expr, recv, arg),
-                        ("filter_map", [arg]) => filter_map_next::check(cx, expr, recv, arg, msrv),
-                        ("iter", []) => iter_next_slice::check(cx, expr, recv),
-                        ("skip", [arg]) => iter_skip_next::check(cx, expr, recv, arg),
+            (name @ "next", args @ []) => {
+                if let Some((name2, [recv2, args2 @ ..], _)) = method_call(recv) {
+                    match (name2, args2) {
+                        ("cloned", []) => iter_overeager_cloned::check(cx, expr, recv2, name, args),
+                        ("filter", [arg]) => filter_next::check(cx, expr, recv2, arg),
+                        ("filter_map", [arg]) => filter_map_next::check(cx, expr, recv2, arg, msrv),
+                        ("iter", []) => iter_next_slice::check(cx, expr, recv2),
+                        ("skip", [arg]) => iter_skip_next::check(cx, expr, recv2, arg),
                         ("skip_while", [_]) => skip_while_next::check(cx, expr),
                         _ => {},
                     }
                 }
             },
-            ("nth", [n_arg]) => match method_call(recv) {
+            ("nth", args @ [n_arg]) => match method_call(recv) {
                 Some(("bytes", [recv2], _)) => bytes_nth::check(cx, expr, recv2, n_arg),
+                Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv2, name, args),
                 Some(("iter", [recv2], _)) => iter_nth::check(cx, expr, recv2, recv, n_arg, false),
                 Some(("iter_mut", [recv2], _)) => iter_nth::check(cx, expr, recv2, recv, n_arg, true),
                 _ => iter_nth_zero::check(cx, expr, recv, n_arg),
@@ -2337,8 +2384,15 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 }
             },
             ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
+            ("take", args @ [_arg]) => {
+                if let Some((name2, [recv2, args2 @ ..], _span2)) = method_call(recv) {
+                    if let ("cloned", []) = (name2, args2) {
+                        iter_overeager_cloned::check(cx, expr, recv2, name, args);
+                    }
+                }
+            },
             ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
-                implicit_clone::check(cx, name, expr, recv, span);
+                implicit_clone::check(cx, name, expr, recv);
             },
             ("unwrap", []) => match method_call(recv) {
                 Some(("get", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, false),

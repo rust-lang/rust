@@ -99,5 +99,17 @@ error: useless use of `format!`
 LL |     let _s: String = format!("{}", &*v.join("/n"));
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `(&*v.join("/n")).to_string()`
 
-error: aborting due to 15 previous errors
+error: useless use of `format!`
+  --> $DIR/format.rs:81:13
+   |
+LL |     let _ = format!("{x}");
+   |             ^^^^^^^^^^^^^^ help: consider using `.to_string()`: `x.to_string()`
+
+error: useless use of `format!`
+  --> $DIR/format.rs:83:13
+   |
+LL |     let _ = format!("{y}", y = x);
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using `.to_string()`: `x.to_string()`
+
+error: aborting due to 17 previous errors
 
