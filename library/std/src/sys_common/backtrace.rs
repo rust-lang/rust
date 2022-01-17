@@ -150,16 +150,18 @@ pub enum RustBacktrace {
     RuntimeDisabled,
 }
 
+// If the `backtrace` feature of this crate isn't enabled quickly return
+// `Disabled` so this can be constant propagated all over the place to
+// optimize away callers.
+#[cfg(not(feature = "backtrace"))]
+pub fn rust_backtrace_env() -> RustBacktrace {
+    RustBacktrace::Disabled
+}
+
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
+#[cfg(feature = "backtrace")]
 pub fn rust_backtrace_env() -> RustBacktrace {
-    // If the `backtrace` feature of this crate isn't enabled quickly return
-    // `None` so this can be constant propagated all over the place to turn
-    // optimize away callers.
-    if !cfg!(feature = "backtrace") {
-        return RustBacktrace::Disabled;
-    }
-
     // Setting environment variables for Fuchsia components isn't a standard
     // or easily supported workflow. For now, always display backtraces.
     if cfg!(target_os = "fuchsia") {
@@ -187,6 +189,15 @@ pub fn rust_backtrace_env() -> RustBacktrace {
         .unwrap_or((RustBacktrace::RuntimeDisabled, 1));
     ENABLED.store(cache, Ordering::SeqCst);
     format
+}
+
+/// Setting for printing the full backtrace, unless backtraces are completely disabled
+pub(crate) fn rust_backtrace_print_full() -> RustBacktrace {
+    if cfg!(feature = "backtrace") {
+        RustBacktrace::Print(PrintFmt::Full)
+    } else {
+        RustBacktrace::Disabled
+    }
 }
 
 /// Prints the filename of the backtrace frame.
