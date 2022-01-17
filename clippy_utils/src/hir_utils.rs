@@ -683,7 +683,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
                 self.hash_pat(pat);
             },
-            ExprKind::LlvmInlineAsm(..) | ExprKind::Err => {},
+            ExprKind::Err => {},
             ExprKind::Lit(ref l) => {
                 l.node.hash(&mut self.s);
             },
