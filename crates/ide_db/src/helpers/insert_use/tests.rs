@@ -430,6 +430,23 @@ fn foo() {}"#,
 }
 
 #[test]
+fn inserts_after_single_line_header_comments_and_before_item() {
+    check_none(
+        "foo::bar::Baz",
+        r#"// Represents a possible license header
+// Line two of possible license header
+
+fn foo() {}"#,
+        r#"// Represents a possible license header
+// Line two of possible license header
+
+use foo::bar::Baz;
+
+fn foo() {}"#,
+    );
+}
+
+#[test]
 fn inserts_after_multiline_inner_comments() {
     check_none(
         "foo::bar::Baz",
