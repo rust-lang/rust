@@ -5,10 +5,10 @@ use clippy_utils::ty::is_copy;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_path, Visitor};
 use rustc_hir::{self, HirId, Path};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 
@@ -97,15 +97,15 @@ struct UnwrapVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::All;
 
     fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         self.identifiers.insert(ident(path));
         walk_path(self, path);
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::All(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 
@@ -116,7 +116,7 @@ struct MapExprVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::All;
 
     fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
         if self.identifiers.contains(&ident(path)) {
@@ -126,8 +126,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
         walk_path(self, path);
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::All(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 

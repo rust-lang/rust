@@ -1776,7 +1776,7 @@ mod redundant_pattern_match {
     use rustc_errors::Applicability;
     use rustc_hir::LangItem::{OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
     use rustc_hir::{
-        intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor},
+        intravisit::{walk_expr, Visitor},
         Arm, Block, Expr, ExprKind, LangItem, MatchSource, Node, Pat, PatKind, QPath, UnOp,
     };
     use rustc_lint::LateContext;
@@ -1880,11 +1880,6 @@ mod redundant_pattern_match {
             res: bool,
         }
         impl<'a, 'tcx> Visitor<'tcx> for V<'a, 'tcx> {
-            type Map = ErasedMap<'tcx>;
-            fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-                NestedVisitorMap::None
-            }
-
             fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
                 match expr.kind {
                     // Taking the reference of a value leaves a temporary

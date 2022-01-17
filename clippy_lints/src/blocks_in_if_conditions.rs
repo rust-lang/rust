@@ -5,10 +5,9 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::{differing_macro_contexts, get_parent_expr};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BlockCheckMode, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -55,8 +54,6 @@ struct ExVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Closure(_, _, eid, _, _) = expr.kind {
             // do not lint if the closure is called using an iterator (see #1141)
@@ -81,9 +78,6 @@ impl<'a, 'tcx> Visitor<'tcx> for ExVisitor<'a, 'tcx> {
             }
         }
         walk_expr(self, expr);
-    }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }
 

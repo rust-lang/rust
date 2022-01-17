@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, FnHeader, HirId, IsAsync, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 
@@ -43,7 +43,7 @@ struct AsyncFnVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if let ExprKind::Yield(_, YieldSource::Await { .. }) = ex.kind {
@@ -52,8 +52,8 @@ impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
         walk_expr(self, ex);
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 

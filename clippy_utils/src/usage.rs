@@ -6,7 +6,7 @@ use rustc_hir::HirIdSet;
 use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty;
 use rustc_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
@@ -96,17 +96,11 @@ impl<'tcx> ParamBindingIdCollector {
     }
 }
 impl<'tcx> intravisit::Visitor<'tcx> for ParamBindingIdCollector {
-    type Map = Map<'tcx>;
-
     fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
         if let hir::PatKind::Binding(_, hir_id, ..) = pat.kind {
             self.binding_hir_ids.push(hir_id);
         }
         intravisit::walk_pat(self, pat);
-    }
-
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::None
     }
 }
 
@@ -127,7 +121,7 @@ impl<'a, 'tcx> BindingUsageFinder<'a, 'tcx> {
     }
 }
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if !self.usage_found {
@@ -143,8 +137,8 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for BindingUsageFinder<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 

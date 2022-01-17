@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_inf, walk_ty, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_inf, walk_ty, Visitor};
 use rustc_hir::{GenericParamKind, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
 use rustc_target::spec::abi::Abi;
 
 use super::TYPE_COMPLEXITY;
@@ -37,8 +36,6 @@ struct TypeComplexityVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
-    type Map = Map<'tcx>;
-
     fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
         self.score += 1;
         walk_inf(self, inf);
@@ -77,8 +74,5 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
         self.nest += sub_nest;
         walk_ty(self, ty);
         self.nest -= sub_nest;
-    }
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }
