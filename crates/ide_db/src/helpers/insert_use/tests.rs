@@ -402,6 +402,21 @@ use foo::bar::Baz;"#,
 }
 
 #[test]
+fn inserts_after_multiple_single_line_comments() {
+    check_none(
+        "foo::bar::Baz",
+        "// Represents a possible license header and/or general module comments
+// Second single-line comment
+// Third single-line comment",
+        r#"// Represents a possible license header and/or general module comments
+// Second single-line comment
+// Third single-line comment
+
+use foo::bar::Baz;"#,
+    );
+}
+
+#[test]
 fn inserts_before_single_line_item_comments() {
     check_none(
         "foo::bar::Baz",
