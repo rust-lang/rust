@@ -391,6 +391,62 @@ use foo::bar::Baz;"#,
 }
 
 #[test]
+fn inserts_after_single_line_comments() {
+    check_none(
+        "foo::bar::Baz",
+        "// Represents a possible license header and/or general module comments",
+        r#"// Represents a possible license header and/or general module comments
+
+use foo::bar::Baz;"#,
+    );
+}
+
+#[test]
+fn inserts_after_multiple_single_line_comments() {
+    check_none(
+        "foo::bar::Baz",
+        "// Represents a possible license header and/or general module comments
+// Second single-line comment
+// Third single-line comment",
+        r#"// Represents a possible license header and/or general module comments
+// Second single-line comment
+// Third single-line comment
+
+use foo::bar::Baz;"#,
+    );
+}
+
+#[test]
+fn inserts_before_single_line_item_comments() {
+    check_none(
+        "foo::bar::Baz",
+        r#"// Represents a comment about a function
+fn foo() {}"#,
+        r#"use foo::bar::Baz;
+
+// Represents a comment about a function
+fn foo() {}"#,
+    );
+}
+
+#[test]
+fn inserts_after_single_line_header_comments_and_before_item() {
+    check_none(
+        "foo::bar::Baz",
+        r#"// Represents a possible license header
+// Line two of possible license header
+
+fn foo() {}"#,
+        r#"// Represents a possible license header
+// Line two of possible license header
+
+use foo::bar::Baz;
+
+fn foo() {}"#,
+    );
+}
+
+#[test]
 fn inserts_after_multiline_inner_comments() {
     check_none(
         "foo::bar::Baz",

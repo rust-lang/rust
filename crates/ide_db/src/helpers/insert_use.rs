@@ -401,7 +401,7 @@ fn insert_use_(
         .children_with_tokens()
         .filter(|child| match child {
             NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
-            NodeOrToken::Token(token) => is_inner_comment(token.clone()),
+            NodeOrToken::Token(token) => is_comment(token.clone()),
         })
         .last()
     {
@@ -440,7 +440,6 @@ fn is_inner_attribute(node: SyntaxNode) -> bool {
     ast::Attr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
 }
 
-fn is_inner_comment(token: SyntaxToken) -> bool {
-    ast::Comment::cast(token).and_then(|comment| comment.kind().doc)
-        == Some(ast::CommentPlacement::Inner)
+fn is_comment(token: SyntaxToken) -> bool {
+    ast::Comment::cast(token).is_some()
 }
