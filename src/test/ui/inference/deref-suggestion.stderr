@@ -87,7 +87,7 @@ LL |     let r = R { i };
 help: consider dereferencing the borrow
    |
 LL |     let r = R { i: *i };
-   |                 ~~~~~
+   |                 ++++
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:46:20

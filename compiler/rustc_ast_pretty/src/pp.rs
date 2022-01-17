@@ -222,29 +222,6 @@ struct PrintStackElem {
 
 const SIZE_INFINITY: isize = 0xffff;
 
-pub fn mk_printer() -> Printer {
-    let linewidth = 78;
-    // Yes 55, it makes the ring buffers big enough to never fall behind.
-    let n: usize = 55 * linewidth;
-    debug!("mk_printer {}", linewidth);
-    Printer {
-        out: String::new(),
-        buf_max_len: n,
-        margin: linewidth as isize,
-        space: linewidth as isize,
-        left: 0,
-        right: 0,
-        // Initialize a single entry; advance_right() will extend it on demand
-        // up to `buf_max_len` elements.
-        buf: vec![BufEntry::default()],
-        left_total: 0,
-        right_total: 0,
-        scan_stack: VecDeque::new(),
-        print_stack: Vec::new(),
-        pending_indentation: 0,
-    }
-}
-
 pub struct Printer {
     out: String,
     buf_max_len: usize,
@@ -288,6 +265,29 @@ impl Default for BufEntry {
 }
 
 impl Printer {
+    pub fn new() -> Self {
+        let linewidth = 78;
+        // Yes 55, it makes the ring buffers big enough to never fall behind.
+        let n: usize = 55 * linewidth;
+        debug!("Printer::new {}", linewidth);
+        Printer {
+            out: String::new(),
+            buf_max_len: n,
+            margin: linewidth as isize,
+            space: linewidth as isize,
+            left: 0,
+            right: 0,
+            // Initialize a single entry; advance_right() will extend it on demand
+            // up to `buf_max_len` elements.
+            buf: vec![BufEntry::default()],
+            left_total: 0,
+            right_total: 0,
+            scan_stack: VecDeque::new(),
+            print_stack: Vec::new(),
+            pending_indentation: 0,
+        }
+    }
+
     pub fn last_token(&self) -> Token {
         self.buf[self.right].token.clone()
     }

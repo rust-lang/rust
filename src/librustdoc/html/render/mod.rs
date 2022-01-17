@@ -1736,7 +1736,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     {
         write!(
             buffer,
-            "<h2 class=\"location\">{}{}</h2>",
+            "<h2 class=\"location\"><a href=\"#\">{}{}</a></h2>",
             match *it.kind {
                 clean::StructItem(..) => "Struct ",
                 clean::TraitItem(..) => "Trait ",
