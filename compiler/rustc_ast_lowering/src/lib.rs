@@ -2436,12 +2436,6 @@ fn lifetimes_from_impl_trait_bounds(
     }
 
     impl<'r, 'v> intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r> {
-        type Map = intravisit::ErasedMap<'v>;
-
-        fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-            intravisit::NestedVisitorMap::None
-        }
-
         fn visit_generic_args(&mut self, span: Span, parameters: &'v hir::GenericArgs<'v>) {
             // Don't collect elided lifetimes used inside of `Fn()` syntax.
             if parameters.parenthesized {

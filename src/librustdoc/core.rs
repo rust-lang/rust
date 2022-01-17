@@ -5,10 +5,10 @@ use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path};
 use rustc_interface::interface;
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_resolve as resolve;
@@ -474,12 +474,12 @@ impl<'tcx> EmitIgnoredResolutionErrors<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+    fn nested_visit_map(&mut self) -> Self::Map {
         // We need to recurse into nested closures,
         // since those will fallback to the parent for type checking.
-        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+        self.tcx.hir()
     }
 
     fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {

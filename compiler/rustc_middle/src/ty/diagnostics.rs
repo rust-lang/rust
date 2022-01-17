@@ -448,12 +448,6 @@ pub fn suggest_constraining_type_param(
 pub struct TraitObjectVisitor<'tcx>(pub Vec<&'tcx hir::Ty<'tcx>>, pub crate::hir::map::Map<'tcx>);
 
 impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
-    type Map = rustc_hir::intravisit::ErasedMap<'v>;
-
-    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
-        hir::intravisit::NestedVisitorMap::None
-    }
-
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
         match ty.kind {
             hir::TyKind::TraitObject(
@@ -482,12 +476,6 @@ impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
 pub struct StaticLifetimeVisitor<'tcx>(pub Vec<Span>, pub crate::hir::map::Map<'tcx>);
 
 impl<'v> hir::intravisit::Visitor<'v> for StaticLifetimeVisitor<'v> {
-    type Map = rustc_hir::intravisit::ErasedMap<'v>;
-
-    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
-        hir::intravisit::NestedVisitorMap::None
-    }
-
     fn visit_lifetime(&mut self, lt: &'v hir::Lifetime) {
         if let hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static =
             lt.name

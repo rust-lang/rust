@@ -17,7 +17,7 @@ use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::{self, RegionckMode};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_middle::hir::map as hir_map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
@@ -1747,10 +1747,10 @@ impl<'tcx> ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
-    type Map = hir_map::Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> hir_visit::NestedVisitorMap<Self::Map> {
-        hir_visit::NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     #[instrument(skip(self, i), level = "debug")]

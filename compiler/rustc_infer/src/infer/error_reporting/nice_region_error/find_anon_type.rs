@@ -1,7 +1,8 @@
 use rustc_hir as hir;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::{self, Region, TyCtxt};
 
@@ -84,10 +85,10 @@ struct FindNestedTypeVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
@@ -208,10 +209,10 @@ struct TyPathVisitor<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for TyPathVisitor<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Map<'tcx>> {
-        NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Map<'tcx> {
+        self.tcx.hir()
     }
 
     fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) {

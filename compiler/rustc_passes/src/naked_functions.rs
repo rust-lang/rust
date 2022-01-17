@@ -3,7 +3,7 @@
 use rustc_ast::{Attribute, InlineAsmOptions};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{ErasedMap, FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{FnKind, Visitor};
 use rustc_hir::{ExprKind, HirId, InlineAsmOperand, StmtKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -29,12 +29,6 @@ struct CheckNakedFunctions<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
-    type Map = ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_fn(
         &mut self,
         fk: FnKind<'_>,
@@ -129,12 +123,6 @@ struct CheckParameters<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
-    type Map = ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Path(hir::QPath::Resolved(
             _,
@@ -296,12 +284,6 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CheckInlineAssembly<'tcx> {
-    type Map = ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
         match stmt.kind {
             StmtKind::Item(..) => {}

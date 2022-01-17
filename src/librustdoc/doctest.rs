@@ -8,6 +8,7 @@ use rustc_hir::intravisit;
 use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::{lint, DiagnosticOutput, Session};
@@ -1154,10 +1155,10 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
 }
 
 impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> {
-    type Map = Map<'hir>;
+    type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::All(self.map)
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.map
     }
 
     fn visit_item(&mut self, item: &'hir hir::Item<'_>) {

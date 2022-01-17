@@ -160,39 +160,27 @@ impl<'hir> Map<'hir> for ! {
     }
 }
 
-/// An erased version of `Map<'hir>`, using dynamic dispatch.
-/// NOTE: This type is effectively only usable with `NestedVisitorMap::None`.
-pub struct ErasedMap<'hir>(&'hir dyn Map<'hir>);
+pub mod nested_filter {
+    use super::Map;
 
-impl<'hir> Map<'hir> for ErasedMap<'hir> {
-    fn find(&self, _: HirId) -> Option<Node<'hir>> {
-        None
-    }
-    fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        self.0.body(id)
-    }
-    fn item(&self, id: ItemId) -> &'hir Item<'hir> {
-        self.0.item(id)
-    }
-    fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
-        self.0.trait_item(id)
-    }
-    fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
-        self.0.impl_item(id)
-    }
-    fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        self.0.foreign_item(id)
-    }
-}
+    /// Specifies what nested things a visitor wants to visit. The most
+    /// common choice is `OnlyBodies`, which will cause the visitor to
+    /// visit fn bodies for fns that it encounters, but skip over nested
+    /// item-like things.
+    ///
+    /// See the comments on `ItemLikeVisitor` for more details on the overall
+    /// visit strategy.
+    pub trait NestedFilter<'hir> {
+        type Map: Map<'hir>;
 
-/// Specifies what nested things a visitor wants to visit. The most
-/// common choice is `OnlyBodies`, which will cause the visitor to
-/// visit fn bodies for fns that it encounters, but skip over nested
-/// item-like things.
-///
-/// See the comments on `ItemLikeVisitor` for more details on the overall
-/// visit strategy.
-pub enum NestedVisitorMap<M> {
+        /// Whether the visitor visits nested "item-like" things.
+        /// E.g., item, impl-item.
+        const INTER: bool;
+        /// Whether the visitor visits "intra item-like" things.
+        /// E.g., function body, closure, `AnonConst`
+        const INTRA: bool;
+    }
+
     /// Do not visit any nested things. When you add a new
     /// "non-nested" thing, you will want to audit such uses to see if
     /// they remain valid.
@@ -200,46 +188,15 @@ pub enum NestedVisitorMap<M> {
     /// Use this if you are only walking some particular kind of tree
     /// (i.e., a type, or fn signature) and you don't want to thread a
     /// HIR map around.
-    None,
-
-    /// Do not visit nested item-like things, but visit nested things
-    /// that are inside of an item-like.
-    ///
-    /// **This is the most common choice.** A very common pattern is
-    /// to use `visit_all_item_likes()` as an outer loop,
-    /// and to have the visitor that visits the contents of each item
-    /// using this setting.
-    OnlyBodies(M),
-
-    /// Visits all nested things, including item-likes.
-    ///
-    /// **This is an unusual choice.** It is used when you want to
-    /// process everything within their lexical context. Typically you
-    /// kick off the visit by doing `walk_krate()`.
-    All(M),
-}
-
-impl<M> NestedVisitorMap<M> {
-    /// Returns the map to use for an "intra item-like" thing (if any).
-    /// E.g., function body.
-    fn intra(self) -> Option<M> {
-        match self {
-            NestedVisitorMap::None => None,
-            NestedVisitorMap::OnlyBodies(map) => Some(map),
-            NestedVisitorMap::All(map) => Some(map),
-        }
-    }
-
-    /// Returns the map to use for an "item-like" thing (if any).
-    /// E.g., item, impl-item.
-    fn inter(self) -> Option<M> {
-        match self {
-            NestedVisitorMap::None => None,
-            NestedVisitorMap::OnlyBodies(_) => None,
-            NestedVisitorMap::All(map) => Some(map),
-        }
+    pub struct None(());
+    impl NestedFilter<'_> for None {
+        type Map = !;
+        const INTER: bool = false;
+        const INTRA: bool = false;
     }
 }
+
+use nested_filter::NestedFilter;
 
 /// Each method of the Visitor trait is a hook to be potentially
 /// overridden. Each method's default implementation recursively visits
@@ -258,7 +215,9 @@ impl<M> NestedVisitorMap<M> {
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v>: Sized {
-    type Map: Map<'v>;
+    // this type should not be overridden, it exists for convenient usage as `Self::Map`
+    type Map: Map<'v> = <Self::NestedFilter as NestedFilter<'v>>::Map;
+    type NestedFilter: NestedFilter<'v> = nested_filter::None;
 
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
@@ -279,7 +238,12 @@ pub trait Visitor<'v>: Sized {
     /// `panic!()`. This way, if a new `visit_nested_XXX` variant is
     /// added in the future, we will see the panic in your code and
     /// fix it appropriately.
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map>;
+    fn nested_visit_map(&mut self) -> Self::Map {
+        panic!(
+            "nested_visit_map must be implemented or consider using \
+            `type NestedFilter = nested_filter::None` (the default)"
+        );
+    }
 
     /// Invoked when a nested item is encountered. By default does
     /// nothing unless you override `nested_visit_map` to return other than
@@ -290,32 +254,40 @@ pub trait Visitor<'v>: Sized {
     /// reason to override this method is if you want a nested pattern
     /// but cannot supply a `Map`; see `nested_visit_map` for advice.
     fn visit_nested_item(&mut self, id: ItemId) {
-        let opt_item = self.nested_visit_map().inter().map(|map| map.item(id));
-        walk_list!(self, visit_item, opt_item);
+        if Self::NestedFilter::INTER {
+            let item = self.nested_visit_map().item(id);
+            self.visit_item(item);
+        }
     }
 
     /// Like `visit_nested_item()`, but for trait items. See
     /// `visit_nested_item()` for advice on when to override this
     /// method.
     fn visit_nested_trait_item(&mut self, id: TraitItemId) {
-        let opt_item = self.nested_visit_map().inter().map(|map| map.trait_item(id));
-        walk_list!(self, visit_trait_item, opt_item);
+        if Self::NestedFilter::INTER {
+            let item = self.nested_visit_map().trait_item(id);
+            self.visit_trait_item(item);
+        }
     }
 
     /// Like `visit_nested_item()`, but for impl items. See
     /// `visit_nested_item()` for advice on when to override this
     /// method.
     fn visit_nested_impl_item(&mut self, id: ImplItemId) {
-        let opt_item = self.nested_visit_map().inter().map(|map| map.impl_item(id));
-        walk_list!(self, visit_impl_item, opt_item);
+        if Self::NestedFilter::INTER {
+            let item = self.nested_visit_map().impl_item(id);
+            self.visit_impl_item(item);
+        }
     }
 
     /// Like `visit_nested_item()`, but for foreign items. See
     /// `visit_nested_item()` for advice on when to override this
     /// method.
     fn visit_nested_foreign_item(&mut self, id: ForeignItemId) {
-        let opt_item = self.nested_visit_map().inter().map(|map| map.foreign_item(id));
-        walk_list!(self, visit_foreign_item, opt_item);
+        if Self::NestedFilter::INTER {
+            let item = self.nested_visit_map().foreign_item(id);
+            self.visit_foreign_item(item);
+        }
     }
 
     /// Invoked to visit the body of a function, method or closure. Like
@@ -323,8 +295,10 @@ pub trait Visitor<'v>: Sized {
     /// `nested_visit_map` to return other than `None`, in which case it will walk
     /// the body.
     fn visit_nested_body(&mut self, id: BodyId) {
-        let opt_body = self.nested_visit_map().intra().map(|map| map.body(id));
-        walk_list!(self, visit_body, opt_body);
+        if Self::NestedFilter::INTRA {
+            let body = self.nested_visit_map().body(id);
+            self.visit_body(body);
+        }
     }
 
     fn visit_param(&mut self, param: &'v Param<'v>) {

@@ -5,7 +5,6 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
@@ -68,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
 }
 
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef]) {
-    use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+    use rustc_hir::intravisit::{self, Visitor};
     use rustc_hir::{Expr, ImplItemKind};
 
     struct FindPanicUnwrap<'a, 'tcx> {
@@ -78,8 +77,6 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
     }
 
     impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
-        type Map = Map<'tcx>;
-
         fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
             if let Some(macro_call) = root_macro_call_first_node(self.lcx, expr) {
                 if is_panic(self.lcx, macro_call.def_id) {
@@ -99,10 +96,6 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
 
             // and check sub-expressions
             intravisit::walk_expr(self, expr);
-        }
-
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
         }
     }
 

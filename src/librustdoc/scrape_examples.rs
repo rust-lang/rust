@@ -14,6 +14,7 @@ use rustc_hir::{
 use rustc_interface::interface;
 use rustc_macros::{Decodable, Encodable};
 use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_serialize::{
     opaque::{Decoder, FileEncoder},
@@ -117,10 +118,10 @@ impl<'a, 'tcx> Visitor<'tcx> for FindCalls<'a, 'tcx>
 where
     'tcx: 'a,
 {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::OnlyBodies(self.map)
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.map
     }
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {

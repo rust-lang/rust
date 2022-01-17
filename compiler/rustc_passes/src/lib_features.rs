@@ -6,8 +6,8 @@
 
 use rustc_ast::{Attribute, MetaItemKind};
 use rustc_errors::struct_span_err;
-use rustc_hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc_middle::hir::map::Map;
+use rustc_hir::intravisit::Visitor;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -111,10 +111,10 @@ impl<'tcx> LibFeatureCollector<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for LibFeatureCollector<'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::All(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_attribute(&mut self, _: rustc_hir::HirId, attr: &'tcx Attribute) {

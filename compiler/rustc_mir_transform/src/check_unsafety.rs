@@ -393,12 +393,6 @@ struct UnusedUnsafeVisitor<'a> {
 }
 
 impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::None
-    }
-
     fn visit_block(&mut self, block: &'tcx hir::Block<'tcx>) {
         intravisit::walk_block(self, block);
 
