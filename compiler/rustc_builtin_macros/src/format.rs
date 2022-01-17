@@ -822,7 +822,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 //
                 // This uses the arg span for `&arg` so that borrowck errors
                 // point to the specific expression passed to the macro (the
-                // span is otherwise unavailable in MIR).
+                // span is otherwise unavailable in the MIR used by borrowck).
                 let heads = original_args
                     .into_iter()
                     .map(|e| self.ecx.expr_addr_of(e.span.with_ctxt(self.macsp.ctxt()), e))
