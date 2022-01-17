@@ -28,9 +28,12 @@ use crate::sync::atomic::{self, AtomicUsize, Ordering};
 
 pub(crate) macro weak {
     (fn $name:ident($($t:ty),*) -> $ret:ty) => (
+        weak!(fn $name($($t),*) -> $ret, stringify!($name));
+    ),
+    (fn $name:ident($($t:ty),*) -> $ret:ty, $sym:expr) => (
         #[allow(non_upper_case_globals)]
         static $name: crate::sys::weak::Weak<unsafe extern "C" fn($($t),*) -> $ret> =
-            crate::sys::weak::Weak::new(concat!(stringify!($name), '\0'));
+            crate::sys::weak::Weak::new(concat!($sym, '\0'));
     )
 }
 
