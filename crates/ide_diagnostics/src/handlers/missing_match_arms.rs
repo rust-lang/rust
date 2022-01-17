@@ -900,6 +900,36 @@ fn foo() {
         );
     }
 
+    #[test]
+    fn macro_or_pat() {
+        check_diagnostics_no_bails(
+            r#"
+macro_rules! m {
+    () => {
+        Enum::Type1 | Enum::Type2
+    };
+}
+
+enum Enum {
+    Type1,
+    Type2,
+    Type3,
+}
+
+fn f(ty: Enum) {
+    match ty {
+        //^^ error: missing match arm
+        m!() => (),
+    }
+
+    match ty {
+        m!() | Enum::Type3 => ()
+    }
+}
+"#,
+        );
+    }
+
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This
