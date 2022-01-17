@@ -2,7 +2,6 @@ use crate::iter::adapters::{
     zip::try_get_unchecked, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::iter::{FusedIterator, TrustedLen};
-use crate::ops::Try;
 
 /// An iterator that clones the elements of an underlying iterator.
 ///
@@ -24,10 +23,6 @@ impl<I> Cloned<I> {
     }
 }
 
-fn clone_try_fold<T: Clone, Acc, R>(mut f: impl FnMut(Acc, T) -> R) -> impl FnMut(Acc, &T) -> R {
-    move |acc, elt| f(acc, elt.clone())
-}
-
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 impl<'a, I, T: 'a> Iterator for Cloned<I>
 where
@@ -42,15 +37,6 @@ where
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
-    }
-
-    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
-    {
-        self.it.try_fold(init, clone_try_fold(f))
     }
 
     fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
@@ -79,15 +65,6 @@ where
 {
     fn next_back(&mut self) -> Option<T> {
         self.it.next_back().cloned()
-    }
-
-    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
-    {
-        self.it.try_rfold(init, clone_try_fold(f))
     }
 
     fn rfold<Acc, F>(self, init: Acc, f: F) -> Acc
