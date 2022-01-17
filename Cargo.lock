@@ -686,7 +686,7 @@ dependencies = [
  "clippy_utils",
  "if_chain",
  "itertools 0.10.1",
- "pulldown-cmark 0.9.0",
+ "pulldown-cmark 0.9.1",
  "quine-mc_cluskey",
  "regex-syntax",
  "rustc-semver",
@@ -2885,9 +2885,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acd16514d1af5f7a71f909a44ef253cdb712a376d7ebc8ae4a471a9be9743548"
+checksum = "34f197a544b0c9ab3ae46c359a7ec9cbbb5c7bf97054266fecb7ead794a181d6"
 dependencies = [
  "bitflags",
  "memchr",
@@ -4447,7 +4447,7 @@ dependencies = [
  "expect-test",
  "itertools 0.9.0",
  "minifier",
- "pulldown-cmark 0.9.0",
+ "pulldown-cmark 0.9.1",
  "rayon",
  "regex",
  "rustdoc-json-types",
