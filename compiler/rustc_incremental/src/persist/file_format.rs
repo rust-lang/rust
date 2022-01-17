@@ -190,7 +190,7 @@ fn report_format_mismatch(report_incremental_info: bool, file: &Path, message: &
 
 fn rustc_version(nightly_build: bool) -> String {
     if nightly_build {
-        if let Some(val) = env::var_os("RUSTC_FORCE_INCR_COMP_ARTIFACT_HEADER") {
+        if let Some(val) = env::var_os("RUSTC_FORCE_RUSTC_VERSION") {
             return val.to_string_lossy().into_owned();
         }
     }
