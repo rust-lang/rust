@@ -1038,7 +1038,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     ///
     /// ```
-    /// #![feature(maybe_uninit_write_slice, vec_spare_capacity)]
+    /// #![feature(maybe_uninit_write_slice)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut vec = Vec::with_capacity(32);
@@ -1098,7 +1098,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     ///
     /// ```
-    /// #![feature(maybe_uninit_write_slice, vec_spare_capacity)]
+    /// #![feature(maybe_uninit_write_slice)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut vec = Vec::with_capacity(32);
