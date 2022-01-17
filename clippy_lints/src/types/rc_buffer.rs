@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{get_qpath_generic_tys, is_ty_param_diagnostic_item};
+use clippy_utils::{is_ty_param_diagnostic_item, qpath_generic_tys};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, def_id::DefId, QPath, TyKind};
 use rustc_lint::LateContext;
@@ -25,7 +25,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 TyKind::Path(qpath) => qpath,
                 _ => return false,
             };
-            let inner_span = match get_qpath_generic_tys(qpath).next() {
+            let inner_span = match qpath_generic_tys(qpath).next() {
                 Some(ty) => ty.span,
                 None => return false,
             };
@@ -60,7 +60,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 TyKind::Path(qpath) => qpath,
                 _ => return false,
             };
-            let inner_span = match get_qpath_generic_tys(qpath).next() {
+            let inner_span = match qpath_generic_tys(qpath).next() {
                 Some(ty) => ty.span,
                 None => return false,
             };

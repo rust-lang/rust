@@ -268,7 +268,7 @@ pub fn is_ty_param_lang_item<'tcx>(
     qpath: &QPath<'tcx>,
     item: LangItem,
 ) -> Option<&'tcx hir::Ty<'tcx>> {
-    let ty = get_qpath_generic_tys(qpath).next()?;
+    let ty = qpath_generic_tys(qpath).next()?;
 
     if let TyKind::Path(qpath) = &ty.kind {
         cx.qpath_res(qpath, ty.hir_id)
@@ -288,7 +288,7 @@ pub fn is_ty_param_diagnostic_item<'tcx>(
     qpath: &QPath<'tcx>,
     item: Symbol,
 ) -> Option<&'tcx hir::Ty<'tcx>> {
-    let ty = get_qpath_generic_tys(qpath).next()?;
+    let ty = qpath_generic_tys(qpath).next()?;
 
     if let TyKind::Path(qpath) = &ty.kind {
         cx.qpath_res(qpath, ty.hir_id)
@@ -368,7 +368,7 @@ pub fn get_qpath_generics<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx GenericArgs<
     }
 }
 
-pub fn get_qpath_generic_tys<'tcx>(path: &QPath<'tcx>) -> impl Iterator<Item = &'tcx hir::Ty<'tcx>> {
+pub fn qpath_generic_tys<'tcx>(path: &QPath<'tcx>) -> impl Iterator<Item = &'tcx hir::Ty<'tcx>> {
     get_qpath_generics(path)
         .map_or([].as_ref(), |a| a.args)
         .iter()
