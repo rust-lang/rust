@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/compatible-variants.rs:9:5
+  --> $DIR/compatible-variants.rs:13:5
    |
 LL |   fn a() -> Option<()> {
    |             ---------- expected `Option<()>` because of return type
@@ -21,7 +21,7 @@ LL +     Some(())
    |
 
 error[E0308]: mismatched types
-  --> $DIR/compatible-variants.rs:17:5
+  --> $DIR/compatible-variants.rs:21:5
    |
 LL | fn b() -> Result<(), ()> {
    |           -------------- expected `Result<(), ()>` because of return type
@@ -37,7 +37,7 @@ LL +     Ok(())
    |
 
 error[E0308]: mismatched types
-  --> $DIR/compatible-variants.rs:23:25
+  --> $DIR/compatible-variants.rs:27:25
    |
 LL |     let _: Option<()> = while false {};
    |            ----------   ^^^^^^^^^^^^^^ expected enum `Option`, found `()`
@@ -52,7 +52,7 @@ LL |     let _: Option<()> = Some(while false {});
    |                         +++++              +
 
 error[E0308]: mismatched types
-  --> $DIR/compatible-variants.rs:27:9
+  --> $DIR/compatible-variants.rs:31:9
    |
 LL |         while false {}
    |         ^^^^^^^^^^^^^^ expected enum `Option`, found `()`
@@ -69,7 +69,7 @@ LL +         Some(())
    |
 
 error[E0308]: mismatched types
-  --> $DIR/compatible-variants.rs:31:31
+  --> $DIR/compatible-variants.rs:35:31
    |
 LL |     let _: Result<i32, i32> = 1;
    |            ----------------   ^ expected enum `Result`, found integer
@@ -86,7 +86,7 @@ LL |     let _: Result<i32, i32> = Err(1);
    |                               ++++ +
 
 error[E0308]: mismatched types
-  --> $DIR/compatible-variants.rs:34:26
+  --> $DIR/compatible-variants.rs:38:26
    |
 LL |     let _: Option<i32> = 1;
    |            -----------   ^ expected enum `Option`, found integer
@@ -101,7 +101,7 @@ LL |     let _: Option<i32> = Some(1);
    |                          +++++ +
 
 error[E0308]: mismatched types
-  --> $DIR/compatible-variants.rs:37:28
+  --> $DIR/compatible-variants.rs:41:28
    |
 LL |     let _: Hey<i32, i32> = 1;
    |            -------------   ^ expected enum `Hey`, found integer
@@ -118,7 +118,7 @@ LL |     let _: Hey<i32, i32> = Hey::B(1);
    |                            +++++++ +
 
 error[E0308]: mismatched types
-  --> $DIR/compatible-variants.rs:40:29
+  --> $DIR/compatible-variants.rs:44:29
    |
 LL |     let _: Hey<i32, bool> = false;
    |            --------------   ^^^^^ expected enum `Hey`, found `bool`
@@ -132,6 +132,19 @@ help: try wrapping the expression in `Hey::B`
 LL |     let _: Hey<i32, bool> = Hey::B(false);
    |                             +++++++     +
 
-error: aborting due to 8 previous errors
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:48:19
+   |
+LL |     let _ = Foo { bar };
+   |                   ^^^ expected enum `Option`, found `i32`
+   |
+   = note: expected enum `Option<i32>`
+              found type `i32`
+help: try wrapping the expression in `Some`
+   |
+LL |     let _ = Foo { bar: Some(bar) };
+   |                   ++++++++++   +
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
