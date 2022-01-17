@@ -347,16 +347,13 @@ impl<'tcx> Relate<'tcx> for ty::GeneratorWitnessInner<'tcx> {
         b: ty::GeneratorWitnessInner<'tcx>,
     ) -> RelateResult<'tcx, ty::GeneratorWitnessInner<'tcx>> {
         assert_eq!(a.tys.len(), b.tys.len());
-        assert_eq!(a.structural_predicates.len(), b.structural_predicates.len());
+        assert_eq!(a.predicates.len(), b.predicates.len());
         Ok(ty::GeneratorWitnessInner {
             tys: relation
                 .tcx()
                 .mk_type_list(a.tys.iter().zip(b.tys).map(|(a, b)| relation.relate(a, b)))?,
-            structural_predicates: relation.tcx().mk_projection_predicates(
-                a.structural_predicates
-                    .iter()
-                    .zip(b.structural_predicates)
-                    .map(|(a, b)| relation.relate(a, b)),
+            predicates: relation.tcx().mk_generator_predicates(
+                a.predicates.iter().zip(b.predicates).map(|(a, b)| relation.relate(a, b)),
             )?,
         })
     }
@@ -857,6 +854,45 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
             projection_ty: relation.relate(a.projection_ty, b.projection_ty)?,
             term: relation.relate(a.term, b.term)?.into(),
         })
+    }
+}
+
+impl<'tcx> Relate<'tcx> for ty::GeneratorPredicate<'tcx> {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ty::GeneratorPredicate<'tcx>,
+        b: ty::GeneratorPredicate<'tcx>,
+    ) -> RelateResult<'tcx, ty::GeneratorPredicate<'tcx>> {
+        Ok(match (a, b) {
+            (ty::GeneratorPredicate::Trait(a), ty::GeneratorPredicate::Trait(b)) => {
+                ty::GeneratorPredicate::Trait(relation.relate(a, b)?)
+            }
+            (
+                ty::GeneratorPredicate::RegionOutlives(a),
+                ty::GeneratorPredicate::RegionOutlives(b),
+            ) => ty::GeneratorPredicate::RegionOutlives(relation.relate(a, b)?),
+            (ty::GeneratorPredicate::TypeOutlives(a), ty::GeneratorPredicate::TypeOutlives(b)) => {
+                ty::GeneratorPredicate::TypeOutlives(relation.relate(a, b)?)
+            }
+            (ty::GeneratorPredicate::Projection(a), ty::GeneratorPredicate::Projection(b)) => {
+                ty::GeneratorPredicate::Projection(relation.relate(a, b)?)
+            }
+            _ => bug!("cannot relate {:?} and {:?}", a, b),
+        })
+    }
+}
+
+impl<'tcx, A, B> Relate<'tcx> for ty::OutlivesPredicate<A, B>
+where
+    A: Relate<'tcx>,
+    B: Relate<'tcx>,
+{
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ty::OutlivesPredicate<A, B>,
+        b: ty::OutlivesPredicate<A, B>,
+    ) -> RelateResult<'tcx, Self> {
+        Ok(ty::OutlivesPredicate(relation.relate(a.0, b.0)?, relation.relate(a.1, b.1)?))
     }
 }
 

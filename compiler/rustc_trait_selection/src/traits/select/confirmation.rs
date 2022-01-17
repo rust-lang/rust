@@ -314,44 +314,35 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
 
-            let mut obligations =
+            let (param_env, nested) =
                 if let ty::GeneratorWitness(interior) = self_ty.skip_binder().kind() {
-                    let tcx = self.tcx();
-                    let ty::GeneratorWitnessInner { tys: nested, structural_predicates } =
-                        self.infcx().replace_bound_vars_with_placeholders(*interior);
-
-                    let param_env = obligation.param_env;
-                    // Augment the param env with the projections that we know hold structurally
-                    // in the generator interiors' types.
-                    let augmented_param_env =
-                        ty::ParamEnv::new(
-                            tcx.mk_predicates(param_env.caller_bounds().iter().chain(
-                                structural_predicates.iter().map(|predicate| {
-                                    ty::Binder::dummy(predicate).to_predicate(tcx)
-                                }),
-                            )),
-                            param_env.reveal(),
-                            param_env.constness(),
+                    self.infcx().commit_unconditionally(|_| {
+                        let ty::GeneratorWitnessInner { tys: nested, predicates } =
+                            self.infcx().replace_bound_vars_with_placeholders(*interior);
+                        // FIXME(compiler-errors): Not sure if we should augment the param_env,
+                        // or just make a new param_env from these predicates...
+                        // Some tests fail if we do the former, but doing the latter doesn't
+                        // sound like it works 100% either...
+                        let new_param_env = ty::ParamEnv::new(
+                            self.tcx().mk_predicates(predicates.iter().map(|predicate| {
+                                ty::Binder::dummy(predicate).to_predicate(self.tcx())
+                            })),
+                            obligation.param_env.reveal(),
+                            obligation.param_env.constness(),
                         );
-
-                    self.collect_predicates_for_types(
-                        augmented_param_env,
-                        cause.clone(),
-                        obligation.recursion_depth + 1,
-                        trait_def_id,
-                        ty::Binder::dummy(nested.to_vec()),
-                    )
+                        (new_param_env, ty::Binder::dummy(nested.to_vec()))
+                    })
                 } else {
-                    let nested = self.constituent_types_for_auto_trait(self_ty);
-
-                    self.collect_predicates_for_types(
-                        obligation.param_env,
-                        cause,
-                        obligation.recursion_depth + 1,
-                        trait_def_id,
-                        nested,
-                    )
+                    (obligation.param_env, self.constituent_types_for_auto_trait(self_ty))
                 };
+
+            let mut obligations = self.collect_predicates_for_types(
+                param_env,
+                cause,
+                obligation.recursion_depth + 1,
+                trait_def_id,
+                nested,
+            );
 
             let trait_obligations: Vec<PredicateObligation<'_>> =
                 self.infcx.commit_unconditionally(|_| {
@@ -361,15 +352,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.impl_or_trait_obligations(
                         cause,
                         obligation.recursion_depth + 1,
-                        obligation.param_env,
+                        param_env,
                         trait_def_id,
                         &trait_ref.substs,
                     )
                 });
 
             // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
-            // predicate as usual.  It won't have any effect since auto traits are coinductive.
-            obligations.extend(trait_obligations);
+            // predicate as usual, but we filter it out below.
+            obligations.extend(trait_obligations.into_iter().filter(|implied| {
+                let kind = implied.predicate.kind();
+                match kind.skip_binder() {
+                    ty::PredicateKind::Trait(t) => kind.rebind(t) != obligation.predicate,
+                    _ => true,
+                }
+            }));
 
             ImplSourceAutoImplData { trait_def_id, nested: obligations }
         })

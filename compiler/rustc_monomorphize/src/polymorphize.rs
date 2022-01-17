@@ -329,6 +329,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
                 self.visit_child_body(def_id, substs);
                 ControlFlow::CONTINUE
             }
+            ty::GeneratorWitness(inner) => inner.map_bound(|inner| inner.tys).visit_with(self),
             ty::Param(param) => {
                 debug!(?param);
                 self.unused_parameters.clear(param.index);

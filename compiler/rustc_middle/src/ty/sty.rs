@@ -2313,5 +2313,5 @@ impl<'tcx> VarianceDiagInfo<'tcx> {
 #[derive(TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
 pub struct GeneratorWitnessInner<'tcx> {
     pub tys: &'tcx List<Ty<'tcx>>,
-    pub structural_predicates: &'tcx List<ty::ProjectionPredicate<'tcx>>,
+    pub predicates: &'tcx List<ty::GeneratorPredicate<'tcx>>,
 }

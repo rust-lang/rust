@@ -94,7 +94,7 @@ impl<'a, 'tcx> StructuralPredicateElaborator<'a, 'tcx> {
 }
 
 impl<'tcx> Iterator for StructuralPredicateElaborator<'_, 'tcx> {
-    type Item = ty::ProjectionPredicate<'tcx>;
+    type Item = ty::GeneratorPredicate<'tcx>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(ty) = self.stack.pop() {
@@ -108,10 +108,10 @@ impl<'tcx> Iterator for StructuralPredicateElaborator<'_, 'tcx> {
                     if self.seen.insert(normalized_ty) {
                         self.stack.push(normalized_ty);
                     }
-                    return Some(ty::ProjectionPredicate {
+                    return Some(ty::GeneratorPredicate::Projection(ty::ProjectionPredicate {
                         projection_ty,
                         term: ty::Term::Ty(normalized_ty),
-                    });
+                    }));
                 }
             } else {
                 let structural: Vec<_> = self

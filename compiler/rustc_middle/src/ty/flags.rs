@@ -120,8 +120,8 @@ impl FlagComputation {
             &ty::GeneratorWitness(inner) => {
                 self.bound_computation(inner, |computation, inner| {
                     computation.add_tys(&inner.tys);
-                    for predicate in inner.structural_predicates {
-                        computation.add_predicate_atom(ty::PredicateKind::Projection(predicate));
+                    for predicate in inner.predicates {
+                        computation.add_predicate_atom(predicate.to_predicate_atom());
                     }
                 });
             }

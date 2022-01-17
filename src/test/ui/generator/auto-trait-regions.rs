@@ -36,7 +36,6 @@ fn main() {
     };
     assert_foo(gen); // bad
     //~^ ERROR implementation of `Foo` is not general enough
-    //~| ERROR implementation of `Foo` is not general enough
     drop(z);
 
     // Allow impls which matches any lifetime
@@ -58,5 +57,4 @@ fn main() {
     };
     assert_foo(gen);
     //~^ ERROR implementation of `Foo` is not general enough
-    //~| ERROR implementation of `Foo` is not general enough
 }

@@ -20,7 +20,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use smallvec::SmallVec;
-use tracing::debug;
 
 mod drop_ranges;
 
@@ -61,9 +60,14 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
 
         let ty = self.fcx.resolve_vars_if_possible(ty);
 
-        debug!(
+        trace!(
             "attempting to record type ty={:?}; hir_id={:?}; scope={:?}; expr={:?}; source_span={:?}; expr_count={:?}",
-            ty, hir_id, scope, expr, source_span, self.expr_count,
+            ty,
+            hir_id,
+            scope,
+            expr,
+            source_span,
+            self.expr_count,
         );
 
         let live_across_yield = scope
@@ -79,7 +83,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     yield_data
                         .iter()
                         .find(|yield_data| {
-                            debug!(
+                            trace!(
                                 "comparing counts yield: {} self: {}, source_span = {:?}",
                                 yield_data.expr_and_pat_count, self.expr_count, source_span
                             );
@@ -89,7 +93,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                                     .drop_ranges
                                     .is_dropped_at(hir_id, yield_data.expr_and_pat_count)
                             {
-                                debug!("value is dropped at yield point; not recording");
+                                trace!("value is dropped at yield point; not recording");
                                 return false;
                             }
 
@@ -107,9 +111,13 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             });
 
         if let Some(yield_data) = live_across_yield {
-            debug!(
+            trace!(
                 "type in expr = {:?}, scope = {:?}, type = {:?}, count = {}, yield_span = {:?}",
-                expr, scope, ty, self.expr_count, yield_data.span
+                expr,
+                scope,
+                ty,
+                self.expr_count,
+                yield_data.span
             );
 
             if let Some((unresolved_type, unresolved_type_span)) =
@@ -169,7 +177,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 });
             }
         } else {
-            debug!(
+            trace!(
                 "no type in expr = {:?}, count = {:?}, span = {:?}",
                 expr,
                 self.expr_count,
@@ -178,9 +186,10 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             if let Some((unresolved_type, unresolved_type_span)) =
                 self.fcx.unresolved_type_vars(&ty)
             {
-                debug!(
+                trace!(
                     "remained unresolved_type = {:?}, unresolved_type_span: {:?}",
-                    unresolved_type, unresolved_type_span
+                    unresolved_type,
+                    unresolved_type_span
                 );
                 self.prev_unresolved_span = unresolved_type_span;
             }
@@ -228,6 +237,11 @@ pub fn resolve_interior<'a, 'tcx>(
     let mut counter = 0;
     let mut region_to_anon = FxHashMap::default();
     let mut anonymize_regions = |region, current_depth| {
+        let region = fcx
+            .inner
+            .borrow_mut()
+            .unwrap_region_constraints()
+            .opportunistic_resolve_region(fcx.tcx, region);
         let br = region_to_anon.entry(region).or_insert_with(|| {
             let br =
                 ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon(counter) };
@@ -247,6 +261,7 @@ pub fn resolve_interior<'a, 'tcx>(
             .iter()
             .map(|cause| fcx.tcx.fold_regions(cause.ty, &mut false, &mut anonymize_regions)),
     );
+    debug!("erased generator interior types: {:?}", anon_tys);
 
     // Extract the projection types that we know hold in the interior types, so we can reapply them
     // later. This step is important because when we erase regions, we might no longer be able to
@@ -257,10 +272,24 @@ pub fn resolve_interior<'a, 'tcx>(
         causes.iter().map(|cause| cause.ty),
         body.value.span,
     );
-    let anon_structural_predicates = fcx.tcx.mk_projection_predicates(
+    let env_predicates =
+        fcx.param_env.caller_bounds().iter().filter_map(|predicate| {
+            match predicate.kind().skip_binder() {
+                ty::PredicateKind::Trait(p) => Some(ty::GeneratorPredicate::Trait(p)),
+                ty::PredicateKind::RegionOutlives(p) => {
+                    Some(ty::GeneratorPredicate::RegionOutlives(p))
+                }
+                ty::PredicateKind::TypeOutlives(p) => Some(ty::GeneratorPredicate::TypeOutlives(p)),
+                ty::PredicateKind::Projection(p) => Some(ty::GeneratorPredicate::Projection(p)),
+                _ => None,
+            }
+        });
+    let anon_predicates = fcx.tcx.mk_generator_predicates(
         structural_predicates
+            .chain(env_predicates)
             .map(|predicate| fcx.tcx.fold_regions(predicate, &mut false, &mut anonymize_regions)),
     );
+    debug!("erased generator implied predicates: {:#?}", anon_predicates);
 
     let anon_causes = causes
         .into_iter()
@@ -275,10 +304,7 @@ pub fn resolve_interior<'a, 'tcx>(
     );
 
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(
-        ty::GeneratorWitnessInner {
-            tys: anon_tys,
-            structural_predicates: anon_structural_predicates,
-        },
+        ty::GeneratorWitnessInner { tys: anon_tys, predicates: anon_predicates },
         bound_vars.clone(),
     ));
 

@@ -2036,7 +2036,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .iter()
             .flat_map(|ty| {
                 let ty = types.rebind(*ty); // <----/
-
                 self.infcx.commit_unconditionally(|_| {
                     let placeholder_ty = self.infcx.replace_bound_vars_with_placeholders(ty);
                     let Normalized { value: normalized_ty, mut obligations } =

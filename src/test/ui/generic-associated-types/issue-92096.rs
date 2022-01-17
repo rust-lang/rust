@@ -19,7 +19,6 @@ trait Client {
 
 fn call_connect<C>(c: &'_ C) -> impl '_ + Future + Send
 //[migrate]~^ ERROR the parameter
-//[migrate]~| ERROR the parameter
 where
     C: Client + Send + Sync,
 {

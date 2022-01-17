@@ -908,12 +908,12 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::ProjectionPredicate<'tcx>> {
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::GeneratorPredicate<'tcx>> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_projection_predicates(v))
+        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_generator_predicates(v))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {

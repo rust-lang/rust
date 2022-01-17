@@ -170,18 +170,8 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Hash,
-    TyEncodable,
-    TyDecodable,
-    HashStable,
-    Debug,
-    TypeFoldable
-)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(TyEncodable, TyDecodable, HashStable, Debug, TypeFoldable)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -225,7 +215,8 @@ pub enum Visibility {
     Invisible,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum BoundConstness {
     /// `T: Trait`
     NotConst,
@@ -744,7 +735,7 @@ impl<'tcx> Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>,
@@ -993,6 +984,37 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Hash, HashStable, TyEncodable, TyDecodable, TypeFoldable)]
+pub enum GeneratorPredicate<'tcx> {
+    Trait(TraitPredicate<'tcx>),
+    RegionOutlives(RegionOutlivesPredicate<'tcx>),
+    TypeOutlives(TypeOutlivesPredicate<'tcx>),
+    Projection(ProjectionPredicate<'tcx>),
+}
+
+impl<'tcx> GeneratorPredicate<'tcx> {
+    pub fn to_predicate_atom(self) -> PredicateKind<'tcx> {
+        match self {
+            GeneratorPredicate::Trait(p) => PredicateKind::Trait(p),
+            GeneratorPredicate::RegionOutlives(p) => PredicateKind::RegionOutlives(p),
+            GeneratorPredicate::TypeOutlives(p) => PredicateKind::TypeOutlives(p),
+            GeneratorPredicate::Projection(p) => PredicateKind::Projection(p),
+        }
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, GeneratorPredicate<'tcx>> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        match self.skip_binder() {
+            GeneratorPredicate::Trait(p) => self.rebind(p).to_predicate(tcx),
+            GeneratorPredicate::RegionOutlives(p) => self.rebind(p).to_predicate(tcx),
+            GeneratorPredicate::TypeOutlives(p) => self.rebind(p).to_predicate(tcx),
+            GeneratorPredicate::Projection(p) => self.rebind(p).to_predicate(tcx),
         }
     }
 }

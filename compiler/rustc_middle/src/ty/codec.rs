@@ -381,11 +381,11 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::BoundVaria
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::ProjectionPredicate<'tcx>> {
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::GeneratorPredicate<'tcx>> {
     fn decode(decoder: &mut D) -> &'tcx Self {
         let len = decoder.read_usize();
-        decoder.tcx().mk_projection_predicates(
-            (0..len).map::<ty::ProjectionPredicate<'tcx>, _>(|_| Decodable::decode(decoder)),
+        decoder.tcx().mk_generator_predicates(
+            (0..len).map::<ty::GeneratorPredicate<'tcx>, _>(|_| Decodable::decode(decoder)),
         )
     }
 }
@@ -393,7 +393,7 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::Projection
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
-    &'tcx ty::List<ty::ProjectionPredicate<'tcx>>,
+    &'tcx ty::List<ty::GeneratorPredicate<'tcx>>,
     &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     &'tcx Allocation,
     &'tcx mir::Body<'tcx>,
@@ -514,7 +514,7 @@ macro_rules! impl_binder_encode_decode {
 
 impl_binder_encode_decode! {
     &'tcx ty::List<Ty<'tcx>>,
-    &'tcx ty::List<ty::ProjectionPredicate<'tcx>>,
+    &'tcx ty::List<ty::GeneratorPredicate<'tcx>>,
     ty::GeneratorWitnessInner<'tcx>,
     ty::FnSig<'tcx>,
     ty::ExistentialPredicate<'tcx>,
