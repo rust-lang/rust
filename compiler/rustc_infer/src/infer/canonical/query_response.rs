@@ -14,10 +14,10 @@ use crate::infer::canonical::{
 };
 use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
-use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
+use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin, TypeError};
 use crate::traits::query::{Fallible, NoSolution};
 use crate::traits::TraitEngine;
-use crate::traits::{Obligation, ObligationCause, PredicateObligation};
+use crate::traits::{Obligation, ObligationCause, PredicateObligation, PredicateObligations};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
@@ -219,7 +219,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
-    ) -> InferResult<'tcx, R>
+        obligations: &mut PredicateObligations<'tcx>
+    ) -> Result<R, TypeError<'tcx>>
     where
         R: Debug + TypeFoldable<'tcx>,
     {
@@ -229,7 +230,6 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         // Compute `QueryOutlivesConstraint` values that unify each of
         // the original values `v_o` that was canonicalized into a
         // variable...
-        let mut obligations = vec![];
 
         for (index, original_value) in original_values.var_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
@@ -263,7 +263,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                             infcx: self,
                             param_env,
                             cause,
-                            obligations: &mut obligations,
+                            obligations: &mut *obligations,
                         },
                         ty::Variance::Invariant,
                     )
@@ -277,7 +277,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                             infcx: self,
                             param_env,
                             cause,
-                            obligations: &mut obligations,
+                            obligations: &mut *obligations,
                         },
                         ty::Variance::Invariant,
                     )
@@ -316,7 +316,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         let user_result: R =
             query_response.substitute_projected(self.tcx, &result_subst, |q_r| q_r.value.clone());
 
-        Ok(InferOk { value: user_result, obligations })
+        Ok(user_result)
     }
 
     /// Given the original values and the (canonicalized) result from

@@ -1,7 +1,7 @@
 use crate::infer::canonical::{
     Canonicalized, CanonicalizedQueryResponse, OriginalQueryValues, QueryRegionConstraints,
 };
-use crate::infer::{InferCtxt, InferOk};
+use crate::infer::{InferCtxt};
 use crate::traits::query::Fallible;
 use crate::traits::ObligationCause;
 use rustc_infer::infer::canonical::{Canonical, Certainty};
@@ -81,14 +81,14 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<'tcx> + 'tcx {
         query_key: ParamEnvAnd<'tcx, Self>,
         infcx: &InferCtxt<'_, 'tcx>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
+        obligations: &mut PredicateObligations<'tcx>,
     ) -> Fallible<(
         Self::QueryResponse,
         Option<Canonical<'tcx, ParamEnvAnd<'tcx, Self>>>,
-        PredicateObligations<'tcx>,
         Certainty,
     )> {
         if let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key) {
-            return Ok((result, None, vec![], Certainty::Proven));
+            return Ok((result, None, Certainty::Proven));
         }
 
         // FIXME(#33684) -- We need to use
@@ -101,16 +101,17 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<'tcx> + 'tcx {
             infcx.canonicalize_query_keep_static(query_key, &mut canonical_var_values);
         let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
 
-        let InferOk { value, obligations } = infcx
+        let value = infcx
             .instantiate_nll_query_response_and_region_obligations(
                 &ObligationCause::dummy(),
                 old_param_env,
                 &canonical_var_values,
                 canonical_result,
                 output_query_region_constraints,
+                obligations,
             )?;
 
-        Ok((value, Some(canonical_self), obligations, canonical_result.value.certainty))
+        Ok((value, Some(canonical_self), canonical_result.value.certainty))
     }
 }
 
@@ -122,8 +123,9 @@ where
 
     fn fully_perform(self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
         let mut region_constraints = QueryRegionConstraints::default();
-        let (output, canonicalized_query, mut obligations, _) =
-            Q::fully_perform_into(self, infcx, &mut region_constraints)?;
+        let mut obligations = Vec::new();
+        let (output, canonicalized_query, _) =
+            Q::fully_perform_into(self, infcx, &mut region_constraints, &mut obligations)?;
 
         // Typically, instantiating NLL query results does not
         // create obligations. However, in some cases there
@@ -133,15 +135,15 @@ where
         while !obligations.is_empty() {
             trace!("{:#?}", obligations);
             let mut progress = false;
-            for obligation in std::mem::take(&mut obligations) {
-                let obligation = infcx.resolve_vars_if_possible(obligation);
+            for _ in 0..obligations.len() {
+                let obligation = infcx.resolve_vars_if_possible(obligations.swap_remove(0));
                 match ProvePredicate::fully_perform_into(
                     obligation.param_env.and(ProvePredicate::new(obligation.predicate)),
                     infcx,
                     &mut region_constraints,
+                    &mut obligations,
                 ) {
-                    Ok(((), _, new, certainty)) => {
-                        obligations.extend(new);
+                    Ok(((), _, certainty)) => {
                         progress = true;
                         if let Certainty::Ambiguous = certainty {
                             obligations.push(obligation);
