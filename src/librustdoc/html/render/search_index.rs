@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{kw, Symbol};
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
@@ -220,7 +220,8 @@ fn get_index_type_name(clean_type: &clean::Type) -> Option<Symbol> {
             let path = &bounds[0].trait_;
             Some(path.segments.last().unwrap().name)
         }
-        clean::Generic(s) => Some(s),
+        // We return an empty name because we don't care about the generic name itself.
+        clean::Generic(_) => Some(kw::Empty),
         clean::Primitive(ref p) => Some(p.as_sym()),
         clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_),
         clean::BareFunction(_)
@@ -258,9 +259,10 @@ fn add_generics_and_bounds_as_types<'tcx>(
         cache: &Cache,
     ) {
         let is_full_generic = ty.is_full_generic();
+        let generics_empty = generics.is_empty();
 
         if is_full_generic {
-            if generics.is_empty() {
+            if generics_empty {
                 // This is a type parameter with no trait bounds (for example: `T` in
                 // `fn f<T>(p: T)`, so not useful for the rustdoc search because we would end up
                 // with an empty type with an empty name. Let's just discard it.
@@ -307,7 +309,7 @@ fn add_generics_and_bounds_as_types<'tcx>(
             }
         }
         let mut index_ty = get_index_type(&ty, generics);
-        if index_ty.name.as_ref().map(|s| s.is_empty()).unwrap_or(true) {
+        if index_ty.name.as_ref().map(|s| s.is_empty() && generics_empty).unwrap_or(true) {
             return;
         }
         if is_full_generic {
