@@ -170,7 +170,7 @@ impl<'a> State<'a> {
         ann: &'a dyn PpAnn,
     ) -> State<'a> {
         State {
-            s: pp::mk_printer(),
+            s: pp::Printer::new(),
             comments: Some(Comments::new(sm, filename, input)),
             attrs,
             ann,
@@ -186,7 +186,7 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
 where
     F: FnOnce(&mut State<'_>),
 {
-    let mut printer = State { s: pp::mk_printer(), comments: None, attrs: &|_| &[], ann };
+    let mut printer = State { s: pp::Printer::new(), comments: None, attrs: &|_| &[], ann };
     f(&mut printer);
     printer.s.eof()
 }
