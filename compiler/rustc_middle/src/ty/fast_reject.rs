@@ -118,8 +118,8 @@ pub fn simplify_type(
         }
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(ClosureSimplifiedType(def_id)),
         ty::Generator(def_id, _, _) => Some(GeneratorSimplifiedType(def_id)),
-        ty::GeneratorWitness(ref tys) => {
-            Some(GeneratorWitnessSimplifiedType(tys.skip_binder().len()))
+        ty::GeneratorWitness(ref inner, ..) => {
+            Some(GeneratorWitnessSimplifiedType(inner.as_ref().skip_binder().tys.len()))
         }
         ty::Never => Some(NeverSimplifiedType),
         ty::Tuple(ref tys) => Some(TupleSimplifiedType(tys.len())),

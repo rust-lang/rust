@@ -908,6 +908,19 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::ProjectionPredicate<'tcx>> {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_projection_predicates(v))
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
+        self.iter().try_for_each(|t| t.visit_with(visitor))
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ProjectionKind> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
@@ -1007,7 +1020,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::Generator(did, substs, movability) => {
                 ty::Generator(did, substs.try_fold_with(folder)?, movability)
             }
-            ty::GeneratorWitness(types) => ty::GeneratorWitness(types.try_fold_with(folder)?),
+            ty::GeneratorWitness(inner) => ty::GeneratorWitness(inner.try_fold_with(folder)?),
             ty::Closure(did, substs) => ty::Closure(did, substs.try_fold_with(folder)?),
             ty::Projection(data) => ty::Projection(data.try_fold_with(folder)?),
             ty::Opaque(did, substs) => ty::Opaque(did, substs.try_fold_with(folder)?),
@@ -1055,7 +1068,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
                 ty.visit_with(visitor)
             }
             ty::Generator(_did, ref substs, _) => substs.visit_with(visitor),
-            ty::GeneratorWitness(ref types) => types.visit_with(visitor),
+            ty::GeneratorWitness(ref inner, ..) => inner.visit_with(visitor),
             ty::Closure(_did, ref substs) => substs.visit_with(visitor),
             ty::Projection(ref data) => data.visit_with(visitor),
             ty::Opaque(_, ref substs) => substs.visit_with(visitor),

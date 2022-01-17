@@ -730,9 +730,10 @@ fn sanitize_witness<'tcx>(
 
     let allowed_upvars = tcx.normalize_erasing_regions(param_env, upvars);
     let allowed = match witness.kind() {
-        &ty::GeneratorWitness(interior_tys) => {
-            tcx.normalize_erasing_late_bound_regions(param_env, interior_tys)
-        }
+        &ty::GeneratorWitness(interior) => tcx.normalize_erasing_late_bound_regions(
+            param_env,
+            interior.map_bound(|interior| interior.tys),
+        ),
         _ => {
             tcx.sess.delay_span_bug(
                 body.span,

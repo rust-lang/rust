@@ -5,7 +5,6 @@ use super::*;
 
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
-use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{Region, RegionVid, Term};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -865,25 +864,5 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         p: ty::Predicate<'tcx>,
     ) -> ty::Predicate<'tcx> {
         infcx.freshen(p)
-    }
-}
-
-// Replaces all ReVars in a type with ty::Region's, using the provided map
-pub struct RegionReplacer<'a, 'tcx> {
-    vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
-    tcx: TyCtxt<'tcx>,
-}
-
-impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        (match r {
-            ty::ReVar(vid) => self.vid_to_region.get(vid).cloned(),
-            _ => None,
-        })
-        .unwrap_or_else(|| r.super_fold_with(self))
     }
 }

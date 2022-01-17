@@ -3,9 +3,11 @@
 //! is calculated in `rustc_const_eval::transform::generator` and may be a subset of the
 //! types computed here.
 
+mod structural_predicate;
+
 use self::drop_ranges::DropRanges;
 use super::FnCtxt;
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -208,66 +210,81 @@ pub fn resolve_interior<'a, 'tcx>(
     };
     intravisit::walk_body(&mut visitor, body);
 
-    // Check that we visited the same amount of expressions and the RegionResolutionVisitor
+    // Check that we visited the same amount of expressions as the RegionResolutionVisitor
     let region_expr_count = visitor.region_scope_tree.body_expr_count(body_id).unwrap();
     assert_eq!(region_expr_count, visitor.expr_count);
 
     // The types are already kept in insertion order.
-    let types = visitor.types;
+    let mut causes = visitor.types;
 
     // The types in the generator interior contain lifetimes local to the generator itself,
     // which should not be exposed outside of the generator. Therefore, we replace these
     // lifetimes with existentially-bound lifetimes, which reflect the exact value of the
     // lifetimes not being known by users.
-    //
-    // These lifetimes are used in auto trait impl checking (for example,
-    // if a Sync generator contains an &'α T, we need to check whether &'α T: Sync),
-    // so knowledge of the exact relationships between them isn't particularly important.
 
-    debug!("types in generator {:?}, span = {:?}", types, body.value.span);
+    debug!("types in generator {:?}, span = {:?}", causes, body.value.span);
 
+    // Mapping from region -> anonymized bound region
     let mut counter = 0;
-    let mut captured_tys = FxHashSet::default();
-    let type_causes: Vec<_> = types
-        .into_iter()
-        .filter_map(|mut cause| {
-            // Erase regions and canonicalize late-bound regions to deduplicate as many types as we
-            // can.
-            let erased = fcx.tcx.erase_regions(cause.ty);
-            if captured_tys.insert(erased) {
-                // Replace all regions inside the generator interior with late bound regions.
-                // Note that each region slot in the types gets a new fresh late bound region,
-                // which means that none of the regions inside relate to any other, even if
-                // typeck had previously found constraints that would cause them to be related.
-                let folded = fcx.tcx.fold_regions(erased, &mut false, |_, current_depth| {
-                    let br = ty::BoundRegion {
-                        var: ty::BoundVar::from_u32(counter),
-                        kind: ty::BrAnon(counter),
-                    };
-                    let r = fcx.tcx.mk_region(ty::ReLateBound(current_depth, br));
-                    counter += 1;
-                    r
-                });
+    let mut region_to_anon = FxHashMap::default();
+    let mut anonymize_regions = |region, current_depth| {
+        let br = region_to_anon.entry(region).or_insert_with(|| {
+            let br =
+                ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon(counter) };
+            counter += 1;
+            br
+        });
+        fcx.tcx.mk_region(ty::ReLateBound(current_depth, *br))
+    };
 
-                cause.ty = folded;
-                Some(cause)
-            } else {
-                None
-            }
+    // Deduplicate the generator interior types, since we don't need several of the same type
+    let mut captured_tys = FxHashSet::default();
+    causes.retain(|cause| captured_tys.insert(cause.ty));
+
+    // Extract type components to build the witness type, anonymizing regions
+    let anon_tys = fcx.tcx.mk_type_list(
+        causes
+            .iter()
+            .map(|cause| fcx.tcx.fold_regions(cause.ty, &mut false, &mut anonymize_regions)),
+    );
+
+    // Extract the projection types that we know hold in the interior types, so we can reapply them
+    // later. This step is important because when we erase regions, we might no longer be able to
+    // apply some projections (since they depend on region knowledge we erased). But since we know
+    // they hold now, they should hold forever, so we'll add these projections to the param-env later.
+    let structural_predicates = structural_predicate::StructuralPredicateElaborator::new(
+        &fcx,
+        causes.iter().map(|cause| cause.ty),
+        body.value.span,
+    );
+    let anon_structural_predicates = fcx.tcx.mk_projection_predicates(
+        structural_predicates
+            .map(|predicate| fcx.tcx.fold_regions(predicate, &mut false, &mut anonymize_regions)),
+    );
+
+    let anon_causes = causes
+        .into_iter()
+        .map(|mut cause| {
+            cause.ty = fcx.tcx.fold_regions(cause.ty, &mut false, &mut anonymize_regions);
+            cause
         })
         .collect();
 
-    // Extract type components to build the witness type.
-    let type_list = fcx.tcx.mk_type_list(type_causes.iter().map(|cause| cause.ty));
     let bound_vars = fcx.tcx.mk_bound_variable_kinds(
         (0..counter).map(|i| ty::BoundVariableKind::Region(ty::BrAnon(i))),
     );
-    let witness =
-        fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars.clone()));
+
+    let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(
+        ty::GeneratorWitnessInner {
+            tys: anon_tys,
+            structural_predicates: anon_structural_predicates,
+        },
+        bound_vars.clone(),
+    ));
 
     // Store the generator types and spans into the typeck results for this generator.
     visitor.fcx.inh.typeck_results.borrow_mut().generator_interior_types =
-        ty::Binder::bind_with_vars(type_causes, bound_vars);
+        ty::Binder::bind_with_vars(anon_causes, bound_vars);
 
     debug!(
         "types in generator after region replacement {:?}, span = {:?}",

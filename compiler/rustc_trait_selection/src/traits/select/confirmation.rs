@@ -12,8 +12,8 @@ use rustc_hir::Constness;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
+use rustc_middle::ty;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use rustc_middle::ty::{self, Ty};
 use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
 use rustc_span::def_id::DefId;
 
@@ -310,28 +310,48 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
         debug!(?obligation, ?trait_def_id, "confirm_auto_impl_candidate");
 
-        let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
-        let types = self.constituent_types_for_ty(self_ty);
-        self.vtable_auto_impl(obligation, trait_def_id, types)
-    }
-
-    /// See `confirm_auto_impl_candidate`.
-    fn vtable_auto_impl(
-        &mut self,
-        obligation: &TraitObligation<'tcx>,
-        trait_def_id: DefId,
-        nested: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
-    ) -> ImplSourceAutoImplData<PredicateObligation<'tcx>> {
-        debug!(?nested, "vtable_auto_impl");
         ensure_sufficient_stack(|| {
+            let self_ty = self.infcx.shallow_resolve(obligation.predicate.self_ty());
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
-            let mut obligations = self.collect_predicates_for_types(
-                obligation.param_env,
-                cause,
-                obligation.recursion_depth + 1,
-                trait_def_id,
-                nested,
-            );
+
+            let mut obligations =
+                if let ty::GeneratorWitness(interior) = self_ty.skip_binder().kind() {
+                    let tcx = self.tcx();
+                    let ty::GeneratorWitnessInner { tys: nested, structural_predicates } =
+                        self.infcx().replace_bound_vars_with_placeholders(*interior);
+
+                    let param_env = obligation.param_env;
+                    // Augment the param env with the projections that we know hold structurally
+                    // in the generator interiors' types.
+                    let augmented_param_env =
+                        ty::ParamEnv::new(
+                            tcx.mk_predicates(param_env.caller_bounds().iter().chain(
+                                structural_predicates.iter().map(|predicate| {
+                                    ty::Binder::dummy(predicate).to_predicate(tcx)
+                                }),
+                            )),
+                            param_env.reveal(),
+                            param_env.constness(),
+                        );
+
+                    self.collect_predicates_for_types(
+                        augmented_param_env,
+                        cause.clone(),
+                        obligation.recursion_depth + 1,
+                        trait_def_id,
+                        ty::Binder::dummy(nested.to_vec()),
+                    )
+                } else {
+                    let nested = self.constituent_types_for_auto_trait(self_ty);
+
+                    self.collect_predicates_for_types(
+                        obligation.param_env,
+                        cause,
+                        obligation.recursion_depth + 1,
+                        trait_def_id,
+                        nested,
+                    )
+                };
 
             let trait_obligations: Vec<PredicateObligation<'_>> =
                 self.infcx.commit_unconditionally(|_| {
@@ -350,8 +370,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
             // predicate as usual.  It won't have any effect since auto traits are coinductive.
             obligations.extend(trait_obligations);
-
-            debug!(?obligations, "vtable_auto_impl");
 
             ImplSourceAutoImplData { trait_def_id, nested: obligations }
         })
@@ -1151,8 +1169,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let generator = substs.as_generator();
                     stack.extend([generator.tupled_upvars_ty(), generator.witness()]);
                 }
-                ty::GeneratorWitness(tys) => {
-                    stack.extend(tcx.erase_late_bound_regions(tys).to_vec());
+                ty::GeneratorWitness(inner) => {
+                    stack.extend(
+                        tcx.erase_late_bound_regions(inner.map_bound(|inner| inner.tys.to_vec())),
+                    );
                 }
 
                 // If we have a projection type, make sure to normalize it so we replace it

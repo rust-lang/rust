@@ -17,9 +17,10 @@ use crate::ty::TyKind::*;
 use crate::ty::{
     self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
     ClosureSizeProfileData, Const, ConstVid, DefIdTree, ExistentialPredicate, FloatTy, FloatVar,
-    FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List, ParamConst,
-    ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind, ProjectionTy, Region, RegionKind,
-    ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
+    FloatVid, GeneratorWitnessInner, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar,
+    IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind,
+    ProjectionPredicate, ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
+    TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
 };
 use rustc_ast as ast;
 use rustc_attr as attr;
@@ -102,6 +103,7 @@ pub struct CtxtInterners<'tcx> {
     substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
     region: InternedSet<'tcx, RegionKind>,
+    projection_predicates: InternedSet<'tcx, List<ProjectionPredicate<'tcx>>>,
     poly_existential_predicates:
         InternedSet<'tcx, List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>>,
     predicate: InternedSet<'tcx, PredicateInner<'tcx>>,
@@ -129,6 +131,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             type_list: Default::default(),
             substs: Default::default(),
             region: Default::default(),
+            projection_predicates: Default::default(),
             poly_existential_predicates: Default::default(),
             canonical_var_infos: Default::default(),
             predicate: Default::default(),
@@ -1654,6 +1657,7 @@ nop_lift! {const_allocation; &'a Allocation => &'tcx Allocation}
 nop_lift! {predicate; &'a PredicateInner<'a> => &'tcx PredicateInner<'tcx>}
 
 nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
+nop_list_lift! {projection_predicates; ProjectionPredicate<'a> => ProjectionPredicate<'tcx>}
 nop_list_lift! {poly_existential_predicates; ty::Binder<'a, ExistentialPredicate<'a>> => ty::Binder<'tcx, ExistentialPredicate<'tcx>>}
 nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
 nop_list_lift! {canonical_var_infos; CanonicalVarInfo<'a> => CanonicalVarInfo<'tcx>}
@@ -2115,6 +2119,7 @@ slice_interners!(
     type_list: _intern_type_list(Ty<'tcx>),
     substs: _intern_substs(GenericArg<'tcx>),
     canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo<'tcx>),
+    projection_predicates: _intern_projection_predicates(ProjectionPredicate<'tcx>),
     poly_existential_predicates:
         _intern_poly_existential_predicates(ty::Binder<'tcx, ExistentialPredicate<'tcx>>),
     predicates: _intern_predicates(Predicate<'tcx>),
@@ -2406,8 +2411,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_generator_witness(self, types: ty::Binder<'tcx, &'tcx List<Ty<'tcx>>>) -> Ty<'tcx> {
-        self.mk_ty(GeneratorWitness(types))
+    pub fn mk_generator_witness(
+        self,
+        inner: ty::Binder<'tcx, GeneratorWitnessInner<'tcx>>,
+    ) -> Ty<'tcx> {
+        self.mk_ty(GeneratorWitness(inner))
     }
 
     #[inline]
@@ -2509,6 +2517,17 @@ impl<'tcx> TyCtxt<'tcx> {
         Place { local: place.local, projection: self.intern_place_elems(&projection) }
     }
 
+    pub fn intern_projection_predicates(
+        self,
+        predicates: &[ProjectionPredicate<'tcx>],
+    ) -> &'tcx List<ProjectionPredicate<'tcx>> {
+        if predicates.is_empty() {
+            List::empty()
+        } else {
+            self._intern_projection_predicates(predicates)
+        }
+    }
+
     pub fn intern_poly_existential_predicates(
         self,
         eps: &[ty::Binder<'tcx, ExistentialPredicate<'tcx>>],
@@ -2581,6 +2600,15 @@ impl<'tcx> TyCtxt<'tcx> {
             unsafety,
             abi,
         })
+    }
+
+    pub fn mk_projection_predicates<
+        I: InternAs<[ProjectionPredicate<'tcx>], &'tcx List<ProjectionPredicate<'tcx>>>,
+    >(
+        self,
+        iter: I,
+    ) -> I::Output {
+        iter.intern_with(|xs| self.intern_projection_predicates(xs))
     }
 
     pub fn mk_poly_existential_predicates<

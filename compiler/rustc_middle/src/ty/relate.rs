@@ -340,19 +340,25 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
-#[derive(Copy, Debug, Clone, TypeFoldable)]
-struct GeneratorWitness<'tcx>(&'tcx ty::List<Ty<'tcx>>);
-
-impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
+impl<'tcx> Relate<'tcx> for ty::GeneratorWitnessInner<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: GeneratorWitness<'tcx>,
-        b: GeneratorWitness<'tcx>,
-    ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
-        assert_eq!(a.0.len(), b.0.len());
-        let tcx = relation.tcx();
-        let types = tcx.mk_type_list(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
-        Ok(GeneratorWitness(types))
+        a: ty::GeneratorWitnessInner<'tcx>,
+        b: ty::GeneratorWitnessInner<'tcx>,
+    ) -> RelateResult<'tcx, ty::GeneratorWitnessInner<'tcx>> {
+        assert_eq!(a.tys.len(), b.tys.len());
+        assert_eq!(a.structural_predicates.len(), b.structural_predicates.len());
+        Ok(ty::GeneratorWitnessInner {
+            tys: relation
+                .tcx()
+                .mk_type_list(a.tys.iter().zip(b.tys).map(|(a, b)| relation.relate(a, b)))?,
+            structural_predicates: relation.tcx().mk_projection_predicates(
+                a.structural_predicates
+                    .iter()
+                    .zip(b.structural_predicates)
+                    .map(|(a, b)| relation.relate(a, b)),
+            )?,
+        })
     }
 }
 
@@ -434,14 +440,8 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(tcx.mk_generator(a_id, substs, movability))
         }
 
-        (&ty::GeneratorWitness(a_types), &ty::GeneratorWitness(b_types)) => {
-            // Wrap our types with a temporary GeneratorWitness struct
-            // inside the binder so we can related them
-            let a_types = a_types.map_bound(GeneratorWitness);
-            let b_types = b_types.map_bound(GeneratorWitness);
-            // Then remove the GeneratorWitness for the result
-            let types = relation.relate(a_types, b_types)?.map_bound(|witness| witness.0);
-            Ok(tcx.mk_generator_witness(types))
+        (&ty::GeneratorWitness(a_interior), &ty::GeneratorWitness(b_interior)) => {
+            Ok(tcx.mk_generator_witness(relation.relate(a_interior, b_interior)?))
         }
 
         (&ty::Closure(a_id, a_substs), &ty::Closure(b_id, b_substs)) if a_id == b_id => {

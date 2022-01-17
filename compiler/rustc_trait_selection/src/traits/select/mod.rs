@@ -1938,7 +1938,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
-    fn constituent_types_for_ty(
+    fn constituent_types_for_auto_trait(
         &self,
         t: ty::Binder<'tcx, Ty<'tcx>>,
     ) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
@@ -1982,14 +1982,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Generator(_, ref substs, _) => {
-                let ty = self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
-                let witness = substs.as_generator().witness();
-                t.rebind([ty].into_iter().chain(iter::once(witness)).collect())
+                let generator = substs.as_generator();
+                let ty = self.infcx.shallow_resolve(generator.tupled_upvars_ty());
+                let witness = generator.witness();
+                t.rebind(vec![ty, witness])
             }
 
-            ty::GeneratorWitness(types) => {
-                debug_assert!(!types.has_escaping_bound_vars());
-                types.map_bound(|types| types.to_vec())
+            ty::GeneratorWitness(..) => {
+                unreachable!("This should be handled separately")
             }
 
             // For `PhantomData<T>`, we pass `T`.
@@ -2035,7 +2035,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .skip_binder() // binder moved -\
             .iter()
             .flat_map(|ty| {
-                let ty: ty::Binder<'tcx, Ty<'tcx>> = types.rebind(ty); // <----/
+                let ty = types.rebind(*ty); // <----/
 
                 self.infcx.commit_unconditionally(|_| {
                     let placeholder_ty = self.infcx.replace_bound_vars_with_placeholders(ty);

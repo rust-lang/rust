@@ -499,7 +499,7 @@ struct GeneratorTypes<'tcx> {
     /// Type of value that is yielded.
     yield_ty: Ty<'tcx>,
 
-    /// Types that are captured (see `GeneratorInterior` for more).
+    /// Types that are captured (see `GeneratorWitnessInner` for more).
     interior: Ty<'tcx>,
 
     /// Indicates if the generator is movable or static (immovable).

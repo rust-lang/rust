@@ -75,10 +75,10 @@ pub use self::sty::{
     Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar, BoundVariableKind,
     CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid, EarlyBoundRegion,
     ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig, FreeRegion, GenSig,
-    GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts, InlineConstSubstsParts, ParamConst,
-    ParamTy, PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig,
-    PolyTraitRef, ProjectionTy, Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut,
-    UpvarSubsts, VarianceDiagInfo,
+    GeneratorSubsts, GeneratorSubstsParts, GeneratorWitnessInner, InlineConstSubsts,
+    InlineConstSubstsParts, ParamConst, ParamTy, PolyExistentialProjection,
+    PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, ProjectionTy, Region, RegionKind,
+    RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 
@@ -871,7 +871,7 @@ impl<'tcx> Term<'tcx> {
 /// equality between arbitrary types. Processing an instance of
 /// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,

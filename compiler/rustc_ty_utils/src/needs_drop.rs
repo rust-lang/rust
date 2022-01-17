@@ -122,8 +122,10 @@ where
                         queue_type(self, substs.tupled_upvars_ty());
 
                         let witness = substs.witness();
-                        let interior_tys = match witness.kind() {
-                            &ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys),
+                        let interior = match witness.kind() {
+                            &ty::GeneratorWitness(interior, ..) => {
+                                tcx.normalize_erasing_late_bound_regions(self.param_env, interior)
+                            }
                             _ => {
                                 tcx.sess.delay_span_bug(
                                     tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP),
@@ -133,7 +135,7 @@ where
                             }
                         };
 
-                        for interior_ty in interior_tys {
+                        for interior_ty in interior.tys {
                             queue_type(self, interior_ty);
                         }
                     }
