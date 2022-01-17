@@ -1,10 +1,10 @@
-error: symbol-name(_ZN5basic4main17h13492e1c4157543fE)
+error: symbol-name(_ZN5basic4main17h7c2c715a9b77648bE)
   --> $DIR/basic.rs:8:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(basic::main::h13492e1c4157543f)
+error: demangling(basic::main::h7c2c715a9b77648b)
   --> $DIR/basic.rs:8:1
    |
 LL | #[rustc_symbol_name]
