@@ -71,7 +71,8 @@ extern crate tikv_jemalloc_sys;
 use tikv_jemalloc_sys as jemalloc_sys;
 
 use std::default::Default;
-use std::env;
+use std::env::{self, VarError};
+use std::io;
 use std::process;
 
 use rustc_driver::{abort_on_err, describe_lints};
@@ -179,47 +180,20 @@ pub fn main() {
 }
 
 fn init_logging() {
-    use std::io;
-
-    // FIXME remove these and use winapi 0.3 instead
-    // Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs, rustc_driver/lib.rs
-    #[cfg(unix)]
-    fn stdout_isatty() -> bool {
-        extern crate libc;
-        unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
-    }
-
-    #[cfg(windows)]
-    fn stdout_isatty() -> bool {
-        extern crate winapi;
-        use winapi::um::consoleapi::GetConsoleMode;
-        use winapi::um::processenv::GetStdHandle;
-        use winapi::um::winbase::STD_OUTPUT_HANDLE;
-
-        unsafe {
-            let handle = GetStdHandle(STD_OUTPUT_HANDLE);
-            let mut out = 0;
-            GetConsoleMode(handle, &mut out) != 0
-        }
-    }
-
-    let color_logs = match std::env::var("RUSTDOC_LOG_COLOR") {
-        Ok(value) => match value.as_ref() {
-            "always" => true,
-            "never" => false,
-            "auto" => stdout_isatty(),
-            _ => early_error(
-                ErrorOutputType::default(),
-                &format!(
-                    "invalid log color value '{}': expected one of always, never, or auto",
-                    value
-                ),
-            ),
-        },
-        Err(std::env::VarError::NotPresent) => stdout_isatty(),
-        Err(std::env::VarError::NotUnicode(_value)) => early_error(
+    let color_logs = match std::env::var("RUSTDOC_LOG_COLOR").as_deref() {
+        Ok("always") => true,
+        Ok("never") => false,
+        Ok("auto") | Err(VarError::NotPresent) => atty::is(atty::Stream::Stdout),
+        Ok(value) => early_error(
             ErrorOutputType::default(),
-            "non-Unicode log color value: expected one of always, never, or auto",
+            &format!("invalid log color value '{}': expected one of always, never, or auto", value),
+        ),
+        Err(VarError::NotUnicode(value)) => early_error(
+            ErrorOutputType::default(),
+            &format!(
+                "invalid log color value '{}': expected one of always, never, or auto",
+                value.to_string_lossy()
+            ),
         ),
     };
     let filter = tracing_subscriber::EnvFilter::from_env("RUSTDOC_LOG");
