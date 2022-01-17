@@ -77,9 +77,9 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
     def, lang_items, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr,
-    ExprKind, FnDecl, ForeignItem, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem,
-    Local, MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
-    Target, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
+    ExprKind, FnDecl, ForeignItem, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local,
+    MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Target,
+    TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
@@ -360,24 +360,14 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
     }
 }
 
-pub fn get_qpath_generics<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx GenericArgs<'tcx>> {
-    match path {
-        QPath::Resolved(_, p) => p.segments.last().and_then(|s| s.args),
-        QPath::TypeRelative(_, s) => s.args,
-        QPath::LangItem(..) => None,
-    }
-}
-
-pub fn qpath_generic_tys<'tcx>(path: &QPath<'tcx>) -> impl Iterator<Item = &'tcx hir::Ty<'tcx>> {
-    get_qpath_generics(path)
-        .map_or([].as_ref(), |a| a.args)
+pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tcx hir::Ty<'tcx>> {
+    last_path_segment(qpath)
+        .args
+        .map_or(&[][..], |a| a.args)
         .iter()
-        .filter_map(|a| {
-            if let hir::GenericArg::Type(ty) = a {
-                Some(ty)
-            } else {
-                None
-            }
+        .filter_map(|a| match a {
+            hir::GenericArg::Type(ty) => Some(ty),
+            _ => None,
         })
 }
 
