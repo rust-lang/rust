@@ -1513,6 +1513,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     is_marker: trait_def.is_marker,
                     skip_array_during_method_dispatch: trait_def.skip_array_during_method_dispatch,
                     specialization_kind: trait_def.specialization_kind,
+                    must_implement_one_of: trait_def.must_implement_one_of.clone(),
                 };
 
                 EntryKind::Trait(self.lazy(data))

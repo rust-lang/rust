@@ -682,6 +682,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[rustc_skip_array_during_method_dispatch]` attribute is used to exclude a trait \
         from method dispatch when the receiver is an array, for compatibility in editions < 2021."
     ),
+    rustc_attr!(
+        rustc_must_implement_one_of, Normal, template!(List: "function1, function2, ..."), ErrorFollowing,
+        "the `#[rustc_must_implement_one_of]` attribute is used to change minimal complete \
+        definition of a trait, it's currently in experimental form and should be changed before \
+        being exposed outside of the std"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

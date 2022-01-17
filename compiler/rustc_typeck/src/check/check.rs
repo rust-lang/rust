@@ -978,6 +978,10 @@ fn check_impl_items_against_trait<'tcx>(
     if let Ok(ancestors) = trait_def.ancestors(tcx, impl_id.to_def_id()) {
         // Check for missing items from trait
         let mut missing_items = Vec::new();
+
+        let mut must_implement_one_of: Option<&[Ident]> =
+            trait_def.must_implement_one_of.as_deref();
+
         for &trait_item_id in tcx.associated_item_def_ids(impl_trait_ref.def_id) {
             let is_implemented = ancestors
                 .leaf_def(tcx, trait_item_id)
@@ -986,11 +990,36 @@ fn check_impl_items_against_trait<'tcx>(
             if !is_implemented && tcx.impl_defaultness(impl_id).is_final() {
                 missing_items.push(tcx.associated_item(trait_item_id));
             }
+
+            if let Some(required_items) = &must_implement_one_of {
+                // true if this item is specifically implemented in this impl
+                let is_implemented_here = ancestors
+                    .leaf_def(tcx, trait_item_id)
+                    .map_or(false, |node_item| !node_item.defining_node.is_from_trait());
+
+                if is_implemented_here {
+                    let trait_item = tcx.associated_item(trait_item_id);
+                    if required_items.contains(&trait_item.ident) {
+                        must_implement_one_of = None;
+                    }
+                }
+            }
         }
 
         if !missing_items.is_empty() {
             let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
             missing_items_err(tcx, impl_span, &missing_items, full_impl_span);
+        }
+
+        if let Some(missing_items) = must_implement_one_of {
+            let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
+            let attr_span = tcx
+                .get_attrs(impl_trait_ref.def_id)
+                .iter()
+                .find(|attr| attr.has_name(sym::rustc_must_implement_one_of))
+                .map(|attr| attr.span);
+
+            missing_items_must_implement_one_of_err(tcx, impl_span, missing_items, attr_span);
         }
     }
 }
