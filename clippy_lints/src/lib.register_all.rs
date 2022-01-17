@@ -250,7 +250,6 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(reference::REF_IN_DEREF),
     LintId::of(regex::INVALID_REGEX),
     LintId::of(repeat_once::REPEAT_ONCE),
-    LintId::of(return_self_not_must_use::RETURN_SELF_NOT_MUST_USE),
     LintId::of(returns::LET_AND_RETURN),
     LintId::of(returns::NEEDLESS_RETURN),
     LintId::of(self_assignment::SELF_ASSIGNMENT),
