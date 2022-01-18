@@ -18,8 +18,9 @@ I think is done, but rarely otherwise. -nmatsakis)
 The test results are cached and previously successful tests are
 `ignored` during testing. The stdout/stderr contents as well as a
 timestamp file for every test can be found under `build/ARCH/test/`.
-To force-rerun a test (e.g. in case the test runner fails to notice
-a change) you can simply remove the timestamp file.
+To force-rerun a test (e.g. in case the test runner fails to notice a change)
+you can simply remove the timestamp file, or use the `--force-rerun` CLI
+option.
 
 Note that some tests require a Python-enabled gdb. You can test if
 your gdb install supports Python by using the `python` command from
@@ -143,6 +144,18 @@ to automatically adjust the `.stderr`, `.stdout` or `.fixed` files of
 all tests. Of course you can also target just specific tests with the
 `--test-args your_test_name` flag, just like when running the tests.
 
+## Configuring test running
+
+There are a few options for running tests:
+
+* `config.toml` has the `rust.verbose-tests` option.
+  If `false`, each test will print a single dot (the default).
+  If `true`, the name of every test will be printed.
+  This is equivalent to the `--quiet` option in the [Rust test
+  harness](https://doc.rust-lang.org/rustc/tests/)
+* The environment variable `RUST_TEST_THREADS` can be set to the number of
+  concurrent threads to use for testing.
+
 ## Passing `--pass $mode`
 
 Pass UI tests now have three modes, `check-pass`, `build-pass` and
@@ -156,9 +169,8 @@ exists in the test file. For example, you can run all the tests in
 ```
 
 By passing `--pass $mode`, you can reduce the testing time. For each
-mode, please see [here][mode].
-
-[mode]: ./adding.md#tests-that-do-not-result-in-compile-errors
+mode, please see [Controlling pass/fail
+expectations](ui.md#controlling-passfail-expectations).
 
 ## Using incremental compilation
 
@@ -193,17 +205,7 @@ To run the UI test suite in NLL mode, one would use the following:
 ./x.py test src/test/ui --compare-mode=nll
 ```
 
-The possible compare modes are:
-
-* nll - currently nll is implemented in migrate mode, this option runs with true nll.
-* polonius
-* chalk
-* split-dwarf
-* split-dwarf-single
-
-Note that compare modes are separate to [revisions](./adding.html#revisions).
-All revisions are tested when running `./x.py test src/test/ui`,
-however compare-modes must be manually run individually via the `--compare-mode` flag.
+See [Compare modes](compiletest.md#compare-modes) for more details.
 
 ## Running tests manually
 
@@ -219,3 +221,105 @@ rustc +stage1 src/test/ui/issue-1234.rs
 This is much faster, but doesn't always work. For example, some tests
 include directives that specify specific compiler flags, or which rely
 on other crates, and they may not run the same without those options.
+
+
+## Running tests on a remote machine
+
+Tests may be run on a remote machine (e.g. to test builds for a different
+architecture). This is done using `remote-test-client` on the build machine
+to send test programs to `remote-test-server` running on the remote machine.
+`remote-test-server` executes the test programs and sends the results back to
+the build machine. `remote-test-server` provides *unauthenticated remote code
+execution* so be careful where it is used.
+
+To do this, first build `remote-test-server` for the remote
+machine, e.g. for RISC-V
+```sh
+./x.py build src/tools/remote-test-server --target riscv64gc-unknown-linux-gnu
+```
+
+The binary will be created at
+`./build/$HOST_ARCH/stage2-tools/$TARGET_ARCH/release/remote-test-server`. Copy
+this over to the remote machine.
+
+On the remote machine, run the `remote-test-server` with the `remote` argument
+(and optionally `-v` for verbose output). Output should look like this:
+```sh
+$ ./remote-test-server -v remote
+starting test server
+listening on 0.0.0.0:12345!
+```
+
+You can test if the `remote-test-server` is working by connecting to it and
+sending `ping\n`. It should reply `pong`:
+```sh
+$ nc $REMOTE_IP 12345
+ping
+pong
+```
+
+To run tests using the remote runner, set the `TEST_DEVICE_ADDR` environment
+variable then use `x.py` as usual. For example, to run `ui` tests for a RISC-V
+machine with the IP address `1.2.3.4` use
+```sh
+export TEST_DEVICE_ADDR="1.2.3.4:12345"
+./x.py test src/test/ui --target riscv64gc-unknown-linux-gnu
+```
+
+If `remote-test-server` was run with the verbose flag, output on the test machine
+may look something like
+```
+[...]
+run "/tmp/work/test1007/a"
+run "/tmp/work/test1008/a"
+run "/tmp/work/test1009/a"
+run "/tmp/work/test1010/a"
+run "/tmp/work/test1011/a"
+run "/tmp/work/test1012/a"
+run "/tmp/work/test1013/a"
+run "/tmp/work/test1014/a"
+run "/tmp/work/test1015/a"
+run "/tmp/work/test1016/a"
+run "/tmp/work/test1017/a"
+run "/tmp/work/test1018/a"
+[...]
+```
+
+Tests are built on the machine running `x.py` not on the remote machine. Tests
+which fail to build unexpectedly (or `ui` tests producing incorrect build
+output) may fail without ever running on the remote machine.
+
+## Testing on emulators
+
+Some platforms are tested via an emulator for architectures that aren't
+readily available. For architectures where the standard library is well
+supported and the host operating system supports TCP/IP networking, see the
+above instructions for testing on a remote machine (in this case the
+remote machine is emulated).
+
+There is also a set of tools for orchestrating running the
+tests within the emulator. Platforms such as `arm-android` and
+`arm-unknown-linux-gnueabihf` are set up to automatically run the tests under
+emulation on GitHub Actions. The following will take a look at how a target's tests
+are run under emulation.
+
+The Docker image for [armhf-gnu] includes [QEMU] to emulate the ARM CPU
+architecture. Included in the Rust tree are the tools [remote-test-client]
+and [remote-test-server] which are programs for sending test programs and
+libraries to the emulator, and running the tests within the emulator, and
+reading the results.  The Docker image is set up to launch
+`remote-test-server` and the build tools use `remote-test-client` to
+communicate with the server to coordinate running tests (see
+[src/bootstrap/test.rs]).
+
+> TODO:
+> Is there any support for using an iOS emulator?
+>
+> It's also unclear to me how the wasm or asm.js tests are run.
+
+[armhf-gnu]: https://github.com/rust-lang/rust/tree/master/src/ci/docker/host-x86_64/armhf-gnu/Dockerfile
+[QEMU]: https://www.qemu.org/
+[remote-test-client]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-client
+[remote-test-server]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-server
+[src/bootstrap/test.rs]: https://github.com/rust-lang/rust/tree/master/src/bootstrap/test.rs
+

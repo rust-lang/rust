@@ -7,85 +7,180 @@ accompanied by a regression test of some kind.** This test should fail
 in master but pass after the PR. These tests are really useful for
 preventing us from repeating the mistakes of the past.
 
-To add a new test, the first thing you generally do is to create a
-file, typically a Rust source file. Test files have a particular
-structure:
+The first thing to decide is which kind of test to add.
+This will depend on the nature of the change and what you want to exercise.
+Here are some rough guidelines:
 
-- They should have some kind of
-  [comment explaining what the test is about](#explanatory_comment);
-- next, they can have one or more [header commands](#header_commands), which
-  are special comments that the test interpreter knows how to interpret.
-- finally, they have the Rust source. This may have various [error
-  annotations](#error_annotations) which indicate expected compilation errors or
-  warnings.
+- The majority of compiler tests are done with [compiletest].
+  - The majority of compiletest tests are [UI](ui.md) tests in the [`src/test/ui`] directory.
+- Changes to the standard library are usually tested within the standard library itself.
+  - The majority of standard library tests are written as doctests,
+    which illustrate and exercise typical API behavior.
+  - Additional [unit tests](intro.md#package-tests) should go in
+    `library/${crate}/tests` (where `${crate}` is usually `core`, `alloc`, or `std`).
+- If the code is part of an isolated system, and you are not testing compiler output,
+  consider using a [unit or integration test](intro.md#package-tests).
+- Need to run rustdoc? Prefer a `rustdoc` or `rustdoc-ui` test.
+  Occasionally you'll need `rustdoc-js` as well.
+- Other compiletest test suites are generally used for special purposes:
+  - Need to run gdb or lldb? Use the `debuginfo` test suite.
+  - Need to inspect LLVM IR or MIR IR? Use the `codegen` or `mir-opt` test suites.
+  - Need to inspect the resulting binary in some way?
+    Then use `run-make`.
+  - Check out the [compiletest] chapter for more specialized test suites.
 
-Depending on the test suite, there may be some other details to be aware of:
-  - For [the `ui` test suite](#ui), you need to generate reference output files.
-
-## What kind of test should I add?
-
-It can be difficult to know what kind of test to use. Here are some
-rough heuristics:
-
-- Some tests have specialized needs:
-  - need to run gdb or lldb? use the `debuginfo` test suite
-  - need to inspect LLVM IR or MIR IR? use the `codegen` or `mir-opt` test
-    suites
-  - need to run rustdoc? Prefer a `rustdoc` or `rustdoc-ui` test.
-    Occasionally you'll need `rustdoc-js` as well.
-  - need to inspect the resulting binary in some way? Then use `run-make`
-- Library tests should go in `library/${crate}/tests` (where `${crate}` is
-  usually `core`, `alloc`, or `std`). Library tests include:
-  - tests that an API behaves properly, including accepting various types or
-    having some runtime behavior
-  - tests where any compiler warnings are not relevant to the test
-  - tests that a use of an API gives a compile error, where the exact error
-    message is not relevant to the test. These should have an
-    [error number] (`E0XXX`) in the code block to make sure it's the correct error.
-- For most other things, [a `ui` (or `ui-fulldeps`) test](#ui) is to be preferred:
-  - in the case of warnings or errors, `ui` tests capture the full output,
-    which makes it easier to review but also helps prevent "hidden" regressions
-    in the output
-
-[error number]: https://doc.rust-lang.org/rustdoc/unstable-features.html#error-numbers-for-compile-fail-doctests
-
-## Naming your test
-
-We have not traditionally had a lot of structure in the names of
-tests.  Moreover, for a long time, the rustc test runner did not
-support subdirectories (it now does), so test suites like
-[`src/test/ui`] have a huge mess of files in them.  This is not
-considered an ideal setup.
-
+[compiletest]: compiletest.md
 [`src/test/ui`]: https://github.com/rust-lang/rust/tree/master/src/test/ui/
 
-For regression tests – basically, some random snippet of code that
-came in from the internet – we often name the test after the issue
-plus a short description. Ideally, the test should be added to a
-directory that helps identify what piece of code is being tested here
-(e.g., `src/test/ui/borrowck/issue-54597-reject-move-out-of-borrow-via-pat.rs`)
-If you've tried and cannot find a more relevant place,
-the test may be added to `src/test/ui/issues/`.
-Still, **do include the issue number somewhere**.
-But please avoid putting your test there as possible since that
-directory has too many tests and it causes poor semantic organization.
+## UI test walkthrough
 
-When writing a new feature, **create a subdirectory to store your
-tests**. For example, if you are implementing RFC 1234 ("Widgets"),
-then it might make sense to put the tests in a directory like
-`src/test/ui/rfc1234-widgets/`.
+The following is a basic guide for creating a [UI test](ui.md), which is one
+of the most common compiler tests.
+For this tutorial, we'll be adding a test for an async error message.
 
-In other cases, there may already be a suitable directory. (The proper
-directory structure to use is actually an area of active debate.)
+### Step 1. Add a test file
+
+The first step is to create a Rust source file somewhere in the
+[`src/test/ui`] tree.
+When creating a test, do your best to find a good location and name (see [Test
+organization](ui.md#test-organization) for more).
+Since naming is the hardest part of development, everything should be downhill
+from here!
+
+Let's place our async test at `src/test/ui/async-await/await-without-async.rs`:
+
+```rust,ignore
+// Check what happens when using await in a non-async fn.
+// edition:2018
+
+async fn foo() {}
+
+fn bar() {
+    foo().await
+}
+
+fn main() {}
+```
+
+A few things to notice about our test:
+
+* The top should start with a short comment that [explains what the test is
+  for](#explanatory_comment).
+* The `// edition:2018` comment is called a [header](headers.md) which provides
+  instructions to compiletest on how to build the test.
+  Here we need to set the edition for `async` to work (the default is 2015).
+* Following that is the source of the test.
+  Try to keep it succinct and to the point.
+  This may require some effort if you are trying to minimize an example from a
+  bug report.
+* We end this test with an empty `fn main` function.
+  This is because the default for UI tests is a `bin` crate-type,
+  and we don't want the "main not found" error in our test.
+  Alternatively, you could add `#![crate_type="lib"]`.
+
+### Step 2. Generate the expected output
+
+The next step is to create the expected output from the compiler.
+This can be done with the `--bless` option:
+
+```sh
+./x.py test src/test/ui/async-await/await-without-async.rs --bless
+```
+
+This will build the compiler (if it hasn't already been built), compile the
+test, and place the output of the compiler in a file called
+`src/test/ui/async-await/await-without-async.stderr`.
+
+However, this step will fail!
+You should see an error message, something like this:
+
+> error: /rust/src/test/ui/async-await/await-without-async.rs:7: unexpected
+> error: '7:10: 7:16: `await` is only allowed inside `async` functions and
+> blocks [E0728]'
+
+### Step 3. Add error annotations
+
+Every error needs to be annotated with a comment in the source with the text
+of the error.
+In this case, we can add the following comment to our test file:
+
+```rust,ignore
+fn bar() {
+    foo().await
+//~^ ERROR `await` is only allowed inside `async` functions and blocks
+}
+```
+
+The `//~^` squiggle caret comment tells compiletest that the error belongs to
+the previous line (more on this in the [Error
+annotations](ui.md#error-annotations) section).
+
+Save that, and run the test again:
+
+```sh
+./x.py test src/test/ui/async-await/await-without-async.rs
+```
+
+It should now pass, yay!
+
+### Step 4. Review the output
+
+Somewhat hand-in-hand with the previous step, you should inspect the `.stderr`
+file that was created to see if it looks like how you expect.
+If you are adding a new diagnostic message, now would be a good time to
+also consider how readable the message looks overall, particularly for
+people new to Rust.
+
+Our example `src/test/ui/async-await/await-without-async.stderr` file should
+look like this:
+
+```text
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/await-without-async.rs:7:10
+   |
+LL | fn bar() {
+   |    --- this is not `async`
+LL |     foo().await
+   |          ^^^^^^ only allowed inside `async` functions and blocks
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0728`.
+```
+
+You may notice some things look a little different than the regular
+compiler output.
+The `$DIR` removes the path information which will differ between systems.
+The `LL` values replace the line numbers.
+That helps avoid small changes in the source from triggering large diffs.
+See the [Normalization](ui.md#normalization) section for more.
+
+Around this stage, you may need to iterate over the last few steps a few times
+to tweak your test, re-bless the test, and re-review the output.
+
+### Step 5. Check other tests
+
+Sometimes when adding or changing a diagnostic message, this will affect
+other tests in the test suite.
+The final step before posting a PR is to check if you have affected anything else.
+Running the UI suite is usually a good start:
+
+```sh
+./x.py test src/test/ui
+```
+
+If other tests start failing, you may need to investigate what has changed
+and if the new output makes sense.
+You may also need to re-bless the output with the `--bless` flag.
 
 <a name="explanatory_comment"></a>
 
 ## Comment explaining what the test is about
 
-When you create a test file, **include a comment summarizing the point
-of the test at the start of the file**. This should highlight which
-parts of the test are more important, and what the bug was that the
-test is fixing. Citing an issue number is often very helpful.
+The first comment of a test file should **summarize the point
+of the test**, and highlight what is important about it.
+If there is an issue number associated with the test, include
+the issue number.
 
 This comment doesn't have to be super extensive. Just something like
 "Regression test for #18060: match arms were matching in the wrong
@@ -98,483 +193,3 @@ they let others know which parts of the test were important (often a
 test must be rewritten because it no longer tests what is was meant to
 test, and then it's useful to know what it *was* meant to test
 exactly).
-
-<a name="header_commands"></a>
-
-## Header commands: configuring rustc
-
-Header commands are special comments that the test runner knows how to
-interpret.  They must appear before the Rust source in the test. They
-are normally put after the short comment that explains the point of
-this test. For example, this test uses the `// compile-flags` command
-to specify a custom flag to give to rustc when the test is compiled:
-
-```rust,ignore
-// Test the behavior of `0 - 1` when overflow checks are disabled.
-
-// compile-flags: -C overflow-checks=off
-
-fn main() {
-    let x = 0 - 1;
-    ...
-}
-```
-
-### Ignoring tests
-
-These are used to ignore the test in some situations, which means the test won't
-be compiled or run.
-
-* `ignore-X` where `X` is a target detail or stage will ignore the
-  test accordingly (see below)
-* `only-X` is like `ignore-X`, but will *only* run the test on that
-  target or stage
-* `ignore-pretty` will not compile the pretty-printed test (this is
-  done to test the pretty-printer, but might not always work)
-* `ignore-test` always ignores the test
-* `ignore-lldb` and `ignore-gdb` will skip a debuginfo test on that
-  debugger.
-* `ignore-gdb-version` can be used to ignore the test when certain gdb
-  versions are used
-
-Some examples of `X` in `ignore-X`:
-
-* Architecture: `aarch64`, `arm`, `asmjs`, `mips`, `wasm32`, `x86_64`,
-  `x86`, ...
-* OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`,
-  `windows`, ...
-* Environment (fourth word of the target triple): `gnu`, `msvc`,
-  `musl`.
-* Pointer width: `32bit`, `64bit`.
-* Stage: `stage0`, `stage1`, `stage2`.
-* When cross compiling: `cross-compile`
-* When remote testing is used: `remote`
-* When debug-assertions are enabled: `debug`
-* When particular debuggers are being tested: `cdb`, `gdb`, `lldb`
-* Specific compare modes: `compare-mode-nll`, `compare-mode-polonius`
-
-### Other Header Commands
-
-Here is a list of other header commands. This list is not
-exhaustive. Header commands can generally be found by browsing the
-`TestProps` structure found in [`header.rs`] from the compiletest
-source.
-
-* `run-rustfix` for UI tests, indicates that the test produces
-  structured suggestions. The test writer should create a `.fixed`
-  file, which contains the source with the suggestions applied.
-  When the test is run, compiletest first checks that the correct
-  lint/warning is generated. Then, it applies the suggestion and
-  compares against `.fixed` (they must match). Finally, the fixed
-  source is compiled, and this compilation is required to succeed.
-  The `.fixed` file can also be generated automatically with the
-  `--bless` option, described in [this section][bless].
-* `rustfix-only-machine-applicable` is equivalent to `run-rustfix` except it
-  will only apply [`MachineApplicable`](../diagnostics.md#suggestions)
-  suggestions. `run-rustfix` will apply *all* suggestions. This should be used
-  if there is a mixture of different suggestion levels, and some of the
-  non-machine-applicable ones do not apply cleanly.
-* `min-gdb-version` specifies the minimum gdb version required for
-  this test; see also `ignore-gdb-version`
-* `min-lldb-version` specifies the minimum lldb version required for
-  this test
-* `rust-lldb` causes the lldb part of the test to only be run if the
-  lldb in use contains the Rust plugin
-* `no-system-llvm` causes the test to be ignored if the system llvm is used
-* `min-llvm-version` specifies the minimum llvm version required for
-  this test
-* `min-system-llvm-version` specifies the minimum system llvm version
-  required for this test; the test is ignored if the system llvm is in
-  use and it doesn't meet the minimum version.  This is useful when an
-  llvm feature has been backported to rust-llvm
-* `ignore-llvm-version` can be used to skip the test when certain LLVM
-  versions are used.  This takes one or two arguments; the first
-  argument is the first version to ignore.  If no second argument is
-  given, all subsequent versions are ignored; otherwise, the second
-  argument is the last version to ignore.
-* `build-pass` for UI tests, indicates that the test is supposed to
-  successfully compile and link, as opposed to the default where the test is
-  supposed to error out.
-* `compile-flags` passes extra command-line args to the compiler,
-  e.g. `compile-flags -g` which forces debuginfo to be enabled.
-* `edition` controls the edition the test should be compiled with
-  (defaults to 2015). Example usage: `// edition:2018`.
-* `should-fail` indicates that the test should fail; used for "meta
-  testing", where we test the compiletest program itself to check that
-  it will generate errors in appropriate scenarios. This header is
-  ignored for pretty-printer tests.
-* `gate-test-X` where `X` is a feature marks the test as "gate test"
-  for feature X.  Such tests are supposed to ensure that the compiler
-  errors when usage of a gated feature is attempted without the proper
-  `#![feature(X)]` tag.  Each unstable lang feature is required to
-  have a gate test.
-* `needs-profiler-support` - a profiler runtime is required, i.e.,
-  `profiler = true` in rustc's `config.toml`.
-* `needs-sanitizer-support` - a sanitizer runtime is required, i.e.,
-  `sanitizers = true` in rustc's `config.toml`.
-* `needs-sanitizer-{address,hwaddress,leak,memory,thread}` - indicates that
-  test requires a target with a support for AddressSanitizer, hardware-assisted
-  AddressSanitizer, LeakSanitizer, MemorySanitizer or ThreadSanitizer
-  respectively.
-* `error-pattern` checks the diagnostics just like the `ERROR` annotation
-  without specifying error line. This is useful when the error doesn't give
-  any span.
-* `incremental` runs the test with the `-C incremental` flag and an empty
-  incremental directory. This should be avoided when possible; you should use
-  an *incremental mode* test instead. Incremental mode tests support running
-  the compiler multiple times and verifying that it can load the generated
-  incremental cache. This flag is for specialized circumstances, like checking
-  the interaction of codegen unit partitioning with generating an incremental
-  cache.
-* `aux-build` is used to compile additional crates to link. Just pass it the
-  name of the source file. The source file should be in a directory called
-  `auxiliary` beside the test file. The aux crate will be built as a dylib if
-  possible (unless on a platform that does not support them, or
-  `no-prefer-dynamic` is specified in the aux file). The `-L` flag is used to
-  find the extern crates.
-* `aux-crate` is very similar to `aux-build`; however, it uses the `--extern`
-  flag to link to the extern crate. That allows you to specify the additional
-  syntax of the `--extern` flag, such as renaming a dependency. For example,
-  `// aux-crate:foo=bar.rs` will compile `auxiliary/bar.rs` and make it
-  available under then name `foo` within the test. This is similar to how
-  Cargo does dependency renaming.
-* `no-prefer-dynamic` will force an auxiliary crate to be built as an rlib
-  instead of a dylib. When specified in a test, it will remove the use of `-C
-  prefer-dynamic`. This can be useful in a variety of circumstances. For
-  example, it can prevent a proc-macro from being built with the wrong crate
-  type. Or if your test is specifically targeting behavior of other crate
-  types, it can be used to prevent building with the wrong crate type.
-* `force-host` will force the test to build for the host platform instead of
-  the target. This is useful primarily for auxiliary proc-macros, which need
-  to be loaded by the host compiler.
-* `pretty-mode` specifies the mode pretty-print tests should run in.
-  The default is `normal` if not specified.
-* `pretty-compare-only` causes a pretty test to only compare the
-  pretty-printed output. It will not try to compile the expanded output to
-  typecheck it. This is needed for a pretty-mode that does not expand to valid
-  Rust, or for other situations where the expanded output cannot be compiled.
-* `pretty-expanded` allows a pretty test to also run with
-  `-Zunpretty=expanded` as a final step. It will also try to compile the
-  resulting output (without codegen). This is needed because not all code can
-  be compiled after being expanded. Pretty tests should specify this if they
-  can. An example where this cannot be used is if the test includes
-  `println!`. That macro expands to reference private internal functions of
-  the standard library that cannot be called directly without the
-  `fmt_internals` feature gate.
-
-  More history about this may be found in [#23616].
-* `pp-exact` is used to ensure a pretty-print test results in specific output.
-  If specified without a value, then it means the pretty-print output should
-  match the original source. If specified with a value, as in `//
-  pp-exact:foo.pp`, it will ensure that the pretty-printed output matches the
-  contents of the given file. Otherwise, if `pp-exact` is not specified, then
-  the pretty-printed output will be pretty-printed one more time, and the
-  output of the two pretty-printing rounds will be compared to ensure that the
-  pretty-printed output converges to a steady state.
-
-[`header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs
-[bless]: ./running.md#editing-and-updating-the-reference-files
-[#23616]: https://github.com/rust-lang/rust/issues/23616#issuecomment-484999901
-
-<a name="error_annotations"></a>
-
-## Error annotations
-
-Error annotations specify the errors that the compiler is expected to
-emit. They are "attached" to the line in source where the error is
-located. Error annotations are considered during tidy lints of line
-length and should be formatted according to tidy requirements. You may
-use an error message prefix sub-string if necessary to meet line length
-requirements. Make sure that the text is long enough for the error
-message to be self-documenting.
-
-The error annotation definition and source line definition association
-is defined with the following set of idioms:
-
-* `~`: Associates the following error level and message with the
-  current line
-* `~|`: Associates the following error level and message with the same
-  line as the previous comment
-* `~^`: Associates the following error level and message with the
-  previous error annotation line. Each caret (`^`) that you add adds
-  a line to this, so `~^^^` is three lines above the error annotation
-  line.
-
-### Error annotation examples
-
-Here are examples of error annotations on different lines of UI test
-source.
-
-#### Positioned on error line
-
-Use the `//~ ERROR` idiom:
-
-```rust,ignore
-fn main() {
-    let x = (1, 2, 3);
-    match x {
-        (_a, _x @ ..) => {} //~ ERROR `_x @` is not allowed in a tuple
-        _ => {}
-    }
-}
-```
-
-#### Positioned below error line
-
-Use the `//~^` idiom with number of carets in the string to indicate the
-number of lines above.  In the example below, the error line is four
-lines above the error annotation line so four carets are included in
-the annotation.
-
-```rust,ignore
-fn main() {
-    let x = (1, 2, 3);
-    match x {
-        (_a, _x @ ..) => {}  // <- the error is on this line
-        _ => {}
-    }
-}
-//~^^^^ ERROR `_x @` is not allowed in a tuple
-```
-
-#### Use same error line as defined on error annotation line above
-
-Use the `//~|` idiom to define the same error line as
-the error annotation line above:
-
-```rust,ignore
-struct Binder(i32, i32, i32);
-
-fn main() {
-    let x = Binder(1, 2, 3);
-    match x {
-        Binder(_a, _x @ ..) => {}  // <- the error is on this line
-        _ => {}
-    }
-}
-//~^^^^ ERROR `_x @` is not allowed in a tuple struct
-//~| ERROR this pattern has 1 field, but the corresponding tuple struct has 3 fields [E0023]
-```
-
-#### When error line cannot be specified
-
-Let's think about this test:
-
-```rust,ignore
-fn main() {
-    let a: *const [_] = &[1, 2, 3];
-    unsafe {
-        let _b = (*a)[3];
-    }
-}
-```
-
-We want to ensure this shows "index out of bounds" but we cannot use the `ERROR` annotation
-since the error doesn't have any span. Then it's time to use the `error-pattern`:
-
-```rust,ignore
-// error-pattern: index out of bounds
-fn main() {
-    let a: *const [_] = &[1, 2, 3];
-    unsafe {
-        let _b = (*a)[3];
-    }
-}
-```
-
-But for strict testing, try to use the `ERROR` annotation as much as possible.
-
-#### Error levels
-
-The error levels that you can have are:
-
-1. `ERROR`
-2. `WARNING`
-3. `NOTE`
-4. `HELP` and `SUGGESTION`[^sugg-placement]
-
-[^sugg-placement]: **Note**: `SUGGESTION` must follow immediately after `HELP`.
-
-## Revisions
-
-Certain classes of tests support "revisions" (as of <!-- date: 2021-02 --> February 2021,
-this includes compile-fail, run-fail, and incremental, though
-incremental tests are somewhat different). Revisions allow a single test file to
-be used for multiple tests. This is done by adding a special header at the top
-of the file:
-
-```rust
-// revisions: foo bar baz
-```
-
-This will result in the test being compiled (and tested) three times,
-once with `--cfg foo`, once with `--cfg bar`, and once with `--cfg
-baz`. You can therefore use `#[cfg(foo)]` etc within the test to tweak
-each of these results.
-
-You can also customize headers and expected error messages to a particular
-revision. To do this, add `[foo]` (or `bar`, `baz`, etc) after the `//`
-comment, like so:
-
-```rust
-// A flag to pass in only for cfg `foo`:
-//[foo]compile-flags: -Z verbose
-
-#[cfg(foo)]
-fn test_foo() {
-    let x: usize = 32_u32; //[foo]~ ERROR mismatched types
-}
-```
-
-Note that not all headers have meaning when customized to a revision.
-For example, the `ignore-test` header (and all "ignore" headers)
-currently only apply to the test as a whole, not to particular
-revisions. The only headers that are intended to really work when
-customized to a revision are error patterns and compiler flags.
-
-<a name="ui"></a>
-
-## Guide to the UI tests
-
-The UI tests are intended to capture the compiler's complete output,
-so that we can test all aspects of the presentation. They work by
-compiling a file (e.g., [`ui/hello_world/main.rs`][hw-main]),
-capturing the output, and then applying some normalization (see
-below). This normalized result is then compared against reference
-files named `ui/hello_world/main.stderr` and
-`ui/hello_world/main.stdout`. If either of those files doesn't exist,
-the output must be empty (that is actually the case for
-[this particular test][hw]). If the test run fails, we will print out
-the current output, but it is also saved in
-`build/<target-triple>/test/ui/hello_world/main.stdout` (this path is
-printed as part of the test failure message), so you can run `diff`
-and so forth.
-
-[hw-main]: https://github.com/rust-lang/rust/blob/master/src/test/ui/hello_world/main.rs
-[hw]: https://github.com/rust-lang/rust/blob/master/src/test/ui/hello_world/
-
-We now have a ton of UI tests and some directories have too many entries.
-This is a problem because it isn't editor/IDE friendly and GitHub UI won't
-show more than 1000 entries. To resolve it and organize semantic structure,
-we have a tidy check to ensure the number of entries is less than 1000.
-However, since `src/test/ui` (UI test root directory) and
-`src/test/ui/issues` directories have more than 1000 entries,
-we set a different limit for each directories. So, please
-avoid putting a new test there and try to find a more relevant place.
-For example, if your test is related to closures, you should put it in
-`src/test/ui/closures`. If you're not sure where is the best place,
-it's still okay to add to `src/test/ui/issues/`. When you reach the limit,
-you could increase it by tweaking [here][ui test tidy].
-
-[ui test tidy]: https://github.com/rust-lang/rust/blob/master/src/tools/tidy/src/ui_tests.rs
-
-### Tests that do not result in compile errors
-
-By default, a UI test is expected **not to compile** (in which case,
-it should contain at least one `//~ ERROR` annotation). However, you
-can also make UI tests where compilation is expected to succeed, and
-you can even run the resulting program. Just add one of the following
-[header commands](#header_commands):
-
-- `// check-pass` - compilation should succeed but skip codegen
-  (which is expensive and isn't supposed to fail in most cases)
-- `// build-pass` – compilation and linking should succeed but do
-  not run the resulting binary
-- `// run-pass` – compilation should succeed and we should run the
-  resulting binary
-
-### Output Normalization
-
-The compiler output is normalized to eliminate output difference between
-platforms, mainly about filenames.
-
-The following strings replace their corresponding values:
-
-- `$DIR`: The directory where the test is defined.
-  - Example: `/path/to/rust/src/test/ui/error-codes`
-- `$SRC_DIR`: The root source directory.
-  - Example: `/path/to/rust/src`
-- `$TEST_BUILD_DIR`: The base directory where the test's output goes.
-  - Example: `/path/to/rust/build/x86_64-unknown-linux-gnu/test/ui`
-
-Additionally, the following changes are made:
-
-- Line and column numbers for paths in `$SRC_DIR` are replaced with `LL:CC`.
-  For example, `/path/to/rust/library/core/src/clone.rs:122:8` is replaced with
-  `$SRC_DIR/core/src/clone.rs:LL:COL`.
-
-  Note: The line and column numbers for `-->` lines pointing to the test are
-  *not* normalized, and left as-is. This ensures that the compiler continues
-  to point to the correct location, and keeps the stderr files readable.
-  Ideally all line/column information would be retained, but small changes to
-  the source causes large diffs, and more frequent merge conflicts and test
-  errors. See also `-Z ui-testing` below which applies additional line number
-  normalization.
-- `\t` is replaced with an actual tab character.
-- Error line annotations like `// ~ERROR some message` are removed.
-- Backslashes (`\`) are converted to forward slashes (`/`) within paths (using
-  a heuristic). This helps normalize differences with Windows-style paths.
-- CRLF newlines are converted to LF.
-
-Additionally, the compiler is run with the `-Z ui-testing` flag which causes
-the compiler itself to apply some changes to the diagnostic output to make it
-more suitable for UI testing. For example, it will anonymize line numbers in
-the output (line numbers prefixing each source line are replaced with `LL`).
-In extremely rare situations, this mode can be disabled with the header
-command `// compile-flags: -Z ui-testing=no`.
-
-Sometimes these built-in normalizations are not enough. In such cases, you
-may provide custom normalization rules using the header commands, e.g.
-
-```rust
-// normalize-stdout-test: "foo" -> "bar"
-// normalize-stderr-32bit: "fn\(\) \(32 bits\)" -> "fn\(\) \($$PTR bits\)"
-// normalize-stderr-64bit: "fn\(\) \(64 bits\)" -> "fn\(\) \($$PTR bits\)"
-```
-
-This tells the test, on 32-bit platforms, whenever the compiler writes
-`fn() (32 bits)` to stderr, it should be normalized to read `fn() ($PTR bits)`
-instead. Similar for 64-bit. The replacement is performed by regexes using
-default regex flavor provided by `regex` crate.
-
-The corresponding reference file will use the normalized output to test both
-32-bit and 64-bit platforms:
-
-```text
-...
-   |
-   = note: source type: fn() ($PTR bits)
-   = note: target type: u16 (16 bits)
-...
-```
-
-Please see [`ui/transmute/main.rs`][mrs] and [`main.stderr`][] for a
-concrete usage example.
-
-[mrs]: https://github.com/rust-lang/rust/blob/master/src/test/ui/transmute/main.rs
-[`main.stderr`]: https://github.com/rust-lang/rust/blob/master/src/test/ui/transmute/main.stderr
-
-Besides `normalize-stderr-32bit` and `-64bit`, one may use any target
-information or stage supported by [`ignore-X`](#ignoring-tests) here as well (e.g.
-`normalize-stderr-windows` or simply `normalize-stderr-test` for unconditional
-replacement).
-
-## Input Normalization
-
-Sometimes, you want to normalize the inputs to a test. For example, you may
-want to pass `// compile-flags: --x=y.rs`, where y.rs is some file in the test
-directory. In this case you can use input normalization. The following strings
-are replaced in header inputs:
-
-- {{cwd}}: The directory where compiletest is run from. This may not be the
-  root of the checkout, so you should avoid using it where possible.
-  - Examples: `/path/to/rust`, `/path/to/build/root`
-- {{src-base}}: The directory where the test is defined. This is equivalent to
-  `$DIR` for output normalization.
-  - Example: `/path/to/rust/src/test/ui/error-codes`
-- {{build-base}}: The base directory where the test's output goes. This is
-  equivalent to `$TEST_BUILD_DIR` for output normalization.
-  - Example: `/path/to/rust/build/x86_64-unknown-linux-gnu/test/ui`
-
-See [`src/test/ui/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/a5029ac0ab372aec515db2e718da6d7787f3d122/src/test/ui/commandline-argfile.rs)
-for an example of a test that uses input normalization.
