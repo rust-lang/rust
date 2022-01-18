@@ -1851,7 +1851,7 @@ rustc_index::newtype_index! {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PlaceRef<'tcx> {
     pub local: Local,
     pub projection: &'tcx [PlaceElem<'tcx>],
