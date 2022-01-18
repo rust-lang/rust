@@ -322,11 +322,21 @@ pub fn check(path: &Path, bad: &mut bool) {
                     }
                 }
             }
+
+            // Check for comments explaining unsafe code.
+            //
+            // Currently we only check `core`, but this list may be expanded in the future.
+            let check_for_undocumented_unsafe = vec!["core"];
             let is_test = || file.components().any(|c| c.as_os_str() == "tests");
-            // for now we just check libcore
             if line.contains("unsafe {") && !line.trim().starts_with("//") && !last_safety_comment {
-                if file.components().any(|c| c.as_os_str() == "core") && !is_test() {
-                    suppressible_tidy_err!(err, skip_undocumented_unsafe, "undocumented unsafe");
+                for path in check_for_undocumented_unsafe {
+                    if file.components().any(|c| c.as_os_str() == path) && !is_test() {
+                        suppressible_tidy_err!(
+                            err,
+                            skip_undocumented_unsafe,
+                            "undocumented unsafe"
+                        );
+                    }
                 }
             }
             if line.contains("// SAFETY:") {
@@ -336,6 +346,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             } else {
                 last_safety_comment = false;
             }
+
             if (line.starts_with("// Copyright")
                 || line.starts_with("# Copyright")
                 || line.starts_with("Copyright"))
