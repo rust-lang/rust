@@ -3,7 +3,7 @@ use super::{
     NodeInfo, PostOrderId, TrackedValue, TrackedValueIndex,
 };
 use hir::{
-    intravisit::{self, NestedVisitorMap, Visitor},
+    intravisit::{self, Visitor},
     Body, Expr, ExprKind, Guard, HirId,
 };
 use rustc_data_structures::fx::FxHashMap;
@@ -189,7 +189,6 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::InlineAsm(..)
-            | ExprKind::LlvmInlineAsm(..)
             | ExprKind::Struct(..)
             | ExprKind::Repeat(..)
             | ExprKind::Yield(..)
@@ -213,12 +212,6 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         let mut reinit = None;
         match expr.kind {
@@ -378,7 +371,6 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
             | ExprKind::InlineAsm(..)
             | ExprKind::Let(..)
             | ExprKind::Lit(..)
-            | ExprKind::LlvmInlineAsm(..)
             | ExprKind::Path(..)
             | ExprKind::Repeat(..)
             | ExprKind::Ret(..)
