@@ -425,7 +425,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                         // FIXME: perf problem described in #55921.
                         ui = ty::UniverseIndex::ROOT;
                         return self.canonicalize_const_var(
-                            CanonicalVarInfo { kind: CanonicalVarKind::Const(ui) },
+                            CanonicalVarInfo { kind: CanonicalVarKind::Const(ui, ct.ty) },
                             ct,
                         );
                     }
