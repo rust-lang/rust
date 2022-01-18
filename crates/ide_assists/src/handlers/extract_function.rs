@@ -4397,4 +4397,31 @@ fn $0fun_name(arg: &mut Foo) {
 "#,
         );
     }
+
+    #[test]
+    fn extract_function_copies_comments() {
+        check_assist(
+            extract_function,
+            r#"
+fn func() {
+    let i = 0;
+    $0
+    // comment here!
+    let x = 0;
+    $0
+}
+"#,
+            r#"
+fn func() {
+    let i = 0;
+    fun_name();
+}
+
+fn $0fun_name() {
+    // comment here!
+    let x = 0;
+}
+"#,
+        );
+    }
 }
