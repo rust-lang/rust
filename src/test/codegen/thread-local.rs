@@ -19,7 +19,7 @@ thread_local!(static A: Cell<u32> = const { Cell::new(1) });
 // CHECK-LABEL: @get
 #[no_mangle]
 fn get() -> u32 {
-    // CHECK: %0 = load i32, i32* bitcast ({{.*}} [[TLS]] to i32*)
+    // CHECK: %0 = load i32, i32* {{.*}}[[TLS]]{{.*}}
     // CHECK-NEXT: ret i32 %0
     A.with(|a| a.get())
 }
@@ -27,7 +27,7 @@ fn get() -> u32 {
 // CHECK-LABEL: @set
 #[no_mangle]
 fn set(v: u32) {
-    // CHECK: store i32 %0, i32* bitcast ({{.*}} [[TLS]] to i32*)
+    // CHECK: store i32 %0, i32* {{.*}}[[TLS]]{{.*}}
     // CHECK-NEXT: ret void
     A.with(|a| a.set(v))
 }
