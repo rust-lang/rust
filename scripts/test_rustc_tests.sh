@@ -98,6 +98,7 @@ rm src/test/ui/abi/stack-protector.rs # requires stack protector support
 rm src/test/incremental/issue-80691-bad-eval-cache.rs # wrong exit code
 rm src/test/incremental/spike-neg1.rs # errors out for some reason
 rm src/test/incremental/spike-neg2.rs # same
+rm src/test/ui/issues/issue-74564-if-expr-stack-overflow.rs # gives a stackoverflow before the backend runs
 
 rm src/test/incremental/thinlto/cgu_invalidated_when_import_{added,removed}.rs # requires LLVM
 
