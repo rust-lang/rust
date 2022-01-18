@@ -589,14 +589,16 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// let x: Result<u32, &str> = Err("abc");
-    /// assert_eq!(x.is_err_with(|x| x.len() > 1), true);
+    /// use std::io::{Error, ErrorKind};
     ///
-    /// let x: Result<u32, &str> = Err("");
-    /// assert_eq!(x.is_ok_with(|x| x.len() > 1), false);
+    /// let x: Result<u32, Error> = Err(Error::new(ErrorKind::NotFound, "!"));
+    /// assert_eq!(x.is_err_with(|x| x.kind() == ErrorKind::NotFound), true);
     ///
-    /// let x: Result<u32, &str> = Ok(123);
-    /// assert_eq!(x.is_ok_with(|x| x.len() > 1), false);
+    /// let x: Result<u32, Error> = Err(Error::new(ErrorKind::PermissionDenied, "!"));
+    /// assert_eq!(x.is_ok_with(|x| x.kind() == ErrorKind::NotFound), false);
+    ///
+    /// let x: Result<u32, Error> = Ok(123);
+    /// assert_eq!(x.is_ok_with(|x| x.kind() == ErrorKind::NotFound), false);
     /// ```
     #[must_use]
     #[inline]
