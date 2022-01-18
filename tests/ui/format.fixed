@@ -73,4 +73,10 @@ fn main() {
     let _s: String = (&*v.join("\n")).to_string();
 
     format!("prepend {:+}", "s");
+
+    // Issue #8290
+    let x = "foo";
+    let _ = x.to_string();
+    let _ = format!("{x:?}"); // Don't lint on debug
+    let _ = x.to_string();
 }
