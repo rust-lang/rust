@@ -88,11 +88,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         switch_ty: Ty<'tcx>,
         options: &mut FxIndexMap<&'tcx ty::Const<'tcx>, u128>,
     ) -> bool {
-        let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
-            Some(match_pair) => match_pair,
-            _ => {
-                return false;
-            }
+        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
+            return false;
         };
 
         match *match_pair.pattern.kind {

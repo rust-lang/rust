@@ -1000,46 +1000,45 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // `fn foo<'a>() -> MyAnonTy<'a> { ... }`
                 //          ^                 ^this gets resolved in the current scope
                 for lifetime in lifetimes {
-                    if let hir::GenericArg::Lifetime(lifetime) = lifetime {
-                        self.visit_lifetime(lifetime);
+                    let hir::GenericArg::Lifetime(lifetime) = lifetime else {
+                        continue
+                    };
+                    self.visit_lifetime(lifetime);
 
-                        // Check for predicates like `impl for<'a> Trait<impl OtherTrait<'a>>`
-                        // and ban them. Type variables instantiated inside binders aren't
-                        // well-supported at the moment, so this doesn't work.
-                        // In the future, this should be fixed and this error should be removed.
-                        let def = self.map.defs.get(&lifetime.hir_id).cloned();
-                        if let Some(Region::LateBound(_, _, def_id, _)) = def {
-                            if let Some(def_id) = def_id.as_local() {
-                                let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                                // Ensure that the parent of the def is an item, not HRTB
-                                let parent_id = self.tcx.hir().get_parent_node(hir_id);
-                                // FIXME(cjgillot) Can this check be replaced by
-                                // `let parent_is_item = parent_id.is_owner();`?
-                                let parent_is_item =
-                                    if let Some(parent_def_id) = parent_id.as_owner() {
-                                        matches!(
-                                            self.tcx.hir().krate().owners.get(parent_def_id),
-                                            Some(Some(_)),
-                                        )
-                                    } else {
-                                        false
-                                    };
+                    // Check for predicates like `impl for<'a> Trait<impl OtherTrait<'a>>`
+                    // and ban them. Type variables instantiated inside binders aren't
+                    // well-supported at the moment, so this doesn't work.
+                    // In the future, this should be fixed and this error should be removed.
+                    let def = self.map.defs.get(&lifetime.hir_id).cloned();
+                    let Some(Region::LateBound(_, _, def_id, _)) = def else {
+                        continue
+                    };
+                    let Some(def_id) = def_id.as_local() else {
+                        continue
+                    };
+                    let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+                    // Ensure that the parent of the def is an item, not HRTB
+                    let parent_id = self.tcx.hir().get_parent_node(hir_id);
+                    // FIXME(cjgillot) Can this check be replaced by
+                    // `let parent_is_item = parent_id.is_owner();`?
+                    let parent_is_item = if let Some(parent_def_id) = parent_id.as_owner() {
+                        matches!(self.tcx.hir().krate().owners.get(parent_def_id), Some(Some(_)),)
+                    } else {
+                        false
+                    };
 
-                                if !parent_is_item {
-                                    if !self.trait_definition_only {
-                                        struct_span_err!(
-                                            self.tcx.sess,
-                                            lifetime.span,
-                                            E0657,
-                                            "`impl Trait` can only capture lifetimes \
-                                                bound at the fn or impl level"
-                                        )
-                                        .emit();
-                                    }
-                                    self.uninsert_lifetime_on_error(lifetime, def.unwrap());
-                                }
-                            }
+                    if !parent_is_item {
+                        if !self.trait_definition_only {
+                            struct_span_err!(
+                                self.tcx.sess,
+                                lifetime.span,
+                                E0657,
+                                "`impl Trait` can only capture lifetimes \
+                                    bound at the fn or impl level"
+                            )
+                            .emit();
                         }
+                        self.uninsert_lifetime_on_error(lifetime, def.unwrap());
                     }
                 }
 
