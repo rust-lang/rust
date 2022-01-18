@@ -91,6 +91,7 @@
     - [MIR passes: getting the MIR for a function](./mir/passes.md)
 - [Identifiers in the Compiler](./identifiers.md)
 - [Closure expansion](./closure.md)
+- [Inline assembly](./asm.md)
 
 # Analysis
 
