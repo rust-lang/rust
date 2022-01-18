@@ -1,13 +1,5 @@
-error: `~const` is not allowed here
-  --> $DIR/const-drop-fail.rs:27:35
-   |
-LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   |                                   ^^^^^^^^
-   |
-   = note: only allowed on bounds on traits' associated types and functions, const fns, const impls and its associated functions
-
 error[E0277]: the trait bound `NonTrivialDrop: Drop` is not satisfied
-  --> $DIR/const-drop-fail.rs:45:5
+  --> $DIR/const-drop-fail.rs:44:5
    |
 LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
@@ -16,50 +8,51 @@ LL |     NonTrivialDrop,
    |     ^^^^^^^^^^^^^^ the trait `Drop` is not implemented for `NonTrivialDrop`
    |
 note: required by a bound in `check`
-  --> $DIR/const-drop-fail.rs:36:19
+  --> $DIR/const-drop-fail.rs:35:19
    |
 LL | const fn check<T: ~const Drop>(_: T) {}
    |                   ^^^^^^^^^^^ required by this bound in `check`
 
-error[E0277]: the trait bound `ConstImplWithDropGlue: Drop` is not satisfied
-  --> $DIR/const-drop-fail.rs:47:5
+error[E0277]: the trait bound `NonTrivialDrop: Drop` is not satisfied in `ConstImplWithDropGlue`
+  --> $DIR/const-drop-fail.rs:46:5
    |
 LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
 ...
 LL |     ConstImplWithDropGlue(NonTrivialDrop),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Drop` is not implemented for `ConstImplWithDropGlue`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `ConstImplWithDropGlue`, the trait `Drop` is not implemented for `NonTrivialDrop`
    |
+note: required because it appears within the type `ConstImplWithDropGlue`
+  --> $DIR/const-drop-fail.rs:17:8
+   |
+LL | struct ConstImplWithDropGlue(NonTrivialDrop);
+   |        ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check`
-  --> $DIR/const-drop-fail.rs:36:19
+  --> $DIR/const-drop-fail.rs:35:19
    |
 LL | const fn check<T: ~const Drop>(_: T) {}
    |                   ^^^^^^^^^^^ required by this bound in `check`
 
 error[E0277]: the trait bound `NonTrivialDrop: A` is not satisfied
-  --> $DIR/const-drop-fail.rs:49:5
+  --> $DIR/const-drop-fail.rs:48:5
    |
-LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `A` is not implemented for `NonTrivialDrop`
-   |
-note: required by a bound in `ConstDropImplWithBounds`
-  --> $DIR/const-drop-fail.rs:27:35
-   |
-LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   |                                   ^^^^^^^^ required by this bound in `ConstDropImplWithBounds`
-
-error[E0277]: the trait bound `NonTrivialDrop: A` is not satisfied
-  --> $DIR/const-drop-fail.rs:49:5
-   |
+LL |         const _: () = check($exp);
+   |                       ----- required by a bound introduced by this call
+...
 LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `A` is not implemented for `NonTrivialDrop`
    |
-note: required by a bound in `ConstDropImplWithBounds`
-  --> $DIR/const-drop-fail.rs:27:35
+note: required because of the requirements on the impl of `Drop` for `ConstDropImplWithBounds<NonTrivialDrop>`
+  --> $DIR/const-drop-fail.rs:29:25
    |
-LL | struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-   |                                   ^^^^^^^^ required by this bound in `ConstDropImplWithBounds`
+LL | impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
+   |                         ^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `check`
+  --> $DIR/const-drop-fail.rs:35:19
+   |
+LL | const fn check<T: ~const Drop>(_: T) {}
+   |                   ^^^^^^^^^^^ required by this bound in `check`
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

@@ -24,8 +24,7 @@ trait A { fn a() { println!("A"); } }
 
 impl A for NonTrivialDrop {}
 
-struct ConstDropImplWithBounds<T: ~const A>(PhantomData<T>);
-//~^ ERROR `~const` is not allowed
+struct ConstDropImplWithBounds<T: A>(PhantomData<T>);
 
 impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
     fn drop(&mut self) {
@@ -48,7 +47,6 @@ check_all! {
     //~^ ERROR the trait bound
     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
     //~^ ERROR the trait bound
-    //~| ERROR the trait bound
 }
 
 fn main() {}
