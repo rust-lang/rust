@@ -20,7 +20,7 @@ assert-css: (".srclink", {"text-decoration": "underline solid rgb(56, 115, 173)"
 
 assert-css: ("#top-doc-prose-title", {"color": "rgb(0, 0, 0)"})
 
-assert-css: (".sidebar a", {"color": "rgb(0, 0, 0)"})
+assert-css: (".sidebar a", {"color": "rgb(56, 115, 173)"})
 assert-css: (".in-band a", {"color": "rgb(0, 0, 0)"})
 
 // We move the cursor over the "Implementations" title so the anchor is displayed.

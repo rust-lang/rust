@@ -1,8 +1,14 @@
 goto: file://|DOC_PATH|/test_docs/index.html
+show-text: true
+local-storage: {"rustdoc-theme": "light"}
+// We reload the page so the local storage settings are being used.
+reload:
+
 assert-text: (".sidebar > .location", "Crate test_docs")
 // In modules, we only have one "location" element.
 assert-count: (".sidebar .location", 1)
-assert-text: (".sidebar-elems > #all-types", "See all test_docs's items")
+assert-text: ("#all-types", "All Items")
+assert-css: ("#all-types", {"color": "rgb(56, 115, 173)"})
 // We check that we have the crates list and that the "current" on is "test_docs".
 assert-text: (".sidebar-elems .crate > ul > li > a.current", "test_docs")
 // And we're also supposed to have the list of items in the current module.
@@ -24,13 +30,14 @@ assert-count: (".sidebar .location", 2)
 assert-false: ".sidebar-elems > .crate"
 
 click: ".sidebar-links a"
-assert-property: ("html", {"scrollTop": "389"})
+assert-property-false: ("html", {"scrollTop": "0"})
 
-click: ".sidebar h2.location"
+click: ".sidebar h2.location a"
 assert-property: ("html", {"scrollTop": "0"})
 
 // We now go back to the crate page to click on the "lib2" crate link.
 goto: file://|DOC_PATH|/test_docs/index.html
+assert-css: (".sidebar-elems .crate > ul > li:first-child > a", {"color": "rgb(56, 115, 173)"})
 click: ".sidebar-elems .crate > ul > li:first-child > a"
 
 // PAGE: lib2/index.html
@@ -51,8 +58,7 @@ click: "#functions + .item-table .item-left > a"
 // In items containing no items (like functions or constants) and in modules, we have one
 // "location" elements.
 assert-count: (".sidebar .location", 1)
-// There is a "<br>" tag between "in" and "lib2", but it doesn't count as a space.
-assert-text: (".sidebar .sidebar-elems .location", "Other items inlib2")
+assert-text: (".sidebar .sidebar-elems .location", "In lib2")
 // We check that we don't have the crate list.
 assert-false: ".sidebar-elems > .crate"
 

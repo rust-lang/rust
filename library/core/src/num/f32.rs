@@ -675,7 +675,7 @@ impl f32 {
     /// Returns the maximum of the two numbers.
     ///
     /// Follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs.
-    /// This matches the behavior of libm’s fmin.
+    /// This matches the behavior of libm’s fmax.
     ///
     /// ```
     /// let x = 1.0f32;

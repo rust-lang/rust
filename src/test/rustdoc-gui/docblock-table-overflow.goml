@@ -4,7 +4,7 @@ goto: file://|DOC_PATH|/lib2/long_table/struct.Foo.html
 size: (1100, 800)
 // Logically, the ".docblock" and the "<p>" should have the same scroll width.
 compare-elements-property: (".top-doc .docblock", ".top-doc .docblock > p", ["scrollWidth"])
-assert-property: (".top-doc .docblock", {"scrollWidth": "816"})
+assert-property: (".top-doc .docblock", {"scrollWidth": "801"})
 // However, since there is overflow in the <table>, its scroll width is bigger.
 assert-property: (".top-doc .docblock table", {"scrollWidth": "1573"})
 
@@ -16,6 +16,6 @@ compare-elements-property: (
     "#implementations + details .docblock > p",
     ["scrollWidth"],
 )
-assert-property: ("#implementations + details .docblock", {"scrollWidth": "816"})
+assert-property: ("#implementations + details .docblock", {"scrollWidth": "801"})
 // However, since there is overflow in the <table>, its scroll width is bigger.
 assert-property: ("#implementations + details .docblock table", {"scrollWidth": "1573"})

@@ -139,21 +139,45 @@ impl<'a> Parser<'a> {
         style: PathStyle,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, Path> {
-        maybe_whole!(self, NtPath, |path| {
+        let reject_generics_if_mod_style = |parser: &Parser<'_>, path: &Path| {
+            // Ensure generic arguments don't end up in attribute paths, such as:
+            //
+            //     macro_rules! m {
+            //         ($p:path) => { #[$p] struct S; }
+            //     }
+            //
+            //     m!(inline<u8>); //~ ERROR: unexpected generic arguments in path
+            //
             if style == PathStyle::Mod && path.segments.iter().any(|segment| segment.args.is_some())
             {
-                self.struct_span_err(
-                    path.segments
-                        .iter()
-                        .filter_map(|segment| segment.args.as_ref())
-                        .map(|arg| arg.span())
-                        .collect::<Vec<_>>(),
-                    "unexpected generic arguments in path",
-                )
-                .emit();
+                parser
+                    .struct_span_err(
+                        path.segments
+                            .iter()
+                            .filter_map(|segment| segment.args.as_ref())
+                            .map(|arg| arg.span())
+                            .collect::<Vec<_>>(),
+                        "unexpected generic arguments in path",
+                    )
+                    .emit();
             }
+        };
+
+        maybe_whole!(self, NtPath, |path| {
+            reject_generics_if_mod_style(self, &path);
             path
         });
+
+        if let token::Interpolated(nt) = &self.token.kind {
+            if let token::NtTy(ty) = &**nt {
+                if let ast::TyKind::Path(None, path) = &ty.kind {
+                    let path = path.clone();
+                    self.bump();
+                    reject_generics_if_mod_style(self, &path);
+                    return Ok(path);
+                }
+            }
+        }
 
         let lo = self.token.span;
         let mut segments = Vec::new();

@@ -1,4 +1,5 @@
-// only-i686-pc-windows-msvc
+// only-x86
+// only-windows
 // compile-flags: --crate-type lib --emit link
 #![allow(clashing_extern_declarations)]
 #![feature(raw_dylib)]

@@ -169,8 +169,7 @@ h1.fqn {
 	section hierarchies. */
 h2,
 .top-doc h3,
-.top-doc h4,
-.sidebar .others h3 {
+.top-doc h4 {
 	border-bottom: 1px solid;
 }
 h3.code-header {
@@ -206,7 +205,11 @@ div.impl-items > div {
 }
 
 h1, h2, h3, h4, h5, h6,
-.sidebar, a.source, .search-input, .search-results .result-name,
+.sidebar,
+.mobile-topbar,
+a.source,
+.search-input,
+.search-results .result-name,
 .content table td:first-child > a,
 .item-left > a,
 .out-of-band,
@@ -259,6 +262,11 @@ textarea {
 	color: inherit;
 	font: inherit;
 	margin: 0;
+}
+
+button {
+	/* Buttons on Safari have different default padding than other platforms. Make them the same. */
+	padding: 1px 6px;
 }
 
 /* end tweaks for normalize.css 8 */
@@ -359,13 +367,23 @@ nav.sub {
 }
 
 .sidebar {
-	width: 200px;
+	font-size: 0.9rem;
+	width: 250px;
+	min-width: 200px;
 	overflow-y: scroll;
 	position: sticky;
-	min-width: 200px;
 	height: 100vh;
 	top: 0;
 	left: 0;
+}
+
+.sidebar-elems,
+.sidebar > .location {
+	padding-left: 24px;
+}
+
+.sidebar .location {
+	overflow-wrap: anywhere;
 }
 
 .rustdoc.source .sidebar {
@@ -396,6 +414,10 @@ nav.sub {
 	visibility: visible;
 }
 
+#all-types {
+	margin-top: 1em;
+}
+
 /* Improve the scrollbar display on firefox */
 * {
 	scrollbar-width: initial;
@@ -415,46 +437,26 @@ nav.sub {
 	-webkit-box-shadow: inset 0;
 }
 
-.sidebar .block > ul > li {
-	margin-right: -10px;
-}
-
 /* Everything else */
 
 .hidden {
 	display: none !important;
 }
 
-.logo-container {
+.sidebar .logo-container {
 	display: flex;
 	margin-top: 10px;
 	margin-bottom: 10px;
 	justify-content: center;
 }
 
+.version {
+	overflow-wrap: break-word;
+}
+
 .logo-container > img {
 	height: 100px;
 	width: 100px;
-}
-
-.sidebar .location {
-	border: 1px solid;
-	font-size: 1.0625rem;
-	margin: 30px 10px 20px 10px;
-	text-align: center;
-	word-wrap: break-word;
-	font-weight: inherit;
-	padding: 0;
-}
-
-.sidebar .version {
-	font-size: 0.9375rem;
-	text-align: center;
-	border-bottom: 1px solid;
-	overflow-wrap: break-word;
-	overflow-wrap: anywhere;
-	word-wrap: break-word; /* deprecated */
-	word-break: break-word; /* Chrome, non-standard */
 }
 
 .location:empty {
@@ -470,48 +472,45 @@ nav.sub {
 
 .block {
 	padding: 0;
-	margin-bottom: 14px;
-}
-.block h2, .block h3 {
-	text-align: center;
 }
 .block ul, .block li {
-	margin: 0 10px;
 	padding: 0;
 	list-style: none;
 }
 
 .block a {
 	display: block;
+	padding: 0.3em;
+	margin-left: -0.3em;
+
 	text-overflow: ellipsis;
 	overflow: hidden;
-	line-height: 15px;
-	padding: 7px 5px;
-	font-size: 0.875rem;
-	font-weight: 300;
-	transition: border 500ms ease-out;
 }
 
-.sidebar-title {
-	border-top: 1px solid;
-	border-bottom: 1px solid;
-	text-align: center;
-	font-size: 1.0625rem;
-	margin-bottom: 5px;
-	font-weight: inherit;
+.sidebar h2 {
+	border-bottom: none;
+	font-weight: 500;
 	padding: 0;
+	margin: 0;
+	margin-top: 1rem;
+	margin-bottom: 1rem;
 }
 
-.sidebar-links {
-	margin-bottom: 15px;
+.sidebar h3 {
+	font-size: 1.1rem;
+	font-weight: 500;
+	padding: 0;
+	margin: 0;
+	margin-top: 0.5rem;
+	margin-bottom: 0.25rem;
 }
 
-.sidebar-links > a {
-	padding-left: 10px;
-	width: 100%;
+.sidebar-links,
+.block {
+	margin-bottom: 2em;
 }
 
-.sidebar-menu {
+.mobile-topbar {
 	display: none;
 }
 
@@ -784,13 +783,12 @@ nav.sub {
 	margin-top: 0;
 }
 
-nav:not(.sidebar) {
+nav.sub {
 	flex-grow: 1;
-	border-bottom: 1px solid;
 	padding-bottom: 10px;
 	margin-bottom: 25px;
 }
-.source nav:not(.sidebar).sub {
+.source nav.sub {
 	margin-left: 32px;
 }
 nav.main {
@@ -1395,18 +1393,6 @@ pre.rust {
 	margin-left: 5px;
 }
 
-#all-types {
-	text-align: center;
-	border: 1px solid;
-	margin: 0 10px;
-	margin-bottom: 10px;
-	display: block;
-	border-radius: 7px;
-}
-#all-types > p {
-	margin: 5px 0;
-}
-
 #sidebar-toggle {
 	position: sticky;
 	top: 0;
@@ -1752,8 +1738,12 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 }
 
 @media (max-width: 700px) {
-	body {
+	.rustdoc {
 		padding-top: 0px;
+		/* Sidebar should overlay main content, rather than pushing main content to the right.
+		   Turn off `display: flex` on the body element. */
+		display: block;
+		scroll-margin-top: 45px;
 	}
 
 	main {
@@ -1761,132 +1751,108 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		padding-top: 0px;
 	}
 
-	/* Space is at a premium on mobile, so remove the theme-picker icon. */
-	#theme-picker {
-		display: none;
-		width: 0;
-	}
-
 	.rustdoc {
 		flex-direction: column;
 	}
 
-	.rustdoc:not(.source) > .sidebar {
-		width: 100%;
-		height: 45px;
-		min-height: 40px;
-		max-height: 45px;
+	/* Hide the logo and item name from the sidebar. Those are displayed
+	   in the mobile-topbar instead. */
+	.sidebar .sidebar-logo,
+	.sidebar .location {
+		display: none;
+	}
+
+	.sidebar-elems {
+		margin-top: 1em;
+	}
+
+	.sidebar {
+		position: fixed;
+		top: 45px;
+		/* Hide the sidebar offscreen while not in use. Doing this instead of display: none means
+		   the sidebar stays visible for screen readers, which is useful for navigation. */
+		left: -1000px;
+		margin-left: 0;
+		background-color: rgba(0,0,0,0);
 		margin: 0;
-		padding: 0 15px;
-		position: static;
+		padding: 0;
+		padding-left: 15px;
 		z-index: 11;
-		overflow-y: hidden;
+	}
+
+	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
+	   so don't bump down the main content or the sidebar. */
+	.source main,
+	.source .sidebar {
+		top: 0;
+		padding: 0;
+	}
+
+	.sidebar.shown,
+	.sidebar.expanded,
+	.sidebar:focus-within {
+		left: 0;
 	}
 
 	.rustdoc.source > .sidebar {
 		position: fixed;
-		top: 0;
-		left: 0;
 		margin: 0;
 		z-index: 11;
 		width: 0;
 	}
 
-	.sidebar.mobile {
-		position: sticky !important;
-		top: 0;
-		left: 0;
-		width: 100%;
-		margin-left: 0;
-		background-color: rgba(0,0,0,0);
+	.mobile-topbar .location {
+		border: none;
+		margin: 0;
+		margin-left: auto;
+		padding: 0.3em;
+		padding-right: 0.6em;
+		text-overflow: ellipsis;
+		overflow-x: hidden;
 	}
 
-	.sidebar > .location {
-		float: right;
-		margin: 0px;
-		margin-top: 2px;
-		padding: 3px 10px 1px 10px;
-		min-height: 39px;
-		background: inherit;
-		text-align: left;
-		font-size: 1.5rem;
+	.mobile-topbar .logo-container {
+		max-height: 45px;
 	}
 
-	.sidebar .location:empty {
-		padding: 0;
-	}
-
-	.rustdoc:not(.source) .sidebar .logo-container {
-		width: 35px;
-		height: 35px;
-		margin-top: 5px;
-		margin-bottom: 5px;
-		float: left;
-		margin-left: 50px;
-	}
-
-	.sidebar .logo-container > img {
+	.mobile-topbar .logo-container > img {
 		max-width: 35px;
 		max-height: 35px;
+		margin-left: 20px;
+		margin-top: 5px;
+		margin-bottom: 5px;
 	}
 
-	.sidebar-menu {
-		position: fixed;
+	.mobile-topbar {
+		display: flex;
+		flex-direction: row;
+		position: sticky;
 		z-index: 10;
 		font-size: 2rem;
 		cursor: pointer;
-		width: 45px;
+		height: 45px;
+		width: 100%;
 		left: 0;
 		top: 0;
-		text-align: center;
-		display: block;
-		border-bottom: 1px solid;
-		border-right: 1px solid;
-		height: 45px;
 	}
 
-	.rustdoc.source > .sidebar > .sidebar-menu {
+	.source .mobile-topbar {
 		display: none;
 	}
 
-	/* We do NOT hide this element so that alternative device readers still have this information
-	   available. */
-	.sidebar-elems {
-		position: fixed;
-		z-index: 1;
-		top: 45px;
-		bottom: 0;
-		width: 246px;
-		/* We move the sidebar to the left by its own width so it doesn't appear. */
-		left: -246px;
-		overflow-y: auto;
-		border-right: 1px solid;
-	}
-
-	.sidebar > .block.version {
-		overflow: hidden;
-		border-bottom: none;
-		margin-bottom: 0;
-		height: 100%;
-		padding-left: 12px;
-	}
-	.sidebar > .block.version > div.narrow-helper {
-		float: left;
-		width: 1px;
-		height: 100%;
-	}
-	.sidebar > .block.version > p {
-		/* hide Version text if too narrow */
-		margin: 0;
-		min-width: 55px;
-		/* vertically center */
-		display: flex;
-		align-items: center;
-		height: 100%;
+	.sidebar-menu-toggle {
+		width: 45px;
+		border: none;
 	}
 
 	.source nav:not(.sidebar).sub {
 		margin-left: 32px;
+	}
+
+	/* Space is at a premium on mobile, so remove the theme-picker icon. */
+	#theme-picker {
+		display: none;
+		width: 0;
 	}
 
 	.content {
@@ -1925,28 +1891,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		height: 50px;
 	}
 
-	.show-it, .sidebar-elems:focus-within {
-		z-index:  2;
-		left: 0;
-	}
-
-	.show-it > .block.items {
-		margin: 8px 0;
-	}
-
-	.show-it > .block.items > ul {
-		margin: 0;
-	}
-
-	.show-it > .block.items > ul > li {
-		text-align: center;
-		margin: 2px 0;
-	}
-
-	.show-it > .block.items > ul > li > a {
-		font-size: 1.3125rem;
-	}
-
 	/* Because of ios, we need to actually have a full height sidebar title so the
 	 * actual sidebar can show up. But then we need to make it transparent so we don't
 	 * hide content. The filler just allows to create the background for the sidebar
@@ -1965,10 +1909,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	#main-content > details.rustdoc-toggle > summary::before,
 	#main-content > div > details.rustdoc-toggle > summary::before {
 		left: -11px;
-	}
-
-	#all-types {
-		margin: 10px;
 	}
 
 	.sidebar.expanded #sidebar-toggle {

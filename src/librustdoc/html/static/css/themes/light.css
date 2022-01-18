@@ -30,7 +30,7 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #F5F5F5;
 }
 
-.sidebar {
+.sidebar, .mobile-topbar, .sidebar-menu-toggle {
 	background-color: #F5F5F5;
 }
 
@@ -67,21 +67,6 @@ pre, .rustdoc.source .example-wrap {
 
 .source .sidebar {
 	background-color: #f1f1f1;
-}
-
-.sidebar .location {
-	border-color: #000;
-	background-color: #fff;
-	color: #333;
-}
-
-.sidebar .version {
-	border-bottom-color: #DDD;
-}
-
-.sidebar-title {
-	border-top-color: #777;
-	border-bottom-color: #777;
 }
 
 .block a:hover {
@@ -183,7 +168,8 @@ a.anchor,
 .small-section-header a,
 #source-sidebar a,
 pre.rust a,
-.sidebar a,
+.sidebar h2 a,
+.sidebar h3 a,
 .in-band a {
 	color: #000;
 }
@@ -438,13 +424,6 @@ kbd {
 	#theme-picker {
 		background: #fff;
 	}
-}
-
-#all-types {
-	background-color: #fff;
-}
-#all-types:hover {
-	background-color: #f9f9f9;
 }
 
 .search-results .result-name span.alias {

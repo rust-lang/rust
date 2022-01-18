@@ -57,7 +57,7 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #191f26;
 }
 
-.sidebar {
+.sidebar, .mobile-topbar, .sidebar-menu-toggle {
 	background-color: #14191f;
 }
 
@@ -100,27 +100,12 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #14191f;
 }
 
-.sidebar .location {
-	border-color: #000;
-	background-color: #0f1419;
-	color: #fff;
-}
-
 .sidebar-elems .location {
 	color: #ff7733;
 }
 
 .sidebar-elems .location a {
 	color: #fff;
-}
-
-.sidebar .version {
-	border-bottom-color: #424c57;
-}
-
-.sidebar-title {
-	border-top-color: #5c6773;
-	border-bottom-color: #5c6773;
 }
 
 .block a:hover {
@@ -228,7 +213,8 @@ a.anchor,
 .small-section-header a,
 #source-sidebar a,
 pre.rust a,
-.sidebar a,
+.sidebar h2 a,
+.sidebar h3 a,
 .in-band a {
 	color: #c5c5c5;
 }
@@ -579,13 +565,6 @@ kbd {
 	#theme-picker {
 		background: #0f1419;
 	}
-}
-
-#all-types {
-	background-color: #14191f;
-}
-#all-types:hover {
-	background-color: rgba(70, 70, 70, 0.33);
 }
 
 .search-results .result-name span.alias {

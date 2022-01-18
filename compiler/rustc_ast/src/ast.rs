@@ -2006,7 +2006,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
 pub enum InlineAsmTemplatePiece {
     String(String),
     Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
@@ -2211,7 +2211,7 @@ pub enum IsAuto {
     No,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
 #[derive(HashStable_Generic)]
 pub enum Unsafe {
     Yes(Span),
