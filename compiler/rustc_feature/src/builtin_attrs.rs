@@ -352,7 +352,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Runtime
     ungated!(
-        windows_subsystem, Normal,
+        windows_subsystem, CrateLevel,
         template!(NameValueStr: "windows|console"), FutureWarnFollowing
     ),
     ungated!(panic_handler, Normal, template!(Word), WarnFollowing), // RFC 2070
@@ -360,7 +360,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Code generation:
     ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing),
     ungated!(cold, Normal, template!(Word), WarnFollowing),
-    ungated!(no_builtins, Normal, template!(Word), WarnFollowing),
+    ungated!(no_builtins, CrateLevel, template!(Word), WarnFollowing),
     ungated!(target_feature, Normal, template!(List: r#"enable = "name""#), DuplicatesOk),
     ungated!(track_caller, Normal, template!(Word), WarnFollowing),
     gated!(

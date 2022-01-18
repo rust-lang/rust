@@ -423,6 +423,12 @@ fn settings(root_path: &str, suffix: &str, theme_names: Vec<String>) -> Result<S
             vec![
                 Setting::from(("use-system-theme", "Use system theme", true)),
                 Setting::Select {
+                    js_data_name: "theme",
+                    description: "Theme",
+                    default_value: "light",
+                    options: theme_names.clone(),
+                },
+                Setting::Select {
                     js_data_name: "preferred-dark-theme",
                     description: "Preferred dark theme",
                     default_value: "dark",

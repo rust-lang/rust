@@ -126,6 +126,7 @@ impl CheckAttrVisitor<'_> {
             // lint-only checks
             match attr.name_or_empty() {
                 sym::cold => self.check_cold(hir_id, attr, span, target),
+                sym::link => self.check_link(hir_id, attr, span, target),
                 sym::link_name => self.check_link_name(hir_id, attr, span, target),
                 sym::link_section => self.check_link_section(hir_id, attr, span, target),
                 sym::no_mangle => self.check_no_mangle(hir_id, attr, span, target),
@@ -1152,6 +1153,26 @@ impl CheckAttrVisitor<'_> {
                         )
                         .span_label(*span, "not a function")
                         .emit();
+                });
+            }
+        }
+    }
+
+    /// Checks if `#[link]` is applied to an item other than a foreign module.
+    fn check_link(&self, hir_id: HirId, attr: &Attribute, span: &Span, target: Target) {
+        match target {
+            Target::ForeignMod => {}
+            _ => {
+                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                    let mut diag = lint.build("attribute should be applied to an `extern` block");
+                    diag.warn(
+                        "this was previously accepted by the compiler but is \
+                         being phased out; it will become a hard error in \
+                         a future release!",
+                    );
+
+                    diag.span_label(*span, "not an `extern` block");
+                    diag.emit();
                 });
             }
         }

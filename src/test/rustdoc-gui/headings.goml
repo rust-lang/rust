@@ -154,3 +154,16 @@ assert-css: ("h2#top-doc-prose-title", {"font-size": "20.8px"})
 assert-css: ("h2#top-doc-prose-title", {"border-bottom-width": "1px"})
 assert-css: ("h3#top-doc-prose-sub-heading", {"font-size": "18.4px"})
 assert-css: ("h3#top-doc-prose-sub-heading", {"border-bottom-width": "1px"})
+
+goto: file://|DOC_PATH|/staged_api/struct.Foo.html
+show-text: true
+local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
+assert-css: (".since", {"color": "rgb(128, 128, 128)"})
+
+local-storage: {"rustdoc-theme": "dark", "rustdoc-use-system-theme": "false"}
+reload:
+assert-css: (".since", {"color": "rgb(128, 128, 128)"})
+
+local-storage: {"rustdoc-theme": "ayu", "rustdoc-use-system-theme": "false"}
+reload:
+assert-css: (".since", {"color": "rgb(128, 128, 128)"})

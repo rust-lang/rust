@@ -167,26 +167,26 @@ enum ProbeResult {
 /// T`, we could convert it to `*const T`, then autoref to `&*const T`. However, currently we do
 /// (at most) one of these. Either the receiver has type `T` and we convert it to `&T` (or with
 /// `mut`), or it has type `*mut T` and we convert it to `*const T`.
-#[derive(Debug, PartialEq, Clone)]
-pub enum AutorefOrPtrAdjustment<'tcx> {
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum AutorefOrPtrAdjustment {
     /// Receiver has type `T`, add `&` or `&mut` (it `T` is `mut`), and maybe also "unsize" it.
     /// Unsizing is used to convert a `[T; N]` to `[T]`, which only makes sense when autorefing.
     Autoref {
         mutbl: hir::Mutability,
 
-        /// Indicates that the source expression should be "unsized" to a target type. This should
-        /// probably eventually go away in favor of just coercing method receivers.
-        unsize: Option<Ty<'tcx>>,
+        /// Indicates that the source expression should be "unsized" to a target type.
+        /// This is special-cased for just arrays unsizing to slices.
+        unsize: bool,
     },
     /// Receiver has type `*mut T`, convert to `*const T`
     ToConstPtr,
 }
 
-impl<'tcx> AutorefOrPtrAdjustment<'tcx> {
-    fn get_unsize(&self) -> Option<Ty<'tcx>> {
+impl AutorefOrPtrAdjustment {
+    fn get_unsize(&self) -> bool {
         match self {
             AutorefOrPtrAdjustment::Autoref { mutbl: _, unsize } => *unsize,
-            AutorefOrPtrAdjustment::ToConstPtr => None,
+            AutorefOrPtrAdjustment::ToConstPtr => false,
         }
     }
 }
@@ -204,7 +204,7 @@ pub struct Pick<'tcx> {
 
     /// Indicates that we want to add an autoref (and maybe also unsize it), or if the receiver is
     /// `*mut T`, convert it to `*const T`.
-    pub autoref_or_ptr_adjustment: Option<AutorefOrPtrAdjustment<'tcx>>,
+    pub autoref_or_ptr_adjustment: Option<AutorefOrPtrAdjustment>,
     pub self_ty: Ty<'tcx>,
 }
 
@@ -1202,7 +1202,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pick.autoderefs += 1;
                     pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
                         mutbl,
-                        unsize: pick.autoref_or_ptr_adjustment.and_then(|a| a.get_unsize()),
+                        unsize: pick.autoref_or_ptr_adjustment.map_or(false, |a| a.get_unsize()),
                     })
                 }
 
@@ -1227,10 +1227,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.pick_method(autoref_ty, unstable_candidates).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
-                pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
-                    mutbl,
-                    unsize: step.unsize.then_some(self_ty),
-                });
+                pick.autoref_or_ptr_adjustment =
+                    Some(AutorefOrPtrAdjustment::Autoref { mutbl, unsize: step.unsize });
                 pick
             })
         })

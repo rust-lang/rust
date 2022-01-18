@@ -1,15 +1,18 @@
 // Local js definitions:
 /* global getSettingValue, getVirtualKey, onEachLazy, updateLocalStorage, updateSystemTheme */
+/* global addClass, removeClass */
 
 (function () {
     function changeSetting(settingName, value) {
         updateLocalStorage("rustdoc-" + settingName, value);
 
         switch (settingName) {
+            case "theme":
             case "preferred-dark-theme":
             case "preferred-light-theme":
             case "use-system-theme":
                 updateSystemTheme();
+                updateLightAndDark();
                 break;
         }
     }
@@ -29,7 +32,32 @@
         }
     }
 
+    function showLightAndDark() {
+        addClass(document.getElementById("theme").parentElement.parentElement, "hidden");
+        removeClass(document.getElementById("preferred-light-theme").parentElement.parentElement,
+            "hidden");
+        removeClass(document.getElementById("preferred-dark-theme").parentElement.parentElement,
+            "hidden");
+    }
+
+    function hideLightAndDark() {
+        addClass(document.getElementById("preferred-light-theme").parentElement.parentElement,
+            "hidden");
+        addClass(document.getElementById("preferred-dark-theme").parentElement.parentElement,
+            "hidden");
+        removeClass(document.getElementById("theme").parentElement.parentElement, "hidden");
+    }
+
+    function updateLightAndDark() {
+        if (getSettingValue("use-system-theme") !== "false") {
+            showLightAndDark();
+        } else {
+            hideLightAndDark();
+        }
+    }
+
     function setEvents() {
+        updateLightAndDark();
         onEachLazy(document.getElementsByClassName("slider"), function(elem) {
             var toggle = elem.previousElementSibling;
             var settingId = toggle.id;

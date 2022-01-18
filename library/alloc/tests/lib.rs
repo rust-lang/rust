@@ -31,7 +31,6 @@
 #![feature(iter_advance_by)]
 #![feature(slice_group_by)]
 #![feature(slice_partition_dedup)]
-#![feature(vec_spare_capacity)]
 #![feature(string_remove_matches)]
 #![feature(const_btree_new)]
 #![feature(const_default_impls)]

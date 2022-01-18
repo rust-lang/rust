@@ -1126,15 +1126,18 @@ window.initSearch = function(rawSearchIndex) {
             }
         }
 
-        let crates = `<select id="crate-search"><option value="All crates">All crates</option>`;
-        for (let c of window.ALL_CRATES) {
-            crates += `<option value="${c}" ${c == filterCrates && "selected"}>${c}</option>`;
+        let crates = "";
+        if (window.ALL_CRATES.length > 1) {
+            crates = ` in <select id="crate-search"><option value="All crates">All crates</option>`;
+            for (let c of window.ALL_CRATES) {
+                crates += `<option value="${c}" ${c == filterCrates && "selected"}>${c}</option>`;
+            }
+            crates += `</select>`;
         }
-        crates += `</select>`;
         var output = `<div id="search-settings">
             <h1 class="search-results-title">Results for ${escape(query.query)} ` +
             (query.type ? " (type: " + escape(query.type) + ")" : "") + "</h1>" +
-            ` in ${crates} ` +
+            crates +
             `</div><div id="titles">` +
             makeTabHeader(0, "In Names", ret_others[1]) +
             makeTabHeader(1, "In Parameters", ret_in_args[1]) +
@@ -1148,7 +1151,10 @@ window.initSearch = function(rawSearchIndex) {
         resultsElem.appendChild(ret_returned[0]);
 
         search.innerHTML = output;
-        document.getElementById("crate-search").addEventListener("input", updateCrate);
+        let crateSearch = document.getElementById("crate-search");
+        if (crateSearch) {
+            crateSearch.addEventListener("input", updateCrate);
+        }
         search.appendChild(resultsElem);
         // Reset focused elements.
         searchState.focusedByTab = [null, null, null];

@@ -944,11 +944,6 @@ h2.small-section-header > .anchor {
 	width: 100%;
 }
 
-#crate-search + .search-input {
-	border-radius: 0 1px 1px 0;
-	width: calc(100% - 32px);
-}
-
 .search-input:focus {
 	border-radius: 2px;
 	border: 0;
@@ -1766,6 +1761,12 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		padding-top: 0px;
 	}
 
+	/* Space is at a premium on mobile, so remove the theme-picker icon. */
+	#theme-picker {
+		display: none;
+		width: 0;
+	}
+
 	.rustdoc {
 		flex-direction: column;
 	}
@@ -1882,12 +1883,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		display: flex;
 		align-items: center;
 		height: 100%;
-	}
-
-	nav.sub {
-		width: calc(100% - 32px);
-		margin-left: 32px;
-		margin-bottom: 10px;
 	}
 
 	.source nav:not(.sidebar).sub {
@@ -2081,14 +2076,8 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 
 	#crate-search {
-		width: 100%;
 		border-radius: 4px;
 		border: 0;
-	}
-
-	#crate-search + .search-input {
-		width: calc(100% + 71px);
-		margin-left: -36px;
 	}
 
 	#theme-picker, #settings-menu {

@@ -1,6 +1,7 @@
 //~ NOTE not a function
-//~^ NOTE not a foreign function or static
-//~^^ NOTE not a function or static
+//~| NOTE not a foreign function or static
+//~| NOTE not a function or static
+//~| NOTE not an `extern` block
 // This test enumerates as many compiler-builtin ungated attributes as
 // possible (that is, all the mutually compatible ones), and checks
 // that we get "expected" (*) warnings for each in the various weird
@@ -59,9 +60,9 @@
 #![proc_macro_derive()] //~ WARN `#[proc_macro_derive]` only has an effect
 #![doc = "2400"]
 #![cold] //~ WARN attribute should be applied to a function
-//~^ WARN
-// see issue-43106-gating-of-builtin-attrs-error.rs
-#![link()]
+//~^ WARN this was previously accepted
+#![link()] //~ WARN attribute should be applied to an `extern` block
+//~^ WARN this was previously accepted
 #![link_name = "1900"]
 //~^ WARN attribute should be applied to a foreign function
 //~^^ WARN this was previously accepted by the compiler
@@ -547,22 +548,38 @@ mod link_section {
 }
 
 
-// Note that this is a `check-pass` test, so it
-// will never invoke the linker. These are here nonetheless to point
-// out that we allow them at non-crate-level (though I do not know
-// whether they have the same effect here as at crate-level).
+// Note that this is a `check-pass` test, so it will never invoke the linker.
 
 #[link()]
+//~^ WARN attribute should be applied to an `extern` block
+//~| WARN this was previously accepted
 mod link {
+    //~^ NOTE not an `extern` block
+
     mod inner { #![link()] }
+    //~^ WARN attribute should be applied to an `extern` block
+    //~| WARN this was previously accepted
+    //~| NOTE not an `extern` block
 
     #[link()] fn f() { }
+    //~^ WARN attribute should be applied to an `extern` block
+    //~| WARN this was previously accepted
+    //~| NOTE not an `extern` block
 
     #[link()] struct S;
+    //~^ WARN attribute should be applied to an `extern` block
+    //~| WARN this was previously accepted
+    //~| NOTE not an `extern` block
 
     #[link()] type T = S;
+    //~^ WARN attribute should be applied to an `extern` block
+    //~| WARN this was previously accepted
+    //~| NOTE not an `extern` block
 
     #[link()] impl S { }
+    //~^ WARN attribute should be applied to an `extern` block
+    //~| WARN this was previously accepted
+    //~| NOTE not an `extern` block
 }
 
 struct StructForDeprecated;
@@ -594,16 +611,22 @@ mod must_use {
 }
 
 #[windows_subsystem = "windows"]
+//~^ WARN crate-level attribute should be an inner attribute
 mod windows_subsystem {
     mod inner { #![windows_subsystem="windows"] }
+    //~^ WARN crate-level attribute should be in the root module
 
     #[windows_subsystem = "windows"] fn f() { }
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[windows_subsystem = "windows"] struct S;
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[windows_subsystem = "windows"] type T = S;
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[windows_subsystem = "windows"] impl S { }
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 // BROKEN USES OF CRATE-LEVEL BUILT-IN ATTRIBUTES
@@ -686,16 +709,22 @@ mod no_main_1 {
 }
 
 #[no_builtins]
+//~^ WARN crate-level attribute should be an inner attribute
 mod no_builtins {
     mod inner { #![no_builtins] }
+    //~^ WARN crate-level attribute should be in the root module
 
     #[no_builtins] fn f() { }
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_builtins] struct S;
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_builtins] type T = S;
+    //~^ WARN crate-level attribute should be an inner attribute
 
     #[no_builtins] impl S { }
+    //~^ WARN crate-level attribute should be an inner attribute
 }
 
 #[recursion_limit="0200"]

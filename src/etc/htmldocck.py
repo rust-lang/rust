@@ -401,7 +401,7 @@ def get_tree_count(tree, path):
     return len(tree.findall(path))
 
 
-def check_snapshot(snapshot_name, tree):
+def check_snapshot(snapshot_name, tree, normalize_to_text):
     assert rust_test_path.endswith('.rs')
     snapshot_path = '{}.{}.{}'.format(rust_test_path[:-3], snapshot_name, 'html')
     try:
@@ -413,7 +413,10 @@ def check_snapshot(snapshot_name, tree):
         else:
             raise FailedCheck('No saved snapshot value')
 
-    actual_str = ET.tostring(tree).decode('utf-8')
+    if not normalize_to_text:
+        actual_str = ET.tostring(tree).decode('utf-8')
+    else:
+        actual_str = flatten(tree)
 
     if expected_str != actual_str:
         if bless:
@@ -494,11 +497,16 @@ def check_command(c, cache):
                 [snapshot_name, html_path, pattern] = c.args
                 tree = cache.get_tree(html_path)
                 xpath = normalize_xpath(pattern)
+                normalize_to_text = False
+                if xpath.endswith('/text()'):
+                    xpath = xpath[:-7]
+                    normalize_to_text = True
+
                 subtrees = tree.findall(xpath)
                 if len(subtrees) == 1:
                     [subtree] = subtrees
                     try:
-                        check_snapshot(snapshot_name, subtree)
+                        check_snapshot(snapshot_name, subtree, normalize_to_text)
                         ret = True
                     except FailedCheck as err:
                         cerr = str(err)
