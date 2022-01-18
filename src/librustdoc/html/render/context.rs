@@ -554,16 +554,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             extra_scripts: &[],
             static_extra_scripts: &[],
         };
-        let sidebar = if let Some(ref version) = self.shared.cache.crate_version {
-            format!(
-                "<h2 class=\"location\">Crate {}</h2>\
-                     <div class=\"block version\">\
-                         <p>Version {}</p>\
-                     </div>\
-                     <a id=\"all-types\" href=\"index.html\"><p>Back to index</p></a>",
-                crate_name,
-                Escape(version),
-            )
+        let sidebar = if self.shared.cache.crate_version.is_some() {
+            format!("<h2 class=\"location\">Crate {}</h2>", crate_name)
         } else {
             String::new()
         };

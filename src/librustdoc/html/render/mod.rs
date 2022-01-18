@@ -1744,13 +1744,6 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
             buffer,
             "<h2 class=\"location\"><a href=\"#\">{}{}</a></h2>",
             match *it.kind {
-                clean::StructItem(..) => "Struct ",
-                clean::TraitItem(..) => "Trait ",
-                clean::PrimitiveItem(..) => "Primitive Type ",
-                clean::UnionItem(..) => "Union ",
-                clean::EnumItem(..) => "Enum ",
-                clean::TypedefItem(..) => "Type Definition ",
-                clean::ForeignTypeItem => "Foreign Type ",
                 clean::ModuleItem(..) =>
                     if it.is_crate() {
                         "Crate "
@@ -1763,26 +1756,14 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
         );
     }
 
-    if it.is_crate() {
-        if let Some(ref version) = cx.cache().crate_version {
-            write!(
-                buffer,
-                "<div class=\"block version\">\
-                     <div class=\"narrow-helper\"></div>\
-                     <p>Version {}</p>\
-                 </div>",
-                Escape(version),
-            );
-        }
-    }
-
     buffer.write_str("<div class=\"sidebar-elems\">");
     if it.is_crate() {
-        write!(
-            buffer,
-            "<a id=\"all-types\" href=\"all.html\"><p>See all {}'s items</p></a>",
-            it.name.as_ref().expect("crates always have a name"),
-        );
+        write!(buffer, "<div class=\"block\"><ul>");
+        if let Some(ref version) = cx.cache().crate_version {
+            write!(buffer, "<li class=\"version\">Version {}</li>", Escape(version));
+        }
+        write!(buffer, "<li><a id=\"all-types\" href=\"all.html\">All Items</a></li>");
+        buffer.write_str("</div></ul>");
     }
 
     match *it.kind {
@@ -1806,7 +1787,7 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     // to navigate the documentation (though slightly inefficiently).
 
     if !it.is_mod() {
-        buffer.write_str("<h2 class=\"location\">Other items in<br>");
+        buffer.write_str("<h2 class=\"location\">In ");
         for (i, name) in cx.current.iter().take(parentlen).enumerate() {
             if i > 0 {
                 buffer.write_str("::<wbr>");

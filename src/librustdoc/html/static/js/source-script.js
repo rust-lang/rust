@@ -139,7 +139,7 @@ function createSourceSidebar() {
                                       currentFile, hasFoundFile);
     });
 
-    container.insertBefore(sidebar, document.querySelector(".sidebar-logo").nextSibling);
+    container.appendChild(sidebar);
     // Focus on the current file in the source files sidebar.
     var selected_elem = sidebar.getElementsByClassName("selected")[0];
     if (typeof selected_elem !== "undefined") {

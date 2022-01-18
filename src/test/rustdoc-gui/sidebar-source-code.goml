@@ -10,6 +10,7 @@ click: (10, 10)
 // We wait for the sidebar to be expanded (there is a 0.5s animation).
 wait-for: 600
 assert-css: ("nav.sidebar.expanded", {"width": "300px"})
+assert-css: ("nav.sidebar.expanded a", {"font-size": "14.4px"})
 // We collapse the sidebar.
 click: (10, 10)
 // We wait for the sidebar to be collapsed (there is a 0.5s animation).
@@ -30,3 +31,6 @@ click: (10, 10)
 // We ensure that the class has been removed.
 assert-false: "nav.sidebar.expanded"
 assert: "nav.sidebar"
+
+// Check that the topbar is not visible
+assert-property: (".mobile-topbar", {"offsetParent": "null"})
