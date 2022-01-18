@@ -2051,8 +2051,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_spare_capacity)]
-    ///
     /// // Allocate vector big enough for 10 elements.
     /// let mut v = Vec::with_capacity(10);
     ///
@@ -2069,7 +2067,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// assert_eq!(&v, &[0, 1, 2]);
     /// ```
-    #[unstable(feature = "vec_spare_capacity", issue = "75017")]
+    #[stable(feature = "vec_spare_capacity", since = "1.60.0")]
     #[inline]
     pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
         // Note:
