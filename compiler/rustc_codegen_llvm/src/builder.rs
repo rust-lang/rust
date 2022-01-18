@@ -1473,9 +1473,9 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             };
             let f =
                 self.declare_cfn(&name, llvm::UnnamedAddr::No, self.type_func(&[src_ty], dest_ty));
-            return Some(self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None));
+            Some(self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None))
+        } else {
+            None
         }
-
-        None
     }
 }
