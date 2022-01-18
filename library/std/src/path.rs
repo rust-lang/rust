@@ -2806,7 +2806,7 @@ impl Path {
     /// use std::os::unix::fs::symlink;
     ///
     /// let link_path = Path::new("link");
-    /// symlink("/origin_does_not_exists/", link_path).unwrap();
+    /// symlink("/origin_does_not_exist/", link_path).unwrap();
     /// assert_eq!(link_path.is_symlink(), true);
     /// assert_eq!(link_path.exists(), false);
     /// ```

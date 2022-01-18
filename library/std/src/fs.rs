@@ -1050,7 +1050,7 @@ impl Metadata {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let link_path = Path::new("link");
-    ///     symlink("/origin_does_not_exists/", link_path)?;
+    ///     symlink("/origin_does_not_exist/", link_path)?;
     ///
     ///     let metadata = fs::symlink_metadata(link_path)?;
     ///
