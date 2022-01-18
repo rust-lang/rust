@@ -53,6 +53,7 @@ pub fn add_placeholder_note(err: &mut rustc_errors::DiagnosticBuilder<'_>) {
 /// If there are types that satisfy both impls, invokes `on_overlap`
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, invokes `no_overlap`.
+#[instrument(skip(tcx, skip_leak_check, on_overlap, no_overlap), level = "debug")]
 pub fn overlapping_impls<F1, F2, R>(
     tcx: TyCtxt<'_>,
     impl1_def_id: DefId,
@@ -65,12 +66,6 @@ where
     F1: FnOnce(OverlapResult<'_>) -> R,
     F2: FnOnce() -> R,
 {
-    debug!(
-        "overlapping_impls(\
-           impl1_def_id={:?}, \
-           impl2_def_id={:?})",
-        impl1_def_id, impl2_def_id,
-    );
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
@@ -85,6 +80,7 @@ where
     .any(|(ty1, ty2)| {
         let t1 = fast_reject::simplify_type(tcx, ty1, SimplifyParams::No, StripReferences::No);
         let t2 = fast_reject::simplify_type(tcx, ty2, SimplifyParams::No, StripReferences::No);
+
         if let (Some(t1), Some(t2)) = (t1, t2) {
             // Simplified successfully
             t1 != t2
