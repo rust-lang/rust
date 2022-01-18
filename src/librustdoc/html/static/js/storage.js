@@ -187,22 +187,25 @@ var updateSystemTheme = (function() {
     var mql = window.matchMedia("(prefers-color-scheme: dark)");
 
     function handlePreferenceChange(mql) {
+        let use = function(theme) {
+            switchTheme(window.currentTheme, window.mainTheme, theme, true);
+        };
         // maybe the user has disabled the setting in the meantime!
         if (getSettingValue("use-system-theme") !== "false") {
             var lightTheme = getSettingValue("preferred-light-theme") || "light";
             var darkTheme = getSettingValue("preferred-dark-theme") || "dark";
 
             if (mql.matches) {
-                // prefers a dark theme
-                switchTheme(window.currentTheme, window.mainTheme, darkTheme, true);
+                use(darkTheme);
             } else {
                 // prefers a light theme, or has no preference
-                switchTheme(window.currentTheme, window.mainTheme, lightTheme, true);
+                use(lightTheme);
             }
-
             // note: we save the theme so that it doesn't suddenly change when
             // the user disables "use-system-theme" and reloads the page or
             // navigates to another page
+        } else {
+            use(getSettingValue("theme"));
         }
     }
 

@@ -129,9 +129,14 @@ function hideThemeButtonState() {
 
 // Set up the theme picker list.
 (function () {
+    if (!document.location.href.startsWith("file:///")) {
+        return;
+    }
     var themeChoices = getThemesElement();
     var themePicker = getThemePickerElement();
     var availableThemes = getVar("themes").split(",");
+
+    removeClass(themeChoices.parentElement, "hidden");
 
     function switchThemeButtonState() {
         if (themeChoices.style.display === "block") {
