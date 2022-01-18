@@ -1,7 +1,6 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use rustc_ast::Attribute;
 use rustc_attr::{self as attr, ConstStability, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
@@ -113,12 +112,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     {
         let attrs = self.tcx.get_attrs(def_id.to_def_id());
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
-        let mut did_error = false;
-        if !self.tcx.features().staged_api {
-            did_error = self.forbid_staged_api_attrs(def_id, attrs, inherit_deprecation.clone());
-        }
 
-        let depr = if did_error { None } else { attr::find_deprecation(&self.tcx.sess, attrs) };
+        let depr = attr::find_deprecation(&self.tcx.sess, attrs);
         let mut is_deprecated = false;
         if let Some((depr, span)) = &depr {
             is_deprecated = true;
@@ -148,16 +143,15 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
-        if self.tcx.features().staged_api {
-            if let Some(a) = attrs.iter().find(|a| a.has_name(sym::deprecated)) {
-                self.tcx
-                    .sess
-                    .struct_span_err(a.span, "`#[deprecated]` cannot be used in staged API")
-                    .span_label(a.span, "use `#[rustc_deprecated]` instead")
-                    .span_label(item_sp, "")
-                    .emit();
+        if !self.tcx.features().staged_api {
+            // Propagate unstability.  This can happen even for non-staged-api crates in case
+            // -Zforce-unstable-if-unmarked is set.
+            if let Some(stab) = self.parent_stab {
+                if inherit_deprecation.yes() && stab.level.is_unstable() {
+                    self.index.stab_map.insert(def_id, stab);
+                }
             }
-        } else {
+
             self.recurse_with_stability_attrs(
                 depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
                 None,
@@ -330,47 +324,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if let Some(orig_parent_const_stab) = replaced_parent_const_stab {
             self.parent_const_stab = orig_parent_const_stab;
         }
-    }
-
-    // returns true if an error occurred, used to suppress some spurious errors
-    fn forbid_staged_api_attrs(
-        &mut self,
-        def_id: LocalDefId,
-        attrs: &[Attribute],
-        inherit_deprecation: InheritDeprecation,
-    ) -> bool {
-        // Emit errors for non-staged-api crates.
-        let unstable_attrs = [
-            sym::unstable,
-            sym::stable,
-            sym::rustc_deprecated,
-            sym::rustc_const_unstable,
-            sym::rustc_const_stable,
-        ];
-        let mut has_error = false;
-        for attr in attrs {
-            let name = attr.name_or_empty();
-            if unstable_attrs.contains(&name) {
-                struct_span_err!(
-                    self.tcx.sess,
-                    attr.span,
-                    E0734,
-                    "stability attributes may not be used outside of the standard library",
-                )
-                .emit();
-                has_error = true;
-            }
-        }
-
-        // Propagate unstability.  This can happen even for non-staged-api crates in case
-        // -Zforce-unstable-if-unmarked is set.
-        if let Some(stab) = self.parent_stab {
-            if inherit_deprecation.yes() && stab.level.is_unstable() {
-                self.index.stab_map.insert(def_id, stab);
-            }
-        }
-
-        has_error
     }
 }
 
