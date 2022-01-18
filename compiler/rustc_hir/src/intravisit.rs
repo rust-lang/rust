@@ -801,12 +801,11 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(
     visitor.visit_ident(type_binding.ident);
     visitor.visit_generic_args(type_binding.span, type_binding.gen_args);
     match type_binding.kind {
-        TypeBindingKind::Equality { ref ty } => {
-            visitor.visit_ty(ty);
-        }
-        TypeBindingKind::Constraint { bounds } => {
-            walk_list!(visitor, visit_param_bound, bounds);
-        }
+        TypeBindingKind::Equality { ref term } => match term {
+            Term::Ty(ref ty) => visitor.visit_ty(ty),
+            Term::Const(ref c) => visitor.visit_anon_const(c),
+        },
+        TypeBindingKind::Constraint { bounds } => walk_list!(visitor, visit_param_bound, bounds),
     }
 }
 

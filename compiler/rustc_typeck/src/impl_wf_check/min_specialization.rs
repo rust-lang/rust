@@ -199,7 +199,7 @@ fn unconstrained_parent_impl_substs<'tcx>(
     for (predicate, _) in impl_generic_predicates.predicates.iter() {
         if let ty::PredicateKind::Projection(proj) = predicate.kind().skip_binder() {
             let projection_ty = proj.projection_ty;
-            let projected_ty = proj.ty;
+            let projected_ty = proj.term;
 
             let unbound_trait_ref = projection_ty.trait_ref(tcx);
             if Some(unbound_trait_ref) == impl_trait_ref {

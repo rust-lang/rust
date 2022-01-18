@@ -4,8 +4,8 @@ use crate::maybe_whole;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
 use rustc_ast::{
-    self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocTyConstraint,
-    AssocTyConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
+    self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocConstraint,
+    AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
     Path, PathSegment, QSelf,
 };
 use rustc_errors::{pluralize, Applicability, PResult};
@@ -469,12 +469,9 @@ impl<'a> Parser<'a> {
                         // Parse associated type constraint bound.
 
                         let bounds = self.parse_generic_bounds(Some(self.prev_token.span))?;
-                        AssocTyConstraintKind::Bound { bounds }
+                        AssocConstraintKind::Bound { bounds }
                     } else if self.eat(&token::Eq) {
-                        // Parse associated type equality constraint
-
-                        let ty = self.parse_assoc_equality_term(ident, self.prev_token.span)?;
-                        AssocTyConstraintKind::Equality { ty }
+                        self.parse_assoc_equality_term(ident, self.prev_token.span)?
                     } else {
                         unreachable!();
                     };
@@ -482,11 +479,11 @@ impl<'a> Parser<'a> {
                     let span = lo.to(self.prev_token.span);
 
                     // Gate associated type bounds, e.g., `Iterator<Item: Ord>`.
-                    if let AssocTyConstraintKind::Bound { .. } = kind {
+                    if let AssocConstraintKind::Bound { .. } = kind {
                         self.sess.gated_spans.gate(sym::associated_type_bounds, span);
                     }
                     let constraint =
-                        AssocTyConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
+                        AssocConstraint { id: ast::DUMMY_NODE_ID, ident, gen_args, kind, span };
                     Ok(Some(AngleBracketedArg::Constraint(constraint)))
                 } else {
                     Ok(Some(AngleBracketedArg::Arg(arg)))
@@ -499,22 +496,25 @@ impl<'a> Parser<'a> {
     /// Parse the term to the right of an associated item equality constraint.
     /// That is, parse `<term>` in `Item = <term>`.
     /// Right now, this only admits types in `<term>`.
-    fn parse_assoc_equality_term(&mut self, ident: Ident, eq: Span) -> PResult<'a, P<ast::Ty>> {
+    fn parse_assoc_equality_term(
+        &mut self,
+        ident: Ident,
+        eq: Span,
+    ) -> PResult<'a, AssocConstraintKind> {
         let arg = self.parse_generic_arg(None)?;
         let span = ident.span.to(self.prev_token.span);
-        match arg {
-            Some(GenericArg::Type(ty)) => return Ok(ty),
-            Some(GenericArg::Const(expr)) => {
-                self.struct_span_err(span, "cannot constrain an associated constant to a value")
-                    .span_label(ident.span, "this associated constant...")
-                    .span_label(expr.value.span, "...cannot be constrained to this value")
-                    .emit();
+        let term = match arg {
+            Some(GenericArg::Type(ty)) => ty.into(),
+            Some(GenericArg::Const(c)) => {
+                self.sess.gated_spans.gate(sym::associated_const_equality, span);
+                c.into()
             }
             Some(GenericArg::Lifetime(lt)) => {
                 self.struct_span_err(span, "associated lifetimes are not supported")
                     .span_label(lt.ident.span, "the lifetime is given here")
                     .help("if you meant to specify a trait object, write `dyn Trait + 'lifetime`")
                     .emit();
+                self.mk_ty(span, ast::TyKind::Err).into()
             }
             None => {
                 let after_eq = eq.shrink_to_hi();
@@ -542,8 +542,8 @@ impl<'a> Parser<'a> {
                 };
                 return Err(err);
             }
-        }
-        Ok(self.mk_ty(span, ast::TyKind::Err))
+        };
+        Ok(AssocConstraintKind::Equality { term })
     }
 
     /// We do not permit arbitrary expressions as const arguments. They must be one of:

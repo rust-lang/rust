@@ -1442,11 +1442,11 @@ impl clean::TypeBinding {
         display_fn(move |f| {
             f.write_str(self.name.as_str())?;
             match self.kind {
-                clean::TypeBindingKind::Equality { ref ty } => {
+                clean::TypeBindingKind::Equality { ref term } => {
                     if f.alternate() {
-                        write!(f, " = {:#}", ty.print(cx))?;
+                        write!(f, " = {:#}", term.print(cx))?;
                     } else {
-                        write!(f, " = {}", ty.print(cx))?;
+                        write!(f, " = {}", term.print(cx))?;
                     }
                 }
                 clean::TypeBindingKind::Constraint { ref bounds } => {
@@ -1489,6 +1489,18 @@ impl clean::GenericArg {
             clean::GenericArg::Const(ct) => fmt::Display::fmt(&ct.print(cx.tcx()), f),
             clean::GenericArg::Infer => fmt::Display::fmt("_", f),
         })
+    }
+}
+
+impl clean::types::Term {
+    crate fn print<'a, 'tcx: 'a>(
+        &'a self,
+        cx: &'a Context<'tcx>,
+    ) -> impl fmt::Display + 'a + Captures<'tcx> {
+        match self {
+            clean::types::Term::Type(ty) => ty.print(cx),
+            _ => todo!(),
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 use libloading::Library;
 use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, AttrVec, BlockCheckMode};
+use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Term};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[cfg(parallel_compiler)]
@@ -738,9 +738,14 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                                         | ast::GenericArg::Const(_) => false,
                                     },
                                     ast::AngleBracketedArg::Constraint(c) => match c.kind {
-                                        ast::AssocTyConstraintKind::Bound { .. } => true,
-                                        ast::AssocTyConstraintKind::Equality { ref ty } => {
-                                            involves_impl_trait(ty)
+                                        ast::AssocConstraintKind::Bound { .. } => true,
+                                        ast::AssocConstraintKind::Equality { ref term } => {
+                                            match term {
+                                                Term::Ty(ty) => involves_impl_trait(ty),
+                                                // FIXME(...): This should check if the constant
+                                                // involves a trait impl, but for now ignore.
+                                                Term::Const(_) => false,
+                                            }
                                         }
                                     },
                                 })

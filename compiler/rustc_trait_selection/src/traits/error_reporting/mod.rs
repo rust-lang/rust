@@ -1304,7 +1304,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
                 debug!(
                     "report_projection_error normalized_ty={:?} data.ty={:?}",
-                    normalized_ty, data.ty
+                    normalized_ty, data.term,
                 );
 
                 let is_normalized_ty_expected = !matches!(
@@ -1314,16 +1314,17 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         | ObligationCauseCode::ObjectCastObligation(_)
                         | ObligationCauseCode::OpaqueType
                 );
-
+                // FIXME(associated_const_equality): Handle Consts here
+                let data_ty = data.term.ty().unwrap();
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
                     is_normalized_ty_expected,
                     normalized_ty,
-                    data.ty,
+                    data_ty,
                 ) {
                     values = Some(infer::ValuePairs::Types(ExpectedFound::new(
                         is_normalized_ty_expected,
                         normalized_ty,
-                        data.ty,
+                        data_ty,
                     )));
 
                     err_buf = error;
@@ -1803,11 +1804,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             }
             ty::PredicateKind::Projection(data) => {
                 let self_ty = data.projection_ty.self_ty();
-                let ty = data.ty;
+                let term = data.term;
                 if predicate.references_error() || self.is_tainted_by_errors() {
                     return;
                 }
-                if self_ty.needs_infer() && ty.needs_infer() {
+                if self_ty.needs_infer() && term.needs_infer() {
                     // We do this for the `foo.collect()?` case to produce a suggestion.
                     let mut err = self.emit_inference_failure_err(
                         body_id,

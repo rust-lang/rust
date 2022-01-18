@@ -48,14 +48,19 @@ impl<'tcx> Bounds<'tcx> {
     /// where-clauses). Because some of our bounds listings (e.g.,
     /// regions) don't include the self-type, you must supply the
     /// self-type here (the `param_ty` parameter).
-    pub fn predicates(
-        &self,
+    pub fn predicates<'out, 's>(
+        &'s self,
         tcx: TyCtxt<'tcx>,
         param_ty: Ty<'tcx>,
-    ) -> Vec<(ty::Predicate<'tcx>, Span)> {
+        // the output must live shorter than the duration of the borrow of self and 'tcx.
+    ) -> impl Iterator<Item = (ty::Predicate<'tcx>, Span)> + 'out
+    where
+        'tcx: 'out,
+        's: 'out,
+    {
         // If it could be sized, and is, add the `Sized` predicate.
         let sized_predicate = self.implicitly_sized.and_then(|span| {
-            tcx.lang_items().sized_trait().map(|sized| {
+            tcx.lang_items().sized_trait().map(move |sized| {
                 let trait_ref = ty::Binder::dummy(ty::TraitRef {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[]),
@@ -64,25 +69,22 @@ impl<'tcx> Bounds<'tcx> {
             })
         });
 
-        sized_predicate
-            .into_iter()
-            .chain(self.region_bounds.iter().map(|&(region_bound, span)| {
-                (
-                    region_bound
-                        .map_bound(|region_bound| ty::OutlivesPredicate(param_ty, region_bound))
-                        .to_predicate(tcx),
-                    span,
-                )
-            }))
-            .chain(self.trait_bounds.iter().map(|&(bound_trait_ref, span, constness)| {
+        let region_preds = self.region_bounds.iter().map(move |&(region_bound, span)| {
+            let pred = region_bound
+                .map_bound(|region_bound| ty::OutlivesPredicate(param_ty, region_bound))
+                .to_predicate(tcx);
+            (pred, span)
+        });
+        let trait_bounds =
+            self.trait_bounds.iter().map(move |&(bound_trait_ref, span, constness)| {
                 let predicate = bound_trait_ref.with_constness(constness).to_predicate(tcx);
                 (predicate, span)
-            }))
-            .chain(
-                self.projection_bounds
-                    .iter()
-                    .map(|&(projection, span)| (projection.to_predicate(tcx), span)),
-            )
-            .collect()
+            });
+        let projection_bounds = self
+            .projection_bounds
+            .iter()
+            .map(move |&(projection, span)| (projection.to_predicate(tcx), span));
+
+        sized_predicate.into_iter().chain(region_preds).chain(trait_bounds).chain(projection_bounds)
     }
 }

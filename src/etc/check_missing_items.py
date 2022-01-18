@@ -83,7 +83,9 @@ def check_type(ty):
                         check_type(arg["const"]["type"])
                 for binding in args["angle_bracketed"]["bindings"]:
                     if "equality" in binding["binding"]:
-                        check_type(binding["binding"]["equality"])
+                        term = binding["binding"]["equality"]
+                        if "type" in term: check_type(term["type"])
+                        elif "const" in term: check_type(term["const"])
                     elif "constraint" in binding["binding"]:
                         for bound in binding["binding"]["constraint"]:
                             check_generic_bound(bound)

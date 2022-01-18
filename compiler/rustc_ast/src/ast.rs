@@ -224,7 +224,7 @@ pub enum AngleBracketedArg {
     /// Argument for a generic parameter.
     Arg(GenericArg),
     /// Constraint for an associated item.
-    Constraint(AssocTyConstraint),
+    Constraint(AssocConstraint),
 }
 
 impl AngleBracketedArg {
@@ -1843,19 +1843,38 @@ impl UintTy {
 /// A constraint on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or
 /// `A: TraitA + TraitB` in `Foo<A: TraitA + TraitB>`).
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct AssocTyConstraint {
+pub struct AssocConstraint {
     pub id: NodeId,
     pub ident: Ident,
     pub gen_args: Option<GenericArgs>,
-    pub kind: AssocTyConstraintKind,
+    pub kind: AssocConstraintKind,
     pub span: Span,
 }
 
-/// The kinds of an `AssocTyConstraint`.
+/// The kinds of an `AssocConstraint`.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub enum AssocTyConstraintKind {
-    /// E.g., `A = Bar` in `Foo<A = Bar>`.
-    Equality { ty: P<Ty> },
+pub enum Term {
+    Ty(P<Ty>),
+    Const(AnonConst),
+}
+
+impl From<P<Ty>> for Term {
+    fn from(v: P<Ty>) -> Self {
+        Term::Ty(v)
+    }
+}
+
+impl From<AnonConst> for Term {
+    fn from(v: AnonConst) -> Self {
+        Term::Const(v)
+    }
+}
+
+/// The kinds of an `AssocConstraint`.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum AssocConstraintKind {
+    /// E.g., `A = Bar`, `A = 3` in `Foo<A = Bar>` where A is an associated type.
+    Equality { term: Term },
     /// E.g. `A: TraitA + TraitB` in `Foo<A: TraitA + TraitB>`.
     Bound { bounds: GenericBounds },
 }

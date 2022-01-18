@@ -343,6 +343,7 @@ symbols! {
         assert_receiver_is_total_eq,
         assert_uninit_valid,
         assert_zero_valid,
+        associated_const_equality,
         associated_consts,
         associated_type_bounds,
         associated_type_defaults,

@@ -6,7 +6,7 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::{Comments, PrintState};
 use rustc_hir as hir;
-use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node};
+use rustc_hir::{GenericArg, GenericParam, GenericParamKind, Node, Term};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
@@ -1752,9 +1752,12 @@ impl<'a> State<'a> {
                 self.print_generic_args(binding.gen_args, false, false);
                 self.space();
                 match generic_args.bindings[0].kind {
-                    hir::TypeBindingKind::Equality { ref ty } => {
+                    hir::TypeBindingKind::Equality { ref term } => {
                         self.word_space("=");
-                        self.print_type(ty);
+                        match term {
+                            Term::Ty(ref ty) => self.print_type(ty),
+                            Term::Const(ref c) => self.print_anon_const(c),
+                        }
                     }
                     hir::TypeBindingKind::Constraint { bounds } => {
                         self.print_bounds(":", bounds);

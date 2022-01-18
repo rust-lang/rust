@@ -26,7 +26,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             kind: TypeVariableOriginKind::NormalizeProjectionType,
             span: self.tcx.def_span(def_id),
         });
-        let projection = ty::Binder::dummy(ty::ProjectionPredicate { projection_ty, ty: ty_var });
+        let projection =
+            ty::Binder::dummy(ty::ProjectionPredicate { projection_ty, term: ty_var.into() });
         let obligation = Obligation::with_depth(
             cause,
             recursion_depth,

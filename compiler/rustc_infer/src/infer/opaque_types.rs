@@ -584,8 +584,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             debug!(?predicate);
 
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
-                if projection.ty.references_error() {
-                    // No point on adding these obligations since there's a type error involved.
+                if projection.term.references_error() {
                     return tcx.ty_error();
                 }
             }

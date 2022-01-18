@@ -659,7 +659,11 @@ impl<'tcx> ItemCtxt<'tcx> {
             .params
             .iter()
             .filter_map(|param| match param.kind {
-                GenericParamKind::Type { .. } if param.hir_id == param_id => Some(&param.bounds),
+                GenericParamKind::Type { .. } | GenericParamKind::Const { .. }
+                    if param.hir_id == param_id =>
+                {
+                    Some(&param.bounds)
+                }
                 _ => None,
             })
             .flat_map(|bounds| bounds.iter())
@@ -2527,7 +2531,7 @@ fn predicates_from_bound<'tcx>(
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     let mut bounds = Bounds::default();
     astconv.add_bounds(param_ty, [bound].into_iter(), &mut bounds, bound_vars);
-    bounds.predicates(astconv.tcx(), param_ty)
+    bounds.predicates(astconv.tcx(), param_ty).collect()
 }
 
 fn compute_sig_of_foreign_fn_decl<'tcx>(

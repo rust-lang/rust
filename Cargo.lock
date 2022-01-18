@@ -335,7 +335,7 @@ dependencies = [
  "cargo-test-macro",
  "cargo-test-support",
  "cargo-util",
- "clap 3.0.6",
+ "clap",
  "crates-io",
  "crossbeam-utils",
  "curl",
@@ -615,26 +615,11 @@ dependencies = [
  "ansi_term 0.12.1",
  "atty",
  "bitflags",
- "strsim 0.8.0",
- "textwrap 0.11.0",
+ "strsim",
+ "textwrap",
  "unicode-width",
  "vec_map",
  "yaml-rust 0.3.5",
-]
-
-[[package]]
-name = "clap"
-version = "3.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1957aa4a5fb388f0a0a73ce7556c5b42025b874e5cdc2c670775e346e97adec0"
-dependencies = [
- "atty",
- "bitflags",
- "indexmap",
- "os_str_bytes",
- "strsim 0.10.0",
- "termcolor",
- "textwrap 0.14.2",
 ]
 
 [[package]]
@@ -669,7 +654,7 @@ version = "0.0.1"
 dependencies = [
  "bytecount",
  "cargo_metadata 0.14.0",
- "clap 2.34.0",
+ "clap",
  "indoc",
  "itertools 0.10.1",
  "opener",
@@ -1751,7 +1736,7 @@ name = "installer"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 2.34.0",
+ "clap",
  "flate2",
  "lazy_static",
  "num_cpus",
@@ -2190,7 +2175,7 @@ dependencies = [
  "ammonia",
  "anyhow",
  "chrono",
- "clap 2.34.0",
+ "clap",
  "elasticlunr-rs",
  "env_logger 0.7.1",
  "handlebars",
@@ -2519,15 +2504,6 @@ dependencies = [
  "log",
  "serde",
  "winapi",
-]
-
-[[package]]
-name = "os_str_bytes"
-version = "6.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
-dependencies = [
- "memchr",
 ]
 
 [[package]]
@@ -2934,7 +2910,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0b4b5faaf07040474e8af74a9e19ff167d5d204df5db5c5c765edecfb900358"
 dependencies = [
  "bitflags",
- "clap 2.34.0",
+ "clap",
  "derive_more",
  "env_logger 0.7.1",
  "humantime 2.0.1",
@@ -3282,7 +3258,7 @@ dependencies = [
 name = "rustbook"
 version = "0.1.0"
 dependencies = [
- "clap 2.34.0",
+ "clap",
  "env_logger 0.7.1",
  "mdbook",
 ]
@@ -4899,18 +4875,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
 
 [[package]]
-name = "strsim"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
-
-[[package]]
 name = "structopt"
 version = "0.3.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40b9788f4202aa75c240ecc9c15c65185e6a39ccdeb0fd5d008b98825464c87c"
 dependencies = [
- "clap 2.34.0",
+ "clap",
  "lazy_static",
  "structopt-derive",
 ]
@@ -5080,12 +5050,6 @@ checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
 ]
-
-[[package]]
-name = "textwrap"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
 
 [[package]]
 name = "thiserror"

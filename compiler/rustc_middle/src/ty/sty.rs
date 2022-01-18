@@ -8,7 +8,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::fold::ValidateBoundVars;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::InferTy::{self, *};
-use crate::ty::{self, AdtDef, DefIdTree, Discr, Ty, TyCtxt, TypeFlags, TypeFoldable};
+use crate::ty::{self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeFoldable};
 use crate::ty::{DelaySpanBugEmitted, List, ParamEnv, TyS};
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
@@ -1540,7 +1540,7 @@ impl From<BoundVar> for BoundTy {
 pub struct ExistentialProjection<'tcx> {
     pub item_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
-    pub ty: Ty<'tcx>,
+    pub term: Term<'tcx>,
 }
 
 pub type PolyExistentialProjection<'tcx> = Binder<'tcx, ExistentialProjection<'tcx>>;
@@ -1570,7 +1570,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
                 item_def_id: self.item_def_id,
                 substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
-            ty: self.ty,
+            term: self.term,
         }
     }
 
@@ -1584,7 +1584,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
         Self {
             item_def_id: projection_predicate.projection_ty.item_def_id,
             substs: tcx.intern_substs(&projection_predicate.projection_ty.substs[1..]),
-            ty: projection_predicate.ty,
+            term: projection_predicate.term,
         }
     }
 }

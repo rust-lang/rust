@@ -162,7 +162,7 @@ impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
     fn from_tcx(kind: clean::TypeBindingKind, tcx: TyCtxt<'_>) -> Self {
         use clean::TypeBindingKind::*;
         match kind {
-            Equality { ty } => TypeBindingKind::Equality(ty.into_tcx(tcx)),
+            Equality { term } => TypeBindingKind::Equality(term.into_tcx(tcx)),
             Constraint { bounds } => {
                 TypeBindingKind::Constraint(bounds.into_iter().map(|a| a.into_tcx(tcx)).collect())
             }
@@ -448,6 +448,15 @@ impl FromWithTcx<clean::Type> for Type {
                     trait_: Box::new(trait_),
                 }
             }
+        }
+    }
+}
+
+impl FromWithTcx<clean::Term> for Term {
+    fn from_tcx(term: clean::Term, tcx: TyCtxt<'_>) -> Term {
+        match term {
+            clean::Term::Type(ty) => Term::Type(FromWithTcx::from_tcx(ty, tcx)),
+            clean::Term::Constant(c) => Term::Constant(FromWithTcx::from_tcx(c, tcx)),
         }
     }
 }

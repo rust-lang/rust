@@ -1,6 +1,6 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{AssocTyConstraint, AssocTyConstraintKind, NodeId};
+use rustc_ast::{AssocConstraint, AssocConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd, VariantData};
 use rustc_errors::struct_span_err;
 use rustc_feature::{AttributeGate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
@@ -622,8 +622,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_fn(self, fn_kind, span)
     }
 
-    fn visit_assoc_ty_constraint(&mut self, constraint: &'a AssocTyConstraint) {
-        if let AssocTyConstraintKind::Bound { .. } = constraint.kind {
+    fn visit_assoc_constraint(&mut self, constraint: &'a AssocConstraint) {
+        if let AssocConstraintKind::Bound { .. } = constraint.kind {
             gate_feature_post!(
                 &self,
                 associated_type_bounds,
@@ -631,7 +631,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 "associated type bounds are unstable"
             )
         }
-        visit::walk_assoc_ty_constraint(self, constraint)
+        visit::walk_assoc_constraint(self, constraint)
     }
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
@@ -724,6 +724,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
     gate_all!(inline_const, "inline-const is experimental");
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
+    gate_all!(associated_const_equality, "associated const equality is incomplete");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

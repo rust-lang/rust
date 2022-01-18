@@ -7,7 +7,7 @@
 use crate::mir::interpret::{get_slice_bytes, ConstValue, GlobalAlloc, Scalar};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, Term, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
 use rustc_span::DUMMY_SP;
@@ -291,11 +291,11 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
                 b.item_def_id,
             )))
         } else {
-            let ty = relation.relate_with_variance(
+            let term = relation.relate_with_variance(
                 ty::Invariant,
                 ty::VarianceDiagInfo::default(),
-                a.ty,
-                b.ty,
+                a.term,
+                b.term,
             )?;
             let substs = relation.relate_with_variance(
                 ty::Invariant,
@@ -303,7 +303,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
                 a.substs,
                 b.substs,
             )?;
-            Ok(ty::ExistentialProjection { item_def_id: a.item_def_id, substs, ty })
+            Ok(ty::ExistentialProjection { item_def_id: a.item_def_id, substs, term })
         }
     }
 }
@@ -833,6 +833,20 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for ty::Term<'tcx> {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: Self,
+        b: Self,
+    ) -> RelateResult<'tcx, Self> {
+        Ok(match (a, b) {
+            (Term::Ty(a), Term::Ty(b)) => relation.relate(a, b)?.into(),
+            (Term::Const(a), Term::Const(b)) => relation.relate(a, b)?.into(),
+            _ => return Err(TypeError::Mismatch),
+        })
+    }
+}
+
 impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
@@ -841,7 +855,7 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
     ) -> RelateResult<'tcx, ty::ProjectionPredicate<'tcx>> {
         Ok(ty::ProjectionPredicate {
             projection_ty: relation.relate(a.projection_ty, b.projection_ty)?,
-            ty: relation.relate(a.ty, b.ty)?,
+            term: relation.relate(a.term, b.term)?.into(),
         })
     }
 }

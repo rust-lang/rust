@@ -1,7 +1,7 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
-use rustc_ast::ast::{self, FnRetTy, Mutability};
+use rustc_ast::ast::{self, FnRetTy, Mutability, Term};
 use rustc_ast::ptr;
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
@@ -141,7 +141,7 @@ pub(crate) enum SegmentParam<'a> {
     Const(&'a ast::AnonConst),
     LifeTime(&'a ast::Lifetime),
     Type(&'a ast::Ty),
-    Binding(&'a ast::AssocTyConstraint),
+    Binding(&'a ast::AssocConstraint),
 }
 
 impl<'a> SegmentParam<'a> {
@@ -176,9 +176,9 @@ impl<'a> Rewrite for SegmentParam<'a> {
     }
 }
 
-impl Rewrite for ast::AssocTyConstraint {
+impl Rewrite for ast::AssocConstraint {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        use ast::AssocTyConstraintKind::{Bound, Equality};
+        use ast::AssocConstraintKind::{Bound, Equality};
 
         let mut result = String::with_capacity(128);
         result.push_str(rewrite_ident(context, self.ident));
@@ -206,11 +206,14 @@ impl Rewrite for ast::AssocTyConstraint {
     }
 }
 
-impl Rewrite for ast::AssocTyConstraintKind {
+impl Rewrite for ast::AssocConstraintKind {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
-            ast::AssocTyConstraintKind::Equality { ty } => ty.rewrite(context, shape),
-            ast::AssocTyConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
+            ast::AssocConstraintKind::Equality { term } => match term {
+                Term::Ty(ty) => ty.rewrite(context, shape),
+                Term::Const(c) => c.rewrite(context, shape),
+            },
+            ast::AssocConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
         }
     }
 }

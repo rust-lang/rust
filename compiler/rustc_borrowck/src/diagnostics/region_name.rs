@@ -779,7 +779,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                                     [
                                         hir::TypeBinding {
                                             ident: Ident { name: sym::Output, .. },
-                                            kind: hir::TypeBindingKind::Equality { ty },
+                                            kind:
+                                                hir::TypeBindingKind::Equality {
+                                                    term: hir::Term::Ty(ty),
+                                                },
                                             ..
                                         },
                                     ],

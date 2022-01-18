@@ -420,7 +420,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ty: &'hir hir::Ty<'hir>,
     ) -> hir::TypeBinding<'hir> {
         let ident = Ident::with_dummy_span(hir::FN_OUTPUT_NAME);
-        let kind = hir::TypeBindingKind::Equality { ty };
+        let kind = hir::TypeBindingKind::Equality { term: ty.into() };
         let args = arena_vec![self;];
         let bindings = arena_vec![self;];
         let gen_args = self.arena.alloc(hir::GenericArgs {

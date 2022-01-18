@@ -148,7 +148,7 @@ pub struct TypeBinding {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum TypeBindingKind {
-    Equality(Type),
+    Equality(Term),
     Constraint(Vec<GenericBound>),
 }
 
@@ -335,7 +335,7 @@ pub enum GenericParamDefKind {
 pub enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<GenericBound> },
     RegionPredicate { lifetime: String, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: Type, rhs: Type },
+    EqPredicate { lhs: Type, rhs: Term },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -357,6 +357,13 @@ pub enum TraitBoundModifier {
     None,
     Maybe,
     MaybeConst,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum Term {
+    Type(Type),
+    Constant(Constant),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

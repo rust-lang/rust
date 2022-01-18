@@ -484,7 +484,7 @@ crate struct PredicateInner<'tcx> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PredicateInner<'_>, 48);
+static_assert_size!(PredicateInner<'_>, 56);
 
 #[derive(Clone, Copy, Lift)]
 pub struct Predicate<'tcx> {
@@ -795,6 +795,31 @@ pub struct CoercePredicate<'tcx> {
 }
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable)]
+pub enum Term<'tcx> {
+    Ty(Ty<'tcx>),
+    Const(&'tcx Const<'tcx>),
+}
+
+impl<'tcx> From<Ty<'tcx>> for Term<'tcx> {
+    fn from(ty: Ty<'tcx>) -> Self {
+        Term::Ty(ty)
+    }
+}
+
+impl<'tcx> From<&'tcx Const<'tcx>> for Term<'tcx> {
+    fn from(c: &'tcx Const<'tcx>) -> Self {
+        Term::Const(c)
+    }
+}
+
+impl<'tcx> Term<'tcx> {
+    pub fn ty(&self) -> Option<Ty<'tcx>> {
+        if let Term::Ty(ty) = self { Some(ty) } else { None }
+    }
+}
+
 /// This kind of predicate has no *direct* correspondent in the
 /// syntax, but it roughly corresponds to the syntactic forms:
 ///
@@ -811,7 +836,7 @@ pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 #[derive(HashStable, TypeFoldable)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
-    pub ty: Ty<'tcx>,
+    pub term: Term<'tcx>,
 }
 
 pub type PolyProjectionPredicate<'tcx> = Binder<'tcx, ProjectionPredicate<'tcx>>;
@@ -836,8 +861,8 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         self.map_bound(|predicate| predicate.projection_ty.trait_ref(tcx))
     }
 
-    pub fn ty(&self) -> Binder<'tcx, Ty<'tcx>> {
-        self.map_bound(|predicate| predicate.ty)
+    pub fn term(&self) -> Binder<'tcx, Term<'tcx>> {
+        self.map_bound(|predicate| predicate.term)
     }
 
     /// The `DefId` of the `TraitItem` for the associated type.

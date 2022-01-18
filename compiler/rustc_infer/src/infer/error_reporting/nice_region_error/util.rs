@@ -122,8 +122,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             {
                                 for type_binding in generic_args.bindings.iter() {
                                     if type_binding.ident.name == rustc_span::sym::Output {
-                                        if let hir::TypeBindingKind::Equality { ty } =
-                                            type_binding.kind
+                                        if let hir::TypeBindingKind::Equality {
+                                            term: hir::Term::Ty(ty),
+                                        } = type_binding.kind
                                         {
                                             return Some(ty);
                                         }

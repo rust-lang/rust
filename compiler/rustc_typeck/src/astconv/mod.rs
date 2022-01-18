@@ -123,7 +123,7 @@ struct ConvertedBinding<'a, 'tcx> {
 
 #[derive(Debug)]
 enum ConvertedBindingKind<'a, 'tcx> {
-    Equality(Ty<'tcx>),
+    Equality(ty::Term<'tcx>),
     Constraint(&'a [hir::GenericBound<'a>]),
 }
 
@@ -601,10 +601,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .iter()
             .map(|binding| {
                 let kind = match binding.kind {
-                    hir::TypeBindingKind::Equality { ty } => {
-                        ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty))
-                    }
-                    hir::TypeBindingKind::Constraint { bounds } => {
+                    hir::TypeBindingKind::Equality { ref term } => match term {
+                        hir::Term::Ty(ref ty) => {
+                            ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty).into())
+                        }
+                        hir::Term::Const(ref c) => {
+                            let local_did = self.tcx().hir().local_def_id(c.hir_id);
+                            let c = Const::from_anon_const(self.tcx(), local_did);
+                            ConvertedBindingKind::Equality(c.into())
+                        }
+                    },
+                    hir::TypeBindingKind::Constraint { ref bounds } => {
                         ConvertedBindingKind::Constraint(bounds)
                     }
                 };
@@ -867,6 +874,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, trait_def_id)
             .is_some()
     }
+    fn trait_defines_associated_named(&self, trait_def_id: DefId, assoc_name: Ident) -> bool {
+        self.tcx()
+            .associated_items(trait_def_id)
+            .find_by_name_and_kinds(
+                self.tcx(),
+                assoc_name,
+                &[ty::AssocKind::Type, ty::AssocKind::Const],
+                trait_def_id,
+            )
+            .is_some()
+    }
 
     // Sets `implicitly_sized` to true on `Bounds` if necessary
     pub(crate) fn add_implicitly_sized<'hir>(
@@ -1118,9 +1136,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .associated_items(candidate.def_id())
             .filter_by_name_unhygienic(assoc_ident.name)
             .find(|i| {
-                i.kind == ty::AssocKind::Type && i.ident.normalize_to_macros_2_0() == assoc_ident
+                (i.kind == ty::AssocKind::Type || i.kind == ty::AssocKind::Const)
+                    && i.ident.normalize_to_macros_2_0() == assoc_ident
             })
             .expect("missing associated type");
+        // FIXME(associated_const_equality): need to handle assoc_consts here as well.
+        if assoc_ty.kind == ty::AssocKind::Const {
+            tcx.sess
+                .struct_span_err(path_span, &format!("associated const equality is incomplete"))
+                .span_label(path_span, "cannot yet relate associated const")
+                .emit();
+            return Err(ErrorReported);
+        }
 
         if !assoc_ty.vis.is_accessible_from(def_scope, tcx) {
             tcx.sess
@@ -1215,18 +1242,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         match binding.kind {
-            ConvertedBindingKind::Equality(ty) => {
+            ConvertedBindingKind::Equality(term) => {
                 // "Desugar" a constraint like `T: Iterator<Item = u32>` this to
                 // the "projection predicate" for:
                 //
                 // `<T as Iterator>::Item = u32`
                 bounds.projection_bounds.push((
-                    projection_ty.map_bound(|projection_ty| {
-                        debug!(
-                            "add_predicates_for_ast_type_binding: projection_ty {:?}, substs: {:?}",
-                            projection_ty, projection_ty.substs
-                        );
-                        ty::ProjectionPredicate { projection_ty, ty }
+                    projection_ty.map_bound(|projection_ty| ty::ProjectionPredicate {
+                        projection_ty,
+                        term: term,
                     }),
                     binding.span,
                 ));
@@ -1377,8 +1401,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
-                        let references_self =
-                            pred.skip_binder().ty.walk().any(|arg| arg == dummy_self.into());
+                        let references_self = match pred.skip_binder().term {
+                            ty::Term::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
+                            ty::Term::Const(c) => c.ty.walk().any(|arg| arg == dummy_self.into()),
+                        };
 
                         // If the projection output contains `Self`, force the user to
                         // elaborate it explicitly to avoid a lot of complexity.
@@ -1601,7 +1627,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
         let mut matching_candidates = all_candidates()
-            .filter(|r| self.trait_defines_associated_type_named(r.def_id(), assoc_name));
+            .filter(|r| self.trait_defines_associated_named(r.def_id(), assoc_name));
 
         let bound = match matching_candidates.next() {
             Some(bound) => bound,

@@ -1,7 +1,9 @@
 #[cfg(FALSE)]
 fn syntax() {
-    bar::<Item = 42>(); //~ ERROR cannot constrain an associated constant to a value
-    bar::<Item = { 42 }>(); //~ ERROR cannot constrain an associated constant to a value
+    bar::<Item = 42>();
+    //~^ ERROR associated const equality is incomplete
+    bar::<Item = { 42 }>();
+    //~^ ERROR associated const equality is incomplete
 }
 
 fn main() {}

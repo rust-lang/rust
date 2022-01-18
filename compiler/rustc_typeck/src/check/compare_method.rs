@@ -1353,7 +1353,7 @@ pub fn check_type_bounds<'tcx>(
                             item_def_id: trait_ty.def_id,
                             substs: rebased_substs,
                         },
-                        ty: impl_ty_value,
+                        term: impl_ty_value.into(),
                     },
                     bound_vars,
                 )

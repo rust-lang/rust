@@ -6,7 +6,7 @@ use crate::mir::interpret;
 use crate::mir::ProjectionKind;
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeVisitor};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
-use crate::ty::{self, InferConst, Lift, Ty, TyCtxt};
+use crate::ty::{self, InferConst, Lift, Term, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
@@ -158,7 +158,7 @@ impl<'tcx> fmt::Debug for ty::TraitPredicate<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::ProjectionPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ProjectionPredicate({:?}, {:?})", self.projection_ty, self.ty)
+        write!(f, "ProjectionPredicate({:?}, {:?})", self.projection_ty, self.term)
     }
 }
 
@@ -356,6 +356,16 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialPredicate<'a> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for Term<'a> {
+    type Lifted = ty::Term<'tcx>;
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        Some(match self {
+            Term::Ty(ty) => Term::Ty(tcx.lift(ty)?),
+            Term::Const(c) => Term::Const(tcx.lift(c)?),
+        })
+    }
+}
+
 impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     type Lifted = ty::TraitPredicate<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ty::TraitPredicate<'tcx>> {
@@ -403,8 +413,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionTy<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionPredicate<'a> {
     type Lifted = ty::ProjectionPredicate<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<ty::ProjectionPredicate<'tcx>> {
-        tcx.lift((self.projection_ty, self.ty))
-            .map(|(projection_ty, ty)| ty::ProjectionPredicate { projection_ty, ty })
+        tcx.lift((self.projection_ty, self.term))
+            .map(|(projection_ty, term)| ty::ProjectionPredicate { projection_ty, term })
     }
 }
 
@@ -413,7 +423,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialProjection<'a> {
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
         tcx.lift(self.substs).map(|substs| ty::ExistentialProjection {
             substs,
-            ty: tcx.lift(self.ty).expect("type must lift when substs do"),
+            term: tcx.lift(self.term).expect("type must lift when substs do"),
             item_def_id: self.item_def_id,
         })
     }

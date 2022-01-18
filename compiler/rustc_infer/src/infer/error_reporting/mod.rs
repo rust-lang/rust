@@ -1780,7 +1780,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 {
                     if projection_predicate.projection_ty.item_def_id == item_def_id {
                         // We don't account for multiple `Future::Output = Ty` contraints.
-                        return Some(projection_predicate.ty);
+                        return projection_predicate.term.ty();
                     }
                 }
             }

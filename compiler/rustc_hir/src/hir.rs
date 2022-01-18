@@ -377,7 +377,7 @@ impl GenericArgs<'_> {
             GenericArg::Type(ty) => matches!(ty.kind, TyKind::Err),
             _ => false,
         }) || self.bindings.iter().any(|arg| match arg.kind {
-            TypeBindingKind::Equality { ty } => matches!(ty.kind, TyKind::Err),
+            TypeBindingKind::Equality { term: Term::Ty(ty) } => matches!(ty.kind, TyKind::Err),
             _ => false,
         })
     }
@@ -2129,19 +2129,37 @@ pub struct TypeBinding<'hir> {
     pub span: Span,
 }
 
+#[derive(Debug, HashStable_Generic)]
+pub enum Term<'hir> {
+    Ty(&'hir Ty<'hir>),
+    Const(AnonConst),
+}
+
+impl<'hir> From<&'hir Ty<'hir>> for Term<'hir> {
+    fn from(ty: &'hir Ty<'hir>) -> Self {
+        Term::Ty(ty)
+    }
+}
+
+impl<'hir> From<AnonConst> for Term<'hir> {
+    fn from(c: AnonConst) -> Self {
+        Term::Const(c)
+    }
+}
+
 // Represents the two kinds of type bindings.
 #[derive(Debug, HashStable_Generic)]
 pub enum TypeBindingKind<'hir> {
     /// E.g., `Foo<Bar: Send>`.
     Constraint { bounds: &'hir [GenericBound<'hir>] },
-    /// E.g., `Foo<Bar = ()>`.
-    Equality { ty: &'hir Ty<'hir> },
+    /// E.g., `Foo<Bar = ()>`, `Foo<Bar = ()>`
+    Equality { term: Term<'hir> },
 }
 
 impl TypeBinding<'_> {
     pub fn ty(&self) -> &Ty<'_> {
         match self.kind {
-            TypeBindingKind::Equality { ref ty } => ty,
+            TypeBindingKind::Equality { term: Term::Ty(ref ty) } => ty,
             _ => panic!("expected equality type binding for parenthesized generic args"),
         }
     }

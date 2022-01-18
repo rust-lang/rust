@@ -62,7 +62,7 @@ pub(crate) fn update<'tcx, T>(
     if let ty::PredicateKind::Projection(predicate) = obligation.predicate.kind().skip_binder() {
         // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,
         // we need to make it into one.
-        if let Some(vid) = predicate.ty.ty_vid() {
+        if let Some(vid) = predicate.term.ty().and_then(|ty| ty.ty_vid()) {
             debug!("relationship: {:?}.output = true", vid);
             engine.relationships().entry(vid).or_default().output = true;
         }
