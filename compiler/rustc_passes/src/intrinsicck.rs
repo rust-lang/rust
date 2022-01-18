@@ -294,9 +294,8 @@ impl<'tcx> ExprVisitor<'tcx> {
         // (!). In that case we still need the earlier check to verify that the
         // register class is usable at all.
         if let Some(feature) = feature {
-            let feat_sym = Symbol::intern(feature);
-            if !self.tcx.sess.target_features.contains(&feat_sym)
-                && !target_features.contains(&feat_sym)
+            if !self.tcx.sess.target_features.contains(&feature)
+                && !target_features.contains(&feature)
             {
                 let msg = &format!("`{}` target feature is not enabled", feature);
                 let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
@@ -377,9 +376,8 @@ impl<'tcx> ExprVisitor<'tcx> {
                     {
                         match feature {
                             Some(feature) => {
-                                let feat_sym = Symbol::intern(feature);
-                                if self.tcx.sess.target_features.contains(&feat_sym)
-                                    || attrs.target_features.contains(&feat_sym)
+                                if self.tcx.sess.target_features.contains(&feature)
+                                    || attrs.target_features.contains(&feature)
                                 {
                                     missing_required_features.clear();
                                     break;
@@ -413,7 +411,11 @@ impl<'tcx> ExprVisitor<'tcx> {
                             let msg = format!(
                                 "register class `{}` requires at least one of the following target features: {}",
                                 reg_class.name(),
-                                features.join(", ")
+                                features
+                                    .iter()
+                                    .map(|f| f.as_str())
+                                    .intersperse(", ")
+                                    .collect::<String>(),
                             );
                             self.tcx.sess.struct_span_err(*op_sp, &msg).emit();
                             // register isn't enabled, don't do more checks

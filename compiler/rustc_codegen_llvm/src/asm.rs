@@ -13,7 +13,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug, ty::Instance};
-use rustc_span::{Pos, Span, Symbol};
+use rustc_span::{Pos, Span};
 use rustc_target::abi::*;
 use rustc_target::asm::*;
 
@@ -45,9 +45,8 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         for &(_, feature) in reg_class.supported_types(asm_arch) {
                             if let Some(feature) = feature {
                                 let codegen_fn_attrs = self.tcx.codegen_fn_attrs(instance.def_id());
-                                let feature_name = Symbol::intern(feature);
-                                if self.tcx.sess.target_features.contains(&feature_name)
-                                    || codegen_fn_attrs.target_features.contains(&feature_name)
+                                if self.tcx.sess.target_features.contains(&feature)
+                                    || codegen_fn_attrs.target_features.contains(&feature)
                                 {
                                     return true;
                                 }

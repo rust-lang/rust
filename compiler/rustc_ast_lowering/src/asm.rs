@@ -6,7 +6,7 @@ use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_session::parse::feature_err;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{sym, Span};
 use rustc_target::asm;
 use std::collections::hash_map::Entry;
 use std::fmt::Write;
@@ -66,7 +66,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             for (abi_name, abi_span) in &asm.clobber_abis {
                 match asm::InlineAsmClobberAbi::parse(
                     asm_arch,
-                    |feature| self.sess.target_features.contains(&Symbol::intern(feature)),
+                    &self.sess.target_features,
                     &self.sess.target,
                     *abi_name,
                 ) {
@@ -134,7 +134,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmReg::parse(
                                 asm_arch,
-                                |feature| sess.target_features.contains(&Symbol::intern(feature)),
+                                &sess.target_features,
                                 &sess.target,
                                 s,
                             )

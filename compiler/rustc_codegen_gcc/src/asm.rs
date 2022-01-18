@@ -5,7 +5,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{AsmBuilderMethods, AsmMethods, BaseTypeMethods, BuilderMethods, GlobalAsmOperandRef, InlineAsmOperandRef};
 
 use rustc_middle::{bug, ty::Instance};
-use rustc_span::{Span, Symbol};
+use rustc_span::Span;
 use rustc_target::asm::*;
 
 use std::borrow::Cow;
@@ -172,7 +172,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             let is_target_supported = reg.reg_class().supported_types(asm_arch).iter()
                                 .any(|&(_, feature)| {
                                     if let Some(feature) = feature {
-                                        self.tcx.sess.target_features.contains(&Symbol::intern(feature))
+                                        self.tcx.sess.target_features.contains(&feature)
                                     } else {
                                         true // Register class is unconditionally supported
                                     }

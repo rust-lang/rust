@@ -1,6 +1,8 @@
 use super::{InlineAsmArch, InlineAsmType};
 use crate::spec::Target;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_macros::HashStable_Generic;
+use rustc_span::{sym, Symbol};
 use std::fmt;
 
 def_reg_class! {
@@ -44,31 +46,31 @@ impl ArmInlineAsmRegClass {
     pub fn supported_types(
         self,
         _arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg => types! { _: I8, I16, I32, F32; },
-            Self::sreg | Self::sreg_low16 => types! { "vfp2": I32, F32; },
+            Self::sreg | Self::sreg_low16 => types! { vfp2: I32, F32; },
             Self::dreg | Self::dreg_low16 | Self::dreg_low8 => types! {
-                "vfp2": I64, F64, VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2);
+                vfp2: I64, F64, VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2);
             },
             Self::qreg | Self::qreg_low8 | Self::qreg_low4 => types! {
-                "neon": VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4);
+                neon: VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4);
             },
         }
     }
 }
 
 // This uses the same logic as useR7AsFramePointer in LLVM
-fn frame_pointer_is_r7(mut has_feature: impl FnMut(&str) -> bool, target: &Target) -> bool {
-    target.is_like_osx || (!target.is_like_windows && has_feature("thumb-mode"))
+fn frame_pointer_is_r7(target_features: &FxHashSet<Symbol>, target: &Target) -> bool {
+    target.is_like_osx || (!target.is_like_windows && target_features.contains(&sym::thumb_mode))
 }
 
 fn frame_pointer_r11(
     _arch: InlineAsmArch,
-    has_feature: impl FnMut(&str) -> bool,
+    target_features: &FxHashSet<Symbol>,
     target: &Target,
 ) -> Result<(), &'static str> {
-    if !frame_pointer_is_r7(has_feature, target) {
+    if !frame_pointer_is_r7(target_features, target) {
         Err("the frame pointer (r11) cannot be used as an operand for inline asm")
     } else {
         Ok(())
@@ -77,10 +79,10 @@ fn frame_pointer_r11(
 
 fn frame_pointer_r7(
     _arch: InlineAsmArch,
-    has_feature: impl FnMut(&str) -> bool,
+    target_features: &FxHashSet<Symbol>,
     target: &Target,
 ) -> Result<(), &'static str> {
-    if frame_pointer_is_r7(has_feature, target) {
+    if frame_pointer_is_r7(target_features, target) {
         Err("the frame pointer (r7) cannot be used as an operand for inline asm")
     } else {
         Ok(())
@@ -89,10 +91,10 @@ fn frame_pointer_r7(
 
 fn not_thumb1(
     _arch: InlineAsmArch,
-    mut has_feature: impl FnMut(&str) -> bool,
+    target_features: &FxHashSet<Symbol>,
     _target: &Target,
 ) -> Result<(), &'static str> {
-    if has_feature("thumb-mode") && !has_feature("thumb2") {
+    if target_features.contains(&sym::thumb_mode) && !target_features.contains(&sym::thumb2) {
         Err("high registers (r8+) cannot be used in Thumb-1 code")
     } else {
         Ok(())
@@ -101,14 +103,14 @@ fn not_thumb1(
 
 fn reserved_r9(
     arch: InlineAsmArch,
-    mut has_feature: impl FnMut(&str) -> bool,
+    target_features: &FxHashSet<Symbol>,
     target: &Target,
 ) -> Result<(), &'static str> {
-    not_thumb1(arch, &mut has_feature, target)?;
+    not_thumb1(arch, target_features, target)?;
 
     // We detect this using the reserved-r9 feature instead of using the target
     // because the relocation model can be changed with compiler options.
-    if has_feature("reserved-r9") {
+    if target_features.contains(&sym::reserved_r9) {
         Err("the RWPI static base register (r9) cannot be used as an operand for inline asm")
     } else {
         Ok(())
