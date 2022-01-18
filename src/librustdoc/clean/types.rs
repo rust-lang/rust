@@ -1040,9 +1040,9 @@ impl Attributes {
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
         let clean_attr = |(attr, parent_module): (&ast::Attribute, Option<DefId>)| {
-            if let Some(value) = attr.doc_str() {
+            if let Some((value, kind)) = attr.doc_str_and_comment_kind() {
                 trace!("got doc_str={:?}", value);
-                let value = beautify_doc_string(value);
+                let value = beautify_doc_string(value, kind);
                 let kind = if attr.is_doc_comment() {
                     DocFragmentKind::SugaredDoc
                 } else {

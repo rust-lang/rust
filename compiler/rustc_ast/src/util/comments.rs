@@ -1,3 +1,4 @@
+use crate::token::CommentKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, CharPos, FileName, Pos, Symbol};
 
@@ -25,7 +26,7 @@ pub struct Comment {
 
 /// Makes a doc string more presentable to users.
 /// Used by rustdoc and perhaps other tools, but not by rustc.
-pub fn beautify_doc_string(data: Symbol) -> Symbol {
+pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
     fn get_vertical_trim(lines: &[&str]) -> Option<(usize, usize)> {
         let mut i = 0;
         let mut j = lines.len();
@@ -42,9 +43,27 @@ pub fn beautify_doc_string(data: Symbol) -> Symbol {
         if i != 0 || j != lines.len() { Some((i, j)) } else { None }
     }
 
-    fn get_horizontal_trim(lines: &[&str]) -> Option<usize> {
+    fn get_horizontal_trim(lines: &[&str], kind: CommentKind) -> Option<usize> {
         let mut i = usize::MAX;
         let mut first = true;
+
+        // In case we have doc comments like `/**` or `/*!`, we want to remove stars if they are
+        // present. However, we first need to strip the empty lines so they don't get in the middle
+        // when we try to compute the "horizontal trim".
+        let lines = if kind == CommentKind::Block {
+            let mut i = 0;
+            let mut j = lines.len();
+
+            while i < j && lines[i].trim().is_empty() {
+                i += 1;
+            }
+            while j > i && lines[j - 1].trim().is_empty() {
+                j -= 1;
+            }
+            &lines[i..j]
+        } else {
+            lines
+        };
 
         for line in lines {
             for (j, c) in line.chars().enumerate() {
@@ -79,11 +98,13 @@ pub fn beautify_doc_string(data: Symbol) -> Symbol {
         } else {
             &mut lines
         };
-        if let Some(horizontal) = get_horizontal_trim(&lines) {
+        if let Some(horizontal) = get_horizontal_trim(&lines, kind) {
             changes = true;
             // remove a "[ \t]*\*" block from each line, if possible
             for line in lines.iter_mut() {
-                *line = &line[horizontal + 1..];
+                if horizontal + 1 < line.len() {
+                    *line = &line[horizontal + 1..];
+                }
             }
         }
         if changes {
